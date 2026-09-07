@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.12-DRAFT"
+version: "0.27-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -27,23 +27,81 @@ re-verified LIVE cycle 146 and is genuinely **still open**. F-B33 (the false CI-
 CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quantified precisely
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
-— 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
-cycle 149 onward (30/57 landed across 6 slices, PR #2193). See §2 for the corrected
+— 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
+cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
+not stale names; no list edit needed for them. Being closed incrementally
+cycle 149 onward (31/57 landed across 7 slices, PR #2202; ~25 remaining reframed cycle 156 as
+genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
-call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ BLOCKED, but no longer on the
-gate this section originally named.** Adjudication #2113 was raised as a campaign-wide
-`asset_freshness` gate (zero L1 dependency-asset rows) blocking any L1 rebuild; re-investigated
-live (cycles 132-133) and found the real picture is more specific: `ga_positions` (L1's DAG root,
-zero declared dependencies) is IMMUNE to that gate by construction, and its true blocker was a
-now-fixed writer crash (#1856) plus a stale W2 acceptance pin — both concretely diagnosed. But
-pursuing that unblock surfaced a SECOND, more consequential finding before any dispatch was
-attempted: `ga_positions_writer.py`'s `fact_id` derivation changed since its last acceptance (PR
-#1898 removed `build_id` from the hash — a real, good, already-merged fix), and
-`ga_yoga_firings.constituent_fact_ids` (36/40 refs on the canonical chart) resolves to exactly
-`ga_positions`' own categories — a `ga_positions`-only rebuild would orphan those references.
-**W4 is now blocked on a coordinated-rebuild-sequencing question, not an infrastructure gap** —
-posted to #2113, awaiting a reply as of this writing · **W5 ⛔ BLOCKED** (no completed post-W4
+call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ PARTIALLY UNBLOCKED, cycle 155.**
+Adjudication #2113 was raised as a campaign-wide `asset_freshness` gate (zero L1 dependency-asset
+rows) blocking any L1 rebuild; re-investigated live (cycles 132-133) and found the real picture
+was more specific: `ga_positions` (L1's DAG root, zero declared dependencies) is IMMUNE to that
+gate by construction, and its true blocker was a now-fixed writer crash (#1856) plus a stale W2
+acceptance pin. Pursuing that unblock surfaced a SECOND finding: `ga_positions_writer.py`'s
+`fact_id` derivation changed since its last acceptance (PR #1898), and `ga_yoga_firings.
+constituent_fact_ids` resolves to exactly `ga_positions`' own categories — a `ga_positions`-only
+rebuild would have orphaned those references. Escalated as adjudication #2180; **RULED by the
+Conductor 2026-09-07T00:45:28Z** confirming the corrected waves-0-3 coordinated-rebuild scope
+(15 assets) as correct, superseding the original 5-asset framing. **Wave 0 (`ga_positions`)
+dispatched and completed live, cycle 155**: fresh Cloud SQL backup taken first, `--commit
+--acknowledge-destroys` for the WP-6 blast radius (`chart_fact_identity`, in-layer, ~530 rows
+scoped to this chart's positions categories — confirmed against this session's own prior
+blast-radius statement, not the tool's naive 270,471 whole-table count). `asset_throughput.
+state` now `'lit'` (was `'error'`), `chart_facts` repopulated (530 rows). Also found and fixed:
+`chart_fact_identity` is repopulated by a SEPARATE standalone script
+(`build_fact_identity_index.py`), not the orchestrator writer — re-ran it for the canonical
+chart, 125,593 rows restored. **New blocker found, not yet resolved**: `asset_freshness` for
+`ga_positions` shows `freshness_state='unknown'`, not `'fresh'` (`asset_registry.
+natural_key_partition` empty) — `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'`,
+so **wave 1 may still be blocked** by a different gate than #2180's ruling addressed. Posted to
+#2180. **RULED again, cycle 159**: root-caused live — 7 L1 assets share `target_table=
+'chart_facts'`, all missing `natural_key_partition`; `output_digest_spec_unavailable` is the
+same D-CND-27 per-asset-authoring gap as `mi_vistara`/`mi_kula`. Authorized two registry-
+configuration fixes: `natural_key_partition` backfill (all 7, L1's own migration range) +
+`output_digest_spec` for `ga_positions` (L1) plus 3 L0 assets (L0's own range). **Fix 1 shipped
+for `ga_positions` only, same cycle** (migration 868, PR #2205): `graha_position`,
+`graha_sign_attributes`, `bhava_cusps`, `house_chalit` — verified directly against
+`ga_positions_writer.py`'s actual write sites, not the serving-tool mapping. Applied and
+verified locally (registry-invalidation trigger fired correctly). Remaining 6 co-writers'
+partitions and `ga_positions`' own `output_digest_spec` (fix 2) still needed before wave 1 —
+`ga_sensitive` found to own a much larger category set than assumed, deferred rather than
+guessed. Did not attempt wave 1 this cycle. **Shipped incrementally cycles 160-165: `ga_
+sensitive_degree` (870), `ga_sade_sati` (871, 14 categories), `ga_nakshatra` (872, 14 categories
+across two source files), `ga_panchanga` (873, 34 categories — literal grep undercounted to 16;
+corrected via a dynamic-construction trace of `f"panchanga_{window_name}"`), `ga_sensitive`
+(874, 37 categories — same undercount class repeated: a for-loop-constructed `cat` variable in
+`_build_brahma_vishnu_shiva_rows` hid 3 categories a literal grep alone found only 34 of). **All
+7/7 `natural_key_partition` backfills from fix 1 are now shipped** (five of the seven still
+mid-CI/queued as of cycle 165's close, not yet confirmed merged to `main`). **Fix 2 shipped
+cycle 166** (migration 875, PR #2220): `ga_positions`' `output_digest_spec`, scoped to the same
+4-category `chart_facts` slice via `where_equals`/`where_in`; `key_columns=fact_id` (confirmed
+stable across rebuilds since PR #1898); `value_columns` = every real content column minus
+`computed_at` + `build_id` (both bookkeeping — `build_id` a new exclusion this segment
+establishes, since including a volatile per-run UUID as content would make the digest differ on
+every rebuild regardless of real content change). Rehearsed live (rollback-only) before writing
+the migration, then independently re-confirmed the identical digest after applying for real.
+**Both fixes of #2180's second ruling shipped cycle 166 — then self-corrected cycle 167**
+(migration 876, PR #2221): while preparing a wave-1 verification dispatch, recomputing
+`ga_positions`' live registry fingerprint via `dispatch_nirmana_campaign_wave.py`'s own functions
+surfaced that the writer's registry-authored `count_sql` already listed **5** `chart_facts`
+categories, not the 4 migrations 868/875 declared — `_build_chalit_rows` also emits `sandhi_flag`
+(own docstring names it explicitly). Corrected `natural_key_partition` to the true 5-category set
+and retired+replaced the `output_digest_spec` row with a matching filter; new digest computed
+over 1205 live rows, matching cycle 155's own original wave-0 dispatch report ("1205 rows
+written") exactly — independent confirmation 5 is the true, complete count. Corrected before
+continuing the wave-1 attempt rather than proceeding on known-wrong data. **RESOLVED cycle 168,
+verified live end-to-end**: recomputed fresh registry_fingerprint/analysis_digest, submitted
+fresh evidence via the `record_evidence` executor route (two real blockers found and fixed along
+the way — `gcloud auth print-identity-token` needs `--include-email` for the JWT to carry an
+`email` claim at all, and `source_ref` must be the Cloud Run service's own `NIRMANA_DEPLOYED_SHA`
+env var, not `origin/main` HEAD), took a fresh Cloud SQL backup, dispatched `ga_positions` wave 0
+for real. `asset_freshness` now carries a genuinely new row keyed by the real partition text
+showing `freshness_state='fresh'`, `reasons=[]` — the original symptom that opened this whole
+sub-investigation (cycle 155) is now confirmed fixed, not assumed. `chart_fact_identity`
+re-rebuilt post-cascade (124,388 → 125,593, exact dry-run match). Posted the resolution to #2180.
+· **W5 ⛔ BLOCKED** (no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
@@ -66,7 +124,7 @@ Routes are W2-final. Full per-asset findings/fix history (every F-id, PR, migrat
 
 | # | asset | live / floor | route | W3 status |
 |---|---|---:|---|---|
-| 1 | `ga_positions` | 890 / 50 | `rebuild_only` | layer root/canary; F-A16 fixed (migration 847) |
+| 1 | `ga_positions` | 1205 / 50 | `rebuild_only` | layer root/canary; F-A16 fixed (migration 847); wave-0 rebuild dispatched+completed cycle 155 (`state='lit'`), `freshness_state='unknown'` pending #2180 |
 | 2 | `ga_vargas` | 23,542 / 22,092 | fixed (PR #1766) | F-A1/F-A3 fixed at writer level; F-A14 contract genuinely RED pending rebuild |
 | 3 | `ga_dashas` | 483,859 / 536,471 | `rebuild_only` | floor decomposed to 5 named causes; F-A11 audited |
 | 4 | `ga_nakshatra` | 2,847 / 1,802 | `rebuild_only` | F-B18/F-B19 fixed (PR #2118) |
@@ -128,22 +186,31 @@ id-groups.**
   catching this session's own.) A full `comm`-based diff (cycle 148) found: **57 categories live
   for the canonical chart are absent from the 169-list** (e.g. `ayurdaya`, `bhava_cusps`,
   `graha_nakshatra_join`, `special_lagna`, `upapada_lagna`, `kp_house_significators` — the full
-  57 are diverse, spanning nearly every section of the file); **7 entries in the 169-list are NOT
-  live for the canonical chart**, of which 6 (`ashtakavarga_anubindu`, `dosha_fires`,
-  `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`,
-  `yoga_fires`) do not exist as a `fact_category` value **anywhere in the table, for any chart**
-  — genuinely phantom/stale names, not just chart-specific absences (`yoga_label`/`dosha_label`
-  are the real live categories the file already separately and correctly lists) — and the 7th
-  (`karaka_web_per_varga`) is a real category with 2,945 live rows, just not yet built for the
-  canonical chart specifically, so not itself a defect. Separately, `concept_aliases.ts:14` cited
+  57 are diverse, spanning nearly every section of the file); **7 entries in the 169-list showed
+  zero rows for the canonical chart at cycle 148's measurement** — `ashtakavarga_anubindu`,
+  `dosha_fires`, `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`,
+  `esoteric_point_trisphuta`, `yoga_fires`, `karaka_web_per_varga`. **Cycle 148 called the first
+  6 "phantom/stale names" — CORRECTED cycle 157: this was wrong.** Grepped all 6 category
+  strings directly against every `ga_writers/*.py` file and found every one traces to real,
+  currently-active writer code, genuinely called from the main aggregation flow (not orphaned):
+  `ashtakavarga_anubindu` (`ga_structural_writer.py`'s `_build_anubindu_rows`, called at line
+  6743), `dosha_fires`/`yoga_fires` (same file, appear in the writer's own row-count accounting
+  and a reconciliation map that treats them as siblings of — not superseded by —
+  `dosha_label`/`yoga_label`), and the three `esoteric_point_*` categories (`ga_sensitive_
+  writer.py`'s `_long_rows` calls). The real explanation is simpler and not a defect at all:
+  both owning assets (`ga_structural`, `ga_sensitive`) are already-documented `rebuild_only`
+  with pending fixes, and both are inside the SAME waves 1-3 scope adjudication #2180 already
+  ruled on — once those waves dispatch, these categories populate naturally. `karaka_web_per_
+  varga` was correctly already identified (cycle 148) as real-but-not-yet-built, same root
+  cause. **No coverage_matrix.ts change is needed for any of these 7** — the correction is to
+  this report's own prior claim, not to the file. Separately, `concept_aliases.ts:14` cited
   `platform/scripts/census/schema_map_alias_coverage_check.ts` as an existing CI regression check;
   that file did not exist — **fixed cycle 147, PR #2191** (docstring corrected to state reality
   honestly rather than build the check against a still-unsettled category count). F-B32's own fix
-  (updating the 169-list to the true 219, and removing/investigating the 6 phantom entries) is
-  handed forward as the next unheld MUST-tier item in §5 — assigning each of the 57 missing
-  categories to its correct serving tool requires per-category verification against real serving
-  code, which is out of scope for any single bounded cycle; this cycle's contribution is the
-  verified, corrected diff itself, not the edit.
+  (mapping the 57 missing categories to their correct serving tools) is handed forward as the
+  next unheld MUST-tier item in §5 — per-category verification against real serving code, out of
+  scope for any single bounded cycle; this cycle's contribution is the verified, corrected diff
+  itself, not the edit.
   The remaining MUST-tier disposition: the large majority
   fixed at the writer or serving-layer level across cycles 1-124; five id-groups (F-C2/C3/C4/C5/
   C7, the D-SALIENCE feed) correctly routed to L2's `bo_laksana.py` — confirmed not an L1 file;
@@ -162,10 +229,58 @@ id-groups.**
   per #1744), R-1 `ga_prashna` dormancy, native-parked verification items, stale-doc-figure items
   deliberately deferred to opportunistic-only fixes rather than a dedicated pass.
 
-*(Per-finding disposition TABLE — as opposed to this tier-level summary — is OPEN; the source
-data for it is complete in `L1_W2_DECIDE_v1_0.md` §3 + `L1_STATE.md`'s per-asset table, but
-compiling a single 139-row table is deferred to a later prep cycle or W6 itself, since it does
-not change any decision made so far.)*
+*(Per-finding disposition TABLE for the MUST tier — as opposed to this tier-level summary — is
+now built, cycle 158, see §2.5. NOW/NEVER-LATER per-finding tables remain OPEN, deferred to a
+future prep cycle since the tier-level summary above already accounts for every finding in both
+and neither tier has had a correction discovered against it, unlike MUST.)*
+
+## §2.5 — MUST-tier per-finding disposition table (cycle 158)
+
+Reconstructed from `L1_W2_DECIDE_v1_0.md` §3's own MUST-tier table (source of the `id(s)` /
+`asset` / `what` columns, verbatim) plus this report's own already-recorded evidence (§1's asset
+table, §2's tier summary, §3.5's escalations). **This is a compilation of citations already made
+elsewhere in this campaign's own record, not a fresh live re-verification of every row** — rows
+with a specific PR/migration/issue number were traceable to an explicit citation already in this
+document; rows without one are marked honestly as resting on cycle 125's own MUST-tier closure
+sweep alone, not independently re-checked this pass. That distinction is the point of this
+table — after cycle 146-157's own experience finding cycle 125's blanket claim wrong for one
+id-group (F-B32/F-B33), an un-cited "closed" is treated as a weaker claim than a cited one, not
+silently equal to it.
+
+| id(s) | asset | disposition | evidence |
+|---|---|---|---|
+| F-A1 | ga_vargas | Fixed at writer level | PR #1766 (§1 row 2) |
+| F-A2, F-A3 | ga_vargas | Fixed at writer level | PR #1766 (§1 row 2, "F-A1/F-A3 fixed at writer level") |
+| F-A10 | ga_dashas | Claimed closed, cycle 125 sweep only | No dedicated citation found in this session's own record — flagged, not re-verified this pass |
+| F-A12 | ga_dashas + ga_vargas | Claimed closed, cycle 125 sweep only | No dedicated citation found — flagged, not re-verified this pass |
+| F-A4, F-B2, F-B12 | positions, sensitive, sensitive_degree | Claimed closed, cycle 125 sweep only | No dedicated citation found for these three specifically — flagged |
+| F-C9 | ga_structural | Fixed | migration 842 (§1 row 9) |
+| F-A9, F-B1, F-D14, F-E1, F-E15 | dashas, sensitive, sade_sati, ayurdaya, tajaka | Claimed closed, cycle 125 sweep only | No dedicated per-F-id citation found — flagged, not re-verified this pass |
+| F-B24 | ga_panchanga | Fixed at writer level | PR #1841 (§1 row 5) |
+| F-C1 | ga_strength (serving) | Fixed serving-side | L2's `query_ucd.ts` (§1 row 8) |
+| F-C2, F-C3, F-C4, F-C5, F-C7 | structural, strength | ROUTED to L2, not an L1 fix | Confirmed `bo_laksana.py`'s scope, not L1's (§2) |
+| F-C8 | ga_condition | Claimed closed, cycle 125 sweep only | No dedicated citation found — flagged |
+| F-C14 | CI guard | Confirmed already closed independently | Issue #1750, Conductor ruling, predates this session's discovery (§2) |
+| F-B18, F-B19 | ga_nakshatra (serving) | Fixed | PR #2118 (§1 row 4) |
+| F-B26, F-B31 | ga_panchanga | Fixed | migration 843 (§1 row 5) |
+| F-D1, F-D2 | ga_yoga (serving) | Fixed serving-side | §1 row 11 |
+| F-D9 | ga_vichara | Fixed | `catalog_status` DRAFT→CURRENT (§1 row 12) |
+| F-D21, F-D22, F-D23 | ga_transit_anchors | Fixed and closed, verified live | L0's PR #2153, adjudication #2122 closed, verified live cycle 130 (§1 row 14, §3.5 item 1) |
+| F-E5 | ga_medical | Fixed at writer level | §1 row 16 |
+| F-E10, F-E11 | ga_vastu | Fixed | §1 row 17 |
+| F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
+| F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
+| F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
+| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 31/57 closed across 7 slices (PR #2202), ~25 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157 | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+
+**Honest count**: of 20 id-groups, 14 have a specific, checkable citation already in this
+report; 6 (`F-A10`, `F-A12`, `F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`, `F-C8` — 9 individual F-ids
+across those groups) rest on cycle 125's own sweep with no dedicated citation this session could
+find. That is not evidence they are wrong — F-B32/F-B33 is the only id-group this campaign has
+actually found to be incorrectly claimed closed — but per the same discipline, an uncited claim
+should be named as such rather than presented with the same confidence as a cited one. A future
+cycle spot-checking those 6 uncited groups live (the same method used for F-B32/F-B33) would
+close this table's own remaining honesty gap.
 
 ## §3 — Pillar movement (per the five doctrines)
 
@@ -228,23 +343,39 @@ partly *not* confined to L1's own assets:
    action required. Worth Phase Z's attention as a general migration-range-hygiene case: the
    collision was caught by L1's own housekeeping (confirming the next free number before use),
    not by any automated guard.
-3. **Adjudication #2113 (chart-rebuild blocker) — re-diagnosed from "campaign-wide infra gap" to
-   a specific, coordinated-sequencing question. OPEN, awaiting reply.** Re-investigated live
-   rather than re-checking a stale issue comment: `ga_positions` (the DAG root, zero declared
-   dependencies) is immune to the originally-reported `asset_freshness` gate by construction, and
-   its 2026-09-05 failed dispatch was actually a now-fixed writer crash (#1856, PR #1861 merged
-   the same night, never retried). Before resubmitting its stale W2 acceptance and dispatching,
-   checked what changed in `ga_positions_writer.py` itself since that acceptance — PR #1898
-   (issue #1747) removed `build_id` from `fact_id`'s derivation, a real correctness fix, but one
-   that means a fresh build produces different `fact_id` values than what's currently stored.
-   Checked whether anything stores (rather than re-derives) those specific values and found
-   `ga_yoga_firings.constituent_fact_ids` does (36/40 refs on the canonical chart resolve to
-   `ga_positions`' own categories) — a `ga_positions`-only rebuild would silently orphan them.
-   Did not dispatch; posted the finding and asked whether a coordinated multi-asset rebuild
-   (`ga_positions` through `ga_yoga`) or a different sequencing is the right shape. Worth Phase
-   Z's attention as a general pattern: a writer's own identity-derivation change (even a
+3. **Adjudication #2113/#2180 (chart-rebuild blocker) — re-diagnosed, RULED, wave 0 EXECUTED
+   cycle 155; new blocker found and posted, awaiting reply.** Re-investigated live rather than
+   re-checking a stale issue comment: `ga_positions` (the DAG root, zero declared dependencies)
+   is immune to the originally-reported `asset_freshness` gate by construction, and its
+   2026-09-05 failed dispatch was actually a now-fixed writer crash (#1856, PR #1861). Checked
+   what changed in `ga_positions_writer.py` since its last acceptance — PR #1898 (issue #1747)
+   removed `build_id` from `fact_id`'s derivation, meaning a fresh build produces different
+   `fact_id` values than what's currently stored. Found `ga_yoga_firings.constituent_fact_ids`
+   stores (rather than re-derives) exactly those values (36/40 refs) — a `ga_positions`-only
+   rebuild would have silently orphaned them. Escalated as #2180; **the Conductor RULED
+   2026-09-07T00:45:28Z**, confirming the corrected waves-0-3 coordinated-rebuild scope (15
+   assets, superseding the original 5-asset framing) and authorizing dispatch.
+   **Wave 0 dispatched and completed, same cycle**: fresh Cloud SQL backup, `--commit
+   --acknowledge-destroys` for the WP-6 blast radius (`chart_fact_identity`, in-layer, ~530 rows
+   scoped — not the tool's naive 270,471 whole-table count, a self-correction of this session's
+   own earlier, imprecise "writer reinserts it" claim). `ga_positions` reached `state='lit'`.
+   Found and closed a related gap unprompted: `chart_fact_identity` is repopulated by a
+   SEPARATE standalone script (`build_fact_identity_index.py`), not the orchestrator writer —
+   re-ran it post-dispatch, restored to 125,593 rows for the canonical chart.
+   **Blocker surfaced cycle 155, RULED cycle 159**: `asset_freshness.freshness_state` for
+   `ga_positions` was `'unknown'`, not `'fresh'` (`asset_registry.natural_key_partition` empty)
+   — `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'`. Posted to #2180; the
+   Conductor root-caused it live: 7 L1 assets share `target_table='chart_facts'`, all missing
+   `natural_key_partition`, and authorized L1 to author the correct value per writer (registry-
+   configuration, not a writer-contract question) plus an `output_digest_spec` for `ga_positions`
+   (the same D-CND-27 per-asset-authoring gap as `mi_vistara`/`mi_kula`). **Fix 1 shipped for
+   `ga_positions` cycle 159** (migration 868, PR #2205), verified against the writer's own
+   real write sites. Remaining 6 co-writers + fix 2 still open. Worth Phase Z's attention as a
+   general pattern beyond this one rebuild: a writer's own identity-derivation change (even a
    deliberately correct one) can create a transition hazard for any downstream table that stores
-   rather than re-derives the changed value, independent of any campaign-wide gate.
+   rather than re-derives the changed value, and a "freshness row exists" check is not the same
+   claim as "freshness row reads fresh" — the same §N.8 distinction this campaign has hit before
+   at other layers.
 
 ## §4 — Cost actuals vs forecast
 
@@ -260,14 +391,48 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §5 — Backlog handed forward
 
 **To Phase Z / the Conductor:**
-- **Adjudication #2113** — no longer a simple campaign-wide `asset_freshness` gap (see §3.5
-  item 3 for the full re-diagnosis). The one thing still worth Phase Z's attention from the
-  ORIGINAL framing: `asset_freshness` holds rows for `bg_*`/L0 and a few `mi_*`/L5 assets only,
-  zero for any L1/L2/L3/L4 asset — this may still matter for OTHER L1 assets whose dependencies
-  are themselves L1 (unlike `ga_positions`, which is immune only because it has none). The
-  ACTIVE open question is narrower and asset-specific: whether a coordinated `ga_positions`→
-  `ga_yoga` rebuild sequencing (or an equivalent ruling) is needed before `ga_positions` can
-  safely dispatch alone.
+- **Adjudication #2113/#2180** — RULED cycle 155 (waves 0-3, 15 assets, confirmed); wave 0
+  (`ga_positions`) dispatched and completed the same cycle (see §3.5 item 3). RULED AGAIN cycle
+  159, authorizing two registry-configuration fixes (`natural_key_partition` ×7,
+  `output_digest_spec` for `ga_positions`+3 L0 assets). `natural_key_partition` shipped for
+  `ga_positions` (migration 868, PR #2205), `ga_ayurdaya` (migration 869, PR #2208),
+  `ga_sensitive_degree` (migration 870, PR #2209), `ga_sade_sati` (migration 871, PR #2212),
+  `ga_nakshatra` (migration 872, PR #2213), `ga_panchanga` (migration 873, PR #2216, cycle
+  164 — found to own 34 categories via 16 literal constants + 18 dynamically-constructed window
+  names, not the ~16 this session had assumed), and `ga_sensitive` (migration 874, PR #2217,
+  cycle 165 — same undercount class: a literal-string grep found 34 categories, but a
+  for-loop-constructed `cat` variable in `_build_brahma_vishnu_shiva_rows` hid 3 more, true
+  total 37) — **7/7, all shipped**. `ga_positions`' own `output_digest_spec` (migration 875,
+  PR #2220, cycle 166) shipped: scoped to `chart_id` + a `where_in` filter, `key_columns=fact_id`,
+  `value_columns` = all real content columns minus `computed_at`+`build_id`; rehearsed live
+  (rollback-only) before applying, then independently re-confirmed the identical digest against
+  the real persisted spec. **Self-corrected cycle 167** (migration 876, PR #2221): both 868 and
+  875 had undercounted `ga_positions` at 4 `chart_facts` categories — `_build_chalit_rows` also
+  emits a 5th, `sandhi_flag` (own docstring names it explicitly). Corrected `natural_key_partition`
+  to the true 5-category set and retired+replaced the `output_digest_spec` row; new digest over
+  1205 live rows matches cycle 155's own original wave-0 dispatch report exactly, confirming 5 is
+  the true complete count. **Both fixes of #2180's two-part ruling now fully shipped, with the
+  correct category scope, AND verified live end-to-end cycle 168**: recomputed fresh
+  registry_fingerprint/analysis_digest, submitted fresh evidence via the `record_evidence`
+  executor route (fixing two real operational blockers along the way — `gcloud auth
+  print-identity-token` needs `--include-email` for the returned JWT to carry an `email` claim at
+  all; `source_ref` must be the Cloud Run service's own `NIRMANA_DEPLOYED_SHA`, not `origin/main`
+  HEAD), took a fresh Cloud SQL backup, and dispatched `ga_positions` wave 0 for real.
+  `asset_freshness` now carries a genuinely new row keyed by the real partition text showing
+  `freshness_state='fresh'`, `reasons=[]` — the original cycle-155 symptom is confirmed fixed,
+  not assumed. `chart_fact_identity` re-rebuilt post-cascade (124,388 → 125,593, exact dry-run
+  match). Resolution posted to #2180. **Wave-1 dispatch attempted cycle 169, found two deeper
+  cross-layer blockers, filed adjudication #2224**: (1) `ga_vargas` — never touched by any
+  `natural_key_partition` work — ALSO had stale accepted evidence (an unrelated `integrity_
+  check_sql` landed on its registry row after acceptance); fixed via the same live-fingerprint
+  re-stamp recipe, but flagged as likely campaign-wide across all 33 wave-1 assets/6 layers, not
+  isolated to L1. (2) A deeper `asset_frozen` E-gate: dispatch requires every DAG ancestor to
+  carry a genuine freeze event (requiring the VERIFIER service account, a real independent
+  verification pass), not just `freshness_state='fresh'` — `ga_positions` has never been through
+  this. Deliberately NOT self-certified (would be an unearned-signal defect). **Still open**:
+  wave 1 dispatch itself, now understood to require a genuine per-asset freeze/verification
+  workstream (W5/W6-equivalent) before it can proceed at all, campaign-wide — not just an L1
+  registry fix. Awaiting #2224's disposition.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
@@ -290,17 +455,19 @@ awaits either a dedicated prep cycle or genuine W6 close.
   live are missing from the 169-list** (full list recorded in this session's cycle-148
   scratchpad; spans nearly every section of the file — ashtakavarga, graha_avastha-per-varga,
   KP, nakshatra-relationship, special-lagna, and more — not concentrated in one area, so no
-  single section owner can absorb the whole fix); **6 entries in the 169-list are phantom** —
-  `ashtakavarga_anubindu`, `dosha_fires`, `esoteric_point_chatushphuta`,
-  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`, `yoga_fires` do not exist as a
-  `fact_category` value for ANY chart in the table (not just the canonical one) — these look like
-  stale/renamed names (the real live categories are `yoga_label`/`dosha_label`, already
-  separately and correctly listed) and should be investigated (real category that was renamed?
-  never-implemented aspiration?) before either removing or re-pointing them; one entry
-  (`karaka_web_per_varga`) is real (2,945 live rows) but not yet built for the canonical chart —
-  not a list defect. The actual edit (assigning each of the 57 to a verified real serving tool,
-  and resolving the 6 phantoms) needs per-category verification against real serving code and is
-  still too large for one bounded cycle. **Being closed incrementally instead of in one bulk
+  single section owner can absorb the whole fix); **7 entries in the 169-list showed zero live
+  rows at cycle 148's measurement** — `ashtakavarga_anubindu`, `dosha_fires`,
+  `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`,
+  `yoga_fires`, `karaka_web_per_varga`. Cycle 148 called the first 6 "phantom" (stale/renamed);
+  **CORRECTED cycle 157** — all 6 trace to real, currently-active writer code
+  (`ga_structural_writer.py`, `ga_sensitive_writer.py`), genuinely called from the main
+  aggregation flow, not orphaned. The zero-rows measurement was a build-lag artifact: both
+  owning assets are `rebuild_only` and inside the same waves 1-3 scope #2180 already ruled on.
+  `karaka_web_per_varga` was already correctly identified (cycle 148) as real-but-not-yet-built,
+  same root cause. **No coverage_matrix.ts edit is needed for any of these 7.** The actual edit
+  still needed (assigning each of the 57 missing categories to a verified real serving tool)
+  needs per-category verification against real serving code and is still too large for one
+  bounded cycle. **Being closed incrementally instead of in one bulk
   pass, cycle 149 onward, all landing on the same PR #2193**: slice 1
   (`graha_avastha_baladi_per_varga`, `_deeptaadi_per_varga`, `_jagradadi_per_varga`,
   `_lajjitadi_per_varga`, `_sayanadi_per_varga` — 5/57), verified via `get_avasthas.ts`'s own
@@ -329,32 +496,69 @@ awaits either a dedicated prep cycle or genuine W6 close.
   spreads its fixed `KP_CATEGORIES` const unconditionally, no caller override; the other three
   categories in that const were already covered via `get_karakas`) + `house_bhava_bala_ratio`,
   `house_chalit` (opt-in via `get_bhava_bala.ts`, same data-driven doctrine as every prior
-  opt-in slice). All six slices confirmed via live row counts before adding. **30/57 closed,
-  ~27/57 remain open**; the 6 phantom entries and the get_nakshatra.ts 3-category docstring
-  overclaim are both untouched (need their own separate investigation before either removing or
-  re-pointing). **New finding, cycle 153**: `graha_yuddha_per_varga` (17 live rows) was checked
-  against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by any tool — that tool
-  hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for this chart) with no
-  `categories`-override mechanism, unlike every other per_varga category closed so far. This is
-  a deeper defect class than F-B32 itself (a real computed category with no serving path at
-  all, category-granularity version of the original F-B18/F-B19 "asset has no tool" finding) and
-  is tracked separately, not folded into the F-B32 tool-mapping work.
+  opt-in slice). Slice 7 (1/57): `dispositor_tree` — opt-in via `get_dispositors.ts`'s
+  data-driven query, 1450 live rows. All seven slices confirmed via live row counts before
+  adding. **31/57 closed, ~26/57 remain open**. **Correction, cycle 157**: the 6 entries this
+  report previously called "phantom" (`ashtakavarga_anubindu`, `dosha_fires`, `yoga_fires`,
+  `esoteric_point_chatushphuta`/`panchasphuta`/`trisphuta`) are NOT stale/dead names — grepped
+  each directly against every `ga_writers/*.py` file and found all 6 trace to real, currently-
+  active writer code, genuinely called from the main aggregation flow. The zero-live-rows
+  measurement that produced the "phantom" framing was a build-lag artifact: both owning assets
+  (`ga_structural`, `ga_sensitive`) are already-documented `rebuild_only` and inside the SAME
+  waves 1-3 scope adjudication #2180 already ruled on — once dispatched, these categories
+  populate naturally. No `coverage_matrix.ts` change needed for any of the 6; the correction was
+  to this report's own prior claim. The get_nakshatra.ts 3-category docstring overclaim remains
+  untouched and genuinely needs its own separate investigation. **New finding, cycle 153**:
+  `graha_yuddha_per_varga`
+  (17 live rows) was checked against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by
+  any tool — that tool hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for
+  this chart) with no `categories`-override mechanism, unlike every other per_varga category
+  closed so far. This is a deeper defect class than F-B32 itself (a real computed category with
+  no serving path at all, category-granularity version of the original F-B18/F-B19 "asset has no
+  tool" finding) and is tracked separately, not folded into the F-B32 tool-mapping work.
+  **Reframing finding, cycle 156**: a systematic sweep of every remaining category name against
+  every `L1_ganita/*.ts` file found `dispositor_tree` was the ONLY one with a real serving tool
+  — the other ~25 (`aspect_received_by_special_point`, `bhava_significance_link`,
+  `chart_center_of_gravity`, `chart_cluster`, `conjunction_special_point`, `contradiction_pair`,
+  `esoteric_point_sphuta_fertility`, `esoteric_point_yogi_system`, `graha_centrality`,
+  `kendradhipati_dosha`, `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`,
+  `nakshatra_lord_relationship`, `net_argala_per_varga`, `nway_config_per_varga`,
+  `panchadha_maitri`, `sambandha_grade`, `sandhi_flag`, `significator_path`,
+  `sun_derived_upagraha`, `tara_bala` bare, `virupa_drishti`, plus `graha_yuddha_per_varga` and
+  `karaka_web_per_varga` above) have ZERO hits anywhere — genuinely unreachable by any tool, the
+  same defect class as `graha_yuddha_per_varga`. This reframes what remains of F-B32: no longer
+  mostly "a stale list needs new entries," mostly "these categories have no serving tool at
+  all" — new-endpoint work, out of scope for this hand-maintained list's own repair.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
 - W5: run the dry-run script fresh post-rebuild (the 4 currently-expected FAILs should flip to
   PASS — if any does not, that is new information, not the already-tracked residual).
-- A full 139-row per-finding disposition table (§2's own noted OPEN item).
+- MUST-tier per-finding disposition table built §2.5 (cycle 158); NOW/NEVER-LATER tiers'
+  per-finding tables remain OPEN (tier-level summaries in §2 already account for every finding
+  in both, and neither has had a correction found against it).
+- A dedicated live re-check of the 6 MUST-tier id-groups (9 F-ids) §2.5 found resting on an
+  uncited cycle-125 claim rather than a specific PR/migration citation.
 - Session-level cost actuals reconciliation (§4's own noted OPEN item).
 
 ## §6 — OPEN
 
-Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-6 (30
-categories) landed cycles 149-154, PR #2193; ~27/57 + 6 phantoms + get_nakshatra.ts's own
-3-category docstring overclaim remain, unheld, does not need
-#2113)** · **graha_yuddha_per_varga unreachability (§5 — new cycle 153, distinct from F-B32)**
-· W4 execution (blocked, #2113) · W5
+Per-finding disposition table — MUST tier built §2.5 (cycle 158), 6 id-groups (9 F-ids) still
+resting on an uncited cycle-125 claim rather than a dedicated re-check; NOW/NEVER-LATER tiers
+still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
+categories) landed cycles 149-156, PR #2202; ~25 remaining reframed cycle 156 as genuinely
+unreachable by any tool — a tool-coverage gap, not a list-staleness gap; the "6 phantom
+categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
+rebuild, no edit needed; get_nakshatra.ts's own 3-category docstring overclaim remains, unheld,
+does not need
+#2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
+cycle 153/156, distinct from F-B32's own list-repair scope)**
+· W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
+6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
+`ga_sade_sati` PR #2212, `ga_nakshatra` PR #2213, `ga_panchanga` PR #2216; `ga_sensitive`'s
+partition + fix 2/`output_digest_spec` still needed for wave 1)
+· W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.

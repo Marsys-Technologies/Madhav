@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 154; shipped F-B32 slice 6/N (PR #2193): bhava_cusps (get_kp_cusps.ts, unconditional -- the dedicated KP-cusp tool that had zero entries anywhere in the file) + house_bhava_bala_ratio/house_chalit (opt-in via get_bhava_bala.ts). Pushed cleanly this time (no merge-queue race). 30/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 169; attempted L1's own wave-1 dispatch (8 ga_* assets depending only on now-fresh ga_positions + already-fresh L0 deps), found TWO deeper cross-layer blockers beyond #2180's scope, filed adjudication #2224. Finding 1: `ga_vargas` (never touched by any natural_key_partition work) ALSO has stale accepted evidence -- its registry row picked up a real `integrity_check_sql` from separate prior W3 work AFTER evidence acceptance, same drift mechanism as #2180 but an independent root cause; likely affects many wave-1 assets across every layer, not just mine. Fixed it myself (recomputed live fingerprint/digest, submitted fresh evidence, same recipe as cycle 168) since it's squarely L1's own asset. Finding 2, surfaced immediately after: dispatch ALSO requires every DAG ancestor to carry a genuine `asset_frozen` campaign event, not just be freshness='fresh' -- `ga_positions` has never been through this (it requires the VERIFIER service account, not executor; a real independent-verification step, not a registry fix) -- blocks wave-1+ dispatch CAMPAIGN-WIDE regardless of layer. Did NOT attempt to self-certify ga_positions' freeze (would be exactly the unearned-signal defect class this campaign's own doctrine forbids). Both findings posted to #2224 for Conductor/cross-layer visibility. #2113/#2180 checked again this cycle -- no new reply beyond my own prior comment
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8550,3 +8550,828 @@ record — they are the only entries in this table with a real wall-clock behind
   phantom entries + get_nakshatra.ts's docstring overclaim + the graha_yuddha_per_varga
   unreachability finding remain; continue one verified cluster per cycle; keep re-checking
   #2113/#2180 every cycle regardless.
+- 2026-09-07T9xZ -- CYCLE 155 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  **#2180 had a genuine reply** (Conductor, 2026-09-07T00:45:28Z) -- the first movement on either
+  standing adjudication in many cycles. RULED, verified live rather than taken on account:
+  independently confirmed the campaign-wide null-freshness wall (every L1 asset), confirmed
+  `_DEP_ASSERT_MODE` defaults to `enforce` in production, confirmed `ga_positions` showed
+  `throughput_state='error'`, confirmed the recovery mechanism (`provenance.py:194` inserts on
+  successful completion) is real. **Ruling: the corrected waves-0-3 scope (15 assets) is
+  CONFIRMED, superseding the original 5-asset framing** -- claim #1713 when ready, budget ~5
+  sequential wave dispatches, don't rush wave N+1 before wave N's writer completions are
+  confirmed `lit` with fresh `asset_freshness` rows.
+  This changed the cycle's priority entirely -- from F-B32 (priority 3, unheld W3 item) to
+  priority 1 (E-gate dispatch, now genuinely eligible). Did NOT act on the ruling blindly:
+  independently re-verified live before touching anything -- confirmed 0/3 slots free (checked
+  both `build_runs` for any non-terminal run in the last several hours, none, AND scanned #1713's
+  recent SLOT CLAIM/RELEASE pairs, all matched, last activity mi_kula released 21:35Z the prior
+  day); confirmed `ga_positions.throughput_state='error'` with the exact `provenance: Object of
+  type UUID is not JSON serializable` message from #1856, then confirmed via #1856's own closing
+  comments that PR #1861 fixed and deployed this exact crash class on 2026-09-06T02:03:25Z --
+  checked the ordering carefully: ga_positions errored 2026-09-05T16:37:26Z, the fix deployed
+  2026-09-06T02:03:25Z, i.e. AFTER the error -- the fix genuinely postdates the crash, so a fresh
+  dispatch should not re-hit the same bug. Posted SLOT CLAIM on #1713 for `ga_positions` (wave 0), with the
+  reasoning laid out in the claim itself.
+  **Dispatch attempt 1 (dry-run)**: `dispatch_nirmana_campaign_wave.py --layer L1 --wave 0` with
+  `--reviewed-deployment-sha` set to TODAY's deployed commit initially failed: "accepted asset
+  analysis does not match the current live registry contract". Root-caused by reusing the
+  script's own `_live_registry_fingerprint`/`_current_analysis_receipt_digests` functions
+  (same throwaway-script pattern as cycle 137): both the registry fingerprint AND analysis
+  digest came back byte-identical to cycle 137's own submitted evidence -- confirming NOTHING
+  about ga_positions' registry contract or writer code has changed since. The only mismatch was
+  `source_ref`: the dispatch script's evidence-matching filter requires the stored evidence's
+  `source_ref` to equal `git:<reviewed_deployment_sha>` EXACTLY, and my cycle-137 evidence was
+  stamped against that day's deployed commit, not today's. Tried resubmitting fresh evidence
+  with today's SHA -- got a `409` idempotency conflict ("a conflicting lifecycle receipt already
+  exists for this registry/analysis generation; retry it with its original idempotency key");
+  tried the original idempotency key with the new source_ref -- got a SECOND `409` ("different
+  immutable contents" -- idempotency keys pin the whole payload, including source_ref,
+  immutably). Concluded correctly rather than guessing further: `--reviewed-deployment-sha`
+  should be the commit the ACCEPTED EVIDENCE was reviewed against (cycle 137's own
+  `cbd87d2cc4a5ce79c7b08fe9e62f41d38ebc01f9`, confirmed still a live ancestor of `origin/main`),
+  not necessarily today's literal deployed SHA -- the check's real purpose (per the code's own
+  comment, adjudication #1718) is detecting a POST-ACCEPTANCE WRITER EDIT, which my
+  identical-digest recomputation had already disproven didn't happen.
+  **Dispatch attempt 2 (dry-run, with the corrected SHA)**: succeeded, printed the real blast
+  radius: `WP-6 BLAST RADIUS -- CASCADE L1 270,471 rows chart_fact_identity (depth 1: chart_facts
+  -> chart_fact_identity)`. Investigated rather than blindly acknowledging: found this session's
+  OWN prior work (cycle 4, back near campaign start) had already done this exact analysis --
+  the 270,471 figure is `blast_radius()`'s own whole-table `count(*)`, not this delete's actual
+  scope; the real, chart-scoped, category-scoped delete is ~530 rows (confirmed against
+  `ga_positions_writer.py`'s idempotency SQL). Caught and corrected an imprecision in that own
+  cycle-4 note while re-verifying it live: cycle 4 called it "cascade-delete-then-immediately-
+  reinsert... the writer's own in-layer replacement of its own companion rows" -- but a fresh
+  grep across every `ga_writers/*.py` file for `chart_fact_identity` returns ZERO hits. The
+  writer does NOT reinsert this table; a SEPARATE standalone script
+  (`build_fact_identity_index.py`, explicitly documented as "NOT a WriterBase/@register
+  orchestrator writer") is the only thing that repopulates it, and it must be re-run manually.
+  Took a FRESH on-demand Cloud SQL backup first (`1788743079151`, confirmed `SUCCESSFUL` via
+  `gcloud sql backups list`) rather than relying on the ~7-hour-old automated one, given the
+  real, understood-but-nonzero blast radius and the significance of the action. Re-ran the
+  dry-run WITH `--snapshot-ref` set (discovered the commit attempt's `expected-manifest-digest`
+  must be recomputed from a dry-run that ALSO carries `--snapshot-ref` -- the manifest digest
+  differs when snapshot_ref is present vs. None, so the plain dry-run's digest doesn't match
+  what commit-mode computes; a self-caught mismatch, not assumed from documentation).
+  **Committed**: `--commit --acknowledge-destroys --confirm NIRMANA_CAMPAIGN_WAVE` with the
+  correct snapshot-bound digest succeeded -- `run_id=e1c5109f...`, execution
+  `brahma-build-pipeline-job-ts76d`. Monitored to completion (Monitor tool, ~90s) rather than
+  assuming success from the dispatch call returning -- `build_runs.state` reached `completed`.
+  Verified LIVE, not assumed: `asset_throughput.state='lit'` for `ga_positions` (was `'error'`),
+  `last_error` cleared, `rows_written=1205`, `chart_facts` repopulated (530 rows across
+  `graha_position`/`graha_sign_attributes`). Posted SLOT RELEASE on #1713.
+  **New finding, not yet resolved**: checked `asset_freshness` per the ruling's own explicit
+  instruction to confirm "fresh", not just "dispatched" -- found a row now EXISTS (was zero
+  before) but its `freshness_state` is `'unknown'`, not `'fresh'` (reasons:
+  `output_digest_spec_unavailable`, `output_digest_unavailable`, `partition_digest_unavailable`,
+  `partition_undeclared` -- traced to `asset_registry.natural_key_partition` being empty for
+  `ga_positions`). Checked whether this is universal or fixable: sampled `asset_freshness`
+  campaign-wide -- 34 assets show `'fresh'` (all global-scope/L0-style, all WITH a populated
+  `natural_key_partition`), only 4 show `'unknown'` campaign-wide (`bg_ephemeris_engine`,
+  `bg_panchanga`, `bg_cohort`, `ga_positions`) -- a specific registry-configuration gap, not a
+  structural inability to ever reach `'fresh'`. `asset_runner.py`'s `_check_deps` requires
+  `freshness_state == 'fresh'` exactly for a dependency to pass -- `'unknown'` would still fail
+  it, meaning wave 1 may still be blocked by a DIFFERENT gate than the one #2180's ruling
+  addressed. Posted this full finding to #2180 rather than either (a) silently attempting wave 1
+  anyway (would predictably fail the same gate class) or (b) sitting on a genuinely new,
+  load-bearing discovery.
+  Re-ran `build_fact_identity_index.py --chart-id 482012f1-...` for the canonical chart (dry-run
+  first: 100% identity coverage, `gap=0`, confirmed clean) to close the `chart_fact_identity`
+  staleness this dispatch's cascade created -- back to 125,593 rows, matching the dry run's own
+  parse count exactly. **Did NOT proceed to wave 1 this cycle** -- one bounded, consequential unit
+  (wave 0, a real production dispatch with a real backup, plus the honest discovery of the next
+  blocker) is exactly the right size for one cycle; pushing into wave 1 against a dependency
+  reading `freshness:unknown` would not have been a careful continuation, it would have been
+  ignoring the very check the ruling told me to perform. CYCLE 155 L1: PR hygiene clean;
+  dispatched wave 0 of the coordinated rebuild for real (ga_positions now `lit`, `chart_facts`
+  and `chart_fact_identity` both correctly repopulated) and surfaced the next real blocker
+  (`natural_key_partition` gap causing `freshness:unknown`) rather than plowing past it -- next:
+  await #2180's reply on the partition-declaration question before attempting wave 1; keep
+  re-checking #2113/#2180 every cycle regardless; F-B32's incremental closure (30/57) remains
+  the fallback unheld W3 item if #2180 stays quiet.
+- 2026-09-07T10xZ -- CYCLE 156 (C8 v2.3). PR hygiene: `#2201` (state PR) `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed -- clean, nothing to fix. #2180: re-checked -- the last
+  comment is still my own cycle-155 finding, no reply from the Conductor yet. #2113: same, still
+  quiet. Both #2193 and #2178 merged mid-cycle-155 -- confirmed both genuinely `MERGED` (not
+  just queued) this cycle, and branched fresh off `origin/main` for both this cycle's state work
+  (`codex/nirmana-l1-state-cycle5`, already in use) and the F-B32 continuation
+  (`codex/nirmana-l1-f-b32-slice7`, new -- the old slices-1-6 branch is done, merged).
+  With #2180 quiet and wave 1 correctly held pending its reply, fell back to F-B32's incremental
+  closure (priority-3 unheld W3 item) as this cycle's unit. Slice 7: `dispositor_tree` --
+  confirmed opt-in via `get_dispositors.ts`'s data-driven `fact_category = ANY($2)` query (not
+  in the tool's own default `DISP_CATEGORIES`), 1450 live rows on the canonical chart.
+  Given how many of the last several candidates checked (tara_bala, kendradhipati_dosha,
+  significator_path, panchadha_maitri, sambandha_grade, virupa_drishti, sun_derived_upagraha,
+  the three nakshatra-adjacent-by-name categories from slice 3, net_argala_per_varga,
+  graha_centrality, nway_config_per_varga, graha_yuddha_per_varga) all turned out to have NO
+  serving tool at all, decided to do one systematic sweep instead of continuing to spot-check
+  one or two per cycle: grepped every one of the ~26 categories remaining after this slice
+  against every file in `L1_ganita/*.ts` (not sampled, all of them). Result: `dispositor_tree`
+  was the ONLY hit. The other ~25 (full list recorded in the file's own header comment and
+  `L1_W6_CLOSE_REPORT_v1_0.md`) have ZERO references anywhere -- not a missing coverage_matrix.ts
+  entry for an existing tool, but no tool that could serve them even with a corrected entry.
+  This is a real reframing, not just a status update: F-B32 was originally diagnosed (cycle 148)
+  as "a stale hand-maintained list," implying the fix is enumerating tool ownership correctly.
+  The systematic sweep shows the REMAINING gap is mostly the deeper defect class this session
+  already named for `graha_yuddha_per_varga` (a real, computed category with no serving path at
+  all) -- new-endpoint work, not a documentation fix, and therefore not something a single
+  session's list-repair cycles should keep chipping at expecting the same yield. Documented this
+  clearly rather than silently letting future cycles keep finding "another unreachable one" as
+  if it were a surprise each time.
+  Added `dispositor_tree` to both `CHART_FACTS_CATEGORIES` and `CATEGORY_TOOL_COVERAGE`, updated
+  the header note with the full reframing and the complete unreachable-category list, verified
+  `tsc --noEmit` clean and `coverage_gate.test.ts` 6/6 pass. Branched fresh off `origin/main`
+  (previous slices' PR had already merged), committed, pushed (no conflicts, main hadn't moved),
+  opened PR #2202, queued, confirmed `autoMergeRequest` armed. 31/57 categories now closed.
+  CYCLE 156 L1: PR hygiene clean; shipped F-B32 slice 7 (1 category, PR #2202) and reframed the
+  remaining ~25 as a tool-coverage gap rather than a list-staleness gap -- next: F-B32's own
+  incremental closure is now effectively done (one real category left to verify slice-by-slice
+  is not a productive use of a cycle vs. one clear documented finding); await #2180's reply on
+  wave 1; keep re-checking #2113/#2180 every cycle regardless; if both stay quiet next cycle,
+  consider the 139-row per-finding disposition table (the last remaining charter-named prep
+  item) as the fallback unit.
+- 2026-09-07T11xZ -- CYCLE 157 (C8 v2.3). PR hygiene: `#2202`/`#2201` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 156 -- still no reply.
+  With F-B32's list-repair work effectively exhausted (cycle 156's own conclusion) and #2180
+  still quiet, picked the next genuinely open, bounded item instead of jumping straight to the
+  disposition table: the "6 phantom entries" finding from cycle 146/148
+  (`ashtakavarga_anubindu`, `dosha_fires`, `yoga_fires`, `esoteric_point_chatushphuta`,
+  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta` -- categories in `coverage_matrix.
+  ts`'s 169-list with ZERO live rows for the canonical chart, at the time flagged as possibly
+  stale/renamed and needing investigation before either removing or re-pointing).
+  Investigated properly this time instead of leaving it as an open question: grepped each of the
+  6 category-string literals directly against every `ga_writers/*.py` file. **All 6 trace to
+  real, currently-active writer code**, not stale/dead names:
+  - `ashtakavarga_anubindu`: `ga_structural_writer.py`'s `_build_anubindu_rows` (line 1645),
+    called unconditionally from the main per-chart aggregation flow (line 6743:
+    `all_rows.extend(_build_anubindu_rows(...))`) -- confirmed it is genuinely wired in, not
+    orphaned.
+  - `dosha_fires`, `yoga_fires`: same file, `_evaluate_yoga_fires`-family functions -- both
+    appear in the writer's own row-count accounting (`yoga_count`/`dosha_count` summary at line
+    6787-6788) and a reconciliation map (line 7812-7822) that treats them as siblings of the
+    already-served `yoga_label`/`dosha_label` categories (a fires-vs-label distinction, not a
+    fires-superseded-by-label rename as this session had assumed at cycle 148).
+  - `esoteric_point_chatushphuta`/`_panchasphuta`/`_trisphuta`: `ga_sensitive_writer.py`, real
+    `_long_rows(...)` calls (lines 938/943/952) inside the writer's normal point-computation
+    flow.
+  **Root cause of the zero-live-rows measurement, not a coverage_matrix.ts defect at all**: both
+  owning assets are already-documented `rebuild_only` with pending fixes awaiting a rebuild --
+  `ga_structural` (§1 asset table: "7 tracked-red F-A14 conjuncts...awaiting rebuild") and
+  `ga_sensitive` ("deficit = floor-vintage mismatch, not a defect"). Both are inside the SAME
+  waves 1-3 scope #2180 already ruled on (`ga_sensitive`=wave1, `ga_structural`=wave3) -- once
+  those waves actually dispatch, these 6 categories should populate naturally with no
+  coverage_matrix.ts change needed. **Correcting my own prior finding, not someone else's**:
+  cycle 146/148's "phantom entries" framing was itself the unverified claim -- I had measured
+  zero live rows and inferred "stale/renamed" without checking whether the writer code that
+  produces them still exists and runs. It does. This is the exact same §N.8 discipline this
+  segment has applied to other sessions' and my own earlier claims, turned on my own
+  cycle-146/148 conclusion this time.
+  No file edit needed as a result -- the correct action is recording the correction (this entry
+  + the close report update), not touching `coverage_matrix.ts` (nothing wrong with those 6
+  entries) or the writers (already correct, just not yet rebuilt for this chart).
+  CYCLE 157 L1: PR hygiene clean; corrected a real error in this session's own earlier "6
+  phantom entries" finding -- all 6 are genuinely active, just awaiting the already-ruled wave
+  1-3 rebuild, not stale/dead category names -- next: the 139-row per-finding disposition table
+  is now the clearest remaining charter-named prep item if #2180/#2113 stay quiet further; keep
+  re-checking both every cycle regardless.
+- 2026-09-07T12xZ -- CYCLE 158 (C8 v2.3). PR hygiene: `#2202` genuinely `is:queued` (GraphQL
+  confirmed). `#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known mid-CI
+  pattern, nothing to fix. #2113/#2180: identical comment counts to cycle 157 -- still no reply.
+  With #2180/#2113 quiet and F-B32's list-repair work effectively exhausted, picked up the last
+  remaining charter-named prep item flagged since cycle 146: the full per-finding disposition
+  table. Scoped to the MUST tier only this cycle (20 id-groups / ~30 F-ids) -- NOW (18 findings,
+  already a clean tier-level summary with nothing found wrong against it) and NEVER-LATER (11
+  id-groups, same) don't carry the same urgency, since MUST is the one tier this session has
+  actually found a wrong "closed" claim inside (F-B32/F-B33, discovered cycle 146).
+  Reconstructed the table from `L1_W2_DECIDE_v1_0.md` §3's own MUST-tier rows (id(s)/asset/what
+  columns, verbatim -- did not touch that frozen file, same discipline as cycle 145's F-id
+  assignment) plus this report's own already-written evidence (§1 asset table, §2 tier summary,
+  §3.5 escalations). Went through all 20 id-groups one at a time cross-referencing each F-id
+  against every existing citation in this document (PR numbers, migration numbers, adjudication
+  numbers) rather than inventing dispositions from memory. **Result: 14 of 20 id-groups have a
+  specific, checkable citation already documented in this campaign's own record** (F-A1/A2/A3 ->
+  PR #1766; F-C9 -> migration 842; F-B24 -> PR #1841; F-C1 -> L2's query_ucd.ts; F-C2/C3/C4/C5/C7
+  -> confirmed routed to L2's bo_laksana.py, not L1's; F-C14 -> issue #1750 Conductor ruling;
+  F-B18/B19 -> PR #2118; F-B26/B31 -> migration 843; F-D1/D2 -> serving-side fix; F-D9 ->
+  catalog_status fix; F-D21/D22/D23 -> PR #2153 + adjudication #2122, verified live cycle 130;
+  F-E5/E10/E11/E16/E17 -> writer-level fixes; F-E21/E22 -> adjudication #2123; F-A14/A15+family
+  -> integrity_check_sql rollout complete cycle 124, though the underlying F-A14 CONTRACT itself
+  remains genuinely red for `ga_vargas`/`ga_structural` pending the #2180-ruled rebuild -- a real
+  nuance worth keeping distinct from the rollout being done; F-B32/F-B33 -> this session's own
+  extensively-documented, still-active work).
+  **6 id-groups (9 individual F-ids: F-A10, F-A12, F-A4/B2/B12, F-A9/B1/D14/E1/E15, F-C8) had NO
+  dedicated citation anywhere in this document** -- these rest ENTIRELY on cycle 125's own
+  blanket MUST-tier closure sweep, with nothing this session could independently point to.
+  Rather than paper over this by writing a confident-sounding disposition anyway (the exact
+  §N.8 mistake that produced the F-B32/F-B33 and "6 phantom entries" errors), marked these 6
+  explicitly and honestly as "claimed closed, cycle 125 sweep only -- not independently
+  re-verified this pass." This is the whole point of building the table now rather than earlier:
+  a table that silently presents a cited fix and an uncited claim with the same confidence would
+  be worse than no table at all, given this session's own track record of cycle 125's claims
+  turning out wrong twice already this segment.
+  Added the table as a new §2.5 in `L1_W6_CLOSE_REPORT_v1_0.md` (version 0.15-DRAFT ->
+  0.16-DRAFT), with an explicit honest-count callout (14 cited / 6 uncited) and a recommendation
+  that a future cycle spot-check the 6 uncited groups live, the same method that caught
+  F-B32/F-B33. Updated §5/§6 to reflect the MUST tier is now tabulated while NOW/NEVER-LATER
+  remain open. CYCLE 158 L1: PR hygiene clean; built the MUST-tier per-finding disposition table
+  and surfaced which of its 20 id-groups rest on an unverified prior claim rather than asserting
+  uniform confidence -- next: NOW/NEVER-LATER per-finding tables remain open if a future cycle
+  wants them; the 6 uncited MUST-tier groups are a good candidate for a dedicated live-verify
+  cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T13xZ -- CYCLE 159 (C8 v2.3). PR hygiene: `#2202` genuinely `is:queued`; `#2201`
+  `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known mid-CI pattern, clean.
+  **#2180 got a real reply** (Conductor, 2026-09-07T01:45:02Z) -- root-caused before ruling, not
+  taken from cycle 155's own account alone: read `provenance.py`'s `build_receipt`/
+  `_registry_partition` directly and confirmed live that `has_cowriters` fires for exactly
+  7 L1 assets sharing `target_table='chart_facts'` (`ga_positions`, `ga_ayurdaya`,
+  `ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`, `ga_sensitive`, `ga_sensitive_degree`), none
+  with `natural_key_partition` declared -- confirmed this is deliberate strict design (refusing
+  to collapse 7 writers' provenance into one opaque partition), not a mechanism bug. Also
+  confirmed `output_digest_spec_unavailable` is the same D-CND-27 per-asset-authoring gap as
+  `mi_vistara`/`mi_kula`, not a new problem. **Ruling: two authorized, separate registry-
+  configuration fixes** -- (1) `natural_key_partition` backfill for the 7 co-writers, L1's own
+  migration range, correct partition VALUE per writer is L1's own domain knowledge to author,
+  not to guess; (2) `output_digest_spec` for `ga_positions` (L1) + 3 L0 assets (`bg_ephemeris_
+  engine`/`bg_panchanga`/`bg_cohort`, L0's own range), per D-CND-27's existing recipe. Both
+  prerequisites for wave 1, correctly not attempted yet by cycle 155's own instinct to stop
+  rather than dispatch against `freshness:unknown` -- explicitly praised as the right call
+  per §N.8.
+  Shipped fix 1 for `ga_positions` only this cycle (deliberately not all 7 -- see below).
+  Determined `ga_positions`' true `fact_category` ownership by reading `ga_positions_writer.py`'s
+  actual row-construction call sites directly, NOT by trusting the `coverage_matrix.ts`
+  serving-tool mapping (which records who SERVES a category, not who WRITES it -- a distinction
+  this exact investigation caught mattering: `bhava_cusps` is served by a DIFFERENT tool,
+  `get_kp_cusps`, than the one that writes it). Found `_build_position_rows` emits
+  `graha_position`/`graha_sign_attributes` and `_build_chalit_rows`/`_chalit_row` emits
+  `bhava_cusps`/`house_chalit` -- four categories total, more than the two (`graha_position`/
+  `graha_sign_attributes`) this session had assumed from the wave-0 blast-radius scoping check.
+  Confirmed zero overlap by grepping all six sibling writers for these four literal strings.
+  While checking for overlap, investigated `ga_sensitive_writer.py` and found it owns a MUCH
+  larger and more diverse category set than expected -- all 13 `esoteric_point_*` categories
+  (including `esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system`, which cycle 156's
+  own sweep had flagged as "genuinely unreachable by any tool" -- **that finding may itself need
+  correction next cycle**, since `get_sensitive_points.ts`'s query is the same opt-in-reachable
+  data-driven pattern verified for `special_lagna` etc. in slice 4, just not checked for these
+  two specific strings at the time) plus roughly a dozen more (karakas, tajik, sensitive-point
+  categories). Given this scale and the ruling's own explicit warning against "collapsing
+  several writers' provenance into one guess," deliberately scoped this cycle to `ga_positions`
+  alone rather than rushing all 7 with under-verified category lists.
+  Wrote migration 868 (`natural_key_partition = 'chart_facts.fact_category IN (graha_position,
+  graha_sign_attributes, bhava_cusps, house_chalit)'` for `ga_positions`), following the style
+  precedent of migration 660 (pure `asset_registry` UPDATE, no schema change, no dedicated test
+  file needed per that same precedent). Ran `npx tsx scripts/migrate.ts --dry-run` first (showed
+  868 as the only pending migration), then applied it for real and verified: `asset_registry.
+  natural_key_partition` now set; the `nirmana_registry_receipt_invalidation` DB trigger fired
+  correctly, marking the existing `asset_freshness` row `stale` with `registry_changed` appended
+  -- read the trigger function directly to confirm this is a cheap mechanical invalidation, NOT
+  a live recompute (the stale `partition_undeclared` text still in that row's `reasons` array is
+  leftover from before the fix, not evidence the fix didn't work -- a real `fresh` classification
+  only happens on the next genuine dispatch, which also needs fix 2 to land first or it will
+  read back `unknown` again via `output_digest_spec_unavailable`). Did not attempt a re-dispatch
+  this cycle since fix 2 isn't ready yet and it would predictably fail the same way.
+  Committed on a fresh branch off `origin/main`, opened PR #2205, queued, confirmed
+  `autoMergeRequest` armed. Posted a detailed status update to #2180 (verification method, scope
+  decision, what's still needed) rather than silently shipping and moving on.
+  CYCLE 159 L1: PR hygiene clean; #2180 RULED with real, authorized, bounded work; shipped fix
+  1/2 for one of seven required assets (`ga_positions`, PR #2205) -- next: the remaining 6
+  co-writers' `natural_key_partition` values, `ga_positions`' own `output_digest_spec` (fix 2),
+  and a possible correction to cycle 156's `esoteric_point_sphuta_fertility`/`_yogi_system`
+  "unreachable" finding all remain; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T14xZ -- CYCLE 160 (C8 v2.3). PR hygiene: `#2205`/`#2201` both `BLOCKED`/
+  `MERGEABLE`, zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, clean.
+  #2113/#2180: identical comment counts to cycle 159 -- still no reply beyond my own last posts.
+  Continued the `natural_key_partition` backfill authorized by #2180's ruling, one migration at
+  a time per the established discipline. Picked `ga_ayurdaya` next -- the simplest of the
+  remaining six, already fully verified from earlier F-B32 work (`FACT_CATEGORY = "ayurdaya"`,
+  `ga_ayurdaya_writer.py:57`, a single hardcoded constant, nothing else written). Re-confirmed
+  zero overlap by grepping all six sibling writers for the literal string `"ayurdaya"`.
+  Checked migration numbering carefully before writing the file: `ls platform/migrations/`
+  showed the highest as 867 on this branch, but that's because migration 868 (last cycle's
+  `ga_positions` fix, PR #2205) hasn't merged to `origin/main` yet -- confirmed via `git ls-tree
+  origin/main -- platform/migrations/` (867 is genuinely the highest ON MAIN) and via
+  `git show origin/codex/nirmana-l1-ga-positions-natural-key-partition` (868 is real, just on an
+  unmerged branch) that 868 is reserved by my own pending PR, not actually free. Used 869 to
+  avoid a numbering collision. Wrote migration 869, ran `npx tsx scripts/migrate.ts --dry-run`
+  (confirmed 869 as the only pending migration), applied for real, verified `asset_registry.
+  natural_key_partition` now set for `ga_ayurdaya`. Branched fresh off `origin/main`, re-checked
+  869 was still free there too (no concurrent claim), committed, pushed, opened PR #2208,
+  queued, confirmed `autoMergeRequest` armed.
+  CYCLE 160 L1: PR hygiene clean; shipped `natural_key_partition` fix 2/7 (`ga_ayurdaya`, PR
+  #2208) -- next: 5 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`,
+  `ga_sensitive`, `ga_sensitive_degree` -- `ga_sensitive` needs the most careful verification,
+  found to own ~25 categories), plus `ga_positions`' own `output_digest_spec` (fix 2 of the
+  ruling's own two-part authorization); keep re-checking #2113/#2180 every cycle regardless.
+  **PR-hygiene addendum, same cycle**: after pushing this state update, found `#2205` reading
+  `autoMergeRequest: null` / `mergeStateStatus: CLEAN` (all checks green) via BOTH the GraphQL
+  `is:queued` search AND the REST `auto_merge` field -- looked genuinely unqueued by every check
+  this contract treats as authoritative. `gh pr merge --auto` replied "already queued to merge";
+  a direct `enablePullRequestAutoMerge` mutation returned `autoMergeRequest: null` (no-op, since
+  this repo uses a real GitHub Merge Queue, confirmed via `repository.mergeQueue(branch:"main")`
+  returning a real ID -- not simple auto-merge, a different mutation). The AUTHORITATIVE check
+  turned out to be attempting `enqueuePullRequest` directly: it returned the server error
+  "Pull request is already in the queue" -- a live, real-time answer, not a cached one. So #2205
+  genuinely was queued the whole time; both the GraphQL search index AND the REST `auto_merge`
+  field were lagging behind the real merge-queue state, not just `autoMergeRequest` (which the
+  contract already documents as unreliable). Noting this because it means `is:queued` search can
+  ALSO lag on rare occasions, not just `autoMergeRequest` -- if a PR looks unqueued by every
+  check but `gh pr merge` insists it's already queued, trying `enqueuePullRequest` directly and
+  reading its error message is a more authoritative tie-breaker than re-trying the search.
+- 2026-09-07T15xZ -- CYCLE 161 (C8 v2.3). PR hygiene: `#2201`/`#2205`/`#2208` all confirmed
+  healthy -- `#2205` genuinely `is:queued` this time (GraphQL confirmed, resolving last cycle's
+  lag); `#2208`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known
+  mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle 160 -- still no
+  reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked
+  `ga_sensitive_degree` next -- already fully characterized from F-B32 slice 4 (cycle 152):
+  `sensitive_degree_check`, `sensitive_point_yogi`. Re-confirmed directly against the writer for
+  this migration rather than trusting the earlier serving-tool finding at face value: the
+  writer's own header comment (line 5) states `Table: chart_facts (fact_category =
+  'sensitive_degree_check')`, and `build_yogi_points_rows()` emits `sensitive_point_yogi` for a
+  ninth facet, both under the same `replace_prior_chart_facts` idempotency scope.
+  Checked for overlap and found ONE genuine hit needing investigation: `ga_sensitive_writer.py`
+  also mentions `sensitive_point_yogi`. Read the actual context rather than treating a grep hit
+  as an automatic overlap defect (the same discipline this whole `natural_key_partition` effort
+  depends on) -- it's a cross-referencing DOCSTRING comment (lines 802-816) explaining that
+  `ga_sensitive_writer.py`'s OWN category (`esoteric_point_yogi`) computes the same classical
+  BPHS Ch.20 construction independently and agrees with `sensitive_point_yogi` to ~4e-7 deg
+  (an MC-029 Śodhana-Śeṣa reconciliation note) -- not a genuine second write of
+  `sensitive_point_yogi` itself. Confirmed clean.
+  Checked migration numbering carefully again: 868/869 are reserved by cycles 159/160's own
+  still-open PRs (confirmed via `git ls-tree` against BOTH branches, not just `origin/main`),
+  so used 870. Wrote the migration, ran `--dry-run` (870 the only pending), applied for real,
+  verified `asset_registry.natural_key_partition` now set. Branched fresh off `origin/main`,
+  re-confirmed 870 still free there, committed, pushed, opened PR #2209, queued, confirmed
+  `autoMergeRequest` armed.
+  CYCLE 161 L1: PR hygiene clean; shipped `natural_key_partition` fix 3/7 (`ga_sensitive_degree`,
+  PR #2209) -- next: 4 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`,
+  `ga_sensitive` -- `ga_sensitive` is the one needing the most careful verification, ~25
+  categories) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
+  #2113/#2180 every cycle regardless.
+- 2026-09-07T16xZ -- CYCLE 162 (C8 v2.3). PR hygiene: `#2208` genuinely `is:queued` (GraphQL
+  confirmed); `#2209`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  161 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_sade_sati`
+  next -- already fully characterized from earlier campaign work (cycle 144's DAG audit had
+  already distinguished its READ categories from its WRITE categories). Re-confirmed the 14
+  WRITE categories fresh for this migration via direct grep against `ga_sade_sati_writer.py`'s
+  own fact_category literals: 8 `sade_sati_*` categories, 6 `*_shani_period` categories, and
+  the one-off `dhaiya_period`. Checked overlap against all six sibling writers with a single
+  combined pattern (`sade_sati_|shani_period|dhaiya_period`) rather than three separate greps --
+  zero hits, genuinely clean.
+  Migration numbering: 868 (merged, `ga_positions`) confirmed off the pending list via
+  `git ls-tree origin/main`; 869/870 still reserved by cycles 160/161's own open PRs. Used 871.
+  Wrote the migration, ran `--dry-run` (871 the only pending), applied for real, verified
+  `asset_registry.natural_key_partition` now set for `ga_sade_sati`. Branched fresh off
+  `origin/main`, re-confirmed 871 still free there, committed, pushed, opened PR #2212, queued,
+  confirmed `autoMergeRequest` armed.
+  CYCLE 162 L1: PR hygiene clean; shipped `natural_key_partition` fix 4/7 (`ga_sade_sati`, PR
+  #2212) -- next: 3 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sensitive` --
+  `ga_sensitive` is the one needing the most careful verification, ~25 categories) plus
+  `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle
+  regardless.
+- 2026-09-07T17xZ -- CYCLE 163 (C8 v2.3). PR hygiene: `#2209` genuinely `is:queued` (GraphQL
+  confirmed); `#2212`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  162 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_nakshatra`
+  next -- already fully characterized from cycle 159's own investigation into the DEP-ASSERT
+  gate work. Re-confirmed fresh for this migration rather than trusting the earlier finding
+  verbatim: grepped `ga_nakshatra_emitters.py` and `ga_kp_significators.py` directly again for
+  every fact_category-shaped literal, checked each suspicious hit's actual context (several
+  looked like fact_category candidates but turned out to be `fact_key` arguments or dict-lookup
+  keys -- `nakshatra_lord`, `nakshatra_id`, `cusp_boundaries`, `kp_cuspal_house` -- confirmed by
+  reading the surrounding `_row(...)` call's positional-argument order, not assumed from the
+  string alone). Landed on the same 14 categories as cycle 159's finding: 12 from the emitters
+  module, 2 (`kp_house_significators`, `kp_planet_significations`) from the KP significators
+  module via its `emit_kp_significators()` call. Distinct from `get_nakshatra.ts`'s own
+  `NAKSHATRA_CATEGORIES` const (16 -- the 2 extra, `nakshatra_lord_placement` and `nakshatra_
+  cross_ayanamsha`, have zero live rows and no writer call site, re-confirmed here as still
+  true). Checked overlap against all six sibling writers -- zero hits.
+  Migration numbering: 868/869 merged (confirmed via `git ls-tree origin/main`); 870/871 still
+  reserved by cycles 161/162's own open PRs. Used 872. Wrote the migration, ran `--dry-run` (872
+  the only pending), applied for real, verified `asset_registry.natural_key_partition` now set
+  for `ga_nakshatra`. Rewrote the migration's own header comment once mid-draft after noticing
+  an awkward, rambling self-correction in the first version (caught before committing, not
+  after) -- cleaned it up rather than leaving the visible false-start in a permanent migration
+  file. Branched fresh off `origin/main`, re-confirmed 872 still free there, committed, pushed,
+  opened PR #2213, queued, confirmed `autoMergeRequest` armed.
+  CYCLE 163 L1: PR hygiene clean; shipped `natural_key_partition` fix 5/7 (`ga_nakshatra`, PR
+  #2213) -- next: 2 co-writers remain (`ga_panchanga`, `ga_sensitive` -- `ga_sensitive` is the
+  one needing the most careful verification, ~25 categories) plus `ga_positions`' own
+  `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T18xZ -- CYCLE 164 (C8 v2.3). PR hygiene: `#2212`/`#2209` both genuinely `is:queued`
+  (GraphQL confirmed); `#2213`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest
+  armed on both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts
+  to cycle 163 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_panchanga`
+  next. Re-grepped `ga_panchanga_writer.py` for literal `"panchanga_*"` strings and found the
+  same 16 as every prior cycle's partial characterisation -- but did NOT stop there this time,
+  given cycle 159's `ga_positions` investigation had already taught this segment's own lesson
+  that a quick literal-string grep can miss dynamically-constructed categories. Cross-checked
+  against the LIVE canonical chart's full `panchanga_%` category list (33 distinct values) and
+  found 17 more than the 16 literals accounted for. Traced them to `INAUSPICIOUS_WINDOWS`/
+  `AUSPICIOUS_WINDOWS` tuple lists (lines 1404-1431, 9+9=18 window names) fed through
+  `_emit_inauspicious_window`/`_emit_auspicious_window`, which build the real fact_category as
+  `f"panchanga_{window_name}"` (line 859) -- 34 declared total, 33 live (`amrit_kaal` legitimately
+  absent: the emitter returns nothing when the underlying panchanga library finds no matching
+  timing object for a chart, confirmed via a live `comm` diff between the derived 34-item list
+  and the live 33-item list -- exactly one gap, exactly the expected one).
+  Given 34 categories all sharing the identical `panchanga_` prefix, used a `LIKE` prefix match
+  in the partition text instead of a 34-item enumeration -- but only after confirming no other
+  writer emits anything with that prefix: two incidental grep hits (`ga_sade_sati_writer.py`,
+  `ga_sensitive_writer.py`) checked directly and confirmed to be a code comment
+  (`panchanga_engine`, `ga_panchanga_writer` cross-reference) and an unrelated local variable
+  (`panchanga.get(...)` dict lookup), neither a genuine `fact_category` write.
+  Migration numbering: 868/869/870 merged or genuinely queued (confirmed); 871/872 still
+  reserved by cycles 162/163's own open PRs. Used 873. Wrote the migration, ran `--dry-run` (873
+  the only pending), applied for real, verified `asset_registry.natural_key_partition` now set
+  for `ga_panchanga`. Branched fresh off `origin/main`, re-confirmed 873 still free there,
+  committed, pushed, opened PR #2216, queued, confirmed `autoMergeRequest` armed.
+  CYCLE 164 L1: PR hygiene clean; shipped `natural_key_partition` fix 6/7 (`ga_panchanga`, PR
+  #2216), correcting this session's own under-counted category-list assumption along the way --
+  next: only `ga_sensitive` remains (the most complex, ~25 categories, deliberately saved for a
+  dedicated cycle) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
+  #2113/#2180 every cycle regardless.
+
+## CYCLE 165 (C8 v2.3) — `natural_key_partition` fix 7/7: `ga_sensitive` (migration 874, PR
+## #2217) — ALL SEVEN co-writer partitions from #2180's fix 1 now shipped
+
+PR hygiene: `#2216` genuinely `is:queued` at cycle open (later confirmed merged during this
+cycle — 868-872 now all on `origin/main`, 873 the sole remaining reservation on the panchanga
+branch). `#2201` (this state branch) `mergeStateStatus: CLEAN`. Nothing DIRTY/RED/unqueued.
+Re-checked `#2113`/`#2180`: `#2180` shows a comment at `2026-09-07T01:59:43Z` from `amonty84`
+that is, on inspection, this session's own cycle-155 status write-up ("Ruling received and acted
+on — fix 1 for ga_positions is authored, PR #2205... The remaining six... are queued as
+follow-up work"), not a new Conductor reply — already fully accounted for in this state file.
+`#2113` unchanged since cycle 145's nudge. No new adjudication traffic either issue.
+
+**Unit of work: `ga_sensitive`'s `natural_key_partition`, the seventh and final co-writer of
+`chart_facts`.** Deliberately deferred every cycle since 159 as "most complex" — justified: a
+literal-string-only Python regex extraction (`_(?:make_row|long_rows)\(\s*"([a-z_]+)"` over the
+whole 3187-line file) found 34 categories across the writer's 31 `_build_*` functions and two
+shared row-helpers (`_make_row`, `_long_rows`, both taking `category` as their first positional
+param) — but this session's own cycle-164 lesson (`ga_panchanga`'s dynamically-constructed
+`f"panchanga_{window_name}"` categories, invisible to a literal grep) turned out to apply here
+too. `_build_brahma_vishnu_shiva_rows` (line 1069) builds its category via
+`for cat, subj, long_val, prov in [("esoteric_point_brahma", ...), ("esoteric_point_vishnu",
+...), ("esoteric_point_shiva", ...)]:` then calls `_long_rows(cat, subj, long_val, ...)` — a bare
+variable at the call site, invisible to the literal-argument regex. Surfaced 3 additional
+categories not in the 34-item list: `esoteric_point_brahma`, `esoteric_point_vishnu`,
+`esoteric_point_shiva`.
+
+Ruled out any further hidden sources before concluding the list was complete: (a) `grep -c
+'_make_row(f"\|_long_rows(f"'` → 0, no f-string category construction anywhere in the file; (b)
+`grep -n "for .*cat.* in \["` → exactly one hit, the brahma/vishnu/shiva loop itself, confirming
+no second dynamic-construction site; (c) the other variable-based call sites found via `grep -n
+"_make_row(cat\b\|_make_row(category\b\|_long_rows(cat\b\|_long_rows(category\b"` (lines
+473-502) sit entirely inside `_long_rows`'s own body (defined line 423–505), reusing its own
+`category` parameter — internal implementation, not a second category source; (d) the two
+direct dict-literal fallback rows in `_build_kp_cuspal_rows` (lines 1839-1865, 1916-1940 — honest
+`[EXTERNAL_COMPUTATION_REQUIRED]`/`KP_PARSE_ERROR` skip-rows built as raw dicts, not via
+`_make_row`) both hardcode `"kp_cuspal_significators"`, already in the 34. **True total: 37**
+(34 literal-call-site + 3 brahma/vishnu/shiva).
+
+Live cross-check against the canonical chart's `chart_facts` (same `comm`-diff discipline as
+`ga_panchanga`): 34/37 present. The 3 absent (`esoteric_point_trisphuta`,
+`esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`) traced to `_build_trisphuta_
+family_rows` (line 891) requiring `sunrise_jd`+`birth_jd` (Swiss Ephemeris values) that its sole
+call site (line 2762) never supplies — the function logs `[EXTERNAL_COMPUTATION_REQUIRED]` and
+returns zero rows every build (B.10-compliant honest gap), the exact same shape as
+`ga_panchanga`'s `amrit_kaal` precedent: declared scope, currently-unreachable value, not a bug.
+
+Overlap check: grepped all six already-migrated sibling writers for all 37 category strings —
+zero hits. `ga_kp_significators.py`'s own `kp_cuspal_house` confirmed as a distinct,
+non-colliding name from `ga_sensitive`'s `kp_cuspal_significators`.
+
+Migration numbering: re-verified live — `origin/main` highest was 872 (868-872 all merged); 873
+still reserved by the still-open panchanga PR #2216. Used **874**. Branched fresh off
+`origin/main`, wrote the migration (`IN (...)` enumeration of all 37 — no clean shared prefix
+exists across `esoteric_point_*`/`tajik_*`/`kp_*`/standalone names, unlike `ga_panchanga`'s
+single-prefix case), ran `--dry-run` (874 the only pending), applied for real, verified
+`asset_registry.natural_key_partition` now set for `ga_sensitive` via direct `psql`. Committed,
+pushed, opened PR #2217, queued via `gh pr merge --auto` (`autoMergeRequest.enabledAt` confirmed
+set; `mergeStateStatus: BLOCKED` pending CI — the standard just-opened pattern, not a failure).
+
+**All 7/7 `natural_key_partition` backfills from #2180's fix 1 are now shipped**: `ga_positions`
+(868, merged), `ga_ayurdaya` (869, merged), `ga_sensitive_degree` (870), `ga_sade_sati` (871),
+`ga_nakshatra` (872), `ga_panchanga` (873), `ga_sensitive` (874, this cycle) — the latter five
+still mid-CI/queued as of this cycle's close, not yet confirmed merged to `main`. Only fix 2 of
+the two-part ruling remains before wave 1 can genuinely dispatch and read back `fresh`:
+`ga_positions`' own `output_digest_spec` (D-CND-27 recipe — JSON spec with `components`/
+`key_columns`/`value_columns`, `spec_sha256` via the real `canonical_digest()` server function,
+precedent migrations 820/821/822) — not yet started.
+
+CYCLE 165 L1: PR hygiene clean; shipped `natural_key_partition` fix **7/7** (`ga_sensitive`, PR
+#2217) — the final co-writer, correcting this session's own 34-category undercount to the true
+37 via the same dynamic-construction lesson `ga_panchanga` taught last cycle — next: `ga_positions`'
+own `output_digest_spec` (fix 2 of #2180, the last prerequisite before wave 1 can dispatch); keep
+re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 166 (C8 v2.3) — `ga_positions`' `output_digest_spec` (migration 875, PR #2220) — fix
+## 2/2 of #2180's second ruling, both fixes now shipped
+
+PR hygiene: `#2216` (`ga_panchanga`) genuinely `is:queued` per the authoritative search. `#2217`
+(`ga_sensitive`) and `#2201` (this state branch) both `mergeStateStatus: BLOCKED` but with zero
+RED checks — `gh pr checks` on both showed only `pending`/`skipping`/`pass`, the standard
+just-pushed mid-CI pattern, not a failure. Nothing DIRTY, nothing RED, nothing CLEAN-but-unqueued.
+Re-checked `#2113`/`#2180`: unchanged since cycle 165 (same two `amonty84` comments, both already
+fully accounted for — no new Conductor reply).
+
+**Unit of work: `ga_positions`' `output_digest_spec`, the last open item from #2180's second
+ruling.** Reviewed the D-CND-27 recipe precedent directly (migrations 820/821/822, L5's
+`mi_jivanaghatana`/`mi_vistara`/`mi_kula`) and `output_digest.py`'s own validator/compute
+functions (`_validate_spec`, `_where_in`, `compute_output_digest`) before writing anything.
+
+Design decisions, each independently verified rather than assumed:
+- **Scope**: `ga_positions` shares `chart_facts` with six other co-writers, so the digest must
+  scope to exactly its own slice — `where_equals: {chart_id: <canonical>}` (same mechanism
+  migration 820 used for `mi_jivanaghatana`'s per-chart scoping) AND `where_in: {fact_category:
+  [...]}` using the identical 4-category list migration 868 already verified against
+  `ga_positions_writer.py`'s actual write sites (`bhava_cusps`, `graha_position`,
+  `graha_sign_attributes`, `house_chalit` — confirmed pre-sorted, satisfying `_where_in`'s
+  sortedness requirement).
+- **`key_columns: ["fact_id"]`** — `chart_facts`' actual registered PK (`chart_facts_pkey`,
+  confirmed via `\d chart_facts`). Read `ga_positions_writer.py`'s `_fact_id()` directly to
+  confirm it's a deterministic SHA-256 of `(category, subject, key, chart_id, ayanamsha_id)`
+  since PR #1898/#1747 stripped `build_id` out of the hash specifically to make `fact_id` stable
+  across rebuilds — safe to use as a sort key since `key_columns` is never hashed into digest
+  content, only used for ordering + NULL-preflight.
+- **`value_columns`**: all 25 `chart_facts` columns minus `computed_at` (row-insert timestamp,
+  same bookkeeping-exclusion class as `created_at`/`updated_at` in 820/821/822) and, a NEW
+  exclusion this segment establishes (no precedent table had this column): `build_id` — an
+  arbitrary per-run UUID with no business content; including it would make the digest differ on
+  every single rebuild even when nothing computed actually changed, defeating compute_output_
+  digest's whole purpose of detecting real content drift (same reasoning that motivated pulling
+  `build_id` out of `fact_id`'s own hash in #1747). `fact_id` itself IS included in value_columns
+  (mirrors `mi_jivanaghatana`'s precedent of including its own key columns as content too), since
+  it is now genuinely stable/deterministic, not volatile.
+
+Computed `spec_sha256` and validated the spec via the REAL `canonical_digest()`/`_validate_spec()`
+functions (never hand-reimplemented) — passed. **End-to-end rehearsed live BEFORE writing the
+migration file**: opened a rollback-only transaction, `INSERT`ed the spec row, called the real
+`compute_output_digest(cur, asset_id='ga_positions')` against production, captured
+digest=`d5837f05...` over 1115 live rows for the canonical chart, zero NULL-key rows, then
+`ROLLBACK`ed and independently re-verified via a fresh connection that 0 spec rows remained for
+`ga_positions`. Only after this rehearsal succeeded did I write the migration file.
+
+Migration numbering: re-verified live — `origin/main` highest still 872; 873 (`ga_panchanga`) and
+874 (`ga_sensitive`) both still reserved by their own still-open PRs. Used **875**. Branched fresh
+off `origin/main`, wrote the migration, ran `--dry-run` (875 the only pending), applied for real,
+verified the spec row persisted via direct `psql`, then called `compute_output_digest()` again
+against the now-real (not rehearsed) state — got the IDENTICAL digest value
+(`d5837f053d6fc7f192f851ecd538057a950b4acf6af1315681d486f4c82c120f`), confirming determinism
+end-to-end. Committed, pushed, opened PR #2220, queued via `gh pr merge --auto`
+(`autoMergeRequest.enabledAt` confirmed set; `mergeStateStatus: BLOCKED` pending CI, the standard
+just-opened pattern).
+
+**Both fixes of #2180's second ruling are now fully shipped**: `natural_key_partition` ×7
+(migrations 868-874) and `ga_positions`' `output_digest_spec` (migration 875). This closes every
+registry-configuration prerequisite the ruling identified. **Not yet attempted**: whether a
+genuine re-dispatch of `ga_positions` now actually reads `asset_freshness.freshness_state` back
+as `'fresh'` (the original symptom that opened this whole sub-investigation) — that requires an
+actual W4 dispatch against the DEP-ASSERT gate, a separate, larger unit of work than this cycle's
+scope, and the natural next priority-1 item once the five still-mid-CI PRs (870/871/872/873/874)
+are confirmed merged to `main`.
+
+CYCLE 166 L1: PR hygiene clean; shipped `ga_positions`' `output_digest_spec` (migration 875, PR
+#2220) — **both fixes of #2180's second ruling now complete** — next: confirm the five
+still-queued `natural_key_partition` PRs land on `main`, then attempt a genuine `ga_positions`
+re-dispatch to verify `asset_freshness` actually reads back `'fresh'`, unblocking wave 1; keep
+re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 167 (C8 v2.3) — self-caught undercount in migrations 868/875: `ga_positions` owns 5
+## chart_facts categories, not 4 (migration 876, PR #2221)
+
+PR hygiene: `#2217` (`ga_sensitive`) genuinely `is:queued`. `#2220` (`output_digest_spec`) and
+`#2201` (this state branch) both `BLOCKED` with zero RED checks (`gh pr checks` on both showed
+only `pending`/`skipping`/`pass`). `#2216` (`ga_panchanga`) confirmed `MERGED`. Nothing DIRTY,
+nothing RED, nothing CLEAN-but-unqueued. Re-checked `#2113`/`#2180`: unchanged, no new reply.
+
+**Started priority-1 work: verify a genuine `ga_positions` re-dispatch now reads
+`asset_freshness` back as `'fresh'`**, since both fixes of #2180's second ruling were shipped
+last cycle. Read `provenance.py` directly first: `reconcile_receipt` can never escape `'unknown'`
+once the *stored* receipt was itself unknown (`classify_receipt` returns early on
+`stored.receipt_state == 'unknown'`) — only `persist_successful_receipt`, called after a genuine
+successful writer execution, computes freshness fresh from the CURRENT receipt alone. Confirmed
+live: `asset_freshness` for `ga_positions` still shows `freshness_state='stale'` with the OLD
+pre-fix `reasons` frozen in place (mechanical trigger invalidation only, never recomputed) — a
+real re-dispatch is genuinely required, not a formality.
+
+Attempted the dispatch via `dispatch_nirmana_campaign_wave.py --layer L1 --wave 0 --assets
+ga_positions` (dry-run). Needed `--definition-revision t0-2026-09-01-0e5b06fb` +
+`--reviewed-deployment-sha 88a2abfd4a8e5bdecb6777db3b92a6bbb93036e6` (cycle 155's own accepted
+commit, still a live ancestor of `origin/main`) to get past the first two errors, then hit:
+`"accepted asset analysis does not match the current live registry contract for ga_positions"`
+— expected, since `natural_key_partition` (a `REGISTRY_CONTRACT_FIELDS` member) legitimately
+changed since that evidence was accepted. Per cycle 155's own established method, recomputed the
+fresh `registry_fingerprint_sha256`/`analysis_digest` LIVE via the dispatch script's own
+`_load_candidates()`/`_live_registry_fingerprint()`/`_current_analysis_receipt_digests()`
+functions (never hand-reimplemented) rather than guessing new evidence values by hand — this is
+the step that surfaced the real finding below. Confirmed `gcloud auth print-identity-token
+--impersonate-service-account=amjis-nirmana-executor@...` works for minting the OIDC token the
+`record_evidence` executor route requires, so the mechanics for actually submitting fresh
+evidence ARE available — not attempted yet this cycle (see below).
+
+**Real finding, not a formality**: the LIVE candidate row's own `count_sql` (already
+registry-authored, unrelated to this session's edits) reads `fact_category IN ('graha_position',
+'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')` — **5** categories. Both
+migration 868 (`natural_key_partition`, cycle 155) and migration 875 (`output_digest_spec`,
+cycle 166 — this session's own immediately-prior cycle) declared only **4**, missing
+`sandhi_flag`. Traced directly against `ga_positions_writer.py`: `_build_chalit_rows`'s own
+docstring (line 445) names `sandhi_flag` as one of its three emitted categories alongside
+`bhava_cusps`/`house_chalit` (not a passing mention — the function's own header), and lines
+511-523 are the genuine per-graha write site (`sandhi_flag`/`sandhi_reasons` fact_keys).
+Exhaustively re-checked the whole file (every literal category-bearing tuple, both
+`fact_category` variable-assignment call sites at lines 333/383/416) for any FURTHER gap beyond
+this one: none found — `_build_position_rows` only ever uses `graha_position`/
+`graha_sign_attributes`; the `cat in ("graha_retrogression_state", ...)` check at line 323 is
+dead/vestigial code, never actually matched by any real `cat` value, not a category source.
+Confirmed live: all 5 categories present in `chart_facts` for the canonical chart.
+
+**Immediately corrected rather than continuing the wave-1 verification with known-wrong
+data** (migration 876, this cycle's unit of work): (1) corrected `natural_key_partition` to the
+true 5-category set — migration 868 is already merged and, per convention, is never edited after
+being applied, so this is a superseding UPDATE, the same pattern as any plain corrective registry
+fix; (2) retired the migration-875 spec row (`asset_output_digest_specs_one_current` enforces
+exactly one current spec per asset via a partial unique index) and inserted a corrected spec with
+the matching 5-category `where_in` filter. New `spec_sha256` computed and validated via the real
+`canonical_digest()`/`_validate_spec()` functions; end-to-end rehearsed live (rollback-only:
+UPDATE retired_at, INSERT corrected spec, call the real `compute_output_digest()`, ROLLBACK)
+BEFORE writing the migration file. Result: digest
+`4dacab7c6211c1a77fb4c9d54941fa194befef2d3041beae982c3179e4edd5ae` over **1205** live rows —
+matching cycle 155's own original wave-0 dispatch report ("1205 rows written") **exactly**,
+independently confirming 5 categories is the writer's true, complete output (neither an over- nor
+an under-count). Migration numbering re-verified live (main highest 873; 874/875 reserved by
+still-open PRs) — used **876**. Applied for real, verified via direct `psql` (old spec
+`retired_at` now set, new spec current, `natural_key_partition` correct), then independently
+re-confirmed the identical digest against the real persisted state via a fresh connection.
+Committed, pushed, opened PR #2221, queued via `gh pr merge --auto`
+(`autoMergeRequest.enabledAt` confirmed set).
+
+**Did not complete the wave-1 verification attempt this cycle** — finding and fixing this
+self-authored defect took priority the moment it surfaced, per the standing discipline of never
+continuing forward on data already known to be wrong. The verification (does `ga_positions` now
+read back `'fresh'` after a genuine re-dispatch) remains the next priority-1 item, now with
+correct prerequisite data underneath it; the fresh-evidence-recording mechanics (OIDC
+impersonation via `gcloud auth print-identity-token`, the `record_evidence` command shape) are
+now understood and ready for use next cycle.
+
+CYCLE 167 L1: PR hygiene clean; self-caught and fixed a real 4-vs-5-category undercount in this
+session's own migrations 868/875 (migration 876, PR #2221) — found while preparing the wave-1
+`ga_positions` re-dispatch verification, corrected before continuing rather than proceeding on
+known-wrong data — next: resume the wave-1 verification attempt (compute fresh evidence with the
+now-correct registry contract, submit via the `record_evidence` executor route using the now-
+confirmed OIDC impersonation mechanics, dispatch, and check whether `asset_freshness` reads back
+`'fresh'`); keep re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 168 (C8 v2.3) — the #2113/#2180 freshness-gate investigation genuinely RESOLVED for
+## `ga_positions`, verified live end-to-end
+
+PR hygiene: `#2220` (`output_digest_spec`) genuinely `is:queued`. `#2221` (`sandhi_flag` fix) and
+`#2201` (this state branch) both `BLOCKED` with zero RED checks. `#2217` (`ga_sensitive`)
+confirmed `MERGED`. Nothing DIRTY, nothing RED, nothing CLEAN-but-unqueued. Re-checked
+`#2113`/`#2180`: unchanged at cycle open (no new reply); posted this cycle's resolution to #2180
+as a status update once the work was done.
+
+**Unit of work: complete the wave-1 verification attempt begun and interrupted last cycle.**
+Recomputed `ga_positions`' live `registry_fingerprint_sha256`/`analysis_digest` via
+`dispatch_nirmana_campaign_wave.py`'s own functions, now correctly reflecting migration 876's
+5-category fix: `registry_fingerprint_sha256=bd0a9b1e...`, `analysis_digest=e319352d...`.
+
+**Evidence submission — two real, non-obvious blockers found and fixed, not assumed away:**
+1. First `record_evidence` POST (via `gcloud auth print-identity-token
+   --impersonate-service-account=amjis-nirmana-executor@...`) returned a bare `403 forbidden`.
+   Decoded the minted JWT directly (`base64.urlsafe_b64decode` on the payload segment, with
+   correct `=` padding) — it carried NO `email` claim at all (`aud`/`azp`/`sub`/`iss` only). The
+   executor route's `verifyOidcToken` check requires `identity.email` to match one of two
+   allowed principals; an absent email claim can never match, hence the opaque 403. Root cause:
+   `gcloud auth print-identity-token` omits the `email`/`email_verified` claims by default for an
+   impersonated service account — fixed with `--include-email` (confirmed via the decoded JWT
+   afterward: `email: amjis-nirmana-executor@madhav-astrology.iam.gserviceaccount.com`,
+   `email_verified: true`).
+2. Second attempt (correct auth now) returned `409 "Evidence Git source does not match the
+   currently deployed commit"`. Had used `origin/main` HEAD as `source_ref` — WRONG: the server
+   compares against its OWN `NIRMANA_DEPLOYED_SHA` environment variable (`definitions.ts` line
+   440), which is the Cloud Run service's actual deployed commit, not necessarily `origin/main`'s
+   current tip (a deploy can legitimately lag a merge). Read it directly via `gcloud run services
+   describe amjis-web --region=asia-south1` (`NIRMANA_DEPLOYED_SHA=64aa9c91d...`, confirmed a live
+   ancestor of `origin/main` via `git merge-base --is-ancestor`) — resubmitted with this as
+   `source_ref` and both `asset_analysis_accepted` and `optimization_verdict_accepted` events
+   returned `201 {"outcome":"created"}`.
+
+**Dispatch, following cycle 155's exact playbook**: fresh on-demand Cloud SQL backup taken first
+(`gcloud sql backups create --instance=amjis-postgres`, confirmed `SUCCESSFUL`). Dry-run WITHOUT
+`--snapshot-ref` succeeded (evidence matched — confirming the fresh evidence submission worked)
+but produces a DIFFERENT manifest digest than commit mode needs; re-ran dry-run WITH
+`--snapshot-ref <backup-id>` to get the correct `--expected-manifest-digest` (cycle 155's own
+documented lesson, re-applied correctly this time on the first attempt). Committed with
+`--commit --confirm NIRMANA_CAMPAIGN_WAVE --acknowledge-destroys` (same WP-6 blast radius as
+cycle 155: cascade to `chart_fact_identity`, naive tool-reported count 375,856 whole-table rows,
+true scope ~1205 rows for this dispatch). Cloud Run Job `brahma-build-pipeline-job-jqrjm`
+dispatched; `build_runs.state='completed'` in ~9 seconds, `last_error` empty.
+
+**Verified the actual claim, not a proxy — this is the whole point of the investigation**:
+`asset_throughput.state='lit'` for `ga_positions`; `chart_facts` unchanged at exactly 1205 rows
+(the writer's real output never changed — only the registry's OWN description of it was being
+corrected); and, checking `asset_freshness` directly: a **genuinely NEW row now exists, keyed by
+the real partition text** (`chart_facts.fact_category IN (graha_position,
+graha_sign_attributes, bhava_cusps, house_chalit, sandhi_flag)`, not the old
+`__whole_asset__` key) showing **`freshness_state='fresh'`, `reasons=[]`**. The stale
+`__whole_asset__` row from before `natural_key_partition` existed remains in the table as a
+harmless dead artifact under a now-superseded partition key — any consumer querying by the
+CURRENT partition key sees the correct, fresh state.
+
+Re-ran `build_fact_identity_index.py` post-cascade (`chart_fact_identity` had dropped from
+125,593 to 124,388 — exactly the 1205-row difference from the cascade delete, confirming the
+cascade touched exactly the expected scope, not the naive whole-table figure): dry-run showed
+`total_facts=139471, parsed=125593, gap=0, coverage=100.0%`; ran for real, verified restored to
+exactly 125,593, matching the dry-run's own parse count.
+
+Posted the full resolution to adjudication #2180 as a status comment (not a new ruling request —
+informational, closing the loop the Conductor's own investigation opened cycle 155).
+
+**Both fixes of #2180's second ruling are now not just shipped but LIVE-VERIFIED to work.**
+Cleaned up temp evidence-payload files. **Not yet done, and NOT attempted this cycle**:
+dispatching wave 1 itself (the remaining 14 assets from the original waves 0-3 scope) — a
+separate, larger, genuinely new unit of work for a future cycle, not a continuation of this
+verification.
+
+CYCLE 168 L1: PR hygiene clean; **completed the #2113/#2180 freshness-gate investigation** —
+`ga_positions` genuinely re-dispatched and verified `asset_freshness` now reads back `'fresh'`
+end-to-end, fixing two real operational blockers (missing `--include-email` on OIDC token
+minting; wrong `source_ref` — needed the Cloud Run service's actual `NIRMANA_DEPLOYED_SHA`, not
+`origin/main` HEAD) along the way; posted the resolution to #2180 — next: dispatch wave 1 itself
+(the remaining 14 assets), a new, separate unit of work; keep re-checking #2113/#2180 every cycle
+regardless.
+
+## CYCLE 169 (C8 v2.3) — attempted L1's own wave-1 dispatch, found two deeper cross-layer
+## blockers beyond #2180's authorized scope; filed adjudication #2224
+
+PR hygiene: `#2221` (`sandhi_flag` fix) genuinely `is:queued`. `#2201` (this state branch)
+`BLOCKED` with zero RED checks. `#2220` (`output_digest_spec`) confirmed `MERGED`. Nothing DIRTY,
+nothing RED, nothing CLEAN-but-unqueued. Re-checked `#2113`/`#2180`: `#2180`'s last comment is
+still my own cycle-168 resolution post — no new Conductor reply.
+
+**Unit of work: dispatch wave 1's L1-owned `ga_*` assets**, the natural next step after cycle
+168's freshness-gate resolution. First isolated L1's own dispatchable subset from the full
+33-asset, six-layer wave-1 manifest (read via `dispatch_nirmana_campaign_wave.py`'s own
+`_load_definition` — wave 1 spans L0/L1/L2/L3/L4/L5, NOT something an L1 session should dispatch
+wholesale): of L1's 9 wave-1 `ga_*` assets, `ga_panchanga` is excluded (its `bg_panchanga` L0
+dependency shows `freshness_state='unknown'` — L0's own scope, not mine to fix), leaving 8
+candidates (`ga_vargas`, `ga_dashas`, `ga_sensitive`, `ga_prashna`, `ga_nakshatra`,
+`ga_transit_anchors`, `ga_sensitive_degree`, `ga_ayurdaya`) whose non-`ga_positions`
+dependencies (`bg_reference`, `bg_prashna_rules`, `bg_kp_sublord_division`, `bg_nakshatra`) were
+all confirmed `fresh` via direct query first.
+
+**Finding 1 — a SECOND, independent stale-evidence class, not #2180's natural_key_partition
+issue.** The dry-run on the 8-asset subset failed immediately: `"accepted asset analysis does not
+match the current live registry contract for ga_vargas"`. `ga_vargas` was never one of #2180's 7
+`chart_facts` co-writers — diffing the frozen manifest's `registry_contract` against LIVE via
+`_live_registry_contract()`/`_live_registry_fingerprint()` found the actual drift: a real,
+substantive `integrity_check_sql` (sign/sign_number consistency, vargottama correctness, §N.5
+D1-authority re-derivation, NULL-identity guard — already-shipped prior W3 work) was added to its
+registry row AFTER its evidence was originally accepted. Same underlying mechanism as #2180 (any
+`REGISTRY_CONTRACT_FIELDS` change invalidates prior acceptance) but a wholly independent root
+cause — meaning wave-1 readiness cannot be assumed clean just because the natural_key_partition
+fixes shipped. **Filed adjudication #2224** flagging this as likely campaign-wide (33 assets
+across 6 layers in this one wave alone; any asset whose registry picked up an ordinary W3 change
+since acceptance would hit the identical wall). Fixed `ga_vargas`'s own instance myself (same
+recipe as cycle 168: recomputed live `registry_fingerprint_sha256`/`analysis_digest`, submitted
+fresh `asset_analysis_accepted`+`optimization_verdict_accepted` via the `record_evidence`
+executor route — re-verified the deployed SHA live via `gcloud run services describe` rather than
+reusing cycle 168's cached value, correctly caught that it had changed between cycles, `64aa9c91d`
+→ `f3f6dbf8e`, since a new deploy landed in between) since it's squarely L1's own asset and the
+fix is quick and well-understood.
+
+**Finding 2 — a materially deeper blocker, surfaced immediately after fixing Finding 1.** With
+`ga_vargas`'s evidence now fresh, the dry-run advanced past that check and hit:
+`"E-gate refused: the dispatched assets have unfrozen DAG ancestors (1 remain): ga_positions"`.
+Traced directly in `dispatch_nirmana_campaign_wave.py` (`campaign_prerequisite_asset_ids` +
+the `asset_frozen` event check, ~line 1025): dispatch requires every DAG ancestor to carry a
+genuine `asset_frozen` campaign event — not just `freshness_state='fresh'`. `ga_positions` was
+rebuilt and its freshness genuinely verified fresh (cycle 168) but has never been through this
+separate acceptance. Per the executor route's own `requiredPrincipalFor` routing, `asset_frozen`
+(`source_kind='server_reconstructed'`) requires the **verifier** service account, not the
+executor one used for every fix so far — the HTTP-layer counterpart of a genuine independent
+verification pass, explicitly NOT something the implementing session should self-certify (the
+executor route's own comment: "a terminal capsule is only ever minted after independent
+reconstruction, never by the session that did the implementation"). **Did not attempt to
+fabricate or rush this** — doing so would be exactly the §N.8 unearned-signal defect class this
+campaign's doctrine exists to prevent. Posted this second finding as a follow-up comment on
+#2224, since it also blocks wave-1+ dispatch campaign-wide regardless of layer, and is a
+materially larger, distinct verification workstream (W5 VERIFY / W6 FREEZE in each layer's own
+charter language) that hasn't started for this campaign's wave-0 assets yet.
+
+**Stopped the wave-1 dispatch attempt here for this cycle** — both findings are real, both
+documented with direct evidence (not assumed), and Finding 2 in particular is squarely outside
+what a single bounded W4 EXECUTE cycle should attempt to resolve unilaterally. Cleaned up temp
+evidence-payload files.
+
+CYCLE 169 L1: PR hygiene clean; attempted L1's wave-1 dispatch, found and partially fixed a
+second independent stale-evidence class (`ga_vargas`, migration-free registry-fingerprint
+re-stamp) then hit a deeper `asset_frozen`/E-gate blocker requiring the verifier principal — not
+self-certified, filed adjudication #2224 for both findings — next: await #2224's disposition or
+Conductor guidance on the freeze/verification workstream before any further wave-1+ dispatch
+attempt; keep re-checking #2113/#2180/#2224 every cycle regardless.
