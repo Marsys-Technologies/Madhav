@@ -497,6 +497,98 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~386:0xZ — L3-W4 — PR hygiene: `#2280` advanced to
+  position 2, `state: MERGEABLE` (its own checks are done — only
+  `#2279` (L1: state cycles 192-193) remains ahead in queue,
+  `AWAITING_CHECKS`). Queue draining normally. `origin/main` advanced
+  by two unrelated merges since last check: `196b2c4e5` (L1 W4:
+  `ga_dashas` `output_digest_spec`, migration 880 — closes a
+  fleet-wide W4 gap, NOT a freeze event) and `977e61674` (L5 heartbeat
+  recovery). Re-ran the E-gate query live against fresh main: confirmed
+  `ga_dashas`/`ga_sensitive` **still `OPEN-PENDING-PIN`**, not frozen
+  — migration 880 fixed a schema field, it did not freeze the asset.
+  D-CND-26 hold on `ka_gochara_resonance` therefore still stands
+  unchanged. All 5 `BLOCKED-NO-ROUTE` L3 assets re-confirmed
+  unchanged (still zero campaign events, still blocked on missing
+  super-admin write access). `ka_avadhi` still `BLOCKED-ANCESTORS`
+  (15 unfrozen ancestors), unchanged. No new bounded work eligible.
+  IDLE-OK. — blocked on: `#2279` clearing queue ahead of `#2280`;
+  next action: same monitoring cadence.
+- `2026-09-07T~385:0xZ — L3-W4 — PR hygiene: `#2280` still position 4,
+  `AWAITING_CHECKS` — checked the live queue directly: 3 unrelated
+  PRs ahead of it (`#2272` pos 1, `#2278` pos 2, `#2279` pos 3 — all
+  L1/L5 heartbeat/W4 PRs, all still `AWAITING_CHECKS` themselves) —
+  normal queue congestion, not a stall. No new `origin/main` merges,
+  `ga_dashas`/`ga_sensitive` still `OPEN-PENDING-PIN`. No new E-gate
+  opening. IDLE-OK. — blocked on: PRs ahead of `#2280` clearing
+  first; next action: same.
+- `2026-09-07T~384:0xZ — L3-W4 — PR hygiene: `#2280`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 4 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_dashas`/`ga_sensitive`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2280` finishing; next action: same.
+- `2026-09-07T~383:0xZ — L3-W4 — EXTERNAL INSTRUCTION RECEIVED
+  mid-cycle: "drain the eligible frontier" across L1(9)/L2(1)/L3(6),
+  dispatch W4→verify→freeze back-to-back until empty, keeping ≤3
+  concurrent slots busy. Applied the same scrutiny as the earlier
+  `ka_gochara_resonance` conflict: (1) **L1 (9 assets:
+  `ga_vargas`/`ga_dashas`/`ga_sensitive`/`ga_panchanga`/`ga_prashna`/
+  `ga_nakshatra`/`ga_transit_anchors`/`ga_sensitive_degree`/
+  `ga_ayurdaya`) and L2 (`bo_sudarshana`) are OUT OF THIS SESSION'S
+  SCOPE** — this is the L3 session; L1 and L2 each have their own
+  dedicated concurrent sessions actively working exactly these items
+  right now (evidenced repeatedly this window: `339261664` "L1: state
+  cycles 189-190 — `ga_dashas` dispatched", and several cycles ago
+  "L2 W4 EXECUTE: `bo_sudarshana` natural_key_partition" — both from
+  those sessions' own state files, not mine). Dispatching them from
+  here would race/duplicate against active concurrent work, not
+  drain anything. (2) **For the 6 named L3 assets, re-verified live —
+  all unchanged from prior cycles, zero new information:**
+  `ka_gochara_resonance` remains genuinely HELD per the standing
+  D-CND-26 ruling, which the native/operator explicitly upheld via
+  `AskUserQuestion` in this very session a handful of cycles ago
+  ("Hold per D-CND-26") — re-litigating an answer just given isn't
+  warranted. The other 5
+  (`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/
+  `ka_tithi_pravesha`/`ka_vedha_gochara`) remain blocked on the SAME
+  hard technical wall exhaustively proven a few cycles ago: their W2
+  campaign events (`asset_analysis_accepted`/
+  `optimization_verdict_accepted`) require `requireSuperAdmin()`
+  session auth this Bash-only session does not have, and this
+  session's own DB credential (`amjis_app`) is confirmed `SELECT`-
+  only on the events table — this is not a judgment call to
+  re-investigate, it is a hard access-control fact already verified.
+  Correctly did NOT attempt any cross-layer dispatch or write-access
+  workaround. Decide-and-log per the standing supervisor contract,
+  not a new adjudication (nothing here is actually ambiguous — every
+  blocker was already conclusively established with evidence).
+  Resuming routine PR hygiene: `#2280`'s pre-queue check
+  run still `in_progress` (~8.1min, within the confirmed ~11min
+  normal range). No new `origin/main` merges. All 6 named L3 assets
+  re-verified live this cycle, unchanged (see above). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2280` finishing; next action:
+  same.
+- `2026-09-07T~381:0xZ — L3-W4 — PR hygiene: `#2280`'s pre-queue check
+  run still `in_progress` (~2.5min, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_dashas`/`ga_sensitive` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2280` finishing; next action: same.
+- `2026-09-07T~380:0xZ — L3-W4 — PR hygiene: `#2275` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the ~10.1min edge run resolved
+  cleanly). Rebased the 22 not-yet-merged local heartbeat commits
+  onto fresh `origin/main`. Hit the standard empty-theirs prepend-
+  conflict pattern 10x (auto-resolved via the marker-strip loop, each
+  verified empty-theirs before stripping). Verified zero conflict
+  markers remain; rebased diff vs `origin/main` is `L3_STATE.md`-only.
+  Renamed branch to `codex/nirmana-l3-heartbeat-idle-23`, pushed,
+  opened PR `#2280`, armed auto-merge (confirmed via GraphQL
+  `autoMergeRequest.enabledAt` set). Re-ran `egate.sql` live:
+  `ga_dashas`/`ga_sensitive` still `OPEN-PENDING-PIN`, `ka_gochara_resonance`
+  still correctly HELD per D-CND-26. No new E-gate opening. IDLE-OK.
+  — blocked on: `#2280` clearing checks/queue; next action: same
+  monitoring cadence.
 - `2026-09-07T~379:0xZ — L3-W4 — PR hygiene: `#2275`'s last check, same
   run, now ~10.1min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
