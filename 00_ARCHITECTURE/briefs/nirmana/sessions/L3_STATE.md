@@ -221,6 +221,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W2 acceptance events (all 23), blocked on #1715~~ | ~~evidence spine generalisation~~ | **RESOLVED** — #1736 merged+deployed (verified live 2 cycles ago); `ka_graha_sancara`'s recorded, others available whenever their route work reaches this point |
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
+| `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -493,6 +494,127 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~145:0xZ — L3-W3 — PR hygiene: `#2189`'s own `merge_group`
+  build confirmed via full `gh run list` scan (not truncated) — ~5.6min
+  elapsed, all green except `Governance Gates` (normal range). Nothing
+  to fix. Considered the two remaining LARGEST/most-complex F-L3-4
+  candidates first (`ka_gochara_v3_century_materialize`, 2480-line
+  peak-anchored era/month/day hierarchy writer; `ka_kshetra`, the
+  layer's heaviest asset at 8.6M target rows and worst DAG declaration)
+  and correctly judged both too large for one bounded unit rather than
+  force a shallow/risky derivation — picked the smaller `ka_kala_darshana`
+  instead (234-line writer): a top-N-of-qualifying shape, same as
+  `ka_bhavishya_lekha` (migration 857) but simpler (no additional filter
+  beyond chart_id): `LEAST(750, count of kala_convergence rows)`. 14,868
+  eligible rows exist live, so the cap is currently binding, matching
+  `target_floor`/`count_sql` exactly. Migration 862 + paired test
+  authored (no self-transaction wrapper from the start); the live test
+  independently re-derives the eligible-pool count from `kala_convergence`
+  rather than trusting the migration's own number — all 6 tests pass.
+  Migration-number guard PASS (862, confirmed free). Committed locally
+  (`b0b839aee`), held from push — `#2189` still mid-queue-attempt. —
+  blocked on: nothing new; next action: push once `#2189` merges or
+  clearly finishes, then tackle `ka_kalasutra`/`ka_sangam`/`ka_yojaka`
+  next (3 of the remaining 5 are more tractable than
+  `ka_gochara_v3_century_materialize`/`ka_kshetra`, which may warrant a
+  dedicated, larger-than-one-cycle investigation rather than a rushed
+  guess).
+- `2026-09-07T~144:0xZ — L3-W3 — PR hygiene: `#2189` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix. Continued
+  F-L3-4 with a 10th individual asset (13 total incl. the 4-asset service
+  batch), `ka_gochara_resonance` — scoped strictly to volume
+  documentation, deliberately NOT touching `depends_on` (immutable,
+  D-CND-09) or this asset's correctly-HELD W4 dispatch (D-CND-26); the
+  paired test asserts both stay untouched. Derived from the writer's own
+  module docstring/code: one row per (event_class, target_type, matched
+  instance) across 27 event classes x 8 target_types (3 from
+  `brahma_event_ontology.signature_model`, 1 from `bg_transit_rules`, 4
+  from the writer's own uncited chart-specific synthesis). Live per-type
+  breakdown sums to 762, matching `target_floor`/`count_sql` exactly.
+  Migration 861 + paired test authored (no self-transaction wrapper from
+  the start). **Self-caught and fixed a false positive in the test's own
+  guard**, not the migration: an early regex flagged the migration for
+  mentioning "target_floor" in its own descriptive prose (inside a
+  jsonb string value), not for actually assigning that column — fixed
+  by checking only the top-level assigned column names. All 7 tests
+  pass after the fix. Migration-number guard PASS (861, confirmed free).
+  Committed locally (`2a62083cc`), held from push — `#2189` still
+  mid-queue-attempt. — blocked on: nothing new; next action: push once
+  `#2189` merges or clearly finishes, then continue F-L3-4 on another
+  asset (6 remain NULL: `ka_gochara_v3_century_materialize`,
+  `ka_kala_darshana`, `ka_kalasutra`, `ka_kshetra`, `ka_sangam`,
+  `ka_yojaka`) if still no E-gate work.
+- `2026-09-07T~143:0xZ — L3-W3 — PR hygiene: `#2189` down to 1 pending
+  check (`Governance Gates`, ~7.6min, within normal range),
+  `mergeStateStatus: UNKNOWN` is normal async settling lag, not a
+  problem. Nothing to fix. Continued F-L3-4 with a different shape of
+  bounded unit this cycle: rather than a 9th individual data-writer
+  migration, closed the finding for L3's 4 `asset_kind='service'`
+  assets (`ka_dasha_kala`/`ka_graha_sancara`/`ka_muhurta_seva`/
+  `ka_tulana`) TOGETHER in one migration (860), since all four share an
+  identical, verified-live reason: `target_table`/`count_sql` are both
+  NULL (health-probe assets, no per-chart table at all), and build
+  completion runs through `asset_runner.py`'s probe-based path, not the
+  row-count path — confirmed by reading the actual code branch
+  (`is_service` → `_probe_asset`/`_mark_probe_green`), not assumed from
+  the asset_kind label alone. Documented `expected_volume_formula = N/A`
+  with an honest reason for all 4, deliberately left `target_floor`
+  untouched (checked the one place it could matter,
+  `zero_rows_is_complete`, and confirmed these 4 don't take that branch).
+  Migration 860 + paired test authored (no self-transaction wrapper from
+  the start), all 7 tests pass — including a live re-verification of
+  the asset_kind/target_table/count_sql premise against `asset_registry`
+  itself, not trusted from the migration text. Migration-number guard
+  PASS (860, confirmed free). Committed locally (`8a4d343be`), held from
+  push — `#2189` still finishing its last check. — blocked on: nothing
+  new; next action: push once `#2189` clears/queues. **F-L3-4 status: 9
+  of 20 originally-NULL L3 assets now closed** (7 data-writer migrations
+  852-855/857-859 + migration 856 + the 4-asset service batch 860 — 13
+  assets total across 9 migrations); 7 data-writer assets remain
+  (`ka_gochara_resonance`, `ka_gochara_v3_century_materialize`,
+  `ka_kala_darshana`, `ka_kalasutra`, `ka_kshetra`, `ka_sangam`,
+  `ka_yojaka`) plus the still-retired `ka_gochara_sweep` (correctly not
+  attempted, HARD-FLOOR PROTECTED).
+- `2026-09-07T~142:0xZ — L3-W3 — PR hygiene: `#2189` checks running
+  pre-queue (mostly green, `Governance Gates`/`Unit Tests`/`DB
+  Integration Tests`/`Build Check` pending, nothing red), not yet
+  queued — nothing to fix. Continued F-L3-4 with an eighth asset,
+  `ka_avadhi` (Period Dossiers): summed MD+AD periods across 6 of 7
+  declared dasha systems for this native's lifetime (117+308+104+70+
+  480+90 = 1169, matching `target_floor`/`count_sql` exactly). Migration
+  859 + paired test authored (no self-transaction wrapper from the
+  start), all 8 tests pass. **Also surfaced, without fixing, a real
+  gap** while deriving this: the writer's 7th declared dasha system,
+  `chara`, has ZERO exact `chart_dashas.system_id` matches for this
+  chart — the table instead carries `chara_karaka` (a related but
+  distinct Jaimini concept, movable significators, not Chara/rasi
+  Daśā). Independently re-verified live (not trusted from reading the
+  writer alone) via a direct `chart_dashas` query in the paired test.
+  Whether this is an honest L1-side build gap or a genuine naming
+  mismatch in `ka_avadhi` is NOT resolved here — recorded as a new Held
+  item, per §N.7 (honest null over invented judgment), not fixed or
+  guessed at in this bounded unit. Migration-number guard PASS (859,
+  confirmed free). Committed locally, held from push — `#2189` still
+  mid-check. — blocked on: nothing new for F-L3-4 itself; the
+  `chara`/`chara_karaka` question is a new genuinely-open item; next
+  action: push once `#2189` clears/queues, then continue F-L3-4 on
+  another asset (11 remain NULL) if still no E-gate work.
+- `2026-09-07T~141:0xZ — L3-W3 — PR hygiene: `#2187` MERGED (squash
+  `4598773ef`). Rebased the 11 not-yet-merged local commits (migrations
+  856/857/858 + heartbeat, plus 7 pre-#2187 commits whose content was
+  already absorbed into #2187's squash) onto fresh `origin/main`. Hit
+  the standard empty-theirs prepend-conflict pattern once (auto-resolved
+  via the marker-strip script after confirming empty theirs), no
+  non-standard conflicts this time. Verified zero conflict markers,
+  migration-number guard PASS, all 20 migration-856/857/858 tests still
+  pass post-rebase, `ka_dasha_kala` held row intact. Renamed branch to
+  `codex/nirmana-l3-f-l3-4-batch-2`, pushed, opened **PR #2189**, armed
+  auto-merge (checks running now, not yet queued — normal). No new
+  bounded work this cycle beyond the rebase/PR-open itself
+  (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on: nothing new;
+  next action: verify `#2189` clears its checks and queues cleanly next
+  cycle, then continue F-L3-4 (12 of 23 L3 assets still NULL) if still
+  no E-gate work.
 - `2026-09-07T~140:0xZ — L3-W3 — PR hygiene: `#2187`'s own `merge_group`
   build (run `34066593959`) confirmed via full `gh run list` scan
   (not truncated) — ~5.5min elapsed, 8/9 jobs green, only `Governance
