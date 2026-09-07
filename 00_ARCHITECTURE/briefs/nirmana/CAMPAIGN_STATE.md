@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:27:59Z` — cycle 901: **IDLE-OK, Δfrozen +0.** #2272's Unit Tests shows `fail`
+  again (2nd time) but the underlying GH Actions run API says still in-progress — likely the same
+  transient stale-summary pattern as before, not confirmed red yet; log wasn't available to check
+  further. L1's own PR — not intervening without a concrete diagnostic to add. Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:25:38Z` — cycle 900: **IDLE-OK, Δfrozen +0.** #2272 still `BLOCKED`, not
   queued. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
   unchanged (11).
