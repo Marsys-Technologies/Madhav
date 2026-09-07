@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T16:17:52Z` — cycle 1031: **IDLE-OK, Δfrozen +0.** Confirmed L2's #2258 status
+  update (step 1/3 shipped, correctly citing the ruling's exact terms). #2300 still awaiting
+  native, no change. Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T16:15:19Z` — cycle 1030: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
   stale PRs cleared this check). Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T16:13:03Z` — cycle 1029: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
