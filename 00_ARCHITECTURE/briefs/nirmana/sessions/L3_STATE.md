@@ -511,6 +511,27 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-08T~552:0xZ — L3-W4 OVERNIGHT — **#2387 RULED (both granted):
+  resonance's #1734 hold DISCHARGED; F-L3-12 scope AFFIRMED as measured fact**
+  (Conductor re-derived the FK set live: exactly 5 tables, none of them
+  overlays). Actions: #1734 CLOSED with pointer (resonance was its last live
+  hold); slot 2 claimed on #1713; fresh snapshot 1788811804640 (20:10:04Z,
+  SUCCESSFUL); **migration 901** (resonance's output_digest_spec —
+  `gochara_resonance_map`, real 4-col UNIQUE key from pg_constraint, 0-NULL
+  checked, 762 canonical rows) PR **#2389** raised + armed, sibling of #2388.
+  **Dispatch decision (decide-and-log): resonance NOT dispatched yet, and the
+  4 overlays need a REDISPATCH** — read the acceptance validator's own SQL
+  (`requireAcceptedRebuildProvenance`): it demands `run.state='completed'`
+  (ours: `failed`, vedha's DEP-ASSERT) AND a `proven`
+  nirmana-provenance-receipt-v2 bound to `output_digest_spec_sha256` written
+  AT BUILD TIME (ours, verified live: `receipt_state=unknown`, spec sha NULL —
+  specs didn't exist yet). Dispatching before 900/901 deploy provably
+  produces unacceptable builds. Plan: when both migrations are LIVE
+  (watcher polling), ONE clean combined run — 4 overlays + resonance, vedha
+  excluded pending its #2387-appended ruling — on snapshot 1788811804640,
+  then acceptance ×5 + fresh-subagent freezes ×5, slots consolidated to one
+  and both released. — blocked on: #2388/#2389 merge+deploy; next action:
+  verify 6 spec rows live → combined dispatch.
 - `2026-09-08T~551:0xZ — L3-W4 OVERNIGHT — **build run VERIFIED: 4/5 complete
   with real content; the acceptance gap found and closed at root.** Execution
   `brahma-build-pipeline-job-npj4c` finished 19:57:04Z; `build_run_assets`
