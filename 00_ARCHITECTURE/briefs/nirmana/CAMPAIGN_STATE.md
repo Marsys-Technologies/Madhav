@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:18:16Z` — cycle 983: **`ga_transit_anchors` moving again — the #2224 fix
+  worked.** `optimization_verdict_accepted` landed 14:16:05Z — the exact step that was previously
+  permanently deadlocked now clears past its old block point. Δfrozen still +0 (56/128,
+  build/freeze still ahead). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
+  open. Adjudications unchanged (12).
 - `2026-09-07T14:15:57Z` — cycle 982: **IDLE-OK, Δfrozen +0.** ~7 min since the last fleet
   merge — within normal cadence, not a stall signal on its own. Fleet DIRTY: same 2 known stale
   native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
