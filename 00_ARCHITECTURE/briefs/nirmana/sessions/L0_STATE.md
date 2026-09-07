@@ -1387,3 +1387,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   dispatch. Posted this cross-reference to #2317. Also: Conductor ruled on L2's #2291 tooling-
   ceiling adjudication (batched `jsonb_build_object`, authorized) — not L0's task. `egate.sql`
   still 0 unfrozen. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. L1
+  confirmed our #2317 exposure audit method and finding (only ga_transit_anchors exposed, same
+  option-b lean) — validates my earlier check. Conductor's #2224 activity is pushing L3 on a
+  tooling gap (nrec vs browser-auth), not L0-relevant. Nothing eligible.
