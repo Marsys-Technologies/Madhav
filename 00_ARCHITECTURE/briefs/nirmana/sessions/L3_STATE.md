@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~213:0xZ — L3-W4 — PR hygiene: `#2218`'s last check
+  (`Governance Gates`) ~6.3min, within normal range, `Unit Tests` now
+  also passed. One new `origin/main` merge (`#2216`, L1
+  `natural_key_partition` authoring, 6th of 7 — `ga_positions`'
+  freeze chain is getting close but this is still just component
+  authoring, not the freeze itself). `ga_positions` re-verified live:
+  still `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked
+  on: `#2218` finishing; next action: same.
 - `2026-09-07T~212:0xZ — L3-W4 — PR hygiene: `#2218`'s pre-queue check
   run still `in_progress` (~4.2min on the known-slow `pytest —
   pyjhora_adapter + pipeline` step, well within the confirmed ~11min
