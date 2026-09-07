@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T17:08:05Z` — cycle 1052: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications: 3 open.
 - `2026-09-07T17:05:36Z` — cycle 1051: **Governance hygiene — closed #2224 and #2317, both
   confirmed resolved and verified working.** Surveyed all open `nirmana-adjudication` issues
   (still 5, no new ones): #2224's fix (PR #2307) and #2317's fix (PR #2327) are both shipped
