@@ -358,6 +358,41 @@ governance (#1762).
 IDLE-OK heartbeats; landing them wholesale would bury this file. Entries land on main from
 cycle 1062 forward, riding real work PRs per C8 Step 3.)*
 
+- `2026-09-07T20:45Z` — cycle 1069 (overnight shepherd): **False-stale reconciliation directive
+  complete — the honest way.** Verified BEFORE acting: ga_dashas already fresh (L1's plain-path
+  flush at 20:14Z — directive's 'dead path' premise was campaign-dispatcher-only). Flushed
+  bg_formula_constants myself (run 10182981 via hand-built single-asset manifest reusing the
+  frozen Sep-4 entry, runner's own digest fn; skip_no_delta; DEP-visible fresh — DEP-ASSERT
+  reads most-recent row, shadowing the orphaned stale@__whole_asset__ row). REFUSED to clear
+  bg_vidhi_primitives: current writer hash 63f0a35a ≠ frozen receipt 93469b4c — real post-freeze
+  drift from PR #2153, flush failed closed on the manifest code-digest guard as designed;
+  clearing would be §N.8 fabrication. Parked as #2392 (morning: rebuild-under-new-code + capsule
+  re-ceremony vs revert; zero frontier impact — sole dependent bg_vidhi_floors already frozen).
+  New L1 surface: ga_condition passed DEP-ASSERT at 20:19Z but failed its own integrity_check_sql
+  (the #2113 tracked-red conjuncts) — L1's lane, flagged on #1713. Frozen 58/128 (Δ+0 this
+  cycle). Slots 0/3. Next: watch ga_condition/#2113, L3 overlay drain, frozen delta.
+- `2026-09-07T20:20Z` — cycle 1068 (overnight shepherd): **Frozen 58/128 (Δ+1 vs cycle-1062
+  baseline 57). D-NATIVE-10 CONFIRMED WORKING IN PRODUCTION.** Adjudication sweep under
+  D-NATIVE-12: #2387 ruled+closed (ka_gochara_resonance canary hold DISCHARGED — premises
+  re-verified live: W2 2/2, ancestors 3/3 frozen, sancara frozen; F-L3-12 overlay scoping
+  AFFIRMED from pg_constraint — MSR chain is exactly 5 FK-linked kala_* tables, no overlay
+  among them); #1960 re-ruled (w43+w44 measurement authorized tonight, w44 report-only flag;
+  only the live calibration write stays parked as a prepared morning decision); #2052/#2102/
+  #2123/#2291/#2276 verified already-ruled. L3 woken (drain directive). Backstop: my campaign
+  redispatch of ga_dashas was correctly refused by the dispatcher (generation guard — frozen-
+  complete assets are not campaign-redispatchable; finding logged on #1713); L1 ran the right
+  mechanism itself (plain rebuild, run f2a62f44, 20:14Z): **skip_no_delta + freshness
+  stale→fresh at 20:14:04Z — first production firing of the fix.** L1 frontier now truly open
+  (ga_condition/ga_structural/ga_tajaka). Slot claimed and released unused. Next: watch the
+  three L1 dispatches + L3 overlay drain; frozen delta each cycle.
+- `2026-09-07T19:55Z` — cycle 1067: **D-NATIVE-10 LANDED + DEPLOYED + VERIFIED; #2169 CLOSED.**
+  #2385 queued (is:queued verified) → MERGED 19:30:55Z as `a4b2fa926`. Organic deploy run
+  34156601067 under the NEW production-truth gate: sidecar=true + pipeline=true detected and
+  deployed SUCCESS, mcp=false correctly skipped. Production verified directly: pipeline job
+  image AND sidecar serving revision both `a4b2fa926`. Posted L1's go on #2300 (redispatch
+  ga_dashas → dispatch ga_condition/ga_structural/ga_tajaka). #2169 closure condition met
+  (one organic deploy observed correct) → CLOSED with full arc documented. Next: watch L1
+  frontier drain; normal cycle resumes.
 - `2026-09-07T19:10Z` — cycle 1066: **NATIVE DIRECTIVE actioned — D-NATIVE-09/10/11.** Posted
   D-NATIVE-09 (grounding tier rule: śruti→yukti→pratyakṣa, deterministic, evidence stored with
   row) and D-NATIVE-11 (bo_grounding = supporting infrastructure, denominator stays 128) to
