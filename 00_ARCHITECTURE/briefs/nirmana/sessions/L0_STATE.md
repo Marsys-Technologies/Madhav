@@ -1325,3 +1325,18 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   L1 dispatched `ga_condition` — continued frontier drain, not L0-relevant. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **New adjudication #2300 (L1): a genuine cross-layer defect in the FROZEN
+  orchestrator (`asset_runner.py`/`provenance.py`) — delta-skip rebuilds (`_skip_no_delta`) never
+  call `_upsert_freshness`, so a `registry_changed`-stale asset can never clear its stale flag once
+  its content happens to be byte-identical across the registry edit.** Checked L0's own exposure
+  directly rather than assuming it's an L1-only problem: **2/40 `bg_*` assets are currently
+  `stale`/`registry_changed`** — `bg_formula_constants` (since 2026-08-26) and `bg_vidhi_primitives`
+  (since 2026-09-06, the same PR #2153 edit I re-stamped W2 evidence for). Both remain genuinely
+  frozen/correct (this bug affects the freshness FLAG, not the freeze itself — `egate.sql` confirms
+  still 0 unfrozen L0 assets). **Real forward risk found and reported**: `mi_gunanaka`/
+  `mi_pariksha`/`mi_pramana` (L5) all depend on `bg_formula_constants` — if any of them ever
+  attempts a genuine rebuild while it reads stale, they'll hit the identical DEP-ASSERT anomaly L1
+  just diagnosed for `ga_condition`/`ga_structural`/`ga_tajaka`. Posted this cross-layer evidence to
+  #2300 rather than filing a duplicate — L1's proposed one-line `_upsert_freshness` fix (pending
+  native ruling, since this is FROZEN-orchestrator code) would resolve both `bg_*` instances too.
+  Not fixing unilaterally — same posture as L1's own filing. Nothing else eligible.
