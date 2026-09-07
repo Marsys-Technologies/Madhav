@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:54:26Z` — cycle 886: **L1 re-dispatched `ga_dashas`, Δfrozen +0.** New
+  `build_run` (`1f89fd4c...`, started 09:44:10) since the earlier stalled attempt —
+  `asset_throughput` confirms `state='building'`, `last_built_at` fresh (09:47:03), no error.
+  Reading this as L1 restarting cleanly after the evidence-transport diagnosis rather than a new
+  problem. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T09:52:24Z` — cycle 885: **IDLE-OK, Δfrozen +0.** No new events for `ga_dashas` or
   the L3 frontier assets. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
   Adjudications unchanged (11).
