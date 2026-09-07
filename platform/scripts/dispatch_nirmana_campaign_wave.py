@@ -414,6 +414,54 @@ def validate_wave_evidence_bindings(
     return bindings
 
 
+def _current_generation_accepted_rebuilds(
+    *,
+    accepted_rebuild_rows: Sequence[Mapping[str, Any]],
+    live_registry_fingerprints: Mapping[str, str],
+) -> list[str]:
+    """Which of these ``accepted_rebuild_observed`` rows still block a fresh run.
+
+    Adjudication #2276 (ruled 2026-09-07): the original ``create_campaign_run``
+    guard refused a new run for ANY asset with an ``accepted_rebuild_observed``
+    event, from any generation, forever -- that walled off ``ga_dashas``
+    permanently the moment its ``integrity_check_sql`` needed a post-acceptance
+    performance fix, with no escape hatch. The guard's real intent was narrower:
+    "don't silently reuse a run key for an asset that is already correctly,
+    currently accepted" -- not "an asset can never be rebuilt again once
+    accepted under an earlier registry contract." This narrows the refusal to
+    exactly that: an accepted rebuild bound to the asset's CURRENT live-registry
+    generation still blocks (unchanged safety property); one bound to a
+    generation the live registry has since moved past does not.
+
+    ``evidence_payload.registry_fingerprint_sha256`` on every
+    ``accepted_rebuild_observed`` row is the authoritative generation the
+    server bound that acceptance to at submission time (``assertLifecycleBinding``
+    in ``definitions.ts`` requires it equal the then-current live fingerprint,
+    and it is immutable evidence thereafter) -- reading it directly here, rather
+    than re-deriving it in Python from ``decision_digest`` via a hand-ported
+    ``canonicalNirmanaOptimizationVerdictDigest``, reaches the identical
+    generation identity without reimplementing a JS canonicalization/hash
+    routine a second time in a different language, a known correctness risk
+    this campaign has repeatedly avoided elsewhere in this file (prefer a
+    directly-stored, already-validated field over re-deriving the same value
+    through an indirect binding chain).
+    """
+    current: list[str] = []
+    for row in accepted_rebuild_rows:
+        entity_id = row.get("entity_id")
+        payload = row.get("evidence_payload")
+        bound_fingerprint = (
+            payload.get("registry_fingerprint_sha256")
+            if isinstance(payload, Mapping)
+            else None
+        )
+        if not isinstance(entity_id, str):
+            continue
+        if bound_fingerprint is not None and bound_fingerprint == live_registry_fingerprints.get(entity_id):
+            current.append(entity_id)
+    return current
+
+
 def _select_frozen_build_assets(
     *,
     chart_id: str,
@@ -1106,8 +1154,9 @@ def create_campaign_run(
         # must not permanently consume its triggered_by key: since there is exactly
         # one frozen definition_revision for the whole campaign, that key can never
         # recur differently, so an unqualified block here would refuse re-authorization
-        # forever. An asset that DID already reach accepted_rebuild_observed is refused
-        # by the separate, independent check immediately below regardless of this one.
+        # forever. An asset that DID already reach accepted_rebuild_observed for its
+        # CURRENT live-registry generation is refused by the separate, independent
+        # check immediately below regardless of this one.
         cur.execute(
             "SELECT id, state FROM build_runs WHERE triggered_by=%s"
             " AND state = ANY(%s) ORDER BY created_at",
@@ -1119,9 +1168,15 @@ def create_campaign_run(
                 "a run already exists for this frozen campaign wave; duplicate execution refused"
             )
 
+        # Adjudication #2276 (ruled 2026-09-07): scoped to the asset's CURRENT
+        # live-registry generation only -- see _current_generation_accepted_rebuilds's
+        # own docstring for why. An accepted rebuild bound to a generation the
+        # live registry has since moved past (e.g. a post-acceptance
+        # integrity_check_sql performance/scope fix) does not permanently wall
+        # off redispatch; one bound to the still-current generation still does.
         cur.execute(
             """
-            SELECT entity_id
+            SELECT entity_id, evidence_payload
               FROM nirmana_evidence.nirmana_elevation_campaign_events
              WHERE campaign_id=%s AND definition_revision=%s
                AND event_type='accepted_rebuild_observed'
@@ -1129,10 +1184,14 @@ def create_campaign_run(
             """,
             (CAMPAIGN_ID, definition_revision, asset_ids),
         )
-        accepted = [row["entity_id"] for row in cur.fetchall()]
+        accepted = _current_generation_accepted_rebuilds(
+            accepted_rebuild_rows=cur.fetchall(),
+            live_registry_fingerprints=live_registry_fingerprints,
+        )
         if accepted:
             raise RuntimeError(
                 f"accepted rebuild evidence already exists for {len(accepted)} selected assets"
+                " bound to their current live-registry generation"
             )
 
         cur.execute(

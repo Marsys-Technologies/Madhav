@@ -1020,6 +1020,110 @@ def test_live_registry_fingerprint_is_insensitive_to_depends_on_array_order() ->
     ) == module._live_registry_fingerprint(shuffled, campaign_layer="L3")
 
 
+def test_stale_generation_accepted_rebuild_does_not_block_redispatch() -> None:
+    """Adjudication #2276: an accepted_rebuild_observed bound to a generation the
+
+    live registry has since moved past (e.g. a post-acceptance
+    integrity_check_sql fix) must not permanently wall off redispatch. This is
+    the exact ga_dashas trap: its own integrity_check_sql fix landed AFTER its
+    accepted_rebuild_observed, which the original unconditional guard treated
+    as "forever accepted" with no escape hatch.
+    """
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    rows = [
+        {
+            "entity_id": "ga_dashas",
+            "evidence_payload": {"registry_fingerprint_sha256": "stale" + "0" * 59},
+        }
+    ]
+    live_fingerprints = {"ga_dashas": "current" + "0" * 57}
+
+    assert module._current_generation_accepted_rebuilds(
+        accepted_rebuild_rows=rows,
+        live_registry_fingerprints=live_fingerprints,
+    ) == []
+
+
+def test_current_generation_accepted_rebuild_still_blocks_redispatch() -> None:
+    """The guard's original safety property is unchanged for an asset that is
+
+    genuinely still current and accepted: don't silently reuse a run key for
+    it.
+    """
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    fingerprint = "current" + "0" * 57
+    rows = [
+        {
+            "entity_id": "ga_vargas",
+            "evidence_payload": {"registry_fingerprint_sha256": fingerprint},
+        }
+    ]
+    live_fingerprints = {"ga_vargas": fingerprint}
+
+    assert module._current_generation_accepted_rebuilds(
+        accepted_rebuild_rows=rows,
+        live_registry_fingerprints=live_fingerprints,
+    ) == ["ga_vargas"]
+
+
+def test_current_generation_accepted_rebuild_mixed_wave_blocks_only_the_current_one() -> None:
+    """A wave dispatching multiple assets: only the still-current one refuses."""
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    current_fingerprint = "current" + "0" * 57
+    rows = [
+        {
+            "entity_id": "ga_dashas",
+            "evidence_payload": {"registry_fingerprint_sha256": "stale" + "0" * 59},
+        },
+        {
+            "entity_id": "ga_vargas",
+            "evidence_payload": {"registry_fingerprint_sha256": current_fingerprint},
+        },
+    ]
+    live_fingerprints = {
+        "ga_dashas": current_fingerprint,
+        "ga_vargas": current_fingerprint,
+    }
+
+    assert module._current_generation_accepted_rebuilds(
+        accepted_rebuild_rows=rows,
+        live_registry_fingerprints=live_fingerprints,
+    ) == ["ga_vargas"]
+
+
+def test_accepted_rebuild_with_malformed_payload_is_treated_as_non_blocking() -> None:
+    """Fail closed toward the redispatch-is-allowed side only for genuinely
+
+    unparseable evidence, never silently promoted into a false current-match.
+    """
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    rows = [
+        {"entity_id": "ga_dashas", "evidence_payload": "not-a-mapping"},
+        {"entity_id": "ga_vargas", "evidence_payload": {}},
+    ]
+    live_fingerprints = {
+        "ga_dashas": "current" + "0" * 57,
+        "ga_vargas": "current" + "0" * 57,
+    }
+
+    assert module._current_generation_accepted_rebuilds(
+        accepted_rebuild_rows=rows,
+        live_registry_fingerprints=live_fingerprints,
+    ) == []
+
+
 class _FakeBlastCursor:
     """Minimal cursor standing in for the WP-6 catalogue + count queries."""
 
