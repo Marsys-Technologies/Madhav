@@ -457,6 +457,35 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T07:20Z (C8 v2.3 cycle 663) — **`#2194` MERGED — the twenty-fifth state-recovery PR
+  closed out.** Twenty-fifth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, now 663). 10 local-only commits (cycles 653-662, 23 lines, single-file) recovered via
+  patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-26`. Ancestor counts still
+  unchanged across all 11 remaining L5 assets.
+- 2026-09-07T07:14Z (C8 v2.3 cycle 662) — **IDLE-OK, verified.** #2194 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:08Z (C8 v2.3 cycle 661) — **IDLE-OK, verified genuine build activity — main
+  stuck for 4 cycles, checked directly.** #2194's own `gh-readonly-queue/main/pr-2194-*`
+  merge_group build shows real IN_PROGRESS activity (~9.2 min elapsed, two sibling checks
+  already SUCCESS) — genuine progress, not stalled. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:02Z (C8 v2.3 cycle 660) — **IDLE-OK, verified.** #2194 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:56Z (C8 v2.3 cycle 659) — **IDLE-OK, verified.** #2194 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:50Z (C8 v2.3 cycle 658) — **IDLE-OK, verified.** #2194 now genuinely queued.
+  Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:44Z (C8 v2.3 cycle 657) — **IDLE-OK, verified.** #2194 CLEAN, will queue
+  shortly. #2192 confirmed L3's, out of scope. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:38Z (C8 v2.3 cycle 656) — **IDLE-OK, verified.** #2194's Governance Gates job
+  checked at the job level (~9.4 min elapsed, within normal range) — genuine progress, not
+  stalled. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:32Z (C8 v2.3 cycle 655) — **IDLE-OK, verified.** #2194 down to its last check,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:26Z (C8 v2.3 cycle 654) — **IDLE-OK, verified.** #2194 down to 2 pending checks,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T06:20Z (C8 v2.3 cycle 653) — **IDLE-OK, verified.** #2194 building cleanly, no
+  failures. Ancestor counts unchanged. Nothing eligible.
 - 2026-09-07T06:14Z (C8 v2.3 cycle 652) — **`#2190` MERGED — the twenty-fourth state-recovery
   PR closed out.** Twenty-fourth recurrence of the exact same pattern (cycles 442, 453, 461,
   473, 482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634,
