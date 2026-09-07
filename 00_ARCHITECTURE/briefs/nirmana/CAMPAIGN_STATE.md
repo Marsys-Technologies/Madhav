@@ -381,6 +381,31 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:23:29Z` — cycle 858: **D-NATIVE-08 fleet refocus — enforced, Δfrozen +0.**
+  Native ruling: asset-frontier overrides sub-wave batching; report Δfrozen-count, not PR
+  activity. Ran the eligible-frontier query (every active-writer asset not `asset_frozen` whose
+  full `depends_on` closure is already frozen): exactly two eligible campaign-wide —
+  `ga_positions` (L1) and `ka_gochara_resonance` (L3), both undispatched. Posted the ruling +
+  frontier findings + L1/L3 escalation to #1713 (comment 5567528000). `frozen_total=46/128`,
+  unchanged since cycle 853's L0-completion baseline — honest Δfrozen=0 this cycle, per the new
+  reporting convention. **Then picked up #1945 Lane C** (L0's own W6-close blocker) as committed:
+  replicated the real server-side Lane C validator (`definitions.ts` L2499-2538) against live DB
+  via the running cloud-sql-proxy, not the stale CLI-default definition_revision. Found the
+  *actually*-frozen revision is `t0-2026-09-01-0e5b06fb` (two revisions ahead of the
+  `dispatch_nirmana_campaign_wave.py` default) — all 90 accepted-analysis events are correctly
+  scoped to it. **`invalidated_analysis_count` = 26** (not the cycle-721 baseline of 22; it grew),
+  spanning 20 entities. Root cause, live-verified: the validator counts every historical accepted-
+  analysis event, not just each asset's *latest* one — re-stamping adds a new valid event but
+  can't erase old invalid ones, so under continuous W3 churn this count can structurally never
+  reach 0 by re-stamping alone. Two entities (`ga_nakshatra`, `ga_sensitive`) have even their
+  *latest* Sep-7 re-stamp already invalidated again. This is an evidence-contract semantics
+  question (should Lane C check "latest per asset," not "ever accepted") — posted full findings +
+  recommendation to #1945 (comment 5567629804) for native ruling rather than patching
+  `definitions.ts` unilaterally (architecture-change boundary, CLAUDE.md §L). Not touching Lane D
+  this cycle (still behind main, unresolved by re-checking). L0 close-out: still correctly NOT
+  standing down — W6 `stage_transition_accepted` has never fired campaign-wide; now blocked on
+  this exact Lane C ruling. Own-PR hygiene: none open. Fleet DIRTY: empty. Adjudications
+  unchanged (11).
 - `2026-09-07T08:11:16Z` — cycle 857: **IDLE-OK.** Fleet DIRTY empty; adjudications unchanged
   (11).
 - `2026-09-07T08:08:57Z` — cycle 856: **IDLE-OK (verified).** #2254 resolved — fleet fully
