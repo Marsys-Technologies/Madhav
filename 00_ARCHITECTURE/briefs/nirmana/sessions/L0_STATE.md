@@ -1481,3 +1481,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   is already using it, citing it as "#2169's own prior precedent" — my own earlier discovery).
   Not acting further — L2 owns the current instance, Conductor-owned tooling posture applies same
   as the other open adjudications. `egate.sql` still 0 unfrozen. Nothing eligible for L0 right now.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Adjudication list and #1713 tail unchanged. Nothing eligible.
