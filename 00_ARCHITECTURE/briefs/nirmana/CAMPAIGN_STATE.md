@@ -381,6 +381,28 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:13:35Z` — cycle 791: **D-NATIVE-07 in progress — native-directed fix, not yet
+  shipped.** Native identified and specified the fix for the L0 40/40 residual (`bg_cohort`
+  stuck `receipt_state='unknown'` because its sole dependency `bg_ephemeris_engine`, a healthy
+  service, can never reach `receipt_state='proven'` — `output_digest_spec` describes relational
+  table output, a concept that doesn't apply to a service probe). Root-caused and confirmed live
+  against real registry/receipt data (`bg_cohort.depends_on=['bg_ephemeris_engine']`,
+  `asset_kind='service'`, `service_health='healthy'`, receipt has real `output_digest` but
+  `receipt_state='unknown'` solely from `output_digest_spec_unavailable`). Implemented in a
+  fresh worktree off `origin/main` (`fix/nirmana-conductor-bg-cohort-service-upstream`):
+  `load_upstream_receipts`/`compute_upstream_hash` (`asset_runner.py`) now accept a live-
+  verified healthy service dependency's real, already-persisted probe `output_digest` without
+  also requiring `receipt_state='proven'` — gated on live `asset_kind`/`service_health`, never
+  the dependency's own possibly-stale receipt, never a fabricated digest. 5 new regression
+  tests added (positive case, blanket-bypass-negative cases ×2, missing-output-digest-negative,
+  digest-payload-stability); full orchestrator suite (1134 tests) re-run clean, 3 pre-existing
+  failures independently confirmed present on unmodified `origin/main` too (Swiss Ephemeris
+  sandbox gap, unrelated). Regenerated `nirmana-writer-digests.json`'s `probe_digest` (correct,
+  isolated consequence — confirmed it doesn't feed any layer's `writer_inventory_sha256`
+  aggregate). Logged as §7.2 in `ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md` (v1.1→v1.2). Dispatched
+  an independent code-reviewer subagent on the diff before shipping (frozen-orchestrator
+  change, warrants verification); awaiting its result before committing/PR. Fleet hygiene
+  clean meanwhile (own-PR: 0, DIRTY: empty, adjudications unchanged: 11).
 - `2026-09-07T04:53:16Z` — cycle 790: **IDLE-OK (verified).** Fleet PR list unchanged (3rd
   cycle), all MERGEABLE. Own-PR hygiene clean; adjudications unchanged (11); no new #2224 reply.
 - `2026-09-07T04:50:38Z` — cycle 789: **IDLE-OK (verified).** #2227/#2228 unqueued ~27min, still
