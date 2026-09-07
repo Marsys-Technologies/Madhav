@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T04:12:43Z` — cycle 775: **IDLE-OK (verified).** Fleet shrank to just #2201/#2165
+  (rest merged), both MERGEABLE, both already nudged once — not re-nudging. No new reply on
+  #2224 beyond my own ruling. Own-PR hygiene clean; adjudications unchanged (11).
 - `2026-09-07T03:55:18Z` — cycle 774: **RULED #2224 (new).** L1's wave-1 dispatch hit
   `ga_vargas`'s stale evidence — confirmed this is the SAME mechanism as my own #1945 Lane C
   finding (22/70 `asset_analysis_accepted` events invalidated, spanning 3 layers already).
