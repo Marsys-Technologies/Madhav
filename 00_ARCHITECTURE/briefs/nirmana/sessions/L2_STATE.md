@@ -553,6 +553,7 @@ ancestor (`ga_positions`) and is the designated canary.
 | 498 | 2026-09-07T01:17Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main advanced (`#2198`, L5's own state PR -- unrelated to L2). Both E-gates unchanged. No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 499 | 2026-09-07T01:20Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main unchanged since loop 498. Both E-gates unchanged (`bo_laksana` 12/21, `bo_laksana_rerank` 15/24). No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
 | 500 | 2026-09-07T01:22Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue. Main unchanged since loop 498. Both E-gates unchanged (`bo_laksana` 12/21, `bo_laksana_rerank` 15/24). No new `nirmana-adjudication` issues; all tracked issues' comment counts unchanged. Nothing new eligible -- printing IDLE-OK |
+| 501 | 2026-09-07T01:25Z | L2-W3 | **IDLE-OK (verified, not assumed).** PR hygiene: `#2165` healthy `BLOCKED`/`MERGEABLE`/armed, still pre-queue -- main static for 3 cycles, verified queue liveness (2 new batches building, `pr-2199/2200`), not a stall. Both E-gates unchanged. No new `nirmana-adjudication` issues. Nothing new eligible -- printing IDLE-OK |
 
 ## ASSET TABLE (22)
 
