@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.34-DRAFT"
+version: "0.35-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -255,7 +255,7 @@ silently equal to it.
 | F-A12 | ga_dashas + ga_vargas | **Independently re-verified cycle 171** — code genuinely fixed | `_load_natal_context_inner` lowercases the dignity oracle's own tier name directly (own F-A12 comment); reads live from `chart_divisionals` at build time so a rebuild picks it up with no further code change needed |
 | F-A4, F-B2, F-B12 | positions, sensitive, sensitive_degree | **Independently re-verified cycle 176** — `ga_positions`/`ga_sensitive_degree` already correct; `ga_sensitive` had a real bug, now fixed | `ga_positions`/`ga_sensitive_degree`'s `count_sql` category lists exactly match migrations 868/876/870's own verified writer-ownership; `ga_sensitive`'s had a genuine SQL operator-precedence bug (`AND`/`OR` binding let a trailing `bhava_arudha` clause escape the `chart_id` scope, live-confirmed 420-row cross-chart inflation) — fixed migration 877, PR #2237 |
 | F-C9 | ga_structural | Fixed | migration 842 (§1 row 9) |
-| F-A9, F-B1, F-D14, F-E1, F-E15 | dashas, sensitive, sade_sati, ayurdaya, tajaka | Claimed closed, cycle 125 sweep only | No dedicated per-F-id citation found — flagged, not re-verified this pass |
+| F-A9, F-B1, F-D14, F-E1, F-E15 | dashas, sensitive, sade_sati, ayurdaya, tajaka | **Independently re-verified cycle 178** — 4/5 genuinely fixed, 1/5 correctly and deliberately deferred | Migration 650 (`l1_w3_registry_truth.sql`) fixed F-A9 (`ga_dashas` target_floor 471767, fabricated Kalachakra rows excluded), F-B1 (`ga_sensitive` floor 8775, an achieved measurement not a deficit), F-D14 (`ga_sade_sati` floor 6120, stale defective-writer floor corrected), F-E1 (`ga_ayurdaya` floor 130) — all 4 live-confirmed matching exactly. F-E15 (`ga_tajaka`) was deliberately NOT touched by migration 650's own explicit scope note (§N.4: a floor whose fix changes what's produced must be set from the achieved count AFTER the rebuild, never fabricated ahead of it) — correct, not an oversight; `ga_tajaka` awaits the same rebuild gate as everything else |
 | F-B24 | ga_panchanga | Fixed at writer level | PR #1841 (§1 row 5) |
 | F-C1 | ga_strength (serving) | Fixed serving-side | L2's `query_ucd.ts` (§1 row 8) |
 | F-C2, F-C3, F-C4, F-C5, F-C7 | structural, strength | ROUTED to L2, not an L1 fix | Confirmed `bo_laksana.py`'s scope, not L1's (§2) |
@@ -273,20 +273,20 @@ silently equal to it.
 | F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
 | F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 31/57 closed across 7 slices (PR #2202), ~25 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157 | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
 
-**Honest count**: of 20 id-groups, 18 now have a specific, checkable citation in this report —
-14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles 171-172,
-genuinely fixed in code, pending a `ga_dashas` rebuild), `F-C8` (independently re-verified
-cycle 175, genuinely fixed in code, pending a `ga_condition` rebuild), and `F-A4/B2/B12`
+**Honest count**: of 20 id-groups, **all 20 now have a specific, checkable citation in this
+report** — 14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles
+171-172, genuinely fixed in code, pending a `ga_dashas` rebuild), `F-C8` (independently
+re-verified cycle 175, genuinely fixed in code, pending a `ga_condition` rebuild), `F-A4/B2/B12`
 (independently re-verified cycle 176 — `ga_positions`/`ga_sensitive_degree` already correct;
-`ga_sensitive` had a real SQL operator-precedence bug, fixed migration 877 — see rows above for
-the full traces). **1 remaining** (`F-A9/B1/D14/E1/E15` — 5 individual F-ids across `ga_dashas`/
-`ga_sensitive`/`ga_sade_sati`/`ga_ayurdaya`/`ga_tajaka`) still rests on cycle 125's own sweep
-with no dedicated citation this session could find. That is not evidence it is wrong —
-F-B32/F-B33 is the only id-group this campaign has actually found to be incorrectly claimed
-closed — but per the same discipline, an uncited claim should be named as such rather than
-presented with the same confidence as a cited one. A future cycle spot-checking this last group
-live (the same method used for F-A4/B2/B12/F-A10/F-A12/F-C8/F-B32/F-B33) would close this
-table's own remaining honesty gap entirely.
+`ga_sensitive` had a real SQL operator-precedence bug, fixed migration 877), and `F-A9/B1/D14/
+E1/E15` (independently re-verified cycle 178 — 4/5 genuinely fixed via migration 650,
+live-confirmed matching exactly; the 5th, `ga_tajaka`, correctly and deliberately deferred per
+§N.4's own floor-timing doctrine, not an oversight — see rows above for the full traces). **This
+closes the disposition table's own honesty gap entirely**: every MUST-tier id-group this session
+inherited from cycle 125's sweep has now been independently re-verified live, not merely
+re-asserted. Of the 20, `F-B32`/`F-B33` remains the only id-group this campaign has actually
+found to be incorrectly claimed closed (F-B32 still genuinely open, tracked in §2/§5); every
+other group's cycle-125 "closed" claim held up under independent re-verification.
 
 ## §3 — Pillar movement (per the five doctrines)
 

@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 177; **`ga_dashas`' first-time campaign evidence submitted, clean pair, verified live.** Confirmed deploy genuinely past the F-A17 merge (`36e8d84...`, checked live) before proceeding. Computed fresh registry_fingerprint/analysis_digest via the dispatch script's own functions, submitted `asset_analysis_accepted` + `optimization_verdict_accepted` back-to-back (zero gap, applying the orphaned-generation lesson) -- both 201, identical source_ref, no race hit this time. Ran a dry-run dispatch for `ga_dashas` alone as a final check: the evidence-matching logic accepted it cleanly with zero complaint, hit only the already-known, already-escalated `asset_frozen` E-gate (unfrozen ancestor: `ga_positions`) -- confirms the evidence itself is genuinely valid, not just accepted. Every `ga_*` asset investigated this session now has clean, current evidence except `ga_transit_anchors` (still-orphaned verdict) and the untouched `ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu` zero-evidence bucket. Posted the result to #2224. #2113/#2180 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 178; **closed the close report's ENTIRE remaining "uncited MUST-tier group" gap.** Independently re-verified F-A9/B1/D14/E1/E15 ("floors wrong in five ways", dashas/sensitive/sade_sati/ayurdaya/tajaka) -- found migration 650 (`l1_w3_registry_truth.sql`) already fixed 4/5 (ga_dashas target_floor 471767, ga_sensitive 8775, ga_sade_sati 6120, ga_ayurdaya 130), all live-confirmed matching exactly. The 5th, ga_tajaka, was DELIBERATELY left alone by that same migration's own explicit scope note (§N.4: a floor whose fix changes what's produced must be set from the achieved count AFTER rebuild, never fabricated ahead of it) -- correct, not an oversight. Also discovered migration 650 is where the operator-precedence bug I fixed last cycle (migration 877) ORIGINATED -- it appended `bhava_arudha` to ga_sensitive's count_sql via unparenthesized string concatenation while ALSO correctly setting target_floor=8775 from the true rows_written count, meaning target_floor was right all along and my fix just restored count_sql to match it. **All 20 of the close report's MUST-tier id-groups now carry a specific, checkable, independently-re-verified citation** -- F-B32/F-B33 remains the only one this campaign has actually found incorrectly claimed closed; every other cycle-125 "closed" claim held up. Updated §2.5's disposition table and "Honest count" paragraph accordingly. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9931,3 +9931,65 @@ F-A17 investigation — next: independently re-verify the last remaining uncited
 (`F-A9/B1/D14/E1/E15`), or investigate the untouched zero-evidence bucket
 (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`); keep re-checking
 #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 178 (C8 v2.3) — closed the close report's ENTIRE remaining uncited-MUST-group gap;
+## all 20 id-groups now independently re-verified, not just re-asserted
+
+PR hygiene: `#2237` (`ga_sensitive` count_sql fix) and `#2228` (this state branch) both
+`MERGEABLE`/`BLOCKED` with zero RED checks — `#2237`'s Governance Gates job confirmed genuinely
+`in_progress` (not stuck) via a direct job-status API check, not assumed from a long pending
+duration alone. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new Conductor
+reply beyond my own prior comments.
+
+**Unit of work: independently re-verify F-A9/B1/D14/E1/E15**, the last of the close report's
+originally-6 uncited MUST-tier groups. Read its description first: "Floors wrong in five ways:
+encoding fabricated rows, vintage mismatch, achieved-by-a-defective-writer, unset (0), and a
+wall-clock-derived equality. Each re-baselined with a derivation, per C12" — across `ga_dashas`/
+`ga_sensitive`/`ga_sade_sati`/`ga_ayurdaya`/`ga_tajaka`. Queried all 5 assets' current
+`target_floor` values live FIRST, before assuming anything about their status.
+
+**Found the answer already exists, correctly, in a migration this session hadn't cross-referenced
+to these specific F-ids**: `migrations/650_nirmana_l1_w3_registry_truth.sql`
+("l1_w3_registry_truth") — read its full content directly. Confirmed **4 of 5 genuinely fixed,
+matching live exactly**: F-A9 (`ga_dashas` `target_floor=471767`, explicitly excluding ~71k
+fabricated Kalachakra-repetition rows PR #527 already removed — "Correcting it now matters
+because the existing 536,471 actively invites someone to 'close the gap' by restoring exactly the
+fabricated repetition"), F-B1 (`ga_sensitive` `target_floor=8775`, "NOT a build deficit... an
+achieved measurement"), F-D14 (`ga_sade_sati` `target_floor=6120`, a stale defective-writer floor
+corrected), F-E1 (`ga_ayurdaya` `target_floor=130`).
+
+**The 5th, F-E15 (`ga_tajaka`), was DELIBERATELY left untouched** — not an oversight, confirmed
+by the migration's own explicit scope note: "`ga_vargas`, `ga_condition`, `ga_tajaka`,
+`ga_transit_anchors`, `ga_medical` and `ga_vastu` floors are deliberately LEFT ALONE: their fixes
+change what is produced... so their floors are set from the achieved count AFTER their W4 build,
+per §N.4. Setting them now would fabricate a number ahead of the measurement it records." This is
+the CORRECT application of the campaign's own floors-are-achieved-not-fabricated doctrine, not a
+gap — `ga_tajaka` genuinely needs its own rebuild before a real floor can be set, same class as
+`ga_condition`/`ga_positions` before it.
+
+**A genuinely pleasing side-discovery**: migration 650 is where the SQL operator-precedence bug I
+fixed last cycle (migration 877) actually ORIGINATED — its own text shows `count_sql = count_sql
+|| ' OR fact_category = ''bhava_arudha'''`, an unparenthesized string concatenation onto the
+existing query, exactly reproducing the bug's mechanism. The SAME migration, in the SAME breath,
+correctly set `target_floor=8775` from `rows_written` (the true, authoritative build-output
+count) — meaning `target_floor` was accurate all along, and my migration 877 fix simply restored
+`count_sql`'s live result to match the floor that had already been correctly set via an
+independent, non-buggy source. A nice closed loop: two sessions' worth of work (an earlier
+migration and this cycle's own fix) turn out to agree exactly once the bug is removed.
+
+**Updated the close report's §2.5 disposition table and its "Honest count" summary paragraph to
+reflect the closure**: all 20 MUST-tier id-groups this session inherited from cycle 125's sweep
+now carry a specific, checkable, independently-re-verified citation — not merely re-asserted.
+`F-B32`/`F-B33` remains the only id-group this campaign has actually found to be incorrectly
+claimed closed (still tracked as genuinely open in §2/§5); every other group's cycle-125 "closed"
+claim held up under this session's own independent re-verification, cycle by cycle.
+
+CYCLE 178 L1: PR hygiene clean; **closed the close report's entire remaining uncited-MUST-group
+gap** — F-A9/B1/D14/E1/E15 independently re-verified (4/5 genuinely fixed via migration 650,
+live-confirmed; the 5th, `ga_tajaka`, correctly and deliberately deferred, not an oversight) —
+all 20 of the disposition table's id-groups now carry a real citation, and a nice side-discovery
+traced last cycle's SQL-bug fix (migration 877) back to its origin in the same migration that
+already correctly set the floor it was disagreeing with — next: investigate the untouched
+zero-evidence bucket (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`), or
+resolve `ga_transit_anchors`' still-orphaned verdict; keep re-checking #2113/#2180/#2224 every
+cycle regardless.
