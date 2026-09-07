@@ -497,6 +497,82 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~483:0xZ — L3-W4 — PR hygiene: `#2330` advanced to
+  position 1 (top of queue) — `#2328` merged (unrelated L2
+  heartbeat/output-digest PR, confirmed via `origin/main`, no L3
+  overlap). Two PRs behind it (`#2329` L1, `#2333` L5) both show
+  `UNMERGEABLE` — neither is ours, no action taken. Own `merge_group`
+  build not yet visible, consistent with the heavy fleet-wide CI
+  congestion observed throughout this window (many concurrent L1/L2/
+  L5 sessions pushing simultaneously). No new E-gate opening.
+  IDLE-OK. — blocked on: `#2330` finishing; next action: same.
+- `2026-09-07T~482:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  2, `AWAITING_CHECKS` — `#2328` (ahead) now ~10.4min queued, own
+  build still not visible. Approaching but not yet past the
+  previously observed ~11min self-resolving congestion window. No
+  new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2328` clearing ahead of `#2330`; next action: same,
+  watch closely.
+- `2026-09-07T~481:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  2, `AWAITING_CHECKS` — `#2328` (ahead) queued ~8.4min, own build
+  not yet visible, same recurring congestion pattern, not yet a
+  stall concern. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2328` clearing ahead of `#2330`; next
+  action: same.
+- `2026-09-07T~480:0xZ — L3-W4 — PR hygiene: `#2327` merged
+  (congestion self-resolved again, confirmed via `origin/main`, no
+  L3 overlap). Live queue listing shows `#2330` actually at position
+  2 (the PR-level GraphQL query lagged behind, still reporting stale
+  position 3) — one unrelated L2 PR (`#2328`) ahead, itself still
+  `AWAITING_CHECKS`. Also noted: `#2329` (L1, queued BEHIND `#2330`
+  at position 3) shows `UNMERGEABLE` — not my PR, not blocking me,
+  no action taken. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2328` clearing ahead of `#2330`; next action: same.
+- `2026-09-07T~479:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  3, `AWAITING_CHECKS` — `#2327` (ahead, position 1) has been
+  queued ~10.9min with no own `merge_group` run visible yet, same
+  runner-capacity congestion pattern already established this
+  session (self-resolved at similar durations several times before).
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2327`/`#2328` clearing ahead of `#2330`; next
+  action: same, watch closely.
+- `2026-09-07T~478:0xZ — L3-W4 — PR hygiene: `#2330`'s checks
+  finished (0 failures — the ~9.5min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 3 —
+  two unrelated PRs ahead (`#2327` L1, `#2328` L2), both still
+  `AWAITING_CHECKS`, normal congestion. No new `origin/main` merges.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2327`/`#2328`
+  clearing ahead of `#2330`; next action: same.
+- `2026-09-07T~477:0xZ — L3-W4 — PR hygiene: `#2330`'s last check,
+  same run, now ~8.3min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2330` finishing; next
+  action: same.
+- `2026-09-07T~476:0xZ — L3-W4 — PR hygiene: `#2330`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2330` finishing; next
+  action: same.
+- `2026-09-07T~475:0xZ — L3-W4 — PR hygiene: `#2330`'s
+  `DB Integration Tests` now passed; `Unit Tests`/`Governance Gates`
+  still pending, nothing red. One new `origin/main` merge (`#2324`,
+  L5 heartbeat — no L3 overlap). No new E-gate opening. IDLE-OK. —
+  blocked on: `#2330` clearing checks/queue; next action: same.
+- `2026-09-07T~474:0xZ — L3-W4 — PR hygiene: `#2330`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2330` clearing checks/queue; next action: same.
+- `2026-09-07T~473:0xZ — L3-W4 — PR hygiene: `#2322` confirmed
+  MERGED (the queue congestion pattern self-resolved once more, at
+  ~9min this time). Rebased 22 local commits onto fresh
+  `origin/main`, 7 empty-theirs conflicts auto-resolved cleanly,
+  zero markers left. Renamed to `codex/nirmana-l3-heartbeat-idle-32`,
+  pushed, opened `#2330`, auto-merge armed (`BLOCKED`, own checks
+  pending — normal). No new E-gate opening this cycle. IDLE-OK. —
+  blocked on: `#2330`'s own checks completing; next action: same
+  monitoring cadence.
+
 - `2026-09-07T~472:0xZ — L3-W4 — PR hygiene: `#2322` still position
   1, `AWAITING_CHECKS` — ~8.6min since enqueued, own `merge_group`
   run still not visible. Approaching but not yet past the
