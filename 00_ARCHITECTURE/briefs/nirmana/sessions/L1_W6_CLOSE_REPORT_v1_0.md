@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.14-DRAFT"
+version: "0.15-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -27,7 +27,9 @@ re-verified LIVE cycle 146 and is genuinely **still open**. F-B33 (the false CI-
 CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quantified precisely
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
-— 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
+— 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
+cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
+not stale names; no list edit needed for them. Being closed incrementally
 cycle 149 onward (31/57 landed across 7 slices, PR #2202; ~25 remaining reframed cycle 156 as
 genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
@@ -139,22 +141,31 @@ id-groups.**
   catching this session's own.) A full `comm`-based diff (cycle 148) found: **57 categories live
   for the canonical chart are absent from the 169-list** (e.g. `ayurdaya`, `bhava_cusps`,
   `graha_nakshatra_join`, `special_lagna`, `upapada_lagna`, `kp_house_significators` — the full
-  57 are diverse, spanning nearly every section of the file); **7 entries in the 169-list are NOT
-  live for the canonical chart**, of which 6 (`ashtakavarga_anubindu`, `dosha_fires`,
-  `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`,
-  `yoga_fires`) do not exist as a `fact_category` value **anywhere in the table, for any chart**
-  — genuinely phantom/stale names, not just chart-specific absences (`yoga_label`/`dosha_label`
-  are the real live categories the file already separately and correctly lists) — and the 7th
-  (`karaka_web_per_varga`) is a real category with 2,945 live rows, just not yet built for the
-  canonical chart specifically, so not itself a defect. Separately, `concept_aliases.ts:14` cited
+  57 are diverse, spanning nearly every section of the file); **7 entries in the 169-list showed
+  zero rows for the canonical chart at cycle 148's measurement** — `ashtakavarga_anubindu`,
+  `dosha_fires`, `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`,
+  `esoteric_point_trisphuta`, `yoga_fires`, `karaka_web_per_varga`. **Cycle 148 called the first
+  6 "phantom/stale names" — CORRECTED cycle 157: this was wrong.** Grepped all 6 category
+  strings directly against every `ga_writers/*.py` file and found every one traces to real,
+  currently-active writer code, genuinely called from the main aggregation flow (not orphaned):
+  `ashtakavarga_anubindu` (`ga_structural_writer.py`'s `_build_anubindu_rows`, called at line
+  6743), `dosha_fires`/`yoga_fires` (same file, appear in the writer's own row-count accounting
+  and a reconciliation map that treats them as siblings of — not superseded by —
+  `dosha_label`/`yoga_label`), and the three `esoteric_point_*` categories (`ga_sensitive_
+  writer.py`'s `_long_rows` calls). The real explanation is simpler and not a defect at all:
+  both owning assets (`ga_structural`, `ga_sensitive`) are already-documented `rebuild_only`
+  with pending fixes, and both are inside the SAME waves 1-3 scope adjudication #2180 already
+  ruled on — once those waves dispatch, these categories populate naturally. `karaka_web_per_
+  varga` was correctly already identified (cycle 148) as real-but-not-yet-built, same root
+  cause. **No coverage_matrix.ts change is needed for any of these 7** — the correction is to
+  this report's own prior claim, not to the file. Separately, `concept_aliases.ts:14` cited
   `platform/scripts/census/schema_map_alias_coverage_check.ts` as an existing CI regression check;
   that file did not exist — **fixed cycle 147, PR #2191** (docstring corrected to state reality
   honestly rather than build the check against a still-unsettled category count). F-B32's own fix
-  (updating the 169-list to the true 219, and removing/investigating the 6 phantom entries) is
-  handed forward as the next unheld MUST-tier item in §5 — assigning each of the 57 missing
-  categories to its correct serving tool requires per-category verification against real serving
-  code, which is out of scope for any single bounded cycle; this cycle's contribution is the
-  verified, corrected diff itself, not the edit.
+  (mapping the 57 missing categories to their correct serving tools) is handed forward as the
+  next unheld MUST-tier item in §5 — per-category verification against real serving code, out of
+  scope for any single bounded cycle; this cycle's contribution is the verified, corrected diff
+  itself, not the edit.
   The remaining MUST-tier disposition: the large majority
   fixed at the writer or serving-layer level across cycles 1-124; five id-groups (F-C2/C3/C4/C5/
   C7, the D-SALIENCE feed) correctly routed to L2's `bo_laksana.py` — confirmed not an L1 file;
@@ -313,17 +324,19 @@ awaits either a dedicated prep cycle or genuine W6 close.
   live are missing from the 169-list** (full list recorded in this session's cycle-148
   scratchpad; spans nearly every section of the file — ashtakavarga, graha_avastha-per-varga,
   KP, nakshatra-relationship, special-lagna, and more — not concentrated in one area, so no
-  single section owner can absorb the whole fix); **6 entries in the 169-list are phantom** —
-  `ashtakavarga_anubindu`, `dosha_fires`, `esoteric_point_chatushphuta`,
-  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`, `yoga_fires` do not exist as a
-  `fact_category` value for ANY chart in the table (not just the canonical one) — these look like
-  stale/renamed names (the real live categories are `yoga_label`/`dosha_label`, already
-  separately and correctly listed) and should be investigated (real category that was renamed?
-  never-implemented aspiration?) before either removing or re-pointing them; one entry
-  (`karaka_web_per_varga`) is real (2,945 live rows) but not yet built for the canonical chart —
-  not a list defect. The actual edit (assigning each of the 57 to a verified real serving tool,
-  and resolving the 6 phantoms) needs per-category verification against real serving code and is
-  still too large for one bounded cycle. **Being closed incrementally instead of in one bulk
+  single section owner can absorb the whole fix); **7 entries in the 169-list showed zero live
+  rows at cycle 148's measurement** — `ashtakavarga_anubindu`, `dosha_fires`,
+  `esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`,
+  `yoga_fires`, `karaka_web_per_varga`. Cycle 148 called the first 6 "phantom" (stale/renamed);
+  **CORRECTED cycle 157** — all 6 trace to real, currently-active writer code
+  (`ga_structural_writer.py`, `ga_sensitive_writer.py`), genuinely called from the main
+  aggregation flow, not orphaned. The zero-rows measurement was a build-lag artifact: both
+  owning assets are `rebuild_only` and inside the same waves 1-3 scope #2180 already ruled on.
+  `karaka_web_per_varga` was already correctly identified (cycle 148) as real-but-not-yet-built,
+  same root cause. **No coverage_matrix.ts edit is needed for any of these 7.** The actual edit
+  still needed (assigning each of the 57 missing categories to a verified real serving tool)
+  needs per-category verification against real serving code and is still too large for one
+  bounded cycle. **Being closed incrementally instead of in one bulk
   pass, cycle 149 onward, all landing on the same PR #2193**: slice 1
   (`graha_avastha_baladi_per_varga`, `_deeptaadi_per_varga`, `_jagradadi_per_varga`,
   `_lajjitadi_per_varga`, `_sayanadi_per_varga` — 5/57), verified via `get_avasthas.ts`'s own
@@ -354,9 +367,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
   `house_chalit` (opt-in via `get_bhava_bala.ts`, same data-driven doctrine as every prior
   opt-in slice). Slice 7 (1/57): `dispositor_tree` — opt-in via `get_dispositors.ts`'s
   data-driven query, 1450 live rows. All seven slices confirmed via live row counts before
-  adding. **31/57 closed, ~26/57 remain open**; the 6 phantom entries and the get_nakshatra.ts
-  3-category docstring overclaim are both untouched (need their own separate investigation
-  before either removing or re-pointing). **New finding, cycle 153**: `graha_yuddha_per_varga`
+  adding. **31/57 closed, ~26/57 remain open**. **Correction, cycle 157**: the 6 entries this
+  report previously called "phantom" (`ashtakavarga_anubindu`, `dosha_fires`, `yoga_fires`,
+  `esoteric_point_chatushphuta`/`panchasphuta`/`trisphuta`) are NOT stale/dead names — grepped
+  each directly against every `ga_writers/*.py` file and found all 6 trace to real, currently-
+  active writer code, genuinely called from the main aggregation flow. The zero-live-rows
+  measurement that produced the "phantom" framing was a build-lag artifact: both owning assets
+  (`ga_structural`, `ga_sensitive`) are already-documented `rebuild_only` and inside the SAME
+  waves 1-3 scope adjudication #2180 already ruled on — once dispatched, these categories
+  populate naturally. No `coverage_matrix.ts` change needed for any of the 6; the correction was
+  to this report's own prior claim. The get_nakshatra.ts 3-category docstring overclaim remains
+  untouched and genuinely needs its own separate investigation. **New finding, cycle 153**:
+  `graha_yuddha_per_varga`
   (17 live rows) was checked against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by
   any tool — that tool hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for
   this chart) with no `categories`-override mechanism, unlike every other per_varga category
@@ -387,10 +409,12 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-7 (31
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; ~25 remaining reframed cycle 156 as genuinely
-unreachable by any tool — a tool-coverage gap, not a list-staleness gap; plus 6 phantoms and
-get_nakshatra.ts's own 3-category docstring overclaim remain, unheld, does not need
+unreachable by any tool — a tool-coverage gap, not a list-staleness gap; the "6 phantom
+categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
+rebuild, no edit needed; get_nakshatra.ts's own 3-category docstring overclaim remains, unheld,
+does not need
 #2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
 cycle 153/156, distinct from F-B32's own list-repair scope)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; wave 1 blocked on `natural_key_partition`,

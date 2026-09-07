@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 156; #2180 still awaiting a reply (own comment from cycle 155 remains the last one). Continued F-B32 with slice 7 (PR #2202): dispositor_tree (opt-in via get_dispositors.ts, 1450 live rows). Bigger finding this cycle: swept every remaining category name against every L1_ganita/*.ts file -- of ~26 remaining after this slice, dispositor_tree was the ONLY one with a real serving tool; the other ~25 are genuinely unreachable by any tool, same defect class as graha_yuddha_per_varga. 31/57 closed; reframes the rest of F-B32 as mostly a tool-coverage gap, not a list-staleness gap. #2113 still quiet
+last_updated: 2026-09-07 — C8 v2.3 cycle 157; corrected a real error in this session's own cycle-146/148 "6 phantom entries" finding. Traced all 6 (ashtakavarga_anubindu, dosha_fires, yoga_fires, esoteric_point_chatushphuta/panchasphuta/trisphuta) to REAL, ACTIVE writer code (ga_structural_writer.py, ga_sensitive_writer.py) that is genuinely called from the main aggregation flow -- these are not phantom/dead category names, they are correctly-declared categories whose owning assets (ga_structural, ga_sensitive) are simply `rebuild_only`/awaiting the same wave 1-3 rebuild #2180 already ruled on. No coverage_matrix.ts edit needed for these 6; the "phantom" framing itself was wrong. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8690,3 +8690,48 @@ record — they are the only entries in this table with a real wall-clock behind
   wave 1; keep re-checking #2113/#2180 every cycle regardless; if both stay quiet next cycle,
   consider the 139-row per-finding disposition table (the last remaining charter-named prep
   item) as the fallback unit.
+- 2026-09-07T11xZ -- CYCLE 157 (C8 v2.3). PR hygiene: `#2202`/`#2201` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 156 -- still no reply.
+  With F-B32's list-repair work effectively exhausted (cycle 156's own conclusion) and #2180
+  still quiet, picked the next genuinely open, bounded item instead of jumping straight to the
+  disposition table: the "6 phantom entries" finding from cycle 146/148
+  (`ashtakavarga_anubindu`, `dosha_fires`, `yoga_fires`, `esoteric_point_chatushphuta`,
+  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta` -- categories in `coverage_matrix.
+  ts`'s 169-list with ZERO live rows for the canonical chart, at the time flagged as possibly
+  stale/renamed and needing investigation before either removing or re-pointing).
+  Investigated properly this time instead of leaving it as an open question: grepped each of the
+  6 category-string literals directly against every `ga_writers/*.py` file. **All 6 trace to
+  real, currently-active writer code**, not stale/dead names:
+  - `ashtakavarga_anubindu`: `ga_structural_writer.py`'s `_build_anubindu_rows` (line 1645),
+    called unconditionally from the main per-chart aggregation flow (line 6743:
+    `all_rows.extend(_build_anubindu_rows(...))`) -- confirmed it is genuinely wired in, not
+    orphaned.
+  - `dosha_fires`, `yoga_fires`: same file, `_evaluate_yoga_fires`-family functions -- both
+    appear in the writer's own row-count accounting (`yoga_count`/`dosha_count` summary at line
+    6787-6788) and a reconciliation map (line 7812-7822) that treats them as siblings of the
+    already-served `yoga_label`/`dosha_label` categories (a fires-vs-label distinction, not a
+    fires-superseded-by-label rename as this session had assumed at cycle 148).
+  - `esoteric_point_chatushphuta`/`_panchasphuta`/`_trisphuta`: `ga_sensitive_writer.py`, real
+    `_long_rows(...)` calls (lines 938/943/952) inside the writer's normal point-computation
+    flow.
+  **Root cause of the zero-live-rows measurement, not a coverage_matrix.ts defect at all**: both
+  owning assets are already-documented `rebuild_only` with pending fixes awaiting a rebuild --
+  `ga_structural` (§1 asset table: "7 tracked-red F-A14 conjuncts...awaiting rebuild") and
+  `ga_sensitive` ("deficit = floor-vintage mismatch, not a defect"). Both are inside the SAME
+  waves 1-3 scope #2180 already ruled on (`ga_sensitive`=wave1, `ga_structural`=wave3) -- once
+  those waves actually dispatch, these 6 categories should populate naturally with no
+  coverage_matrix.ts change needed. **Correcting my own prior finding, not someone else's**:
+  cycle 146/148's "phantom entries" framing was itself the unverified claim -- I had measured
+  zero live rows and inferred "stale/renamed" without checking whether the writer code that
+  produces them still exists and runs. It does. This is the exact same §N.8 discipline this
+  segment has applied to other sessions' and my own earlier claims, turned on my own
+  cycle-146/148 conclusion this time.
+  No file edit needed as a result -- the correct action is recording the correction (this entry
+  + the close report update), not touching `coverage_matrix.ts` (nothing wrong with those 6
+  entries) or the writers (already correct, just not yet rebuilt for this chart).
+  CYCLE 157 L1: PR hygiene clean; corrected a real error in this session's own earlier "6
+  phantom entries" finding -- all 6 are genuinely active, just awaiting the already-ruled wave
+  1-3 rebuild, not stale/dead category names -- next: the 139-row per-finding disposition table
+  is now the clearest remaining charter-named prep item if #2180/#2113 stay quiet further; keep
+  re-checking both every cycle regardless.
