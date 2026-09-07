@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:44:15Z` — cycle 822: **IDLE-OK (verified).** #2227's Governance Gates check
+  restarted again (~1min ago) — consistent with the now-understood pattern (9-10min check +
+  repeated rebasing while waiting in a busy queue), not stuck. Fleet DIRTY empty; adjudications
+  unchanged (11).
 - `2026-09-07T06:41:47Z` — cycle 821: **IDLE-OK (verified).** #2228 merged. #2227's checks
   progressing, expected soon given the known ~9-10min Governance Gates duration. Fleet DIRTY
   empty; adjudications unchanged (11).
