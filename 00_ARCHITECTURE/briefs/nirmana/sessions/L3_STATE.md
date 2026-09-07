@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~397:0xZ — L3-W4 — PR hygiene: `#2282` advanced to
+  position 1 (top of queue) — `#2281` merged (unrelated L5
+  heartbeat PR, confirmed via `origin/main`, no L3 overlap).
+  `#2282`'s own `merge_group` run has started: `TAP CI`/`EKV` both
+  completed/passed, `CI — Ganga Quality Gate` `in_progress`. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2282` finishing; next
+  action: same.
 - `2026-09-07T~396:0xZ — L3-W4 — PR hygiene: `#2282` still position
   2, `AWAITING_CHECKS` — `#2281`'s `Governance Gates` job now
   ~9.1min into the same known-slow `pytest —
