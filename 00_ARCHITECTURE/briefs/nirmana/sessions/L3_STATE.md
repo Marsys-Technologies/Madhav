@@ -495,6 +495,96 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~231:0xZ — L3-W4 — PR hygiene: `#2222` advanced to
+  position 1 (top of queue), `AWAITING_CHECKS`, own `merge_group`
+  ~10.9min in — right at the edge of the confirmed ~11min normal
+  range, matching the precedent from `#2214`/`#2218` right before
+  they each finished. NOTABLE: `#2221` merged — "fix ga_positions
+  sandhi_flag undercount in migrations 868/875" — yet another
+  correction to `ga_positions`' authoring chain (this one a bugfix on
+  the prior two fixes, not new component authoring). `ga_positions`
+  re-verified live: still `OPEN-PENDING-PIN`. No new E-gate opening
+  for L3. IDLE-OK. — blocked on: `#2222` finishing; next action:
+  same, expect completion next cycle per precedent.
+- `2026-09-07T~230:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
+  run, now ~8.8min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` finishing; next
+  action: same, check step-level detail next cycle if still on this
+  exact run.
+- `2026-09-07T~229:0xZ — L3-W4 — PR hygiene: `#2222`'s own `merge_group`
+  build still `in_progress`, `Unit Tests` now passed, only
+  `Governance Gates` remains (~6.7min, within range, same run). No
+  new `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2222` finishing;
+  next action: same.
+- `2026-09-07T~228:0xZ — L3-W4 — PR hygiene: `#2222`'s own `merge_group`
+  build still `in_progress` (~4.9min, within range, same run). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` finishing; next
+  action: same.
+- `2026-09-07T~227:0xZ — L3-W4 — PR hygiene: `#2222` still position 2,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2222-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~2.9min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges, `ga_positions` re-verified live: still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2222` finishing; next action: same.
+- `2026-09-07T~226:0xZ — L3-W4 — PR hygiene: `#2222`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 2 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_positions` re-verified
+  live: still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2222` finishing; next action: same.
+- `2026-09-07T~225:0xZ — L3-W4 — PR hygiene: `#2222`'s last check, same
+  run, now ~8.5min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step (`
+  mergeStateStatus` briefly `UNKNOWN`, normal async lag, confirmed via
+  step-level check). NOTABLE: `#2220` merged — "ga_positions
+  output_digest_spec (migration 875, fix 2/2 of `#2180`)" — the second
+  and apparently final authoring fix for adjudication `#2180`. Re-ran
+  full `egate.sql` L1+L3 sweep live: `ga_positions` **still**
+  `OPEN-PENDING-PIN` — all now-known authoring components (7/7
+  `natural_key_partition` + 2/2 `output_digest_spec`) complete, but
+  the pin/freeze action itself has not fired. Watching, not acting —
+  this remains the L1 sibling session's dispatch to make. No new
+  E-gate opening for L3. IDLE-OK. — blocked on: `#2222` finishing;
+  next action: same, watch very closely now that all known inputs are
+  authored.
+- `2026-09-07T~224:0xZ — L3-W4 — PR hygiene: `#2222`'s last check
+  (`Governance Gates`) ~6.5min, within normal range, `Unit Tests` now
+  also passed. No new `origin/main` merges, no new E-gate opening.
+  IDLE-OK. — blocked on: `#2222` finishing; next action: same.
+- `2026-09-07T~223:0xZ — L3-W4 — PR hygiene: `#2222`'s pre-queue check
+  run still `in_progress` (~4.4min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed; `Unit Tests` +
+  `Governance Gates` still pending. No new `origin/main` merges, no
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` finishing; next
+  action: same.
+- `2026-09-07T~222:0xZ — L3-W4 — PR hygiene: `#2222` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, `ga_positions`
+  still `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked
+  on: `#2222` clearing checks/queue; next action: same.
+- `2026-09-07T~221:0xZ — L3-W4 — PR hygiene: `#2218` MERGED. Rebased
+  the 23 not-yet-merged local heartbeat commits onto fresh
+  `origin/main`. Hit the standard empty-theirs prepend-conflict
+  pattern 9x (auto-resolved via the marker-strip loop, each verified
+  empty-theirs before stripping). Verified zero conflict markers
+  remain; rebased diff vs `origin/main` is `L3_STATE.md`-only. Renamed
+  branch to `codex/nirmana-l3-heartbeat-idle-8`, pushed, opened PR
+  `#2222`, armed auto-merge (confirmed via GraphQL
+  `autoMergeRequest.enabledAt` set). Re-ran `egate.sql` live: despite
+  all 7/7 `natural_key_partition` components now authored,
+  `ga_positions` still `OPEN-PENDING-PIN` — the pin/freeze itself has
+  not fired yet. `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` clearing
+  checks/queue; next action: same monitoring cadence, watch closely
+  for the freeze.
 - `2026-09-07T~220:0xZ — L3-W4 — PR hygiene: `#2218` advanced to
   position 2, `AWAITING_CHECKS`, own `merge_group` ~9.4min in
   (`mergeStateStatus` briefly `UNKNOWN`, normal async lag, confirmed
