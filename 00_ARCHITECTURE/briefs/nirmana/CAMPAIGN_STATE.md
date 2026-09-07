@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:11:09Z` — cycle 875: **IDLE-OK, Δfrozen +0.** `ga_dashas` still advancing
+  (09:07:58→09:09:44), ~13 min into its build — longer than `ga_positions` took end-to-end, but
+  continuous forward progress + no error, so reading it as a heavier writer rather than a stall.
+  Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
+  (11).
 - `2026-09-07T09:08:47Z` — cycle 874: **IDLE-OK, Δfrozen +0.** `ga_dashas` `last_built_at`
   advanced 09:00:45→09:07:58 (fresh, 49s old at check) — genuinely active, not stuck, no error.
   Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
