@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:08:38Z` — cycle 966: **IDLE-OK, Δfrozen +0.** `ga_condition` mid-W4
+  (`implementation_accepted`). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
+  open. Adjudications unchanged (11).
 - `2026-09-07T13:06:21Z` — cycle 965: **L1 dispatching `ga_condition`** — a new asset, not in
   the original 9-asset frontier list, meaning `ga_dashas`' freeze just opened another downstream
   slice. Δfrozen still +0 (56/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene:
