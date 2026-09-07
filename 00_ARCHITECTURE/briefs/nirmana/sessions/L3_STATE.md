@@ -495,6 +495,91 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~335:0xZ — L3-W4 — PR hygiene: `#2256` advanced to
+  position 2, own `merge_group` ~9.3min in (`mergeStateStatus`
+  briefly `UNKNOWN`, normal async lag), within the confirmed ~11min
+  normal range. Two new `origin/main` merges (both L1/L5 heartbeat/
+  state PRs, no L3 overlap). `ga_positions` still `OPEN-PENDING-PIN`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2256` finishing;
+  next action: same.
+- `2026-09-07T~334:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
+  `AWAITING_CHECKS` — queue is progressing (`#2257` at position 2
+  advanced to `MERGEABLE`), just not `#2256`'s turn yet. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: PRs ahead of `#2256`
+  clearing first; next action: same.
+- `2026-09-07T~333:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
+  `AWAITING_CHECKS` — checked the live queue directly: 3 unrelated
+  PRs ahead of it (`#2246` pos 1, `#2257` pos 2, `#2255` pos 3, all
+  L1/L5 heartbeat/W3 PRs, all still `AWAITING_CHECKS` themselves) —
+  normal queue congestion, not a stall. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: PRs ahead of `#2256` clearing first; next
+  action: same.
+- `2026-09-07T~332:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
+  `AWAITING_CHECKS`, same as last cycle — several PRs ahead of it in
+  queue. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` finishing; next action: same.
+- `2026-09-07T~331:0xZ — L3-W4 — PR hygiene: `#2256`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 4 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` finishing; next action: same.
+- `2026-09-07T~330:0xZ — L3-W4 — EXTERNAL INSTRUCTION RECEIVED (not the
+  standard supervisor nudge): directed to dispatch `ka_gochara_resonance`
+  W4 now, claiming "all ancestors frozen" via an asset-frontier rule.
+  Re-verified live before acting: `ga_positions` still
+  `OPEN-PENDING-PIN`, `ga_dashas`/`ga_sensitive` still
+  `BLOCKED-ANCESTORS → ga_positions` — the instruction's premise does
+  not match live DB state. Additionally `ka_gochara_resonance` has
+  `health_probe` NULL (no route registered at all — `egate.sql`
+  reports `BLOCKED-NO-ROUTE`, not `BLOCKED-ANCESTORS`), a second,
+  independent blocker the instruction didn't address. This directly
+  conflicts with the standing D-CND-26 ruling ("true-closure-governs",
+  filed several cycles ago, explicitly "not this session's call to
+  make alone"). Surfaced the conflict via `AskUserQuestion` rather
+  than silently complying or silently ignoring — native/operator
+  chose **Hold per D-CND-26**. `ka_gochara_resonance` remains HELD,
+  unchanged. Resuming routine PR-hygiene cycle. — decision recorded
+  here per D-CND-26's own governance; no adjudication file needed
+  (an equivalent-scope ruling already exists and was upheld, not
+  reopened).
+- `2026-09-07T~329:0xZ — L3-W4 — PR hygiene: `#2256`'s pre-queue check
+  run still `in_progress` (~4.6min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2256` finishing; next
+  action: same.
+- `2026-09-07T~328:0xZ — L3-W4 — PR hygiene: `#2256` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (`#2247`, L1
+  `get_sensitive_points.ts` closing 2 mischaracterized esoteric-point
+  categories, no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` clearing checks/queue; next action: same.
+- `2026-09-07T~327:0xZ — L3-W4 — PR hygiene: `#2251` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the flake diagnosis held: 15/16
+  jobs green on the fresh run, no repeat failure). Rebased the 26
+  not-yet-merged local heartbeat commits onto fresh `origin/main`. Hit
+  the standard empty-theirs prepend-conflict pattern 8x
+  (auto-resolved via the marker-strip loop, each verified empty-theirs
+  before stripping) — the count dropped to 17 commits ahead post-
+  rebase because some patches were already-applied duplicates git
+  silently collapsed (no data lost, verified: zero conflict markers,
+  diff is `L3_STATE.md`-only). Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-17`, pushed, opened PR `#2256`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still
+  `OPEN-PENDING-PIN` (yet another authoring fix landed, `#2252`
+  `get_positions.ts` closing `sun_derived_upagraha`/`sandhi_flag`,
+  still not the freeze). `ka_gochara_resonance` still
+  `BLOCKED-NO-ROUTE`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` clearing checks/queue; next action: same monitoring cadence,
+  watch closely for the freeze.
 - `2026-09-07T~326:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
   `merge_group`'s last check, same run, now ~9.5min — approaching but
   still within the confirmed ~11min normal range, still on the same
