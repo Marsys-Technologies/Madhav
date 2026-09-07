@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~250:0xZ — L3-W4 — PR hygiene: `#2231`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 1 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2231` finishing; next action: same.
 - `2026-09-07T~249:0xZ — L3-W4 — PR hygiene: `#2231`'s last check, same
   run, now ~11.1min — at the recurring edge-of-range pattern
   (`#2214`/`#2218`/`#2222`/`#2225` all showed this right before
