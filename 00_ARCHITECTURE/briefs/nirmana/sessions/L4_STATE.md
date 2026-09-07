@@ -9612,8 +9612,10 @@ now points at the pre-staged instruments. Shipped as a real PR off origin/main o
 non-heartbeat branch `codex/nirmana-l4-w5-mechanical-checks`; the 9 accumulated local
 heartbeat entries (cycles 530–538) ride this PR per the new heartbeat discipline.**
 
-**PR hygiene:** clean at cycle open (zero own L4 PRs; queue empty of mine). This PR queued
-and `is:queued`-verified this cycle — see below.
+**PR hygiene:** clean at cycle open (zero own L4 PRs; queue empty of mine). This PR (#2259)
+opened, auto-merge armed, all completed required checks passing, one pending — NOT yet
+`is:queued` at cycle close (the contract's own rule: arming is not queueing). Next cycle
+verifies actual queue entry/merge; if CLEAN-but-unqueued then, re-arm and re-verify.
 
 **Priorities 1-4:** main at `fd24ffd5b` (L1 W3 slices, L5 recovery — not L4-relevant). No
 `NIRMANA_HOLD`. C8.5 prep is NOW genuinely exhausted: per-asset batch runner (runbook
