@@ -177,6 +177,7 @@ jobs:
     permissions:
       contents: read
       actions: read # read the CI workflow's conclusion for this SHA
+      id-token: write # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
     outputs:
       sidecar: ${{ steps.diff.outputs.sidecar }}
       mcp: ${{ steps.diff.outputs.mcp }}
@@ -248,61 +249,96 @@ jobs:
             echo "force_all=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The gate reads each component's DEPLOYED commit from Cloud Run itself
+      # (#2169) -- authenticate exactly the way the deploy jobs do.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
       - name: Detect changed paths
         id: diff
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          # #2169: HEAD~1 only sees the single commit this run's DEPLOY_SHA
-          # corresponds to. Under a fast-merging queue, several commits can
-          # land between one deploy run and the next -- each run diffing only
-          # its own immediate parent silently misses changes from earlier,
-          # still-undeployed commits whenever the latest commit's own diff
-          # happens not to touch a given service's paths. Fix: diff from the
-          # most recent PRIOR successful "Deploy to Cloud Run" run's head_sha
-          # instead, accumulating across the whole unfired backlog. That
-          # commit is fetched on demand (this checkout is shallow) rather than
-          # requiring full history -- verified working against this repo's
-          # real remote (GitHub supports fetching an arbitrary historical SHA
-          # directly, confirmed live before this landed).
-          # Restricted to workflow_run/workflow_dispatch on main -- this same
-          # workflow file also runs on pull_request (build-check only, never
-          # deploys), and a PR run can be "conclusion: success" too (its jobs
-          # are all success-or-skipped), which would otherwise pick a PR
-          # branch tip as PRIOR_SHA -- not an ancestor of main, silently
-          # diffing against the wrong reference point instead of the last
-          # real deploy. Confirmed live: this exact false-positive match
-          # exists in this repo's own recent run history.
-          PRIOR_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/deploy.yml/runs?status=completed&per_page=20" \
-            --jq '[.workflow_runs[] | select(.conclusion == "success" and (.event == "workflow_run" or .event == "workflow_dispatch") and .head_branch == "main")] | first | .head_sha // empty' 2>/dev/null || echo "")
-          if [ -n "$PRIOR_SHA" ] && git fetch --depth=1 origin "$PRIOR_SHA" 2>/dev/null \
-             && git cat-file -e "${PRIOR_SHA}^{commit}" 2>/dev/null; then
-            echo "Diffing from last successful deploy run's head_sha: $PRIOR_SHA"
-            CHANGED=$(git diff --name-only "$PRIOR_SHA" HEAD)
-          else
-            echo "No usable prior successful deploy found -- falling back to HEAD~1"
-            CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-          fi
-          echo "=== Changed files ==="
-          printf '%s\n' "$CHANGED"
-          echo "====================="
+          # #2169, three failures deep in one hazard class ("deploy reports
+          # green while silently doing less" -- DVA Ruling 58's class):
+          # (1) HEAD~1 diffing missed backlog commits under a fast-merging
+          # queue. (2) The #2172 fix diffed from the GitHub API's "most
+          # recent successful deploy run" head_sha -- a live, mutable view
+          # that under fast cadence resolved to this run's OWN sha: a
+          # self-diff, always empty, silently skipping every component
+          # rebuild (confirmed live 2026-09-07: pipeline image stale ~3.5h
+          # across 17 green deploy runs; a real W4 build failed on it).
+          # (3) This fix: the diff base is no longer any record ABOUT
+          # deploys -- it is read from PRODUCTION ITSELF, per component.
+          # Each deploy job stamps what it ships (revision label
+          # `commit-sha` for services, the `:<sha>` image tag for the
+          # pipeline job); that value changes only when a deploy genuinely
+          # completes, so the diff accumulates the whole undeployed backlog
+          # by construction and cannot wobble with API-view instability.
+          # Skip is only chosen when diff(<deployed-sha>..HEAD) touches
+          # none of the component's paths -- the gate itself is now the
+          # §N.8 detector for "production already contains every relevant
+          # commit"; there is no separate marker to forget to update.
+          # FAIL-OPEN: any failure to resolve or fetch a component's
+          # deployed sha deploys that component. The gate may only fail
+          # toward doing MORE work, never silently less (charter C12
+          # rewrite-floor test, applied to CI). All three resolution
+          # commands were dry-run verified live against this project's
+          # real Cloud Run surfaces before this landed.
 
-          sidecar=false
-          mcp=false
-          pipeline=false
+          SIDECAR_PATTERN='^platform/python-sidecar/'
+          MCP_PATTERN='^platform-mcp/'
+          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'
 
-          if printf '%s\n' "$CHANGED" | grep -q '^platform/python-sidecar/'; then
-            sidecar=true
-          fi
+          deployed_sha() {
+            # Prints the commit production reports for one component; empty on any failure.
+            case "$1" in
+              sidecar|mcp)
+                local rev
+                rev=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
+                  --format='value(status.latestReadyRevisionName)' 2>/dev/null) || return 0
+                [ -n "$rev" ] || return 0
+                gcloud run revisions describe "$rev" --region "$GCP_REGION" \
+                  --format="value(metadata.labels['commit-sha'])" 2>/dev/null || true
+                ;;
+              pipeline)
+                local img
+                img=$(gcloud run jobs describe brahma-build-pipeline-job --region "$GCP_REGION" \
+                  --format='value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null) || return 0
+                case "$img" in *:*) printf '%s' "${img##*:}" ;; esac
+                ;;
+            esac
+          }
 
-          if printf '%s\n' "$CHANGED" | grep -q '^platform-mcp/'; then
-            mcp=true
-          fi
+          decide() {
+            # $1 component, $2 grep -E path pattern -> echoes the true/false decision.
+            local component="$1" pattern="$2" sha changed
+            sha=$(deployed_sha "$component")
+            if [ -z "$sha" ]; then
+              echo "::warning::${component}: deployed commit-sha unresolvable -- FAIL-OPEN, deploying" 1>&2
+              echo true; return
+            fi
+            if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              git fetch --depth=1 origin "$sha" 1>&2 2>&1 || true
+            fi
+            if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              echo "::warning::${component}: deployed sha ${sha} not fetchable -- FAIL-OPEN, deploying" 1>&2
+              echo true; return
+            fi
+            changed=$(git diff --name-only "$sha" HEAD)
+            echo "--- ${component}: deployed=${sha}" 1>&2
+            printf '%s\n' "$changed" | sed 's/^/    /' 1>&2
+            if printf '%s\n' "$changed" | grep -qE "$pattern"; then
+              echo true
+            else
+              echo false
+            fi
+          }
 
-          if printf '%s\n' "$CHANGED" | grep -qE \
-            '^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'; then
-            pipeline=true
-          fi
+          sidecar=$(decide sidecar "$SIDECAR_PATTERN")
+          mcp=$(decide mcp "$MCP_PATTERN")
+          pipeline=$(decide pipeline "$PIPELINE_PATTERN")
 
           {
             echo "sidecar=$sidecar"

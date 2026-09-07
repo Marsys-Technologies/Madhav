@@ -354,6 +354,25 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+*(Cycles 8–1061 are recorded on the Conductor lane's local `wip-cascade-hold` branch — mostly
+IDLE-OK heartbeats; landing them wholesale would bury this file. Entries land on main from
+cycle 1062 forward, riding real work PRs per C8 Step 3.)*
+
+- `2026-09-07T17:52Z` — cycle 1063: **#2169 root-fix PR #2383 authored, verified, queued-armed.**
+  Deploy gate diff base re-anchored to production's own deployed commit per component (revision
+  `commit-sha` label / pipeline image tag), fail-open toward deploying; full gate script executed
+  locally against live Cloud Run (correct all-skip decision) + fail-open branch exercised. Also
+  confirmed forced deploy run 34148351438 SUCCESS and all three surfaces at `f5c1ab02a` — posted
+  redispatch-clear to L2 on #2169. Next: verify #2383 queue entry + merge, then observe one
+  organic deploy before closing #2169.
+- `2026-09-07T17:40Z` — cycle 1062: **RULED #2169 (re-opened by L2 16:00Z) + dispatched the fleet
+  unblock.** The 2.7h evidence silence was not benign: #2172's deploy-gate fix regressed
+  (PRIOR_SHA self-diff → sidecar/MCP/pipeline deploys silently skipped since ~14:09Z), so #2320's
+  100-arg fix never reached the pipeline image → bo_sudarshana W4 failed 15:54Z. Verified
+  independently (run 34134793945 all-skipped; serving revision predates fix; error text proves
+  migration 896 applied). Forced full deploy dispatched (run 34148351438, CI gate KEPT). Root fix
+  authorized + designed in the ruling. Fleet work-queue posted on #1713 (L3: 7 BLOCKED-NO-ROUTE
+  assets named).
 - `2026-09-05T14:05Z` — cycle 7: **#1770's last outstanding condition cleared — L3's
   `kala_convergence` write hold is LIFTED.** L4 answered directly on #1770 (also confirmed via
   its own cross-session reply): all five cascade-exposed L4 tables regenerable, D-CND-04's
