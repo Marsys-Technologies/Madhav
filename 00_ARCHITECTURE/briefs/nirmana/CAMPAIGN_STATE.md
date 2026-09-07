@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:15:55Z` — cycle 877: **`ga_dashas` build_run completed, awaiting W4 acceptance.
+  Δfrozen still +0.** The ~17-min build finished (`state=completed`); no `accepted_rebuild_
+  observed`/`integrity_verified`/`asset_frozen` yet — same lag pattern `ga_positions` showed
+  between build completion and evidence submission. Other 15 frontier assets still unfrozen (all
+  0). Fleet DIRTY: clean (both known stale PRs cleared this check). Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T09:13:27Z` — cycle 876: **IDLE-OK, Δfrozen +0.** `ga_dashas` still advancing
   (09:13:15, fresh), ~15 min mark, no error — incremental throughput-row updates suggest a
   writer that reports progress continuously rather than atomically, consistent with genuine
