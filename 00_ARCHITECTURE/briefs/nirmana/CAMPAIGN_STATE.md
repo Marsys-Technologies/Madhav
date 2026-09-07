@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:19:19Z` — cycle 922: **L1 dispatching again post-merge — `ga_sensitive`
+  building (1 slot active).** Confirms #2272's merge unblocked the pipeline as expected. Δfrozen
+  still +0 (48/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T11:16:53Z` — cycle 921: **IDLE-OK, Δfrozen +0.** ~4 min since #2272 merged, still
   0 active slots, no new `build_runs` yet — too soon to read as a stall. Fleet DIRTY: clean.
   Own-PR hygiene: none open. Adjudications unchanged (11).
