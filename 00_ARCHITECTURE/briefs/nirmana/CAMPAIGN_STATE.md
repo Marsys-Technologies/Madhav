@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:36:05Z` — cycle 879: **Two real stalls → escalated.** (1) `ga_dashas`:
+  `asset_throughput` confirms clean rebuild (`state='lit'`, `last_error=null`,
+  `last_built_at=09:13:19Z`) but **23 min** with zero W4 evidence events — evidence-submission
+  step itself stalled, not the build (vs. `ga_positions`' ~8.5 min precedent). (2) the other 15
+  frontier assets remain fully untouched, **~38 min** since the first nudge. Posted both to #1713
+  (comment 5568626859). Δfrozen still +0. Fleet DIRTY: same 2 known stale native PRs. Own-PR
+  hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T09:18:06Z` — cycle 878: **IDLE-OK, Δfrozen +0.** No new evidence for `ga_dashas`
   yet, but only ~2-3 min post-build — `ga_positions` took ~8.5 min for its first evidence event,
   well within range. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
