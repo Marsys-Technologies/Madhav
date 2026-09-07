@@ -497,6 +497,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~376:0xZ — L3-W4 — PR hygiene: `#2275`'s checks finished
+  (0 failures — the ~9.4min run resolved cleanly). Now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 2 — its own
+  `merge_group` run has started. **Noteworthy**: one new
+  `origin/main` merge — `ga_dashas` was DISPATCHED (L1's own state,
+  cycles 189-190) — this is one of D-CND-26's two remaining required
+  true ancestors for `ka_gochara_resonance` (`ga_dashas`,
+  `ga_sensitive`, alongside the now-frozen `ga_positions`). Checked
+  live: dispatched ≠ frozen — `ga_dashas` and `ga_sensitive` both
+  still read `OPEN-PENDING-PIN`, so the D-CND-26 hold is genuinely
+  UNCHANGED. Worth watching closely though: this is real forward
+  movement on the specific remaining blocker. `ga_positions`
+  re-confirmed still frozen. No new E-gate opening for L3 yet.
+  IDLE-OK. — blocked on: `#2275` finishing; next action: same, watch
+  `ga_dashas`/`ga_sensitive` closely now that dispatch has started.
 - `2026-09-07T~375:0xZ — L3-W4 — PR hygiene: `#2275`'s last check, same
   run, now ~9.4min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
