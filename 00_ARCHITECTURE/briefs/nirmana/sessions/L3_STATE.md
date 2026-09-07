@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~266:0xZ — L3-W4 — PR hygiene: `#2233`'s `mergeQueueEntry`
+  advanced to `MERGEABLE`, position 2 — past its own checks, purely
+  waiting its turn behind `#2234` (still `AWAITING_CHECKS`, position
+  1, unrelated PR). No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2234` finishing, then `#2233`; next action: same.
 - `2026-09-07T~265:0xZ — L3-W4 — PR hygiene: `#2233` still position 2,
   own `merge_group` fully green, unchanged for two cycles despite
   completion — investigated why: queried the live queue directly
