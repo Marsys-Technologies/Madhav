@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:53:46Z` — cycle 868: **IDLE-OK, Δfrozen +0.** ~5 min since the cascade post, no
+  new `build_runs` yet — still within the ~15 min turnaround the `ga_positions` chain itself took,
+  not stall-worthy. #1180 flickered back to CONFLICTING (already flagged as moot last cycle it
+  appeared; no new action). Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:51:32Z` — cycle 867: **IDLE-OK, Δfrozen +0.** Cascade update posted last cycle;
   no new `build_runs` yet (checked since 08:45:00) — too soon to expect lane reaction, not a
   stall. Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (11).
