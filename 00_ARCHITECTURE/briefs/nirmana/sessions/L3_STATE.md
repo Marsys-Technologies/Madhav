@@ -495,6 +495,67 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~172:0xZ — L3-W4 — PR hygiene: `#2199`'s own `merge_group`
+  build still `in_progress` (~6.8min, within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2199` finishing; next action: same.
+- `2026-09-07T~171:0xZ — L3-W4 — PR hygiene: `#2199`'s own `merge_group`
+  build still `in_progress` (~4.5min, within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2199` finishing; next action: same.
+- `2026-09-07T~170:0xZ — L3-W4 — PR hygiene: `#2199`'s own `merge_group`
+  build genuinely `in_progress` (~2.2min, well within range). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2199` finishing; next action: same.
+- `2026-09-07T~169:0xZ — L3-W4 — PR hygiene: `#2199`'s last check
+  finished (checked the live log directly — pytest completed "43 passed
+  in 0.34s" at ~12min, just past the usual pattern but genuinely done,
+  not stuck) and it's now genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 1 — past its own checks, waiting for its merge turn. No new
+  `origin/main` merges, no new E-gate opening. — blocked on: `#2199`
+  finishing; next action: same.
+- `2026-09-07T~168:0xZ — L3-W4 — PR hygiene: `#2199`'s last check, same
+  run, now ~9.7min, checked step-level detail directly — still on the
+  same consistently-slow `pytest` step, genuine progress not a stall.
+  No new `origin/main` merges, no new E-gate opening. IDLE-OK. —
+  blocked on: nothing new; next action: same.
+- `2026-09-07T~167:0xZ — L3-W4 — PR hygiene: `#2199`'s last check
+  (`Governance Gates`) ~7.3min, within normal range, not yet queued. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
+  — blocked on: nothing new; next action: push once `#2199`
+  merges/finishes.
+- `2026-09-07T~166:0xZ — L3-W4 — PR hygiene: `#2199` checks ~4.8min,
+  within normal range, nothing red, not yet queued. One new L1 merge
+  (#2178, "orphan-risk finding on `ga_positions` rebuild") — read it:
+  L1's own internal unblock-plan work (a `fact_id`-derivation change
+  since `ga_positions`' last acceptance risks orphaning
+  `ga_yoga_firings.constituent_fact_ids` on a solo rebuild), not yet
+  resolved, no dispatch happened. Confirms `ga_positions` is still
+  actively being worked by L1 but doesn't change L3's own gate status
+  (`egate.sql` re-run: unchanged, `ga_positions` still
+  `OPEN-PENDING-PIN`). No L3 action needed. IDLE-OK. — blocked on:
+  nothing new; next action: push once `#2199` clears/queues.
+- `2026-09-07T~165:0xZ — L3-W4 — PR hygiene: `#2199` checks running
+  pre-queue (3 pending, nothing red), not yet queued — nothing to fix.
+  No new `origin/main` merges relevant to L3, no new E-gate opening.
+  IDLE-OK. — blocked on: nothing new; next action: push once `#2199`
+  clears/queues.
+- `2026-09-07T~164:0xZ — L3-W4 — PR hygiene: `#2197` MERGED (squash
+  `f77fbbb84`) — **F-L3-4 is now closed in full on `origin/main` for
+  real**, not just in a pending PR. Rebased the 8 not-yet-merged local
+  heartbeat commits onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern three times (auto-resolved), no
+  non-standard conflicts. Verified zero conflict markers, migration-
+  number guard PASS, `ka_dasha_kala` held row intact. Confirmed the
+  rebased diff against `origin/main` is state-file-only (no code/
+  migration changes carried) — pushed directly as a new PR without
+  re-running the migration test suites (nothing to re-test). Renamed
+  branch to `codex/nirmana-l3-heartbeat-post-f-l3-4`, pushed, opened
+  **PR #2199**, armed auto-merge. No new bounded work this cycle beyond
+  the rebase/PR-open itself (`ga_positions` still `OPEN-PENDING-PIN`).
+  — blocked on: nothing new; next action: verify `#2199` clears its
+  checks and queues cleanly next cycle, then resume routine PR-hygiene/
+  E-gate monitoring cadence.
 - `2026-09-07T~163:0xZ — L3-W4 — PR hygiene: `#2197` advanced to
   position 1, own `merge_group` build's all 3 jobs completed
   successfully (confirmed via `gh run list` filtered on `pr-2197`, not
