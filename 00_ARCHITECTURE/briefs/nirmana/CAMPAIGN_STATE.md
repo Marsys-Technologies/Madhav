@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:07:46Z` — cycle 755: **IDLE-OK (milestone watched).** PR #2217 —
+  `ga_sensitive`'s `natural_key_partition` backfill, migration 874, **7/7 co-writers now
+  complete**. L1 has finished the entire partition-backfill half of #2180's prerequisite work.
+  Still needs: `ga_positions`' `output_digest_spec` (fix 2/2) + the 3 L0 assets' specs, before
+  wave 1 can proceed. All fleet PRs healthy. Own-PR hygiene clean; adjudications unchanged (10).
 - `2026-09-07T03:05:22Z` — cycle 754: **IDLE-OK (verified).** Fleet PR list unchanged, all
   MERGEABLE. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:02:59Z` — cycle 753: **Fleet sweep (Step 1.5) — nudged #2201.** CLEAN
