@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:33:25Z` — cycle 903: **IDLE-OK, Δfrozen +0.** #2272 still `BLOCKED`, only ~3
+  min since the fix comment — too soon for L1 to have acted. Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:30:34Z` — cycle 902: **Diagnosed #2272's real failure, handed L1 the exact
   fix.** Run genuinely completed this time (`conclusion=failure`, confirmed via the run API, not
   the flaky summary from before). Root cause: `scripts/__tests__/migrate.test.ts:773` hardcodes
