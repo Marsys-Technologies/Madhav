@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~423:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `state: MERGEABLE` (its own checks done — `#2287` ahead
+  finishing up, mergeStateStatus transition normal, not a stall). No
+  new `origin/main` merges. IDLE-OK. — blocked on: `#2287`'s merge
+  completing; next action: same.
 - `2026-09-07T~422:0xZ — L3-W4 — PR hygiene: `#2288` still position
   2, `AWAITING_CHECKS` — `#2287`'s last check, same run, now
   ~9.6min — approaching but still within the confirmed ~11min normal
