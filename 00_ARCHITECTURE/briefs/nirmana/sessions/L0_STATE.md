@@ -872,3 +872,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   still running, not done yet — not polling its transcript or predicting its result, per this
   session's own no-race discipline; will confirm and log for real once its completion notification
   lands. Nothing else eligible this cycle.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. #1713/#2240 unchanged. Verifier subagent
+  still running (~5min in — reading validator code, live-checking bg_cohort's integrity_check_sql,
+  and minting/submitting two evidence events is genuinely multi-step work, not stuck). Nothing else
+  eligible.
