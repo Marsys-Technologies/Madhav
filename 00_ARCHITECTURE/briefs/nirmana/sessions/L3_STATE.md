@@ -497,6 +497,85 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~409:0xZ — L3-W4 — PR hygiene: `#2284` still position
+  1, `AWAITING_CHECKS` — same run, now ~10.8min, at the upper edge
+  of the confirmed normal range, still on the same `pytest` step,
+  genuine progress not a stall. No new `origin/main` merges. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2284` finishing; next
+  action: same.
+- `2026-09-07T~408:0xZ — L3-W4 — PR hygiene: `#2284` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.75min, approaching but
+  still within the confirmed ~11min normal range, still on the same
+  `pytest` step. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2284` finishing; next action: same.
+- `2026-09-07T~407:0xZ — L3-W4 — PR hygiene: `#2284` still position
+  1, `AWAITING_CHECKS` — its own `Governance Gates` job now ~6.5min
+  into the known-slow `pytest — pyjhora_adapter + pipeline` step,
+  within the confirmed ~11min normal range. No new `origin/main`
+  merges. No new E-gate opening. IDLE-OK. — blocked on: `#2284`
+  finishing; next action: same.
+- `2026-09-07T~406:0xZ — L3-W4 — PR hygiene: `#2284` advanced to
+  position 1 (top of queue) — `#2283` merged (unrelated L5
+  heartbeat PR, confirmed via `origin/main`, no L3 overlap).
+  `#2284`'s own `merge_group` run has started: `TAP CI`/`EKV` both
+  completed/passed, `CI — Ganga Quality Gate` `in_progress`. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2284` finishing; next
+  action: same.
+- `2026-09-07T~405:0xZ — L3-W4 — PR hygiene: `#2284` still position
+  2, `AWAITING_CHECKS` — located `#2283`'s own `merge_group` run
+  directly: `TAP CI`/`EKV` both completed/passed, `CI — Ganga
+  Quality Gate` still `in_progress`, genuine progress not a stall.
+  No new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2283` finishing; next action: same.
+- `2026-09-07T~404:0xZ — L3-W4 — PR hygiene: `#2284`'s checks
+  finished (0 failures — the ~11min run resolved cleanly, same edge
+  precedent held again). Now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 2 — one unrelated L5 PR (`#2283`)
+  ahead, itself still `AWAITING_CHECKS`, normal congestion. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2283` clearing ahead of `#2284`; next action: same.
+- `2026-09-07T~403:0xZ — L3-W4 — PR hygiene: `#2284`'s last check,
+  same run, now ~10.3min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2284` finishing; next action: same.
+- `2026-09-07T~402:0xZ — L3-W4 — PR hygiene: `#2284`'s last check,
+  same run, now ~8.2min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2284` finishing; next action: same.
+- `2026-09-07T~401:0xZ — L3-W4 — PR hygiene: `#2284`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.1min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2284` finishing; next
+  action: same.
+- `2026-09-07T~400:0xZ — L3-W4 — PR hygiene: `#2284`'s pre-queue
+  check run in progress (~4min, `Unit Tests` and `Governance Gates`
+  both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2284` finishing; next action: same.
+- `2026-09-07T~399:0xZ — L3-W4 — PR hygiene: `#2284`'s pre-queue
+  checks running (`Unit Tests`, `DB Integration Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2284` clearing checks/queue; next action: same.
+- `2026-09-07T~398:0xZ — L3-W4 — PR hygiene: `#2282` confirmed
+  MERGED. Rebased 20 local commits onto fresh `origin/main`. Hit one
+  genuine (non-empty-theirs) conflict this time — a real interleaving
+  issue where a squash-merged commit's content needed inserting
+  between two already-present entries in the right chronological
+  slot, not a duplicate — resolved by hand, verifying the exact
+  insertion point against the surrounding T~381/T~383 timestamps.
+  Remaining conflicts were the standard empty-theirs pattern (7
+  more, all auto-resolved with per-hunk verification this time,
+  learning from last cycle's stacked-marker bug) plus one commit
+  already upstream (skipped automatically). Verified zero leftover
+  markers before pushing. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-25`, pushed, opened `#2284`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2284`'s own
+  checks completing; next action: same monitoring cadence.
+
 - `2026-09-07T~397:0xZ — L3-W4 — PR hygiene: `#2282` advanced to
   position 1 (top of queue) — `#2281` merged (unrelated L5
   heartbeat PR, confirmed via `origin/main`, no L3 overlap).
