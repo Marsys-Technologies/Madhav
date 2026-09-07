@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~396:0xZ — L3-W4 — PR hygiene: `#2282` still position
+  2, `AWAITING_CHECKS` — `#2281`'s `Governance Gates` job now
+  ~9.1min into the same known-slow `pytest —
+  pyjhora_adapter + pipeline` step, within the confirmed ~11min
+  normal range. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2281` finishing; next action: same.
 - `2026-09-07T~395:0xZ — L3-W4 — PR hygiene: `#2282` still position
   2, `AWAITING_CHECKS` — located `#2281`'s own `merge_group` run
   directly: `TAP CI`/`EKV` both completed/passed, `CI — Ganga
