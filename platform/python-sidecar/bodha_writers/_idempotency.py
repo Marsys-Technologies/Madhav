@@ -192,6 +192,16 @@ def replace_prior_contradictions(conn: Any, chart_id: str, ayanamsha_id: str) ->
     )
 
 
+def replace_prior_grounding_matches(conn: Any, chart_id: str, ayanamsha_id: str) -> int:
+    """bo_grounding — sole writer of bodha_grounding_matches (migration 897),
+    no co-writer sharing, so scope is the whole (chart_id, ayanamsha_id) slice."""
+    return _delete(
+        conn,
+        "DELETE FROM bodha_grounding_matches WHERE chart_id = %s AND ayanamsha_id = %s",
+        [chart_id, ayanamsha_id],
+    )
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # A11 — CDLM tables
 # Scope: (chart_id, ayanamsha_id, snapshot_type [, system, lords, tradition])
