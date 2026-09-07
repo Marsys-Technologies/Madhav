@@ -497,6 +497,78 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~522:0xZ — L3-W4 — PR hygiene: `#2358` still position
+  1, `AWAITING_CHECKS` — same run, now ~10.2min, at the upper edge
+  of the confirmed normal range, still on the same `pytest` step,
+  genuine progress not a stall. No new `origin/main` merges.
+  IDLE-OK. — blocked on: `#2358` finishing; next action: same.
+- `2026-09-07T~521:0xZ — L3-W4 — PR hygiene: `#2358` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.1min, within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2358` finishing;
+  next action: same.
+- `2026-09-07T~520:0xZ — L3-W4 — PR hygiene: `#2358` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6min, within normal range). No new `origin/main`
+  merges. IDLE-OK. — blocked on: `#2358` finishing; next action:
+  same.
+- `2026-09-07T~519:0xZ — L3-W4 — PR hygiene: `#2358` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4min in, well within normal range, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2358` finishing; next action: same.
+- `2026-09-07T~518:0xZ — L3-W4 — PR hygiene: `#2358` still position
+  1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
+  CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
+  `in_progress`. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2358` finishing; next action: same.
+- `2026-09-07T~517:0xZ — L3-W4 — PR hygiene: `#2358`'s checks
+  finished (0 failures — the ~11min run resolved cleanly),
+  `mergeStateStatus: CLEAN` but `isInMergeQueue: false` — the known
+  CLEAN-but-unqueued case. `gh pr merge --auto` re-run this time
+  reported "already queued" and confirmed it genuinely `QUEUED`,
+  position 1 — self-resolved without needing the `enqueuePullRequest`
+  GraphQL fallback. No new `origin/main` merges. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2358` clearing the queue; next
+  action: same.
+- `2026-09-07T~516:0xZ — L3-W4 — PR hygiene: `#2358`'s last check,
+  same run, now ~10.4min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. One new `origin/main` merge (`#2329`, L1 — SELECT
+  grant, not a freeze event, no E-gate impact; also confirms the
+  earlier `UNMERGEABLE` cascade fully self-resolved). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2358` finishing; next action:
+  same.
+- `2026-09-07T~515:0xZ — L3-W4 — PR hygiene: `#2358`'s last check,
+  same run, now ~8.3min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2358` finishing; next
+  action: same.
+- `2026-09-07T~514:0xZ — L3-W4 — PR hygiene: `#2358`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.3min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2358` finishing; next
+  action: same.
+- `2026-09-07T~513:0xZ — L3-W4 — PR hygiene: `#2358`'s pre-queue
+  check run in progress (~4.1min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2358` finishing; next action: same.
+- `2026-09-07T~512:0xZ — L3-W4 — PR hygiene: `#2358`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. One
+  new `origin/main` merge (`#2351`, L5 heartbeat — no L3 overlap).
+  No new E-gate opening. IDLE-OK. — blocked on: `#2358` clearing
+  checks/queue; next action: same.
+- `2026-09-07T~511:0xZ — L3-W4 — PR hygiene: `#2347` confirmed
+  MERGED. Rebased 29 local commits onto fresh `origin/main`, 10
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-35`, pushed, opened
+  `#2358`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2358`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~510:0xZ — L3-W4 — PR hygiene: `#2347` still position
   1, `AWAITING_CHECKS` — same run, now ~10.6min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
@@ -529,7 +601,7 @@ your layer close.
   ahead. `#2329` (which had shown `UNMERGEABLE` alongside `#2347`)
   is no longer in the queue listing either. No new E-gate opening.
   IDLE-OK. — blocked on: `#2347` finishing; next action: same.
-- `2026-09-07T~505:0xZ — L3-W4 — PR hygiene: `#2347` still position
+- `2026-09-07T~504:0xZ — L3-W4 — PR hygiene: `#2347` still position
   3, `UNMERGEABLE` (queue entry), unchanged. Root cause now clearer:
   `#2346` (position 1, ahead) is `AWAITING_CHECKS`, ~10.4min queued,
   own build not yet visible — this is the standard "strict"
