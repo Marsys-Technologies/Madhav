@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:36:59Z` — cycle 843: **Fleet sweep — re-nudged #2247** (DIRTY again, ~40min,
+  likely a `get_*.ts` retrieval-tool merge race with sibling L1 PRs). #2252 fresh, watching.
+  #2227 unchanged. Adjudications unchanged (11).
 - `2026-09-07T07:34:33Z` — cycle 842: **IDLE-OK.** #2227 restarted from the beginning again
   (3rd hour open) — already nudged/re-triggered twice each; diminishing returns for a zero-
   campaign-impact heartbeat PR, continuing lightweight monitoring only. Fleet DIRTY empty;
