@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~438:0xZ — L3-W4 — PR hygiene: `#2299`'s
+  `DB Integration Tests` now passed; `Unit Tests`/
+  `Governance Gates` still pending, nothing red. One new
+  `origin/main` merge (`#2277`, L1: `ga_dashas`
+  `integrity_check_sql` perf fix — not a freeze event, no E-gate
+  impact). IDLE-OK. — blocked on: `#2299` clearing checks/queue;
+  next action: same.
 - `2026-09-07T~437:0xZ — L3-W4 — PR hygiene: `#2299`'s pre-queue
   checks running (`DB Integration Tests`, `Unit Tests`,
   `Governance Gates` all `pending`, nothing red), early stage. No new
