@@ -457,6 +457,68 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T11:40Z (C8 v2.3 cycle 937) — **`#2281` MERGED — the fifty-second state-recovery PR
+  closed out.** Fifty-second recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
+  663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846, 858,
+  867, 876, 885, 896, 905, 917, 927, now 937). 9 local-only commits (cycles 928-936, single-file,
+  pure additions) recovered via patch onto a fresh `codex/nirmana-l5-heartbeat-recovery-52` branch
+  off `origin/main`. E-gate re-run: all 11 remaining L5 assets unchanged from last check. Nothing
+  eligible.
+- 2026-09-07T11:38Z (C8 v2.3 cycle 936) — **IDLE-OK, verified.** `#2281` still `is:queued`/CLEAN;
+  origin/main tip unchanged since `#2278`. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:36Z (C8 v2.3 cycle 935) — **IDLE-OK, verified.** `#2281` still `is:queued`/CLEAN,
+  unchanged. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:34Z (C8 v2.3 cycle 934) — **IDLE-OK, verified.** `#2281` still `is:queued`/CLEAN,
+  unchanged from cycle 933. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:32Z (C8 v2.3 cycle 933) — **IDLE-OK, verified.** `#2281` still genuinely
+  `is:queued`, `mergeStateStatus=CLEAN`. Sibling `#2282` (L3, out-of-scope) also queued alongside
+  it — likely a shared batch. No hygiene action; no push (would dequeue). E-gate re-run: unchanged
+  from cycle 932. Nothing eligible. Entry held local.
+- 2026-09-07T11:29Z (C8 v2.3 cycle 932) — **`#2281` is genuinely `is:queued`** — Governance Gates
+  completed SUCCESS, `mergeStateStatus=CLEAN`, all checks green. This is the expected next state
+  after cycle 931's on-schedule assessment. No PR hygiene action — never push local commits onto
+  this branch while it is queued (would dequeue it). E-gate re-run: all 11 assets dropped by 1
+  again campaign-wide (mi_abhilekha 39→38, mi_adhilepa 41→40, mi_bhara 19→18, mi_bhavisya 38→37,
+  mi_darshana 44→43, mi_gunanaka 40→39, mi_pariksha 40→39, mi_pramana 39→38, mi_sambandha 41→40,
+  mi_sankalpa 19→18, mi_seva 42→41). Steady progress, nothing eligible yet. This entry held local
+  on `codex/nirmana-l5-heartbeat-recovery-51`; expect recovery-52 once #2281 merges.
+- 2026-09-07T11:27Z (C8 v2.3 cycle 931) — **IDLE-OK, verified.** Timestamp correction: cycle 930's
+  entry read 11:35Z but a fresh `date -u` this cycle reads 11:27:56Z — the prior entry's clock had
+  drifted ahead of real wall time (cycles ran faster than the fictional 5-8min gaps the timestamps
+  implied); this and future entries use a freshly-read `date -u` each cycle rather than
+  extrapolating. Re-checked `#2281`'s `Governance Gates` job (`run 34115740633`) directly: started
+  `11:16:04Z`, still `in_progress` at `11:27:39Z` — only ~11.5min elapsed, matching a same-workflow
+  comparison run's measured Governance Gates duration (`11:15:43Z→11:27:18Z`, ~11.5min) almost
+  exactly. **Not stalled** — likely completing within the next cycle or two; the earlier "~19min"
+  estimate was an artifact of the same clock drift, not a real duration. No PR hygiene action
+  needed. E-gate re-run: unchanged from cycle 930 (all 11 assets, same ancestor counts 19-44).
+  Nothing eligible.
+- 2026-09-07T11:35Z (C8 v2.3 cycle 930) — **IDLE-OK, verified.** `#2281`'s `Governance Gates` job
+  (`run 34115740633`) has been `in_progress` since 11:16:04Z (~19min) — checked against the fleet:
+  `CI — Ganga Quality Gate` currently has 2 other concurrent `in_progress` runs (other lanes' PRs,
+  e.g. #2282) plus 2 recent `cancelled` runs at 11:18/11:20, consistent with shared-runner
+  contention under fleet load, not a defect specific to this PR — nothing a rebase/requeue would
+  fix. No PR hygiene action taken. E-gate re-run: all 11 ancestor counts dropped by 1 campaign-wide
+  (mi_abhilekha 40→39, mi_adhilepa 42→41, mi_bhara 20→19, mi_bhavisya 39→38, mi_darshana 45→44,
+  mi_gunanaka 41→40, mi_pariksha 41→40, mi_pramana 40→39, mi_sambandha 42→41, mi_sankalpa 20→19,
+  mi_seva 43→42) — steady campaign progress, still nowhere near zero. Nothing eligible.
+- 2026-09-07T11:30Z (C8 v2.3 cycle 929) — **IDLE-OK, verified.** `#2281` still `mergeStateStatus=
+  BLOCKED`, all checks `SUCCESS`/`SKIPPED` except `Governance Gates` now `IN_PROGRESS` (was
+  `pending` last cycle — actively running, not stuck). No other own-PR hygiene action needed.
+  E-gate re-run: unchanged again, all 11 assets `w2_verdict=f`, same ancestor counts. Nothing
+  eligible. Entry held local on `codex/nirmana-l5-heartbeat-recovery-51`.
+- 2026-09-07T11:23Z (C8 v2.3 cycle 928) — **IDLE-OK, verified.** PR hygiene: `#2281` (recovery-51,
+  this branch) is the only genuinely-mine open PR — `mergeStateStatus=BLOCKED`, auto-merge armed
+  11:16:02Z, all required checks `pass` except `Governance Gates` still `pending` (not stalled —
+  no `gh-readonly-queue/main/pr-2281-*` run has appeared yet in the last 15 merge_group runs,
+  consistent with "not yet dequeued, still finishing its own PR checks" rather than a queue
+  stall). #2282 (L3), #2271 (L2), #2277 (L1) and the older parked/preserve PRs (#1500, #1189,
+  #1180, #899, #898, #446) confirmed out-of-scope by branch/title, same as every prior cycle.
+  E-gate re-run: unchanged from cycle 927 — all 11 remaining L5 assets still `w2_verdict=f`,
+  ancestor counts unchanged (20-45 range). Nothing eligible for W3/W4. This entry held local
+  (uncommitted push) on `codex/nirmana-l5-heartbeat-recovery-51` per standard practice — pushing
+  now risks dequeuing #2281 once it starts climbing the merge queue.
 - 2026-09-07T11:15Z (C8 v2.3 cycle 927) — **`#2278` MERGED — the fifty-first state-recovery PR
   closed out.** Confirms the batch-processing diagnosis from cycle 926. Fifty-first recurrence
   of the exact same pattern (cycles 442, 453, 461, 473, 482, 492, 502, 511, 519, 528, 534, 545,
