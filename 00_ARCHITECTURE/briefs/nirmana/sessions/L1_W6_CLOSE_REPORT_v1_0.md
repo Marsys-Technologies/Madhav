@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.13-DRAFT"
+version: "0.14-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -28,7 +28,8 @@ CLOSED cycle 147 (PR #2191). F-B32 (the stale category list) remains open; quant
 cycle 148: the gap has NOT widened since the original measurement (flat at 169-vs-**219**,
 canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, corrected claim, see §2)
 — 57 categories missing, 6 phantom entries found in the 169-list. Being closed incrementally
-cycle 149 onward (30/57 landed across 6 slices, PR #2193). See §2 for the corrected
+cycle 149 onward (31/57 landed across 7 slices, PR #2202; ~25 remaining reframed cycle 156 as
+genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ PARTIALLY UNBLOCKED, cycle 155.**
@@ -351,16 +352,30 @@ awaits either a dedicated prep cycle or genuine W6 close.
   spreads its fixed `KP_CATEGORIES` const unconditionally, no caller override; the other three
   categories in that const were already covered via `get_karakas`) + `house_bhava_bala_ratio`,
   `house_chalit` (opt-in via `get_bhava_bala.ts`, same data-driven doctrine as every prior
-  opt-in slice). All six slices confirmed via live row counts before adding. **30/57 closed,
-  ~27/57 remain open**; the 6 phantom entries and the get_nakshatra.ts 3-category docstring
-  overclaim are both untouched (need their own separate investigation before either removing or
-  re-pointing). **New finding, cycle 153**: `graha_yuddha_per_varga` (17 live rows) was checked
-  against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by any tool — that tool
-  hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for this chart) with no
-  `categories`-override mechanism, unlike every other per_varga category closed so far. This is
-  a deeper defect class than F-B32 itself (a real computed category with no serving path at
-  all, category-granularity version of the original F-B18/F-B19 "asset has no tool" finding) and
-  is tracked separately, not folded into the F-B32 tool-mapping work.
+  opt-in slice). Slice 7 (1/57): `dispositor_tree` — opt-in via `get_dispositors.ts`'s
+  data-driven query, 1450 live rows. All seven slices confirmed via live row counts before
+  adding. **31/57 closed, ~26/57 remain open**; the 6 phantom entries and the get_nakshatra.ts
+  3-category docstring overclaim are both untouched (need their own separate investigation
+  before either removing or re-pointing). **New finding, cycle 153**: `graha_yuddha_per_varga`
+  (17 live rows) was checked against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by
+  any tool — that tool hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for
+  this chart) with no `categories`-override mechanism, unlike every other per_varga category
+  closed so far. This is a deeper defect class than F-B32 itself (a real computed category with
+  no serving path at all, category-granularity version of the original F-B18/F-B19 "asset has no
+  tool" finding) and is tracked separately, not folded into the F-B32 tool-mapping work.
+  **Reframing finding, cycle 156**: a systematic sweep of every remaining category name against
+  every `L1_ganita/*.ts` file found `dispositor_tree` was the ONLY one with a real serving tool
+  — the other ~25 (`aspect_received_by_special_point`, `bhava_significance_link`,
+  `chart_center_of_gravity`, `chart_cluster`, `conjunction_special_point`, `contradiction_pair`,
+  `esoteric_point_sphuta_fertility`, `esoteric_point_yogi_system`, `graha_centrality`,
+  `kendradhipati_dosha`, `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`,
+  `nakshatra_lord_relationship`, `net_argala_per_varga`, `nway_config_per_varga`,
+  `panchadha_maitri`, `sambandha_grade`, `sandhi_flag`, `significator_path`,
+  `sun_derived_upagraha`, `tara_bala` bare, `virupa_drishti`, plus `graha_yuddha_per_varga` and
+  `karaka_web_per_varga` above) have ZERO hits anywhere — genuinely unreachable by any tool, the
+  same defect class as `graha_yuddha_per_varga`. This reframes what remains of F-B32: no longer
+  mostly "a stale list needs new entries," mostly "these categories have no serving tool at
+  all" — new-endpoint work, out of scope for this hand-maintained list's own repair.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -372,11 +387,14 @@ awaits either a dedicated prep cycle or genuine W6 close.
 ## §6 — OPEN
 
 Per-finding disposition table (§2) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
-#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-6 (30
-categories) landed cycles 149-154, PR #2193; ~27/57 + 6 phantoms + get_nakshatra.ts's own
-3-category docstring overclaim remain, unheld, does not need
-#2113)** · **graha_yuddha_per_varga unreachability (§5 — new cycle 153, distinct from F-B32)**
-· W4 execution (blocked, #2113) · W5
+#2191 cycle 147; F-B32 quantified cycle 148 at 57 missing/6 phantom categories; slices 1-7 (31
+categories) landed cycles 149-156, PR #2202; ~25 remaining reframed cycle 156 as genuinely
+unreachable by any tool — a tool-coverage gap, not a list-staleness gap; plus 6 phantoms and
+get_nakshatra.ts's own 3-category docstring overclaim remain, unheld, does not need
+#2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
+cycle 153/156, distinct from F-B32's own list-repair scope)**
+· W4 partially unblocked (wave 0 dispatched cycle 155; wave 1 blocked on `natural_key_partition`,
+posted #2180) · W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.

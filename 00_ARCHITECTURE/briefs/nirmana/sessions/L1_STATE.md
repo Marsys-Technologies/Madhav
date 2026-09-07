@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 155; MAJOR: #2180 RULED (Conductor, 2026-09-07T00:45:28Z) confirming the full waves 0-3 coordinated rebuild scope. Dispatched wave 0 (ga_positions) live: fresh Cloud SQL backup taken, --acknowledge-destroys for the WP-6 blast radius (chart_fact_identity, in-layer, ~530 rows scoped), --commit succeeded -- asset_throughput.state now 'lit' (was 'error' from a stale pre-#1861-fix crash), chart_facts repopulated (530 rows). New blocker found and posted to #2180: asset_freshness for ga_positions is 'unknown' not 'fresh' (asset_registry.natural_key_partition empty) -- asset_runner.py's DEP-ASSERT gate needs freshness=='fresh' exactly, so wave 1 may still be blocked despite the zero-rows wall clearing. Also found and fixed: chart_fact_identity (the cascade target) is repopulated by a SEPARATE standalone script, not the orchestrator writer -- re-ran it, back to 125,593 rows for the canonical chart. Did NOT proceed to wave 1 this cycle -- surfaced the new blocker instead of pushing past it. #2113 still quiet
+last_updated: 2026-09-07 — C8 v2.3 cycle 156; #2180 still awaiting a reply (own comment from cycle 155 remains the last one). Continued F-B32 with slice 7 (PR #2202): dispositor_tree (opt-in via get_dispositors.ts, 1450 live rows). Bigger finding this cycle: swept every remaining category name against every L1_ganita/*.ts file -- of ~26 remaining after this slice, dispositor_tree was the ONLY one with a real serving tool; the other ~25 are genuinely unreachable by any tool, same defect class as graha_yuddha_per_varga. 31/57 closed; reframes the rest of F-B32 as mostly a tool-coverage gap, not a list-staleness gap. #2113 still quiet
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8649,3 +8649,44 @@ record — they are the only entries in this table with a real wall-clock behind
   await #2180's reply on the partition-declaration question before attempting wave 1; keep
   re-checking #2113/#2180 every cycle regardless; F-B32's incremental closure (30/57) remains
   the fallback unheld W3 item if #2180 stays quiet.
+- 2026-09-07T10xZ -- CYCLE 156 (C8 v2.3). PR hygiene: `#2201` (state PR) `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed -- clean, nothing to fix. #2180: re-checked -- the last
+  comment is still my own cycle-155 finding, no reply from the Conductor yet. #2113: same, still
+  quiet. Both #2193 and #2178 merged mid-cycle-155 -- confirmed both genuinely `MERGED` (not
+  just queued) this cycle, and branched fresh off `origin/main` for both this cycle's state work
+  (`codex/nirmana-l1-state-cycle5`, already in use) and the F-B32 continuation
+  (`codex/nirmana-l1-f-b32-slice7`, new -- the old slices-1-6 branch is done, merged).
+  With #2180 quiet and wave 1 correctly held pending its reply, fell back to F-B32's incremental
+  closure (priority-3 unheld W3 item) as this cycle's unit. Slice 7: `dispositor_tree` --
+  confirmed opt-in via `get_dispositors.ts`'s data-driven `fact_category = ANY($2)` query (not
+  in the tool's own default `DISP_CATEGORIES`), 1450 live rows on the canonical chart.
+  Given how many of the last several candidates checked (tara_bala, kendradhipati_dosha,
+  significator_path, panchadha_maitri, sambandha_grade, virupa_drishti, sun_derived_upagraha,
+  the three nakshatra-adjacent-by-name categories from slice 3, net_argala_per_varga,
+  graha_centrality, nway_config_per_varga, graha_yuddha_per_varga) all turned out to have NO
+  serving tool at all, decided to do one systematic sweep instead of continuing to spot-check
+  one or two per cycle: grepped every one of the ~26 categories remaining after this slice
+  against every file in `L1_ganita/*.ts` (not sampled, all of them). Result: `dispositor_tree`
+  was the ONLY hit. The other ~25 (full list recorded in the file's own header comment and
+  `L1_W6_CLOSE_REPORT_v1_0.md`) have ZERO references anywhere -- not a missing coverage_matrix.ts
+  entry for an existing tool, but no tool that could serve them even with a corrected entry.
+  This is a real reframing, not just a status update: F-B32 was originally diagnosed (cycle 148)
+  as "a stale hand-maintained list," implying the fix is enumerating tool ownership correctly.
+  The systematic sweep shows the REMAINING gap is mostly the deeper defect class this session
+  already named for `graha_yuddha_per_varga` (a real, computed category with no serving path at
+  all) -- new-endpoint work, not a documentation fix, and therefore not something a single
+  session's list-repair cycles should keep chipping at expecting the same yield. Documented this
+  clearly rather than silently letting future cycles keep finding "another unreachable one" as
+  if it were a surprise each time.
+  Added `dispositor_tree` to both `CHART_FACTS_CATEGORIES` and `CATEGORY_TOOL_COVERAGE`, updated
+  the header note with the full reframing and the complete unreachable-category list, verified
+  `tsc --noEmit` clean and `coverage_gate.test.ts` 6/6 pass. Branched fresh off `origin/main`
+  (previous slices' PR had already merged), committed, pushed (no conflicts, main hadn't moved),
+  opened PR #2202, queued, confirmed `autoMergeRequest` armed. 31/57 categories now closed.
+  CYCLE 156 L1: PR hygiene clean; shipped F-B32 slice 7 (1 category, PR #2202) and reframed the
+  remaining ~25 as a tool-coverage gap rather than a list-staleness gap -- next: F-B32's own
+  incremental closure is now effectively done (one real category left to verify slice-by-slice
+  is not a productive use of a cycle vs. one clear documented finding); await #2180's reply on
+  wave 1; keep re-checking #2113/#2180 every cycle regardless; if both stay quiet next cycle,
+  consider the 139-row per-finding disposition table (the last remaining charter-named prep
+  item) as the fallback unit.
