@@ -381,8 +381,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
-- `2026-09-07T00:38:01Z` — cycle 704: **IDLE-OK.** Fleet DIRTY: empty. No new
-  `nirmana-adjudication` issues (20). Nothing rose to a bounded unit.
+- `2026-09-07T00:45:31Z` — cycle 705: **RULED #2180 (scope confirmation).** Fleet DIRTY
+  empty; adjudications unchanged (20). L1 had asked confirmation on a revised, much larger
+  rebuild scope (waves 0-3, 15 L1 assets, not the original 5) after finding `asset_freshness`
+  DEP-ASSERT walls block `ga_yoga`'s deps. Independently verified live before ruling: queried
+  `asset_freshness` for all 19 `ga_*` assets — every one is `null` for the canonical chart,
+  confirming the wall is real and campaign-wide, not narrow to the two deps L1 checked; also
+  confirmed `ga_positions` itself sits in `throughput_state='error'` (a *state* failure, prior
+  to and separate from the freshness one) and that `provenance.py` does write
+  `asset_freshness` on successful completion, so sequential wave dispatch mechanically clears
+  the wall wave-by-wave as L1 planned. **Confirmed L1's revised scope as correct** (waves 0-3,
+  then `ga_yoga`, then the 3 L2 assets, strict sequential order) — superseding my earlier
+  5-asset framing. Flagged (non-blocking) that the null-freshness state is campaign-wide, so
+  any other layer's first post-freshness-gate rebuild will hit the same wall. #2137 still open
+  (no L5 reply yet on the `mi_kula` retry).
 - `2026-09-07T00:35:55Z` — cycle 703: **IDLE-OK.** Fleet DIRTY: empty. No new
   `nirmana-adjudication` issues (20). Nothing rose to a bounded unit.
 - `2026-09-07T00:33:38Z` — cycle 702: **IDLE-OK.** Fleet DIRTY: empty. No new
