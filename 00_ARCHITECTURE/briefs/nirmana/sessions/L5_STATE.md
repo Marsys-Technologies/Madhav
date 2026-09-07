@@ -457,6 +457,39 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T08:32Z (C8 v2.3 cycle 675) — **`#2196` MERGED — the twenty-sixth state-recovery PR
+  closed out.** Twenty-sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, now 675). 11 local-only commits (cycles 664-674, 27 lines, single-file) recovered
+  via patch-onto-fresh-branch onto `codex/nirmana-l5-heartbeat-recovery-27`. Ancestor counts
+  still unchanged across all 11 remaining L5 assets.
+- 2026-09-07T08:26Z (C8 v2.3 cycle 674) — **IDLE-OK, verified.** #2196 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T08:20Z (C8 v2.3 cycle 673) — **IDLE-OK, verified.** #2196 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T08:14Z (C8 v2.3 cycle 672) — **IDLE-OK, verified.** #2196 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T08:08Z (C8 v2.3 cycle 671) — **IDLE-OK, verified genuine build churn — main stuck
+  for many cycles, checked directly.** #2196's `gh-readonly-queue/main/pr-2196-*` shows genuine
+  queue re-basing (two successive merge-base attempts, both with sibling checks SUCCESS, latest
+  ~4.3 min into its own Governance Gates run) — real activity, not a stall. Ancestor counts
+  unchanged. Nothing eligible.
+- 2026-09-07T08:02Z (C8 v2.3 cycle 670) — **IDLE-OK, verified.** #2196 unchanged, still
+  genuinely queued. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:56Z (C8 v2.3 cycle 669) — **IDLE-OK, verified.** #2196 now genuinely queued.
+  Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:50Z (C8 v2.3 cycle 668) — **IDLE-OK, verified.** #2196's Governance Gates job
+  checked again (~10.7 min elapsed, upper end of normal but not stalled). #2195 confirmed L3's,
+  out of scope. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:44Z (C8 v2.3 cycle 667) — **IDLE-OK, verified.** #2196's Governance Gates job
+  checked at the job level (~8.4 min elapsed, within normal range) — genuine progress, not
+  stalled. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:38Z (C8 v2.3 cycle 666) — **IDLE-OK, verified.** #2196 down to its last check,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:32Z (C8 v2.3 cycle 665) — **IDLE-OK, verified.** #2196 down to 2 pending checks,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T07:26Z (C8 v2.3 cycle 664) — **IDLE-OK, verified.** #2196 building cleanly, no
+  failures. Ancestor counts unchanged. Nothing eligible.
 - 2026-09-07T07:20Z (C8 v2.3 cycle 663) — **`#2194` MERGED — the twenty-fifth state-recovery PR
   closed out.** Twenty-fifth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
   482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
