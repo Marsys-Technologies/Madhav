@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:36:06Z` — cycle 862: **`ga_positions` W4 progressing, Δfrozen still +0 — not yet
+  nudge-worthy.** New event since last check: `implementation_accepted` at 08:40:00Z (a type not
+  seen in the reference `bg_cohort` W2→W6 sequence — noting the observed_at reads ~4 min ahead of
+  my own wall-clock at query time; flagging as a minor DB/session clock-skew observation, not
+  acting on it — doesn't change the substance). Still missing `accepted_rebuild_observed`/
+  `integrity_verified`/`asset_frozen` to actually freeze. This is active forward motion (4th
+  evidence round + a new acceptance type within ~10 min of the rebuild), not a stall — continuing
+  to hold off escalating past the #2180 ruling until a real gap opens up. Fleet DIRTY: same 2
+  known stale native PRs (#1180/#446), no new ones. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T08:33:31Z` — cycle 861: **Ruling #2180 worked — `ga_positions` rebuilt for real,
   Δfrozen still +0 pending W4 acceptance.** Checked `build_runs` for anything since the ruling
   (08:27:06): a real L1 wave-0 run against `ga_positions` dispatched at 08:31:16, `state=
