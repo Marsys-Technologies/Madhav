@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:06:26Z` — cycle 873: **IDLE-OK, Δfrozen +0.** `ga_dashas` still `state='building'`
+  in `asset_throughput` (last progress 09:00:45, `last_error=null`) — genuinely in flight, not
+  stuck, just a heavier writer than `ga_positions` was; ~9 min since `implementation_accepted`
+  with no error is not yet a stall signal on its own. Not escalating on a single data point. Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T09:04:05Z` — cycle 872: **IDLE-OK, Δfrozen +0.** `ga_dashas` build still `running`
   (~6 min in, normal), no new events since last check. Other 15 frontier assets still untouched —
   only ~5 min since the nudge with L1's one response; not re-escalating yet this cycle. Fleet
