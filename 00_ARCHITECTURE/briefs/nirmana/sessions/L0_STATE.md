@@ -1342,3 +1342,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Not fixing unilaterally — same posture as L1's own filing. Nothing else eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. #1713
   tail is just my own prior post cross-referenced, no new information. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Conductor confirmed #2300's diagnosis is sound but correctly deferred to native ruling (FROZEN
+  orchestrator, §N.2) — not L0's to act on. Nothing eligible.
