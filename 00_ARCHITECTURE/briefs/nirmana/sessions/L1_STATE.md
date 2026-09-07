@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 146; began the 139-row disposition-table prep item, and while reconstructing MUST-tier statuses caught that cycle 125's "MUST tier fully closed" claim was WRONG for one id-group (F-B32/F-B33) -- independently re-verified LIVE that it is still genuinely open (coverage_matrix.ts still 169 hand-maintained categories vs. live chart_facts now at 223, up from 219 at original measurement; concept_aliases.ts:14 still cites a CI check file, schema_map_alias_coverage_check.ts, that still does not exist anywhere in the repo). Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, version 0.2-DRAFT->0.4-DRAFT) rather than silently propagating the wrong "closed" claim forward. Did not attempt the real fix this cycle (re-deriving the category list + either building the cited CI check or correcting the docstring) -- too large for one bounded unit; recorded as the new highest-priority unheld W3 item. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 154; shipped F-B32 slice 6/N (PR #2193): bhava_cusps (get_kp_cusps.ts, unconditional -- the dedicated KP-cusp tool that had zero entries anywhere in the file) + house_bhava_bala_ratio/house_chalit (opt-in via get_bhava_bala.ts). Pushed cleanly this time (no merge-queue race). 30/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8296,3 +8296,257 @@ record — they are the only entries in this table with a real wall-clock behind
   real fix is now the highest-priority unheld W3 item (does not need #2113); the 139-row
   disposition table itself remains open pending either a dedicated future cycle or #2180 staying
   quiet long enough to justify one; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T1xZ -- CYCLE 147 (C8 v2.3). PR hygiene: `#2185` genuinely `is:queued` (GraphQL
+  confirmed) -- no action needed. `#2178` `BLOCKED`/`MERGEABLE`, autoMergeRequest armed, only
+  `Unit Tests` + `Governance Gates` still `pending`, zero `fail` -- same already-diagnosed mid-CI
+  pattern. Nothing DIRTY/RED/unqueued-but-clean. #2113/#2180: re-checked comment counts/timestamps,
+  identical to cycle 146 -- still no reply from either.
+  Picked the F-B32/F-B33 real fix (flagged cycle 146 as the new highest-priority unheld W3 item)
+  and split it: F-B33's half (the false CI-check citation) is a clean, small, low-risk doc-only
+  correction; F-B32's half (re-deriving 169-vs-223 categories) is a real audit that deserves its
+  own bounded unit rather than being rushed. Did F-B33 this cycle: corrected
+  `concept_aliases.ts`'s docstring (lines 12-16) to stop claiming
+  `platform/scripts/census/schema_map_alias_coverage_check.ts` is a real, running CI check --
+  it never existed (re-confirmed via direct path check + repo-wide grep for `alias_coverage`,
+  same result as cycle 146). New docstring states the honest current reality (no gate exists; a
+  category added without an alias degrades `concept_locate` silently today) and points to
+  `L1_W6_CLOSE_REPORT_v1_0.md` §5/§6 for the still-open real fix. Verified no test depended on the
+  old text (grep clean). Branched fresh off origin/main (`codex/nirmana-l1-f-b33-docstring-fix`),
+  committed, rebased clean (origin/main had advanced 15 commits, zero conflicts since this touches
+  only one file no one else is editing), pushed, opened PR #2191, queued (`gh pr merge --auto`),
+  confirmed `autoMergeRequest` armed. CYCLE 147 L1: PR hygiene clean; closed F-B33's honest-doc
+  half of last cycle's reconfirmed-open finding (PR #2191, queued) -- next: F-B32's own half
+  (re-deriving `coverage_matrix.ts`'s category list against the live, still-growing count) is now
+  the standing highest-priority unheld W3 item; keep re-checking #2113/#2180 every cycle
+  regardless.
+- 2026-09-07T2xZ -- CYCLE 148 (C8 v2.3). PR hygiene: `#2191` and `#2178` (only own open PRs, `#2185`
+  merged since last cycle) both `BLOCKED`/`MERGEABLE`, `autoMergeRequest` armed on both, remaining
+  checks all `pending` or `pass`, zero `fail` -- clean, nothing to fix. #2113/#2180: identical
+  comment counts/timestamps to cycle 147 -- still no reply.
+  Started F-B32's real fix (the standing highest-priority unheld W3 item per cycle 147). First
+  step: re-derive the TRUE live category count, since the actual edit depends on getting this
+  right. Extracted the 169-list via grep into a scratchpad file (169 lines, matches). Ran the live
+  count query -- but this time noticed `coverage_matrix.ts:13`'s own docstring says "Every
+  `chart_facts.fact_category` that exists **for chart_id=native**", i.e. the comparison should be
+  scoped to the CANONICAL chart specifically, not an unscoped count across the whole table.
+  Checked: `chart_facts` currently holds THREE distinct chart_ids (canonical `482012f1-...` = 219
+  categories, `1c826d5a-...` [Abhinandan] = 220, `cb73cd3d-...` = 217) -- cycle 146's own "223"
+  query had no `WHERE chart_id=...` clause and so summed categories across all three charts
+  together, which is NOT what this file's own stated scope calls for. Re-ran scoped to the
+  canonical chart_id: **219** -- identical to the ORIGINAL W1 measurement. **The gap has not
+  widened at all; it is flat at 169-vs-219, unchanged since the finding was first made.** Corrected
+  this explicitly rather than let my own cycle-146 "worsened to 223" claim stand uncorrected --
+  the same §N.8 discipline applied to cycle 125's error applies to my own prior cycle's error.
+  With the correct baseline established, ran a `comm` diff between the 169-list and the live
+  canonical-chart category list: **57 categories present live are absent from the 169-list**
+  (spans nearly every section of the file -- ashtakavarga, graha_avastha-per-varga, KP,
+  nakshatra-relationship, special-lagna, and more, not concentrated in one owner); **7 entries in
+  the 169-list are not live for the canonical chart**, of which of 6
+  (`ashtakavarga_anubindu`, `dosha_fires`, `esoteric_point_chatushphuta`,
+  `esoteric_point_panchasphuta`, `esoteric_point_trisphuta`, `yoga_fires`) genuinely do not exist
+  as a `fact_category` value for ANY chart in the table (checked via a live query across all
+  chart_ids) -- these look like stale or renamed phantom entries (the real live yoga/dosha
+  categories are `yoga_label`/`dosha_label`, already correctly listed separately), not merely
+  chart-specific absences; the 7th (`karaka_web_per_varga`) is real (2,945 live rows) but simply
+  not yet built for the canonical chart, so not itself a list defect.
+  Decided NOT to attempt the actual 57-category tool-mapping edit this cycle: assigning each
+  missing category to its verified real serving tool requires checking actual serving code
+  per-category (the same rigor the DAG audit applied to depends_on edges), and rushing that risks
+  introducing NEW false claims -- exactly the defect class this whole investigation exists to
+  catch. Instead wrote up the verified, corrected diff into `L1_W6_CLOSE_REPORT_v1_0.md`
+  (§0/§2/§5/§6, version 0.5-DRAFT->0.6-DRAFT): corrected the "223"/"widened" claim to "219/flat",
+  and recorded the full 57-missing/6-phantom/1-not-yet-built breakdown as the concrete
+  prerequisite for the real fix. CYCLE 148 L1: PR hygiene clean; corrected my own prior cycle's
+  measurement error and produced a precise, verified diff for F-B32 rather than a vague "it's
+  stale" restatement -- next: the actual tool-mapping edit (57 additions + resolving 6 phantom
+  entries) remains the standing highest-priority unheld W3 item, now with a concrete worklist
+  instead of an estimate; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T3xZ -- CYCLE 149 (C8 v2.3). PR hygiene: `#2191` was `CLEAN`/`MERGEABLE` with every
+  check `pass` but NOT in `is:queued` -- queued it explicitly (`gh pr merge --auto`), re-verified
+  via GraphQL `is:queued` search, now genuinely queued. `#2178` `BLOCKED`/`MERGEABLE`, only
+  3 checks still `pending`, zero `fail`, autoMergeRequest armed -- known mid-CI pattern, no action.
+  #2113/#2180: same comment counts/timestamps as cycle 148 -- still no reply.
+  Started closing F-B32's 57-category gap (cycle 148's own worklist) incrementally rather than in
+  one unverified bulk pass -- mapping a category to the wrong tool would be a worse defect than an
+  honest gap. Picked the `graha_avastha_*_per_varga` cluster (5 of the 57) as the first verified
+  slice: read `get_avasthas.ts` directly and confirmed its query is `fact_category = ANY($2::
+  text[])` over the caller's `categories` input param -- `AVASTHA_CATEGORIES` (the 6 base
+  categories already in the list) is only the DEFAULT subset passed when the caller omits
+  `categories`, not a hard SQL filter. This means the 5 per-varga variants
+  (`graha_avastha_baladi_per_varga`, `_deeptaadi_per_varga`, `_jagradadi_per_varga`,
+  `_lajjitadi_per_varga`, `_sayanadi_per_varga`) are genuinely reachable TODAY via the same
+  already-listed tool, opt-in only -- exactly the same doctrine this file already applies to
+  `ashtakavarga_bindu_per_varga` a few sections up (verified by reading that precedent's own
+  comment, not assumed). Checked live row counts before adding anything: 1305/1305/45/45/45 on
+  the canonical chart -- real, populated, not stray single rows. Added all 5 to both
+  `CHART_FACTS_CATEGORIES` (alphabetically) and `CATEGORY_TOOL_COVERAGE` (TypeScript's
+  `Record<ChartFactsCategory, string[]>` forced both to move together -- confirmed via `tsc
+  --noEmit` catching the mismatch until both were done), with a comment explaining the
+  verification chain for whoever reads this next. Added a header note recording F-B32's
+  incremental-closure status and the exact five categories closed today, so the next session
+  doesn't have to re-derive what's left from scratch. Ran `coverage_gate.test.ts` -- 6/6 still
+  pass (no brittle count assertion in that test, confirmed by reading it first). Branched fresh
+  off origin/main (`codex/nirmana-l1-f-b32-avastha-per-varga`), committed, pushed, opened PR
+  #2193, queued, confirmed `autoMergeRequest` armed. CYCLE 149 L1: PR hygiene clean (queued one
+  clean-but-unqueued PR); shipped the first verified slice of F-B32's real fix (5/57 categories,
+  PR #2193) -- next: ~52 categories remain; continue one verified cluster per cycle rather than
+  rushing a bulk pass; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T4xZ -- CYCLE 150 (C8 v2.3). PR hygiene: `#2191` genuinely `is:queued` (GraphQL
+  confirmed). `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  149 -- still no reply.
+  Continued F-B32's incremental closure with slice 2: `graha_cheshta_bala_per_varga`,
+  `graha_drik_bala_per_varga`, `graha_kala_bala_per_varga`, `graha_sthana_bala_per_varga` (4 of
+  the remaining 52). Read `get_strength.ts` directly (same verification discipline as slice 1):
+  confirmed its query is also `fact_category = ANY($2::text[])` over the caller's `categories`
+  param, `STRENGTH_CATEGORIES` (21 entries) being only the default subset, not a hard filter --
+  these 4 per-varga breakdowns of the already-served cheshta/drik/kala/sthana shadbala
+  components are genuinely reachable today via the same tool, opt-in only, same doctrine as
+  slice 1. Checked live row counts before adding: 735/735/735/735 (canonical chart) -- real,
+  populated. Added all 4 to both `CHART_FACTS_CATEGORIES` and `CATEGORY_TOOL_COVERAGE`
+  (alphabetically placed, `tsc --noEmit` catching the type mismatch until both moved together),
+  with a matching comment. Updated the file's own header note to record slice 2's closure and
+  the new remaining count (~48). Ran `coverage_gate.test.ts` -- still 6/6 pass.
+  Per the established multi-commit-PR-continuation pattern, checked `#2193` was still OPEN
+  before adding new work -- it was -- so committed slice 2 as a second commit onto the SAME
+  branch/PR rather than opening a colliding parallel PR (both slices touch the same file's same
+  regions; a second branch would conflict at merge time regardless). Rebased onto origin/main
+  (already up to date, no conflicts), pushed, updated the PR title/description to cover both
+  slices, re-confirmed `autoMergeRequest` armed and `mergeable: MERGEABLE`. 9/57 categories now
+  closed. CYCLE 150 L1: PR hygiene clean; shipped F-B32 slice 2 (4 more categories, same PR
+  #2193) -- next: ~48 categories + 6 phantom entries remain; continue one verified cluster per
+  cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T5xZ -- CYCLE 151 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 150 -- still no reply.
+  Continued F-B32's incremental closure with slice 3: the `get_nakshatra.ts` cluster. This tool
+  (F-B18/F-B19's earlier fix -- `ga_nakshatra` previously had NO dedicated serving tool at all)
+  had ZERO entries anywhere in `coverage_matrix.ts`, despite its own header comment and
+  `NAKSHATRA_CATEGORIES` const explicitly naming 16 fact_categories. Cross-referenced that const
+  against the F-B32 missing-57 list: 12 direct matches (`graha_nakshatra_join`,
+  `graha_pada_join`, `graha_kp_lords`, `cusp_kp_lords`, `graha_gandanta`,
+  `nakshatra_dispositor`, `nakshatra_conjunction`, `nakshatra_cogravity`, `graha_tara_bala`,
+  `nakshatra_statistics`, `kp_house_significators`, `kp_planet_significations`), all confirmed
+  with real, non-trivial live row counts before adding (700/200/200/240/50/200/1/10/150/34/
+  540/505). Deliberately did NOT add 3 other categories the tool's own const names
+  (`nakshatra_lord_placement`, `graha_degree_flags`, `nakshatra_exchange`) after checking they
+  have ZERO live rows for the canonical chart -- that is the tool's OWN docstring overclaiming,
+  a separate finding from F-B32, not something to paper over by adding a category with no data
+  behind it. Also deliberately did NOT add 3 categories from the missing-57 list that look
+  nakshatra-adjacent by name (`nakshatra_co_tenancy`, `nakshatra_dispositor_chain`,
+  `nakshatra_lord_relationship`) since they do not appear in `get_nakshatra.ts`'s own category
+  list at all -- naming similarity is not verification, and guessing their owner would repeat
+  the exact mistake this whole slow, incremental approach exists to avoid.
+  **Self-caught mid-cycle mistake**: after finishing the edit, `tsc` flagged `graha_nakshatra_join`
+  as an unknown property on a type listing only ~161 more entries -- far fewer than expected,
+  which meant I had started this cycle's edit on `codex/nirmana-l1-state-cycle4` (the STATE
+  branch, checked out fresh from origin/main at cycle 150's merge) instead of
+  `codex/nirmana-l1-f-b32-avastha-per-varga` (the actual feature branch carrying slices 1-2).
+  Caught it via the diagnostic before committing anything -- discarded the in-progress edit
+  cleanly (`git checkout --` on the one file, confirmed `git status` clean), switched to the
+  correct branch, and reapplied slice 3 there on top of the real slices 1-2 content. Verified
+  `tsc --noEmit` clean and `coverage_gate.test.ts` 6/6 pass on the correct branch before
+  committing. Rebased onto origin/main (clean, 3 commits), and hit a merge-queue race pushing
+  the force-with-lease after rebase (the PR had been auto-queued between my check and the push)
+  -- dequeued via the `dequeuePullRequest` GraphQL mutation, force-pushed successfully, updated
+  the PR title/description to cover all three slices, re-queued, confirmed `autoMergeRequest`
+  armed. 21/57 categories now closed. CYCLE 151 L1: PR hygiene clean; shipped F-B32 slice 3 (12
+  more categories, PR #2193) after catching and correcting my own wrong-branch mistake before it
+  reached a commit -- next: ~36 categories + 6 phantom entries + get_nakshatra.ts's own 3-category
+  docstring overclaim remain; continue one verified cluster per cycle; keep re-checking
+  #2113/#2180 every cycle regardless.
+- 2026-09-07T6xZ -- CYCLE 152 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 151 -- still no reply.
+  Continued F-B32's incremental closure with slice 4, two sub-clusters. (1) `special_lagna`,
+  `upapada_lagna`, `sensitive_point_gulika_mandi`: not in `get_sensitive_points.ts`'s own
+  default `SP_CATEGORIES`, but its query is the same `fact_category = ANY($2)` pattern verified
+  every prior slice -- and this time found EXTRA corroboration beyond the generic pattern:
+  `tool_name_bridge.ts:87` explicitly maps a retired legacy tool name
+  (`query_special_lagnas`) onto this exact same URI, confirming `special_lagna`'s data was
+  deliberately folded into this tool rather than left orphaned when the old dedicated tool was
+  retired. (2) `sensitive_degree_check`, `sensitive_point_yogi`: `get_sensitive_degrees.ts`
+  (F-B14's own earlier fix) serves both UNCONDITIONALLY via a fixed `SERVED_FACT_CATEGORIES`
+  array with no caller override at all -- simpler than every prior slice's opt-in pattern, no
+  ambiguity to verify. Checked live row counts before adding all 5: special_lagna=245,
+  upapada_lagna=10, sensitive_point_gulika_mandi=70, sensitive_degree_check=275,
+  sensitive_point_yogi=60 -- all real, populated.
+  Learned from cycle 151's mistake: switched to the correct feature branch
+  (`codex/nirmana-l1-f-b32-avastha-per-varga`) FIRST this time, before touching
+  `coverage_matrix.ts`, and confirmed slices 1-3's content was present (`grep -c
+  graha_nakshatra_join` = 3) before editing further. Added both new sections (extending the
+  existing `get_sensitive_points` block, plus a new `get_sensitive_degrees` block), updated the
+  const array alphabetically, updated the header note. `tsc --noEmit` clean,
+  `coverage_gate.test.ts` 6/6 pass. Rebased onto origin/main (clean, 4 commits), checked
+  `is:queued` before pushing this time (not queued -- avoided last cycle's race), force-pushed,
+  updated the PR title/description to cover all four slices, re-queued, confirmed
+  `autoMergeRequest` armed. 26/57 categories now closed. CYCLE 152 L1: PR hygiene clean; shipped
+  F-B32 slice 4 (5 more categories, PR #2193) -- next: ~31 categories + 6 phantom entries +
+  get_nakshatra.ts's own 3-category docstring overclaim remain; continue one verified cluster
+  per cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T7xZ -- CYCLE 153 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 152 -- still no reply (8 cycles since the last
+  nudge on #2180 at cycle 145; held off nudging again since there is no new information to add
+  beyond routine F-B32 progress, which isn't relevant to that adjudication's actual question).
+  Continued F-B32's incremental closure. `ayurdaya` (`get_ayurdaya.ts`): confirmed the tool
+  hardcodes `fact_category = 'ayurdaya'` (get_ayurdaya.ts:71, a literal `=`, not `ANY(...)` --
+  no opt-in ambiguity at all, simpler than every prior slice) and serves 130 live rows on the
+  canonical chart, matching the tool's own docstring count exactly. Added it with its own new
+  `── Āyurdāya ──` section.
+  Spent the rest of the cycle checking several more single-category candidates from the
+  remaining ~30 and found most do NOT have a verifiable serving tool: `tara_bala` (bare, distinct
+  from the already-added `graha_tara_bala`) has 43 live rows but no tool anywhere references the
+  literal string `'tara_bala'` -- `get_tara_chandra_bala.ts` hardcodes a DIFFERENT two-category
+  array (`tara_bala_natal_baseline`, `chandra_bala_natal_baseline`) with no override mechanism,
+  so it cannot reach the bare category either. `kendradhipati_dosha`, `significator_path`,
+  `panchadha_maitri`, `sambandha_grade`, `virupa_drishti`, `sun_derived_upagraha`: none appear as
+  an actual `chart_facts.fact_category` string anywhere in any L1_ganita retrieval file (grep
+  clean) -- `get_condition_composite.ts`'s docstring mentions "panchadha friendship" and
+  "combustion" but that tool reads from a DIFFERENT table entirely (`ga_condition_composite`,
+  not `chart_facts`) -- a naming-similarity trap correctly avoided by checking the actual SQL
+  rather than trusting the prose, same discipline as slice 3's `nakshatra_co_tenancy` exclusion.
+  `graha_yuddha_per_varga` (17 live rows) got the deepest look: `get_graha_yuddha.ts` hardcodes
+  `fact_category = 'graha_yuddha'` (bare, ZERO rows for this chart) with no `categories`
+  override at all, unlike get_avasthas/get_strength/get_nakshatra/get_sensitive_points which all
+  support opt-in via an explicit param -- this per-varga variant is genuinely UNREACHABLE by any
+  tool today, not just missing from the list. This is a DIFFERENT, deeper defect class than
+  F-B32 itself (a real computed category with literally no serving path, the same class as the
+  original F-B18/F-B19 "asset has no tool" finding but at category granularity) -- recorded in
+  the file's own header note as its own finding rather than force-mapped to a tool that cannot
+  reach it.
+  Learned from cycle 151, applied again: switched to the feature branch FIRST, confirmed slices
+  1-4's content present before editing. Self-caught and fixed a duplicate `*/` typo (introduced
+  while editing the header note) via the `tsc` diagnostic before committing. `tsc --noEmit`
+  clean, `coverage_gate.test.ts` 6/6 pass. Rebased (no-op, already current), checked `is:queued`
+  before pushing (not queued) but still hit the merge-queue race on push -- dequeued via the
+  GraphQL mutation, pushed successfully, updated PR title/description, re-queued, confirmed
+  `autoMergeRequest` armed. 27/57 categories now closed. CYCLE 153 L1: PR hygiene clean; shipped
+  F-B32 slice 5 (1 category, PR #2193) and surfaced a new, separate finding
+  (`graha_yuddha_per_varga` unreachability) -- next: ~30 categories + 6 phantom entries +
+  get_nakshatra.ts's 3-category docstring overclaim + the graha_yuddha_per_varga unreachability
+  finding all remain; continue one verified cluster per cycle; keep re-checking #2113/#2180
+  every cycle regardless.
+- 2026-09-07T8xZ -- CYCLE 154 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 153 -- still no reply.
+  Continued F-B32's incremental closure with slice 6, two finds. (1) `bhava_cusps`: found
+  `get_kp_cusps.ts`, a dedicated KP-cusp serving tool (CR-30's fix, closing "no dedicated MCP
+  face for KP sub-lords") that spreads a fixed `KP_CATEGORIES` const unconditionally on every
+  call (`get_kp_cusps.ts:130`, no caller override at all) -- covers `cusp_kp_lords`,
+  `kp_cuspal_significators`, `bhava_cusps`, `kp_ruling_planets_natal` plus `graha_kp_lords`
+  opt-in. Three of those four were already mapped elsewhere (via `get_karakas`); `bhava_cusps`
+  had zero entries anywhere in this file at all. 360 live rows confirmed. (2)
+  `house_bhava_bala_ratio` (60 rows), `house_chalit` (225 rows): opt-in via `get_bhava_bala.ts`'s
+  data-driven `fact_category = ANY($2)` query, same doctrine as every prior opt-in slice --
+  neither is in the tool's own default `BB_CATEGORIES` but both are genuinely reachable.
+  Switched to the feature branch first (per cycle 151/152's lesson), confirmed slice 5's content
+  present before editing. Added both new sections + updated the const array alphabetically +
+  updated the header note. `tsc --noEmit` clean, `coverage_gate.test.ts` 6/6 pass. Rebased
+  (no-op, already current), checked `is:queued` before pushing (not queued) -- pushed cleanly
+  this time with no merge-queue race (unlike cycles 152/153). Updated PR title/description,
+  re-queued, confirmed `autoMergeRequest` armed. 30/57 categories now closed. CYCLE 154 L1: PR
+  hygiene clean; shipped F-B32 slice 6 (3 more categories, PR #2193) -- next: ~27 categories + 6
+  phantom entries + get_nakshatra.ts's docstring overclaim + the graha_yuddha_per_varga
+  unreachability finding remain; continue one verified cluster per cycle; keep re-checking
+  #2113/#2180 every cycle regardless.
