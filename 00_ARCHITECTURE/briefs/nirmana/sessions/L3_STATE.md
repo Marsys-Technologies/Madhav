@@ -495,6 +495,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~205:0xZ — L3-W4 — PR hygiene: `#2214`'s last check, same
+  run, now ~10.9min — right at the edge of the confirmed ~11min normal
+  range. Checked for a live log tail (`gh run view --job --log`) to
+  distinguish genuine activity from a hang, but the API refuses tails
+  for still-in-progress jobs; step-level status is still `pytest —
+  pyjhora_adapter + pipeline`, unchanged step, no separate stall
+  signal (no re-queue, no cancellation, no timeout event). Treating as
+  still within normal range for one more cycle, will treat as a
+  genuine stall candidate next cycle if this exact run is still on
+  this exact step past ~11-12min. One new `origin/main` merge
+  (`#2213`, L1 `natural_key_partition` authoring, no L3 overlap). No
+  new E-gate opening. IDLE-OK. — blocked on: `#2214` finishing; next
+  action: same, escalate scrutiny if still on this exact run next
+  cycle.
 - `2026-09-07T~204:0xZ — L3-W4 — PR hygiene: `#2214`'s last check, same
   run, now ~8.9min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
