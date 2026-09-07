@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:08:57Z` — cycle 856: **IDLE-OK (verified).** #2254 resolved — fleet fully
+  clean. Adjudications unchanged (11).
 - `2026-09-07T08:06:35Z` — cycle 855: **IDLE-OK (verified).** #2254 still DIRTY but only ~2min
   since nudge. #2227 unchanged. Adjudications unchanged (11).
 - `2026-09-07T08:04:19Z` — cycle 854: **Fleet sweep — nudged #2254** (CONFLICTING ~25min, same
