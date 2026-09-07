@@ -587,3 +587,4 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** `main` advanced several more cycles (L1/L3/L5 own state PRs +
   L3-W3 volume-formula batches, #2185-#2196) -- all unrelated to L0. #1713 tail unchanged, `bg_cohort`
   carve-out file still untouched. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
