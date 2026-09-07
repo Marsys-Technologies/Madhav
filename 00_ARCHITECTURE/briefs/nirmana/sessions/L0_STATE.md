@@ -1468,3 +1468,16 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **#2169 reopened (my own original filing from earlier this session) — L2 found a NEW
+  regression mechanism in the deploy gate's changed-paths detection.** Even after #2172's fix, under
+  this fleet's fast deploy cadence the "most recent successful run" GitHub API query can resolve to
+  the SAME sha as the current run, collapsing the diff to a self-diff (always empty) — silently
+  skipping sidecar/mcp/pipeline-job rebuilds again, just via a different bug than the original
+  HEAD~1 symptom. Confirmed blocking a real dispatch (`bo_sudarshana`'s W4, stuck on a stale
+  pipeline-job image). **Relevant to L0 too**: this is the exact same deploy-pipeline-job path I
+  used the manual `workflow_dispatch` escape hatch for during the bg_cohort saga — if L0 ever needs
+  a fresh deploy again (e.g. a future W3 fix), this same silent-skip risk applies; the manual
+  `workflow_dispatch -f force_all_services=true` escape hatch remains the reliable workaround (L2
+  is already using it, citing it as "#2169's own prior precedent" — my own earlier discovery).
+  Not acting further — L2 owns the current instance, Conductor-owned tooling posture applies same
+  as the other open adjudications. `egate.sql` still 0 unfrozen. Nothing eligible for L0 right now.
