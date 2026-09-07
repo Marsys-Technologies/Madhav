@@ -4,7 +4,8 @@
  *         nakshatra_dispositor_chain, nakshatra_lord_relationship, nakshatra_co_tenancy,
  *         graha_centrality, chart_cluster, chart_center_of_gravity, significator_path,
  *         aspect_received_by_special_point, nway_config_per_varga, graha_yuddha_per_varga,
- *         kendradhipati_dosha (15 fact_categories).
+ *         kendradhipati_dosha, bhava_significance_link, net_argala_per_varga,
+ *         panchadha_maitri (18 fact_categories).
  * Tool: marsys://tool/L1/get_structural
  *
  * `ga_structural` is a large multi-hundred-category asset whose bulk is already served across
@@ -12,23 +13,35 @@
  * get_kp_cusps.ts, get_karakas.ts, register_d8_assess_domain.ts, ...) — this tool does NOT
  * attempt to re-serve any of that. It closes the specific residual gap the F-B32 cycle-156
  * sweep (`L1_W6_CLOSE_REPORT_v1_0.md` §5) found: a systematic check of every remaining
- * `coverage_matrix.ts`-missing category against every `L1_ganita/*.ts` file found these 15
- * (plus `karaka_web_per_varga`, already served via `get_karakas.ts`'s opt-in mechanism and
- * corrected in `coverage_matrix.ts` directly rather than duplicated here) had ZERO hits
- * anywhere — real, writer-owned, non-trivial-row-count data (all confirmed live for the
- * canonical chart, 1 to 5,220 rows each) with no serving path at all, the category-granularity
- * version of the original F-B18/F-B19 "asset has no tool" defect. All 15 confirmed
- * single-writer-owned by `ga_structural_writer.py` (grepped for a literal fact_category
- * construction; deliberately excludes categories this same sweep found are ALSO written by a
- * second L1/L0/L3 writer — `bhava_significance_link` [also `ga_vichara_writer.py`],
- * `net_argala_per_varga` [also `bg_vidhi_primitives.py`/`ka_yojaka.py`], `panchadha_maitri`
- * [also `ga_condition_writer.py`], `sandhi_flag` [also `ga_dashas_writer.py`/
- * `ga_positions_writer.py`] — genuinely ambiguous ownership left for a dedicated follow-up
- * rather than guessed at here).
+ * `coverage_matrix.ts`-missing category against every `L1_ganita/*.ts` file found these had
+ * ZERO hits anywhere — real, writer-owned, non-trivial-row-count data (all confirmed live for
+ * the canonical chart, 1 to 5,220 rows each) with no serving path at all, the
+ * category-granularity version of the original F-B18/F-B19 "asset has no tool" defect.
+ *
+ * The first 15 (single-writer-owned by `ga_structural_writer.py`, confirmed by grepping for a
+ * literal `fact_category=` row-construction call site, not just a name mention) landed cycle
+ * 181. `bhava_significance_link`/`net_argala_per_varga`/`panchadha_maitri` were originally
+ * deferred alongside `sandhi_flag` as "ambiguous multi-writer ownership" — corrected cycle 183:
+ * re-checked each occurrence individually rather than trusting a grouped grep hit count.
+ * `ga_vichara_writer.py`'s `bhava_significance_link` mentions are all READS (an `if cat ==
+ * "bhava_significance_link"` consumer check, never a row construction); `bg_vidhi_primitives.py`
+ * (L0) and `ka_yojaka.py`'s (L3) `net_argala_per_varga` mentions are a vidhi-primitive route
+ * descriptor and downstream-consumer comments, never a writer; `ga_condition_writer.py`'s/
+ * `bo_pratijna_v4_engine.py`'s `compute_panchadha_maitri()` functions compute a VALUE fed into a
+ * different category, never construct a `panchadha_maitri` row themselves. All three are
+ * genuinely single-writer, `ga_structural_writer.py` alone — the same false-ambiguity shape
+ * already found twice for `karaka_web_per_varga` and the `esoteric_point_*` pair. `sandhi_flag`
+ * is NOT included here: its `ga_dashas_writer.py`/`_vimshottari_independent_verifier.py`
+ * mentions turned out to be an unrelated same-named COLUMN on the `chart_dashas` TABLE, not a
+ * `chart_facts.fact_category` at all — the real (and sole) `chart_facts` writer is
+ * `ga_positions_writer.py`, already correctly present in that asset's `natural_key_partition`
+ * (migration 876) but still needing its own serving-layer fix on `get_positions.ts`, left as a
+ * separate, deliberately-deferred unit (that file's frame-rebasing math and CR-50 discipline
+ * warrant their own careful pass, not a rushed addition riding along with this one).
  *
  * Mirrors get_nakshatra.ts / get_sensitive_points.ts's shape for a similarly diverse
  * multi-category asset: a plain paginated flat-fact SELECT with category/domain filters, no
- * per-category business logic (none of these 15 need one — `graha_yuddha_per_varga` in
+ * per-category business logic (none of these need one — `graha_yuddha_per_varga` in
  * particular is the PER-VARGA sibling of `get_graha_yuddha.ts`'s single-varga JL-027 Option A
  * overlay; that overlay's serve-time winner computation does not apply here and is out of
  * scope for this tool, which serves the writer's own floored rows as-is like every other
@@ -42,15 +55,16 @@ const STRUCTURAL_SIGNAL_CATEGORIES = [
   'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
   'graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path',
   'aspect_received_by_special_point', 'nway_config_per_varga', 'graha_yuddha_per_varga',
-  'kendradhipati_dosha',
+  'kendradhipati_dosha', 'bhava_significance_link', 'net_argala_per_varga', 'panchadha_maitri',
 ]
 
 const DOMAIN_MAP: Record<string, string[]> = {
   relational: ['sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
-    'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy'],
+    'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
+    'bhava_significance_link', 'panchadha_maitri'],
   graph: ['graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path'],
   special_point: ['aspect_received_by_special_point'],
-  per_varga: ['nway_config_per_varga', 'graha_yuddha_per_varga'],
+  per_varga: ['nway_config_per_varga', 'graha_yuddha_per_varga', 'net_argala_per_varga'],
   dosha: ['kendradhipati_dosha'],
 }
 
@@ -64,10 +78,12 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
     'relationship grade) and virupa-drishti aspect strength, contradiction and conjunction ' +
     'special-point pairs, nakshatra dispositor-chain/lord-relationship/co-tenancy relations, ' +
     'chart-graph metrics (centrality, clustering, center-of-gravity, significator path), ' +
-    'per-varga n-way configuration and graha-yuddha, and kendradhipati dosha flags. Does NOT ' +
+    'per-varga n-way configuration, net argala, and graha-yuddha, kendradhipati dosha flags, ' +
+    'bhava-significance links (lord placement/aspect per varga), and panchadha (five-fold) ' +
+    'compound graha-relationship. Does NOT ' +
     'cover ga_structural categories already served by get_yoga_dosha/get_dispositors/' +
     'get_bhava_bala/get_karakas/get_kp_cusps or register_d8_assess_domain — this tool is the ' +
-    'residual-coverage complement to those. Covers 15 fact_categories.',
+    'residual-coverage complement to those. Covers 18 fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },

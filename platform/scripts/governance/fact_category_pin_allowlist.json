@@ -294,8 +294,8 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
-      "line": 107,
-      "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries."
+      "line": 123,
+      "justification": "NEW file (cycle 181, F-B32 slice 8), audited before landing, not grandfathered. Identical shape to get_nakshatra.ts:82 / get_positions.ts:157 / get_sensitive_points.ts:99: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) serving ALL matching rows across 15 fact_categories — never reduces to one row, cannot exhibit the shadbala MIN-across-incommensurable-units defect. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries. [line 107->123, cycle 183: F-B32 slice added a docstring paragraph + 3 more categories earlier in the file — same query, verified via diff.]"
     }
   ]
 }

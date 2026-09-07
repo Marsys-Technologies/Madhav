@@ -52,14 +52,29 @@
  *
  * **Slice 8 (2026-09-07): `get_structural_signals.ts` closes 15 of these 25** — every category
  * confirmed single-writer-owned by `ga_structural_writer.py` alone (no competing L0/L1/L3
- * writer for the same category). The remaining ~10 (`bhava_significance_link`,
- * `esoteric_point_sphuta_fertility`, `esoteric_point_yogi_system`, `net_argala_per_varga`,
- * `panchadha_maitri`, `sandhi_flag`, `sun_derived_upagraha`, `tara_bala`) are left open: each is
- * written by MORE than one L0/L1/L3 writer (e.g. `panchadha_maitri` by both
- * `ga_condition_writer.py` and `ga_structural_writer.py`; `sandhi_flag` by `ga_dashas_writer.py`
- * AND `ga_positions_writer.py`), which needs a dedicated ownership-disambiguation pass before a
- * fix here — not something to guess at by attaching them to whichever tool this slice happened
- * to be building. See `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full account.
+ * writer for the same category).
+ *
+ * **Cycle 183: 3 more of the "remaining ~10" closed via the SAME tool** —
+ * `bhava_significance_link`/`net_argala_per_varga`/`panchadha_maitri` were originally filed as
+ * "ambiguous multi-writer ownership" alongside `sandhi_flag`, but re-checking each occurrence
+ * individually (not trusting a grouped grep hit count) found every non-`ga_structural_writer.py`
+ * mention is a READ, a route descriptor, or a same-named helper feeding a DIFFERENT category —
+ * never a second genuine `chart_facts` row construction. All three are single-writer,
+ * `ga_structural_writer.py` alone, and added to `get_structural_signals.ts` directly.
+ * `esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system` (real `ga_sensitive_writer.py`-
+ * owned categories, not `ga_structural`'s) belong with `get_sensitive_points.ts` instead — a
+ * separate PR handles those, not assumed merged here since PR ordering is not guaranteed.
+ * `sandhi_flag`'s apparent second "writer" turned out to be an unrelated same-named COLUMN on
+ * the `chart_dashas` TABLE (`ga_dashas_writer.py`/`_vimshottari_independent_verifier.py`'s own
+ * per-period bulk-load schema) — not a `chart_facts.fact_category` mention at all. The real
+ * (sole) `chart_facts` writer is `ga_positions_writer.py`, already correctly declared in that
+ * asset's `natural_key_partition` (migration 876) but still lacking a serving-layer fix —
+ * deliberately deferred to its own pass on `get_positions.ts` (frame-rebasing math, CR-50
+ * discipline — a materially higher-blast-radius file than this one) rather than rushed in here.
+ * `sun_derived_upagraha` and bare `tara_bala` remain open for the same reason: both single-
+ * writer (`ga_sensitive_writer.py` / `ga_structural_writer.py` respectively) but with no
+ * obvious existing-tool home, needing their own scoping pass. See `L1_W6_CLOSE_REPORT_v1_0.md`
+ * §3.5/§5 for the full account.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -101,6 +116,7 @@ export const CHART_FACTS_CATEGORIES = [
   'bhava_bala_temporal',
   'bhava_bala_total_extended',
   'bhava_cusps',
+  'bhava_significance_link',
   'bhrigu_nadi_point',
   'chandra_bala_natal_baseline',
   'chart_center_of_gravity',
@@ -214,7 +230,9 @@ export const CHART_FACTS_CATEGORIES = [
   'nakshatra_lord_relationship',
   'nakshatra_pada_sensitive',
   'nakshatra_statistics',
+  'net_argala_per_varga',
   'nway_config_per_varga',
+  'panchadha_maitri',
   'panchaka_flag',
   'panchanga_abhijit_muhurta',
   'panchanga_agni_vasa',
@@ -622,6 +640,9 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   nway_config_per_varga:             ['marsys://tool/L1/get_structural'],
   graha_yuddha_per_varga:            ['marsys://tool/L1/get_structural'],
   kendradhipati_dosha:               ['marsys://tool/L1/get_structural'],
+  bhava_significance_link:           ['marsys://tool/L1/get_structural'],
+  net_argala_per_varga:              ['marsys://tool/L1/get_structural'],
+  panchadha_maitri:                  ['marsys://tool/L1/get_structural'],
 } as const
 
 /** Additional non-chart_facts tables that need retrieval coverage */
