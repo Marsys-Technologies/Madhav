@@ -495,6 +495,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~320:0xZ — L3-W4 — PR hygiene: `#2251` was found genuinely
+  DEQUEUED this cycle (`isInMergeQueue: false`, no `mergeQueueEntry`,
+  not merged) despite its own `merge_group` run having fully passed
+  (16/16 checks green, `mergeable: MERGEABLE`, `mergeStateStatus:
+  CLEAN` re-verified via full `statusCheckRollup`). Re-queued (`gh pr
+  merge --auto --squash`, standard merge-queue-strategy message, then
+  confirmed genuinely `isInMergeQueue: true`, `QUEUED`, position 1 via
+  GraphQL). Root cause not chased further (checks-still-green
+  dequeues happen on base-branch churn ahead of a PR; not a gate
+  weakening, correctly re-queued via the normal path). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing its
+  queue turn; next action: same.
 - `2026-09-07T~319:0xZ — L3-W4 — PR hygiene: `#2251` still position 1,
   `AWAITING_CHECKS` — located its own `merge_group` run directly
   (`gh-readonly-queue/main/pr-2251-...`), step-level checked: `Unit
