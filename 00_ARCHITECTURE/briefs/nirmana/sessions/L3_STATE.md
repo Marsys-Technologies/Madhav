@@ -495,6 +495,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~290:0xZ — L3-W4 — PR hygiene: explained the persisting
+  lag from last cycle — the prior `merge_group` run's completion
+  hadn't gone stale; the queue had actually re-based `#2239` against
+  a fresh `origin/main` tip and started a NEW `merge_group` run
+  (different base SHA: `8745196a` vs the prior `795b73ff`). That fresh
+  run is genuinely `in_progress`, `Governance Gates` ~6.1min in,
+  within normal range — this explains why `#2239` stayed at position
+  1/`AWAITING_CHECKS` past a full previous cycle: it wasn't stalled,
+  it was correctly re-verifying against a moving target. No new
+  `origin/main` merges relevant to L3, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2239` finishing this fresh run; next action: same.
 - `2026-09-07T~289:0xZ — L3-W4 — PR hygiene: `#2239`'s `merge_group`
   run fully `completed`, all 15 jobs `success` — the recurring
   merge-queue-evaluation-lag pattern, not a stall. No new
