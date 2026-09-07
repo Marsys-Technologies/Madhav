@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:20:17Z` — cycle 717: **#1945 more progress — Lane E backfilled (2/5 done).**
+  `migration_filename`/`migration_sha256` are pinned constants in `definitions.ts`
+  (`592_nirmana_elevation_campaign_evidence.sql`); live-confirmed against
+  `public._migrations_applied` before submitting via `nrec --as verifier` (dry-run first). HTTP
+  201, re-queried ledger to confirm both A and E now present. Lanes B/C/D remain, each needing a
+  genuinely live-computed value — not rushing a third this cycle. Own-PR hygiene: none open.
+  Fleet DIRTY: empty.
 - `2026-09-07T01:17:30Z` — cycle 716: **#1945 real progress — Lane A backfilled.** This session
   has live DB access the prior ruling didn't (checked/noted then). Computed and submitted
   Lane A's `foundation_lane_accepted` receipt (`manifest_sha256` + `asset_count=128`) via
