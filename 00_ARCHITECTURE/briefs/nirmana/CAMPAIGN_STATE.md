@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:59:04Z` — cycle 870: **Nudge worked — L1 dispatched `ga_dashas`.** New
+  `build_run` (`83154aac...`, L1, `state='running'`) since the escalation, targeting `ga_dashas`
+  from the frontier list. Δfrozen still +0 (build in flight, not complete). Other 15 frontier
+  assets still untouched — will re-check next cycle before nudging further (one lane responding
+  isn't yet grounds to escalate the others again this cycle). Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:56:39Z` — cycle 869: **Frontier stalled >1 cycle → escalated per D-NATIVE-08.**
   Live-checked `asset_throughput` for all 16 newly-eligible assets: every one still
   `state='stale'`, last built Aug 8-12, zero `build_runs` since the cascade opened ~8 min ago —
