@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 153; shipped F-B32 slice 5/N (PR #2193): ayurdaya, unconditionally served by get_ayurdaya.ts. Also investigated graha_yuddha_per_varga as a candidate and found it genuinely UNREACHABLE by any tool (get_graha_yuddha.ts hardcodes a different, zero-row bare category with no override) -- recorded as its own finding rather than force-mapped. 27/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 154; shipped F-B32 slice 6/N (PR #2193): bhava_cusps (get_kp_cusps.ts, unconditional -- the dedicated KP-cusp tool that had zero entries anywhere in the file) + house_bhava_bala_ratio/house_chalit (opt-in via get_bhava_bala.ts). Pushed cleanly this time (no merge-queue race). 30/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8527,3 +8527,26 @@ record — they are the only entries in this table with a real wall-clock behind
   get_nakshatra.ts's 3-category docstring overclaim + the graha_yuddha_per_varga unreachability
   finding all remain; continue one verified cluster per cycle; keep re-checking #2113/#2180
   every cycle regardless.
+- 2026-09-07T8xZ -- CYCLE 154 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 153 -- still no reply.
+  Continued F-B32's incremental closure with slice 6, two finds. (1) `bhava_cusps`: found
+  `get_kp_cusps.ts`, a dedicated KP-cusp serving tool (CR-30's fix, closing "no dedicated MCP
+  face for KP sub-lords") that spreads a fixed `KP_CATEGORIES` const unconditionally on every
+  call (`get_kp_cusps.ts:130`, no caller override at all) -- covers `cusp_kp_lords`,
+  `kp_cuspal_significators`, `bhava_cusps`, `kp_ruling_planets_natal` plus `graha_kp_lords`
+  opt-in. Three of those four were already mapped elsewhere (via `get_karakas`); `bhava_cusps`
+  had zero entries anywhere in this file at all. 360 live rows confirmed. (2)
+  `house_bhava_bala_ratio` (60 rows), `house_chalit` (225 rows): opt-in via `get_bhava_bala.ts`'s
+  data-driven `fact_category = ANY($2)` query, same doctrine as every prior opt-in slice --
+  neither is in the tool's own default `BB_CATEGORIES` but both are genuinely reachable.
+  Switched to the feature branch first (per cycle 151/152's lesson), confirmed slice 5's content
+  present before editing. Added both new sections + updated the const array alphabetically +
+  updated the header note. `tsc --noEmit` clean, `coverage_gate.test.ts` 6/6 pass. Rebased
+  (no-op, already current), checked `is:queued` before pushing (not queued) -- pushed cleanly
+  this time with no merge-queue race (unlike cycles 152/153). Updated PR title/description,
+  re-queued, confirmed `autoMergeRequest` armed. 30/57 categories now closed. CYCLE 154 L1: PR
+  hygiene clean; shipped F-B32 slice 6 (3 more categories, PR #2193) -- next: ~27 categories + 6
+  phantom entries + get_nakshatra.ts's docstring overclaim + the graha_yuddha_per_varga
+  unreachability finding remain; continue one verified cluster per cycle; keep re-checking
+  #2113/#2180 every cycle regardless.
