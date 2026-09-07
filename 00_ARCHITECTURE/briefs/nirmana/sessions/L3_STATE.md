@@ -120,6 +120,19 @@ Concordance Contract), N2–N12.
   with the FK-less predicate table intact). Filed **#1793** asking for that chart's formal
   disposition, because floors, volume derivations and contracts across every layer all depend on
   whether it is a peer — and a layer session should not settle that alone.
+- **F-L3-15 (cascade damage is ACTIVE, not hypothetical — found by the W5 mechanical checks'
+  first live run, 2026-09-07).** `l3_scripts/l3_w5_mechanical_checks.sql` C1a: **49,775
+  `kala_activation_predicates` rows already dangle** against `bodha_msr_signals` (the FK-less
+  edge F-L3-12 warned about). 49,730 are on `cb73cd3d` (consistent with #1793's known damage —
+  its MSR signals were partially deleted, cascading its activations to the 0.021 ratio and
+  dangling nearly its whole predicate base). **45 are on the CANONICAL chart `482012f1`** — all
+  `signature_class=CLASSIFY_RESIDUAL`, all `bound_at` 2026-08-12, one batch: a post-8/12
+  deletion of CLASSIFY_RESIDUAL signals cascaded away their activations and obstructions
+  (`kala_activation` 672,551→672,191, −360; `kala_obstruction` 1,283→1,280, −3 vs F-L3-12's
+  measurements) and left these predicates dangling. F-L3-12's "an ordinary L2 rebuild WOULD
+  silently destroy" is now measured as "already has, at least twice, on both live charts."
+  Strengthens (does not change) L3's standing position: L2 rebuilds first, L3 spine regenerates
+  after; the predicate table needs the same disposition ruling as the rest of #1793.
 - **F-L3-13 (doctrine, offered to the register).** The E-gate reasons about what an asset *needs*,
   never about what *needs it*. `depends_on` has no inverse anywhere in the campaign's machinery —
   not the gate, not the slot protocol, not the plan. A DELETE travels those edges backwards and
@@ -496,6 +509,66 @@ your layer close.
 |---|---|---|---|
 
 ## Heartbeat
+
+- `2026-09-07T~542:0xZ — L3-W4/C8.5 — REAL WORK UNIT (new supervisor discipline
+  absorbed: no more `*-heartbeat*` branches ever; idle = zero git writes; state
+  rides real PRs only). PR hygiene: `#2378` verified `is:queued` ✓ (position 1,
+  AWAITING_CHECKS — left to merge on its own; no continuation heartbeat PR will
+  follow it, per the new discipline). Unit: **C8.5 prep item 1 — authored
+  `l3_scripts/l3_w5_mechanical_checks.sql`** (the L3 counterpart of l4/l5's W5
+  scripts): 12 cross-asset gates + 4 disclosures, every check grounded in a
+  recorded L3 finding (F-L3-12 cascade seams, #1793 damage signature, M12/672
+  regression guard, P7 outcome seam, ka_kshetra FK-less family, F-KALA-1 ranking
+  keys, spine closure, archive pins, staging, vacuity). RAN IT LIVE (read-only):
+  10/12 PASS, C2 red as expected (#1793), and **C1a red as a NEW true positive —
+  F-L3-15: 49,775 predicate rows ALREADY dangle** (49,730 on cb73cd3d, 45 on the
+  canonical chart, all CLASSIFY_RESIDUAL/2026-08-12; activation −360 and
+  obstruction −3 vs F-L3-12's counts confirm the cascade has fired since). Finding
+  recorded in the ledger above. Shipped both reds honest, headers record the real
+  run. — blocked on: nothing; next action: PR this + verify queued; then C8.5 prep
+  item 2 (W6 close-report skeleton) next cycle.
+- `2026-09-07T~541:0xZ — L3-W4 — PR hygiene: `#2378`'s `Governance
+  Gates` COMPLETED (all checks SUCCESS, ~11min total — right on the
+  confirmed baseline), `mergeStateStatus` flipped to `CLEAN`, and the
+  PR entered the merge queue at **position 1, `AWAITING_CHECKS`**
+  (auto-merge consumed by queue entry, as expected). No new
+  `origin/main` merges beyond L5's `#2371`. IDLE-OK. — blocked on:
+  `#2378`'s merge-group validation; next action: monitor queue run,
+  then post-merge rebase + continuation PR `#237x` on
+  `codex/nirmana-l3-heartbeat-idle-38`.
+- `2026-09-07T~540:0xZ — L3-W4 — PR hygiene: `#2378`'s last check,
+  same run, now ~10.5min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2378` finishing; next action: same.
+- `2026-09-07T~539:0xZ — L3-W4 — PR hygiene: `#2378`'s last check,
+  same run, now ~8.5min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2378` finishing; next
+  action: same.
+- `2026-09-07T~538:0xZ — L3-W4 — PR hygiene: `#2378`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.4min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2378` finishing; next
+  action: same.
+- `2026-09-07T~537:0xZ — L3-W4 — PR hygiene: `#2378`'s pre-queue
+  check run in progress (~4.3min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2378` finishing; next action: same.
+- `2026-09-07T~536:0xZ — L3-W4 — PR hygiene: `#2378`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2378` clearing checks/queue; next action: same.
+- `2026-09-07T~535:0xZ — L3-W4 — PR hygiene: `#2369` confirmed
+  MERGED. Rebased 27 local commits onto fresh `origin/main`, 11
+  empty-theirs conflicts auto-resolved cleanly, zero markers left —
+  clean run, no manual intervention needed this cycle. Renamed to
+  `codex/nirmana-l3-heartbeat-idle-37`, pushed, opened `#2378`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2378`'s own
+  checks completing; next action: same monitoring cadence.
 
 - `2026-09-07T~534:0xZ — L3-W4 — PR hygiene: `#2369` still position
   1, `AWAITING_CHECKS` — same run, now ~10.9min, near the observed
