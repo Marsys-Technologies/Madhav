@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:08:39Z` — cycle 832: **New fleet DIRTY (#2247, L1), too fresh to nudge yet**
+  (~12min). #2227 down to 3 pending checks. Fleet otherwise clean; adjudications unchanged (11).
 - `2026-09-07T07:06:07Z` — cycle 831: **IDLE-OK (verified).** #2227 still cycling (~2h42m open,
   4 pending again) — no further action available beyond what's already tried (2 nudges, 2
   direct re-triggers); it's a zero-campaign-impact heartbeat PR, continuing passive monitoring.
