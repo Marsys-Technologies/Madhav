@@ -381,6 +381,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:55:18Z` — cycle 774: **RULED #2224 (new).** L1's wave-1 dispatch hit
+  `ga_vargas`'s stale evidence — confirmed this is the SAME mechanism as my own #1945 Lane C
+  finding (22/70 `asset_analysis_accepted` events invalidated, spanning 3 layers already).
+  Ratified L1's self-authorized recompute-and-restamp approach (no new authorization needed —
+  already granted by #2180's first ruling); cross-linked #2224↔#1945 so the campaign-wide count
+  converges from one place; broadcast to #1713 so no other layer hits this cold. 10→11 open
+  adjudications (new one, kept open as the wave-1-facing tracker). Own-PR hygiene clean; fleet
+  DIRTY empty.
 - `2026-09-07T03:52:11Z` — cycle 773: **IDLE-OK (verified).** Fleet PR list unchanged, all
   healthy, none CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10); no new #2180
   reply.
