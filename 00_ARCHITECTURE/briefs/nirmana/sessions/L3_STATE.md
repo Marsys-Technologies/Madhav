@@ -497,6 +497,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~354:0xZ — L3-W4 — PR hygiene: `#2267`'s checks finished
+  (0 failures), was genuinely CLEAN-but-unqueued (`isInMergeQueue:
+  false`). Took 3 `gh pr merge --auto[/--squash]` attempts this cycle
+  before it actually engaged — first two returned no error but
+  GraphQL still showed `isInMergeQueue: false`; the third finally
+  moved it in. Confirmed genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 2 via GraphQL (not trusted from CLI output alone, per
+  discipline). No new `origin/main` merges, `ga_positions`
+  re-confirmed still frozen. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2267` finishing its queue turn; next action: same.
 - `2026-09-07T~353:0xZ — L3-W4 — PR hygiene: `#2267`'s last check, same
   run, now ~9.5min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
