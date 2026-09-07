@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:16:02Z` — cycle 896: **Root cause found — L1 already diagnosing/fixing it.**
+  PR #2272 (`L1 W4: ga_dashas output_digest_spec (migration 880)`, OPEN, `mergeStateStatus=
+  BLOCKED`, Unit Tests check red at check time): `asset_output_digest_specs` only had a row for
+  `ga_positions` (from #2180's migration 875), so every OTHER L1 asset's `accepted_rebuild_
+  observed` structurally lands `receipt_state='unknown'` — exactly why `ga_dashas` is stuck past
+  that point. L1's own PR body states the fix is "already applied live and verified" (out-of-band,
+  per the surgical-migrations doctrine) even though the PR itself hasn't merged. This is L1's own
+  PR/fix in flight, not something for me to intervene on directly — not touching their failing
+  Unit Tests check, that's their call to fix. Δfrozen still +0. Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:13:42Z` — cycle 895: **IDLE-OK, Δfrozen +0.** `asset_throughput` confirms build
   genuinely done (`state='lit'`, no error) — ~8 min since `accepted_rebuild_observed`, notably
   slower than the `ga_positions` precedent but no new diagnostic evidence to escalate on (unlike
