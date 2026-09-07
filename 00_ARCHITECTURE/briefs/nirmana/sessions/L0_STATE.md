@@ -725,3 +725,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   `integrity_verified`/`asset_frozen`) — the PR's own test plan hands this off to L0 explicitly. This
   is now THE highest-priority eligible work the instant the fix is live. `bg_cohort`'s own W2
   evidence already independently reverified fresh (prior cycle) — no re-stamp needed at dispatch time.
+- 2026-09-07 — **IDLE-OK (verified).** PR #2234 (D-NATIVE-07) still `is:queued`, not yet merged.
+  `main` advanced with an unrelated L5 state PR (#2232). #1713 tail unchanged. Watching for the merge.
