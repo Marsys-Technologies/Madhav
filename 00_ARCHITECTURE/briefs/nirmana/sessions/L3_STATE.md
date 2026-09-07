@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~233:0xZ — L3-W4 — PR hygiene: `#2225` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (L1's own state file, `#2201`,
+  "wave 0 dispatched, new freshness blocker found" — an L1-internal
+  note, no L3 action implied). `ga_positions` still
+  `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2225` clearing checks/queue; next action: same.
 - `2026-09-07T~232:0xZ — L3-W4 — PR hygiene: `#2222` MERGED. Rebased
   the 24 not-yet-merged local heartbeat commits onto fresh
   `origin/main`. Hit the standard empty-theirs prepend-conflict
