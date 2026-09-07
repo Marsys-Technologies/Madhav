@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:25:38Z` — cycle 900: **IDLE-OK, Δfrozen +0.** #2272 still `BLOCKED`, not
+  queued. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications
+  unchanged (11).
 - `2026-09-07T10:23:34Z` — cycle 899: **IDLE-OK, Δfrozen +0.** #2272 not yet queued, checks
   presumably still running. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
   Adjudications unchanged (11).
