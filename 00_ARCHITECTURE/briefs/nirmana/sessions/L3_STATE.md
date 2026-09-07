@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~165:0xZ — L3-W4 — PR hygiene: `#2199` checks running
+  pre-queue (3 pending, nothing red), not yet queued — nothing to fix.
+  No new `origin/main` merges relevant to L3, no new E-gate opening.
+  IDLE-OK. — blocked on: nothing new; next action: push once `#2199`
+  clears/queues.
 - `2026-09-07T~164:0xZ — L3-W4 — PR hygiene: `#2197` MERGED (squash
   `f77fbbb84`) — **F-L3-4 is now closed in full on `origin/main` for
   real**, not just in a pending PR. Rebased the 8 not-yet-merged local
