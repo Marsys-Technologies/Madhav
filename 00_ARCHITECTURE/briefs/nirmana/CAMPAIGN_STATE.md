@@ -381,6 +381,17 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:19:45Z` — cycle 813: **RULED + CLOSED #2240 — resolved-by-existing-fix, no new
+  code needed.** L0 hit the dedup guard blocking `bg_cohort`'s re-dispatch post-D-NATIVE-07.
+  Started building a fix in a fresh worktree before checking `origin/main`'s actual current
+  state — caught it: this exact accommodation (terminal prior runs don't consume `triggered_by`)
+  was already shipped via PR #1851, well before this cycle. Live-verified both dedup guards
+  (`build_runs` state filter + `accepted_rebuild_observed` check) already clear cleanly for
+  `bg_cohort`'s specific prior run (`state='completed'`, no accepted-rebuild event). Diagnosed
+  L0 as hitting the same stale-local-copy trap this session has independently documented
+  multiple times (#1852). Cleaned up the unused worktree/branch. 12→11 open adjudications
+  (net, after #2240 opened+closed same cycle). #2227/#2228 still open, CI progressing normally.
+  Own-PR hygiene clean; fleet DIRTY empty.
 - `2026-09-07T06:14:30Z` — cycle 812: **IDLE-OK (verified).** #2228 down to 1 pending check
   (Governance Gates) — very close. #2227 progressing normally. Fleet DIRTY empty; adjudications
   unchanged (11).
