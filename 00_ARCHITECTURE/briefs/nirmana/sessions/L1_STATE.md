@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 191; **PR hygiene RED gate fixed**: migration 880 (`ga_dashas` `output_digest_spec`, cycle 190) collided with L2's own independently-authored 880 (PR #2262, merged first) — a genuine authoring-time numbering race, not a mistake. Renumbered to 881 and filed the disclosed-renumber reconciliation (`migration_renumber_disclosed.json`, `disposition: already-applied-under-old-name`), verified live via `migrate.ts` (`Reconciled (not executed)`, exactly one row in `asset_output_digest_specs`, no double-insert). PR #2272 pushed, auto-merge still armed. Cycles 189-190 (still open on this same PR #2273): dispatched `ga_dashas` toward W4/W5 — real `accepted_rebuild_observed` recorded clean against a `proven` receipt, but NOT frozen: `integrity_check_sql` measures 48.5s real execution against the ingress pool's 25s `statement_timeout` (genuine, reproducible — scans all 3 canonical charts' `chart_dashas` unscoped, ~1.46M rows), deliberately left for its own deliberate pass rather than rushed (the check's own comments suggest multi-chart coverage is intentional design). `capsule_audit.sql` §1/§2 stayed clean throughout (no partial/false capsule). #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 193; **PR hygiene RED gate fixed**: `scripts/migrate.test.ts`'s disclosed-renumber canary hardcodes the exact allowlist size (deliberately, so it fails when an entry is added without updating the test) — cycle 191's 880→881 renumber disclosure was the 5th entry and the canary still asserted 4, correctly caught by CI on PR #2272. Updated the test's count/title/docstring and added assertions for the new entry; verified locally (41/41 pass) before pushing. Prior (cycle 192): **`ga_dashas`' `integrity_check_sql` genuinely fixed (48.5-85s → stable 8-9.4s, migration 882, PR #2277)** — root-caused via `EXPLAIN ANALYZE` across 3 rounds of measurement (a first-pass fix's 19.4s reading turned out to be an optimistic outlier, re-measured 26-30s on repeat; the real dominant cost was 3 redundant full-table scans, fixed by restructuring to scan once). **Then hit a genuine campaign-tooling wall, escalated rather than hacked around**: the fix changed `registry_fingerprint_sha256`, and `dispatch_nirmana_campaign_wave.py` has no supported path to redispatch a build once any `accepted_rebuild_observed` already exists for an asset (unconditional guard, no escape hatch) — filed `nirmana-adjudication` issue #2276 rather than bypassing the FROZEN dispatcher's own safety check. `ga_dashas` NOT frozen; fresh W1/W2/implementation evidence for the new generation stands, valid, waiting on the ruling. `capsule_audit.sql` §1/§2 clean throughout. #2113/#2180/#2224/#2276 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -11065,3 +11065,88 @@ generation), or move to `ga_vargas` (tied-highest downstream leverage, 8 blocked
 return to `ga_dashas` after. Check `asset_output_digest_specs` for whichever asset is picked
 next BEFORE dispatching. Keep checking #2113/#2180/#2224 for new Conductor replies; re-verify
 PR #2272/#2273 reach `is:queued` next cycle before starting new work.
+## CYCLE 192 (C8 v2.3) — `ga_dashas`' `integrity_check_sql` fixed for real (48.5-85s ->
+## 8-9.4s, three rounds of measurement, not one lucky reading), then hit a genuine
+## campaign-tooling wall that got escalated, not hacked around
+
+Took on the deferred choice from cycle 190/191: `ga_dashas`' `integrity_check_sql` timeout,
+as its own deliberate bounded unit (not the alternative, `ga_vargas`).
+
+**Root-caused via `EXPLAIN ANALYZE`, not guessed**: unscoped (all 3 canonical charts, ~1.46M
+rows), no supporting index -> full sequential scans. First fix (two new indexes on
+`chart_dashas` + canonical-chart scoping) measured 19.4s once -- looked done. **Did not trust
+a single reading**: re-measured 3 more times under real (not idle) load and got 26-30s,
+consistently over the 25s ingress-pool budget -- the first "19.4s" was an optimistic outlier,
+not the true steady state. Dug further via `EXPLAIN ANALYZE` on the isolated conjuncts and
+found the real dominant cost: conjunct (b)'s three near-identical NOT EXISTS blocks
+(house_d1/sign/nakshatra) each independently scanned all ~208,614 matching `chart_dashas` rows
+(~7-8s EACH under real load), not sped up by the new index (planner preferred sequential/
+parallel scan over an index touching ~14% of rows either way). Restructured to scan
+`chart_dashas` ONCE for all three fields (each field's own correctness check stays fully
+independent inside the shared scan -- verified this doesn't reopen the "combined-with-OR
+masks a real corruption" hole the original comment warns about). Re-measured 4 times post-fix:
+stable 8-9.4s, ~62% margin -- a real safety margin this time, confirmed by repetition, not
+assumed from one good run. Migration 882 applied and verified live (PR #2277, stacked on
+#2272).
+
+**Then hit a genuine wall in shared campaign tooling, escalated rather than bypassed**: fixing
+`integrity_check_sql` changed `registry_fingerprint_sha256` (it's part of the fingerprint
+input), so a fresh `asset_analysis_accepted`/`optimization_verdict_accepted`
+(verdict `correct`, honest -- this is real registry-config correctness work)/
+`implementation_accepted` were submitted for the new generation. `accepted_rebuild_observed`
+for that new generation requires a build run whose `started_at` is AFTER the fresh
+`implementation_accepted` -- which no existing run can satisfy (the fingerprint change
+couldn't be known before the fix was authored, so any prior run necessarily started before
+the fix's own implementation-acceptance). A fresh build is genuinely required. But
+`dispatch_nirmana_campaign_wave.py`'s `create_campaign_run` unconditionally refuses to create
+a new run for any asset that already has ANY `accepted_rebuild_observed`, from any generation
+-- no escape hatch exists in the tool. Did NOT hand-craft a `build_runs` row or trigger the
+Cloud Run Job directly to route around a FROZEN shared tool's own deliberate safety guard
+(exactly the "stop and raise with the native" class of decision per CLAUDE.md §N.2). Filed
+`nirmana-adjudication` issue #2276 instead, with the full diagnosis and two concrete resolution
+shapes for Conductor to choose between (a dispatcher escape hatch scoped to stale-generation
+detection, or a `definitions.ts` validator change making `integrity_verified` generation-
+agnostic when only the registry contract, not the underlying data, changed).
+
+**Left honest, not faked**: `ga_dashas` is NOT frozen. Its fresh W1/W2/implementation evidence
+for the new generation stands (real, valid, just waiting on the redispatch mechanism); its OLD
+`accepted_rebuild_observed` is now stale and won't satisfy `integrity_verified`'s prerequisite
+check against the live contract. No `integrity_verified` or `asset_frozen` was submitted for
+either generation. `capsule_audit.sql` §1 confirmed still at 0 rows, §2 still clean, `egate.sql`
+confirms `ga_dashas` correctly still shows not-frozen.
+
+-> next: move to `ga_vargas` (tied-highest downstream leverage, 8 blocked siblings) per the
+issue's own "not blocking other work" note -- same pipeline, check
+`asset_output_digest_specs` for it BEFORE dispatching (the fleet-wide gap cycle 190 found).
+Return to `ga_dashas` once #2276 is ruled. Verify PR #2272/#2273/#2277 all reach `is:queued`
+next cycle before starting new work -- #2277 is stacked on #2272 and may need its base
+retargeted to `main` once #2272 merges. Keep checking #2113/#2180/#2224/#2276 for new
+Conductor replies.
+
+## CYCLE 193 (C8 v2.3) — PR hygiene RED gate: `migrate.test.ts`'s disclosed-renumber
+## canary needed updating for cycle 191's 5th entry; own state-branch hygiene lesson found
+
+PR hygiene surfaced a genuine RED gate on PR #2272 again: `scripts/__tests__/migrate.test.ts`'s
+`loadRenumberDisclosures` canary test hardcodes the exact allowlist size and every entry's
+fields DELIBERATELY (its own comment: "intentionally fails when entries are added without
+updating it... forces documentation of each real renumber event") — cycle 191's 880→881
+disclosure entry was the 5th, and the test still asserted 4. Updated the count, title,
+docstring (added Entry 5's own account), and assertions for the new entry; ran the full test
+file locally before pushing (41/41 pass, not just the one test).
+
+**Also found and fixed a real state-branch process mistake, not just a code bug**: discovered
+`codex/nirmana-l1-state-cycle190`'s PR #2273 had already MERGED (10:42:32 UTC) before cycles
+191 and 192's state commits were pushed to that same branch -- cycle 191's push landed before
+the merge (correctly captured into #2273's squash), but cycle 192's push landed AFTER, leaving
+it truly orphaned on a closed-PR branch with no path to `main`. Diagnosed via `gh pr list
+--search "head:..." --state all` rather than assuming; recovered by extracting cycle 192's own
+delta text and re-applying it cleanly onto a FRESH branch off current `origin/main` (same
+technique used at cycle 188's own squash-merge-conflict recovery) rather than fighting a
+rebase against squashed history. Lesson for future cycles: check whether a branch's own PR has
+already merged BEFORE pushing another state commit to it, not after.
+
+-> next: `ga_vargas` dispatch (or `ga_dashas` if #2276 rules by then) is still this campaign's
+highest-priority eligible work, unchanged from cycle 192's own note -- this cycle was pure PR
+hygiene. Before any future state-branch push: `gh pr view <n> --json state` first, and open a
+FRESH branch off `origin/main` if it already shows MERGED rather than continuing to push onto
+a closed PR's branch. Keep checking #2113/#2180/#2224/#2276 for new Conductor replies.
