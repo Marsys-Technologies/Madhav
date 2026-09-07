@@ -381,6 +381,14 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:41:33Z` — cycle 722: **#1945 Lane D checked — also blocked, ordinary reason.**
+  Live-compared GitHub main SHA (`3f435f5c...`) against `amjis-web`'s serving revision's
+  `commit-sha` label (`7df69a64...`) — mismatch, `production_in_sync` false. Confirmed via
+  `git merge-base --is-ancestor` that the deployed SHA is a real ancestor of main, only 2
+  commits behind — ordinary fast-merge deploy lag, not a broken pipeline. Lane D schema requires
+  exact match, so genuinely can't submit now; recorded as self-resolving, not chased further.
+  Foundation-lane status: 3/5 done (A,B,E), C and D both honestly blocked with reasons on
+  record. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:38:35Z` — cycle 721: **#1945 Lane C investigated — genuinely BLOCKED, not
   submitted.** Computed `registry_fingerprint_set_sha256` from the frozen manifest (cross-
   verified via SQL + a Node script running the real `stableJson` source: both agree on
