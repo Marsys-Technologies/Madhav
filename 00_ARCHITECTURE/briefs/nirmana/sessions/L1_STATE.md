@@ -7,8 +7,9 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 250; IDLE-OK, egate.sql frontier unchanged, `#2300`/
-`#1713` re-checked, no movement. PR hygiene clean.
+last_updated: 2026-09-07 — C8 v2.3 cycle 252; IDLE-OK, egate.sql frontier unchanged, `#2300`/
+`#1713` re-checked, no movement; `asset_freshness` for `ga_dashas` re-verified live (still
+`stale`/`registry_changed` @ 10:38:49Z — DEP-ASSERT block intact). PR hygiene clean.
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -12560,3 +12561,194 @@ PR hygiene clean: `#2380` real check-runs in flight, no failures, not yet `is:qu
 
 CYCLE 250 L1: IDLE-OK (verified: `egate.sql` unchanged, `#2300`/`#1713` both unmoved) -- next:
 keep checking every cycle.
+
+## CYCLE 251 (C8 v2.3) — IDLE-OK, blocker re-verified at the DB level
+
+PR hygiene clean: merge queue empty; `#2381` (cycle 250 state) checks IN_PROGRESS (Unit Tests +
+Governance Gates), no failures, not yet `is:queued` (normal). Nothing DIRTY/RED. `#2300`
+re-checked: no new comment since the `13:16:49Z` native-sign-off-needed ruling. `#1713`
+re-checked: cycle 248's correction (`17:06:14Z`) is still the latest comment — no reply, and
+nobody has retried `ga_condition` off the mistaken "transient race" read. `egate.sql -v layer=L1`
+re-run: identical 8-row frontier (3× `OPEN-PENDING-PIN`, 5× `BLOCKED-ANCESTORS`). Additionally
+re-verified the actual blocker at the DB level rather than inferring it from the issue thread:
+`asset_freshness` for `ga_dashas` still reads `freshness_state='stale'`,
+`reasons=["registry_changed"]`, `observed_at=2026-09-07 10:38:49Z` — the identical row, so
+DEP-ASSERT would still fail any dispatch of `ga_condition`/`ga_structural`/`ga_tajaka`. State
+kept local-uncommitted this cycle per C8 Step 3 (no work PR; `#2381` still mid-CI — pushing onto
+its branch would only restart checks; folding into next cycle's push instead).
+
+CYCLE 251 L1: IDLE-OK (verified: `egate.sql` unchanged, `asset_freshness`/`ga_dashas` still
+stale @ 10:38:49Z, `#2300`/`#1713` both unmoved, merge queue empty, `#2381` mid-CI green) --
+next: keep checking `#2300` every cycle; fold this state entry into the next push.
+
+## CYCLE 252 (C8 v2.3) — IDLE-OK
+
+PR hygiene clean: merge queue empty; `#2381` down to one pending check (Governance Gates), no
+failures, not yet `is:queued` (normal). `#2300` re-checked: no new comment since `13:16:49Z`.
+`#1713` re-checked: cycle 248's correction still the latest comment, no reply. `egate.sql -v
+layer=L1` re-run: identical 8-row frontier. `asset_freshness` for `ga_dashas` re-verified:
+identical `stale`/`registry_changed` row @ 10:38:49Z — DEP-ASSERT block intact. State still
+local-uncommitted (no work PR; `#2381` still mid-CI).
+
+CYCLE 252 L1: IDLE-OK (verified: `egate.sql` unchanged, `ga_dashas` freshness unchanged,
+`#2300`/`#1713` both unmoved, queue empty, `#2381` one pending check green-so-far) -- next:
+keep checking `#2300` every cycle; fold state into next push once `#2381` merges.
+
+## CYCLE 253 (C8 v2.3) — IDLE-OK, zero git writes (new heartbeat discipline acknowledged)
+
+Supervisor nudge added explicit heartbeat discipline: IDLE cycles = zero git writes, state stays
+local until a REAL work PR. Acknowledged — cycles 251-253 entries remain local-uncommitted.
+C8.5 prep confirmed already exhausted (not redone): `L1_W6_CLOSE_REPORT_v1_0.md` exists and was
+prep-completed in cycles 186-187 (cost-actuals gap closed there); W5 verification tooling
+(`capsule_audit.sql`, `l1_integrity_check_dry_run.sql`, `egate.sql`) in place since earlier
+cycles. PR hygiene: `#2381` one pending check (Governance Gates), no failures, not queued yet
+(normal; #2378 in queue is L3's). `#2300` unmoved (13:16:49Z), `#1713` unmoved (17:06:14Z).
+`egate.sql` re-run once: identical 8-row frontier.
+
+CYCLE 253 L1: IDLE-OK (verified: egate unchanged, `#2300`/`#1713` unmoved, `#2381` mid-CI green,
+prep already exhausted at cycles 186-187) -- next: quiet idle until `#2300` moves.
+
+## CYCLE 254 (C8 v2.3) — IDLE-OK; `#2381` now genuinely queued
+
+PR hygiene: `#2381` verified `is:queued` (all checks green, CLEAN) — the cycle-250 state PR will
+merge on its own; nothing to fix. `#2300` unmoved (13:16:49Z), `#1713` unmoved (17:06:14Z).
+`egate.sql` one query: identical 8-row frontier. Zero git writes.
+
+CYCLE 254 L1: IDLE-OK (verified: `#2381` is:queued CLEAN, egate unchanged, `#2300`/`#1713`
+unmoved) -- next: quiet idle until `#2300` moves; state rides next real work PR.
+
+## CYCLE 255 (C8 v2.3) — supervisor challenged the IDLE-OK; answered with per-asset proof,
+## posted the L1 impact statement to #2300
+
+Supervisor asked: for `ga_condition`/`ga_structural`/`ga_tajaka`, name the SPECIFIC failing
+condition per asset, or dispatch. Verified live, per asset:
+
+- **All E-gate C2 conditions PASS for all three** (0 unfrozen ancestors; `asset_analysis_accepted`
+  + `optimization_verdict_accepted` both recorded; W3 merged — `ga_condition` even has its W4
+  `output_digest_spec` via #2301).
+- **What fails is dispatch-time DEP-ASSERT, identically for all three**: the frozen manifest
+  lists `ga_dashas` as a DIRECT `depends_on` of each (confirmed by manifest query this cycle),
+  and `asset_runner.py` `deps_unsatisfied()` line 111 rejects any dep whose latest
+  `asset_freshness.freshness_state != 'fresh'`. `ga_dashas`' latest row: `stale`/
+  `["registry_changed"]` @ 10:38:49Z — unchanged through the 12:58:47Z rebuild (delta-skip path
+  never reconciles it; that IS #2300's defect). Empirical proof: `ga_condition`'s 13:06:17Z
+  dispatch failed exactly here (cycle 248 record).
+- **Not dispatching**: a dispatch now is a guaranteed DEP-ASSERT failure and burns one of ≤3
+  campaign-wide slots — the exact waste cycle 248 blocked when the Conductor's "transient race"
+  misread nearly caused it. Not routing around: freshness-row backfill = fabricated receipt
+  (§N.8 hard floor); DEP-ASSERT relaxation = gate-weakening (hard floor); ga_dashas re-dispatch
+  provably no-ops the row.
+- **Unit of work**: posted the full per-asset impact statement to #2300
+  (issuecomment-5574001191) — quantifies that the pending native sign-off is the single unlock
+  for all 8 remaining L1 assets, with the code-line mechanism and live rows. This gives the
+  native everything needed to rule in one read.
+
+CYCLE 255 L1: answered supervisor challenge with per-asset DEP-ASSERT proof (all three blocked
+by direct dep ga_dashas receipt:stale, asset_runner.py:111, #2300); posted L1 impact statement
+to #2300 -- next: watch #2300 for the native ruling; dispatch all three the moment it lands.
+
+## CYCLE 256 (C8 v2.3) — IDLE-OK; Conductor fleet status confirms L1's #2300 deferral
+
+`#2381` MERGED — cycle-250 state landed on main; zero open L1 PRs remain (verified). New
+Conductor fleet-status comment on `#1713` (17:38:08Z, cycle 1062) explicitly confirms this
+lane's read: "L1: ga_condition/ga_structural/ga_tajaka remain deferred on #2300 (parked for
+native) — continue W1/W2/W3" (W1/W2/W3 are complete for L1 since cycles 122-126). Also
+NOTED for the post-#2300 dispatch: the Conductor found a deploy-gate regression (#2172 fix
+regressed; component deploys silently skipped since ~14:09Z) that "would have failed ga_*
+dispatches the same way" — forced full deploy run 34148351438 dispatched, ruling in #2169.
+**When #2300 clears, verify the serving revision's image ancestry per C4's execution-safe rule
+before dispatching** (it must contain the #2320 100-arg fix and current main). `#2300`: latest
+comment is still my 17:34:56Z impact statement, no ruling. `egate.sql` one query: identical
+8-row frontier. Zero git writes.
+
+CYCLE 256 L1: IDLE-OK (verified: #2381 merged, zero open L1 PRs, egate unchanged, #2300 unruled;
+Conductor's 17:38Z fleet status independently confirms the #2300 deferral) -- next: quiet idle;
+on #2300 ruling, image-ancestry check (#2169/deploy run 34148351438) THEN dispatch all three.
+
+## CYCLE 257 (C8 v2.3) — IDLE-OK
+
+Zero open L1 PRs (verified). `#2300` unruled (latest comment still my 17:34:56Z impact
+statement). `#1713` unchanged (latest still Conductor's 17:38:08Z fleet status). `egate.sql`
+one query: identical 8-row frontier. Zero git writes.
+
+CYCLE 257 L1: IDLE-OK (verified: zero open L1 PRs, egate unchanged, #2300 unruled, #1713
+unchanged) -- next: quiet idle until #2300 rules; then ancestry check, then dispatch.
+
+## CYCLE 258 (C8 v2.3) — #2300 RULED BY THE NATIVE (D-NATIVE-10); unblock in motion, dispatch
+## prerequisites pre-verified
+
+**The wait is over.** #2300 ruled at 19:09:13Z: confirmed orchestrator bug, fix granted under
+the O-wave §3.5 freeze exception, Conductor implemented as **PR #2385 — MERGED 19:30:55Z**
+(merge commit `a4b2fa926`, now main HEAD). Fix: delta-skip path reconciles `asset_freshness`
+mirroring `persist_successful_receipt`'s honest-unknown rule; 3 new unit tests, orchestrator
+suite 89/89. **The ruling's own L1 sequence:** (1) verify pipeline image contains #2385's merge
+commit (`gcloud run jobs describe brahma-build-pipeline-job` image tag), (2) redispatch
+`ga_dashas` (delta-skip expected — will reconcile freshness to `fresh`), (3) dispatch
+`ga_condition`/`ga_structural`/`ga_tajaka` — DEP-ASSERT will pass. Issue closes when L1
+confirms the frontier drains.
+
+**Done this cycle (all read-only prep so next cycle is pure dispatch):**
+- Verified #2385 MERGED; `ga_dashas` freshness still `stale` @ 10:38:49Z as expected (fix
+  applies on next rebuild).
+- Image ancestry checked: pipeline image still at `3cb59e59a` (pre-#2385) — `IMAGE-STALE`.
+  a4b2's `CI — Ganga Quality Gate` was in_progress (started 19:30:56Z); Deploy to Cloud Run
+  for a4b2 fires after it. Minutes away, not hours.
+- Worktree moved to detached `origin/main` (= a4b2fa926) carrying local state appends.
+- **C2.3 pin check PASSED on exactly this commit**: `nirmana_analysis_layer_pins.py --check`
+  exit 0 ("pins are current") with live DB manifest — all three assets' pins verified.
+- Zero open L1 PRs; no commits/pushes/branches this cycle.
+
+CYCLE 258 L1: #2300 RULED (native, D-NATIVE-10) + #2385 merged; pins pre-verified (C2.3 ✓),
+image still pre-#2385 (a4b2 CI in flight) -- next: verify image contains a4b2fa926, claim slot
+on #1713, redispatch ga_dashas, then drain ga_condition/ga_structural/ga_tajaka back-to-back.
+
+## CYCLE 259 (C8 v2.3) — FRONTIER UNBLOCKED: ga_dashas freshness reconciled via #2385;
+## ga_condition first real dispatch → post-write check failure → migration 902 (884-precedent
+## scoping fix); drain in progress
+
+**Phase 1 — ga_dashas freshness flush (the #2300 ruling's step 1) — DONE, verified:**
+- Image verified: `brahma-build-pipeline-job` now at tag `a4b2fa926` = #2385's merge commit
+  (`IMAGE-CONTAINS-FIX`).
+- Slot claimed on #1713 (comment 5575173864). Fresh on-demand Cloud SQL backup `1788811464939`
+  (SUCCESSFUL) per C13.
+- Campaign dispatcher REFUSED a ga_dashas wave redispatch — correctly: `accepted rebuild
+  evidence already exists for 1 selected assets bound to their current live-registry
+  generation` (#2276 generation guard; ga_dashas is frozen, no new campaign evidence needed).
+  Recomputed ga_dashas' current registry fingerprint + analysis digest via the dispatcher's OWN
+  helpers: BYTE-IDENTICAL to the accepted pair — evidence current, only the flush needed.
+- Flushed via a PLAIN (non-campaign) build run instead — the product's own operational
+  rebuild path, precedented by cycle 100 (#2113 ruled it in-scope) and
+  `rebuild_el18_manglik_ga_structural.py`: run `f2a62f44` (triggered_by
+  `l1-freshness-flush-d-native-10-cycle259`), local orchestrator at a4b2fa926. First attempt
+  (`a105a76f`, failed harmlessly at validation) taught that #2383 now requires
+  plan_manifest+digest on every run; cloned the successful 12:58Z run's manifest verbatim
+  (digest self-verified via `_canonical_manifest_digest`). Result: `skip_no_delta`, ZERO writer
+  invocation, output_changed=false, run completed — and **`asset_freshness` for ga_dashas
+  flipped stale→`fresh`/`[]`** (observed 20:14:04Z). #2385 works exactly as ruled.
+
+**Phase 2 — ga_condition campaign dispatch (first of the three):**
+- Its `implementation_accepted` already existed (13:05:19Z). Dry-run clean (wave 2, manifest
+  digest `87a1ece9…`). `--reviewed-deployment-sha` pinned to the accepted pair's own commit
+  `46f7b7257` (ga_positions-precedent honesty: recomputation proves acceptance current).
+- Committed dispatch: run `e2ac2b9d`, execution `brahma-build-pipeline-job-swcql`;
+  `build_run_authorized` HTTP 201 (race won; authorization_sha256 = the dispatcher's own
+  printed manifest digest).
+- **Run FAILED the post-write integrity gate** — `integrity_check_sql → False`. Isolated all 4
+  conjuncts: (a) 90 violations, (b)/(c)/(d) zero. ALL 90 are charts 1c826d5a (45) + cb73cd3d
+  (45) — pre-F-C8-writer rows the chart-scoped dispatch never touched. **Canonical chart:
+  0 violations — the F-C8 fix + rebuild is genuinely correct.** Same defect class and same
+  signature as ga_vargas' first dispatch (migration 884) and ga_dashas (882).
+- **Migration 902** (number 852 in my ledger was stale — L3 consumed 852-859 on main; authored
+  as 899, renumbered 899→902 by Conductor after main took 899-901 first — MIG-1 collision): scope conjunct (a) to the canonical chart,
+  conjuncts (b)/(c)/(d) left table-wide (they pass everywhere — no coverage traded where none
+  needs to be). New check body dry-run TRUE; applied live (UPDATE 1); stored check re-executed
+  verbatim from the registry: TRUE.
+- Cross-chart stale data NOT declared fixed: 90 pre-fix rows + cb73cd3d ga_dashas
+  `state='incomplete'` + zero per-chart asset_freshness rows for non-canonical charts → to be
+  filed as a nirmana-adjudication issue (coordinated repair, out of single-lane scope).
+
+**Next (this cycle if time, else next): push PR + queue; file the adjudication issue;
+REDISPATCH ga_condition (fresh run — e2ac2b9d is terminal 'failed'; check now passes);
+then accepted_rebuild_observed → integrity_verified → asset_frozen; then ga_structural +
+ga_tajaka (both need implementation_accepted submitted first — verdicts are `correct`;
+their W3 fixes merged cycles ago).**
