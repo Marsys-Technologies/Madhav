@@ -33,7 +33,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from . import WriterBase, ContextSpec, WriterResult, register
+from . import WriterBase, ContextSpec, WriterResult
 from bodha_writers.grounding_matcher import classify_yoga_dosha_firing, classify_msr_signal
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,11 @@ def _match_to_row(match, chart_id: str, ayanamsha_id: str, build_id: str, now: s
     }
 
 
-@register("bo_grounding")
+# REGISTRATION DEFERRED (#2258): the receipt-spine gate (nirmana_analysis_layer_pins
+# --check) pins L2's receipt_count to the frozen campaign manifest's 22 bo_* assets;
+# a 23rd registered writer can never pass it until the Conductor rules how a net-new
+# mid-campaign asset joins the manifest (amendment vs. pins-script extension).
+# Re-apply `@register("bo_grounding")` the moment that ruling lands.
 class BoGroundingWriter(WriterBase):
     """bo_grounding: D-GROUNDING tier-assignment matches for the v1 target scope."""
     asset_id = "bo_grounding"
