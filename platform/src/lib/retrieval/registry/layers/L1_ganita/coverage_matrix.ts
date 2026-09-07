@@ -19,7 +19,13 @@
  * cluster (12 categories) closed 2026-09-07 slice 3; special_lagna/upapada_lagna/
  * sensitive_point_gulika_mandi (get_sensitive_points.ts) + sensitive_degree_check/
  * sensitive_point_yogi (get_sensitive_degrees.ts) closed 2026-09-07 slice 4 (5 categories);
- * the remaining ~31 are still open.
+ * `ayurdaya` (get_ayurdaya.ts, unconditionally served) closed 2026-09-07 slice 5; the remaining
+ * ~30 are still open. Note: `graha_yuddha_per_varga` (17 live rows) was investigated and found
+ * genuinely UNREACHABLE by any tool — get_graha_yuddha.ts hardcodes `fact_category =
+ * 'graha_yuddha'` (a bare, zero-row-for-this-chart category) with no override mechanism, so the
+ * per-varga variant cannot be opted into like every other per_varga category in this file. This
+ * is a deeper defect than a stale list entry (a real computed category with no path to any
+ * tool at all) and is recorded as its own finding, not force-mapped here.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -49,6 +55,7 @@ export const CHART_FACTS_CATEGORIES = [
   'aspect_parashari_per_varga',
   'aspect_parashari_received',
   'aspect_tajik',
+  'ayurdaya',
   'bhadra_flag',
   'bhava_arudha',
   'bhava_bala_aspectual',
@@ -354,6 +361,13 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   dhaiya_period:                    ['marsys://tool/L1/get_sade_sati'],
   vishakha_shani_period:            ['marsys://tool/L1/get_sade_sati'],
   kantaka_shani_period:             ['marsys://tool/L1/get_sade_sati'],
+
+  // ── Āyurdāya ──────────────────────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 5/N): get_ayurdaya.ts unconditionally serves this category via a
+  // hardcoded `fact_category = 'ayurdaya'` filter (get_ayurdaya.ts:71) — no opt-in ambiguity,
+  // the whole tool exists for exactly this one category. 130 live rows (canonical chart),
+  // matching the tool's own docstring count exactly.
+  ayurdaya:                          ['marsys://tool/L1/get_ayurdaya'],
 
   // ── Panchanga ─────────────────────────────────────────────────────────────
   panchanga_abhijit_muhurta:         ['marsys://tool/L1/get_panchanga'],
