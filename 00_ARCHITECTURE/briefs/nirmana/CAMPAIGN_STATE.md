@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:41:42Z` — cycle 932: **IDLE-OK, Δfrozen +0.** `ga_prashna` slot released
+  cleanly (per L1's own coordination-issue log); L1 also found+fixed a related missing ingress-
+  writer grant (migration 890) along the way. `ga_nakshatra` still building. L2/L3 still unmoved,
+  ~12 min since the sharp nudge — not re-posting an identical ask yet. Fleet DIRTY: clean.
+  Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:39:19Z` — cycle 931: **Δfrozen +1 (50→51). `ga_prashna` froze.** L1's 4th
   freeze this drive, full chain (build→`accepted_rebuild_observed`→`integrity_verified`→
   `asset_frozen`) completed in ~9 min. `ga_nakshatra` still in flight in parallel. L2/L3 still
