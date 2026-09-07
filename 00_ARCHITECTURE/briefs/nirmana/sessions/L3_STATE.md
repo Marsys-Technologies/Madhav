@@ -495,6 +495,77 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~163:0xZ — L3-W4 — PR hygiene: `#2197` advanced to
+  position 1, own `merge_group` build's all 3 jobs completed
+  successfully (confirmed via `gh run list` filtered on `pr-2197`, not
+  assumed from the `UNKNOWN` mergeStateStatus alone) — genuinely
+  healthy. One new unrelated L1 merge (#2193), no L3 overlap, no new
+  E-gate opening. IDLE-OK. — blocked on: `#2197` finishing; next
+  action: same.
+- `2026-09-07T~162:0xZ — L3-W4 — PR hygiene: `#2197`'s last pending
+  check (`Build Check (PR only)`) checked at step-level — all steps
+  showed `completed`/`success` including "Complete job", the
+  `mergeStateStatus: UNSTABLE` reading was async lag, not a real
+  pending state; re-queried immediately after and it flipped to
+  `CLEAN`. Now genuinely `isInMergeQueue: true` (position 2), healthy.
+  No new `origin/main` merges, no new E-gate opening. IDLE-OK. —
+  blocked on: nothing new; next action: push once `#2197`
+  merges/finishes.
+- `2026-09-07T~161:0xZ — L3-W4 — PR hygiene: `#2197` genuinely
+  `isInMergeQueue: true` (position 2 — moved from 1, another PR merged
+  ahead, healthy queue churn). `mergeStateStatus: UNSTABLE` checked
+  directly against the full check list: `Governance Gates` finished
+  green (9m33s, matching the confirmed pattern exactly), only
+  `Build Check (PR only)` still `pending` — the UNSTABLE label reflects
+  that one pending check, not a failure. No new `origin/main` merges,
+  no new E-gate opening. IDLE-OK. — blocked on: nothing new; next
+  action: push once `#2197` merges/finishes.
+- `2026-09-07T~160:0xZ — L3-W4 — PR hygiene: `#2197`'s last check
+  (`Governance Gates`) genuinely `in_progress` at ~9.3min, checked
+  step-level detail directly (still on the same `pytest —
+  pyjhora_adapter + pipeline` step) — within the confirmed normal range,
+  not a stall. No new `origin/main` merges, no new E-gate opening.
+  IDLE-OK, unchanged. — blocked on: nothing new; next action: push once
+  `#2197` merges/finishes.
+- `2026-09-07T~159:0xZ — L3-W4 — PR hygiene: `#2197` down to 2 pending
+  checks (~7min, within normal range), nothing red, not yet queued. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
+  — blocked on: nothing new; next action: push once `#2197`
+  merges/finishes.
+- `2026-09-07T~158:0xZ — L3-W4 — PR hygiene: `#2197` down to 3 pending
+  checks (~4.7min, within normal range), nothing red, not yet queued.
+  No new `origin/main` merges since last cycle, no new E-gate opening.
+  IDLE-OK, unchanged from last cycle. — blocked on: nothing new; next
+  action: push once `#2197` merges/finishes.
+- `2026-09-07T~157:0xZ — L3-W4 — PR hygiene: `#2197` checks running
+  pre-queue (~2.4min, 4 pending, nothing red), not yet queued — nothing
+  to fix. Re-ran `egate.sql`: unchanged, no new opening (`ga_positions`
+  still `OPEN-PENDING-PIN`). No new bounded work — F-L3-4 remains
+  exhausted (last cycle's findings-ledger sweep already confirmed
+  nothing else actionable) and this cycle's own state matches it
+  exactly. Recording an honest IDLE-OK. — blocked on: nothing new; next
+  action: push once `#2197` merges/finishes — that closes F-L3-4 in
+  full on `origin/main`.
+- `2026-09-07T~156:0xZ — L3-W3 — PR hygiene: `#2195` MERGED (squash
+  `fc2ce2326`). Rebased the 9 not-yet-merged local commits (migrations
+  866/867 + heartbeat, plus 7 pre-#2195 commits already absorbed into
+  #2195's squash) onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern twice (auto-resolved), plus ONE
+  genuine content conflict on the `ka_sangam` Held-items row: HEAD
+  carried the "second cycle, still unreconciled" version, theirs
+  carried the OLDER "first cycle" version it had already superseded —
+  resolved by keeping HEAD's more-evolved text and dropping theirs
+  (both were about to be replaced by the RESOLVED text two commits
+  later anyway). Verified zero conflict markers, migration-number guard
+  PASS, all 16 migration-866/867 tests still pass post-rebase (kshetra's
+  live tests ~28s, expected given the 8.6M-row table), `ka_dasha_kala`
+  held row intact. Renamed branch to `codex/nirmana-l3-f-l3-4-final`,
+  pushed, opened **PR #2197**, armed auto-merge (checks running now, not
+  yet queued — normal). No new bounded work this cycle beyond the
+  rebase/PR-open itself (`ga_positions` still `OPEN-PENDING-PIN`). —
+  blocked on: nothing new; next action: verify `#2197` clears its
+  checks and queues cleanly next cycle — once it merges, F-L3-4 is
+  closed in full on `origin/main` for real, not just in a pending PR.
 - `2026-09-07T~155:0xZ — L3-W4/W3 — PR hygiene: `#2195` own `merge_group`
   build confirmed healthy (~9min, within normal range). Nothing to fix.
   With F-L3-4 now CLOSED, swept the rest of the findings ledger (F-L3-1
