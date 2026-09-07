@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:34:33Z` — cycle 842: **IDLE-OK.** #2227 restarted from the beginning again
+  (3rd hour open) — already nudged/re-triggered twice each; diminishing returns for a zero-
+  campaign-impact heartbeat PR, continuing lightweight monitoring only. Fleet DIRTY empty;
+  adjudications unchanged (11).
 - `2026-09-07T07:31:46Z` — cycle 841: **IDLE-OK (verified).** #2227's run continuing (~6min in,
   no restart) — approaching the known ~9-10min Governance Gates completion window. Fleet DIRTY
   empty; adjudications unchanged (11).
