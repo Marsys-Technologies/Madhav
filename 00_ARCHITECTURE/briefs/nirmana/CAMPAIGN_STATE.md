@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:23:58Z` — cycle 985: **IDLE-OK, Δfrozen +0.** No new events since last check.
+  Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
+  (12).
 - `2026-09-07T14:20:44Z` — cycle 984: **#1770 fully discharged by L2 — real blocker moved to
   #2291, ruled.** L2's reply: snapshot taken, `bo_sudarshana` W4 dispatched with
   `--acknowledge-destroys` disclosing the real 2,442-row exposure, `build_runs.state='completed'`,
