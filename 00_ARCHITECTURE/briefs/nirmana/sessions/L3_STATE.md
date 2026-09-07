@@ -497,6 +497,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~516:0xZ — L3-W4 — PR hygiene: `#2358`'s last check,
+  same run, now ~10.4min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. One new `origin/main` merge (`#2329`, L1 — SELECT
+  grant, not a freeze event, no E-gate impact; also confirms the
+  earlier `UNMERGEABLE` cascade fully self-resolved). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2358` finishing; next action:
+  same.
 - `2026-09-07T~515:0xZ — L3-W4 — PR hygiene: `#2358`'s last check,
   same run, now ~8.3min — within the confirmed ~11min normal range,
   still on the same `pytest` step. No new `origin/main` merges. No
