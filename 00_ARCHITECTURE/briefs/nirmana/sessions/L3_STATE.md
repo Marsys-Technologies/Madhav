@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~160:0xZ — L3-W4 — PR hygiene: `#2197`'s last check
+  (`Governance Gates`) genuinely `in_progress` at ~9.3min, checked
+  step-level detail directly (still on the same `pytest —
+  pyjhora_adapter + pipeline` step) — within the confirmed normal range,
+  not a stall. No new `origin/main` merges, no new E-gate opening.
+  IDLE-OK, unchanged. — blocked on: nothing new; next action: push once
+  `#2197` merges/finishes.
 - `2026-09-07T~159:0xZ — L3-W4 — PR hygiene: `#2197` down to 2 pending
   checks (~7min, within normal range), nothing red, not yet queued. No
   new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
