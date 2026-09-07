@@ -37,6 +37,7 @@ import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import { runWindowAskTurnHook } from '@/lib/pariprashna/samiksha/window_ask/turn_hook'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -131,6 +132,20 @@ export async function runPlanStage(args: {
     .map((p) => (p as { type: string; text?: string }).text ?? '')
     .join(' ')
     .trim()
+
+  // ── P4-G — THE WINDOW-OPENING ASK, before the planner. ─────────────────────
+  // TARGET_ARCHITECTURE A-42 fixes this ordering: the instrument raises a closed
+  // prediction window "before I answer", then answers in the same turn regardless
+  // of any reply. Two reasons it sits HERE and not in the persistence stage:
+  //   1. A-42's own register — "Before I answer —" is a lie if the reading is
+  //      already written.
+  //   2. Anti-anchoring. The ask is a WIRE event, not a message: it never enters
+  //      `plannerHistory` or the synthesis prompt, so raising a prior claim cannot
+  //      bias the reading that follows it. Emitting it before the planner makes
+  //      that independence structural rather than promised.
+  // Flag-gated OFF, and strictly non-fatal: an unsolicited sentence must never be
+  // able to cost the reader their reading. See window_ask/turn_hook.ts.
+  await runWindowAskTurnHook({ em, chartId, conversationId: identity.conversationId, params })
 
   const manifest = await loadManifest(
     '00_ARCHITECTURE/CAPABILITY_MANIFEST.json',

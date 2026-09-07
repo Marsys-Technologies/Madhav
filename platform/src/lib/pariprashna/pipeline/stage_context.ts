@@ -69,6 +69,12 @@ export interface TurnParams {
   lengthTier: LengthTier
   lelContextEnabled: boolean
   style: string
+  /**
+   * P4-G — the reader's answer to a previously-emitted `window_ask`, when this turn carries
+   * one. `null` on every ordinary turn. See `safety_gate.bindTurnParams` for the binding and
+   * `samiksha/window_ask/capture.ts` for what is (and is not) done with it.
+   */
+  windowAskAnswer?: { ledgerRowId: string; text: string } | null
 }
 
 // ── Gate 11 [integrity] ──────────────────────────────────────────────────────

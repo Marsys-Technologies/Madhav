@@ -85,6 +85,13 @@ export interface RequestBody {
   length_tier?: string
   style?: string
   lel_context_enabled?: boolean
+  /**
+   * P4-G — the reader's answer to a `window_ask` this client previously received. The client
+   * echoes back the ask's opaque `ledger_row_id` alongside the reader's own words; the plan
+   * stage feeds both to `captureWindowAnswer`, which RE-VERIFIES the row against the DB before
+   * writing anything. Absent on every ordinary turn.
+   */
+  window_ask_answer?: { ledger_row_id?: string; text?: string }
 }
 
 export interface AdmittedRequest {
@@ -156,6 +163,19 @@ export async function bindTurnParams(body: RequestBody, request: Request): Promi
     ? (body.length_tier as LengthTier)
     : 'standard'
 
+  // P4-G: bind the window-ask answer echo, if this turn carries one. Shape-validated only —
+  // authority over WHETHER it may resolve anything belongs to `captureWindowAnswer`, which
+  // re-reads the row from the DB. Binding here would be the wrong place to decide that.
+  const rawAnswer = body.window_ask_answer
+  const windowAskAnswer =
+    rawAnswer &&
+    typeof rawAnswer.ledger_row_id === 'string' &&
+    UUID_RE.test(rawAnswer.ledger_row_id) &&
+    typeof rawAnswer.text === 'string' &&
+    rawAnswer.text.trim().length > 0
+      ? { ledgerRowId: rawAnswer.ledger_row_id, text: rawAnswer.text }
+      : null
+
   return {
     selectedStack,
     modelId,
@@ -165,6 +185,7 @@ export async function bindTurnParams(body: RequestBody, request: Request): Promi
     lengthTier,
     lelContextEnabled: body.lel_context_enabled !== false,
     style: body.style ?? 'acharya',
+    windowAskAnswer,
   }
 }
 
