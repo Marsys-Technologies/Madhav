@@ -497,6 +497,75 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~472:0xZ — L3-W4 — PR hygiene: `#2322` still position
+  1, `AWAITING_CHECKS` — ~8.6min since enqueued, own `merge_group`
+  run still not visible. Approaching but not yet past the
+  previously observed ~11min congestion pattern (which self-resolved
+  last time). No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2322` finishing; next action: same, watch
+  closely.
+- `2026-09-07T~471:0xZ — L3-W4 — PR hygiene: `#2322` still position
+  1, `AWAITING_CHECKS`, `enqueuedAt: 14:42:07Z` — ~6.5min so far, own
+  `merge_group` run not yet visible in `gh run list`. Confirmed
+  `#2320` (L2) also merged since last check, no L3 overlap. Within
+  normal range given the earlier observed congestion pattern; not
+  yet a stall concern (that took ~11min before). No new E-gate
+  opening. IDLE-OK. — blocked on: `#2322` finishing; next action:
+  same, watch closely if it passes ~11min.
+- `2026-09-07T~470:0xZ — L3-W4 — PR hygiene: `#2322` advanced to
+  position 1 (top of queue) — `#2318` merged (unrelated L1 PR,
+  confirmed via `origin/main`) and `#2320` also cleared (queue
+  listing shows `#2322` at position 1 now, one new unrelated PR
+  `#2324` L5 behind it at position 2). No L3 overlap in either.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2322` finishing;
+  next action: same.
+- `2026-09-07T~469:0xZ — L3-W4 — PR hygiene: `#2322` still position
+  3, transitioned `QUEUED`→`AWAITING_CHECKS` — own build has started.
+  Same two unrelated PRs ahead (`#2318` L1, `#2320` L2). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2318`/`#2320` clearing ahead of `#2322`; next action: same.
+- `2026-09-07T~468:0xZ — L3-W4 — PR hygiene: `#2322`'s checks
+  finished (0 failures — the ~10.4min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `QUEUED`, position 3 — two
+  unrelated PRs ahead (`#2318` L1, `#2320` L2), both still
+  `AWAITING_CHECKS`, normal congestion. No new `origin/main` merges.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2318`/`#2320`
+  clearing ahead of `#2322`; next action: same.
+- `2026-09-07T~467:0xZ — L3-W4 — PR hygiene: `#2322`'s last check,
+  same run, now ~10.4min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2322` finishing; next action: same.
+- `2026-09-07T~466:0xZ — L3-W4 — PR hygiene: `#2322`'s last check,
+  same run, now ~8.3min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2322` finishing; next
+  action: same.
+- `2026-09-07T~465:0xZ — L3-W4 — PR hygiene: `#2322`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2322` finishing; next
+  action: same.
+- `2026-09-07T~464:0xZ — L3-W4 — PR hygiene: `#2322`'s pre-queue
+  check run in progress (~4.1min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2322` finishing; next action: same.
+- `2026-09-07T~463:0xZ — L3-W4 — PR hygiene: `#2322`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. One
+  new `origin/main` merge (`#2314`, L5 heartbeat — no L3 overlap).
+  No new E-gate opening. IDLE-OK. — blocked on: `#2322` clearing
+  checks/queue; next action: same.
+- `2026-09-07T~462:0xZ — L3-W4 — PR hygiene: `#2313` confirmed
+  MERGED. Rebased 16 local commits onto fresh `origin/main`, 4
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-31`, pushed, opened
+  `#2322`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2322`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~461:0xZ — L3-W4 — PR hygiene: `#2313` still position
   1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
   Gates` remains (~6.2min, within normal range). No new
