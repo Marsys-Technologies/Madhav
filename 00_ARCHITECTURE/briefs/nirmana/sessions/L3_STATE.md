@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~439:0xZ — L3-W4 — PR hygiene: `#2299`'s `Unit Tests`
+  now passed; only `Governance Gates` remains. One new `origin/main`
+  merge (`#2295`, L1: `create_campaign_run` accepted-rebuild guard
+  scoping — not a freeze event, no E-gate impact). IDLE-OK. —
+  blocked on: `#2299` clearing checks/queue; next action: same.
 - `2026-09-07T~438:0xZ — L3-W4 — PR hygiene: `#2299`'s
   `DB Integration Tests` now passed; `Unit Tests`/
   `Governance Gates` still pending, nothing red. One new
