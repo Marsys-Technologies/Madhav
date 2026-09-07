@@ -867,3 +867,8 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
     check result and the `lifecycle_digest` reconstruction, and submit `integrity_verified` +
     `asset_frozen` under the verifier SA. Awaiting its report — not fabricating a result before it
     lands. NEXT: confirm its work, log the final freeze, post the 40/40 milestone to #1713.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. #1713/#2240 unchanged since last cycle —
+  nothing new to react to. Verifier subagent (integrity_verified + asset_frozen for `bg_cohort`)
+  still running, not done yet — not polling its transcript or predicting its result, per this
+  session's own no-race discipline; will confirm and log for real once its completion notification
+  lands. Nothing else eligible this cycle.
