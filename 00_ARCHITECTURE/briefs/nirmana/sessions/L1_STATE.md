@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 166; shipped ga_positions' output_digest_spec (migration 875, PR #2220) -- fix 2/2 of #2180's second ruling, the LAST prerequisite before wave 1 can dispatch. Scoped to chart_id + fact_category IN the same 4 categories migration 868 verified; key_columns=fact_id (chart_facts' real PK, confirmed stable across rebuilds since PR #1898 stripped build_id out of its hash); value_columns = every real content column except computed_at + build_id (both pipeline bookkeeping -- build_id excluded because it's a volatile per-run UUID that would make the digest differ every rebuild even with zero content change). spec_sha256 computed+validated via the real canonical_digest()/_validate_spec() functions; end-to-end rehearsed live (rollback-only INSERT+compute_output_digest()+ROLLBACK against production) BEFORE writing the migration, then independently re-confirmed the identical digest (d5837f05...) against the real persisted spec after applying for real -- same value both times, zero residue. **Both fixes of #2180's two-part ruling (natural_key_partition x7 + this output_digest_spec) are now fully shipped** -- wave 1 dispatch readiness itself (does asset_freshness actually read back 'fresh' now) is a separate, not-yet-attempted next step. #2113/#2180 checked again this cycle -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 167; SELF-CAUGHT AND FIXED a real undercount in this session's own already-applied migrations 868/875 (migration 876, PR #2221). While recomputing ga_positions' live registry fingerprint via dispatch_nirmana_campaign_wave.py's own _load_candidates() ahead of a wave-1 verification attempt, its live count_sql showed 5 chart_facts categories for ga_positions, not the 4 both prior migrations declared -- ga_positions_writer.py's `_build_chalit_rows` also emits `sandhi_flag` (own docstring names it explicitly; lines 511-523 are the real write site), confirmed live and exhaustively re-checked for further gaps (none). Corrected natural_key_partition to the true 5-category set and retired+replaced the output_digest_spec row with a matching corrected filter -- new digest computed over 1205 live rows, matching cycle 155's own original wave-0 dispatch report ("1205 rows written") EXACTLY, confirming 5 is the true complete count. Rehearsed live (rollback-only) before writing the migration; independently re-confirmed the identical digest after applying for real. Did not complete the wave-1 verification attempt this cycle -- this self-correction took priority once found. #2113/#2180 checked again this cycle -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9140,3 +9140,88 @@ CYCLE 166 L1: PR hygiene clean; shipped `ga_positions`' `output_digest_spec` (mi
 still-queued `natural_key_partition` PRs land on `main`, then attempt a genuine `ga_positions`
 re-dispatch to verify `asset_freshness` actually reads back `'fresh'`, unblocking wave 1; keep
 re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 167 (C8 v2.3) — self-caught undercount in migrations 868/875: `ga_positions` owns 5
+## chart_facts categories, not 4 (migration 876, PR #2221)
+
+PR hygiene: `#2217` (`ga_sensitive`) genuinely `is:queued`. `#2220` (`output_digest_spec`) and
+`#2201` (this state branch) both `BLOCKED` with zero RED checks (`gh pr checks` on both showed
+only `pending`/`skipping`/`pass`). `#2216` (`ga_panchanga`) confirmed `MERGED`. Nothing DIRTY,
+nothing RED, nothing CLEAN-but-unqueued. Re-checked `#2113`/`#2180`: unchanged, no new reply.
+
+**Started priority-1 work: verify a genuine `ga_positions` re-dispatch now reads
+`asset_freshness` back as `'fresh'`**, since both fixes of #2180's second ruling were shipped
+last cycle. Read `provenance.py` directly first: `reconcile_receipt` can never escape `'unknown'`
+once the *stored* receipt was itself unknown (`classify_receipt` returns early on
+`stored.receipt_state == 'unknown'`) — only `persist_successful_receipt`, called after a genuine
+successful writer execution, computes freshness fresh from the CURRENT receipt alone. Confirmed
+live: `asset_freshness` for `ga_positions` still shows `freshness_state='stale'` with the OLD
+pre-fix `reasons` frozen in place (mechanical trigger invalidation only, never recomputed) — a
+real re-dispatch is genuinely required, not a formality.
+
+Attempted the dispatch via `dispatch_nirmana_campaign_wave.py --layer L1 --wave 0 --assets
+ga_positions` (dry-run). Needed `--definition-revision t0-2026-09-01-0e5b06fb` +
+`--reviewed-deployment-sha 88a2abfd4a8e5bdecb6777db3b92a6bbb93036e6` (cycle 155's own accepted
+commit, still a live ancestor of `origin/main`) to get past the first two errors, then hit:
+`"accepted asset analysis does not match the current live registry contract for ga_positions"`
+— expected, since `natural_key_partition` (a `REGISTRY_CONTRACT_FIELDS` member) legitimately
+changed since that evidence was accepted. Per cycle 155's own established method, recomputed the
+fresh `registry_fingerprint_sha256`/`analysis_digest` LIVE via the dispatch script's own
+`_load_candidates()`/`_live_registry_fingerprint()`/`_current_analysis_receipt_digests()`
+functions (never hand-reimplemented) rather than guessing new evidence values by hand — this is
+the step that surfaced the real finding below. Confirmed `gcloud auth print-identity-token
+--impersonate-service-account=amjis-nirmana-executor@...` works for minting the OIDC token the
+`record_evidence` executor route requires, so the mechanics for actually submitting fresh
+evidence ARE available — not attempted yet this cycle (see below).
+
+**Real finding, not a formality**: the LIVE candidate row's own `count_sql` (already
+registry-authored, unrelated to this session's edits) reads `fact_category IN ('graha_position',
+'graha_sign_attributes', 'bhava_cusps', 'house_chalit', 'sandhi_flag')` — **5** categories. Both
+migration 868 (`natural_key_partition`, cycle 155) and migration 875 (`output_digest_spec`,
+cycle 166 — this session's own immediately-prior cycle) declared only **4**, missing
+`sandhi_flag`. Traced directly against `ga_positions_writer.py`: `_build_chalit_rows`'s own
+docstring (line 445) names `sandhi_flag` as one of its three emitted categories alongside
+`bhava_cusps`/`house_chalit` (not a passing mention — the function's own header), and lines
+511-523 are the genuine per-graha write site (`sandhi_flag`/`sandhi_reasons` fact_keys).
+Exhaustively re-checked the whole file (every literal category-bearing tuple, both
+`fact_category` variable-assignment call sites at lines 333/383/416) for any FURTHER gap beyond
+this one: none found — `_build_position_rows` only ever uses `graha_position`/
+`graha_sign_attributes`; the `cat in ("graha_retrogression_state", ...)` check at line 323 is
+dead/vestigial code, never actually matched by any real `cat` value, not a category source.
+Confirmed live: all 5 categories present in `chart_facts` for the canonical chart.
+
+**Immediately corrected rather than continuing the wave-1 verification with known-wrong
+data** (migration 876, this cycle's unit of work): (1) corrected `natural_key_partition` to the
+true 5-category set — migration 868 is already merged and, per convention, is never edited after
+being applied, so this is a superseding UPDATE, the same pattern as any plain corrective registry
+fix; (2) retired the migration-875 spec row (`asset_output_digest_specs_one_current` enforces
+exactly one current spec per asset via a partial unique index) and inserted a corrected spec with
+the matching 5-category `where_in` filter. New `spec_sha256` computed and validated via the real
+`canonical_digest()`/`_validate_spec()` functions; end-to-end rehearsed live (rollback-only:
+UPDATE retired_at, INSERT corrected spec, call the real `compute_output_digest()`, ROLLBACK)
+BEFORE writing the migration file. Result: digest
+`4dacab7c6211c1a77fb4c9d54941fa194befef2d3041beae982c3179e4edd5ae` over **1205** live rows —
+matching cycle 155's own original wave-0 dispatch report ("1205 rows written") **exactly**,
+independently confirming 5 categories is the writer's true, complete output (neither an over- nor
+an under-count). Migration numbering re-verified live (main highest 873; 874/875 reserved by
+still-open PRs) — used **876**. Applied for real, verified via direct `psql` (old spec
+`retired_at` now set, new spec current, `natural_key_partition` correct), then independently
+re-confirmed the identical digest against the real persisted state via a fresh connection.
+Committed, pushed, opened PR #2221, queued via `gh pr merge --auto`
+(`autoMergeRequest.enabledAt` confirmed set).
+
+**Did not complete the wave-1 verification attempt this cycle** — finding and fixing this
+self-authored defect took priority the moment it surfaced, per the standing discipline of never
+continuing forward on data already known to be wrong. The verification (does `ga_positions` now
+read back `'fresh'` after a genuine re-dispatch) remains the next priority-1 item, now with
+correct prerequisite data underneath it; the fresh-evidence-recording mechanics (OIDC
+impersonation via `gcloud auth print-identity-token`, the `record_evidence` command shape) are
+now understood and ready for use next cycle.
+
+CYCLE 167 L1: PR hygiene clean; self-caught and fixed a real 4-vs-5-category undercount in this
+session's own migrations 868/875 (migration 876, PR #2221) — found while preparing the wave-1
+`ga_positions` re-dispatch verification, corrected before continuing rather than proceeding on
+known-wrong data — next: resume the wave-1 verification attempt (compute fresh evidence with the
+now-correct registry contract, submit via the `record_evidence` executor route using the now-
+confirmed OIDC impersonation mechanics, dispatch, and check whether `asset_freshness` reads back
+`'fresh'`); keep re-checking #2113/#2180 every cycle regardless.

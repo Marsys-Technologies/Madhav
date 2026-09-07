@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.24-DRAFT"
+version: "0.25-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -82,11 +82,21 @@ stable across rebuilds since PR #1898); `value_columns` = every real content col
 establishes, since including a volatile per-run UUID as content would make the digest differ on
 every rebuild regardless of real content change). Rehearsed live (rollback-only) before writing
 the migration, then independently re-confirmed the identical digest after applying for real.
-**Both fixes of #2180's second ruling are now fully shipped.** Not yet attempted: a genuine
-`ga_positions` re-dispatch to confirm `asset_freshness` actually reads back `'fresh'` — the
-original symptom that opened this sub-investigation, and the natural next step once the
-remaining `natural_key_partition` PRs are confirmed merged to `main`. · **W5 ⛔ BLOCKED**
-(no completed post-W4
+**Both fixes of #2180's second ruling shipped cycle 166 — then self-corrected cycle 167**
+(migration 876, PR #2221): while preparing a wave-1 verification dispatch, recomputing
+`ga_positions`' live registry fingerprint via `dispatch_nirmana_campaign_wave.py`'s own functions
+surfaced that the writer's registry-authored `count_sql` already listed **5** `chart_facts`
+categories, not the 4 migrations 868/875 declared — `_build_chalit_rows` also emits `sandhi_flag`
+(own docstring names it explicitly). Corrected `natural_key_partition` to the true 5-category set
+and retired+replaced the `output_digest_spec` row with a matching filter; new digest computed
+over 1205 live rows, matching cycle 155's own original wave-0 dispatch report ("1205 rows
+written") exactly — independent confirmation 5 is the true, complete count. Corrected before
+continuing the wave-1 attempt rather than proceeding on known-wrong data. Not yet attempted: a
+genuine `ga_positions` re-dispatch to confirm `asset_freshness` actually reads back `'fresh'` —
+the original symptom that opened this sub-investigation. The fresh-evidence-recording mechanics
+(OIDC impersonation of `amjis-nirmana-executor@...` via `gcloud auth print-identity-token`, the
+`record_evidence` command shape) are now understood and confirmed working, ready for use next
+cycle. · **W5 ⛔ BLOCKED** (no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
@@ -388,14 +398,21 @@ awaits either a dedicated prep cycle or genuine W6 close.
   cycle 165 — same undercount class: a literal-string grep found 34 categories, but a
   for-loop-constructed `cat` variable in `_build_brahma_vishnu_shiva_rows` hid 3 more, true
   total 37) — **7/7, all shipped**. `ga_positions`' own `output_digest_spec` (migration 875,
-  PR #2220, cycle 166) shipped: scoped to `chart_id` + the same 4-category `where_in` filter,
-  `key_columns=fact_id`, `value_columns` = all real content columns minus `computed_at`+
-  `build_id`; rehearsed live (rollback-only) before applying, then independently
-  re-confirmed the identical digest against the real persisted spec. **Both fixes of #2180's
-  two-part ruling now fully shipped.** **Still open**: whether a genuine `ga_positions`
-  re-dispatch now actually reads `asset_freshness.freshness_state` back as `'fresh'` — not yet
-  attempted; five of the seven `natural_key_partition` PRs also not yet confirmed merged to
-  `main` as of cycle 166's close (mid-CI/queued).
+  PR #2220, cycle 166) shipped: scoped to `chart_id` + a `where_in` filter, `key_columns=fact_id`,
+  `value_columns` = all real content columns minus `computed_at`+`build_id`; rehearsed live
+  (rollback-only) before applying, then independently re-confirmed the identical digest against
+  the real persisted spec. **Self-corrected cycle 167** (migration 876, PR #2221): both 868 and
+  875 had undercounted `ga_positions` at 4 `chart_facts` categories — `_build_chalit_rows` also
+  emits a 5th, `sandhi_flag` (own docstring names it explicitly). Corrected `natural_key_partition`
+  to the true 5-category set and retired+replaced the `output_digest_spec` row; new digest over
+  1205 live rows matches cycle 155's own original wave-0 dispatch report exactly, confirming 5 is
+  the true complete count. **Both fixes of #2180's two-part ruling now fully shipped, with the
+  correct category scope.** **Still open**: whether a genuine `ga_positions` re-dispatch now
+  actually reads `asset_freshness.freshness_state` back as `'fresh'` — not yet attempted (the
+  fresh-evidence-recording mechanics, including OIDC impersonation of the executor service
+  account, are understood and confirmed working as of cycle 167); the `ga_sensitive`
+  `natural_key_partition` PR also not yet confirmed merged to `main` as of cycle 167's close
+  (mid-CI/queued).
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
