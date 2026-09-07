@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:18:06Z` — cycle 878: **IDLE-OK, Δfrozen +0.** No new evidence for `ga_dashas`
+  yet, but only ~2-3 min post-build — `ga_positions` took ~8.5 min for its first evidence event,
+  well within range. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T09:15:55Z` — cycle 877: **`ga_dashas` build_run completed, awaiting W4 acceptance.
   Δfrozen still +0.** The ~17-min build finished (`state=completed`); no `accepted_rebuild_
   observed`/`integrity_verified`/`asset_frozen` yet — same lag pattern `ga_positions` showed
