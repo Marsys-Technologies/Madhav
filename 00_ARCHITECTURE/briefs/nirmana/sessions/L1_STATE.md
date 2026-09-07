@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 158; built the MUST-tier per-finding disposition table (L1_W6_CLOSE_REPORT_v1_0.md new §2.5) -- 20 id-groups, 14 with a specific citation already in this campaign's own record, 6 id-groups (9 F-ids: F-A10, F-A12, F-A4/B2/B12, F-A9/B1/D14/E1/E15, F-C8) honestly flagged as resting on cycle 125's own uncited closure sweep rather than a dedicated re-check -- matching the same discipline that caught F-B32/F-B33 and the "6 phantom entries" claim being wrong. NOW/NEVER-LATER tiers' per-finding tables remain OPEN. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 159; MAJOR: #2180 got a real reply -- Conductor RULED, root-caused the natural_key_partition gap to 7 chart_facts co-writers, authorized L1 to author natural_key_partition (all 7) + output_digest_spec (ga_positions) as registry-configuration fixes. Shipped fix 1 for ga_positions only this cycle (migration 868, PR #2205): natural_key_partition verified directly against ga_positions_writer.py's actual write sites (graha_position, graha_sign_attributes, bhava_cusps, house_chalit -- NOT the same as the serving-tool mapping). Applied locally, verified the registry-invalidation trigger fired correctly. Posted status to #2180. Remaining 6 co-writers + ga_positions' own output_digest_spec still needed before wave 1 -- ga_sensitive in particular found to own a much larger category set than assumed, deferred rather than guessed. #2113 still quiet
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8779,3 +8779,62 @@ record — they are the only entries in this table with a real wall-clock behind
   uniform confidence -- next: NOW/NEVER-LATER per-finding tables remain open if a future cycle
   wants them; the 6 uncited MUST-tier groups are a good candidate for a dedicated live-verify
   cycle; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T13xZ -- CYCLE 159 (C8 v2.3). PR hygiene: `#2202` genuinely `is:queued`; `#2201`
+  `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed -- known mid-CI pattern, clean.
+  **#2180 got a real reply** (Conductor, 2026-09-07T01:45:02Z) -- root-caused before ruling, not
+  taken from cycle 155's own account alone: read `provenance.py`'s `build_receipt`/
+  `_registry_partition` directly and confirmed live that `has_cowriters` fires for exactly
+  7 L1 assets sharing `target_table='chart_facts'` (`ga_positions`, `ga_ayurdaya`,
+  `ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`, `ga_sensitive`, `ga_sensitive_degree`), none
+  with `natural_key_partition` declared -- confirmed this is deliberate strict design (refusing
+  to collapse 7 writers' provenance into one opaque partition), not a mechanism bug. Also
+  confirmed `output_digest_spec_unavailable` is the same D-CND-27 per-asset-authoring gap as
+  `mi_vistara`/`mi_kula`, not a new problem. **Ruling: two authorized, separate registry-
+  configuration fixes** -- (1) `natural_key_partition` backfill for the 7 co-writers, L1's own
+  migration range, correct partition VALUE per writer is L1's own domain knowledge to author,
+  not to guess; (2) `output_digest_spec` for `ga_positions` (L1) + 3 L0 assets (`bg_ephemeris_
+  engine`/`bg_panchanga`/`bg_cohort`, L0's own range), per D-CND-27's existing recipe. Both
+  prerequisites for wave 1, correctly not attempted yet by cycle 155's own instinct to stop
+  rather than dispatch against `freshness:unknown` -- explicitly praised as the right call
+  per §N.8.
+  Shipped fix 1 for `ga_positions` only this cycle (deliberately not all 7 -- see below).
+  Determined `ga_positions`' true `fact_category` ownership by reading `ga_positions_writer.py`'s
+  actual row-construction call sites directly, NOT by trusting the `coverage_matrix.ts`
+  serving-tool mapping (which records who SERVES a category, not who WRITES it -- a distinction
+  this exact investigation caught mattering: `bhava_cusps` is served by a DIFFERENT tool,
+  `get_kp_cusps`, than the one that writes it). Found `_build_position_rows` emits
+  `graha_position`/`graha_sign_attributes` and `_build_chalit_rows`/`_chalit_row` emits
+  `bhava_cusps`/`house_chalit` -- four categories total, more than the two (`graha_position`/
+  `graha_sign_attributes`) this session had assumed from the wave-0 blast-radius scoping check.
+  Confirmed zero overlap by grepping all six sibling writers for these four literal strings.
+  While checking for overlap, investigated `ga_sensitive_writer.py` and found it owns a MUCH
+  larger and more diverse category set than expected -- all 13 `esoteric_point_*` categories
+  (including `esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system`, which cycle 156's
+  own sweep had flagged as "genuinely unreachable by any tool" -- **that finding may itself need
+  correction next cycle**, since `get_sensitive_points.ts`'s query is the same opt-in-reachable
+  data-driven pattern verified for `special_lagna` etc. in slice 4, just not checked for these
+  two specific strings at the time) plus roughly a dozen more (karakas, tajik, sensitive-point
+  categories). Given this scale and the ruling's own explicit warning against "collapsing
+  several writers' provenance into one guess," deliberately scoped this cycle to `ga_positions`
+  alone rather than rushing all 7 with under-verified category lists.
+  Wrote migration 868 (`natural_key_partition = 'chart_facts.fact_category IN (graha_position,
+  graha_sign_attributes, bhava_cusps, house_chalit)'` for `ga_positions`), following the style
+  precedent of migration 660 (pure `asset_registry` UPDATE, no schema change, no dedicated test
+  file needed per that same precedent). Ran `npx tsx scripts/migrate.ts --dry-run` first (showed
+  868 as the only pending migration), then applied it for real and verified: `asset_registry.
+  natural_key_partition` now set; the `nirmana_registry_receipt_invalidation` DB trigger fired
+  correctly, marking the existing `asset_freshness` row `stale` with `registry_changed` appended
+  -- read the trigger function directly to confirm this is a cheap mechanical invalidation, NOT
+  a live recompute (the stale `partition_undeclared` text still in that row's `reasons` array is
+  leftover from before the fix, not evidence the fix didn't work -- a real `fresh` classification
+  only happens on the next genuine dispatch, which also needs fix 2 to land first or it will
+  read back `unknown` again via `output_digest_spec_unavailable`). Did not attempt a re-dispatch
+  this cycle since fix 2 isn't ready yet and it would predictably fail the same way.
+  Committed on a fresh branch off `origin/main`, opened PR #2205, queued, confirmed
+  `autoMergeRequest` armed. Posted a detailed status update to #2180 (verification method, scope
+  decision, what's still needed) rather than silently shipping and moving on.
+  CYCLE 159 L1: PR hygiene clean; #2180 RULED with real, authorized, bounded work; shipped fix
+  1/2 for one of seven required assets (`ga_positions`, PR #2205) -- next: the remaining 6
+  co-writers' `natural_key_partition` values, `ga_positions`' own `output_digest_spec` (fix 2),
+  and a possible correction to cycle 156's `esoteric_point_sphuta_fertility`/`_yogi_system`
+  "unreachable" finding all remain; keep re-checking #2113/#2180 every cycle regardless.

@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.16-DRAFT"
+version: "0.17-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -56,7 +56,18 @@ chart, 125,593 rows restored. **New blocker found, not yet resolved**: `asset_fr
 `ga_positions` shows `freshness_state='unknown'`, not `'fresh'` (`asset_registry.
 natural_key_partition` empty) — `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'`,
 so **wave 1 may still be blocked** by a different gate than #2180's ruling addressed. Posted to
-#2180, awaiting a reply. Did not attempt wave 1 this cycle. · **W5 ⛔ BLOCKED** (no completed post-W4
+#2180. **RULED again, cycle 159**: root-caused live — 7 L1 assets share `target_table=
+'chart_facts'`, all missing `natural_key_partition`; `output_digest_spec_unavailable` is the
+same D-CND-27 per-asset-authoring gap as `mi_vistara`/`mi_kula`. Authorized two registry-
+configuration fixes: `natural_key_partition` backfill (all 7, L1's own migration range) +
+`output_digest_spec` for `ga_positions` (L1) plus 3 L0 assets (L0's own range). **Fix 1 shipped
+for `ga_positions` only, same cycle** (migration 868, PR #2205): `graha_position`,
+`graha_sign_attributes`, `bhava_cusps`, `house_chalit` — verified directly against
+`ga_positions_writer.py`'s actual write sites, not the serving-tool mapping. Applied and
+verified locally (registry-invalidation trigger fired correctly). Remaining 6 co-writers'
+partitions and `ga_positions`' own `output_digest_spec` (fix 2) still needed before wave 1 —
+`ga_sensitive` found to own a much larger category set than assumed, deferred rather than
+guessed. Did not attempt wave 1 this cycle. · **W5 ⛔ BLOCKED** (no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
@@ -317,15 +328,20 @@ partly *not* confined to L1's own assets:
    Found and closed a related gap unprompted: `chart_fact_identity` is repopulated by a
    SEPARATE standalone script (`build_fact_identity_index.py`), not the orchestrator writer —
    re-ran it post-dispatch, restored to 125,593 rows for the canonical chart.
-   **New blocker surfaced, not yet resolved**: `asset_freshness.freshness_state` for
-   `ga_positions` is `'unknown'`, not `'fresh'` (`asset_registry.natural_key_partition` empty) —
-   `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'`, so wave 1 may still be blocked
-   by a registry-configuration gap distinct from the one #2180's ruling addressed. Posted to
-   #2180; did not attempt wave 1. Worth Phase Z's attention as a general pattern beyond this one
-   rebuild: a writer's own identity-derivation change (even a deliberately correct one) can
-   create a transition hazard for any downstream table that stores rather than re-derives the
-   changed value, and a "freshness row exists" check is not the same claim as "freshness row
-   reads fresh" — the same §N.8 distinction this campaign has hit before at other layers.
+   **Blocker surfaced cycle 155, RULED cycle 159**: `asset_freshness.freshness_state` for
+   `ga_positions` was `'unknown'`, not `'fresh'` (`asset_registry.natural_key_partition` empty)
+   — `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'`. Posted to #2180; the
+   Conductor root-caused it live: 7 L1 assets share `target_table='chart_facts'`, all missing
+   `natural_key_partition`, and authorized L1 to author the correct value per writer (registry-
+   configuration, not a writer-contract question) plus an `output_digest_spec` for `ga_positions`
+   (the same D-CND-27 per-asset-authoring gap as `mi_vistara`/`mi_kula`). **Fix 1 shipped for
+   `ga_positions` cycle 159** (migration 868, PR #2205), verified against the writer's own
+   real write sites. Remaining 6 co-writers + fix 2 still open. Worth Phase Z's attention as a
+   general pattern beyond this one rebuild: a writer's own identity-derivation change (even a
+   deliberately correct one) can create a transition hazard for any downstream table that stores
+   rather than re-derives the changed value, and a "freshness row exists" check is not the same
+   claim as "freshness row reads fresh" — the same §N.8 distinction this campaign has hit before
+   at other layers.
 
 ## §4 — Cost actuals vs forecast
 
@@ -342,14 +358,14 @@ awaits either a dedicated prep cycle or genuine W6 close.
 
 **To Phase Z / the Conductor:**
 - **Adjudication #2113/#2180** — RULED cycle 155 (waves 0-3, 15 assets, confirmed); wave 0
-  (`ga_positions`) dispatched and completed the same cycle (see §3.5 item 3). **Still open**:
-  a NEW blocker posted to #2180 cycle 155 — `ga_positions`' `asset_freshness.freshness_state`
-  is `'unknown'` not `'fresh'` (`asset_registry.natural_key_partition` empty), and
-  `asset_runner.py`'s DEP-ASSERT gate requires exactly `'fresh'` for a dependency to pass. Only
-  4 assets campaign-wide show `'unknown'` (vs. 34 showing `'fresh'`, all with a populated
-  partition), so this looks like a fixable registry-configuration gap rather than a structural
-  wall — but it is genuinely unresolved as of this writing and may block wave 1 for every layer,
-  not just L1.
+  (`ga_positions`) dispatched and completed the same cycle (see §3.5 item 3). RULED AGAIN cycle
+  159, authorizing two registry-configuration fixes (`natural_key_partition` ×7,
+  `output_digest_spec` for `ga_positions`+3 L0 assets). **Fix 1 shipped for `ga_positions`**
+  (migration 868, PR #2205). **Still open**: `natural_key_partition` for the other 6 `chart_facts`
+  co-writers (`ga_ayurdaya`, `ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`, `ga_sensitive`,
+  `ga_sensitive_degree` — `ga_sensitive` in particular needs careful per-category verification,
+  found to own ~25 categories, more than initially assumed) and `ga_positions`' own
+  `output_digest_spec` (fix 2) — both needed before wave 1 can genuinely dispatch.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
@@ -471,8 +487,9 @@ rebuild, no edit needed; get_nakshatra.ts's own 3-category docstring overclaim r
 does not need
 #2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
 cycle 153/156, distinct from F-B32's own list-repair scope)**
-· W4 partially unblocked (wave 0 dispatched cycle 155; wave 1 blocked on `natural_key_partition`,
-posted #2180) · W5
+· W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159, fix 1/`ga_positions`
+shipped PR #2205; 6 co-writers' partitions + fix 2/`output_digest_spec` still needed for wave 1)
+· W5
 capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.
