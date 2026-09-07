@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:21:56Z` — cycle 971: **IDLE-OK, Δfrozen +0.** No #2224 implementation PR yet;
+  L2/L3 unchanged. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (12).
 - `2026-09-07T13:19:30Z` — cycle 970: **Fleet-wide frontier is now genuinely exhausted pending
   external rulings — confirmed, not assumed.** Re-ran the query: 15 assets eligible, every single
   one blocked — L1's 4 remaining (`ga_condition`/`ga_structural`/`ga_tajaka` on #2300,
