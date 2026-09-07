@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~335:0xZ — L3-W4 — PR hygiene: `#2256` advanced to
+  position 2, own `merge_group` ~9.3min in (`mergeStateStatus`
+  briefly `UNKNOWN`, normal async lag), within the confirmed ~11min
+  normal range. Two new `origin/main` merges (both L1/L5 heartbeat/
+  state PRs, no L3 overlap). `ga_positions` still `OPEN-PENDING-PIN`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2256` finishing;
+  next action: same.
 - `2026-09-07T~334:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
   `AWAITING_CHECKS` — queue is progressing (`#2257` at position 2
   advanced to `MERGEABLE`), just not `#2256`'s turn yet. No new
