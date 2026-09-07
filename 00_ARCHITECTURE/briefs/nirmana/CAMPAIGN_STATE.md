@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:42:47Z` — cycle 769: **IDLE-OK (verified).** #2220 merged — both authorized
+  #2180 fixes (7/7 partitions + `ga_positions`' `output_digest_spec`) are now fully on main.
+  Fleet healthy, none CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10).
 - `2026-09-07T03:40:28Z` — cycle 768: **IDLE-OK (verified).** Fleet PR list unchanged, all
   healthy, none CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10); no new #2180
   reply.
