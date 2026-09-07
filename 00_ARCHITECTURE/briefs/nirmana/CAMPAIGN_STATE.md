@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:13:15Z` — cycle 1005: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
+  same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:10:59Z` — cycle 1004: **IDLE-OK, Δfrozen +0.** Checked both open rulings
   directly: #2291 (L2 digest-arity fix) and #2300 (native-gated freshness bug) both still show my
   own comment as the latest — no reaction yet on either. Fleet DIRTY: same 2 known stale native
