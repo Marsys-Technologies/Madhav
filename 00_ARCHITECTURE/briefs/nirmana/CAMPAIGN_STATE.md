@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:01:11Z` — cycle 829: **IDLE-OK (verified).** #2227's checks progressing (4
+  pending). Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:58:47Z` — cycle 828: **Re-triggered #2227 directly** (~2h35m open, keeps
   restarting via velocity churn without merging) — same mechanical `gh pr merge --auto` action
   that unstuck #2227/#2228 previously at cycle 809. Fleet DIRTY empty; adjudications unchanged
