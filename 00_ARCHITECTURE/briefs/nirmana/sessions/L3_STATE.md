@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~440:0xZ — L3-W4 — PR hygiene: `#2299`'s last check
+  (`Governance Gates`) ~8.3min into the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, within the confirmed ~11min
+  normal range. One new `origin/main` merge (`#2297`, L1: PR
+  hygiene fix on `#2277`, base-retarget metadata-only — not a
+  freeze event, no E-gate impact). IDLE-OK. — blocked on: `#2299`
+  finishing; next action: same.
 - `2026-09-07T~439:0xZ — L3-W4 — PR hygiene: `#2299`'s `Unit Tests`
   now passed; only `Governance Gates` remains. One new `origin/main`
   merge (`#2295`, L1: `create_campaign_run` accepted-rebuild guard
