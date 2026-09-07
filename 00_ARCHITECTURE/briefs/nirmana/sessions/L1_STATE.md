@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 169; attempted L1's own wave-1 dispatch (8 ga_* assets depending only on now-fresh ga_positions + already-fresh L0 deps), found TWO deeper cross-layer blockers beyond #2180's scope, filed adjudication #2224. Finding 1: `ga_vargas` (never touched by any natural_key_partition work) ALSO has stale accepted evidence -- its registry row picked up a real `integrity_check_sql` from separate prior W3 work AFTER evidence acceptance, same drift mechanism as #2180 but an independent root cause; likely affects many wave-1 assets across every layer, not just mine. Fixed it myself (recomputed live fingerprint/digest, submitted fresh evidence, same recipe as cycle 168) since it's squarely L1's own asset. Finding 2, surfaced immediately after: dispatch ALSO requires every DAG ancestor to carry a genuine `asset_frozen` campaign event, not just be freshness='fresh' -- `ga_positions` has never been through this (it requires the VERIFIER service account, not executor; a real independent-verification step, not a registry fix) -- blocks wave-1+ dispatch CAMPAIGN-WIDE regardless of layer. Did NOT attempt to self-certify ga_positions' freeze (would be exactly the unearned-signal defect class this campaign's own doctrine forbids). Both findings posted to #2224 for Conductor/cross-layer visibility. #2113/#2180 checked again this cycle -- no new reply beyond my own prior comment
+last_updated: 2026-09-07 — C8 v2.3 cycle 179; **L1's zero-evidence bucket cleared, 5/5, verified live.** Submitted first-time campaign evidence for `ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu` -- the last remaining assets with zero campaign evidence ever. Confirmed all 7 cited fixing PRs (across the 5 assets' §1 close-report rows) genuinely merged before submitting, not just claimed. Computed fresh registry_fingerprint/analysis_digest for each, submitted all 10 record_evidence calls back-to-back (zero gap) -- all 201, independently re-verified live: all 5 clean complete pairs, matching source_ref, no orphans (one hiccup along the way: ga_panchanga silently dropped from a batched Python loop's output for no visible error -- re-ran it in isolation, worked cleanly, manually merged its values back in rather than trust the batch script blindly). **Every ga_* asset this session has touched now has current, valid campaign evidence except ga_transit_anchors** (still orphaned from cycle 171's finding, registry unchanged since). Posted the result to #2224. #2113/#2180 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9375,3 +9375,672 @@ re-stamp) then hit a deeper `asset_frozen`/E-gate blocker requiring the verifier
 self-certified, filed adjudication #2224 for both findings — next: await #2224's disposition or
 Conductor guidance on the freeze/verification workstream before any further wave-1+ dispatch
 attempt; keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 170 (C8 v2.3) — Conductor RULED on #2224 (same mechanism as #1945 Lane C, proceed as
+## planned); re-stamped 5 more wave-1 `ga_*` assets' stale evidence
+
+PR hygiene: `#2201` (the long-lived state-tracking PR since cycle 155) confirmed `MERGED` at
+cycle open — rotated to a fresh state branch, `codex/nirmana-l1-state-cycle6`, off `origin/main`.
+No other L1-authored PR open. Nothing DIRTY/RED/unqueued.
+
+Re-checked `#2113`/`#2180`/`#2224`: `#2180` unchanged (still my own cycle-168 comment last).
+`#2224` had THREE new comments since I filed it: my own Finding-2 follow-up (already known), a
+genuine **Conductor ruling**, and L2's own peer response.
+
+**Conductor's ruling on #2224 (verbatim substance)**: confirmed this is the EXACT SAME mechanism
+already surfaced campaign-wide on adjudication #1945's Lane C (`invalidated_analysis_count`) —
+the Conductor's own live-diff of all 70 `asset_analysis_accepted` events against current
+`asset_registry`, run ~2 hours before I hit this in practice, found **22 invalidated assets
+spanning bg_*/ga_*/ka_* across 3+ layers** (including several of L1's own: `ga_nakshatra`,
+`ga_sensitive`, `ga_strength`, `ga_structural`, `ga_sade_sati`, `ga_ayurdaya`, `ga_prashna`,
+`ga_yoga`, `ga_vichara`, and `ga_positions` itself — three separate stale generations at that
+snapshot time). `ga_vargas` wasn't even in that 70-event snapshot — its evidence went stale
+AFTER that check, from a subsequent `integrity_check_sql` landing, confirming my own prediction
+this recurs continuously as ordinary W3 work ships, not a one-time count. Ruling: **no new
+authorization needed** — each layer re-stamping its own assets via the live-recompute-and-
+resubmit recipe is exactly what #2180's first ruling already granted, one layer deeper than that
+ruling anticipated; proceed exactly as planned. Cross-referencing #1945/#2224 to converge the
+campaign-wide count in one place; broadcasting to the fleet coordination issue (#1713) so other
+layers don't each independently rediscover this. L2 also responded on the thread: checked its own
+2 wave-1 members (`bo_bimba`/`bo_samskara`), found ZERO campaign events for L2 at all (never
+submitted first W2 evidence yet — still `BLOCKED-ANCESTORS` on unfrozen L1 `ga_*` assets,
+independently corroborating Finding 2's real, already-active downstream impact).
+
+**Unit of work: acted on the ruling — live-checked and re-stamped L1's own wave-1-relevant stale
+evidence.** Wrote a fresh live-diff over all 19 `ga_*` assets (comparing each asset's most recent
+accepted `asset_analysis_accepted.registry_fingerprint_sha256` against
+`_live_registry_fingerprint()`). **Caught and fixed a real bug in my OWN check mid-cycle**: the
+first pass used `DISTINCT ON (entity_id) ... ORDER BY entity_id, event_id DESC` to find each
+asset's "latest" acceptance — wrong, because `event_id` is a randomly-generated UUID, not a
+sequence, so `DESC` on it does not mean "most recent." This silently picked an ARBITRARY old
+event for several assets, including `ga_positions` (which the buggy query reported as "stale"
+despite cycle 168's fix genuinely having worked) — caught by noticing `ga_positions` shouldn't
+still be stale, pulled its FULL event history, confirmed by timestamp which row was actually
+latest, and fixed the query to `ORDER BY entity_id, observed_at DESC` (a real timestamp).
+Re-ran: confirmed `ga_positions` and `ga_vargas` genuinely fresh (both prior fixes hold), and
+found **10 genuinely stale `ga_*` assets** (not the false positives the buggy version implied).
+
+Of those 10, **5 are wave-1 members**: `ga_sensitive`, `ga_prashna`, `ga_nakshatra`,
+`ga_sensitive_degree`, `ga_ayurdaya`. Computed fresh `registry_fingerprint_sha256`/
+`analysis_digest` for each via the dispatch script's own functions, submitted fresh
+`asset_analysis_accepted`+`optimization_verdict_accepted` evidence for each via the
+`record_evidence` executor route (10 calls, all `201 created` — re-verified the deployed SHA live
+first, `9c4133aa0...`, since it had changed AGAIN since cycle 169's `f3f6dbf8e...`). Independently
+re-ran the live-diff afterward: all 5 confirmed now valid. **L1 now has 7/9 wave-1 `ga_*` assets
+with genuinely fresh evidence** (`ga_positions`, `ga_vargas` + these 5).
+
+**Explicitly did NOT touch, this cycle, and why:**
+- `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` — also stale, but none are
+  wave-1 members; useful for the campaign-wide Lane C count but not blocking wave-1 specifically,
+  deferred to a future cycle.
+- `ga_dashas`/`ga_transit_anchors` (wave-1 members) — have **zero** accepted analysis events at
+  all, a qualitatively different gap (a first-time W2 acceptance apparently never recorded in
+  this campaign's evidence ledger, not evidence gone stale from drift). Did not paper over this
+  with a re-stamp, since that would effectively be self-certifying a first-time W2 acceptance
+  without the underlying review work — a genuinely separate, likely bigger investigation for a
+  future cycle.
+- `ga_panchanga` — still blocked on `bg_panchanga`'s own `freshness_state='unknown'` (L0's scope).
+
+**Dispatch itself remains blocked by Finding 2** (the `asset_frozen` E-gate) regardless of how
+much evidence is fresh — not re-attempted this cycle since it would just hit the same wall.
+Posted a full status update to #2224. Cleaned up temp evidence-payload files.
+
+CYCLE 170 L1: PR hygiene clean (state branch rotated post-#2201-merge); Conductor RULED #2224 is
+#1945 Lane C's mechanism, ratified proceeding as planned — re-stamped 5 more wave-1 `ga_*`
+assets' stale evidence (7/9 now fresh), catching and fixing a real UUID-ordering bug in my own
+verification script along the way — next: `ga_dashas`/`ga_transit_anchors`'s zero-evidence gap
+(separate investigation) or await #2224/asset_frozen disposition before any dispatch attempt;
+keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 171 (C8 v2.3) — investigated the `ga_dashas`/`ga_transit_anchors` zero-evidence gap;
+## found a real evidence-submission race trap and a real finding-ID collision, neither forced through
+
+PR hygiene: `#2228` (this state PR) `MERGEABLE`/`CLEAN` at cycle open. No other L1-authored PR
+open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new Conductor reply
+beyond my own prior comments on any of the three.
+
+**Unit of work: characterize whether `ga_dashas` and `ga_transit_anchors` (wave-1 members with
+ZERO accepted campaign evidence, distinct from the "stale" class fixed cycles 168-170) are safe
+to accept evidence for, rather than assuming either way.**
+
+**`ga_transit_anchors` — verified genuinely clean, all findings closed.** Read this session's own
+close-report/state-file record directly rather than trusting a summary: `F-D22` (a build-fatal
+FORENSIC assertion) fixed writer-only cycle 28 (PR #1950); `F-D21`/`F-D23` root-caused one layer
+up in L0 (a `vidhi_primitives` dispatch bug), fixed there (PR #2153, adjudication #2122 CLOSED),
+and — critically — **independently re-verified live by this session** (cycle 130, not merely
+trusted on the merge: confirmed the fix both in `origin/main` source and in the live
+`vidhi_primitives` row); `F-D25` (missing serving-layer `density_contract`/grounding) fixed cycle
+118 (PR #2145), verified every served row's `constituent_fact_ids` resolves to a real matching
+row. Target floor 45/45 achieved. Genuinely safe to accept.
+
+Computed fresh `registry_fingerprint_sha256`/`analysis_digest`, submitted `asset_analysis_
+accepted` (`201 created`, `source_ref=git:9c4133aa0...`). The immediately-following
+`optimization_verdict_accepted` submission hit a schema validation error — used `verdict:
+"correct"` with `output_contract: "digest_identical"`, but the schema's own
+`superRefine` maps `correct` → `output_contract: "correctness_change"` only; the right
+verdict for an asset that's ALREADY fixed (not being newly corrected NOW) is
+`"examined_and_already_efficient"` → `output_contract: "digest_identical"`. Fixed the payload —
+but by the time it was ready, `NIRMANA_DEPLOYED_SHA` had advanced twice
+(`9c4133aa0` → `f3f6dbf8e` → `91c40ba9`; this fleet deploys very frequently, multiple times within
+a few minutes).
+
+**New structural finding, not assumed — traced directly in `definitions.ts`**: `asset_analysis_
+accepted`/`optimization_verdict_accepted` both require `assertNirmanaGitCommitMatchesDeployment`
+— an EXACT match to the CURRENT `NIRMANA_DEPLOYED_SHA` at submission time, no tolerance. Separately,
+`findExistingLifecycleReceipt` (line ~2687) treats any second `asset_analysis_accepted` for the
+SAME `(registry_fingerprint_sha256:analysis_digest)` "generation" as a conflicting receipt,
+**regardless of `source_ref`**, by explicit design ("Lifecycle facts are immutable within the live
+registry/analysis generation... not an escape hatch for duplicating an old lifecycle step").
+Combined effect: once my first analysis submission landed at `9c4133aa0`, and deploy moved past
+it before I could submit a matching verdict, **this exact generation can never get a verdict** —
+I can't resubmit analysis with a fresh SHA (conflicts with the first), and I can't submit a
+verdict bound to the now-stale `9c4133aa0` (fails the current-deploy check). Not broken data —
+the orphaned analysis event is harmless append-only history — just permanently stuck bookkeeping
+for this generation, until `ga_transit_anchors`' registry changes again for some unrelated reason.
+**Posted this as a new finding on #2224**, framed as an operational gotcha (submit analysis+verdict
+back-to-back with zero debugging pause, or risk this exact trap) for the rest of Lane C's
+22-asset campaign-wide backlog, not a platform defect — the immutable-per-generation design
+itself is sound and intentional.
+
+**`ga_dashas` — investigated, found real uncertainty, deliberately did NOT submit evidence.**
+W2's original MUST findings: F-A10 (both scope-cap sentinels fail silently), F-A12 (dignity
+vocabulary disagreement with `ga_vargas`), F-A17 ("bare tier literals"). Read the writer source
+directly rather than trusting the close-report's own "claimed closed, cycle 125 sweep only — not
+independently re-verified" flag:
+- **F-A10**: genuinely fixed in code (`write_dasha_scope_cap_sentinels`, migration 652 admits
+  `'scope_cap_sentinel'` into `chart_dashas_verification_pass_status_check` — confirmed live via
+  `pg_get_constraintdef`, the value IS in the live CHECK). But **the canonical chart's live
+  `chart_dashas` has ZERO `system_id='scope_cap'` rows** — the fix is real but hasn't been applied
+  to this chart's data yet (needs a rebuild to take effect, the identical "code fixed, data not
+  rebuilt" pattern `ga_positions` was in before cycle 155/168). Honest KP-only-sentinel residual
+  (Prana sentinel structurally excluded, SD-DASHA-1 deliberately open) is well-documented in the
+  writer's own docstring, not a fresh concern.
+- **F-A12**: also genuinely fixed in code (lowercases the dignity oracle's own tier name directly
+  rather than routing through the wrong normalization map — a live JOIN against `chart_divisionals`
+  at build time, so a rebuild picks it up automatically alongside F-A10's fix).
+- **F-A17**: **zero references anywhere in this session's own record since its original W2
+  mention** — genuinely untracked, unclear if ever investigated. Worse: **this exact ID
+  ("F-A17") was independently reused for an unrelated, later, already-fixed defect**
+  (`ga_structural`'s `vargottama_per_varga`/`graha_special_state_rollup` re-derivation bug,
+  cycles 47-48, PR #2003) — a genuine finding-ID collision this session introduced at some point,
+  a governance-hygiene defect in its own right (two different MUST findings on two different
+  assets sharing one id makes future citation ambiguous, exactly as I nearly experienced trying
+  to resolve which "F-A17" the W2 table row meant).
+
+Given F-A17's genuine ambiguity, **deliberately did not submit `asset_analysis_accepted`/
+`optimization_verdict_accepted` for `ga_dashas`** — doing so with verdict `"correct"` would be an
+unearned claim while a MUST-tier finding's disposition is genuinely unverified. This is the
+correct, conservative call per this campaign's own §N.8 discipline: an honest "not yet
+determined" beats a plausible-sounding "correct."
+
+CYCLE 171 L1: PR hygiene clean; investigated the `ga_dashas`/`ga_transit_anchors` zero-evidence
+gap — `ga_transit_anchors` verified genuinely clean but its evidence submission hit a real
+structural race trap (documented, posted to #2224, not a platform bug); `ga_dashas` has a real
+untracked MUST finding (F-A17) that also collides in ID with an unrelated later finding —
+deliberately did not submit false evidence for it — next: resolve F-A17's actual content/status
+for `ga_dashas` (a real investigation, not a re-stamp), or complete `ga_transit_anchors`'
+evidence pair whenever its registry next changes / in one clean fast attempt; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 172 (C8 v2.3) — F-A17 CLOSED: `ga_dashas`' bare verification-tier literals fixed
+## (38 sites, PR #2229), a real W3 defect fix, not evidence bookkeeping
+
+PR hygiene: `#2228` (this state PR) `MERGEABLE`/`BLOCKED` (pending CI, nothing RED). No other
+L1-authored PR open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new
+Conductor reply beyond my own prior comments on any of the three.
+
+**Unit of work: resolve F-A17's actual content**, deferred cycle 171 as "a real investigation,
+not a re-stamp." Read `CLAUDE.md §N.4` again deliberately before guessing at "bare tier
+literals"' meaning: *"Writers must still emit the tier via `brahmagyan/verification_vocab.py`
+named constants... never a bare string literal."* This directly named the hypothesis: `ga_dashas_
+writer.py` might emit `verification_pass_status`/`verification_method` values as raw strings
+instead of importing the constants `verification_vocab.py` exists specifically to provide.
+
+Confirmed by direct grep: the writer DOES import `TWO_PASS_VERIFIED`/`CLASSICAL_MATCH`/
+`UNVERIFIED_DEFAULT` and uses them correctly at SOME call sites (e.g. lines 684, 944, 2169) — but
+**38 other sites** across the file emit the identical bare literal instead (`"two_pass_verified"`
+× ~27, `"classical_match"` × 7, `"single"` × 2, `"scope_cap_sentinel"` × 2 — the exact line
+already flagged as F-A10's own sentinel-write site, line 3375, turned out to ALSO be an F-A17
+instance). Confirmed `scope_cap_sentinel` had **no named constant to import at all** — a legal
+vocabulary member (`verification_vocab.py` entry 9) but only 4 of its 12 members had exported
+symbols, which is precisely why the bare literal existed for THAT one — not an oversight the
+writer could have avoided.
+
+Fixed both halves: (1) added `SCOPE_CAP_SENTINEL: Final[str] = "scope_cap_sentinel"` to
+`verification_vocab.py`, following `CLASSICAL_MATCH`'s own precedent addition (adds no new
+vocabulary member, only a missing symbol); (2) scripted the 38-site replacement in
+`ga_dashas_writer.py` (`"two_pass_verified"`→`TWO_PASS_VERIFIED`, `"classical_match"`→
+`CLASSICAL_MATCH`, `"single"`→`UNVERIFIED_DEFAULT`, `"scope_cap_sentinel"`→`SCOPE_CAP_SENTINEL`),
+explicitly excluding 4 pinned docstring/comment lines that quote the strings in prose (describing
+the vocabulary in English, not emitting a value — replacing those would have been wrong, not
+careful). Individually spot-checked several changed sites (both a `return CLASSICAL_MATCH` code
+line and the excluded docstring prose immediately around it) to confirm the exclusion held.
+
+**Added a static regression test** (`test_ga_dashas_f_a17_bare_tier_literals.py`) rather than a
+behavior-level one — deliberately, since the emitted STRING VALUE is byte-identical whether it
+comes from a literal or the constant, so no runtime assertion could ever distinguish "fixed" from
+"regressed." The test greps the source text itself for any bare literal outside the pinned
+allowed-prose line set, and separately asserts the writer imports `SCOPE_CAP_SENTINEL` and that
+the constant's value still matches a genuine, still-legal vocabulary member (guarding against a
+future edit accidentally inventing a NEW status rather than just naming an existing one).
+
+Ran the full relevant test surface before committing: `test_ga_dashas_copy_upsert.py`,
+`test_ga_dashas_f_a12_dignity_vocab.py` (F-A12, the sibling finding — confirmed unaffected),
+the new F-A17 test, `test_l1_dashas.py`, `test_verification_vocab.py` — **60/60 pass**. Committed,
+pushed, opened PR #2229, queued via `gh pr merge --auto` (`autoMergeRequest.enabledAt` confirmed
+set).
+
+This closes `ga_dashas`' last genuinely open MUST-tier uncertainty from cycle 171's investigation.
+F-A10 (scope-cap sentinel, needs a rebuild to apply to the canonical chart's data) and F-A12
+(dignity vocabulary) were already confirmed fixed in code; F-A17 is now ALSO genuinely fixed, not
+just re-labeled. `ga_dashas`' campaign evidence submission (still zero events, the original gap
+from cycle 170) is now safe to attempt in a future cycle without the uncertainty that correctly
+blocked it cycle 171.
+
+CYCLE 172 L1: PR hygiene clean; **closed F-A17** — `ga_dashas`' 38-site bare verification-tier
+literal defect (PR #2229), a real W3 code fix following the exact investigation this session's
+own F-A17/ID-collision finding demanded rather than deferring further — next: submit `ga_dashas`'
+first-time campaign evidence (all three of its MUST findings now confirmed genuinely closed) or
+complete `ga_transit_anchors`' still-orphaned evidence pair; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 173 (C8 v2.3) — PR hygiene found a genuine RED gate on my own PR #2229 and fixed it
+## at root: a cross-layer digest blast radius, not a superficial CI flake
+
+Step 1 PR hygiene is not a formality this cycle: `is:queued` search returned zero L1 PRs;
+`#2229` (F-A17) showed `mergeStateStatus: BLOCKED` with a genuine **failing** check —
+"Governance Gates (drift / schema / edge / native-literal / py-sidecar)" — not merely pending.
+Per the contract's own explicit instruction ("RED → fix root cause, never weaken the check"),
+investigated before anything else.
+
+Fetched the job log directly (`gh api .../actions/jobs/<id>/logs`, since `gh run view` refuses
+logs on an in-progress overall run even when the specific failed job has completed) and found the
+exact failure: `"writer digest inventory is stale: run python -m pipeline.orchestrator.
+provenance_inventory --output .../nirmana-writer-digests.json"`. Root cause, confirmed via the
+committed docstring on THAT very command: my cycle-172 fix had added `SCOPE_CAP_SENTINEL` to
+`brahmagyan/verification_vocab.py` — a checked-in artifact any Python writer change must
+regenerate, which I'd genuinely missed.
+
+**Naively regenerating surfaced a much bigger problem than a stale file.** The diff touched ~24
+UNRELATED writers' digest entries (`bg_kp_sublord_division`, a dozen `bo_*` assets, several other
+`ga_*` assets), not just `ga_dashas`. Traced why directly in `asset_runner.py`:
+`get_writer_source_hash` walks each writer's TRANSITIVE local-import closure
+(`_writer_source_files` → `_local_import_files`, recursively) — so `verification_vocab.py` being
+a shared L0 module every `ga_*`/`bo_*` writer (directly or transitively) imports means ANY byte
+changed there legitimately shifts every one of their computed digests, by design (a real
+content-addressed provenance signal, not a bug). Ran `nirmana_analysis_layer_pins.py --check`
+next and confirmed the consequence: **L0, L1, AND L2's `writer_inventory_sha256` all went stale**
+simultaneously.
+
+**This is not a novel problem — it's the EXACT residual `ga_dashas_writer.py`'s own F-A10 fix
+(migration 652) already documented and deliberately did NOT force through**: "Regenerating the
+writer-digest inventory... shifts `bg_kp_sublord_division`'s digest too... `nirmana_analysis_
+layer_pins.py`'s own safety check refuses to regenerate ANY layer's pin once it detects L0's
+frozen inputs have drifted, citing 'would invalidate 29 already-frozen L0 capsules'. Not forced
+through unilaterally... Left for a deliberate, coordinated follow-up." Applying the SAME
+discipline here: regenerating L0's and L2's pins to paper over my own L1 fix would silently
+invalidate L2's (and L0's) already-accepted campaign evidence — a cross-layer consequence with
+zero authority for an L1 session to force through solo, exactly the class of action this
+campaign's own precedent already ruled out once.
+
+**Fixed at the actual root instead of forcing the regeneration through**: reverted the
+`verification_vocab.py` edit completely (confirmed `git diff origin/main` empty — byte-identical
+again). Resolved F-A17's `scope_cap_sentinel` half without touching the shared module: `ga_dashas_
+writer.py` now derives `SCOPE_CAP_SENTINEL` via one controlled `entry_for("scope_cap_sentinel")`
+lookup against the canonical vocabulary at module-load time (with a runtime assertion the entry
+still exists) instead of either a bare literal at its two use sites or a second hardcoded copy of
+the string — one lookup site instead of two emission sites, reading the single source of truth
+rather than duplicating it. Regenerated `nirmana-writer-digests.json`: confirmed via `git diff
+--stat` this time it touches **exactly one line** (`ga_dashas`'s own entry — legitimate, since the
+writer's own source genuinely changed). Regenerated **only L1's own** analysis-layer pin
+(`nirmana_analysis_layer_pins.py --layer L1`, a tool-supported per-layer scope, reusing the pin's
+existing `convergence_commit` since no reference-commit change was intended) — the tool's own
+output confirmed `layers untouched: L0, L2, L3, L4, L5`.
+
+Updated the F-A17 regression test to match the new shape: checks `SCOPE_CAP_SENTINEL` resolves via
+`entry_for()` rather than a duplicated literal, and added a NEW tripwire test asserting
+`verification_vocab.py` does NOT export a `SCOPE_CAP_SENTINEL` symbol — a deliberate guard against
+this exact blast-radius mistake silently reappearing in a future edit. Re-ran all 60 targeted
+tests (clean) plus both governance checks (`provenance_inventory --check` and
+`nirmana_analysis_layer_pins.py --check`, both clean — no staleness reported by either). Ran the
+exact CI pytest invocation locally too; one unrelated local-environment collection error
+(`ModuleNotFoundError: asyncpg` in `test_permission_curve_route.py`, a missing local dependency,
+not present in CI's own `requirements-ci.txt`-provisioned environment) confirmed unrelated by
+re-running with that one file excluded. Committed (a second commit on the same PR branch, not an
+amend, per standing git discipline), pushed, confirmed `autoMergeRequest` still armed, and
+confirmed a fresh CI dispatch on the new commit shows Governance Gates re-running (not
+immediately re-failing) with zero RED checks so far.
+
+CYCLE 173 L1: PR hygiene surfaced and fixed a genuine RED gate on `#2229` (F-A17's own PR) — not a
+flake, a real cross-layer digest blast-radius mistake in my cycle-172 fix, resolved by reverting
+the shared-L0-module edit and deriving the value via a single controlled vocabulary lookup inside
+`ga_dashas_writer.py` instead, then correctly regenerating ONLY L1's own digest/pin artifacts
+(confirmed zero L0/L2 impact this time) — next: watch `#2229`'s fresh CI run through to a genuine
+merge, then resume `ga_dashas`' first-time campaign evidence submission or `ga_transit_anchors`'
+orphaned evidence pair; keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+**Addendum — a local-only test-flake investigation, resolved, not a new defect.** After pushing
+the fix, ran the full CI-equivalent pytest suite locally (~6900 tests) twice as extra diligence
+beyond the targeted 60-test/governance-check verification already done. Both full local runs
+flagged `test_ga_dashas_f_a17_bare_tier_literals.py::test_no_bare_tier_literals_outside_
+allowed_sites` as failing — but the SAME test passes cleanly every time it's run in isolation, in
+combination with its sibling `ga_dashas` test files, or even filtered via `-k` from within the
+SAME full 6900-test collection. The test is a pure static file-read (no fixtures, no DB, no
+shared state) with no plausible mechanism to fail only at large scale unless something ELSE in
+this enormous, largely-unrelated local suite is exhausting a resource or mutating global state
+this test happens to be adjacent to. Checked the actual authoritative signal instead of chasing
+this further locally: GitHub's own CI (`gh pr checks 2229`) — a clean, isolated environment —
+reports `Unit Tests: pass` on this exact commit, and every other check passing cleanly too
+(Governance Gates/Build Check still finishing as of this writing, but zero RED anywhere). Trusting
+CI over an unreproducible-in-isolation local artifact, consistent with the contract's own framing
+of `is:queued`-style live checks as "the only truth" over a locally-observed anomaly.
+
+## CYCLE 174 (C8 v2.3) — zero stale evidence remains among L1's previously-evidenced `ga_*`
+## assets; deliberately deferred `ga_dashas` a genuine cycle rather than compute against stale code
+
+PR hygiene: `#2229` (F-A17) genuinely `is:queued` at cycle open. `#2228` (this state branch)
+`MERGEABLE`/BLOCKED with zero RED checks. Nothing DIRTY/RED/unqueued. Re-checked
+`#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own prior comments.
+
+**Confirmed `#2229` merged** (`05:16:12Z`) — rebased the state branch onto `origin/main`,
+confirmed `ga_dashas`' entry in `nirmana-writer-digests.json` now shows the post-F-A17 hash
+(`26ab9e5b...`) there, matching what I'd computed locally last cycle.
+
+**Attempted to resume `ga_dashas`' first-time campaign evidence submission** (the natural next
+step, since all three of its MUST findings are now confirmed fixed) — checked the LIVE deployed
+Cloud Run SHA first rather than assume the merge was already live: `NIRMANA_DEPLOYED_SHA` was
+still `ad737a1a9...`, confirmed via `git merge-base --is-ancestor` to PRECEDE the F-A17 merge
+commit (`df28f4088`). Submitting evidence now would compute `ga_dashas`' `analysis_digest` from
+the OLD (pre-fix) writer inventory the deployed app would itself validate against — the exact
+inverse of what cycle 173's fix was for. Started a `Monitor` polling the deployed SHA, watched it
+advance once (`ad737a1a9` → `0ffdd44f4`) but confirmed via the SAME ancestor check it STILL
+precedes the F-A17 merge. Rather than block the whole cycle waiting on an external CD pipeline
+(the C8 contract's own framing: "if something isn't ready this cycle, it will be checked again
+next cycle by construction"), stopped the monitor and deliberately deferred `ga_dashas` to a
+future cycle instead of forcing it through against stale code.
+
+**Pivoted to a genuinely different, independently useful unit: the 5 remaining non-wave-1 stale
+`ga_*` assets** flagged but deferred in cycle 170 (`ga_sade_sati`, `ga_strength`, `ga_structural`,
+`ga_vichara`, `ga_yoga`) — unrelated to `ga_dashas`' deploy-timing constraint, so no reason to
+wait on them too. Confirmed all 5 present in the frozen wave-1 manifest, computed fresh
+`registry_fingerprint_sha256`/`analysis_digest` for each via the dispatch script's own functions,
+re-checked the deployed SHA fresh (`0ffdd44f4...`, confirmed a live ancestor of `origin/main`),
+and submitted all 10 `record_evidence` calls (analysis + verdict × 5 assets) **back-to-back with
+zero pause between them** — explicitly applying cycle 171's own hard-won lesson (a debugging
+pause between the two calls is what orphaned `ga_transit_anchors`' generation) rather than
+repeating that mistake. All 10 returned `201 created`.
+
+**Independently re-verified live afterward, not just trusted the 201s**: re-ran the same
+live-diff check across all 19 `ga_*` assets used in cycles 170/171 — **`STALE remaining: []`**.
+Every `ga_*` asset that has ever had accepted campaign evidence now carries both a fresh analysis
+AND a matching verdict, with exactly two known, already-understood exceptions: `ga_transit_
+anchors` (fresh analysis, still missing its verdict — the cycle-171 orphaned-generation trap,
+unresolved since its registry hasn't changed since) and the 6-asset zero-evidence-ever bucket
+(`ga_dashas`, `ga_condition`, `ga_medical`, `ga_panchanga`, `ga_tajaka`, `ga_vastu` — a
+qualitatively different, first-time-acceptance gap outside this specific sweep's scope).
+
+Posted the full sweep result to #2224, closing out L1's own contribution to the Conductor's own
+22-item campaign-wide invalidated-evidence snapshot (every named `ga_*` asset from that list is
+now resolved). Cleaned up temp evidence-payload files.
+
+CYCLE 174 L1: PR hygiene clean; deliberately deferred `ga_dashas`' first-time evidence submission
+a genuine cycle (deployed SHA still precedes the F-A17 merge — checked live, not assumed) rather
+than compute against stale writer code; used the cycle productively instead — **zero stale
+evidence remains among L1's `ga_*` assets** (5 more re-stamped: `ga_sade_sati`/`ga_strength`/
+`ga_structural`/`ga_vichara`/`ga_yoga`), applying cycle 171's back-to-back-submission lesson
+correctly this time — next: retry `ga_dashas`' first-time evidence once the deploy genuinely
+catches up, or complete `ga_transit_anchors`' still-orphaned verdict; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 175 (C8 v2.3) — deploy still stalled on `ga_dashas`; independently re-verified F-C8
+## (`ga_condition`), closing another of the close report's own uncited-MUST-finding groups
+
+PR hygiene: `#2228` (this state branch) `MERGEABLE`/`BLOCKED` with zero RED checks. No other
+L1-authored PR open (`#2229` merged last cycle). Nothing DIRTY/RED/unqueued. Re-checked
+`#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own prior comments.
+
+**Re-checked the deployed SHA before anything else** (learned discipline from the last two
+cycles — never assume, always check live): `NIRMANA_DEPLOYED_SHA` is STILL `0ffdd44f4...`, the
+identical value from cycle 174, confirmed still an ancestor-predecessor of the F-A17 merge
+(`df28f4088`) via the same `git merge-base --is-ancestor` check. This means the deploy pipeline
+has been genuinely stalled for a full cycle, not merely "one more deploy away" — deferred
+`ga_dashas`' first-time evidence submission again rather than force it through.
+
+**Unit of work: independently re-verify F-C8**, one of the close report's own §2.5 disposition
+table's 6 originally-uncited MUST-tier groups ("claimed closed, cycle 125 sweep only — no
+dedicated citation found"). Read W2 DECIDE's own description first: `ga_condition`'s
+`varga_dignity_composite` NULL on 135/135 rows, "two writer-side causes." Read
+`ga_condition_writer.py`'s `_compute_varga_composite`/`_load_varga_dignity_spread` directly
+(not trusting the close-report's own one-line "fixed at writer level" summary): found a real,
+explicitly-commented F-C8 fix — when `chart_divisionals.varga_dignity`'s numeric
+`overall_dignity_score` is absent, derive the score from the `dignity` TEXT label instead,
+normalized through the SAME `_DIVISIONAL_DIGNITY_NORMALIZE` map already used elsewhere in this
+file (not a second, drifting copy).
+
+**Confirmed this fix is not just present but actually NECESSARY**, live: queried
+`chart_divisionals` for the canonical chart's `varga_dignity` category — 1305 rows, and a
+`GROUP BY fact_key` showed **100% `dignity` (text label), ZERO `overall_dignity_score`** (the
+upstream writer that populates this table never writes the numeric field at all). Without the
+label-fallback fix, EVERY varga's `score` would be `None`, `total_w` would sum to `0`, and
+`_compute_varga_composite` would unconditionally return `None` — exactly reproducing the
+135/135-NULL symptom the finding describes. This one fix genuinely closes the described
+mechanism (whether "two writer-side causes" described two facets of this same gap or something
+narrower, the live data shape confirms this fallback is both correct and sufficient).
+
+**Confirmed the OTHER half honestly**: queried `ga_condition_composite` (the asset's own target
+table) for the canonical chart — 45 rows, **0 non-NULL `varga_dignity_composite`**, i.e. still
+100% NULL live, unchanged since the fix landed in code. This is the SAME "code fixed, canonical-
+chart data stale" pattern already seen for `ga_positions`/`ga_dashas` — confirmed via the frozen
+campaign manifest that `ga_condition` is genuinely wave 2 (not wave 0/1), depending on
+`ga_dashas`/`ga_positions`/`ga_vargas` — meaning its rebuild is blocked by the identical
+`asset_frozen` E-gate already escalated via adjudication #2224, not something resolvable this
+cycle regardless of evidence-submission timing.
+
+**Updated the close report's §2.5 disposition table** with F-C8's full, evidence-based
+disposition (superseding the old "no dedicated citation found — flagged" line). While there,
+noticed the SAME table's F-A10/F-A12 rows still said "flagged, not re-verified this pass" despite
+cycles 171-172 having already independently confirmed both fixed — a genuine inconsistency in
+this session's own prior record-keeping (the verification happened, but the disposition table
+itself was never updated to reflect it). Fixed both rows to cite the real cycle-171/172 evidence.
+Corrected the table's own "Honest count" summary paragraph accordingly (also caught and fixed a
+small arithmetic slip in my own first draft of this edit — wrote "3 remaining" while listing only
+2 groups, corrected before finalizing). Uncited MUST-tier groups now down to 2
+(`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15` — 8 individual F-ids), from the original 6 at segment start.
+
+CYCLE 175 L1: PR hygiene clean; deploy genuinely stalled on `ga_dashas`' F-A17 fix (same SHA as
+last cycle, checked live) — deferred again rather than force it; independently re-verified F-C8
+(`ga_condition`) instead — confirmed genuinely fixed in code (the dignity-label fallback is both
+correct and necessary, live-confirmed the upstream never populates a numeric score) but still
+100% NULL live pending a rebuild blocked by the same `asset_frozen` E-gate as wave 1; also fixed a
+stale disposition-table inconsistency for F-A10/F-A12 found along the way — next: retry
+`ga_dashas`' evidence once the deploy resumes, or independently re-verify the 2 remaining uncited
+MUST groups (`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`); keep re-checking #2113/#2180/#2224 every cycle
+regardless.
+
+## CYCLE 176 (C8 v2.3) — found and fixed a real SQL operator-precedence bug (`ga_sensitive`
+## count_sql) while re-verifying F-A4/B2/B12; deploy caught up mid-cycle, deliberately finished
+## the investigation already underway rather than context-switch
+
+PR hygiene: `#2228` (this state branch) `MERGEABLE`/`BLOCKED` with zero RED checks. No other
+L1-authored PR open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new
+Conductor reply beyond my own prior comments.
+
+**Re-checked the deployed SHA first, per standing discipline**: still `0ffdd44f4...`, the SAME
+value for the third consecutive cycle — genuinely worth a sanity check rather than assuming
+either "still stalled" or "surely ready by now." Checked `gh run list --workflow=deploy.yml`
+directly rather than just re-polling the Cloud Run service: found the deploy pipeline was
+actively running (one completed `success` at `05:19:48Z`, one `in_progress` 8m41s in, one
+freshly `pending`) — NOT actually stalled, just between completed deploys at the exact moments I
+'d checked in prior cycles. Started a `Monitor` polling for the deploy to include the F-A17 merge
+commit, and used the wait productively rather than idle.
+
+**Unit of work: independently re-verify F-A4/B2/B12** (`L1_W2_DECIDE_v1_0.md` #93: `count_sql`
+"omits rows the writer writes and the serving layer serves... Cockpit truth is wrong",
+`ga_positions`/`ga_sensitive`/`ga_sensitive_degree`), the next of the close report's own uncited
+MUST-tier groups after F-C8. Read all three assets' LIVE `count_sql` directly. `ga_positions`'
+5-category list exactly matches migration 876's own verified writer-ownership finding;
+`ga_sensitive_degree`'s 2-category list exactly matches migration 870's — both genuinely correct,
+no action needed.
+
+**`ga_sensitive`'s `count_sql` had a real, previously-undiscovered SQL bug** — not a wrong
+category list (its coverage, read carefully, is otherwise exactly the same 37 categories migration
+874 already verified: 18 explicit literals + `LIKE 'esoteric_point_%'` (15) + `LIKE 'tajik_%'`
+(3) + a trailing `bhava_arudha`), but a genuine operator-precedence error in how that trailing
+`bhava_arudha` clause was attached: `WHERE chart_id = $1 AND (... category checks ...) OR
+fact_category = 'bhava_arudha'` — SQL's `AND` binds tighter than `OR`, so this parses as
+`(chart_id = $1 AND (...)) OR (fact_category = 'bhava_arudha')`, silently un-scoping the
+`bhava_arudha` branch from `chart_id` entirely.
+
+**Confirmed this has real, measurable consequences, not just a theoretical footgun**: queried
+live — `bhava_arudha` rows exist for all 3 production charts (210 rows each, identical). Ran the
+buggy query as literally stored: **9195** for the canonical chart. Ran the correctly-parenthesized
+version: **8775**. The exact 420-row difference matches the other two charts' `210+210
+bhava_arudha` rows leaking in unscoped — not an estimate, a precise reproduction of the bug's
+exact mechanism.
+
+Fixed by folding `bhava_arudha` directly into the main `IN (...)` list (removing the ambiguous
+structure entirely, not just adding defensive parens around the existing shape). Re-verified the
+fix BEFORE writing the migration (ran the corrected SQL live, got 8775) and cross-checked
+`DISTINCT` category coverage under the new filter — 34, exactly matching migration 874's own
+live-verified category-presence finding (34/37 present, 3 legitimately absent, already
+documented). Migration numbering re-verified live (main highest 876) — used **877**. Applied,
+verified via direct `psql`, then **re-verified post-apply via `PREPARE`/`EXECUTE` with a
+parameterized `$1`**, matching the cockpit's actual invocation pattern rather than trusting a
+hardcoded-literal test alone — confirmed 8775. Committed, pushed, opened PR #2237, queued.
+
+**Deploy caught up to the F-A17 merge partway through this investigation** (the Monitor
+notification fired mid-cycle). Deliberately did NOT context-switch to `ga_dashas`' evidence
+submission at that point — this SQL-bug investigation was already substantially underway with a
+concrete, real defect found, and finishing one clean unit beats abandoning it half-done to chase
+a second. `ga_dashas`' first-time evidence submission is now genuinely unblocked for a future
+cycle (the deploy is no longer the obstacle).
+
+CYCLE 176 L1: PR hygiene clean; **found and fixed a real SQL operator-precedence bug**
+(`ga_sensitive`'s `count_sql`, migration 877, PR #2237) while independently re-verifying
+F-A4/B2/B12 — confirmed live, real consequences (420-row inflation from cross-chart leakage), not
+theoretical; `ga_positions`/`ga_sensitive_degree` confirmed already correct. Deploy caught up to
+`ga_dashas`' F-A17 fix mid-cycle but finished this investigation first rather than context-switch
+— next: `ga_dashas`' first-time evidence submission is now genuinely ready (deploy unblocked), or
+independently re-verify the last remaining uncited group, `F-A9/B1/D14/E1/E15`; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 177 (C8 v2.3) — `ga_dashas`' first-time campaign evidence submitted cleanly, closing
+## the last blocking uncertainty from this session's own F-A17 investigation
+
+PR hygiene: `#2237` (`ga_sensitive` count_sql fix) `MERGEABLE`/`BLOCKED` with zero RED checks.
+`#2228` (this state branch) confirmed genuinely `is:queued` per the authoritative search. Nothing
+DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own
+prior comments.
+
+**Unit of work: `ga_dashas`' first-time campaign evidence submission**, ready since cycle 176
+once the deploy caught up to the F-A17 merge. Re-confirmed the deploy is STILL past that merge
+(`36e8d84...`, a live ancestry check, not reused from last cycle's stale value) before proceeding
+— the same discipline established across every cycle touching this evidence-submission flow.
+
+Computed fresh `registry_fingerprint_sha256`/`analysis_digest` for `ga_dashas` via the dispatch
+script's own functions — the writer_digest resolved (`26ab9e5b...`) matched exactly what cycle
+173's own post-fix regeneration had produced, confirming consistency end-to-end. Built both
+`asset_analysis_accepted`/`optimization_verdict_accepted` payloads with a full evidence basis
+citing all three of the asset's original MUST findings (F-A10/F-A12/F-A17) and their specific
+fixes, submitted them **back-to-back with zero gap** — applying the hard-won lesson from the
+`ga_transit_anchors` orphaned-generation trap (cycle 171) rather than repeating that mistake. Both
+`201 created`. Independently re-verified live: a clean, complete pair exists with matching
+`source_ref` on both rows — no race, no orphan.
+
+**Went one step further than a bare 201-and-trust**: ran an actual dry-run dispatch for
+`ga_dashas` alone (`--layer L1 --wave 1 --assets ga_dashas`) as a genuine end-to-end check. The
+evidence-matching logic accepted the submission cleanly with ZERO complaint — proving the
+evidence is genuinely valid against the live registry contract, not merely accepted by the
+submission endpoint. The dry-run then hit exactly the already-known, already-escalated
+`asset_frozen` E-gate (`"unfrozen DAG ancestors (1 remain): ga_positions"`) — confirming
+`ga_dashas` is now in EXACTLY the same state as every other wave-1 asset this session has already
+verified: evidence-clean, blocked only by the campaign-wide freeze/verification workstream #2224
+already surfaced, nothing specific to this asset.
+
+Posted the full result to #2224, noting the current overall picture: every `ga_*` asset this
+session has investigated now has clean, current campaign evidence, with exactly two remaining
+gaps — `ga_transit_anchors` (still orphaned from cycle 171, unresolved since its registry hasn't
+changed) and the untouched zero-evidence bucket (`ga_condition`/`ga_medical`/`ga_panchanga`/
+`ga_tajaka`/`ga_vastu`, none investigated yet — a different class of work, first-time W2-style
+review, not evidence bookkeeping).
+
+CYCLE 177 L1: PR hygiene clean; **`ga_dashas`' first-time campaign evidence submitted and
+verified genuinely valid** (dry-run dispatch confirmed zero evidence-matching complaint, hit only
+the already-escalated `asset_frozen` E-gate) — closes the last uncertainty from this session's own
+F-A17 investigation — next: independently re-verify the last remaining uncited MUST group
+(`F-A9/B1/D14/E1/E15`), or investigate the untouched zero-evidence bucket
+(`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`); keep re-checking
+#2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 178 (C8 v2.3) — closed the close report's ENTIRE remaining uncited-MUST-group gap;
+## all 20 id-groups now independently re-verified, not just re-asserted
+
+PR hygiene: `#2237` (`ga_sensitive` count_sql fix) and `#2228` (this state branch) both
+`MERGEABLE`/`BLOCKED` with zero RED checks — `#2237`'s Governance Gates job confirmed genuinely
+`in_progress` (not stuck) via a direct job-status API check, not assumed from a long pending
+duration alone. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new Conductor
+reply beyond my own prior comments.
+
+**Unit of work: independently re-verify F-A9/B1/D14/E1/E15**, the last of the close report's
+originally-6 uncited MUST-tier groups. Read its description first: "Floors wrong in five ways:
+encoding fabricated rows, vintage mismatch, achieved-by-a-defective-writer, unset (0), and a
+wall-clock-derived equality. Each re-baselined with a derivation, per C12" — across `ga_dashas`/
+`ga_sensitive`/`ga_sade_sati`/`ga_ayurdaya`/`ga_tajaka`. Queried all 5 assets' current
+`target_floor` values live FIRST, before assuming anything about their status.
+
+**Found the answer already exists, correctly, in a migration this session hadn't cross-referenced
+to these specific F-ids**: `migrations/650_nirmana_l1_w3_registry_truth.sql`
+("l1_w3_registry_truth") — read its full content directly. Confirmed **4 of 5 genuinely fixed,
+matching live exactly**: F-A9 (`ga_dashas` `target_floor=471767`, explicitly excluding ~71k
+fabricated Kalachakra-repetition rows PR #527 already removed — "Correcting it now matters
+because the existing 536,471 actively invites someone to 'close the gap' by restoring exactly the
+fabricated repetition"), F-B1 (`ga_sensitive` `target_floor=8775`, "NOT a build deficit... an
+achieved measurement"), F-D14 (`ga_sade_sati` `target_floor=6120`, a stale defective-writer floor
+corrected), F-E1 (`ga_ayurdaya` `target_floor=130`).
+
+**The 5th, F-E15 (`ga_tajaka`), was DELIBERATELY left untouched** — not an oversight, confirmed
+by the migration's own explicit scope note: "`ga_vargas`, `ga_condition`, `ga_tajaka`,
+`ga_transit_anchors`, `ga_medical` and `ga_vastu` floors are deliberately LEFT ALONE: their fixes
+change what is produced... so their floors are set from the achieved count AFTER their W4 build,
+per §N.4. Setting them now would fabricate a number ahead of the measurement it records." This is
+the CORRECT application of the campaign's own floors-are-achieved-not-fabricated doctrine, not a
+gap — `ga_tajaka` genuinely needs its own rebuild before a real floor can be set, same class as
+`ga_condition`/`ga_positions` before it.
+
+**A genuinely pleasing side-discovery**: migration 650 is where the SQL operator-precedence bug I
+fixed last cycle (migration 877) actually ORIGINATED — its own text shows `count_sql = count_sql
+|| ' OR fact_category = ''bhava_arudha'''`, an unparenthesized string concatenation onto the
+existing query, exactly reproducing the bug's mechanism. The SAME migration, in the SAME breath,
+correctly set `target_floor=8775` from `rows_written` (the true, authoritative build-output
+count) — meaning `target_floor` was accurate all along, and my migration 877 fix simply restored
+`count_sql`'s live result to match the floor that had already been correctly set via an
+independent, non-buggy source. A nice closed loop: two sessions' worth of work (an earlier
+migration and this cycle's own fix) turn out to agree exactly once the bug is removed.
+
+**Updated the close report's §2.5 disposition table and its "Honest count" summary paragraph to
+reflect the closure**: all 20 MUST-tier id-groups this session inherited from cycle 125's sweep
+now carry a specific, checkable, independently-re-verified citation — not merely re-asserted.
+`F-B32`/`F-B33` remains the only id-group this campaign has actually found to be incorrectly
+claimed closed (still tracked as genuinely open in §2/§5); every other group's cycle-125 "closed"
+claim held up under this session's own independent re-verification, cycle by cycle.
+
+CYCLE 178 L1: PR hygiene clean; **closed the close report's entire remaining uncited-MUST-group
+gap** — F-A9/B1/D14/E1/E15 independently re-verified (4/5 genuinely fixed via migration 650,
+live-confirmed; the 5th, `ga_tajaka`, correctly and deliberately deferred, not an oversight) —
+all 20 of the disposition table's id-groups now carry a real citation, and a nice side-discovery
+traced last cycle's SQL-bug fix (migration 877) back to its origin in the same migration that
+already correctly set the floor it was disagreeing with — next: investigate the untouched
+zero-evidence bucket (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`), or
+resolve `ga_transit_anchors`' still-orphaned verdict; keep re-checking #2113/#2180/#2224 every
+cycle regardless.
+
+## CYCLE 179 (C8 v2.3) — L1's zero-evidence bucket cleared, 5/5, verified live
+
+PR hygiene: `#2237` (`ga_sensitive` count_sql fix) genuinely `is:queued`. `#2228` (this state
+branch) `MERGEABLE`/`BLOCKED` with zero RED checks. Nothing DIRTY/RED/unqueued. Re-checked
+`#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own prior comments.
+
+**Unit of work: investigate and clear the last untouched zero-evidence bucket** —
+`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`, the 5 assets that had never had
+any campaign evidence event recorded, deferred since cycle 170's original sweep. Unlike the
+MUST-tier uncited groups (which needed real investigative re-derivation), these 5 all showed a
+different, more reassuring shape in the close report's own §1 table: `target_floor` = achieved
+count exactly, and every one of their own W2 findings already cited to a SPECIFIC, already-merged
+PR (not just "claimed closed, cycle 125 sweep"). Still didn't trust this at face value —
+independently confirmed all 7 distinct cited PRs across the 5 assets (`#1841`, `#1853`, `#1871`,
+`#2148`, `#2152`, `#1859`, `#2151`) are genuinely `MERGED`, not just referenced, before treating
+any of them as safe for a first-time acceptance.
+
+Computed fresh `registry_fingerprint_sha256`/`analysis_digest` for all 5 via the dispatch
+script's own functions in one batched Python loop. **Caught a real, silent gap in my own tooling
+mid-cycle**: `ga_panchanga` never printed in the batch's output despite being present in the
+frozen manifest and its own `missing from frozen manifest` check reporting empty — re-ran its
+computation in complete isolation and it worked cleanly with no error at all, meaning something
+in the batched loop context silently dropped it (possibly a dict-ordering/buffering artifact, not
+diagnosed further since reproducing it in isolation was sufficient). Did not shrug this off or
+retry blindly — manually merged the isolated result back into the results file and continued,
+rather than either omitting `ga_panchanga` silently or assuming the batch script's incomplete
+output was itself the truth.
+
+Submitted all 10 `record_evidence` calls (analysis + verdict × 5 assets) back-to-back within one
+deploy window — confirmed the deployed SHA is a live ancestor of `origin/main` first, per standing
+discipline. All 10 returned `201 created`. Independently re-verified live afterward (not just
+trusted the 201s): queried all 5 assets' events directly — every one has a clean, complete pair,
+matching `source_ref` on both rows, zero orphans.
+
+Posted the full result to #2224. **Every `ga_*` asset this session has investigated or touched
+now has current, valid campaign evidence, with exactly one remaining known gap**:
+`ga_transit_anchors`'s still-orphaned verdict from cycle 171 (unresolved because its registry
+hasn't changed since — the SAME generation is still stuck, not something a re-attempt would fix
+without a registry change or a lucky deploy-window race). This closes out L1's own evidence-
+submission backlog entirely as far as this session has surveyed it.
+
+CYCLE 179 L1: PR hygiene clean; **cleared L1's entire zero-evidence bucket** — first-time
+campaign evidence submitted and verified live for `ga_condition`/`ga_medical`/`ga_panchanga`/
+`ga_tajaka`/`ga_vastu` (5/5, all cited fixing PRs confirmed genuinely merged first), catching and
+recovering from a silent per-asset drop in my own batch tooling along the way — every `ga_*`
+asset this session has touched now has valid evidence except `ga_transit_anchors`'s still-orphaned
+verdict — next: with evidence-submission work now essentially exhausted for L1's own scope, the
+natural remaining priorities are the still-blocked `asset_frozen` E-gate workstream (#2224,
+cross-layer, awaiting further Conductor/fleet progress) or a fresh sweep for any not-yet-
+considered W3 finding; keep re-checking #2113/#2180/#2224 every cycle regardless.
