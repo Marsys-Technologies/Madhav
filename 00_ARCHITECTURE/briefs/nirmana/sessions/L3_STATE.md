@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~525:0xZ — L3-W4 — PR hygiene: `#2369`'s pre-queue
+  check run in progress (~4.5min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2369` finishing; next action: same.
 - `2026-09-07T~524:0xZ — L3-W4 — PR hygiene: `#2369`'s pre-queue
   checks running (`DB Integration Tests`, `Unit Tests`,
   `Governance Gates` all `pending`, nothing red), early stage. One
