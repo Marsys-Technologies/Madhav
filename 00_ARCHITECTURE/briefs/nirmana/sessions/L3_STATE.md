@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~408:0xZ — L3-W4 — PR hygiene: `#2284` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.75min, approaching but
+  still within the confirmed ~11min normal range, still on the same
+  `pytest` step. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2284` finishing; next action: same.
 - `2026-09-07T~407:0xZ — L3-W4 — PR hygiene: `#2284` still position
   1, `AWAITING_CHECKS` — its own `Governance Gates` job now ~6.5min
   into the known-slow `pytest — pyjhora_adapter + pipeline` step,
