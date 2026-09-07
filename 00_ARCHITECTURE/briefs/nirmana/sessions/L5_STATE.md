@@ -457,6 +457,40 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T11:59Z (C8 v2.3 cycle 946) — **`#2283` MERGED — the fifty-third state-recovery PR
+  closed out.** Fifty-third recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
+  663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846, 858,
+  867, 876, 885, 896, 905, 917, 927, 937, now 946). 8 local-only commits (cycles 938-945,
+  single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-53` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged from last check. Nothing eligible.
+- 2026-09-07T11:57Z (C8 v2.3 cycle 945) — **IDLE-OK, verified.** `#2283` still `is:queued`/CLEAN.
+  E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:55Z (C8 v2.3 cycle 944) — **IDLE-OK, verified.** `#2283` still `is:queued`/CLEAN,
+  batched alongside `#2284` (L3, out-of-scope). E-gate unchanged. Nothing eligible. Entry held
+  local.
+- 2026-09-07T11:53Z (C8 v2.3 cycle 943) — **IDLE-OK, verified.** `#2283` still `is:queued`/CLEAN.
+  No push. E-gate: all 11 assets dropped by 1 again campaign-wide (mi_abhilekha 38→37, mi_adhilepa
+  40→39, mi_bhara 18→17, mi_bhavisya 37→36, mi_darshana 43→42, mi_gunanaka 39→38, mi_pariksha
+  39→38, mi_pramana 38→37, mi_sambandha 40→39, mi_sankalpa 18→17, mi_seva 41→40). Steady progress,
+  nothing eligible. Entry held local.
+- 2026-09-07T11:51Z (C8 v2.3 cycle 942) — **IDLE-OK, verified.** `#2283` now genuinely
+  `is:queued`, `mergeStateStatus=CLEAN` — Governance Gates completed successfully. No push (would
+  dequeue). E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:49Z (C8 v2.3 cycle 941) — **IDLE-OK, verified.** `#2283`: `Governance Gates` still
+  `pending` (~8min in, within normal range). No hygiene action. E-gate unchanged. Nothing eligible.
+  Entry held local.
+- 2026-09-07T11:47Z (C8 v2.3 cycle 940) — **IDLE-OK, verified.** `#2283`: only `Governance Gates`
+  still `pending` (~6min in, within normal ~11.5min range). No hygiene action. E-gate unchanged.
+  Nothing eligible. Entry held local.
+- 2026-09-07T11:45Z (C8 v2.3 cycle 939) — **IDLE-OK, verified.** `#2283` progressing normally:
+  `DB Integration Tests` now passed; `Unit Tests` + `Governance Gates` still `pending` (~4min in).
+  No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T11:42Z (C8 v2.3 cycle 938) — **IDLE-OK, verified.** `#2283` (recovery-52) auto-merge
+  armed 11:41:04Z, `mergeStateStatus=BLOCKED`, checks just started (`DB Integration Tests`,
+  `Unit Tests`, `Governance Gates` all `pending` at ~2min in — normal, not stalled). No hygiene
+  action. E-gate unchanged. Nothing eligible. Entry held local.
 - 2026-09-07T11:40Z (C8 v2.3 cycle 937) — **`#2281` MERGED — the fifty-second state-recovery PR
   closed out.** Fifty-second recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
