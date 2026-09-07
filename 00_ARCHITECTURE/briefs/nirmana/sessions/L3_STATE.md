@@ -495,6 +495,71 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~311:0xZ — L3-W4 — PR hygiene: `#2248`'s last check, same
+  run, now ~9.7min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2248` finishing; next
+  action: same.
+- `2026-09-07T~310:0xZ — L3-W4 — PR hygiene: `#2248`'s own `merge_group`
+  build still `in_progress`, `Unit Tests` now passed, only
+  `Governance Gates` remains (~7.2min, within range, same run). No
+  new `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2248` finishing;
+  next action: same.
+- `2026-09-07T~309:0xZ — L3-W4 — PR hygiene: `#2248`'s own `merge_group`
+  build still `in_progress`, `DB Integration Tests` now passed, only
+  `Unit Tests` + `Governance Gates` remain (~4.7min, within range,
+  same run). No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2248` finishing; next action: same.
+- `2026-09-07T~308:0xZ — L3-W4 — PR hygiene: `#2248` still position 1,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2248-...`), step-level checked: `Unit
+  Tests` + `DB Integration Tests` + `Governance Gates` all
+  `in_progress` ~2.5min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2248` finishing; next action: same.
+- `2026-09-07T~307:0xZ — L3-W4 — PR hygiene: `#2248`'s checks finished
+  (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 1 — its own `merge_group` run has
+  started. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2248` finishing; next action: same.
+- `2026-09-07T~306:0xZ — L3-W4 — PR hygiene: `#2248`'s last check
+  (`Governance Gates`) ~7min, within normal range, `Unit Tests` now
+  also passed. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2248` finishing; next action: same.
+- `2026-09-07T~305:0xZ — L3-W4 — PR hygiene: `#2248`'s pre-queue check
+  run still `in_progress` (~4.6min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. Two new
+  `origin/main` merges (an L5 heartbeat PR, and L1's `get_structural`
+  tool closing a 15-category gap, `#2244` — no L3 overlap).
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2248` finishing; next action: same.
+- `2026-09-07T~304:0xZ — L3-W4 — PR hygiene: `#2248` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2248` clearing checks/queue; next action: same.
+- `2026-09-07T~303:0xZ — L3-W4 — PR hygiene: `#2243` MERGED (confirmed
+  `merged: true`, `mergedAt` set). Rebased the 27 not-yet-merged
+  local heartbeat commits onto fresh `origin/main`. Hit the standard
+  empty-theirs prepend-conflict pattern 13x (auto-resolved via the
+  marker-strip loop, each verified empty-theirs before stripping).
+  Verified zero conflict markers remain; rebased diff vs
+  `origin/main` is `L3_STATE.md`-only. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-15`, pushed, opened PR `#2248`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2248` clearing
+  checks/queue; next action: same monitoring cadence, watch closely
+  for the freeze.
 - `2026-09-07T~302:0xZ — L3-W4 — PR hygiene: `#2243`'s last check, same
   run, now ~9.3min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
