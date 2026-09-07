@@ -457,6 +457,46 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T09:36Z (C8 v2.3 cycle 885) — **`#2265` MERGED — the forty-seventh state-recovery PR
+  closed out.** Forty-seventh recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846,
+  858, 867, 876, now 885). 8 local-only commits (cycles 877-884, single-file, pure additions)
+  recovered via patch onto a fresh `codex/nirmana-l5-heartbeat-recovery-47` branch off
+  `origin/main`. E-gate re-run: all 11 remaining L5 assets unchanged despite ga_positions FROZEN
+  (L1's sole bottleneck broken) — L5's ancestor chains still have other unfrozen dependencies.
+  Nothing eligible.
+- 2026-09-07T09:31Z (C8 v2.3 cycle 884) — **IDLE-OK, verified.** #2265 still OPEN/`is:queued`,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T09:16Z (C8 v2.3 cycle 883) — **IDLE-OK, verified.** #2265 still OPEN/`is:queued`,
+  unchanged. Main tip advanced to `3f4bf07b9` (#2263, L1's — merged, confirms ga_positions
+  FROZEN, L1's sole E-gate bottleneck broken; watching for L5 ancestor-count effect). E-gate
+  re-run: all 11 remaining L5 assets unchanged so far. Nothing eligible.
+- 2026-09-07T09:13Z (C8 v2.3 cycle 882) — **IDLE-OK, verified.** #2265 still `is:queued`/CLEAN,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T09:11Z (C8 v2.3 cycle 881) — **IDLE-OK, verified.** #2265 now genuinely `is:queued`,
+  `mergeStateStatus=CLEAN`. #2264/#2263/#2262 confirmed L3's/L1's/L2's, out of scope. Main tip
+  unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T09:09Z (C8 v2.3 cycle 880) — **IDLE-OK, verified.** #2265's last check (Governance
+  Gates) ~9.1min elapsed, within normal range, no failures. #2264/#2263 confirmed L3's/L1's
+  (both referencing ga_positions FROZEN — campaign bottleneck confirmed breaking), #2262
+  confirmed L2's, out of scope. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
+- 2026-09-07T09:06Z (C8 v2.3 cycle 879) — **IDLE-OK, verified.** #2265 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T09:04Z (C8 v2.3 cycle 878) — **IDLE-OK, verified.** #2265 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. #2263 confirmed
+  L1's — notable: ga_positions FROZEN per its title, consistent with L5's ancestor counts
+  dropping. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T09:02Z (C8 v2.3 cycle 877) — **IDLE-OK, verified.** #2265 (recovery #46) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 09:00:08Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. No other
+  own-identity PRs in queue this cycle. Main tip unchanged. E-gate re-run: all 11 remaining L5
+  assets unchanged. Nothing eligible.
 - 2026-09-07T08:59Z (C8 v2.3 cycle 876) — **`#2260` MERGED — the forty-sixth state-recovery PR
   closed out.** Forty-sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
   482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
