@@ -495,6 +495,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~220:0xZ — L3-W4 — PR hygiene: `#2218` advanced to
+  position 2, `AWAITING_CHECKS`, own `merge_group` ~9.4min in
+  (`mergeStateStatus` briefly `UNKNOWN`, normal async lag, confirmed
+  via step-level check — still `Governance Gates`, unchanged step, no
+  stall signal). NOTABLE: `#2217` merged — "ga_sensitive
+  natural_key_partition backfill, 7th/7th" — this is the FULL
+  completion of adjudication `#2180`'s `natural_key_partition`
+  authoring chain across all 7 assets. Re-ran `egate.sql` full L1+L3
+  sweep live: `ga_positions` **still** `OPEN-PENDING-PIN` despite all
+  7/7 components now authored — the pin/freeze itself is evidently a
+  separate dispatch action (not this session's L1 sibling's to force
+  either; watching, not acting). No new E-gate opening for L3 yet.
+  IDLE-OK. — blocked on: `#2218` finishing; next action: same, watch
+  closely for the freeze now that all inputs are authored.
 - `2026-09-07T~219:0xZ — L3-W4 — PR hygiene: `#2218`'s own `merge_group`
   build still `in_progress`, `Unit Tests` now passed, only
   `Governance Gates` remains (~7.3min, within range, same run). No
