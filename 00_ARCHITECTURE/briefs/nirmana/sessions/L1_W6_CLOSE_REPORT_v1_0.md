@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.37-DRAFT"
+version: "0.38-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -30,8 +30,9 @@ canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, correc
 — 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
 cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
 not stale names; no list edit needed for them. Being closed incrementally
-cycle 149 onward (33/57 landed across 8 slices, PR #2202 + #2242; ~23 remaining reframed cycle
-156 as genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
+cycle 149 onward (48/57 landed across 9 slices, PR #2202 + #2242 + #2244; ~9 remaining, either
+ambiguous multi-writer ownership or a distinct deeper defect class — see §5 for the current
+breakdown, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ PARTIALLY UNBLOCKED, cycle 155.**
@@ -271,7 +272,7 @@ silently equal to it.
 | F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
 | F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
 | F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
-| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 33/57 closed across 8 slices (PR #2202, #2242), ~23 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878) | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 48/57 closed across 9 slices (PR #2202, #2242, #2244), ~9 remaining (8 named categories with ambiguous multi-writer ownership, needing a disambiguation pass before a fix — not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878); `get_structural_signals.ts` CLOSED 15 more cycle 181 (PR #2244), the first genuinely new-endpoint slice, plus a `karaka_web_per_varga` false-positive correction in the cycle-156 sweep's own claim | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
 
 **Honest count**: of 20 id-groups, **all 20 now have a specific, checkable citation in this
 report** — 14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles
@@ -586,6 +587,25 @@ awaits either a dedicated prep cycle or genuine W6 close.
   same defect class as `graha_yuddha_per_varga`. This reframes what remains of F-B32: no longer
   mostly "a stale list needs new entries," mostly "these categories have no serving tool at
   all" — new-endpoint work, out of scope for this hand-maintained list's own repair.
+  **Slice 9 (cycle 181, PR #2244) did exactly that new-endpoint work**: new
+  `get_structural_signals.ts` tool (mirroring `get_nakshatra.ts`'s shape) closes 15 of the ~24
+  named above — `aspect_received_by_special_point`, `chart_center_of_gravity`, `chart_cluster`,
+  `conjunction_special_point`, `contradiction_pair`, `graha_centrality`, `kendradhipati_dosha`,
+  `nakshatra_co_tenancy`, `nakshatra_dispositor_chain`, `nakshatra_lord_relationship`,
+  `nway_config_per_varga`, `sambandha_grade`, `significator_path`, `virupa_drishti`, and
+  `graha_yuddha_per_varga` — every one confirmed single-writer-owned by `ga_structural_writer.py`
+  alone (grepped every `ga_writers/*.py` + `pipeline/orchestrator/writers/*.py` file for a
+  competing writer; none found), live rows 1 to 5,220 each. `karaka_web_per_varga` turned out to
+  be a FALSE POSITIVE in this very list — it was already covered via `get_karakas.ts`'s opt-in
+  mechanism (a pre-existing W2 structural-close SC-5 entry the cycle-156 sweep missed); corrected
+  in `coverage_matrix.ts`'s own header comment rather than duplicated as a new closure. The
+  remaining 8 — `bhava_significance_link`, `esoteric_point_sphuta_fertility`,
+  `esoteric_point_yogi_system`, `net_argala_per_varga`, `panchadha_maitri`, `sandhi_flag`,
+  `sun_derived_upagraha`, `tara_bala` (bare) — are deliberately left open: each is written by a
+  SECOND L0/L1/L3 writer (e.g. `panchadha_maitri` by both `ga_condition_writer.py` and
+  `ga_structural_writer.py`; `sandhi_flag` by `ga_dashas_writer.py` AND
+  `ga_positions_writer.py`), a genuine ownership-disambiguation question this slice deliberately
+  did not guess at.
 
 **To L1's own future work (once #2113 clears):**
 - W4 dispatch for all 19 assets, `rebuild_only` majority per §1's route column.
@@ -606,12 +626,15 @@ still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 �
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; slice 8 (2 more categories) landed cycle 180, PR
 #2242, migration 878 — `get_nakshatra.ts`'s own 3-category docstring overclaim CLOSED, 2 of 3
-were themselves mischaracterized as overclaims; ~23 remaining reframed cycle 156 as genuinely
-unreachable by any tool — a tool-coverage gap, not a list-staleness gap; the "6 phantom
+were themselves mischaracterized as overclaims; slice 9 (15 more categories, the first
+genuinely new-endpoint slice — new `get_structural_signals.ts` tool) landed cycle 181, PR
+#2244, plus a `karaka_web_per_varga` false-positive correction in the cycle-156 sweep's own
+claim; 48/57 now closed, ~9 remaining — 8 named categories with ambiguous multi-writer
+ownership needing a disambiguation pass, not a list-staleness gap; the "6 phantom
 categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
 rebuild, no edit needed
-#2113)** · **~23 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
-cycle 153/156, distinct from F-B32's own list-repair scope)**
+#2113)** · **~9 remaining F-B32 categories, ambiguous multi-writer ownership (§5 — updated
+cycle 181, distinct from F-B32's own list-repair scope)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
 6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
 `ga_sade_sati` PR #2212, `ga_nakshatra` PR #2213, `ga_panchanga` PR #2216; `ga_sensitive`'s
