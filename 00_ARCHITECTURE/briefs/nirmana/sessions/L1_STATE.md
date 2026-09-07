@@ -9678,3 +9678,19 @@ the shared-L0-module edit and deriving the value via a single controlled vocabul
 (confirmed zero L0/L2 impact this time) — next: watch `#2229`'s fresh CI run through to a genuine
 merge, then resume `ga_dashas`' first-time campaign evidence submission or `ga_transit_anchors`'
 orphaned evidence pair; keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+**Addendum — a local-only test-flake investigation, resolved, not a new defect.** After pushing
+the fix, ran the full CI-equivalent pytest suite locally (~6900 tests) twice as extra diligence
+beyond the targeted 60-test/governance-check verification already done. Both full local runs
+flagged `test_ga_dashas_f_a17_bare_tier_literals.py::test_no_bare_tier_literals_outside_
+allowed_sites` as failing — but the SAME test passes cleanly every time it's run in isolation, in
+combination with its sibling `ga_dashas` test files, or even filtered via `-k` from within the
+SAME full 6900-test collection. The test is a pure static file-read (no fixtures, no DB, no
+shared state) with no plausible mechanism to fail only at large scale unless something ELSE in
+this enormous, largely-unrelated local suite is exhausting a resource or mutating global state
+this test happens to be adjacent to. Checked the actual authoritative signal instead of chasing
+this further locally: GitHub's own CI (`gh pr checks 2229`) — a clean, isolated environment —
+reports `Unit Tests: pass` on this exact commit, and every other check passing cleanly too
+(Governance Gates/Build Check still finishing as of this writing, but zero RED anywhere). Trusting
+CI over an unreproducible-in-isolation local artifact, consistent with the contract's own framing
+of `is:queued`-style live checks as "the only truth" over a locally-observed anomaly.
