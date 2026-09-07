@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:20:45Z` — cycle 1008: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
+  same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:18:14Z` — cycle 1007: **IDLE-OK, Δfrozen +0.** `bo_sudarshana`'s
   `asset_freshness` still reads the pre-migration-896 `unknown` snapshot (12:26:58Z) — expected,
   only ~4 min since the fix merged, needs a fresh reconciliation pass. Fleet DIRTY: same 2 known
