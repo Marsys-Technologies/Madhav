@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:06:07Z` — cycle 831: **IDLE-OK (verified).** #2227 still cycling (~2h42m open,
+  4 pending again) — no further action available beyond what's already tried (2 nudges, 2
+  direct re-triggers); it's a zero-campaign-impact heartbeat PR, continuing passive monitoring.
+  Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T07:03:31Z` — cycle 830: **IDLE-OK (verified).** #2227 down to 3 pending checks.
   Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T07:01:11Z` — cycle 829: **IDLE-OK (verified).** #2227's checks progressing (4
