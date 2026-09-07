@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 168; **#2113/#2180's freshness-gate investigation genuinely RESOLVED for ga_positions.** Recomputed live registry_fingerprint_sha256/analysis_digest via dispatch_nirmana_campaign_wave.py's own functions (now correctly reflecting migration 876's fix); submitted fresh asset_analysis_accepted + optimization_verdict_accepted evidence via the record_evidence executor route (OIDC via `gcloud auth print-identity-token --impersonate-service-account=amjis-nirmana-executor@... --include-email` -- the missing `--include-email` flag was the actual blocker behind an initial opaque 403; source_ref had to be the Cloud Run service's OWN deployed commit, read from `gcloud run services describe amjis-web`'s `NIRMANA_DEPLOYED_SHA` env var, NOT origin/main HEAD -- a second opaque rejection ("does not match currently deployed commit") until this was found). Took a fresh on-demand Cloud SQL backup, dry-ran with --snapshot-ref to get the correct commit-mode manifest digest (cycle 155's own lesson, re-applied), then dispatched `ga_positions` wave 0 for real with --acknowledge-destroys. Build completed in ~9s, chart_facts unchanged at 1205 rows (content never changed, only registry metadata did) -- and **asset_freshness now carries a NEW row keyed by the real partition text showing freshness_state='fresh', reasons=[]** -- the fixes work end-to-end. Re-ran build_fact_identity_index.py after the WP-6 cascade (124,388 -> 125,593, exact dry-run match). Wave 1 dispatch itself is the next, separate unit of work. #2113/#2180 checked again this cycle -- no new Conductor reply; posted this resolution to #2180 as a status update
+last_updated: 2026-09-07 — C8 v2.3 cycle 169; attempted L1's own wave-1 dispatch (8 ga_* assets depending only on now-fresh ga_positions + already-fresh L0 deps), found TWO deeper cross-layer blockers beyond #2180's scope, filed adjudication #2224. Finding 1: `ga_vargas` (never touched by any natural_key_partition work) ALSO has stale accepted evidence -- its registry row picked up a real `integrity_check_sql` from separate prior W3 work AFTER evidence acceptance, same drift mechanism as #2180 but an independent root cause; likely affects many wave-1 assets across every layer, not just mine. Fixed it myself (recomputed live fingerprint/digest, submitted fresh evidence, same recipe as cycle 168) since it's squarely L1's own asset. Finding 2, surfaced immediately after: dispatch ALSO requires every DAG ancestor to carry a genuine `asset_frozen` campaign event, not just be freshness='fresh' -- `ga_positions` has never been through this (it requires the VERIFIER service account, not executor; a real independent-verification step, not a registry fix) -- blocks wave-1+ dispatch CAMPAIGN-WIDE regardless of layer. Did NOT attempt to self-certify ga_positions' freeze (would be exactly the unearned-signal defect class this campaign's own doctrine forbids). Both findings posted to #2224 for Conductor/cross-layer visibility. #2113/#2180 checked again this cycle -- no new reply beyond my own prior comment
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9305,3 +9305,73 @@ minting; wrong `source_ref` — needed the Cloud Run service's actual `NIRMANA_D
 `origin/main` HEAD) along the way; posted the resolution to #2180 — next: dispatch wave 1 itself
 (the remaining 14 assets), a new, separate unit of work; keep re-checking #2113/#2180 every cycle
 regardless.
+
+## CYCLE 169 (C8 v2.3) — attempted L1's own wave-1 dispatch, found two deeper cross-layer
+## blockers beyond #2180's authorized scope; filed adjudication #2224
+
+PR hygiene: `#2221` (`sandhi_flag` fix) genuinely `is:queued`. `#2201` (this state branch)
+`BLOCKED` with zero RED checks. `#2220` (`output_digest_spec`) confirmed `MERGED`. Nothing DIRTY,
+nothing RED, nothing CLEAN-but-unqueued. Re-checked `#2113`/`#2180`: `#2180`'s last comment is
+still my own cycle-168 resolution post — no new Conductor reply.
+
+**Unit of work: dispatch wave 1's L1-owned `ga_*` assets**, the natural next step after cycle
+168's freshness-gate resolution. First isolated L1's own dispatchable subset from the full
+33-asset, six-layer wave-1 manifest (read via `dispatch_nirmana_campaign_wave.py`'s own
+`_load_definition` — wave 1 spans L0/L1/L2/L3/L4/L5, NOT something an L1 session should dispatch
+wholesale): of L1's 9 wave-1 `ga_*` assets, `ga_panchanga` is excluded (its `bg_panchanga` L0
+dependency shows `freshness_state='unknown'` — L0's own scope, not mine to fix), leaving 8
+candidates (`ga_vargas`, `ga_dashas`, `ga_sensitive`, `ga_prashna`, `ga_nakshatra`,
+`ga_transit_anchors`, `ga_sensitive_degree`, `ga_ayurdaya`) whose non-`ga_positions`
+dependencies (`bg_reference`, `bg_prashna_rules`, `bg_kp_sublord_division`, `bg_nakshatra`) were
+all confirmed `fresh` via direct query first.
+
+**Finding 1 — a SECOND, independent stale-evidence class, not #2180's natural_key_partition
+issue.** The dry-run on the 8-asset subset failed immediately: `"accepted asset analysis does not
+match the current live registry contract for ga_vargas"`. `ga_vargas` was never one of #2180's 7
+`chart_facts` co-writers — diffing the frozen manifest's `registry_contract` against LIVE via
+`_live_registry_contract()`/`_live_registry_fingerprint()` found the actual drift: a real,
+substantive `integrity_check_sql` (sign/sign_number consistency, vargottama correctness, §N.5
+D1-authority re-derivation, NULL-identity guard — already-shipped prior W3 work) was added to its
+registry row AFTER its evidence was originally accepted. Same underlying mechanism as #2180 (any
+`REGISTRY_CONTRACT_FIELDS` change invalidates prior acceptance) but a wholly independent root
+cause — meaning wave-1 readiness cannot be assumed clean just because the natural_key_partition
+fixes shipped. **Filed adjudication #2224** flagging this as likely campaign-wide (33 assets
+across 6 layers in this one wave alone; any asset whose registry picked up an ordinary W3 change
+since acceptance would hit the identical wall). Fixed `ga_vargas`'s own instance myself (same
+recipe as cycle 168: recomputed live `registry_fingerprint_sha256`/`analysis_digest`, submitted
+fresh `asset_analysis_accepted`+`optimization_verdict_accepted` via the `record_evidence`
+executor route — re-verified the deployed SHA live via `gcloud run services describe` rather than
+reusing cycle 168's cached value, correctly caught that it had changed between cycles, `64aa9c91d`
+→ `f3f6dbf8e`, since a new deploy landed in between) since it's squarely L1's own asset and the
+fix is quick and well-understood.
+
+**Finding 2 — a materially deeper blocker, surfaced immediately after fixing Finding 1.** With
+`ga_vargas`'s evidence now fresh, the dry-run advanced past that check and hit:
+`"E-gate refused: the dispatched assets have unfrozen DAG ancestors (1 remain): ga_positions"`.
+Traced directly in `dispatch_nirmana_campaign_wave.py` (`campaign_prerequisite_asset_ids` +
+the `asset_frozen` event check, ~line 1025): dispatch requires every DAG ancestor to carry a
+genuine `asset_frozen` campaign event — not just `freshness_state='fresh'`. `ga_positions` was
+rebuilt and its freshness genuinely verified fresh (cycle 168) but has never been through this
+separate acceptance. Per the executor route's own `requiredPrincipalFor` routing, `asset_frozen`
+(`source_kind='server_reconstructed'`) requires the **verifier** service account, not the
+executor one used for every fix so far — the HTTP-layer counterpart of a genuine independent
+verification pass, explicitly NOT something the implementing session should self-certify (the
+executor route's own comment: "a terminal capsule is only ever minted after independent
+reconstruction, never by the session that did the implementation"). **Did not attempt to
+fabricate or rush this** — doing so would be exactly the §N.8 unearned-signal defect class this
+campaign's doctrine exists to prevent. Posted this second finding as a follow-up comment on
+#2224, since it also blocks wave-1+ dispatch campaign-wide regardless of layer, and is a
+materially larger, distinct verification workstream (W5 VERIFY / W6 FREEZE in each layer's own
+charter language) that hasn't started for this campaign's wave-0 assets yet.
+
+**Stopped the wave-1 dispatch attempt here for this cycle** — both findings are real, both
+documented with direct evidence (not assumed), and Finding 2 in particular is squarely outside
+what a single bounded W4 EXECUTE cycle should attempt to resolve unilaterally. Cleaned up temp
+evidence-payload files.
+
+CYCLE 169 L1: PR hygiene clean; attempted L1's wave-1 dispatch, found and partially fixed a
+second independent stale-evidence class (`ga_vargas`, migration-free registry-fingerprint
+re-stamp) then hit a deeper `asset_frozen`/E-gate blocker requiring the verifier principal — not
+self-certified, filed adjudication #2224 for both findings — next: await #2224's disposition or
+Conductor guidance on the freeze/verification workstream before any further wave-1+ dispatch
+attempt; keep re-checking #2113/#2180/#2224 every cycle regardless.

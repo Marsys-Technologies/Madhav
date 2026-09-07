@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.26-DRAFT"
+version: "0.27-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -421,8 +421,18 @@ awaits either a dedicated prep cycle or genuine W6 close.
   `asset_freshness` now carries a genuinely new row keyed by the real partition text showing
   `freshness_state='fresh'`, `reasons=[]` — the original cycle-155 symptom is confirmed fixed,
   not assumed. `chart_fact_identity` re-rebuilt post-cascade (124,388 → 125,593, exact dry-run
-  match). Resolution posted to #2180. **Still open**: wave 1 itself (the remaining 14 assets from
-  the original waves 0-3 scope) has not been dispatched — a new, separate, larger unit of work.
+  match). Resolution posted to #2180. **Wave-1 dispatch attempted cycle 169, found two deeper
+  cross-layer blockers, filed adjudication #2224**: (1) `ga_vargas` — never touched by any
+  `natural_key_partition` work — ALSO had stale accepted evidence (an unrelated `integrity_
+  check_sql` landed on its registry row after acceptance); fixed via the same live-fingerprint
+  re-stamp recipe, but flagged as likely campaign-wide across all 33 wave-1 assets/6 layers, not
+  isolated to L1. (2) A deeper `asset_frozen` E-gate: dispatch requires every DAG ancestor to
+  carry a genuine freeze event (requiring the VERIFIER service account, a real independent
+  verification pass), not just `freshness_state='fresh'` — `ga_positions` has never been through
+  this. Deliberately NOT self-certified (would be an unearned-signal defect). **Still open**:
+  wave 1 dispatch itself, now understood to require a genuine per-asset freeze/verification
+  workstream (W5/W6-equivalent) before it can proceed at all, campaign-wide — not just an L1
+  registry fix. Awaiting #2224's disposition.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
