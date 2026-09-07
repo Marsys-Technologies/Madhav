@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 205; no movement — `#2307` now genuinely green (0 failing/pending checks, REST `mergeable_state: clean`) but not yet picked up by the merge queue (`is:queued` empty, GraphQL still `BLOCKED`); not a gap, just queue timing. `#2301` confirmed `MERGED`. Zero new comments on any tracked issue. L1's frontier remains genuinely, externally exhausted.
+last_updated: 2026-09-07 — C8 v2.3 cycle 209; no movement — zero new comments on `#2317`/`#2300`. PR hygiene clean. L1's frontier remains genuinely, externally exhausted.
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3420,7 +3420,7 @@ none accepted yet (blocked on #1736).
 | ga_yoga | 63 / 5 | changed → fixed (cycle 8/101, PR #1865, merged 2026-09-05) | F-D1 (citations existed 233/233 but no surface joined them) + F-D2 (no offset paging) both fixed serving-side in `get_yoga_firings.ts`; stale "MUST" corrected cycle 101. F-A14 integrity_check_sql (#1965); F-A16 **FIXED at the writer level (#1979, cycle 41)** — migration 746's conjunct (a) will clear once chart 1c826d5a rebuilds. F-D5 **FIXED (cycle 114, PR #2140)** — `get_yoga_firings.ts`'s `ORDER BY strength DESC NULLS LAST, yoga_canonical_id` was a non-total order (confirmed live: 5+ (yoga_canonical_id, strength) pairs genuinely repeat across the 5 stored ayanamshas); added `ayanamsha_id, id` (PK) to the sort key. Merge-conflicted against a concurrent PR that added the `brahma_yoga_catalog` LEFT JOIN + real `OFFSET` pagination — reconciled with `f.`-prefixed columns, both fixes coexist |
 | ga_vichara | 8,249 / 8,249 | rebuild_only | real and mis-labeled: DRAFT → CURRENT (F-D), already fixed (`catalog_status` confirmed `CURRENT` live, cycle 103); F-A14 integrity_check_sql (#1967). F-D10 **FIXED (cycle 109, migration 846)** — `target_floor` was 8,240, nine short of the finding's own derived model (8,249); never surfaced as a build failure since achieved already exceeded the stale floor. F-D12 (`ga_vichara` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 30, re-measured live mean 307s (n=18). F-D11 **FIXED (cycle 115, PR #2141)** — `get_vichara.ts`'s `ORDER BY vichara_family, domain NULLS FIRST, subject` was a non-total order; confirmed live 1,595 `valence_pass` rows/ayanamsha share this exact sort key (SAT/MAR/JUP each 1,595-way tied); added `ayanamsha_id, varga_id NULLS FIRST, id` (PK) |
 | ga_sade_sati | 6,287 / **11,019** | rebuild_only | reconciles to the row; stale floor from a since-fixed writer (F-D); F-A14 integrity_check_sql **COMPLETE 15/15 categories** (#1968 cycle 37 → #1987 cycle 43 → #1990 cycle 44 → #1994 cycle 45 final). F-D12 (`ga_sade_sati` half) **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 65, re-measured live mean 142s (n=51). F-D18 **FIXED (cycle 116, PR #2142)** — `get_sade_sati.ts` had no `density_contract` despite already implementing the substance (window filter + disclosed `periods_dropped_outside_window`/`window_note`/`drill_uri`); declared honestly (`empty_reason: false` — no zero-row detector exists). F-D20 **FIXED (cycle 117, PR #2144)** — the shared `ORDER BY fact_category, ayanamsha_id, fact_key` (both `all:true` and the default path's underlying fetch) was a non-total order; confirmed live 48 rows share the sort key for several combinations (e.g. `sade_sati_phase_quarter`/krishnamurti/`quarter_end_iso`); added `fact_subject, fact_id` (PK). Same file as F-D18's still-open PR #2142 -- expect a small merge conflict on whichever lands second |
-| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows. F-D21/F-D23 **FIXED (L0's PR #2153, merged; adjudication #2122 CLOSED)** — root cause was one layer up (`from_moon_view`'s vidhi primitive dispatched `reference_point:"moon"` to `ganita_chart_facts_get`, which never read it), not this asset's own writer/serving code; re-pointed to `ganita_transit_anchors_get` with the inert argument dropped, both the code (`registry_data.ts`) and the already-committed live `vidhi_primitives` row (migration 705) fixed. **Independently re-verified live by this session (cycle 130)**, not just trusted on the merge: confirmed `live_tool='ganita_transit_anchors_get'`/`tool_args={"chart_id":"{chart_id}"}` both in `origin/main`'s source and in the live `vidhi_primitives` table |
+| ga_transit_anchors | 45 / 45 | changed → fixed (cycle 28, PR #1950) | **W4 IN PROGRESS (cycle 207), NOT frozen** — `asset_analysis_accepted`/`optimization_verdict_accepted` both accepted (the latter finally unblocked cycle 207 by #2224's fix, PR #2307, ending a 36-cycle orphaned-generation deadlock since cycle 171); `output_digest_spec` landed (migration 895, PR #2318). Dispatch itself blocked on a NEW, separate dispatcher gap (nirmana-adjudication #2317, `reviewed_deployment_sha` filter) — see last_updated. F-D22 FORENSIC assertion fixed (sign→nakshatra); AV transit gating correctly lives in `ga_strength` (F-D); F-A14 integrity_check_sql (#1971). F-D25 **FIXED (cycle 118, PR #2145)** — `get_transit_anchors.ts` had no `density_contract`/`empty_reason`/real grounding despite the writer deriving every value from specific `chart_facts` rows; the writer doesn't persist source `fact_id`, so re-derived its exact filter at serve time instead of fabricating the `grounds_to.l1_fact_ids:true` claim — verified live every served row's `constituent_fact_ids` resolve to real matching rows. F-D21/F-D23 **FIXED (L0's PR #2153, merged; adjudication #2122 CLOSED)** — root cause was one layer up (`from_moon_view`'s vidhi primitive dispatched `reference_point:"moon"` to `ganita_chart_facts_get`, which never read it), not this asset's own writer/serving code; re-pointed to `ganita_transit_anchors_get` with the inert argument dropped, both the code (`registry_data.ts`) and the already-committed live `vidhi_primitives` row (migration 705) fixed. **Independently re-verified live by this session (cycle 130)**, not just trusted on the merge: confirmed `live_tool='ganita_transit_anchors_get'`/`tool_args={"chart_id":"{chart_id}"}` both in `origin/main`'s source and in the live `vidhi_primitives` table |
 | ga_ayurdaya | 130 / 130 | rebuild_only | **FROZEN (cycle 195)** — full W4→W5 chain, parallel dispatch. F-A14 integrity_check_sql (#1975). F-E4 **FIXED (cycle 108, migration 845)** — `fact_category_ownership` had zero rows for `ayurdaya`; the classical-computation half of the same finding (AMSAYU classifies `madhyayu` under most ayanamshas but `alpayu` under `surya_siddhanta_classical`, 30.66 vs 36.34 years, near the classical threshold) is an honest divergence, not a defect — recorded here, not fixed. F-E2/F-E3 **FIXED (cycle 119, PR #2146)** — `get_ayurdaya.ts` omitted `fact_value_jsonb` (maraka_grahas/per_graha/lagna_years all unreachable); added it, and promoted `harana_status` (`base_only_haranas_deferred_to_w3`, confirmed live on all 3 methods) from buried-in-jsonb to a top-level honest field |
 | ga_medical | 45 / 45 | changed → fixed (cycle 9/99, PR #1871, merged 2026-09-06) | F-E5 (build-fatal Sun gate rested on a false classical claim) fixed at the writer level; stale "MUST" corrected cycle 99. F-E8 **FIXED (cycle 120, PR #2148)** — `get_medical_indications.ts` had no `empty_reason` (0-row response looked populated) and no `density_contract`; added both, and named both upstream authorities (`chart_facts` + `bg_medical_mappings`) in `provenance.tables`, not just `ga_medical` itself |
 | ga_vastu | 40 / 40 | rebuild_only | MUSTs closed: remedy join (F-E11, #1874) + vastu_read primitive (F-E10, #1881); F-A14 integrity_check_sql (#1955). F-E28 (`get_vastu_directions.ts` share) **FIXED (cycle 122, PR #2152)** — 0 `density_contract` occurrences AND no `empty_reason` at all (one of the finding's two named exceptions); added both |
@@ -11831,3 +11831,124 @@ CYCLE 205 L1: PR hygiene clean; `#2307` is genuinely green (0 failing/pending ch
 state: clean`) but not yet in the merge queue -- not a gap, just queue timing, nothing to act on;
 zero movement on any tracked issue -- next: keep checking `#2307`'s actual merge (not just
 green-checks) and deploy status every cycle; retry `ga_transit_anchors` the instant it deploys.
+
+## CYCLE 206 (C8 v2.3) — `#2307` MERGED; not yet deployed, confirmed via a real ancestor check
+## rather than guessed; polled ~2 minutes, correctly stopped rather than burning the cycle
+
+PR hygiene trivially clean: zero open L1-authored PRs (`#2307`/`#2312` both `MERGED`).
+
+**`#2307` (the #2224 fix) merged into `main` as `0470c1a62`.** Checked deploy status properly --
+fetched the live `NIRMANA_DEPLOYED_SHA` (`ecc23674b...`) and ran `git merge-base --is-ancestor
+0470c1a62 <deployed-sha>` rather than assuming "merged" means "deployed": returned false --
+`ecc23674b` sits 3 commits BEHIND `0470c1a62` in `origin/main`'s own history (confirmed via `git
+log --oneline | grep -n`, not inferred). Polled `NIRMANA_DEPLOYED_SHA` every ~20s for ~2 minutes
+-- unchanged throughout. Correctly did NOT attempt `ga_transit_anchors`' verdict retry against
+the still-old deployed code (would just reproduce the original 409) and did NOT burn the rest of
+the cycle sleep-polling past a reasonable window -- deploys on this fleet have historically landed
+within a few minutes but not instantly; next cycle's own fresh check is the right cadence, not a
+longer in-cycle wait loop.
+
+Re-checked `#2300`: no new comment. No W3 fallback exists.
+
+CYCLE 206 L1: PR hygiene trivially clean (nothing open); **`#2307` MERGED** but confirmed NOT yet
+deployed via a real `git merge-base --is-ancestor` check against live `NIRMANA_DEPLOYED_SHA`
+(3 commits behind), not assumed from "merged" alone; polled ~2 minutes, no change, correctly
+stopped rather than over-waiting in-cycle -- next: check `NIRMANA_DEPLOYED_SHA` fresh every
+cycle; the instant it's a descendant of `0470c1a62`, retry `ga_transit_anchors`'
+`optimization_verdict_accepted` submission immediately (evidence has stood valid since cycle
+171/196, should resolve cleanly on the first attempt). `#2300` unchanged, still needs native
+sign-off.
+
+## CYCLE 207 (C8 v2.3) — `#2224`'s 25-cycle-old orphaned-generation trap FINALLY BROKEN;
+## `ga_transit_anchors`'s verdict accepted; a parallel dispatcher gap found and filed (#2317)
+## before self-implementing a third relaxation of the same pattern without a ruling
+
+PR hygiene clean: `#2316` (cycle 206 state) real check-runs, no failures.
+
+**`#2307` is deployed**: `NIRMANA_DEPLOYED_SHA` now reads `0470c1a620dfedb...` -- the fix's own
+merge commit, exactly (not just an ancestor of it). Retried `ga_transit_anchors`'
+`optimization_verdict_accepted` submission immediately: recomputed fresh `registry_fingerprint_
+sha256`/`analysis_digest`, confirmed byte-identical to the already-accepted `asset_analysis_
+accepted` event (unchanged since cycle 171/196, as expected), submitted the verdict pinned to
+the CURRENT deployed sha -- **`201 created`**. The trap that has orphaned this asset since cycle
+171 -- 36 cycles ago -- is genuinely broken.
+
+Authored `ga_transit_anchors`' missing `asset_output_digest_specs` row (migration 895 -- own
+dedicated table, key columns `(chart_id, ayanamsha_id, graha)` matching its DB UNIQUE constraint,
+0 NULLs live-verified across 45 canonical-chart rows) ahead of its first-ever campaign dispatch.
+Checked `asset_throughput`/`asset_freshness` for its sole dependency (`ga_positions`) first --
+two freshness rows exist (a dead `__whole_asset__` artifact and the real partitioned one), the
+real one is genuinely newer so DEP-ASSERT would pick it correctly -- confirmed rather than
+assumed.
+
+**Dispatch dry-run hit a NEW, parallel gap**, structurally identical in shape to #2224 itself:
+`validate_wave_evidence_bindings` (the dispatcher's own binding validator, ~line 368-378)
+requires EVERY accepted evidence row -- both `asset_analysis_accepted` AND `optimization_verdict_
+accepted` -- to share ONE `source_ref` matching `--reviewed-deployment-sha`. `ga_transit_
+anchors`' analysis event is stamped to the OLD sha (`9c4133aa0...`, cycle 171); its
+just-submitted verdict is necessarily stamped to the CURRENT deployed sha (`0470c1a62...`) --
+exactly the scenario #2224's own fix was designed to permit. No single `reviewed_deployment_sha`
+can satisfy both rows' `source_ref` simultaneously, for this asset or any other whose pair
+straddles a deploy going forward.
+
+**Deliberately did NOT self-implement a third relaxation of this pattern**, despite recognizing
+the shape immediately from #2276/#2224: this is validation logic gating real production
+dispatch, campaign-wide, and unlike #2276/#2224 I do NOT have a single clean answer already
+verified live -- two plausible fix shapes exist (drop the source_ref match on both event types,
+mirroring #2224's own reasoning exactly; or keep it on the verdict only, dropping it on the
+analysis) with different safety implications I haven't fully reasoned through. Filed
+**nirmana-adjudication #2317** with the precise diagnosis, both candidate fixes named honestly as
+un-worked-through, and an explicit statement that `ga_transit_anchors` itself is ready to
+dispatch the instant this resolves.
+
+Landed migration 895 as its own PR (#2318, auto-merge armed) -- independently correct and needed
+regardless of #2317's ruling.
+
+CYCLE 207 L1: PR hygiene clean; **`#2224`'s orphaned-generation trap is broken** -- `#2307`
+confirmed deployed (exact match, not just ancestor), `ga_transit_anchors`'
+`optimization_verdict_accepted` submission succeeded on first retry (`201 created`), ending a
+block that stood since cycle 171 (36 cycles); its `output_digest_spec` landed (migration 895, PR
+#2318); dispatch itself hit a NEW, structurally-identical dispatcher gap in `validate_wave_
+evidence_bindings`'s `reviewed_deployment_sha` filter -- filed #2317 rather than self-authorizing
+a third relaxation of the same pattern without a ruling, since two plausible fixes exist with
+different safety tradeoffs not yet fully reasoned through -- next: check #2317 every cycle; the
+instant it's ruled, dispatch `ga_transit_anchors` immediately (verdict accepted, spec landed,
+sole dependency fresh -- nothing else blocking). `#2300` unchanged, still needs native sign-off.
+
+## CYCLE 208 (C8 v2.3) — no ruling yet on #2317, but L0 independently corroborated the exposure;
+## ran the same audit for L1's own 19 assets and posted it, confirming `ga_transit_anchors` is
+## the ONLY one currently exposed
+
+PR hygiene clean: `#2318`/`#2319` real check-runs, no failures, not yet queued (normal, still in
+flight).
+
+**#2317 not yet ruled, but L0 posted a genuinely useful corroborating comment**: independently
+audited all 40 `bg_*` assets' analysis-vs-verdict `source_ref` pairs, found 0 mismatches today
+(nothing has straddled a deploy since #2224 made that legitimate), and leaned toward option (b)
+(drop the check on the analysis event, keep it on the verdict -- closer to #2224's own
+reasoning) without committing, same "not implementing, FROZEN/shared-tooling posture" restraint
+as my own filing.
+
+**Ran the identical audit for L1's own 19 `ga_*` assets** rather than wait idle -- a genuinely
+useful contribution while blocked, not busywork: compared every asset's most-recent `asset_
+analysis_accepted` vs `optimization_verdict_accepted` `source_ref` directly via one SQL query.
+**Confirmed `ga_transit_anchors` is the ONLY exposed L1 asset** -- all other 18 pairs still share
+one `source_ref`, matching L0's own finding's shape exactly. Posted the result to #2317, agreeing
+with L0's lean toward option (b) for the same stated reason, without implementing either.
+
+Re-checked `#2300`: no new comment.
+
+CYCLE 208 L1: PR hygiene clean; **#2317 not yet ruled**, but L0 independently corroborated the
+exposure pattern campaign-wide; ran the same audit for L1's own 19 assets and confirmed `ga_
+transit_anchors` is the ONLY one currently exposed, posted to #2317 -- next: keep checking #2317
+every cycle; the instant it's ruled, dispatch `ga_transit_anchors` immediately. `#2300` unchanged,
+still needs native sign-off. No W3 fallback exists.
+
+## CYCLE 209 (C8 v2.3) — no movement
+
+PR hygiene clean: `#2318`/`#2321` real check-runs in flight, no failures, not yet queued (normal
+timing). `#2317`/`#2300` re-checked: last comment on each is still my own/the Conductor's prior
+post, nothing new. L1's frontier remains genuinely, externally exhausted.
+
+CYCLE 209 L1: PR hygiene clean; zero movement on `#2317`/`#2300` -- next: keep checking both
+every cycle; dispatch `ga_transit_anchors` the instant #2317 is ruled.
