@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:12:50Z` — cycle 944: **IDLE-OK, Δfrozen +0.** `ga_sensitive_degree` mid-W4
+  (`implementation_accepted`). L2/L3 still no dispatch yet. Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:10:27Z` — cycle 943: **IDLE-OK, Δfrozen +0.** L1 dispatched `ga_sensitive_degree`
   (1 slot active). L2 hasn't reacted to the migration-980 correction yet — only ~3 min old.
   Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
