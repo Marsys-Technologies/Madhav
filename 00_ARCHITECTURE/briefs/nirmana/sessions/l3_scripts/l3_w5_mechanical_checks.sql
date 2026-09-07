@@ -28,7 +28,7 @@
 --   10 of 12 gates PASS. 2 FAIL, both on real corruption — the C12 rewrite-floor test
 --   passing on the corruption that actually exists:
 --     C1a predicates resolve   FAIL — TRUE POSITIVE FOUND BY THIS FILE'S FIRST RUN
---         (F-L3-15): 49,775 predicate rows already dangle against bodha_msr_signals.
+--         (F-L3-16): 49,775 predicate rows already dangle against bodha_msr_signals.
 --         49,730 on cb73cd3d (folds into #1793's known damage) — and 45 on the CANONICAL
 --         chart 482012f1, all signature_class=CLASSIFY_RESIDUAL, all bound 2026-08-12:
 --         a post-8/12 deletion of CLASSIFY_RESIDUAL signals cascaded away their

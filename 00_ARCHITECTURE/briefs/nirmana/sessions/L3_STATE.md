@@ -120,8 +120,9 @@ Concordance Contract), N2–N12.
   with the FK-less predicate table intact). Filed **#1793** asking for that chart's formal
   disposition, because floors, volume derivations and contracts across every layer all depend on
   whether it is a peer — and a layer session should not settle that alone.
-- **F-L3-15 (cascade damage is ACTIVE, not hypothetical — found by the W5 mechanical checks'
-  first live run, 2026-09-07).** `l3_scripts/l3_w5_mechanical_checks.sql` C1a: **49,775
+- **F-L3-16 (cascade damage is ACTIVE, not hypothetical — found by the W5 mechanical checks'
+  first live run, 2026-09-07; initially misnumbered F-L3-15, which was already assigned to the
+  service-asset health_probes finding — renumbered before merge, same cycle arc).** `l3_scripts/l3_w5_mechanical_checks.sql` C1a: **49,775
   `kala_activation_predicates` rows already dangle** against `bodha_msr_signals` (the FK-less
   edge F-L3-12 warned about). 49,730 are on `cb73cd3d` (consistent with #1793's known damage —
   its MSR signals were partially deleted, cascading its activations to the 0.021 ratio and
@@ -510,6 +511,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~543:0xZ — L3-W4/C8.5 — ledger-integrity fix on my own open PR
+  (`#2382`, checks were still pre-queue, auto-merge armed): last cycle's new
+  finding was misnumbered **F-L3-15**, a number already assigned to the
+  service-asset health_probes finding (8+ prior references in this file) —
+  a GA.1-class registry disagreement caught before it reached `main`.
+  Renumbered to **F-L3-16** in all three places (ledger entry, heartbeat ~542,
+  SQL header) and pushed to the same branch. PR hygiene this cycle: `#2382`
+  pre-queue checks in flight, nothing red, armed — nothing to fix. — blocked
+  on: `#2382` clearing checks/queue; next action: verify `is:queued`, then
+  C8.5 prep item 2 (W6 close-report draft) as the next real unit.
 - `2026-09-07T~542:0xZ — L3-W4/C8.5 — REAL WORK UNIT (new supervisor discipline
   absorbed: no more `*-heartbeat*` branches ever; idle = zero git writes; state
   rides real PRs only). PR hygiene: `#2378` verified `is:queued` ✓ (position 1,
@@ -521,7 +532,7 @@ your layer close.
   regression guard, P7 outcome seam, ka_kshetra FK-less family, F-KALA-1 ranking
   keys, spine closure, archive pins, staging, vacuity). RAN IT LIVE (read-only):
   10/12 PASS, C2 red as expected (#1793), and **C1a red as a NEW true positive —
-  F-L3-15: 49,775 predicate rows ALREADY dangle** (49,730 on cb73cd3d, 45 on the
+  F-L3-16: 49,775 predicate rows ALREADY dangle** (49,730 on cb73cd3d, 45 on the
   canonical chart, all CLASSIFY_RESIDUAL/2026-08-12; activation −360 and
   obstruction −3 vs F-L3-12's counts confirm the cascade has fired since). Finding
   recorded in the ledger above. Shipped both reds honest, headers record the real
