@@ -1308,6 +1308,17 @@ async function requireAcceptedOptimizationVerdictProvenance(
   if (payload.data.analysis_digest !== current.analysisDigest) {
     throw new NirmanaElevationEvidenceValidationError('optimization_verdict_accepted analysis digest does not match the canonical deployed analysis receipt.')
   }
+  // Adjudication #2224 (ruled 2026-09-07): matching ONLY on the generation-binding
+  // fields (registry_fingerprint_sha256, analysis_digest) -- an additional
+  // `source_ref = <this verdict's own source_ref>` requirement here is redundant
+  // (the generation binding already pins "this verdict is about that exact
+  // analysis") and permanently deadlocks any asset whose analysis+verdict
+  // straddle a deploy: the analysis is accepted under the deploy SHA current
+  // at that moment, the verdict must be accepted under the CURRENT (later)
+  // deploy SHA per assertNirmanaGitCommitMatchesDeployment above, so requiring
+  // them to share one source_ref makes the pair structurally unsatisfiable the
+  // instant the fleet deploys between the two calls -- not an edge case on a
+  // fleet that deploys every few minutes.
   const accepted = await client.query<{ accepted_count: number }>(
     `SELECT count(*)::int AS accepted_count
        FROM nirmana_evidence.nirmana_elevation_campaign_events
@@ -1320,11 +1331,10 @@ async function requireAcceptedOptimizationVerdictProvenance(
         AND evidence_payload = jsonb_build_object(
           'registry_fingerprint_sha256', $5::text,
           'analysis_digest', $6::text)
-        AND source_kind = 'git_commit'
-        AND source_ref = $7`,
+        AND source_kind = 'git_commit'`,
     [
       input.campaign_id, input.definition_revision, input.entity_id, input.layer,
-      current.registryFingerprint, current.analysisDigest, input.source_ref,
+      current.registryFingerprint, current.analysisDigest,
     ],
   )
   if ((accepted.rows[0]?.accepted_count ?? 0) > 1) {

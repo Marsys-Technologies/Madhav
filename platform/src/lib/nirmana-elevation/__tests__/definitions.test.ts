@@ -1562,6 +1562,58 @@ it('atomically supersedes the exact current frozen definition with the server-de
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes("event_type = 'asset_analysis_accepted'"))).toBe(true)
   })
 
+  acceptedReceiptIt('accepts an optimization verdict whose source_ref differs from the accepted analysis event it binds (adjudication #2224)', async () => {
+    // Regression for the orphaned-generation deadlock: an asset_analysis_accepted
+    // event accepted under an earlier deployed commit, followed by this fleet
+    // deploying again before the matching optimization_verdict_accepted call --
+    // a routine timing gap on a fleet that deploys every few minutes, not an edge
+    // case. The verdict's own source_ref must match the CURRENT deployment
+    // (assertNirmanaGitCommitMatchesDeployment, exercised separately above), which
+    // is necessarily different from the analysis event's now-stale source_ref.
+    // Before the #2224 fix, matching on source_ref here made this combination
+    // permanently unsatisfiable for the generation. The fix drops that
+    // requirement; only the generation-binding fields (registry_fingerprint_sha256,
+    // analysis_digest) govern.
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const analysisSourceRef = `git:${'b'.repeat(40)}`
+    const verdictSourceRef = `git:${'a'.repeat(40)}`
+    expect(analysisSourceRef).not.toBe(verdictSourceRef)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string, params: unknown[]) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        // Faithful to the live query: no source_ref bind param, and the mock's
+        // own accepted row is deliberately stamped with a DIFFERENT source_ref
+        // than this verdict's own -- proving the match is on the generation
+        // fields alone, not incidentally still gated on source_ref equality.
+        expect(params).not.toContain(verdictSourceRef)
+        expect(statement).not.toMatch(/source_ref\s*=\s*\$7/)
+        return Promise.resolve({ rows: [{ accepted_count: 1 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:cross-deploy',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: verdictSourceRef,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+  })
+
   acceptedReceiptIt('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
     const currentRegistryRow = registryRowsFor(manifest)[0]
     const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
