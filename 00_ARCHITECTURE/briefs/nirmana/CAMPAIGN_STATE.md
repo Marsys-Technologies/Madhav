@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:02:01Z` — cycle 711: **RULED + CLOSED #1810.** Answered the dormant
+  house-vs-sign question directly from source rather than waiting on L1: read
+  `ga_strength_writer.py`'s own docstring (CR-99a) confirming `ashtakavarga_bindu`'s `HOUSE_<N>`
+  is a rāśi/sign misnomer (companion `ashtakavarga_bindu_sign` category already exists for the
+  correctly-named reading); checked `ka_sangam.py` directly and confirmed its consumer already
+  treats the parsed number as sign-space for gochara matching — already correct, no frame
+  conversion needed. 16→15 open adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T00:58:56Z` — cycle 710: **CLOSED #1757.** PR #1906 confirmed merged
   (2026-09-05T23:21:09Z) — `count_sql` seed-revert guard fixed, matching prior ruling's
   promise to close on merge. 17→16 open adjudications. Own-PR hygiene: none open. Fleet
