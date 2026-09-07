@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:32:26Z` — cycle 818: **IDLE-OK (verified).** #2228 waiting its turn as 3rd in
+  the same 3-PR queue batch. #2227's checks progressing (6 pending). Fleet DIRTY empty;
+  adjudications unchanged (11).
 - `2026-09-07T06:29:52Z` — cycle 817: **IDLE-OK (verified).** #2228 still queued (part of a
   3-PR batch: #2228/#2239/#2241). #2227's checks restarted again (~1min ago) — normal churn
   from an active queue continuously rebasing, not stuck. Fleet DIRTY empty; adjudications
