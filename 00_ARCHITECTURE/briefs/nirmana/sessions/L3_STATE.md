@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~321:0xZ — L3-W4 — PR hygiene: `#2251` genuinely
+  re-queued and confirmed, `AWAITING_CHECKS`, position 1 — its own
+  `merge_group` run has started again. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2251` finishing; next action: same.
 - `2026-09-07T~320:0xZ — L3-W4 — PR hygiene: `#2251` was found genuinely
   DEQUEUED this cycle (`isInMergeQueue: false`, no `mergeQueueEntry`,
   not merged) despite its own `merge_group` run having fully passed
