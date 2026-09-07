@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~482:0xZ — L3-W4 — PR hygiene: `#2330` still position
+  2, `AWAITING_CHECKS` — `#2328` (ahead) now ~10.4min queued, own
+  build still not visible. Approaching but not yet past the
+  previously observed ~11min self-resolving congestion window. No
+  new `origin/main` merges. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2328` clearing ahead of `#2330`; next action: same,
+  watch closely.
 - `2026-09-07T~481:0xZ — L3-W4 — PR hygiene: `#2330` still position
   2, `AWAITING_CHECKS` — `#2328` (ahead) queued ~8.4min, own build
   not yet visible, same recurring congestion pattern, not yet a
