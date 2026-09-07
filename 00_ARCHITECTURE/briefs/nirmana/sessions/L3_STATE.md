@@ -495,6 +495,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~157:0xZ — L3-W4 — PR hygiene: `#2197` checks running
+  pre-queue (~2.4min, 4 pending, nothing red), not yet queued — nothing
+  to fix. Re-ran `egate.sql`: unchanged, no new opening (`ga_positions`
+  still `OPEN-PENDING-PIN`). No new bounded work — F-L3-4 remains
+  exhausted (last cycle's findings-ledger sweep already confirmed
+  nothing else actionable) and this cycle's own state matches it
+  exactly. Recording an honest IDLE-OK. — blocked on: nothing new; next
+  action: push once `#2197` merges/finishes — that closes F-L3-4 in
+  full on `origin/main`.
 - `2026-09-07T~156:0xZ — L3-W3 — PR hygiene: `#2195` MERGED (squash
   `fc2ce2326`). Rebased the 9 not-yet-merged local commits (migrations
   866/867 + heartbeat, plus 7 pre-#2195 commits already absorbed into
