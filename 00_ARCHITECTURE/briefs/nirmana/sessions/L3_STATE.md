@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~175:0xZ — L3-W4 — PR hygiene: `#2203`'s last check
+  (`Governance Gates`) ~5.4min, within normal range, not yet queued. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK, unchanged.
+  — blocked on: nothing new; next action: push once `#2203`
+  merges/finishes.
 - `2026-09-07T~174:0xZ — L3-W4 — PR hygiene: `#2203` checks running
   pre-queue (~3min, 2 pending, nothing red), not yet queued — nothing
   to fix. No new `origin/main` merges relevant to L3, no new E-gate
