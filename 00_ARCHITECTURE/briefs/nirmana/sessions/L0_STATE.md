@@ -674,3 +674,17 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
+- 2026-09-07 — **Conductor broadcast (#2224/#1945): re-verify accepted-analysis freshness before any
+  wave-1 dispatch — measured 22/70 accepted analyses invalidated campaign-wide by ordinary W3 work
+  landing after acceptance, spanning `bg_*`/`ga_*`/`ka_*`. Acted on it for L0's own case, not just
+  noted.** `bg_cohort` is L0's only asset with standing W2 evidence not yet consumed by a freeze
+  (`asset_analysis_accepted`/`optimization_verdict_accepted`, both 2026-09-04T19:09:55Z,
+  `registry_fingerprint_sha256 = dbfd673c...`). Recomputed the live registry fingerprint using the
+  exact recipe Conductor named (`dispatch_nirmana_campaign_wave.py`'s `_live_registry_fingerprint` /
+  `_live_registry_contract` — asset_id + layer + sorted depends_on + the 14
+  `REGISTRY_CONTRACT_FIELDS`, stable-JSON sha256) against `bg_cohort`'s current live `asset_registry`
+  row, fetched fresh via direct `psql` (not assumed unchanged) and replicated byte-for-byte in Python
+  (not hand-derived) — **live fingerprint MATCHES the stored `dbfd673c...` exactly.** bg_cohort's W2
+  evidence is NOT stale; no re-stamp needed. Confirms bg_cohort remains genuinely dispatch-ready the
+  moment Conductor's C12 service-dependency carve-out lands — nothing else blocking it. Nothing
+  eligible to act on beyond this verification; `bg_cohort` carve-out file itself still untouched.
