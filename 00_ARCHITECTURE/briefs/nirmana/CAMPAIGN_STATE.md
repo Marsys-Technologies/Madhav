@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:51:47Z` — cycle 936: **IDLE-OK, Δfrozen +0.** Still no L2/L3 reply, ~7 min
+  since the sharp nudge. `ga_nakshatra` unchanged since last check. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:49:26Z` — cycle 935: **IDLE-OK, Δfrozen +0.** No reply on #1713 yet (~5 min
   since the evidence-backed nudge). `ga_nakshatra` unchanged since last check. Fleet DIRTY: same
   2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
