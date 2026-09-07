@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~325:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group` build still `in_progress`, `Unit Tests` PASSED this
+  time (confirms last cycle's flake diagnosis — no repeat failure),
+  only `Governance Gates` remains (~7.2min, within range). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing; next
+  action: same.
 - `2026-09-07T~324:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
   `merge_group` build still `in_progress` (~4.85min, within range,
   same run), `Unit Tests` still running with no failure. No new
