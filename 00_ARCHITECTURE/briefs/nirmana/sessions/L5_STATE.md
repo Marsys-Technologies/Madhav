@@ -457,6 +457,53 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T06:42Z (C8 v2.3 cycle 823) — **`#2241` MERGED — the forty-first state-recovery PR
+  closed out.** Forty-first recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, now 823). 10
+  local-only commits (cycles 812-822, single-file, pure additions) recovered via patch onto a
+  fresh `codex/nirmana-l5-heartbeat-recovery-41` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged since last check (`mi_bhara`/`mi_sankalpa`=22, rest 41-47).
+  Nothing eligible.
+- 2026-09-07T06:40Z (C8 v2.3 cycle 822) — **IDLE-OK, verified.** #2241 still OPEN/`is:queued`,
+  unchanged. E-gate re-run: `mi_bhara`/`mi_sankalpa` `unfrozen_ancestors` dropped 23→22 —
+  campaign-wide progress continues, but still non-zero, so still nothing eligible for L5. Main
+  tip unchanged.
+- 2026-09-07T06:38Z (C8 v2.3 cycle 821) — **IDLE-OK, verified.** #2241 still OPEN/`is:queued`,
+  `mergeStateStatus=UNKNOWN` (normal mid-queue). Main tip advanced to `7d3008f08` (#2239, L3's —
+  merged, out of scope). E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:36Z (C8 v2.3 cycle 820) — **IDLE-OK, verified.** #2241 still `is:queued`/CLEAN,
+  unchanged. #2242 (new) confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:34Z (C8 v2.3 cycle 819) — **IDLE-OK, verified.** #2241 unchanged for 3 cycles at
+  `is:queued`/CLEAN — checked `gh-readonly-queue/main/pr-2241-*` merge_group build directly:
+  genuinely IN_PROGRESS (2/3 runs SUCCESS), started 06:29:07Z — not a stall; batch
+  (#2239/#2228/#2241) all still building, no failures anywhere. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:32Z (C8 v2.3 cycle 818) — **IDLE-OK, verified.** #2241 still `is:queued`/CLEAN,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T06:30Z (C8 v2.3 cycle 817) — **IDLE-OK, verified.** #2241 now genuinely `is:queued`,
+  `mergeStateStatus=CLEAN`. #2239/#2228 confirmed L3's/L1's, out of scope. Main tip unchanged.
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:28Z (C8 v2.3 cycle 816) — **IDLE-OK, verified.** #2241's last check (Governance
+  Gates) ~10.8min elapsed, still within normal range, no failures. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:25Z (C8 v2.3 cycle 815) — **IDLE-OK, verified.** #2241's last check (Governance
+  Gates) ~8.4min elapsed, within normal range, no failures. Main tip unchanged. E-gate re-run:
+  all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:23Z (C8 v2.3 cycle 814) — **IDLE-OK, verified.** #2241 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T06:21Z (C8 v2.3 cycle 813) — **IDLE-OK, verified.** #2241 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. #2239 confirmed
+  L3's, out of scope. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged.
+  Nothing eligible.
+- 2026-09-07T06:19Z (C8 v2.3 cycle 812) — **IDLE-OK, verified.** #2241 (recovery #40) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 06:17:14Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. #2228
+  confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
 - 2026-09-07T06:16Z (C8 v2.3 cycle 811) — **`#2238` MERGED — the fortieth state-recovery PR
   closed out.** Fortieth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
