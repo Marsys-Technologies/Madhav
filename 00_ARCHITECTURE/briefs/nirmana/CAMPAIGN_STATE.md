@@ -381,6 +381,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:45:05Z` — cycle 723: **RULED #2180 (new blocker after wave 0 dispatch).** L1
+  dispatched wave 0 (`ga_positions`) successfully but hit a new wall: `freshness_state='unknown'`
+  even with a fresh receipt, blocking wave 1. Root-caused live via `provenance.py`: 7 L1 assets
+  share `target_table='chart_facts'` (`ga_positions`, `ga_ayurdaya`, `ga_nakshatra`,
+  `ga_panchanga`, `ga_sade_sati`, `ga_sensitive`, `ga_sensitive_degree`), none declares
+  `natural_key_partition`, so the co-writer gate correctly refuses `fresh`. Separately,
+  `output_digest_spec_unavailable` is the same D-CND-27 gap as #1840/#1945 recurring for
+  `ga_positions` + 3 L0 assets. Ruled: both are authorized registry-configuration fixes (L1's own
+  range for the 7 partition declarations + ga_positions' digest spec; L0's own range for the
+  other 3 digest specs) — not fabricating the actual partition values myself, that's each
+  writer's own domain knowledge to describe. Both are prerequisites for wave 1. Adjudication
+  count unchanged (10 open, #2180 stays open). Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:41:33Z` — cycle 722: **#1945 Lane D checked — also blocked, ordinary reason.**
   Live-compared GitHub main SHA (`3f435f5c...`) against `amjis-web`'s serving revision's
   `commit-sha` label (`7df69a64...`) — mismatch, `production_in_sync` false. Confirmed via
