@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:46:39Z` — cycle 823: **New fleet DIRTY spotted, not yet nudge-worthy.** #2244
+  (L1, `get_structural.ts` F-B32 slice 8) is CONFLICTING but only ~4min old — likely a normal
+  merge race in this busy period, watching next cycle before nudging (>2-cycle threshold not
+  yet met). #2227 still open, no queue yet. Adjudications unchanged (11).
 - `2026-09-07T06:44:15Z` — cycle 822: **IDLE-OK (verified).** #2227's Governance Gates check
   restarted again (~1min ago) — consistent with the now-understood pattern (9-10min check +
   repeated rebasing while waiting in a busy queue), not stuck. Fleet DIRTY empty; adjudications
