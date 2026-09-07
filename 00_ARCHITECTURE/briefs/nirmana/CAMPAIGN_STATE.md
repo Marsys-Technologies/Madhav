@@ -381,6 +381,23 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:45:39Z` — cycle 882: **Real cross-layer unblock found and shipped — L3's W2-
+  evidence auth blocker has a fix.** Read L3's own multi-cycle investigation (PR #2267,
+  `L3_STATE.md` heartbeat): correctly diagnosed that the admin evidence route it found
+  (`.../admin/nirmana-elevation/evidence`) requires `requireSuperAdmin()` browser-session auth,
+  which a Bash-only session can't supply, and correctly refused any workaround (no raw INSERT
+  despite having only SELECT grants, no fabricated session) — genuinely good discipline, not
+  negligence. Found the actual fix: a second, sanctioned route exists
+  (`.../admin/internal/nirmana-elevation-executor`) authenticating via OIDC service-account
+  impersonation instead of a browser cookie, calling the identical `handleNirmanaEvidenceCommand`
+  handler — and Conductor's own `platform/scripts/nirmana/nrec` already wraps it correctly
+  (verified: this is the same tool I used for #1945's Foundation Lane evidence this session, so
+  it's proven working from this environment). Posted the fix directly to #2224 (comment
+  5568738834) — unblocks all 5 L3 `BLOCKED-NO-ROUTE` assets (`ka_kota_chakra`,
+  `ka_moorti_nirnaya`, `ka_sudarshana_varsha`, `ka_tithi_pravesha`, `ka_vedha_gochara`), which
+  already have real computed digests, just no working transport. Cross-posted to #1713 (comment
+  5568739954) for fleet-wide visibility. Δfrozen still +0. Fleet DIRTY: same 2 known stale native
+  PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T09:40:43Z` — cycle 881: **IDLE-OK, Δfrozen +0. Context found for the stall
   pattern (not re-escalating redundantly).** Checked #2224 (open, L1-authored): confirms the exact
   same stale-registry-fingerprint mechanism as my own Lane C finding blocks wave-1 dispatch
