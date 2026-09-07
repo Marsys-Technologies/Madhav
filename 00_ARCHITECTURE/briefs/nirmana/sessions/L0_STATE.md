@@ -735,3 +735,23 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   are genuinely green (`gh pr checks` — 20+ passing, rest benign `skipping`, nothing red/pending) —
   it's just waiting its turn in the shared queue, not stalled. Not mine to rush (Conductor's PR).
   Nothing eligible.
+- 2026-09-07 — **PR #2234 (D-NATIVE-07) CONFIRMED MERGED — but a stale `gh pr view` call initially
+  said otherwise; caught it via direct GraphQL, not trusted blindly.** `gh pr view 2234` reported
+  `mergedAt: null, state: OPEN` across several cycles; a direct `gh api graphql` query against the
+  PR's own `mergeQueueEntry`/`state` fields revealed `state: MERGED` — confirmed via a second,
+  independent `gh pr view` call afterward (`mergedAt: 2026-09-07T05:41:20Z`, merge commit
+  `fd64055ee...`), and via `git merge-base --is-ancestor` against `origin/main`. **Exactly the
+  "is:queued is the only truth, don't trust a single stale read" discipline, one layer deeper — even
+  a direct PR-state read can be stale; cross-check with a second, independent method before acting.**
+  Then checked the ACTUAL deployed pipeline-job image directly (`gcloud run jobs describe
+  brahma-build-pipeline-job`) rather than assuming merged=deployed: the live image
+  (`7f87adc13d6...`) does NOT include the fix — confirmed via `git merge-base --is-ancestor` returning
+  false. **Did not dispatch `bg_cohort` against stale code** (would have hit the exact same wall
+  again, wasting a real production dispatch). Instead used the same safe, intended
+  `workflow_dispatch` escape hatch as the earlier #2153 deploy-gap (`force_all_services: true`,
+  `ci_gate: require-ci-green` — CI already passed on this exact commit as part of the PR itself): run
+  `34087944016`, targeting `46f7b7257` (current main tip, confirmed to include `fd64055ee` as an
+  ancestor), dispatched and spinning up as of this heartbeat. NEXT: verify this deploy completes and
+  the pipeline-job image genuinely updates (direct `gcloud` check, not the workflow's own conclusion
+  alone); only THEN re-dispatch `bg_cohort` under the normal executor/verifier-SA identity-separated
+  path to take L0 to 40/40 — the exact handoff #2234's own test plan names.
