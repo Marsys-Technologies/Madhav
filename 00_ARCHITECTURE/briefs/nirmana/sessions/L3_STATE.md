@@ -511,6 +511,19 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~544:0xZ — L3-W4/C8.5 — prep item 2: drafted
+  **`L3_W6_CLOSE_REPORT_v1_0.md` (1.0-DRAFT SCAFFOLD)** following L4's proven
+  pattern — 7 sections filled entirely from this file's verified record (routes
+  23/23, the 2 real freezes with their D-CND-35 annotations, W3 highlights, W5
+  instruments incl. the F-L3-16 first-run result, the 5 named W6 blockers, 7
+  backlog items, cost actuals). Chained onto `#2382`'s branch deliberately — a
+  second main-based PR would hit the same queue-squash DIRTY trap that bit
+  `#2382`'s first push (decide-and-log; costs one check-restart, avoids a
+  guaranteed rebase). PR hygiene: `#2382` pre-queue checks in flight, nothing
+  red, armed. **C8.5 prep is now EXHAUSTED (both items done: W5 script + W6
+  draft)** — future gated cycles idle quietly per the supervisor discipline.
+  — blocked on: `#2382` clearing; next action: verify `is:queued`; then idle
+  unless the E-gate/adjudication answers open something.
 - `2026-09-07T~543:0xZ — L3-W4/C8.5 — ledger-integrity fix on my own open PR
   (`#2382`, checks were still pre-queue, auto-merge armed): last cycle's new
   finding was misnumbered **F-L3-15**, a number already assigned to the
