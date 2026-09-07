@@ -495,6 +495,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~265:0xZ — L3-W4 — PR hygiene: `#2233` still position 2,
+  own `merge_group` fully green, unchanged for two cycles despite
+  completion — investigated why: queried the live queue directly
+  (`is:pr is:open is:queued`) and found position 1 is a DIFFERENT PR
+  (`#2234`, orchestrator fix, not mine), itself still
+  `AWAITING_CHECKS` — `#2233` is correctly waiting its turn behind a
+  genuinely-still-building PR, not stuck. Not this session's PR to
+  act on. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2234` (ahead in queue) finishing, then `#2233`; next action: same.
 - `2026-09-07T~264:0xZ — L3-W4 — PR hygiene: `#2233`'s own `merge_group`
   run fully `completed`, all 15 jobs `success` — still position 2,
   `AWAITING_CHECKS`, waiting for its queue turn (position 1's merge
