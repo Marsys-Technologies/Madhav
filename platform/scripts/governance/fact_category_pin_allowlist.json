@@ -289,7 +289,7 @@
     },
     {
       "file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
-      "line": 82,
+      "line": 88,
       "justification": "NEW file (cycle 103, F-B18/F-B19), audited before landing, not grandfathered. Mirrors get_positions.ts:157 / get_sensitive_points.ts:99's already-allowlisted shape exactly: a paginated multi-category SELECT (ORDER BY fact_category, ayanamsha_id, fact_subject, fact_key LIMIT $3 OFFSET $4) that intentionally serves ALL matching rows across 16 fact_categories — it never reduces to one row, so it cannot exhibit the shadbala MIN-across-incommensurable-units defect this guard's reduction rule targets. The scanner's LIMIT-detection cannot distinguish a real 'LIMIT 1' from a paginated 'LIMIT $3'; this is the same known false-positive shape as its two siblings, not a new one. Safety depends on the consumer keying rows by (fact_category, fact_subject, ayanamsha_id, fact_key) application-side, exactly as documented for the sibling entries."
     }
   ]
