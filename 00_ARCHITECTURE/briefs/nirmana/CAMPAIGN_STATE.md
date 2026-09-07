@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:18:14Z` — cycle 1007: **IDLE-OK, Δfrozen +0.** `bo_sudarshana`'s
+  `asset_freshness` still reads the pre-migration-896 `unknown` snapshot (12:26:58Z) — expected,
+  only ~4 min since the fix merged, needs a fresh reconciliation pass. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:15:38Z` — cycle 1006: **Two fixes merged since last check — #2291 and #2317
   both shipped.** PR #2328 (L2, `bo_sudarshana` output-digest spec, "fixes #2291 blocker",
   15:14:11Z) and PR #2327 (L1, "scope reviewed_deployment_sha check to verdict event only,
