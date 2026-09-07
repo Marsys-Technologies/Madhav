@@ -1,8 +1,9 @@
 /**
  * get_structural_signals.integration.test.ts — live-DB pin for
- * marsys://tool/L1/get_structural (F-B32 slice 8, cycle 181; +3 categories cycle 183).
+ * marsys://tool/L1/get_structural (F-B32 slice 8, cycle 181; +3 categories cycle 183;
+ * +tara_bala cycle 185, the F-B32 backlog's last remaining named category).
  *
- * These 18 fact_categories had no dedicated serving face at all before this tool -- pins that
+ * These 19 fact_categories had no dedicated serving face at all before this tool -- pins that
  * it actually returns real rows for the canonical chart, across the full category set and the
  * domain filter, so a future regression that silently drops a category or breaks the domain map
  * is caught here rather than rediscovered live.
@@ -82,6 +83,20 @@ describeIf('get_structural_signals (marsys://tool/L1/get_structural) — live DB
     expect(categoriesSeen.has('conjunction_special_point')).toBe(true)
     expect(categoriesSeen.has('contradiction_pair')).toBe(true)
     expect(categoriesSeen.has('panchadha_maitri')).toBe(true)
+  })
+
+  it('tara_bala (43 live rows, bare — distinct from graha_tara_bala) is reachable via an explicit categories filter', async () => {
+    const result = await getStructuralSignalsCapability.handler(
+      { chart_id: NATIVE_CHART_ID, categories: ['tara_bala'], limit: 2000 },
+      undefined,
+    )
+    expect(result.is_error).toBe(false)
+    const content = result.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows.length).toBeGreaterThan(0)
+    for (const r of rows) {
+      expect(r['fact_category']).toBe('tara_bala')
+    }
   })
 
   it('nakshatra_co_tenancy (1 live row) is reachable via the relational domain filter', async () => {

@@ -90,11 +90,16 @@
  * flag/reasons pair, not a position) and is not an upagraha, so it does NOT join that bundle.
  * Both were deliberately deferred across cycles 181-183 pending a careful pass on this
  * specific, higher-blast-radius file (frame-rebasing math, CR-50 discipline) rather than a
- * rushed addition riding along with an unrelated tool's fix. Bare `tara_bala`
- * (`ga_structural_writer.py`) remains the last open F-B32 category as of this PR — a separate
- * PR (not assumed merged here) closes it via `get_structural_signals.ts`. See
- * `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full, current account of every category's
- * disposition.
+ * rushed addition riding along with an unrelated tool's fix.
+ *
+ * **Bare `tara_bala` CLOSED cycle 185, the F-B32 backlog's last remaining named category**:
+ * its "no obvious existing-tool home" characterization was itself wrong — `ga_structural_
+ * writer.py`'s own `_build_nakshatra_relationship_rows` docstring says "Emit nakshatra_co_
+ * tenancy, tara_bala, nakshatra_lord_relationship," the SAME function already emitting two
+ * categories this tool has served since cycle 181. Added directly (43 live rows, single-writer,
+ * confirmed via the same function's own `_base_row("tara_bala", ...)` call site). **F-B32 is
+ * now FULLY CLOSED — 57/57 categories across 13 slices, 7 PRs.** See
+ * `L1_W6_CLOSE_REPORT_v1_0.md` §3.5/§5 for the full account.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -313,6 +318,7 @@ export const CHART_FACTS_CATEGORIES = [
   'tajik_hadda_lord',
   'tajik_triraashipathi',
   'tajik_vargottama_specific',
+  'tara_bala',
   'tara_bala_natal_baseline',
   'upagraha_position',
   'upapada_lagna',
@@ -674,6 +680,7 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   bhava_significance_link:           ['marsys://tool/L1/get_structural'],
   net_argala_per_varga:              ['marsys://tool/L1/get_structural'],
   panchadha_maitri:                  ['marsys://tool/L1/get_structural'],
+  tara_bala:                         ['marsys://tool/L1/get_structural'],
 } as const
 
 /** Additional non-chart_facts tables that need retrieval coverage */

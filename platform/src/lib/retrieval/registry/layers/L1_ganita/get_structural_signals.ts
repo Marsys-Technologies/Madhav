@@ -5,7 +5,7 @@
  *         graha_centrality, chart_cluster, chart_center_of_gravity, significator_path,
  *         aspect_received_by_special_point, nway_config_per_varga, graha_yuddha_per_varga,
  *         kendradhipati_dosha, bhava_significance_link, net_argala_per_varga,
- *         panchadha_maitri (18 fact_categories).
+ *         panchadha_maitri, tara_bala (bare) (19 fact_categories).
  * Tool: marsys://tool/L1/get_structural
  *
  * `ga_structural` is a large multi-hundred-category asset whose bulk is already served across
@@ -39,6 +39,15 @@
  * separate, deliberately-deferred unit (that file's frame-rebasing math and CR-50 discipline
  * warrant their own careful pass, not a rushed addition riding along with this one).
  *
+ * `tara_bala` (bare — distinct from the already-served `graha_tara_bala` sibling) closes the
+ * F-B32 backlog's last remaining named category (cycle 185): it was previously left open on the
+ * theory it had "no obvious existing-tool home," but `ga_structural_writer.py`'s own
+ * `_build_nakshatra_relationship_rows` docstring says "Emit nakshatra_co_tenancy, tara_bala,
+ * nakshatra_lord_relationship" — the SAME function that already emits two categories this tool
+ * has served since cycle 181. `tara_bala`'s own row construction (`_base_row("tara_bala",
+ * graha_subj, "tara_from_moon", ...)`) confirms it directly. 43 live rows for the canonical
+ * chart, single-writer, added to the `relational` domain alongside its two siblings.
+ *
  * Mirrors get_nakshatra.ts / get_sensitive_points.ts's shape for a similarly diverse
  * multi-category asset: a plain paginated flat-fact SELECT with category/domain filters, no
  * per-category business logic (none of these need one — `graha_yuddha_per_varga` in
@@ -56,12 +65,13 @@ const STRUCTURAL_SIGNAL_CATEGORIES = [
   'graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path',
   'aspect_received_by_special_point', 'nway_config_per_varga', 'graha_yuddha_per_varga',
   'kendradhipati_dosha', 'bhava_significance_link', 'net_argala_per_varga', 'panchadha_maitri',
+  'tara_bala',
 ]
 
 const DOMAIN_MAP: Record<string, string[]> = {
   relational: ['sambandha_grade', 'virupa_drishti', 'contradiction_pair', 'conjunction_special_point',
     'nakshatra_dispositor_chain', 'nakshatra_lord_relationship', 'nakshatra_co_tenancy',
-    'bhava_significance_link', 'panchadha_maitri'],
+    'bhava_significance_link', 'panchadha_maitri', 'tara_bala'],
   graph: ['graha_centrality', 'chart_cluster', 'chart_center_of_gravity', 'significator_path'],
   special_point: ['aspect_received_by_special_point'],
   per_varga: ['nway_config_per_varga', 'graha_yuddha_per_varga', 'net_argala_per_varga'],
@@ -79,11 +89,13 @@ export const getStructuralSignalsCapability: CapabilityDescriptor = {
     'special-point pairs, nakshatra dispositor-chain/lord-relationship/co-tenancy relations, ' +
     'chart-graph metrics (centrality, clustering, center-of-gravity, significator path), ' +
     'per-varga n-way configuration, net argala, and graha-yuddha, kendradhipati dosha flags, ' +
-    'bhava-significance links (lord placement/aspect per varga), and panchadha (five-fold) ' +
-    'compound graha-relationship. Does NOT ' +
+    'bhava-significance links (lord placement/aspect per varga), panchadha (five-fold) ' +
+    'compound graha-relationship, and tara bala (each graha\'s tara count/name from the Moon\'s ' +
+    'own nakshatra — distinct from the per-graha graha_tara_bala served by get_nakshatra.ts). ' +
+    'Does NOT ' +
     'cover ga_structural categories already served by get_yoga_dosha/get_dispositors/' +
     'get_bhava_bala/get_karakas/get_kp_cusps or register_d8_assess_domain — this tool is the ' +
-    'residual-coverage complement to those. Covers 18 fact_categories.',
+    'residual-coverage complement to those. Covers 19 fact_categories.',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
