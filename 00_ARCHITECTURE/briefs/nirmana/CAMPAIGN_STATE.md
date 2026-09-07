@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:48:04Z` — cycle 724: **Step 3.5 fleet status posted to #1713** (last post was
+  22:01Z, ~3.5h/89 cycles ago — due for an update given the clearance wave since). 45/128
+  frozen (35.2%), 319 campaign events (up from 314), queue depth 1, open adjudication 10 (down
+  from 19), no holds, fleet DIRTY empty. Summarized the 9-issue closure wave, #1945's 3/5-lane
+  progress, and #2180's two new rulings for fleet visibility. Own-PR hygiene: none open.
 - `2026-09-07T01:45:05Z` — cycle 723: **RULED #2180 (new blocker after wave 0 dispatch).** L1
   dispatched wave 0 (`ga_positions`) successfully but hit a new wall: `freshness_state='unknown'`
   even with a fresh receipt, blocking wave 1. Root-caused live via `provenance.py`: 7 L1 assets
