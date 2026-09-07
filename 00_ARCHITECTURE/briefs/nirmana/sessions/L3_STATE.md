@@ -495,6 +495,21 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~221:0xZ — L3-W4 — PR hygiene: `#2218` MERGED. Rebased
+  the 23 not-yet-merged local heartbeat commits onto fresh
+  `origin/main`. Hit the standard empty-theirs prepend-conflict
+  pattern 9x (auto-resolved via the marker-strip loop, each verified
+  empty-theirs before stripping). Verified zero conflict markers
+  remain; rebased diff vs `origin/main` is `L3_STATE.md`-only. Renamed
+  branch to `codex/nirmana-l3-heartbeat-idle-8`, pushed, opened PR
+  `#2222`, armed auto-merge (confirmed via GraphQL
+  `autoMergeRequest.enabledAt` set). Re-ran `egate.sql` live: despite
+  all 7/7 `natural_key_partition` components now authored,
+  `ga_positions` still `OPEN-PENDING-PIN` — the pin/freeze itself has
+  not fired yet. `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2222` clearing
+  checks/queue; next action: same monitoring cadence, watch closely
+  for the freeze.
 - `2026-09-07T~220:0xZ — L3-W4 — PR hygiene: `#2218` advanced to
   position 2, `AWAITING_CHECKS`, own `merge_group` ~9.4min in
   (`mergeStateStatus` briefly `UNKNOWN`, normal async lag, confirmed
