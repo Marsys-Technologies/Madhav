@@ -497,6 +497,101 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~510:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  1, `AWAITING_CHECKS` — same run, now ~10.6min, at the upper edge
+  of the confirmed normal range, still on the same `pytest` step,
+  genuine progress not a stall. No new `origin/main` merges.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~509:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.5min, within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2347` finishing;
+  next action: same.
+- `2026-09-07T~508:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6.4min, within normal range). No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2347` finishing;
+  next action: same.
+- `2026-09-07T~507:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4.3min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges. IDLE-OK. —
+  blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~506:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
+  CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
+  `in_progress`. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~505:0xZ — L3-W4 — PR hygiene: `#2346` merged
+  (confirmed via `origin/main`, unrelated L2 PR, no L3 overlap) —
+  the `UNMERGEABLE` cascade fully self-resolved as diagnosed:
+  `#2347` is now genuinely `AWAITING_CHECKS`, position 1, nothing
+  ahead. `#2329` (which had shown `UNMERGEABLE` alongside `#2347`)
+  is no longer in the queue listing either. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~505:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  3, `UNMERGEABLE` (queue entry), unchanged. Root cause now clearer:
+  `#2346` (position 1, ahead) is `AWAITING_CHECKS`, ~10.4min queued,
+  own build not yet visible — this is the standard "strict"
+  merge-queue mechanic: entries behind an unresolved batch show
+  provisional `UNMERGEABLE` until the PR(s) ahead validate. Reads as
+  the same recurring runner-capacity congestion pattern, not a
+  distinct problem. No new `origin/main` merges. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2346` finishing/self-resolving;
+  next action: same, watch closely.
+- `2026-09-07T~503:0xZ — L3-W4 — PR hygiene: `#2347`'s
+  `mergeQueueEntry.state` shows `UNMERGEABLE` at position 3.
+  Investigated: this cascades from `#2329` (L1, position 2, ahead of
+  `#2347`) also showing `UNMERGEABLE` in the queue listing — but
+  `#2329`'s own PR-level status is `mergeable: MERGEABLE`,
+  `mergeStateStatus: CLEAN`. This reads as a merge-queue batch-
+  reprocessing artifact (transient state when an earlier queue
+  entry needs re-evaluation), not a genuine conflict — `#2347`'s own
+  `mergeStateStatus` is still `CLEAN` too. Not `#2347`'s own defect,
+  and `#2329` is not my PR to fix. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: queue reprocessing;
+  next action: same, watch for self-resolution or genuine RED.
+- `2026-09-07T~502:0xZ — L3-W4 — PR hygiene: `#2347`'s checks
+  finished (0 failures — the ~10.6min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 3 —
+  two unrelated PRs ahead (`#2346` L2, `#2329` L1), both still
+  `AWAITING_CHECKS`, normal congestion. No new `origin/main` merges.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2346`/`#2329`
+  clearing ahead of `#2347`; next action: same.
+- `2026-09-07T~501:0xZ — L3-W4 — PR hygiene: `#2347`'s last check,
+  same run, now ~10.6min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~500:0xZ — L3-W4 — PR hygiene: `#2347`'s last check,
+  same run, now ~8.5min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. One new `origin/main` merge
+  (`#2344`, L5 heartbeat — no L3 overlap). No new E-gate opening.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
+- `2026-09-07T~499:0xZ — L3-W4 — PR hygiene: `#2347`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.4min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2347` finishing; next
+  action: same.
+- `2026-09-07T~498:0xZ — L3-W4 — PR hygiene: `#2347`'s pre-queue
+  check run in progress (~4.3min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2347` finishing; next action: same.
+- `2026-09-07T~497:0xZ — L3-W4 — PR hygiene: `#2347`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2347` clearing checks/queue; next action: same.
+- `2026-09-07T~496:0xZ — L3-W4 — PR hygiene: `#2339` confirmed
+  MERGED. Rebased 25 local commits onto fresh `origin/main`, 9
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-34`, pushed, opened
+  `#2347`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2347`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~495:0xZ — L3-W4 — PR hygiene: `#2339` still position
   1, `AWAITING_CHECKS` — same run, now ~10.7min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
