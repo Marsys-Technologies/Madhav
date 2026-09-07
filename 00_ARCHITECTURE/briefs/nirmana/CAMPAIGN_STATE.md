@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T16:39:02Z` — cycle 1040: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T16:36:41Z` — cycle 1039: **IDLE-OK, Δfrozen +0.** L2 back to heartbeat-only (no
   active #2258 step-2 PR yet). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
   open. Adjudications: 5 open.
