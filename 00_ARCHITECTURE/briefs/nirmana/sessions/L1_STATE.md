@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 151; shipped F-B32 slice 3/N (PR #2193): the get_nakshatra.ts cluster, 12 categories that had ZERO entries anywhere in coverage_matrix.ts despite the tool's own 16-category NAKSHATRA_CATEGORIES const. Caught and self-corrected a mid-cycle branch mistake (had started editing coverage_matrix.ts on the wrong branch, missing slices 1-2 -- discarded before committing, redid on the correct feature branch). 21/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 152; shipped F-B32 slice 4/N (PR #2193): special_lagna/upapada_lagna/sensitive_point_gulika_mandi (opt-in via get_sensitive_points.ts, corroborated by tool_name_bridge.ts's retired query_special_lagnas mapping) + sensitive_degree_check/sensitive_point_yogi (get_sensitive_degrees.ts, served unconditionally, no opt-in needed). Switched to the correct feature branch FIRST this time, learning from cycle 151's mistake. 26/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8455,3 +8455,32 @@ record — they are the only entries in this table with a real wall-clock behind
   reached a commit -- next: ~36 categories + 6 phantom entries + get_nakshatra.ts's own 3-category
   docstring overclaim remain; continue one verified cluster per cycle; keep re-checking
   #2113/#2180 every cycle regardless.
+- 2026-09-07T6xZ -- CYCLE 152 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  #2113/#2180: identical comment counts to cycle 151 -- still no reply.
+  Continued F-B32's incremental closure with slice 4, two sub-clusters. (1) `special_lagna`,
+  `upapada_lagna`, `sensitive_point_gulika_mandi`: not in `get_sensitive_points.ts`'s own
+  default `SP_CATEGORIES`, but its query is the same `fact_category = ANY($2)` pattern verified
+  every prior slice -- and this time found EXTRA corroboration beyond the generic pattern:
+  `tool_name_bridge.ts:87` explicitly maps a retired legacy tool name
+  (`query_special_lagnas`) onto this exact same URI, confirming `special_lagna`'s data was
+  deliberately folded into this tool rather than left orphaned when the old dedicated tool was
+  retired. (2) `sensitive_degree_check`, `sensitive_point_yogi`: `get_sensitive_degrees.ts`
+  (F-B14's own earlier fix) serves both UNCONDITIONALLY via a fixed `SERVED_FACT_CATEGORIES`
+  array with no caller override at all -- simpler than every prior slice's opt-in pattern, no
+  ambiguity to verify. Checked live row counts before adding all 5: special_lagna=245,
+  upapada_lagna=10, sensitive_point_gulika_mandi=70, sensitive_degree_check=275,
+  sensitive_point_yogi=60 -- all real, populated.
+  Learned from cycle 151's mistake: switched to the correct feature branch
+  (`codex/nirmana-l1-f-b32-avastha-per-varga`) FIRST this time, before touching
+  `coverage_matrix.ts`, and confirmed slices 1-3's content was present (`grep -c
+  graha_nakshatra_join` = 3) before editing further. Added both new sections (extending the
+  existing `get_sensitive_points` block, plus a new `get_sensitive_degrees` block), updated the
+  const array alphabetically, updated the header note. `tsc --noEmit` clean,
+  `coverage_gate.test.ts` 6/6 pass. Rebased onto origin/main (clean, 4 commits), checked
+  `is:queued` before pushing this time (not queued -- avoided last cycle's race), force-pushed,
+  updated the PR title/description to cover all four slices, re-queued, confirmed
+  `autoMergeRequest` armed. 26/57 categories now closed. CYCLE 152 L1: PR hygiene clean; shipped
+  F-B32 slice 4 (5 more categories, PR #2193) -- next: ~31 categories + 6 phantom entries +
+  get_nakshatra.ts's own 3-category docstring overclaim remain; continue one verified cluster
+  per cycle; keep re-checking #2113/#2180 every cycle regardless.
