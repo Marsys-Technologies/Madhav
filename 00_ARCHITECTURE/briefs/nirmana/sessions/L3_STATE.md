@@ -497,6 +497,56 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~461:0xZ — L3-W4 — PR hygiene: `#2313` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6.2min, within normal range). No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2313` finishing;
+  next action: same.
+- `2026-09-07T~460:0xZ — L3-W4 — PR hygiene: `#2313` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4min in, well within normal range, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2313` finishing; next action: same.
+- `2026-09-07T~459:0xZ — L3-W4 — PR hygiene: `#2313` still position
+  1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
+  CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
+  `in_progress`. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2313` finishing; next action: same.
+- `2026-09-07T~458:0xZ — L3-W4 — PR hygiene: `#2313`'s checks
+  finished (0 failures — the ~9min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1
+  (top of queue) — no PRs ahead. No new `origin/main` merges. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2313` finishing; next
+  action: same.
+- `2026-09-07T~457:0xZ — L3-W4 — PR hygiene: `#2313`'s last check,
+  same run, now ~8.3min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2313` finishing; next
+  action: same.
+- `2026-09-07T~456:0xZ — L3-W4 — PR hygiene: `#2313`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2313` finishing; next
+  action: same.
+- `2026-09-07T~455:0xZ — L3-W4 — PR hygiene: `#2313`'s pre-queue
+  check run in progress (~4.1min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2313` finishing; next action: same.
+- `2026-09-07T~454:0xZ — L3-W4 — PR hygiene: `#2313`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2313` clearing checks/queue; next action: same.
+- `2026-09-07T~453:0xZ — L3-W4 — PR hygiene: `#2310` confirmed
+  MERGED. Rebased 18 local commits onto fresh `origin/main`, 10
+  empty-theirs conflicts auto-resolved cleanly, zero markers left.
+  Renamed to `codex/nirmana-l3-heartbeat-idle-30`, pushed, opened
+  `#2313`, auto-merge armed (`BLOCKED`, own checks pending —
+  normal). No new E-gate opening this cycle. IDLE-OK. — blocked on:
+  `#2313`'s own checks completing; next action: same monitoring
+  cadence.
+
 - `2026-09-07T~452:0xZ — L3-W4 — PR hygiene: `#2310`'s last check,
   same run, now ~8.1min — within the confirmed ~11min normal range,
   still on the same `pytest` step. No new `origin/main` merges. No
