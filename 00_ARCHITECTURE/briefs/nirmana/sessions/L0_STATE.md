@@ -657,3 +657,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #1713's only new activity is Conductor flagging L2's
+  liveness (stalled/dead session concern), unrelated to L0. `bg_cohort` carve-out file still
+  untouched. Nothing eligible.
