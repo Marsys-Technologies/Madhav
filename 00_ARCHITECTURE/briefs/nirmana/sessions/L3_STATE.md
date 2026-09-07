@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~316:0xZ — L3-W4 — PR hygiene: `#2251`'s last check, same
+  run, now ~9.4min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. Two new
+  `origin/main` merges (an L5 heartbeat PR, and L1's
+  `get_structural_signals.ts` closing 3 more mischaracterized
+  categories — no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251` finishing; next action: same.
 - `2026-09-07T~315:0xZ — L3-W4 — PR hygiene: `#2251`'s last check
   (`Governance Gates`) ~7min, within normal range, `Unit Tests` now
   also passed. No new `origin/main` merges, `ga_positions` still
