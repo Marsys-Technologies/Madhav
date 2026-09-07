@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:01:20Z` — cycle 871: **IDLE-OK, `ga_dashas` mid-W4, Δfrozen +0.**
+  `implementation_accepted` fired for `ga_dashas` at 08:57:20; still short of
+  `accepted_rebuild_observed`/`integrity_verified`/`asset_frozen`. Normal pace, no escalation.
+  Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
+  (11).
 - `2026-09-07T08:59:04Z` — cycle 870: **Nudge worked — L1 dispatched `ga_dashas`.** New
   `build_run` (`83154aac...`, L1, `state='running'`) since the escalation, targeting `ga_dashas`
   from the frontier list. Δfrozen still +0 (build in flight, not complete). Other 15 frontier
