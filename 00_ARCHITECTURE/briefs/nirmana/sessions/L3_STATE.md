@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~254:0xZ — L3-W4 — PR hygiene: `#2231`'s `merge_group`
+  run fully `completed`, all 16 jobs `success` — but PR-level state
+  still `AWAITING_CHECKS`/`isInMergeQueue: true`/not-`merged`, the
+  same merge-queue-evaluation-lag pattern `#2225` showed. Not a stall.
+  No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2231`'s merge-queue evaluation catching up; next action: same,
+  expect merged status next cycle.
 - `2026-09-07T~253:0xZ — L3-W4 — PR hygiene: `#2231`'s last check, same
   run, now ~8.7min, within the confirmed ~11min normal range. No new
   `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
