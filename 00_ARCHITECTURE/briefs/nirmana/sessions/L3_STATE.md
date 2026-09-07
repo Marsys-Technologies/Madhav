@@ -497,6 +497,108 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~370:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
+  run, now ~11.4min — at the recurring edge-of-range pattern. Step-
+  level unchanged, no separate stall signal. No new `origin/main`
+  merges, `ga_positions` re-confirmed still frozen. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2270` finishing; next action:
+  same, expect resolution next cycle per precedent.
+- `2026-09-07T~369:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
+  run, now ~9.1min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` finishing; next
+  action: same.
+- `2026-09-07T~368:0xZ — L3-W4 — PR hygiene: `#2270` advanced to
+  position 1 (top of queue), own `merge_group` build still
+  `in_progress`, `Unit Tests` now passed, only `Governance Gates`
+  remains (~6.75min, within range, same run; `mergeStateStatus`
+  briefly `UNKNOWN`, normal async lag). One new `origin/main` merge
+  (an L5 heartbeat PR, no L3 overlap). `ga_positions` re-confirmed
+  still frozen. No new E-gate opening. IDLE-OK. — blocked on: `#2270`
+  finishing; next action: same.
+- `2026-09-07T~367:0xZ — L3-W4 — PR hygiene: `#2270` still position 2,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2270-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~4.5min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` finishing; next
+  action: same.
+- `2026-09-07T~366:0xZ — L3-W4 — PR hygiene: `#2270` still genuinely
+  queued, `mergeQueueEntry.state: AWAITING_CHECKS`, position 2 — its
+  own `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` re-confirmed still frozen. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2270` finishing; next action: same.
+- `2026-09-07T~365:0xZ — L3-W4 — PR hygiene: `#2270`'s checks finished
+  (0 failures), was genuinely CLEAN-but-unqueued
+  (`isInMergeQueue: false`). **New failure mode this cycle**: `gh pr
+  merge --auto[/--squash]` returned the usual merge-queue-strategy
+  message (or, once, no output at all) across 4 separate attempts,
+  each time re-verified via GraphQL still showing
+  `isInMergeQueue: false` — unlike every prior CLEAN-but-unqueued
+  case this session, where 1-3 `gh pr merge --auto` retries always
+  eventually engaged the queue. Checked for a genuine blocker first
+  (`mergeable: MERGEABLE`, `reviewDecision` empty, queue itself only
+  had 1 unrelated PR — no congestion, no branch-protection block
+  visible). Tried the direct GraphQL `enablePullRequestAutoMerge`
+  mutation — succeeded, confirmed `autoMergeRequest.enabledAt` was
+  already set, but still `isInMergeQueue: false`. **Root cause found
+  and fixed**: this repo apparently requires an EXPLICIT
+  `enqueuePullRequest` GraphQL mutation to actually add a
+  checks-passed, auto-merge-armed PR to the queue — enabling
+  auto-merge alone does not always auto-trigger enqueueing (this is
+  the first time in ~70+ cycles of this exact hygiene loop that the
+  normal `gh pr merge --auto` path didn't self-resolve within 1-3
+  tries, so noting the working alternative for future reference).
+  Called `enqueuePullRequest(input: {pullRequestId: ...})` directly —
+  succeeded immediately, confirmed genuinely `isInMergeQueue: true`,
+  `QUEUED`, position 2 via a fresh GraphQL query (not trusted from
+  the mutation response alone). No new `origin/main` merges,
+  `ga_positions` re-confirmed still frozen. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2270` finishing its queue turn; next
+  action: same, and remember the `enqueuePullRequest` mutation as a
+  fallback if `gh pr merge --auto` doesn't self-resolve again.
+- `2026-09-07T~364:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
+  run, now ~9.4min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` finishing; next
+  action: same.
+- `2026-09-07T~363:0xZ — L3-W4 — PR hygiene: `#2270`'s last check
+  (`Governance Gates`) ~7.05min, within normal range, `Unit Tests`
+  now also passed. No new `origin/main` merges, `ga_positions`
+  re-confirmed still frozen. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2270` finishing; next action: same.
+- `2026-09-07T~362:0xZ — L3-W4 — PR hygiene: `#2270`'s pre-queue check
+  run still `in_progress` (~4.75min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` finishing; next
+  action: same.
+- `2026-09-07T~361:0xZ — L3-W4 — PR hygiene: `#2270` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (an L2 heartbeat state PR, no L3
+  overlap). `ga_positions` re-confirmed still frozen. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2270` clearing checks/queue; next
+  action: same.
+- `2026-09-07T~360:0xZ — L3-W4 — PR hygiene: `#2267` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the ~11.1min edge-of-range
+  precedent held once again). Rebased the 18 not-yet-merged local
+  heartbeat commits onto fresh `origin/main`. Hit the standard
+  empty-theirs prepend-conflict pattern 4x (auto-resolved via the
+  marker-strip loop, each verified empty-theirs before stripping) —
+  several patches collapsed as already-applied duplicates during the
+  rebase (17→13 commits ahead, no data lost, verified zero conflict
+  markers + state-file-only diff). Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-21`, pushed, opened PR `#2270`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still frozen (absent
+  from blocked list), `ka_gochara_resonance` still correctly HELD. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2270` clearing
+  checks/queue; next action: same monitoring cadence.
 - `2026-09-07T~359:0xZ — L3-W4 — PR hygiene: `#2267`'s last check, same
   run, now ~11.1min — at the recurring edge-of-range pattern. Step-
   level unchanged, no separate stall signal. One new `origin/main`
