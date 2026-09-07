@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:46:52Z` — cycle 802: **Fleet sweep (Step 1.5) — nudged #2227/#2228.** Both
+  CLEAN-but-unqueued ~1h22m (first time nudged for either). Own-PR hygiene clean; adjudications
+  unchanged (11); fleet DIRTY empty otherwise.
 - `2026-09-07T05:44:07Z` — cycle 801: **D-NATIVE-07 CONFIRMED MERGED** (`fd64055ee`, PR #2234).
   Live-verified `bg_ephemeris_engine` already has the exact shape the fix targets (service,
   healthy, real stored `output_digest`) — no separate dependency fix needed first, since the fix
