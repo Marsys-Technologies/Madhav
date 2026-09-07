@@ -457,6 +457,49 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T01:16Z (C8 v2.3 cycle 685) — **`#2198` MERGED — the twenty-eighth state-recovery PR
+  closed out.** Twenty-eighth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, now 685). 9 local-only commits (cycles 676-684, single-file, pure additions)
+  recovered via patch onto a fresh `codex/nirmana-l5-heartbeat-recovery-28` branch off
+  `origin/main`. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T01:14Z (C8 v2.3 cycle 684) — **IDLE-OK, verified.** #2198's `gh-readonly-queue`
+  merge_group build (3 workflow runs) confirmed **success** at 01:05:06Z (~9min ago) — genuine
+  progress, not a stall, just normal queue-position processing delay before the actual merge
+  fires; still `is:queued`, still OPEN. Continuing to hold local commits (cycles 676-683, 8
+  commits) unpushed. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T01:11Z (C8 v2.3 cycle 683) — **IDLE-OK, verified.** #2198 all checks COMPLETED
+  SUCCESS (verified full `statusCheckRollup`, a few expected SKIPPED entries — MCP smoke/pointer
+  validation/DB-backed gates that only run under specific conditions), still `is:queued`, main
+  tip unchanged. Continuing to hold local commits (cycles 676-682, 7 commits) unpushed. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T01:09Z (C8 v2.3 cycle 682) — **IDLE-OK, verified.** #2198 still OPEN, still
+  `is:queued`. Main tip advanced to `f77fbbb84` (#2197, L3's — merged, out of scope). Continuing
+  to hold local commits (cycles 676-681, 6 commits) unpushed. E-gate re-run: all 11 remaining L5
+  assets unchanged. Nothing eligible.
+- 2026-09-07T01:07Z (C8 v2.3 cycle 681) — **IDLE-OK, verified.** #2198 still OPEN, still
+  `is:queued`, `mergeStateStatus=UNKNOWN` (normal mid-queue). Main tip advanced to `142b7bc5c`
+  (#2193, L1's — merged, out of scope, no effect on L5). Continuing to hold local commits
+  (cycles 676-680, 5 commits) unpushed. E-gate re-run: all 11 remaining L5 assets unchanged.
+  Nothing eligible.
+- 2026-09-07T01:05Z (C8 v2.3 cycle 680) — **IDLE-OK, verified.** #2198 now genuinely
+  **queued** (`is:queued author:@me` confirms it), main tip unchanged (`08748b54c`) so it hasn't
+  merged yet — continuing to hold local commits (cycles 676-679, 4 commits) unpushed to avoid
+  dequeuing. #2197 confirmed L3's, #2193 confirmed L1's, #2178 confirmed L1's — all out of scope.
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T01:03Z (C8 v2.3 cycle 679) — **IDLE-OK, verified.** #2198 still BLOCKED/OPEN, last
+  remaining check "Governance Gates" PENDING ~8.4 min elapsed (within normal 7-12min range, no
+  failures) — confirmed via `statusCheckRollup`. `is:queued author:@me` returned #2197 (L3's,
+  confirmed via title/branch, out of scope) and #2193 (not mine either) — neither is #2198, so
+  #2198 is not yet genuinely queued; continuing to hold cycles 676-678's local commits unpushed.
+  E-gate re-run: all 11 remaining L5 assets unchanged (`w2_verdict='f'`, same ancestor counts:
+  mi_bhara/mi_sankalpa=23, rest 41-47). Nothing eligible.
+- 2026-09-07T08:50Z (C8 v2.3 cycle 678) — **IDLE-OK, verified.** #2198 down to its last check,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T08:44Z (C8 v2.3 cycle 677) — **IDLE-OK, verified.** #2198 down to 2 pending checks,
+  no failures. Ancestor counts unchanged. Nothing eligible.
+- 2026-09-07T08:38Z (C8 v2.3 cycle 676) — **IDLE-OK, verified.** #2198 building cleanly, no
+  failures. Ancestor counts unchanged. Nothing eligible.
 - 2026-09-07T08:32Z (C8 v2.3 cycle 675) — **`#2196` MERGED — the twenty-sixth state-recovery PR
   closed out.** Twenty-sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
   482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
