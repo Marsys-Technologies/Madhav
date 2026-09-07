@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:14:32Z` — cycle 834: **Fleet sweep — nudged #2247** (CONFLICTING ~17min, past
+  the wait threshold). #2227 still open, unqueued. Adjudications unchanged (11).
 - `2026-09-07T07:11:06Z` — cycle 833: **IDLE-OK (verified).** #2247 still CONFLICTING (~14min)
   — giving one more cycle before nudging, per the #2244 self-resolve precedent. #2227's check
   restarted again (normal churn). Adjudications unchanged (11).
