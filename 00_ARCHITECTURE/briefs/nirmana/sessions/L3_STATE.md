@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~260:0xZ — L3-W4 — PR hygiene: `#2233`'s checks finished
+  (0 failures — the ~11.2min resolved cleanly as expected). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 4 —
+  its own `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2233` finishing; next action: same.
 - `2026-09-07T~259:0xZ — L3-W4 — PR hygiene: `#2233`'s last check, same
   run, now ~11.2min — at the recurring edge-of-range pattern. Checked
   the FULL job list: 15/16 jobs `success`, only `Governance Gates`
