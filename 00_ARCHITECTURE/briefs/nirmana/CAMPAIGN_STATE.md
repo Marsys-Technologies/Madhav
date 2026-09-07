@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:11:22Z` — cycle 894: **IDLE-OK, Δfrozen +0.** ~6 min since `accepted_rebuild_
+  observed`, no `integrity_verified` yet — giving it more room since the mechanism already proved
+  itself this attempt. L3 frontier (5 named assets) still zero events. Fleet DIRTY: same 2 known
+  stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T10:09:20Z` — cycle 893: **IDLE-OK, Δfrozen +0.** ~4 min since
   `accepted_rebuild_observed`, still no `integrity_verified` — slower than the `ga_positions`
   precedent (40s) but not yet a stall. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene:
