@@ -381,6 +381,22 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:04:25Z` — cycle 916: **NATIVE DIRECTIVE — frontier-drain enforcement, new
+  standing mode.** Two mid-turn rulings: (1) drain-the-frontier is now top priority over ALL W3
+  work, lanes should claim slots and dispatch W4→verify→freeze back-to-back until their eligible
+  slice is empty; (2) refined to an enforcement frame — each cycle compute eligible-undispatched
+  per lane, nudge any lane with a non-empty frontier that froze <1 asset since last check, and
+  treat idle DB run slots while the frontier is non-empty as THE defect to chase (not something
+  for me to personally dispatch around — that stays each layer's own work). Acted immediately:
+  live-checked `build_runs` — **zero in `planned`/`running`/`paused`, all 3 slots idle** against a
+  16-asset eligible frontier (unchanged: 9 `ga_*` L1, `bo_sudarshana` L2 critical-path, 6 `ka_*`
+  L3). Posted a consolidated per-lane status+nudge to #1713 (comment 5569659518) naming the idle-
+  slot finding, the full frontier list, and each lane's specific gap (L1: real work in flight
+  via #2272/#2277 but zero freezes yet; L2: `bo_sudarshana`'s W2 evidence sitting idle since
+  09:54:05Z; L3: asked directly whether the `nrec` fix actually unblocked them). This is now the
+  **standing per-cycle check going forward**, on top of the existing hold/PR-hygiene/fleet-DIRTY
+  routine. Δfrozen still +0 (46/128→47/128 unchanged since `ga_positions`). Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:01:42Z` — cycle 915: **#2272 is CLEAN and queued.** The fleet-wide
   `output_digest_spec` gap fix is about to merge — should unblock every non-`ga_positions` L1
   asset's `accepted_rebuild_observed`. Δfrozen still +0 pending the actual merge + downstream
