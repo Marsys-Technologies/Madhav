@@ -495,6 +495,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~327:0xZ — L3-W4 — PR hygiene: `#2251` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the flake diagnosis held: 15/16
+  jobs green on the fresh run, no repeat failure). Rebased the 26
+  not-yet-merged local heartbeat commits onto fresh `origin/main`. Hit
+  the standard empty-theirs prepend-conflict pattern 8x
+  (auto-resolved via the marker-strip loop, each verified empty-theirs
+  before stripping) — the count dropped to 17 commits ahead post-
+  rebase because some patches were already-applied duplicates git
+  silently collapsed (no data lost, verified: zero conflict markers,
+  diff is `L3_STATE.md`-only). Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-17`, pushed, opened PR `#2256`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still
+  `OPEN-PENDING-PIN` (yet another authoring fix landed, `#2252`
+  `get_positions.ts` closing `sun_derived_upagraha`/`sandhi_flag`,
+  still not the freeze). `ka_gochara_resonance` still
+  `BLOCKED-NO-ROUTE`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` clearing checks/queue; next action: same monitoring cadence,
+  watch closely for the freeze.
 - `2026-09-07T~326:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
   `merge_group`'s last check, same run, now ~9.5min — approaching but
   still within the confirmed ~11min normal range, still on the same
