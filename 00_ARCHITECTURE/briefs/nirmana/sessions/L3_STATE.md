@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~470:0xZ — L3-W4 — PR hygiene: `#2322` advanced to
+  position 1 (top of queue) — `#2318` merged (unrelated L1 PR,
+  confirmed via `origin/main`) and `#2320` also cleared (queue
+  listing shows `#2322` at position 1 now, one new unrelated PR
+  `#2324` L5 behind it at position 2). No L3 overlap in either.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2322` finishing;
+  next action: same.
 - `2026-09-07T~469:0xZ — L3-W4 — PR hygiene: `#2322` still position
   3, transitioned `QUEUED`→`AWAITING_CHECKS` — own build has started.
   Same two unrelated PRs ahead (`#2318` L1, `#2320` L2). No new
