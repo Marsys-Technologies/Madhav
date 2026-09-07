@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:06:35Z` — cycle 855: **IDLE-OK (verified).** #2254 still DIRTY but only ~2min
+  since nudge. #2227 unchanged. Adjudications unchanged (11).
 - `2026-09-07T08:04:19Z` — cycle 854: **Fleet sweep — nudged #2254** (CONFLICTING ~25min, same
   `get_*.ts` merge-race pattern). #2227 unchanged. Adjudications unchanged (11).
 - `2026-09-07T08:02:00Z` — cycle 853: **MILESTONE — L0 confirmed genuinely 40/40 frozen.**
