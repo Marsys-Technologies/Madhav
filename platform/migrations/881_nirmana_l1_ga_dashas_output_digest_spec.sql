@@ -1,4 +1,4 @@
--- 880_nirmana_l1_ga_dashas_output_digest_spec.sql
+-- 881_nirmana_l1_ga_dashas_output_digest_spec.sql
 --
 -- NIRMĀṆA L1 Gaṇita — cycle 189/190 discovery: `asset_output_digest_specs` (the table
 -- `compute_output_digest()` reads to turn a completed build into a `proven`
