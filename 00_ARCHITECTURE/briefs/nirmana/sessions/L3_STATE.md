@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~355:0xZ — L3-W4 — PR hygiene: `#2267` genuinely queued,
+  `mergeQueueEntry.state: AWAITING_CHECKS`, position 2 — its own
+  `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` re-confirmed still frozen. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2267` finishing; next action: same.
 - `2026-09-07T~354:0xZ — L3-W4 — PR hygiene: `#2267`'s checks finished
   (0 failures), was genuinely CLEAN-but-unqueued (`isInMergeQueue:
   false`). Took 3 `gh pr merge --auto[/--squash]` attempts this cycle
