@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T00:53:47Z` — cycle 708: **CLOSED #1729.** PR #1902 confirmed merged
+  (2026-09-06T09:47:22Z), fully implementing the D-CND-05 ruling (alias resolution +
+  `EXCLUDED_NO_VALUE`). 19→18 open adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T00:51:21Z` — cycle 707: **#1770 status update, not a new ruling.** Live-queried
   `nirmana_evidence.nirmana_elevation_campaign_events`: L0's 3 named blockers
   (`bg_dasha_systems`/`bg_rules`/`bg_yogas`) are now frozen — L1's 12 `ga_*` ancestors remain
