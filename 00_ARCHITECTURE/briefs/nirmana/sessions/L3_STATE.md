@@ -497,6 +497,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~483:0xZ — L3-W4 — PR hygiene: `#2330` advanced to
+  position 1 (top of queue) — `#2328` merged (unrelated L2
+  heartbeat/output-digest PR, confirmed via `origin/main`, no L3
+  overlap). Two PRs behind it (`#2329` L1, `#2333` L5) both show
+  `UNMERGEABLE` — neither is ours, no action taken. Own `merge_group`
+  build not yet visible, consistent with the heavy fleet-wide CI
+  congestion observed throughout this window (many concurrent L1/L2/
+  L5 sessions pushing simultaneously). No new E-gate opening.
+  IDLE-OK. — blocked on: `#2330` finishing; next action: same.
 - `2026-09-07T~482:0xZ — L3-W4 — PR hygiene: `#2330` still position
   2, `AWAITING_CHECKS` — `#2328` (ahead) now ~10.4min queued, own
   build still not visible. Approaching but not yet past the
