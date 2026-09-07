@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 178; **closed the close report's ENTIRE remaining "uncited MUST-tier group" gap.** Independently re-verified F-A9/B1/D14/E1/E15 ("floors wrong in five ways", dashas/sensitive/sade_sati/ayurdaya/tajaka) -- found migration 650 (`l1_w3_registry_truth.sql`) already fixed 4/5 (ga_dashas target_floor 471767, ga_sensitive 8775, ga_sade_sati 6120, ga_ayurdaya 130), all live-confirmed matching exactly. The 5th, ga_tajaka, was DELIBERATELY left alone by that same migration's own explicit scope note (§N.4: a floor whose fix changes what's produced must be set from the achieved count AFTER rebuild, never fabricated ahead of it) -- correct, not an oversight. Also discovered migration 650 is where the operator-precedence bug I fixed last cycle (migration 877) ORIGINATED -- it appended `bhava_arudha` to ga_sensitive's count_sql via unparenthesized string concatenation while ALSO correctly setting target_floor=8775 from the true rows_written count, meaning target_floor was right all along and my fix just restored count_sql to match it. **All 20 of the close report's MUST-tier id-groups now carry a specific, checkable, independently-re-verified citation** -- F-B32/F-B33 remains the only one this campaign has actually found incorrectly claimed closed; every other cycle-125 "closed" claim held up. Updated §2.5's disposition table and "Honest count" paragraph accordingly. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 179; **L1's zero-evidence bucket cleared, 5/5, verified live.** Submitted first-time campaign evidence for `ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu` -- the last remaining assets with zero campaign evidence ever. Confirmed all 7 cited fixing PRs (across the 5 assets' §1 close-report rows) genuinely merged before submitting, not just claimed. Computed fresh registry_fingerprint/analysis_digest for each, submitted all 10 record_evidence calls back-to-back (zero gap) -- all 201, independently re-verified live: all 5 clean complete pairs, matching source_ref, no orphans (one hiccup along the way: ga_panchanga silently dropped from a batched Python loop's output for no visible error -- re-ran it in isolation, worked cleanly, manually merged its values back in rather than trust the batch script blindly). **Every ga_* asset this session has touched now has current, valid campaign evidence except ga_transit_anchors** (still orphaned from cycle 171's finding, registry unchanged since). Posted the result to #2224. #2113/#2180 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9993,3 +9993,54 @@ already correctly set the floor it was disagreeing with — next: investigate th
 zero-evidence bucket (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`), or
 resolve `ga_transit_anchors`' still-orphaned verdict; keep re-checking #2113/#2180/#2224 every
 cycle regardless.
+
+## CYCLE 179 (C8 v2.3) — L1's zero-evidence bucket cleared, 5/5, verified live
+
+PR hygiene: `#2237` (`ga_sensitive` count_sql fix) genuinely `is:queued`. `#2228` (this state
+branch) `MERGEABLE`/`BLOCKED` with zero RED checks. Nothing DIRTY/RED/unqueued. Re-checked
+`#2113`/`#2180`/`#2224`: no new Conductor reply beyond my own prior comments.
+
+**Unit of work: investigate and clear the last untouched zero-evidence bucket** —
+`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`, the 5 assets that had never had
+any campaign evidence event recorded, deferred since cycle 170's original sweep. Unlike the
+MUST-tier uncited groups (which needed real investigative re-derivation), these 5 all showed a
+different, more reassuring shape in the close report's own §1 table: `target_floor` = achieved
+count exactly, and every one of their own W2 findings already cited to a SPECIFIC, already-merged
+PR (not just "claimed closed, cycle 125 sweep"). Still didn't trust this at face value —
+independently confirmed all 7 distinct cited PRs across the 5 assets (`#1841`, `#1853`, `#1871`,
+`#2148`, `#2152`, `#1859`, `#2151`) are genuinely `MERGED`, not just referenced, before treating
+any of them as safe for a first-time acceptance.
+
+Computed fresh `registry_fingerprint_sha256`/`analysis_digest` for all 5 via the dispatch
+script's own functions in one batched Python loop. **Caught a real, silent gap in my own tooling
+mid-cycle**: `ga_panchanga` never printed in the batch's output despite being present in the
+frozen manifest and its own `missing from frozen manifest` check reporting empty — re-ran its
+computation in complete isolation and it worked cleanly with no error at all, meaning something
+in the batched loop context silently dropped it (possibly a dict-ordering/buffering artifact, not
+diagnosed further since reproducing it in isolation was sufficient). Did not shrug this off or
+retry blindly — manually merged the isolated result back into the results file and continued,
+rather than either omitting `ga_panchanga` silently or assuming the batch script's incomplete
+output was itself the truth.
+
+Submitted all 10 `record_evidence` calls (analysis + verdict × 5 assets) back-to-back within one
+deploy window — confirmed the deployed SHA is a live ancestor of `origin/main` first, per standing
+discipline. All 10 returned `201 created`. Independently re-verified live afterward (not just
+trusted the 201s): queried all 5 assets' events directly — every one has a clean, complete pair,
+matching `source_ref` on both rows, zero orphans.
+
+Posted the full result to #2224. **Every `ga_*` asset this session has investigated or touched
+now has current, valid campaign evidence, with exactly one remaining known gap**:
+`ga_transit_anchors`'s still-orphaned verdict from cycle 171 (unresolved because its registry
+hasn't changed since — the SAME generation is still stuck, not something a re-attempt would fix
+without a registry change or a lucky deploy-window race). This closes out L1's own evidence-
+submission backlog entirely as far as this session has surveyed it.
+
+CYCLE 179 L1: PR hygiene clean; **cleared L1's entire zero-evidence bucket** — first-time
+campaign evidence submitted and verified live for `ga_condition`/`ga_medical`/`ga_panchanga`/
+`ga_tajaka`/`ga_vastu` (5/5, all cited fixing PRs confirmed genuinely merged first), catching and
+recovering from a silent per-asset drop in my own batch tooling along the way — every `ga_*`
+asset this session has touched now has valid evidence except `ga_transit_anchors`'s still-orphaned
+verdict — next: with evidence-submission work now essentially exhausted for L1's own scope, the
+natural remaining priorities are the still-blocked `asset_frozen` E-gate workstream (#2224,
+cross-layer, awaiting further Conductor/fleet progress) or a fresh sweep for any not-yet-
+considered W3 finding; keep re-checking #2113/#2180/#2224 every cycle regardless.

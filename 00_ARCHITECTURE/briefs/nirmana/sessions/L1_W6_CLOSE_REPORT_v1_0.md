@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.35-DRAFT"
+version: "0.36-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -472,12 +472,13 @@ awaits either a dedicated prep cycle or genuine W6 close.
   own first-time evidence deliberately deferred (deployed SHA still precedes its F-A17 merge —
   checked live, not assumed). **Cycle 177**: `ga_dashas`' first-time evidence submitted cleanly
   once the deploy caught up — a dry-run dispatch confirmed the evidence itself is genuinely valid
-  (zero matching complaint), hitting only the already-escalated `asset_frozen` E-gate. Every
-  `ga_*` asset investigated this session now has clean, current evidence except
-  `ga_transit_anchors` (still orphaned) and the untouched zero-evidence bucket
-  (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu`). **Still open**: wave 1
-  dispatch itself remains blocked by the `asset_frozen` E-gate regardless of evidence freshness,
-  campaign-wide — not an L1 registry fix.
+  (zero matching complaint), hitting only the already-escalated `asset_frozen` E-gate. **Cycle
+  179**: the zero-evidence bucket (`ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/
+  `ga_vastu`) cleared — first-time evidence submitted for all 5, all 7 cited fixing PRs confirmed
+  genuinely merged first, all 5 verified live as clean complete pairs. **Every `ga_*` asset this
+  session has touched now has current, valid campaign evidence except `ga_transit_anchors`'s
+  still-orphaned verdict.** **Still open**: wave 1 dispatch itself remains blocked by the
+  `asset_frozen` E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
