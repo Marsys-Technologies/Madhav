@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~452:0xZ — L3-W4 — PR hygiene: `#2310`'s last check,
+  same run, now ~8.1min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2310` finishing; next
+  action: same.
 - `2026-09-07T~451:0xZ — L3-W4 — PR hygiene: `#2310`'s `Unit Tests`
   now passed; only `Governance Gates` remains (~6.2min, within
   normal range, same `pytest` step). No new `origin/main` merges. No
