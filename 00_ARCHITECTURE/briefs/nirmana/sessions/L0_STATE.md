@@ -727,3 +727,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   evidence already independently reverified fresh (prior cycle) — no re-stamp needed at dispatch time.
 - 2026-09-07 — **IDLE-OK (verified).** PR #2234 (D-NATIVE-07) still `is:queued`, not yet merged.
   `main` advanced with an unrelated L5 state PR (#2232). #1713 tail unchanged. Watching for the merge.
+- 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. PR #2234 still `is:queued`.
+  Nothing eligible.
