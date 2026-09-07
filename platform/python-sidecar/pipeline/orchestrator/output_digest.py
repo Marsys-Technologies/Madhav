@@ -20,6 +20,10 @@ from .provenance import canonical_digest
 
 _IDENTIFIER = re.compile(r"^[a-z][a-z0-9_]{0,62}$")
 _BATCH_SIZE = 512
+# jsonb_build_object is a variadic function subject to PostgreSQL's FUNC_MAX_ARGS
+# (100 positional arguments = 50 column/value pairs). 45 leaves comfortable
+# headroom for future width growth on any one relation.
+_JSONB_BUILD_OBJECT_COLUMN_BATCH = 45
 
 
 @dataclass(frozen=True)
@@ -167,10 +171,18 @@ def _component_statement(component: dict[str, Any]) -> str:
     relation = _identifier(component.get("relation"), field="relation")
     key_columns = _columns(component, "key_columns")
     value_columns = _columns(component, "value_columns")
-    pairs: list[str] = []
-    for column in value_columns:
-        pairs.extend([f"'{column}'", f"source.{_quoted(column)}"])
-    row_json = f"jsonb_build_object({', '.join(pairs)})::text"
+    calls: list[str] = []
+    for start in range(0, len(value_columns), _JSONB_BUILD_OBJECT_COLUMN_BATCH):
+        batch = value_columns[start : start + _JSONB_BUILD_OBJECT_COLUMN_BATCH]
+        pairs: list[str] = []
+        for column in batch:
+            pairs.extend([f"'{column}'", f"source.{_quoted(column)}"])
+        calls.append(f"jsonb_build_object({', '.join(pairs)})")
+    # A relation whose value_columns fit one jsonb_build_object call produces
+    # the exact same SQL/text output as before batching existed — this is a
+    # pure workaround for PostgreSQL's jsonb_build_object arity ceiling, not a
+    # spec-schema or digest-content change for any table already under it.
+    row_json = f"({' || '.join(calls)})::text" if len(calls) > 1 else f"{calls[0]}::text"
     order = ", ".join(f"source.{_quoted(column)}" for column in key_columns)
     filter_sql, _ = _where_filter(component)
     where = f" WHERE {filter_sql}" if filter_sql else ""
