@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~333:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
+  `AWAITING_CHECKS` — checked the live queue directly: 3 unrelated
+  PRs ahead of it (`#2246` pos 1, `#2257` pos 2, `#2255` pos 3, all
+  L1/L5 heartbeat/W3 PRs, all still `AWAITING_CHECKS` themselves) —
+  normal queue congestion, not a stall. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: PRs ahead of `#2256` clearing first; next
+  action: same.
 - `2026-09-07T~332:0xZ — L3-W4 — PR hygiene: `#2256` still position 4,
   `AWAITING_CHECKS`, same as last cycle — several PRs ahead of it in
   queue. No new `origin/main` merges, `ga_positions` still
