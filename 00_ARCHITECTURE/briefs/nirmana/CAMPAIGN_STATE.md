@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:09:32Z` — cycle 810: **IDLE-OK (verified).** #2227/#2228's fresh CI runs still
+  in progress (DB Integration Tests, Governance Gates — normal for longer-running checks),
+  within expected duration. Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T06:06:25Z` — cycle 809: **Root-caused #2227/#2228's stuck-unqueued pattern —
   not negligence, a genuinely-stalled CI run.** After two nudges each went unanswered, ran
   `gh pr merge --auto` directly on both (purely mechanical, doesn't touch their content).
