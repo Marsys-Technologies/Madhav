@@ -381,6 +381,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:16:15Z` — cycle 969: **Correcting cycle 968's diagnosis — L1 already root-
+  caused it precisely as a real orchestrator bug (#2300), not a transient race.** L1's own filing:
+  `ga_dashas`' delta-skip rebuild path (`_skip_no_delta`→`reattribute_unchanged_receipt`,
+  `provenance.py:316`) re-stamps the receipt but never calls `_upsert_freshness`, so a
+  `registry_changed`-stale asset whose content happens to be byte-identical can NEVER clear its
+  stale flag — structurally permanent, blocks `ga_condition`/`ga_structural`/`ga_tajaka`.
+  Correctly filed rather than fixed: this touches `asset_runner.py`/`provenance.py`, the FROZEN
+  orchestrator, so unlike #2276/#2224 (which I ruled on under my own standing authority) this
+  needs native sign-off per §N.2. Posted acknowledgment + the fix's merits assessment to #2300
+  (comment 5571213990), explicitly NOT authorizing it myself, and told L1 to keep working other
+  eligible frontier assets rather than block on this. New fleet DIRTY note: #2302 (L1's own fresh
+  cycle-199 PR) is transiently CONFLICTING from merge-queue churn — not a stale-PR problem like
+  #1180/#446, L1's own responsibility to rebase. Δfrozen still +0 (56/128). Own-PR hygiene: none
+  open. Adjudications unchanged (11, +1 net new: #2300).
 - `2026-09-07T13:13:48Z` — cycle 968: **`ga_condition`'s build failed — diagnosed as a real,
   now-resolved transient race, flagged for retry.** `asset_throughput.last_error` for
   `ga_condition`: DEP-ASSERT refused build at 13:06:17Z because `ga_dashas`' receipt read
