@@ -495,6 +495,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~164:0xZ — L3-W4 — PR hygiene: `#2197` MERGED (squash
+  `f77fbbb84`) — **F-L3-4 is now closed in full on `origin/main` for
+  real**, not just in a pending PR. Rebased the 8 not-yet-merged local
+  heartbeat commits onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern three times (auto-resolved), no
+  non-standard conflicts. Verified zero conflict markers, migration-
+  number guard PASS, `ka_dasha_kala` held row intact. Confirmed the
+  rebased diff against `origin/main` is state-file-only (no code/
+  migration changes carried) — pushed directly as a new PR without
+  re-running the migration test suites (nothing to re-test). Renamed
+  branch to `codex/nirmana-l3-heartbeat-post-f-l3-4`, pushed, opened
+  **PR #2199**, armed auto-merge. No new bounded work this cycle beyond
+  the rebase/PR-open itself (`ga_positions` still `OPEN-PENDING-PIN`).
+  — blocked on: nothing new; next action: verify `#2199` clears its
+  checks and queues cleanly next cycle, then resume routine PR-hygiene/
+  E-gate monitoring cadence.
 - `2026-09-07T~163:0xZ — L3-W4 — PR hygiene: `#2197` advanced to
   position 1, own `merge_group` build's all 3 jobs completed
   successfully (confirmed via `gh run list` filtered on `pr-2197`, not
