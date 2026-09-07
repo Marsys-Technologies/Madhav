@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~201:0xZ — L3-W4 — PR hygiene: `#2214` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, no new E-gate
+  opening. IDLE-OK. — blocked on: `#2214` clearing checks/queue; next
+  action: same.
 - `2026-09-07T~200:0xZ — L3-W4 — PR hygiene: `#2210` MERGED (confirmed
   `state: MERGED`, `mergedAt` set — `isInMergeQueue` had flipped to
   `false` with `mergeQueueEntry: null`, disambiguated by checking
