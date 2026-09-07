@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T02:03:29Z` — cycle 730: **IDLE-OK (verified).** Own-PR hygiene clean; adjudications
+  unchanged (10). Fleet has 3 new PRs (#2205/#2206/#2207) all <4min old and MERGEABLE — too
+  fresh to flag as stalled. #2165 still unqueued but already nudged, not re-nudging. No new
+  reply on #2180. Nothing rose to a bounded unit.
 - `2026-09-07T02:00:44Z` — cycle 729: **IDLE-OK (watched progress, no ruling needed).** L1
   executed on the #2180 `natural_key_partition` ruling: PR #2205 authors `ga_positions`' own
   partition (verified against the writer's real row-construction sites, not the serving-tool
