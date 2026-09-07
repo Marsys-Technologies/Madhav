@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 188; **native mid-turn interrupt: ASSET-FRONTIER OVERRIDES SUB-WAVE BATCHING. `ga_positions` dispatched through the full W4→W5 evidence pipeline and FROZEN** — the sole L1 E-gate bottleneck (0 unfrozen ancestors, all 18 siblings BLOCKED-ANCESTORS on it) is broken. Two real Cloud Run Job build dispatches (first hit a genuine implementation-before-run ordering bug, root-caused via server logs and fixed with a correctly-ordered second dispatch); `build_run_authorized`'s planned/not-yet-started race won twice via pre-minted tokens; WP-6 blast-radius gate (375,856-row `chart_fact_identity` CASCADE) investigated properly (fresh Cloud SQL snapshot taken, idempotent repair script identified) before acknowledging — the writer's own digest-identical skip-write path meant the cascade never actually fired. `capsule_audit.sql` §1/§2 clean; `egate.sql` re-run confirms 8 L1 assets now OPEN-PENDING-PIN (`ga_ayurdaya`, `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_prashna`, `ga_sensitive`, `ga_sensitive_degree`, `ga_vargas`). Per the native's own instruction, dispatching those 8 (in DAG order) is next cycle's work, not this one's. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycles 189-190; dispatched `ga_dashas` (highest downstream leverage of the 8 newly-eligible assets, tied with `ga_vargas`, 8 blocked siblings each) toward W4/W5. **Discovered and fixed a fleet-wide structural gap**: `asset_output_digest_specs` had rows for `ga_positions` ONLY, so every other L1 asset's `accepted_rebuild_observed` was structurally blocked (`receipt_state='unknown'` even on a correct, completed build) — closed for `ga_dashas` via migration 880 (PR #2272), spec design verified against live data (excluded `dasha_row_id`/`parent_row_id`, both random UUIDs regenerated every rebuild that would otherwise break `digest_identical` detection entirely). Real Cloud Run Job build redispatched after the fix landed; receipt confirmed `proven`. `accepted_rebuild_observed` recorded clean. **`ga_dashas` NOT frozen this cycle**: its `integrity_check_sql` measured 48.5s real execution (direct `psql`, no artificial limit) against the ingress pool's 25s `statement_timeout` — a genuine, reproducible defect (query scans all 3 canonical charts' `chart_dashas`, ~1.46M rows total, unscoped), not a transient load fluke. Deliberately did NOT rewrite the SQL this cycle: the check's own comments show its multi-chart scope (mentions chart `1c826d5a` specifically) looks intentional, not an oversight, so narrowing it to canonical-chart-only would be a real coverage tradeoff needing its own deliberate pass, not a rushed side-effect of a dispatch cycle. `capsule_audit.sql` §1/§2 stayed clean throughout (no partial/false capsule). #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3409,7 +3409,7 @@ none accepted yet (blocked on #1736).
 |---|---:|---|---|
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary. **FROZEN (cycle 188)** — full W4→W5 evidence chain complete: `build_run_authorized` → real Cloud Run Job rebuild (`0ac321ee-192d-4c86-bd67-495613a76780`) → `accepted_rebuild_observed` → `integrity_verified` (verifier SA, live `integrity_check_sql` re-evaluated server-side) → `asset_frozen` (verifier SA). Verified via `capsule_audit.sql` §1 (complete chain) and §2 (no identity crossing). Freezing this asset opened the L1 fleet's frontier: 8 siblings now E-gate `OPEN-PENDING-PIN`. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds). **F-B32 fix (cycle 184, PR #2252)**: `sun_derived_upagraha` (`ga_sensitive_writer.py`-owned, joins `get_positions.ts`'s `include_upagrahas` bundle since it carries `house_d1` -- frame facet applies) and `sandhi_flag` (this asset's own `_build_chalit_rows`, already in `natural_key_partition` since migration 876 but never served, categories-only opt-in -- no `house_d1`, not an upagraha) both closed -- the deliberately-deferred, higher-blast-radius file finally gets its own careful pass |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
-| ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
+| ga_dashas | 483,870 / **536,471** | rebuild_only | **W4 IN PROGRESS (cycle 189-190), NOT frozen** — `asset_analysis_accepted`/`optimization_verdict_accepted`/`implementation_accepted`/`accepted_rebuild_observed` all recorded clean against a real Cloud Run Job build (`1f89fd4c-...`, ~20 min, matches the migration-879 `estimated_seconds` re-baseline of 1118s). `asset_output_digest_specs` gap discovered+fixed (migration 880, PR #2272) — see last_updated. Blocked at `integrity_verified`: `integrity_check_sql` measures 48.5s real (direct `psql`), over the ingress pool's 25s `statement_timeout` — genuine, reproducible, not transient (scans all 3 canonical charts unscoped, ~1.46M rows). Fix deliberately deferred, not rushed: the check's own comments (mentions chart `1c826d5a` explicitly) suggest multi-chart coverage is intentional, so narrowing to canonical-chart-only is a real tradeoff needing its own pass. floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract`. **The "15/16 categories entirely absent, 1 misrouted" F-B32/F-B33 follow-up FIXED (cycle 180, PR #2242, migration 878)** — investigation found the close report's own 3-category "docstring overclaim" characterization was itself wrong for 2/3: `nakshatra_lord_placement` is a genuine overclaim (zero writer emission, removed from docstring/const/`count_sql`), but `graha_degree_flags`/`nakshatra_exchange` are real writer-owned categories (migration 872 had already confirmed this) wrongly read as zero-live-rows build lag — added to `coverage_matrix.ts`. Separately found `nakshatra_cross_ayanamsha` was missing from `natural_key_partition` since migration 872 (that migration never checked `pipeline/orchestrator/writers/ga_nakshatra.py`, which emits it directly, 17 live rows) — added. True category count: 15, not 16. Verified: `tsc --noEmit` clean, integration test 3/3, 40/40 Python tests, zero blast radius (1-line digest delta, L0/L2-L5 untouched in layer pins) |
 | ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for. F-B28 (`get_panchanga.ts` half) **FIXED (cycle 123, PR #2155)** — `total` was the PAGE size, not the true matching count; confirmed live this was ACTIVELY manifesting (221 real rows vs 200-row default limit — a genuine silent truncation, not hypothetical); added a real `COUNT(*)`, `total_matching`, `more_available`, `empty_reason`, `density_contract` |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962). **F-B32 fix (cycle 182, PR #2247)**: `esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system` (70/25 live rows) had zero serving path anywhere — the cycle-156 sweep mischaracterized them as needing new-endpoint work; actually a simple oversight in `get_sensitive_points.ts`'s existing `esoteric_point_*` family. Added directly (both single-writer-owned by `ga_sensitive_writer.py` alone, no ambiguity) |
@@ -10934,3 +10934,97 @@ native's explicit reprioritization.
 end, continue in DAG order until the newly-opened frontier is exhausted or a genuine new blocker
 surfaces; investigate `ga_transit_anchors`' `BLOCKED-NO-ROUTE` (W2-verdict gap) separately, lowest
 priority behind every eligible W4; keep checking #2113/#2180/#2224 for new Conductor replies.
+
+## CYCLE 189-190 (C8 v2.3) — `ga_dashas` dispatched toward W4/W5; a fleet-wide
+## `output_digest_spec` gap found and closed for it; a real `integrity_check_sql`
+## timeout found and correctly left un-rushed rather than patched blind
+
+**DAG-order pick**: of the 8 assets `egate.sql` opened last cycle, `ga_dashas` and `ga_vargas`
+tie for highest downstream leverage (8 blocked siblings each, counted directly from
+`waiting_on` lists — `ga_condition`/`ga_medical`/`ga_sade_sati`/`ga_structural`/`ga_tajaka`/
+`ga_vastu`/`ga_vichara`/`ga_yoga`). Picked `ga_dashas` for this cycle; `ga_vargas` is next.
+
+**W1/W2 evidence check**: `ga_dashas` had exactly one asset_analysis_accepted/
+optimization_verdict_accepted pair (recorded 05:50 UTC today, verdict `correct` — three real
+already-merged fixes: F-A10 scope-cap sentinel migration 652, F-A12 dignity-vocab
+normalization, F-A17 PR #2229's 38-site bare-literal replacement). Recomputed
+registry_fingerprint/analysis_digest fresh via `dispatch_nirmana_campaign_wave.py`'s own
+helpers — byte-identical to the accepted values, genuinely fresh, no resubmission needed.
+
+**Applied last cycle's own lesson before it could repeat**: verdict `correct` means
+`changeIsRequired=true`, so `implementation_accepted` is a hard prerequisite whose own
+validator requires the referenced build's `started_at` to be AFTER the implementation's
+`recorded_at`. Submitted `implementation_accepted` (self-descriptive digest citing the actual
+F-A10/F-A12/F-A17 fixes — this event type carries no free-text field) BEFORE any dispatch this
+time, not after, avoiding cycle-188's exact mistake.
+
+**Wave-1 dispatch, ~20-minute real build**: `ga_dashas` is wave_index 1 (not 0 — layer root
+`ga_positions` alone is wave 0). Dry-run clean, no WP-6 blast radius (writes to `chart_dashas`,
+not the shared `chart_facts` table `ga_positions` uses). Committed, raced and won
+`build_run_authorized` against the planned/not-yet-started window (same pre-mint-token
+technique as cycle 188). Live logs confirmed genuine progress (5 dasha systems × 5 ayanamshas,
+tens of thousands of rows per system, ~484K total) — matches migration 879's own
+`estimated_seconds` re-baseline of 1118s for this asset almost exactly.
+
+**Discovered a fleet-wide structural gap, not a ga_dashas-specific bug**: the completed
+build's `asset_provenance_receipts` row landed `receipt_state='unknown'`
+(`unknown_reasons: ["output_digest_spec_unavailable", "output_digest_unavailable"]`) — checked
+`asset_output_digest_specs` directly and found it holds rows for `ga_positions` ONLY (added
+under adjudication #2180 / migration 875, scoped to that one asset, never generalized). This
+would have blocked `accepted_rebuild_observed` for EVERY OTHER L1 asset too, not just this one
+— a genuinely valuable find, not a dead end.
+
+Authored the spec carefully, not by copying `ga_positions`' shape blind: `chart_dashas`'s PK
+(`dasha_row_id`) and self-referencing FK (`parent_row_id`) are both random `gen_random_uuid()`
+values regenerated on every rebuild regardless of content — including either in
+`value_columns` would make the digest differ on every single rebuild even with zero real
+change, defeating `output_contract: digest_identical` detection entirely. `kp_sublevel` is
+nullable and `output_digest.py`'s own key-preflight REJECTS any NULL key column outright, with
+no COALESCE/where-is-not-null primitive to express a conditional key — live-verified (not
+assumed) that `(chart_id, ayanamsha_id, system_id, level_n, start_iso)` alone is already
+collision-free and non-null across 483,870 live rows, so `kp_sublevel` was demoted to a value
+column instead. Computed `spec_sha256` via the REAL `canonical_digest()` (imported directly
+from `python-sidecar/pipeline/orchestrator/provenance.py`, not reimplemented), independently
+re-verified byte-identical from the literal migration SQL before applying. Migration 880
+applied and verified live; PR #2272 auto-merge armed.
+
+**Redispatched after the fix**: same manifest digest as the first attempt (registry-fingerprint
+unaffected — `asset_output_digest_specs` isn't part of the registry-contract fingerprint
+input), same ~20-minute real build, receipt now `receipt_state='proven'` with a genuine
+`output_digest`. `accepted_rebuild_observed` submitted clean on the first try.
+
+**`integrity_verified` hit a real, reproducible defect — investigated properly, not patched
+blind**: HTTP 500, root-caused via Cloud Run logs to Postgres `57014` (`query_canceled`) —
+the ingress writer pool's `statement_timeout=25000` (25s, `evidence-ingress.ts`) was exceeded.
+Measured the real cost directly (`time psql` running the exact `integrity_check_sql`, no
+artificial limit): 48.5 seconds — nearly double the timeout, not a marginal or transient miss.
+Root cause: the query has no `chart_id` scoping anywhere, so it scans ALL 3 canonical charts'
+`chart_dashas` unscoped (`482012f1`/`1c826d5a`/`cb73cd3d`, ~1.46M rows total; one conjunct
+alone measured ~20s). Considered scoping it to the canonical chart only (matching
+`ga_positions`' own precedent) but stopped short of making that edit: the check's own comments
+explicitly discuss chart `1c826d5a`'s behavior ("measured live: exactly one 1-day non-tile on
+chart 1c826d5a / 1996"), meaning multi-chart coverage reads as a deliberate original design
+choice, not an oversight — narrowing it would be a real verification-coverage tradeoff, and
+that decision deserves its own deliberate pass, not a rushed side-effect of an unrelated
+dispatch cycle running long. Also note: fixing `integrity_check_sql` would change
+`registry_fingerprint_sha256` (it's part of the registry-contract fingerprint input),
+invalidating this cycle's whole already-accepted evidence chain and requiring fresh
+acceptances under a new generation — a real, but manageable, cost for whoever does that pass
+(no new build needed, the existing `accepted_rebuild_observed`'s build output is unaffected by
+a registry-only SQL text change).
+
+**Result**: `ga_dashas` is NOT frozen. It sits cleanly at `accepted_rebuild_observed` with a
+real, `proven` receipt — no false or partial capsule was created (`capsule_audit.sql` §1
+stayed at 0 rows throughout). The fleet-wide `output_digest_spec` gap this cycle found and
+fixed is pure upside for every future L1 W4 dispatch, not just this asset's — future cycles
+dispatching the other 6 assets should check `asset_output_digest_specs` BEFORE burning a
+~15-20 minute build attempt, not discover the gap the same expensive way this cycle did.
+
+-> next: either (a) take on `ga_dashas`' `integrity_check_sql` timeout as its own bounded
+unit — decide deliberately whether to scope to canonical-chart-only (narrower coverage,
+faster) or optimize while preserving multi-chart coverage (harder, safer), then resubmit the
+whole evidence chain under the new registry generation and finish the freeze; or (b) move to
+`ga_vargas` (the other tied-highest-leverage asset) and return to `ga_dashas` after — either is
+legitimate, native/Conductor has no stated preference between them. Check
+`asset_output_digest_specs` for the target asset BEFORE dispatching, now that the gap is
+known. Keep checking #2113/#2180/#2224 for new Conductor replies.
