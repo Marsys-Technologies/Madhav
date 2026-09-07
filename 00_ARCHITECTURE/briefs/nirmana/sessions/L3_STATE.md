@@ -495,6 +495,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~183:0xZ — L3-W4 — PR hygiene: `#2203` MERGED. Rebased
+  the 12 not-yet-merged local heartbeat commits onto fresh
+  `origin/main`. Hit the standard empty-theirs prepend-conflict pattern
+  8x (auto-resolved), no non-standard conflicts. Verified zero conflict
+  markers, migration-number guard PASS. Confirmed the rebased diff is
+  state-file-only. Renamed branch to `codex/nirmana-l3-heartbeat-idle-4`,
+  pushed, opened **PR #2206**, armed auto-merge. No new bounded work
+  this cycle (`ga_positions` still `OPEN-PENDING-PIN`, no new E-gate
+  opening). — blocked on: nothing new; next action: verify `#2206`
+  clears its checks and queues cleanly next cycle.
 - `2026-09-07T~182:0xZ — L3-W4 — PR hygiene: `#2203`'s own `merge_group`
   build still `in_progress` (~10.1min, approaching but still within the
   confirmed ~11min normal range). No new `origin/main` merges, no new
