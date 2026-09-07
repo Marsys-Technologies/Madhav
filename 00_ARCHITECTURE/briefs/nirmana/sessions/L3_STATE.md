@@ -495,6 +495,15 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~194:0xZ — L3-W4 — PR hygiene: `#2210`'s last check, same
+  run, now ~9.65min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step (step-level
+  checked directly). `mergeStateStatus` briefly read `UNKNOWN`, normal
+  async lag, not a real signal. One new `origin/main` merge (`#2208`,
+  L1 `natural_key_partition` authoring, no L3 overlap). `ga_positions`
+  still `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked
+  on: `#2210` finishing; next action: same, check step-level detail
+  next cycle if still on this exact run.
 - `2026-09-07T~193:0xZ — L3-W4 — PR hygiene: `#2210`'s own `merge_group`
   build still `in_progress` (~7.5min, within the confirmed ~11min
   normal range, still on the same `pytest` step — genuine progress).
