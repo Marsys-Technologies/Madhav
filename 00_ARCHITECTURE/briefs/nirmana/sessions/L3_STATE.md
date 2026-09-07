@@ -495,6 +495,131 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~326:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group`'s last check, same run, now ~9.5min — approaching but
+  still within the confirmed ~11min normal range, still on the same
+  `pytest` step. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251` finishing; next action: same.
+- `2026-09-07T~325:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group` build still `in_progress`, `Unit Tests` PASSED this
+  time (confirms last cycle's flake diagnosis — no repeat failure),
+  only `Governance Gates` remains (~7.2min, within range). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing; next
+  action: same.
+- `2026-09-07T~324:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group` build still `in_progress` (~4.85min, within range,
+  same run), `Unit Tests` still running with no failure. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing; next
+  action: same.
+- `2026-09-07T~323:0xZ — L3-W4 — PR hygiene: `#2251`'s fresh
+  `merge_group` run still `in_progress` (~2.5min, well within normal
+  range), `Unit Tests` (the previously-flaky job) running clean this
+  time, no failures yet. No new `origin/main` merges, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2251` finishing; next action: same.
+- `2026-09-07T~322:0xZ — L3-W4 — PR hygiene: root-caused why `#2251`
+  got dequeued last cycle — pulled the PRIOR `merge_group` run's job
+  log (`Unit Tests`, `conclusion: failure`) and found the failure was
+  entirely inside a throwaway test-fixture Postgres container's own
+  startup log: a long repeating loop of `FATAL: role "root" does not
+  exist` / assorted `DROP OWNED BY <role>` errors against roles that
+  don't exist, ending in the container being force-removed — a CI
+  service-container readiness flake (nothing in this state-file-only
+  diff could cause a Postgres role-provisioning failure). Not a real
+  regression to fix; correctly did NOT weaken any gate, just let the
+  re-queue's fresh `merge_group` run (started `07:51:xx`, all jobs
+  freshly dispatched, none failed yet) re-attempt with a clean
+  container. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251`'s fresh run finishing; next action: same, watch for a
+  second failure (would then warrant deeper investigation, not
+  another blind re-queue).
+- `2026-09-07T~321:0xZ — L3-W4 — PR hygiene: `#2251` genuinely
+  re-queued and confirmed, `AWAITING_CHECKS`, position 1 — its own
+  `merge_group` run has started again. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2251` finishing; next action: same.
+- `2026-09-07T~320:0xZ — L3-W4 — PR hygiene: `#2251` was found genuinely
+  DEQUEUED this cycle (`isInMergeQueue: false`, no `mergeQueueEntry`,
+  not merged) despite its own `merge_group` run having fully passed
+  (16/16 checks green, `mergeable: MERGEABLE`, `mergeStateStatus:
+  CLEAN` re-verified via full `statusCheckRollup`). Re-queued (`gh pr
+  merge --auto --squash`, standard merge-queue-strategy message, then
+  confirmed genuinely `isInMergeQueue: true`, `QUEUED`, position 1 via
+  GraphQL). Root cause not chased further (checks-still-green
+  dequeues happen on base-branch churn ahead of a PR; not a gate
+  weakening, correctly re-queued via the normal path). No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing its
+  queue turn; next action: same.
+- `2026-09-07T~319:0xZ — L3-W4 — PR hygiene: `#2251` still position 1,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2251-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~4.2min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing; next
+  action: same.
+- `2026-09-07T~318:0xZ — L3-W4 — PR hygiene: `#2251` genuinely queued,
+  `mergeQueueEntry.state: AWAITING_CHECKS`, position 1 — its own
+  `merge_group` run has started. No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2251` finishing; next action: same.
+- `2026-09-07T~317:0xZ — L3-W4 — PR hygiene: `#2251`'s checks finished
+  (0 failures), `mergeStateStatus: CLEAN` but genuinely CLEAN-but-
+  unqueued (`isInMergeQueue: false`). Queued it (first `gh pr merge
+  --auto` returned no error but re-verification showed still not
+  queued; retried with explicit `--squash`, got "already queued to
+  merge", then confirmed genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 1). No new `origin/main` merges relevant to L3,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2251` finishing its queue turn; next
+  action: same.
+- `2026-09-07T~316:0xZ — L3-W4 — PR hygiene: `#2251`'s last check, same
+  run, now ~9.4min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. Two new
+  `origin/main` merges (an L5 heartbeat PR, and L1's
+  `get_structural_signals.ts` closing 3 more mischaracterized
+  categories — no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251` finishing; next action: same.
+- `2026-09-07T~315:0xZ — L3-W4 — PR hygiene: `#2251`'s last check
+  (`Governance Gates`) ~7min, within normal range, `Unit Tests` now
+  also passed. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251` finishing; next action: same.
+- `2026-09-07T~314:0xZ — L3-W4 — PR hygiene: `#2251`'s pre-queue check
+  run still `in_progress` (~4.75min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` still `OPEN-PENDING-PIN`. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2251` finishing; next
+  action: same.
+- `2026-09-07T~313:0xZ — L3-W4 — PR hygiene: `#2251` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, `ga_positions`
+  still `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2251` clearing checks/queue; next action: same.
+- `2026-09-07T~312:0xZ — L3-W4 — PR hygiene: `#2248` MERGED (confirmed
+  `merged: true`, `mergedAt` set — noticed directly this cycle via
+  `origin/main`'s own tip carrying `#2248`'s squash commit, then
+  cross-verified with GraphQL). Rebased the 22 not-yet-merged local
+  heartbeat commits onto fresh `origin/main`. Hit the standard
+  empty-theirs prepend-conflict pattern 10x (auto-resolved via the
+  marker-strip loop, each verified empty-theirs before stripping).
+  Verified zero conflict markers remain; rebased diff vs
+  `origin/main` is `L3_STATE.md`-only. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-16`, pushed, opened PR `#2251`,
+  armed auto-merge (confirmed via GraphQL `autoMergeRequest.enabledAt`
+  set). Re-ran `egate.sql` live: `ga_positions` still
+  `OPEN-PENDING-PIN`, `ka_gochara_resonance` still `BLOCKED-NO-ROUTE`.
+  No new E-gate opening. IDLE-OK. — blocked on: `#2251` clearing
+  checks/queue; next action: same monitoring cadence, watch closely
+  for the freeze.
 - `2026-09-07T~311:0xZ — L3-W4 — PR hygiene: `#2248`'s last check, same
   run, now ~9.7min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
