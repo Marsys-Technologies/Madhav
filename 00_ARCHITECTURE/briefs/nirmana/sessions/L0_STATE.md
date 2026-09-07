@@ -760,3 +760,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   #1713's only new activity is my own prior post. Nothing else eligible.
 - 2026-09-07 — **IDLE-OK (verified).** Force-deploy `34087944016` still `in_progress`, no change.
   Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** Force-deploy progressing: Sidecar + DB Migrations done,
+  `Build & Deploy Pipeline Job Image` (the one that matters) still `in_progress`. Nothing eligible.
