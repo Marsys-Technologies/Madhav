@@ -381,6 +381,18 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:38:35Z` — cycle 721: **#1945 Lane C investigated — genuinely BLOCKED, not
+  submitted.** Computed `registry_fingerprint_set_sha256` from the frozen manifest (cross-
+  verified via SQL + a Node script running the real `stableJson` source: both agree on
+  `c1a0333d8ee5...`). For `invalidated_analysis_count`, imported the real
+  `_live_registry_fingerprint`/`REGISTRY_LAYER` functions from
+  `scripts/dispatch_nirmana_campaign_wave.py` (reuse, not reimplementation — same pattern L1
+  used in #2180) and live-checked all 70 `asset_analysis_accepted` events against current
+  `asset_registry` state: **22 are invalidated** (stale registry_fingerprint vs. live contract),
+  not the required 0. Lane C cannot be submitted until that reaches 0 — recorded the method +
+  affected-asset list on #1945 rather than forcing a value or fixing 22 assets' W2 acceptance
+  myself. Not attempting Lane D this cycle. Adjudication count unchanged. Own-PR hygiene: none
+  open. Fleet DIRTY: empty.
 - `2026-09-07T01:28:45Z` — cycle 720: **#1945 more progress — Lane B backfilled (3/5 done: A,
   B, E).** Live-queried `build_runs` scoped to campaign_id/definition_revision exactly per the
   validator's own query: 49 total, 49 terminal. Submitted via `nrec --as verifier`, HTTP 201,
