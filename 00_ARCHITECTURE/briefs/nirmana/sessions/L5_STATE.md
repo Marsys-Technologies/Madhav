@@ -457,6 +457,64 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T13:03Z (C8 v2.3 cycle 975) — **`#2292` MERGED — the fifty-fifth state-recovery PR
+  closed out.** Fifty-fifth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
+  492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
+  663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, 790, 801, 811, 823, 835, 846, 858,
+  867, 876, 885, 896, 905, 917, 927, 937, 946, 963, now 975). 11 local-only commits (cycles
+  964-974, single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-55` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged from last check. Nothing eligible.
+- 2026-09-07T13:01Z (C8 v2.3 cycle 974) — **IDLE-OK, verified.** `#2292` still `is:queued`/CLEAN.
+  E-gate: all 11 assets dropped by 1 again campaign-wide (mi_abhilekha 36→35, mi_adhilepa 38→37,
+  mi_bhara 16→15, mi_bhavisya 35→34, mi_darshana 41→40, mi_gunanaka 37→36, mi_pariksha 37→36,
+  mi_pramana 36→35, mi_sambandha 38→37, mi_sankalpa 16→15, mi_seva 39→38). Steady progress,
+  nothing eligible yet. Entry held local.
+- 2026-09-07T12:59Z (C8 v2.3 cycle 973) — **IDLE-OK, verified.** `#2292` still `is:queued`/CLEAN,
+  batched with L1's `#2277`/`#2295` and L3's `#2294`. E-gate unchanged. Nothing eligible. Entry
+  held local.
+- 2026-09-07T12:57Z (C8 v2.3 cycle 972) — **IDLE-OK, verified.** `#2292` still `is:queued`/CLEAN.
+  L1's `#2277` (`ga_dashas integrity_check_sql perf fix`) now queued — `ga_dashas` is L1's last
+  remaining frontier asset per `#2289`'s title and appears in most L5 assets' `waiting_on` lists,
+  so its eventual freeze would be a substantial unlock. This PR is a perf fix, not the freeze
+  itself — E-gate unchanged this cycle as expected. Nothing eligible yet. Entry held local.
+- 2026-09-07T12:55Z (C8 v2.3 cycle 971) — **Cycle 970's flag RESOLVED, false alarm.** Read
+  `egate.sql`'s source: `frozen` is computed from `asset_frozen` events in
+  `nirmana_evidence.nirmana_elevation_campaign_events`, independent of when a lane's PR lands on
+  `main` (the event fires at dispatch time, not merge time). Direct query confirms all 8
+  frontier-drain assets (`ga_vargas`, `ga_sensitive`, `ga_panchanga`, `ga_nakshatra`, `ga_prashna`,
+  `ga_strength`, `ga_ayurdaya`, `ga_sensitive_degree`) DO have `asset_frozen` events recorded, and
+  `mi_bhara`'s full `waiting_on` list (re-pulled with `-x`) no longer contains any of them — the
+  E-gate was already correctly reflecting the freeze; the counts had simply already absorbed it
+  before cycle 970's check, and the "unchanged" observations at cycles 949-970 were accurate
+  snapshots, not evidence of a lag. No real gap existed. `#2292` still `is:queued`/CLEAN,
+  batched with `#2294` (L3). Notable: L1's frontier-drain PRs `#2285`/`#2289` are now on
+  `origin/main` (`3a4eee8fa`/`13d120306`), which per their titles froze `ga_vargas`,
+  `ga_sensitive`, `ga_panchanga`, `ga_prashna`, `ga_nakshatra`, `ga_strength`, `ga_ayurdaya`,
+  `ga_sensitive_degree` — yet the E-gate re-run below is byte-identical to cycle 969's, including
+  `ga_strength`-blocked assets. Honest gap, not investigated further this bounded cycle (asset
+  freeze status lives outside `asset_registry`'s columns, a deeper query than an IDLE cycle
+  warrants) — flagging for the next cycle or a dedicated look rather than guessing at a cause.
+  Nothing eligible this cycle regardless. Entry held local.
+- 2026-09-07T12:49Z (C8 v2.3 cycle 969) — **IDLE-OK, verified.** `#2292` now genuinely
+  `is:queued`, `mergeStateStatus=CLEAN` — Governance Gates completed successfully. No push (would
+  dequeue). E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:47Z (C8 v2.3 cycle 968) — **IDLE-OK, verified.** `#2292`: `Governance Gates` still
+  `pending` (~10min in, approaching the ~11.5min normal ceiling). No hygiene action yet. E-gate
+  unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:45Z (C8 v2.3 cycle 967) — **IDLE-OK, verified.** `#2292`: `Governance Gates` still
+  `pending` (~8min in, within normal range). No hygiene action. E-gate unchanged. Nothing eligible.
+  Entry held local.
+- 2026-09-07T12:43Z (C8 v2.3 cycle 966) — **IDLE-OK, verified.** `#2292`: only `Governance Gates`
+  still `pending` (~6min in, normal). No hygiene action. E-gate unchanged. Nothing eligible. Entry
+  held local.
+- 2026-09-07T12:41Z (C8 v2.3 cycle 965) — **IDLE-OK, verified.** `#2292` progressing normally:
+  `DB Integration Tests` now passed; `Unit Tests` + `Governance Gates` still `pending` (~4min in).
+  No hygiene action. E-gate unchanged. Nothing eligible. Entry held local.
+- 2026-09-07T12:39Z (C8 v2.3 cycle 964) — **IDLE-OK, verified.** `#2292` (recovery-54) auto-merge
+  armed 12:37:33Z, `mergeStateStatus=BLOCKED`, checks just started (`Governance Gates`,
+  `DB Integration Tests`, `Unit Tests` all `pending` ~2min in — normal, not stalled). No hygiene
+  action. E-gate unchanged. Nothing eligible. Entry held local.
 - 2026-09-07T12:37Z (C8 v2.3 cycle 963) — **`#2287` MERGED — the fifty-fourth state-recovery PR
   closed out.** Fifty-fourth recurrence of the exact same pattern (cycles 442, 453, 461, 473, 482,
   492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644, 652,
