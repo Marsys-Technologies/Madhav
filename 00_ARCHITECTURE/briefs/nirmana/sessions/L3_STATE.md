@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~361:0xZ — L3-W4 — PR hygiene: `#2270` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (an L2 heartbeat state PR, no L3
+  overlap). `ga_positions` re-confirmed still frozen. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2270` clearing checks/queue; next
+  action: same.
 - `2026-09-07T~360:0xZ — L3-W4 — PR hygiene: `#2267` MERGED (confirmed
   `merged: true`, `mergedAt` set — the ~11.1min edge-of-range
   precedent held once again). Rebased the 18 not-yet-merged local
