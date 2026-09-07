@@ -222,7 +222,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~W4 for 15 of 23 assets, blocked on PR #1728~~ | ~~fingerprint ordering~~ | **RESOLVED** — #1728 merged |
 | ~~build-dispatch via `dispatch_nirmana_campaign_wave.py`~~ | ~~#1833 (unqualified schema refs)~~ | **Conductor fix in flight** — PR #1838 (queued), not yet merged; still genuinely blocks any BUILD-obligation dispatch (not probes) until it lands |
 | `ka_avadhi`'s declared `chara` dasha system has zero exact `chart_dashas.system_id` matches (found while deriving its F-L3-4 volume formula, migration 859) | unclear whether this is an honest L1-side build gap (Chara/rasi Daśā never built) or a naming mismatch in `ka_avadhi`'s own `_DASHA_SYSTEMS` tuple | genuinely open, not investigated further — `chart_dashas` instead carries `'chara_karaka'`, the Jaimini movable-significator concept (a different technique from Chara Daśā), so this may not even be the same thing under a wrong name. Not fixed or guessed at here per §N.7 (honest null over invented judgment); the other 6 of 7 declared systems have exact matches and are unaffected. |
-| `ka_sangam`'s F-L3-4 volume-formula derivation (last 2 of 20 originally-NULL L3 assets, with `ka_kshetra`) | real, verified structural complexity; a second cycle's deeper dig still didn't close it | genuinely open — a second investigation cycle answered every fact the first cycle's note listed as missing, and STILL could not reach a confident number; recording the harder blocker this time instead of re-listing solved sub-questions. Confirmed live: `_LIFETIME_HORIZON_YEARS=100`, `_HORIZON_YEARS=7` (the 'near' SubStep's own label says "5yr" — stale, the real constant is 7, a minor doc drift not fixed here since it's not this migration's concern); this chart selected all 60 possible lifetime substeps (`build_substep_progress` count) + 1 near = 61 total; 6 of this chart's 12 signs clear `SAV>=28` (signs 1,2,4,5,7,8, read from `chart_facts`/`ashtakavarga_bindu_sign`/`SARVA-SIGN_*`, `lahiri_chitrapaksha`). Computed real Jupiter/Saturn/Mars sign-ingress counts into those 6 signs over the exact 100y lifetime window directly from `ephemeris_daily` (day-to-day sidereal sign-change detection, offset back-derived via `brahmagyan.l0_ephemeris.derive_sidereal` at birth, not guessed): 75 (Jupiter) + 349 (Mars) + 42 (Saturn) = 466 windows per lifetime-substep call. **This does not reconcile**: `_dedup` keys on `(mode, peak_date, signal_id)`, and each lifetime substep's Mode D windows are tagged with THAT substep's own sole predicate's `signal_id` (a different one per substep), and the substep-scoped `DELETE ... WHERE signal_id=%s AND horizon_tier='lifetime'` only clears rows sharing that same `signal_id` — so nothing in the code stops all 60 substeps' Mode D output from stacking as separate rows, which would predict roughly 60x466=27,960 lifetime-tier Mode D rows alone, far above the observed 11,950 mode-D total (`kala_convergence`, all tiers). The gap means either (a) my day-to-day sign-change detection over-counts real ingresses (plausible: retrograde stations near a sign cusp can wobble across the boundary several times, and the true `find_ingresses` service likely has its own real-root/hysteresis logic this rough SQL pass didn't replicate), or (b) some other gate (e.g. `HIGH_CONFIDENCE_ORB_THRESHOLD`, a per-window admission check not traced this cycle) drops a large fraction of Mode D candidates before insertion, or (c) something about which predicate is genuinely "first" per substep differs from this reading. None of these three were resolved. Not fixed or guessed at; still recorded as a head start, now with the harder remaining question named precisely (reconcile the ~2.3x gap between a naive ingress count and the real served total) rather than the easier facts a first pass already closed. |
+| ~~`ka_sangam`'s F-L3-4 volume-formula derivation~~ | ~~real, verified structural complexity~~ | **RESOLVED — migration 866, third investigation cycle.** The ~2.3x gap closed exactly: Mode D fires only for a substep whose sole predicate is NOT SUBSYSTEM-classified (only 25 of 60 lifetime substeps qualify), and `_derive_birth_year` reads the theoretical pre-birth dasha start (1950) not the real 1984 birth year, so Mode D's true horizon is [1950-01-01, 2050-12-31]. Running the REAL `pipeline.transit_search.find_ingress_events` (not approximated) for 3 scan planets x 6 SAV>=28 signs over that exact horizon gives 478 windows; 25 x 478 = 11950, matching the live `mode='D'` count with zero remaining discrepancy. Full breakdown (near A/B/C + lifetime A/B/C/D) independently re-verified live in the paired test. Modes A/B/C (2918 rows) honestly left undecomposed as per-predicate-alignment-dependent. Only `ka_kshetra` remains of the original 20 F-L3-4 NULLs. |
 
 - **#1734 → D-CND-26 ruling absorbed (2026-09-05T14:0xZ, read-only check, no new action).**
   Conductor ruled true-closure-governs (my own assumption confirmed) and asked me to check the
@@ -495,6 +495,141 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~155:0xZ — L3-W4/W3 — PR hygiene: `#2195` own `merge_group`
+  build confirmed healthy (~9min, within normal range). Nothing to fix.
+  With F-L3-4 now CLOSED, swept the rest of the findings ledger (F-L3-1
+  through F-L3-10) and the Held-items table for any other unheld,
+  L3-actionable W3 item: F-L3-1/2/3 (registry-fingerprint ordering,
+  `integrity_verified` mandate, `ka_graha_sancara` diagnosis) are long
+  resolved; F-L3-5 (catalog_status) already fully resolved; F-L3-6
+  (dispatcher sequencing) resolved via #1737; F-L3-7 (D-CND-03
+  contracts) landed as migration 670; F-L3-8 (`natural_key_partition`
+  NULL) is explicitly a campaign-wide pattern (0/40 across every
+  layer except L0) recorded so a future W2 rules on it deliberately —
+  not a unilateral L3 fix to make. Every remaining Held item is either
+  already resolved or externally blocked (L0/L1/L2 freezes, L2's
+  `bo_laksana` rebuild, L2 salience capabilities, #1838 in flight, the
+  `chara`/`chara_karaka` gap already logged). Re-ran `egate.sql`:
+  unchanged, no new opening. No new bounded W3/tier-5 work genuinely
+  available this cycle — recording an honest IDLE-OK rather than
+  manufacturing busywork. — blocked on: nothing new; next action: push
+  once `#2195` merges/finishes, then hold at routine PR-hygiene/E-gate
+  monitoring cadence until `ga_positions` freezes or a fresh finding
+  surfaces.
+- `2026-09-07T~154:0xZ — L3-W3 — PR hygiene: `#2195` genuinely queued
+  (position 1, `CLEAN`), nothing to fix. **F-L3-4 CLOSED IN FULL THIS
+  CYCLE** — derived `ka_kshetra`'s formula, the last of the 20
+  originally-NULL L3 assets. `ka_kshetra` (14,000+ lines, ~25 files,
+  the layer's largest asset by a wide margin) turned out to have a
+  tractable row-count shape despite its scoring complexity, the same
+  "separate the count from the computation" pattern that closed
+  `ka_gochara_v3_century_materialize` and `ka_sangam`: `kala_field`
+  stores one row per breakpoint-derived segment per (chart,
+  event_class); live-verified this chart discovers 25 of 27 canonical
+  event classes (`_discover_event_classes`, MR-16 dynamic discovery),
+  and EVERY one has exactly 343,991 segments — identical across all 25,
+  not a sample — with `refinement_depth=0` for every single row (the
+  adaptive-subdivision machinery never actually fired). This
+  class-invariance means the breakpoint set itself (`EnvelopeIndex.
+  breakpoints()`) is chart-wide/transit-derived, not event-class-
+  specific — only the field VALUES differ by domain. 25 x 343,991 =
+  8,599,775 exactly, matching `target_floor`/`count_sql`. The internal
+  knot-density mechanics behind 343,991 are honestly left undecomposed
+  (would require tracing every primitive's own knot generation across
+  the full stage0-stage8 pipeline). Migration 867 + paired test
+  authored (no self-transaction wrapper from the start), all 7 tests
+  pass (27.8s — expected, given the 8.6M-row table); the live tests
+  independently re-derive the per-class uniformity and
+  `refinement_depth` claims from `kala_field` directly. Migration-number
+  guard PASS (867, confirmed free). Committed locally (`67a6171a6`),
+  held from push — `#2195` still mid-queue-attempt. — blocked on:
+  nothing new; next action: push once `#2195` merges/finishes. **F-L3-4
+  status: CLOSED — all 20 originally-NULL L3 assets now have a derived,
+  auditable `expected_volume_formula`, across 16 migrations (852-867).**
+  With this finding exhausted, future cycles fall back further down the
+  priority list (E-gate dispatch remains blocked on `ga_positions`;
+  W5 verification has nothing new pending; no other unheld W3 item is
+  currently identified — the next tier-5 prep item, if any, will need
+  fresh investigation rather than continuing this batch).
+- `2026-09-07T~153:0xZ — L3-W3 — PR hygiene: `#2195` build ~5.7min,
+  within normal range, nothing red. **Closed the `ka_sangam` F-L3-4
+  investigation for real this cycle** — a third pass, this time running
+  the actual production `pipeline.transit_search.find_ingress_events`
+  directly instead of approximating via raw SQL. Found the precise root
+  cause of the ~2.3x gap that survived two prior cycles: (1) Mode D
+  (`mode_d_av_bindhu`) fires only for a substep whose sole predicate is
+  NOT SUBSYSTEM-classified — SUBSYSTEM predicates route to Mode C via an
+  early `continue` before the Mode D block is ever reached — and only
+  25 of this chart's 60 lifetime substeps qualify (5 each of the 5
+  non-SUBSYSTEM signature classes, matching the class-quota selection's
+  own per-class floor exactly); (2) `_derive_birth_year` reads
+  `MIN(chart_dashas.start_date)` at `level_n=1` — the theoretical
+  pre-birth balance-of-dasha start (1950), not the native's real 1984
+  birth — so Mode D's real lifetime horizon is [1950-01-01,
+  2050-12-31], not [1984, 2084] as both my prior estimate and my
+  literal reading of "birth_year" assumed. With both corrected, running
+  the real ingress-search code for 3 scan planets x 6 `SAV>=28` signs
+  over the true horizon gives exactly 478 windows; 25 x 478 = 11950,
+  matching the live `mode='D'` total with ZERO remaining discrepancy
+  (verified against the full near/lifetime x A/B/C/D breakdown, not
+  just the grand total). Migration 866 + paired test authored (no
+  self-transaction wrapper from the start), all 9 tests pass — the live
+  tests independently re-derive the qualifying-substep count and the
+  full mode/tier breakdown from source tables, not trusted from the
+  migration's own numbers. Modes A/B/C (2918 rows) honestly left
+  undecomposed as per-predicate transit/dasha-alignment-dependent.
+  Migration-number guard PASS (866, confirmed free). Committed locally
+  (`f96917910`), held from push — `#2195` still mid-check. Cleared the
+  now-resolved Held item. — blocked on: nothing new; next action: push
+  once `#2195` clears/queues. **F-L3-4 status: only `ka_kshetra`
+  remains** of the original 20 NULL L3 assets — 15 migrations
+  (852-866) have closed everything else, some (like this one) after
+  genuinely hard, multi-cycle investigation rather than a shallow
+  guess.
+- `2026-09-07T~152:0xZ — L3-W4/W3 — PR hygiene: `#2195` checks running
+  pre-queue (4 pending, nothing red), not yet queued — nothing to fix.
+  Re-ran `egate.sql`: unchanged, no new E-gate opening (`ga_positions`
+  still `OPEN-PENDING-PIN`). Considered a third `ka_sangam` investigation
+  pass: ruled out one of the 3 candidate explanations from last cycle
+  (Mode D's `orb_strength` is hardcoded to `1.0`, well above
+  `HIGH_CONFIDENCE_ORB_THRESHOLD=0.45`, so that admission gate cannot be
+  what's trimming the count) but a rough correction for the other
+  candidate (my day-to-day sign-detection likely over-counting
+  retrograde boundary wobbles — corrected estimate ~389/lifetime-call
+  vs the naive 466) still predicts ~23,340 across 60 substeps, still
+  ~2x too high — decided against a third guess-and-check pass without
+  running the actual `find_ingresses` service logic, which is the only
+  way to close this honestly. Ran a broad live audit of
+  `expected_volume_formula IS NOT NULL` across all 23 L3 assets to
+  double-check no regression in the already-shipped migrations — 9
+  assets show `true` (the ones deployed by an earlier completed deploy:
+  `ka_gochara`/`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_vedha_gochara`/
+  `ka_vighnakara`/`ka_bhavishya_lekha`/`ka_jivana_parva`/
+  `ka_sudarshana_varsha`/`ka_taranga`/`ka_tithi_pravesha`), the rest
+  correctly show `false` because migrations 859-865 haven't been
+  deployed yet (still sitting in merged-but-not-yet-deployed PRs or in
+  `#2195` itself) — not a defect, just deploy lag, consistent with how
+  every migration in this batch has behaved. No new bounded work found;
+  recording this as an honest IDLE-OK cycle rather than forcing a third
+  unverified `ka_sangam` guess. — blocked on: nothing new; next action:
+  push once `#2195` clears/queues, then watch for the F-L3-4 migrations
+  to actually deploy and re-verify live once they do.
+- `2026-09-07T~151:0xZ — L3-W3 — PR hygiene: `#2192` MERGED (squash
+  `54174fca3`). Rebased the 9 not-yet-merged local commits (migrations
+  864/865 + heartbeat, plus 10 pre-#2192 commits already absorbed into
+  #2192's squash) onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern once (auto-resolved), no non-standard
+  conflicts. Verified zero conflict markers, migration-number guard
+  PASS, all 15 migration-864/865 tests still pass post-rebase, held
+  rows intact (including the new `ka_sangam` unreconciled-gap note).
+  Renamed branch to `codex/nirmana-l3-f-l3-4-batch-4`, pushed, opened
+  **PR #2195**, armed auto-merge (checks running now, not yet queued —
+  normal). No new bounded work this cycle beyond the rebase/PR-open
+  itself (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on:
+  nothing new; next action: verify `#2195` clears its checks and queues
+  cleanly next cycle. F-L3-4 status unchanged: 16 of 20 closed;
+  `ka_kshetra`/`ka_sangam` remain, both genuinely investigated without a
+  safe number reached.
 - `2026-09-07T~150:0xZ — L3-W3 — PR hygiene: `#2192` build ~8.7min,
   within normal range, nothing red. Continued the `ka_sangam` F-L3-4
   investigation from last cycle: answered every fact last cycle's note
