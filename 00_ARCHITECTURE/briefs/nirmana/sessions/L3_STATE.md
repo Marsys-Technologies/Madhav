@@ -497,6 +497,18 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~503:0xZ — L3-W4 — PR hygiene: `#2347`'s
+  `mergeQueueEntry.state` shows `UNMERGEABLE` at position 3.
+  Investigated: this cascades from `#2329` (L1, position 2, ahead of
+  `#2347`) also showing `UNMERGEABLE` in the queue listing — but
+  `#2329`'s own PR-level status is `mergeable: MERGEABLE`,
+  `mergeStateStatus: CLEAN`. This reads as a merge-queue batch-
+  reprocessing artifact (transient state when an earlier queue
+  entry needs re-evaluation), not a genuine conflict — `#2347`'s own
+  `mergeStateStatus` is still `CLEAN` too. Not `#2347`'s own defect,
+  and `#2329` is not my PR to fix. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: queue reprocessing;
+  next action: same, watch for self-resolution or genuine RED.
 - `2026-09-07T~502:0xZ — L3-W4 — PR hygiene: `#2347`'s checks
   finished (0 failures — the ~10.6min run resolved cleanly). Now
   genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 3 —
