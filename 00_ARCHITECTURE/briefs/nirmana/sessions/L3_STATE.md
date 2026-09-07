@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~461:0xZ — L3-W4 — PR hygiene: `#2313` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6.2min, within normal range). No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2313` finishing;
+  next action: same.
 - `2026-09-07T~460:0xZ — L3-W4 — PR hygiene: `#2313` still position
   1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
   `in_progress` ~4min in, well within normal range, genuine progress
