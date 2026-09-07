@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:07:30Z` — cycle 713: **CLOSED #1852.** PR #1928 confirmed merged
+  (2026-09-06T13:14:47Z). Hit the stale-worktree trap again checking this one — my own
+  `wip-cascade-hold` copy of `bo_pratijna_v4_engine.py` still showed the old cross-layer
+  import; re-checked via `git show origin/main:...` and confirmed the import is genuinely
+  severed there (local drift-guard-tested copies of the two functions instead). 14→13 open
+  adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:04:23Z` — cycle 712: **CLOSED #1840.** PR #1844 confirmed merged
   (2026-09-06T12:19:05Z) — `mi_vistara` output_digest_spec authored per D-CND-27; #2167
   (mi_kula's own spec, same recipe) also merged since, confirming generalization worked.
