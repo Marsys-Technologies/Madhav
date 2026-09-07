@@ -495,6 +495,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~291:0xZ — L3-W4 — PR hygiene: `#2239`'s fresh (rebased)
+  `merge_group` run still `in_progress` (~8.3min, within the confirmed
+  ~11min normal range, same run). No new `origin/main` merges,
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2239` finishing; next action: same.
 - `2026-09-07T~290:0xZ — L3-W4 — PR hygiene: explained the persisting
   lag from last cycle — the prior `merge_group` run's completion
   hadn't gone stale; the queue had actually re-based `#2239` against
