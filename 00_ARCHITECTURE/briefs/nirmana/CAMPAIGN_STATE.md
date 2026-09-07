@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:40:43Z` — cycle 881: **IDLE-OK, Δfrozen +0. Context found for the stall
+  pattern (not re-escalating redundantly).** Checked #2224 (open, L1-authored): confirms the exact
+  same stale-registry-fingerprint mechanism as my own Lane C finding blocks wave-1 dispatch
+  campaign-wide — any `REGISTRY_CONTRACT_FIELDS` change landing after an asset's evidence was
+  accepted invalidates it, independent of layer. L1 already has the re-stamp recipe (used it for
+  `ga_positions`/`ga_vargas`). `ga_dashas`' own dry-run/dispatch succeeded cleanly though (no
+  error) — its stall is specifically post-build evidence submission, a different symptom already
+  flagged in cycle 879's escalation; not re-escalating the same point again this cycle without new
+  elapsed time to justify it. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
+  open. Adjudications unchanged (11).
 - `2026-09-07T09:38:42Z` — cycle 880: **IDLE-OK, Δfrozen +0.** ~2.5 min since the escalation —
   too soon to expect a response. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none
   open. Adjudications unchanged (11).
