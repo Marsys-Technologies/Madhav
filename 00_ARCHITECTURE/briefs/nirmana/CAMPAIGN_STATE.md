@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:16:59Z` — cycle 835: **IDLE-OK (verified).** #2247 self-resolved (no longer
+  CONFLICTING). #2227 still progressing (3 pending checks). Fleet DIRTY empty; adjudications
+  unchanged (11).
 - `2026-09-07T07:14:32Z` — cycle 834: **Fleet sweep — nudged #2247** (CONFLICTING ~17min, past
   the wait threshold). #2227 still open, unqueued. Adjudications unchanged (11).
 - `2026-09-07T07:11:06Z` — cycle 833: **IDLE-OK (verified).** #2247 still CONFLICTING (~14min)
