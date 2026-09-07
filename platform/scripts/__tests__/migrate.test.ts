@@ -752,9 +752,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; four known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06)', () => {
+  it('the checked-in allowlist parses; five known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec (2026-09-07)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 4.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 5.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -767,10 +767,15 @@ describe('loadRenumberDisclosures', () => {
     //   DB, renumbered 809->811->813->820 (final -- into L5's dedicated 820-839 range per adjudication #2086) after colliding with an unrelated L1 806 migration that merged to
     //   main first. Disclosed 2026-09-06 (self-diagnosed proactively by the L5 NIRMANA campaign
     //   lane while reconciling the sibling 692->808 collision on PR #1844, same session).
+    // Entry 5: 880_nirmana_l1_ga_dashas_output_digest_spec.sql applied to production, renumbered
+    //   to 881 after colliding with an unrelated, independently-authored L2 880 migration
+    //   (bo_sudarshana_natural_key_partition, PR #2262) that merged to main first. Disclosed
+    //   2026-09-07 (caught by the E2 NEW-COLLISION CI gate on PR #2272 before merge, by the L1
+    //   NIRMANA campaign lane).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(4)
+    expect(map.size).toBe(5)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -795,6 +800,12 @@ describe('loadRenumberDisclosures', () => {
     expect(entry820!.sql_identity).toBe('2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102')
     expect(entry820!.disposition).toBe('already-applied-under-old-name')
     expect(entry820!.disclosed_on).toBe('2026-09-06')
+    const entry881 = map.get('881_nirmana_l1_ga_dashas_output_digest_spec.sql')
+    expect(entry881).toBeDefined()
+    expect(entry881!.applied_filename).toBe('880_nirmana_l1_ga_dashas_output_digest_spec.sql')
+    expect(entry881!.sql_identity).toBe('b641c15e348896ddff992f0a560fe69c13db103104df156479f0e5b6b666e19d')
+    expect(entry881!.disposition).toBe('already-applied-under-old-name')
+    expect(entry881!.disclosed_on).toBe('2026-09-07')
   })
 })
 
