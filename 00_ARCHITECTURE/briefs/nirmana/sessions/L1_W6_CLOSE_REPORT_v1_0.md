@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.44-DRAFT"
+version: "0.45-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -294,6 +294,51 @@ re-asserted. Of the 20, `F-B32`/`F-B33` was the only id-group this campaign foun
 incorrectly claimed closed — genuinely open when found, but **now FULLY CLOSED as of cycle 185**
 (§2/§5; 57/57 categories across 13 slices, 7 PRs); every other group's cycle-125 "closed" claim
 held up under independent re-verification.
+
+## §2.6 — NOW-tier per-finding disposition table (cycle 188)
+
+Reconstructed from `L1_W2_DECIDE_v1_0.md` §3's own NOW-tier prose (source of the finding IDs and
+what each closed, verbatim) plus this report's own already-recorded evidence. **Compilation of
+citations already made elsewhere, not a fresh live re-verification of every row** — the same
+honest-labeling discipline §2.5 established for MUST. Unlike MUST, no correction has ever been
+found against any NOW-tier item across 188 cycles, so this table is lower-stakes than §2.5's own
+was at cycle 158 — but the tier-level summary alone (§2) was never a substitute for a citable
+per-finding record, so building it here closes §6's own long-standing OPEN item.
+
+| id(s) | asset | what closed | evidence |
+|---|---|---|---|
+| F-A5, F-B13, F-D4, F-D10, F-E13 | vargas, sensitive, sade_sati, ayurdaya, tajaka | Floors/volume formulas re-baselined with derivations, per C12 | §1's per-asset rows; migration 650 (`l1_w3_registry_truth.sql`) for 4/5, independently re-verified cycle 178 |
+| F-A16, F-B22, F-C12, F-D12, F-E27 | positions, nakshatra, condition, sade_sati, batch-E (`estimated_seconds` half) | `estimated_seconds` re-measured from live `build_run_assets`, stale by 3.7×–20× | Migration 847 (cycle 110), extended migration 879 (cycle 187) for 10 more assets found stale on a later re-query — see §4 |
+| F-B4, F-D16 | (registry) | `target_table` set where NULL | §1/§2 tier summary (not independently re-cited per-row this pass — no correction ever found against this group) |
+| F-C21, F-D18, F-D25, F-E8, F-E28 | (serving) | `density_contract`/`empty_reason` declared on capabilities lacking them | §1/§2 tier summary |
+| F-A11, F-E2, F-B14 | (serving) | Serving projections widened to reach already-computed data (83,740 yogini rows; `fact_value_jsonb`; verification status) | §1/§2 tier summary |
+| F-D5, F-D11, F-D20, F-E19 | (serving) | Total `ORDER BY` added where pagination was non-deterministic | §1/§2 tier summary |
+| F-C9, F-E4 | structural, ayurdaya | `fact_category_ownership` completed | Migration 842 (§1 row 9); migration 845, PR #2125 (F-E4, cycle 108) |
+| F-B6 | (registry) | Dead materialized view dropped | §1/§2 tier summary |
+
+**Honest note on this table's own limits**: rows citing only "§1/§2 tier summary" (not a
+specific PR/migration number) are the ones this pass did not independently re-verify live —
+following §2.5's own precedent, that is stated plainly rather than implied to be equally strong
+as a cited row. If a future session finds one of these wrong, that would be the first correction
+found against the NOW tier in the campaign's history; nothing here should be read as ruling that
+out, only as reporting that no such correction has been found *yet*.
+
+## §2.7 — NEVER-LATER-tier per-finding disposition table (cycle 188)
+
+Reconstructed the same way as §2.6, from `L1_W2_DECIDE_v1_0.md` §3's own NEVER-LATER prose.
+
+| id(s) | asset(s) | reason parked | doctrine/ruling |
+|---|---|---|---|
+| F-A7, F-A13, F-B11, F-B15, F-B23, F-C18, F-C23, F-D3, F-D15, F-E7, F-E18 | cross (11 findings) | All DAG corrections — `depends_on` is immutable for this cohort | #1744. F-A13 (the `ga_dashas`/`ga_vargas` MVCC race, the one with live consequences) mitigated by sequential single-asset dispatch at W4 instead, not fixed at the DAG level |
+| F-D7, F-D8 | ga_yoga | Verse-level grounding for yogas — `brahma_yoga_source_chunks` has 0 rows, 13 citations point at absent text_ids | L0-owned; chapter-level `sruti` is achievable now and is taken, verse-level is not |
+| F-B26 (deeper form), F-C19, F-C24 | panchanga, cross | P2 verification drive — parked by native ruling | The carve-out permits opportunistic normalisation only; #1729 removed even that |
+| F-E26 | ga_prashna | `ga_prashna` build-out — dormant by design | R-1 (native ruling). Deferred register only — see §4 of the DECIDE doc for the full dormant-disposition account |
+| F-A22, F-B17, F-C22, F-D29 | vargas, sensitive_degree, condition, sade_sati | Stale doc figures on live surfaces | Corrected in place where the file is already being touched, otherwise closed as cosmetic — cycle 126's own near-miss check confirmed F-B17/F-C22 specifically stay parked under this exact ratified triage rather than becoming unilateral new work (`L1_STATE.md` cycle 126 entry) |
+
+**No correction has ever been found against any NEVER-LATER item.** All 5 groups (21 individual
+finding IDs) remain correctly parked by explicit design — immutable DAG, L0 ownership, native
+ruling, or genuinely cosmetic — none of them a live defect this campaign has any authority or
+mechanism to fix inside this cohort.
 
 ## §3 — Pillar movement (per the five doctrines)
 
@@ -705,8 +750,7 @@ estimates are now current as of this cycle's live measurement.
 Per-finding disposition table — MUST tier built §2.5 (cycle 158); the 6 id-groups (9 F-ids)
 that once rested on an uncited cycle-125 claim were independently re-verified and cited by
 cycle 178 (see §2.5's own "Honest count" — this §6 bullet was stale, corrected cycle 186).
-NOW/NEVER-LATER tiers
-still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
+NOW/NEVER-LATER tiers now tabulated per-finding (§2.6/§2.7, cycle 188) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; slice 8 (2 more categories) landed cycle 180, PR
 #2242, migration 878 — `get_nakshatra.ts`'s own 3-category docstring overclaim CLOSED, 2 of 3
@@ -736,11 +780,14 @@ categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-r
 rebuild, no edit needed
 #2113)** · **F-B32 fully closed cycle 185 — no remaining categories (§5 — closed, distinct from
 F-B32's own list-repair scope, which is itself now complete)**
-· W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
-6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
-`ga_sade_sati` PR #2212, `ga_nakshatra` PR #2213, `ga_panchanga` PR #2216; `ga_sensitive`'s
-partition + fix 2/`output_digest_spec` still needed for wave 1)
-· W5
-capsules (blocked, same gate) · the Conductor's freeze-ordering ack · closure-safe sync proof ·
+· W4/W5 unblocked at the root: `ga_positions` (layer root, canary, the sole E-gate bottleneck
+for all 18 siblings) dispatched through the full W4→W5 pipeline and **FROZEN cycle 188** —
+`build_run_authorized` → real rebuild → `accepted_rebuild_observed` → `integrity_verified` →
+`asset_frozen`, verified via `capsule_audit.sql` §1/§2. 8 siblings now E-gate OPEN-PENDING-PIN
+(`ga_ayurdaya`, `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_prashna`, `ga_sensitive`,
+`ga_sensitive_degree`, `ga_vargas`) and are the next dispatch targets, in DAG order; the
+remaining 9 are BLOCKED-ANCESTORS on one or more of those 8, plus `ga_transit_anchors`
+BLOCKED-NO-ROUTE (separate W2-verdict gap)
+· the Conductor's freeze-ordering ack · closure-safe sync proof ·
 this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
 run — nothing in this file should be read as asserting that has happened.
