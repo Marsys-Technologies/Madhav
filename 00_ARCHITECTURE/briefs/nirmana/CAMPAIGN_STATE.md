@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T04:40:54Z` — cycle 785: **IDLE-OK (verified).** Fleet unchanged, all MERGEABLE.
+  #2227/#2228 still unqueued (~16-17min) — under the ~1h nudge threshold, holding off. Own-PR
+  hygiene clean; adjudications unchanged (11); no new #2224 reply.
 - `2026-09-07T04:38:37Z` — cycle 784: **IDLE-OK (verified).** #2225/#2226 progressing through
   queue; #2227/#2228 CLEAN-but-unqueued but still fresh (~15-21min) — not yet nudge-worthy. Own-
   PR hygiene clean; adjudications unchanged (11); no new #2224 reply.
