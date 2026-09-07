@@ -1267,3 +1267,7 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  `ga_sensitive_degree` (L1) froze — L1's genuinely-open frontier is now essentially exhausted
+  (only `ga_dashas`/`ga_transit_anchors` remain, both non-dispatch blockers). Not L0-relevant.
+  Nothing eligible.
