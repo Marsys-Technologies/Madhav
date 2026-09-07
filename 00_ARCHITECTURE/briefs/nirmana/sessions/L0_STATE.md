@@ -619,3 +619,4 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   frozen (unchanged) — `bg_cohort` still not among them, no mention of the C12 service-dependency
   carve-out being addressed. 6 adjudications closed this stretch, none L0-relevant. `bg_cohort`
   carve-out file still untouched. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
