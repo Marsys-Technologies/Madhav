@@ -497,6 +497,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~504:0xZ — L3-W4 — PR hygiene: `#2347` still position
+  3, `UNMERGEABLE` (queue entry), unchanged. Root cause now clearer:
+  `#2346` (position 1, ahead) is `AWAITING_CHECKS`, ~10.4min queued,
+  own build not yet visible — this is the standard "strict"
+  merge-queue mechanic: entries behind an unresolved batch show
+  provisional `UNMERGEABLE` until the PR(s) ahead validate. Reads as
+  the same recurring runner-capacity congestion pattern, not a
+  distinct problem. No new `origin/main` merges. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2346` finishing/self-resolving;
+  next action: same, watch closely.
 - `2026-09-07T~503:0xZ — L3-W4 — PR hygiene: `#2347`'s
   `mergeQueueEntry.state` shows `UNMERGEABLE` at position 3.
   Investigated: this cascades from `#2329` (L1, position 2, ahead of
