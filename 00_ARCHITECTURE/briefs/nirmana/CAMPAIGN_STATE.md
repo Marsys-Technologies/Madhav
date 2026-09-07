@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T07:31:46Z` — cycle 841: **IDLE-OK (verified).** #2227's run continuing (~6min in,
+  no restart) — approaching the known ~9-10min Governance Gates completion window. Fleet DIRTY
+  empty; adjudications unchanged (11).
 - `2026-09-07T07:29:23Z` — cycle 840: **IDLE-OK (verified).** #2227's run continuing (~4min in,
   no restart), same 3 pending. Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T07:27:09Z` — cycle 839: **IDLE-OK (verified).** #2227's checks fresh (~2min in),
