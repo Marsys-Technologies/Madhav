@@ -495,6 +495,23 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~322:0xZ — L3-W4 — PR hygiene: root-caused why `#2251`
+  got dequeued last cycle — pulled the PRIOR `merge_group` run's job
+  log (`Unit Tests`, `conclusion: failure`) and found the failure was
+  entirely inside a throwaway test-fixture Postgres container's own
+  startup log: a long repeating loop of `FATAL: role "root" does not
+  exist` / assorted `DROP OWNED BY <role>` errors against roles that
+  don't exist, ending in the container being force-removed — a CI
+  service-container readiness flake (nothing in this state-file-only
+  diff could cause a Postgres role-provisioning failure). Not a real
+  regression to fix; correctly did NOT weaken any gate, just let the
+  re-queue's fresh `merge_group` run (started `07:51:xx`, all jobs
+  freshly dispatched, none failed yet) re-attempt with a clean
+  container. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2251`'s fresh run finishing; next action: same, watch for a
+  second failure (would then warrant deeper investigation, not
+  another blind re-queue).
 - `2026-09-07T~321:0xZ — L3-W4 — PR hygiene: `#2251` genuinely
   re-queued and confirmed, `AWAITING_CHECKS`, position 1 — its own
   `merge_group` run has started again. No new `origin/main` merges,
