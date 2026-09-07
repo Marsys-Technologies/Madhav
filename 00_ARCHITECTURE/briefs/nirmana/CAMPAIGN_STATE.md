@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:56:56Z` — cycle 961: **IDLE-OK, Δfrozen +0.** #2295 shows `UNSTABLE` (one
+  check still pending, none red) — normal transient CI state, not a failure. Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:54:42Z` — cycle 960: **IDLE-OK, Δfrozen +0.** #2295's checks all pending,
   nothing red. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
   Adjudications unchanged (11).
