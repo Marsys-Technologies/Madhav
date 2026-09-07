@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~199:0xZ — L3-W4 — PR hygiene: `#2210`'s own `merge_group`
+  checks finished (0 failures), `mergeQueueEntry.state: MERGEABLE`,
+  position 3 — past its own checks, now waiting purely for its queue
+  turn (positions 1/2 ahead of it to clear first). No new
+  `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2210` finishing; next action: same.
 - `2026-09-07T~198:0xZ — L3-W4 — PR hygiene: `#2210` still position 3,
   `AWAITING_CHECKS` — located its own `merge_group` run directly
   (`gh-readonly-queue/main/pr-2210-...`), step-level checked: on
