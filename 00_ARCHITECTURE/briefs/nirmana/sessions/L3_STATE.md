@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~305:0xZ — L3-W4 — PR hygiene: `#2248`'s pre-queue check
+  run still `in_progress` (~4.6min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. Two new
+  `origin/main` merges (an L5 heartbeat PR, and L1's `get_structural`
+  tool closing a 15-category gap, `#2244` — no L3 overlap).
+  `ga_positions` still `OPEN-PENDING-PIN`. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2248` finishing; next action: same.
 - `2026-09-07T~304:0xZ — L3-W4 — PR hygiene: `#2248` pre-queue checks
   running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
   all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
