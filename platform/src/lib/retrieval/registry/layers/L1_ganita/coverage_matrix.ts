@@ -14,7 +14,9 @@
  * L1_W6_CLOSE_REPORT_v1_0.md §2/§5 for the full audit). Being closed incrementally, one verified
  * cluster at a time, rather than in one unverified bulk pass — each addition here must be
  * confirmed against the real serving tool's actual query logic, not inferred from naming alone.
- * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07; the remaining ~52 are still open.
+ * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07 slice 1; `graha_{cheshta,drik,
+ * kala,sthana}_bala_per_varga` (4 categories) closed 2026-09-07 slice 2; the remaining ~48 are
+ * still open.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -87,13 +89,16 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_avastha_lifetime_exposure_summary',
   'graha_avastha_sayanadi',
   'graha_avastha_sayanadi_per_varga',
+  'graha_cheshta_bala_per_varga',
   'graha_composite_state_classification',
   'graha_dignity_per_varga',
   'graha_dispositor_chain',
+  'graha_drik_bala_per_varga',
   'graha_effective_dignity_modified_by_aspects',
   'graha_functional_class_per_ascendant',
   'graha_in_house_composite_strength',
   'graha_ishta_phala',
+  'graha_kala_bala_per_varga',
   'graha_kashta_phala',
   'graha_position',
   'graha_saptavargaja_bala_component',
@@ -106,6 +111,7 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_shadbala_total',
   'graha_sign_attributes',
   'graha_special_state_rollup',
+  'graha_sthana_bala_per_varga',
   'graha_tri_deva_role_strength',
   'graha_vargottama_amplification_factor',
   'graha_vimsopaka_dasavarga',
@@ -217,6 +223,15 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   graha_shadbala_naisargika:            ['marsys://tool/L1/get_strength'],
   graha_shadbala_sthana:                ['marsys://tool/L1/get_strength'],
   graha_shadbala_total:                 ['marsys://tool/L1/get_strength'],
+  // F-B32 (2026-09-07, slice 2/N): opt-in only, same doctrine as the avastha per-varga slice
+  // above — get_strength.ts's query is `fact_category = ANY($2)` over the caller's `categories`
+  // param, `STRENGTH_CATEGORIES` being only the default 21. Real per-varga breakdown of the
+  // cheshta/drik/kala/sthana shadbala components above; 735/735/735/735 live rows (canonical
+  // chart) confirm populated, not stray.
+  graha_cheshta_bala_per_varga:         ['marsys://tool/L1/get_strength'],
+  graha_drik_bala_per_varga:            ['marsys://tool/L1/get_strength'],
+  graha_kala_bala_per_varga:            ['marsys://tool/L1/get_strength'],
+  graha_sthana_bala_per_varga:          ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_dasavarga:            ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_saptavarga:           ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_shadvarga:            ['marsys://tool/L1/get_strength'],
