@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~476:0xZ — L3-W4 — PR hygiene: `#2330`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2330` finishing; next
+  action: same.
 - `2026-09-07T~475:0xZ — L3-W4 — PR hygiene: `#2330`'s
   `DB Integration Tests` now passed; `Unit Tests`/`Governance Gates`
   still pending, nothing red. One new `origin/main` merge (`#2324`,
