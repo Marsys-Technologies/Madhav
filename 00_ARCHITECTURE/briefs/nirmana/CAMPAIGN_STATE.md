@@ -381,6 +381,15 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T13:30:32Z` — cycle 974: **Drafted #2224's exact fix locally, then reverted —
+  handed the precise diff to L1 rather than ship unverified.** Attempted implementing my own
+  #2224 ruling directly (worktree lacks `node_modules`, can't run the test suite to verify
+  safety before committing to shared validation code) — drafted the minimal diff
+  (`definitions.ts` ~1311-1329, drop `AND source_ref = $7` + its param), confirmed via `git
+  status` the revert left zero diff, then posted the exact diff to #2224 (comment 5571380310) so
+  L1 can apply+verify+ship in their working environment instead of re-deriving it. Δfrozen still
+  +0 (56/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (12).
 - `2026-09-07T13:26:34Z` — cycle 973: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
   stale PRs cleared this check). Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T13:24:12Z` — cycle 972: **IDLE-OK, Δfrozen +0.** L1's own state confirms "no
