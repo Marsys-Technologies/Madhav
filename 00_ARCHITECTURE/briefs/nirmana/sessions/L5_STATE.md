@@ -457,6 +457,51 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T04:43Z (C8 v2.3 cycle 772) — **`#2226` MERGED — the thirty-sixth state-recovery PR
+  closed out.** Thirty-sixth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, now 772). 10 local-only commits (cycles
+  761-771, single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-36` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:41Z (C8 v2.3 cycle 771) — **IDLE-OK, verified.** #2226's merge_group build now
+  all 3/3 SUCCESS, but PR still OPEN/not merged — normal brief lag before merge/squash lands.
+  Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:39Z (C8 v2.3 cycle 770) — **IDLE-OK, verified.** #2226's merge_group build
+  unchanged from last cycle (2/3 success, 1 still in_progress since 04:30:48Z, ~9min elapsed on
+  the third workflow), no failures reported anywhere. Main tip unchanged. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:37Z (C8 v2.3 cycle 769) — **IDLE-OK, verified.** #2226 unchanged for 3 cycles at
+  `is:queued`/CLEAN — checked `gh-readonly-queue/main/pr-2226-*` merge_group build directly:
+  genuinely IN_PROGRESS (2/3 runs SUCCESS), started 04:30:48Z — not a stall. Main tip unchanged.
+  E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:35Z (C8 v2.3 cycle 768) — **IDLE-OK, verified.** #2226 still `is:queued`/CLEAN,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T04:33Z (C8 v2.3 cycle 767) — **IDLE-OK, verified.** #2226 still `is:queued`/CLEAN,
+  unchanged. #2228 (new) confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:31Z (C8 v2.3 cycle 766) — **IDLE-OK, verified.** #2226 now genuinely `is:queued`,
+  `mergeStateStatus=CLEAN`. #2225 confirmed L3's, out of scope. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:28Z (C8 v2.3 cycle 765) — **IDLE-OK, verified.** #2226's last check (Governance
+  Gates) ~9.9min elapsed, still within normal range, no failures. Main tip unchanged. E-gate
+  re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:26Z (C8 v2.3 cycle 764) — **IDLE-OK, verified.** #2226's last check (Governance
+  Gates) ~7.8min elapsed, within normal range, no failures. Main tip unchanged. E-gate re-run:
+  all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:24Z (C8 v2.3 cycle 763) — **IDLE-OK, verified.** #2226 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T04:22Z (C8 v2.3 cycle 762) — **IDLE-OK, verified.** #2226 still building — Unit
+  Tests + Governance Gates `IN_PROGRESS`, no failures, not yet `is:queued`. Main tip advanced to
+  `7650a6a8c` (#2165, L2's — merged, out of scope). E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
+- 2026-09-07T04:20Z (C8 v2.3 cycle 761) — **IDLE-OK, verified.** #2226 (recovery #35) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 04:18:18Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. #2201
+  confirmed L1's, merged, out of scope. #2165 confirmed L2's, out of scope. Main tip advanced to
+  `91c40ba92`. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
 - 2026-09-07T04:17Z (C8 v2.3 cycle 760) — **`#2223` MERGED — the thirty-fifth state-recovery PR
   closed out.** Confirms the batch-processing pattern a fourth time (cycles 705/706, 737/738,
   748/749, now 759/760). Thirty-fifth recurrence of the exact same pattern (cycles 442, 453,
