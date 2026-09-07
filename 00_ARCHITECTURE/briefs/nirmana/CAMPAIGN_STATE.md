@@ -381,6 +381,24 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:33:15Z` — cycle 1013: **Found a genuinely new-kind adjudication sitting
+  unseen ~7h — #2258 (L2's grounding-tier design proposal), partial-ruled.** A survey of all
+  open `nirmana-adjudication` issues (not just my tracked frontier threads) surfaced #2258
+  (08:18:09Z, zero comments) — a real, well-reasoned design proposal for implementing N-11/N-12/
+  N-13's grounding-tier capability (schema, writer, DAG placement), genuinely unimplemented, not
+  merely blocked. Different in kind from this session's bug-fix rulings (#2276/#2224/#2317/#2291):
+  those had a single verifiably-correct answer from live evidence; this has real interpretive
+  latitude in its `yukti`-vs-`pratyaksa` tier-assignment semantics. **Ruled the structural parts**
+  (comment 5572854890): agreed `target_kind` v1 scope, agreed narrow DAG dependency (`ga_yoga`+
+  `bo_laksana`, not `_rerank`, matching `bo_sudarshana`'s own precedent), agreed new dedicated
+  `bo_grounding` writer, agreed junction-table schema shape — L2 can land the migration+DAG
+  registration now. **Explicitly did NOT rule** the actual tier-assignment classification logic
+  — flagged that as a doctrine-level epistemic judgment for the native, not an infrastructure
+  question I have standing to invent. Δfrozen still +0 (57/128). Fleet DIRTY: same 2 known stale
+  native PRs. Own-PR hygiene: none open. Adjudication count: my running "12" tally this session
+  was an approximate tracker, not a verified count — live-checked via `nirmana-adjudication`
+  search: 5 open (`#2224`/`#2300`/`#2317`/`#2291`/`#2258`). Using this live-checked number going
+  forward instead of the informal running tally.
 - `2026-09-07T15:30:04Z` — cycle 1012: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: same 2 known stale
   native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:27:44Z` — cycle 1011: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: clean (both known
