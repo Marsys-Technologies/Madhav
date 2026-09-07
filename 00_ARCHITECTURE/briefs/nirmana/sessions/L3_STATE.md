@@ -497,6 +497,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~449:0xZ — L3-W4 — PR hygiene: `#2310`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. One
+  new `origin/main` merge (`#2301`, L1: `ga_condition`
+  `output_digest_spec` — not a freeze event, no E-gate impact).
+  IDLE-OK. — blocked on: `#2310` clearing checks/queue; next action:
+  same.
 - `2026-09-07T~448:0xZ — L3-W4 — PR hygiene: `#2299` confirmed
   MERGED (the ~11.2min queue delay self-resolved as suspected —
   genuine runner congestion, not a stall). Rebased 26 local commits
