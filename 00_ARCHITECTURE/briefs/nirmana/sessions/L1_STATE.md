@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 170; state branch rotated (`codex/nirmana-l1-state-cycle6`, `#2201` merged). Conductor RULED on #2224: confirmed the mechanism is identical to adjudication #1945's Lane C `invalidated_analysis_count` (its own live-diff two hours prior found 22 campaign-wide invalidated assets across bg_*/ga_*/ka_*, not a new class), ratified proceeding with the live-recompute-and-resubmit recipe exactly as I'd been doing -- no new authorization needed. Live-checked all 19 `ga_*` assets for staleness (fixed an ordering bug in my own check script mid-cycle: `event_id` is a random UUID, not a sequence -- `ORDER BY event_id DESC` silently picked the WRONG "latest" evidence row; corrected to `ORDER BY observed_at DESC`). Found 10 stale; re-stamped the 5 that are wave-1 members (`ga_sensitive`, `ga_prashna`, `ga_nakshatra`, `ga_sensitive_degree`, `ga_ayurdaya` -- 10 record_evidence calls, all 201, independently re-verified live). L1 now has 7/9 wave-1 `ga_*` assets with valid evidence (`ga_positions`+`ga_vargas` from before + these 5). `ga_dashas`/`ga_transit_anchors` (wave-1 members) have ZERO accepted evidence ever -- a different, bigger first-time-W2-acceptance gap, not touched. `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` also stale but not wave-1 members, deferred. Dispatch itself still blocked by Finding 2 (asset_frozen E-gate) regardless -- not re-attempted this cycle. Posted status to #2224. #2113/#2180 checked -- no new reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 171; investigated `ga_dashas`/`ga_transit_anchors`' zero-evidence gap (deferred cycle 170). `ga_transit_anchors` verified genuinely clean (all W2 findings F-D21/D22/D23/D25 closed+verified, 45/45 floor) -- attempted first-time evidence acceptance, hit a NEW structural finding: submitting `asset_analysis_accepted` + `optimization_verdict_accepted` as two separate calls races this fleet's fast CD cadence -- once the first lands, a second analysis event for the SAME (fingerprint,digest) generation can never be created (any source_ref), and the verdict independently requires an EXACT match to whatever's CURRENTLY deployed -- so a debugging pause between the two calls (I hit one, fixing a payload schema error) can PERMANENTLY orphan the analysis event once the deploy SHA moves past it (mine did, twice, in the gap). Documented and posted to #2224 as an operational gotcha for the rest of Lane C's backlog, not a platform bug (the immutable-per-generation design is intentional). `ga_dashas` investigated separately: F-A10 (scope-cap sentinel) and F-A12 (dignity vocabulary) both confirmed genuinely fixed in code/schema (migration 652 CHECK constraint live-confirmed) but NOT YET reflected in the canonical chart's live chart_dashas data (zero scope_cap rows -- needs a rebuild to apply, same class as ga_positions). F-A17 ("bare tier literals") is UNTRACKED since its original W2 mention -- zero references anywhere in this session's own record since -- AND collides with an unrelated LATER F-A17 (ga_structural's vargottama-flag fix, cycles 47-48) -- a genuine finding-ID collision, a governance-hygiene defect. Did NOT submit evidence for ga_dashas given this real uncertainty. #2113/#2180/#2224 checked -- no new Conductor reply beyond my own comments
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9451,3 +9451,93 @@ assets' stale evidence (7/9 now fresh), catching and fixing a real UUID-ordering
 verification script along the way — next: `ga_dashas`/`ga_transit_anchors`'s zero-evidence gap
 (separate investigation) or await #2224/asset_frozen disposition before any dispatch attempt;
 keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 171 (C8 v2.3) — investigated the `ga_dashas`/`ga_transit_anchors` zero-evidence gap;
+## found a real evidence-submission race trap and a real finding-ID collision, neither forced through
+
+PR hygiene: `#2228` (this state PR) `MERGEABLE`/`CLEAN` at cycle open. No other L1-authored PR
+open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new Conductor reply
+beyond my own prior comments on any of the three.
+
+**Unit of work: characterize whether `ga_dashas` and `ga_transit_anchors` (wave-1 members with
+ZERO accepted campaign evidence, distinct from the "stale" class fixed cycles 168-170) are safe
+to accept evidence for, rather than assuming either way.**
+
+**`ga_transit_anchors` — verified genuinely clean, all findings closed.** Read this session's own
+close-report/state-file record directly rather than trusting a summary: `F-D22` (a build-fatal
+FORENSIC assertion) fixed writer-only cycle 28 (PR #1950); `F-D21`/`F-D23` root-caused one layer
+up in L0 (a `vidhi_primitives` dispatch bug), fixed there (PR #2153, adjudication #2122 CLOSED),
+and — critically — **independently re-verified live by this session** (cycle 130, not merely
+trusted on the merge: confirmed the fix both in `origin/main` source and in the live
+`vidhi_primitives` row); `F-D25` (missing serving-layer `density_contract`/grounding) fixed cycle
+118 (PR #2145), verified every served row's `constituent_fact_ids` resolves to a real matching
+row. Target floor 45/45 achieved. Genuinely safe to accept.
+
+Computed fresh `registry_fingerprint_sha256`/`analysis_digest`, submitted `asset_analysis_
+accepted` (`201 created`, `source_ref=git:9c4133aa0...`). The immediately-following
+`optimization_verdict_accepted` submission hit a schema validation error — used `verdict:
+"correct"` with `output_contract: "digest_identical"`, but the schema's own
+`superRefine` maps `correct` → `output_contract: "correctness_change"` only; the right
+verdict for an asset that's ALREADY fixed (not being newly corrected NOW) is
+`"examined_and_already_efficient"` → `output_contract: "digest_identical"`. Fixed the payload —
+but by the time it was ready, `NIRMANA_DEPLOYED_SHA` had advanced twice
+(`9c4133aa0` → `f3f6dbf8e` → `91c40ba9`; this fleet deploys very frequently, multiple times within
+a few minutes).
+
+**New structural finding, not assumed — traced directly in `definitions.ts`**: `asset_analysis_
+accepted`/`optimization_verdict_accepted` both require `assertNirmanaGitCommitMatchesDeployment`
+— an EXACT match to the CURRENT `NIRMANA_DEPLOYED_SHA` at submission time, no tolerance. Separately,
+`findExistingLifecycleReceipt` (line ~2687) treats any second `asset_analysis_accepted` for the
+SAME `(registry_fingerprint_sha256:analysis_digest)` "generation" as a conflicting receipt,
+**regardless of `source_ref`**, by explicit design ("Lifecycle facts are immutable within the live
+registry/analysis generation... not an escape hatch for duplicating an old lifecycle step").
+Combined effect: once my first analysis submission landed at `9c4133aa0`, and deploy moved past
+it before I could submit a matching verdict, **this exact generation can never get a verdict** —
+I can't resubmit analysis with a fresh SHA (conflicts with the first), and I can't submit a
+verdict bound to the now-stale `9c4133aa0` (fails the current-deploy check). Not broken data —
+the orphaned analysis event is harmless append-only history — just permanently stuck bookkeeping
+for this generation, until `ga_transit_anchors`' registry changes again for some unrelated reason.
+**Posted this as a new finding on #2224**, framed as an operational gotcha (submit analysis+verdict
+back-to-back with zero debugging pause, or risk this exact trap) for the rest of Lane C's
+22-asset campaign-wide backlog, not a platform defect — the immutable-per-generation design
+itself is sound and intentional.
+
+**`ga_dashas` — investigated, found real uncertainty, deliberately did NOT submit evidence.**
+W2's original MUST findings: F-A10 (both scope-cap sentinels fail silently), F-A12 (dignity
+vocabulary disagreement with `ga_vargas`), F-A17 ("bare tier literals"). Read the writer source
+directly rather than trusting the close-report's own "claimed closed, cycle 125 sweep only — not
+independently re-verified" flag:
+- **F-A10**: genuinely fixed in code (`write_dasha_scope_cap_sentinels`, migration 652 admits
+  `'scope_cap_sentinel'` into `chart_dashas_verification_pass_status_check` — confirmed live via
+  `pg_get_constraintdef`, the value IS in the live CHECK). But **the canonical chart's live
+  `chart_dashas` has ZERO `system_id='scope_cap'` rows** — the fix is real but hasn't been applied
+  to this chart's data yet (needs a rebuild to take effect, the identical "code fixed, data not
+  rebuilt" pattern `ga_positions` was in before cycle 155/168). Honest KP-only-sentinel residual
+  (Prana sentinel structurally excluded, SD-DASHA-1 deliberately open) is well-documented in the
+  writer's own docstring, not a fresh concern.
+- **F-A12**: also genuinely fixed in code (lowercases the dignity oracle's own tier name directly
+  rather than routing through the wrong normalization map — a live JOIN against `chart_divisionals`
+  at build time, so a rebuild picks it up automatically alongside F-A10's fix).
+- **F-A17**: **zero references anywhere in this session's own record since its original W2
+  mention** — genuinely untracked, unclear if ever investigated. Worse: **this exact ID
+  ("F-A17") was independently reused for an unrelated, later, already-fixed defect**
+  (`ga_structural`'s `vargottama_per_varga`/`graha_special_state_rollup` re-derivation bug,
+  cycles 47-48, PR #2003) — a genuine finding-ID collision this session introduced at some point,
+  a governance-hygiene defect in its own right (two different MUST findings on two different
+  assets sharing one id makes future citation ambiguous, exactly as I nearly experienced trying
+  to resolve which "F-A17" the W2 table row meant).
+
+Given F-A17's genuine ambiguity, **deliberately did not submit `asset_analysis_accepted`/
+`optimization_verdict_accepted` for `ga_dashas`** — doing so with verdict `"correct"` would be an
+unearned claim while a MUST-tier finding's disposition is genuinely unverified. This is the
+correct, conservative call per this campaign's own §N.8 discipline: an honest "not yet
+determined" beats a plausible-sounding "correct."
+
+CYCLE 171 L1: PR hygiene clean; investigated the `ga_dashas`/`ga_transit_anchors` zero-evidence
+gap — `ga_transit_anchors` verified genuinely clean but its evidence submission hit a real
+structural race trap (documented, posted to #2224, not a platform bug); `ga_dashas` has a real
+untracked MUST finding (F-A17) that also collides in ID with an unrelated later finding —
+deliberately did not submit false evidence for it — next: resolve F-A17's actual content/status
+for `ga_dashas` (a real investigation, not a re-stamp), or complete `ga_transit_anchors`'
+evidence pair whenever its registry next changes / in one clean fast attempt; keep re-checking
+#2113/#2180/#2224 every cycle regardless.

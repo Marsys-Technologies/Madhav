@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.28-DRAFT"
+version: "0.29-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -439,8 +439,19 @@ awaits either a dedicated prep cycle or genuine W6 close.
   with valid evidence.** `ga_dashas`/`ga_transit_anchors` (wave-1 members) surfaced a distinct,
   bigger gap — zero accepted evidence ever, not drift — deliberately not papered over.
   `ga_sade_sati`/`ga_strength`/`ga_structural`/`ga_vichara`/`ga_yoga` also stale, not wave-1
-  members, deferred. **Still open**: wave 1 dispatch itself remains blocked by the `asset_frozen`
-  E-gate regardless of evidence freshness, campaign-wide — not an L1 registry fix.
+  members, deferred. **Cycle 171**: investigated the zero-evidence gap directly. `ga_transit_
+  anchors` verified genuinely clean (all findings F-D21/D22/D23/D25 closed+verified, 45/45
+  floor) — evidence submission hit a real structural race (analysis+verdict submitted as
+  separate calls can be permanently orphaned by this fleet's fast CD cadence if any debugging
+  pause separates them; documented on #2224, not a platform bug). `ga_dashas`: F-A10/F-A12
+  confirmed genuinely fixed in code (needs a rebuild to apply to the canonical chart's live
+  data — same class as `ga_positions`), but **F-A17 ("bare tier literals") is untracked since
+  its original W2 mention AND collides in ID with an unrelated later finding**
+  (`ga_structural`'s vargottama fix, cycles 47-48) — a real governance-hygiene defect. Did NOT
+  submit evidence for `ga_dashas` given this genuine, unresolved uncertainty. **Still open**:
+  wave 1 dispatch itself remains blocked by the `asset_frozen` E-gate regardless of evidence
+  freshness, campaign-wide — not an L1 registry fix; `ga_dashas`' F-A17 needs a real
+  investigation, not a re-stamp.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated
