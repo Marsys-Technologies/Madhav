@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:47:06Z` — cycle 934: **IDLE-OK, Δfrozen +0.** `ga_nakshatra` mid-W4, L2/L3
+  still unmoved (~3 min since the sharp evidence-backed nudge, not re-posting yet). Fleet DIRTY:
+  same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:44:18Z` — cycle 933: **Confirmed L2/L3 are active but not prioritizing the
   directive — sharpest nudge yet.** Checked their own recent PR activity: #2271 (L2, 11:43:14Z)
   and #2284 (L3, 11:43:06Z) both landed *after* my prior nudge, both heartbeat/monitoring-only,
