@@ -7,11 +7,11 @@ campaign_id: nirmana-elevation
 session: L0
 layer: L0 — Brahmagyan
 owner: the L0 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — 39/40 frozen (bg_yogas/bg_rules/bg_concordance froze via D-NATIVE-06); only
-  bg_cohort remains, held on Conductor's C12 carve-out. Issue #2122/PR #2153 arc FULLY CLOSED —
-  merged, force-deployed, live-verified end-to-end (actual tool call confirms correct served
-  content). #2169 (the systemic deploy-gap this surfaced) stays open, Conductor's call. Back to
-  standard IDLE-OK cadence.
+last_updated: 2026-09-07 — 39/40 frozen. The C12 carve-out has LANDED: PR #2234 (D-NATIVE-07,
+  native-authorized, Conductor-owned) fixes the service-dependency provenance wall that's been
+  blocking `bg_cohort` — already `is:queued` and healthy, not yet merged. Verified live that both
+  sides match the PR's diagnosis exactly (`bg_ephemeris_engine` healthy, `bg_cohort` stuck exactly as
+  described). NEXT ACTION once #2234 merges+deploys: re-dispatch `bg_cohort` to take L0 to 40/40.
 ---
 
 # L0 — Brahmagyan — SESSION STATE
@@ -707,3 +707,21 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle (one transient network error on
   first `gh` call, succeeded on retry). Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
+- 2026-09-07 — **THE C12 CARVE-OUT HAS LANDED — PR #2234, native-authorized D-NATIVE-07, already
+  `is:queued` and healthy.** Not my PR to manage (Conductor's, under the shared bot identity — not
+  something for L0 to touch), but directly unblocks `bg_cohort`, L0's last unfrozen asset. Root cause
+  exactly matches this file's own D-L0-II finding from 09-05/09-06: `bg_cohort` built correctly
+  (10,000 rows) but `compute_upstream_hash` required its sole dependency's (`bg_ephemeris_engine`,
+  service-kind) OWN receipt to be `proven` — impossible for a service with no relational output to
+  spec. Fix (`asset_runner.py`'s `load_upstream_receipts`/`compute_upstream_hash`): accept a
+  dependency whose receipt isn't proven ONLY when live `asset_kind='service'` AND
+  `service_health='healthy'` (checked fresh, never trusted from a stale receipt). **Verified both
+  sides myself, live, before assuming anything**: `bg_ephemeris_engine.service_health = 'healthy'`
+  (confirmed via direct `psql`) and `bg_cohort`'s `asset_provenance_receipts` row still shows exactly
+  the described stuck state (`receipt_state='unknown'`, `unknown_reasons=['upstream_digest_unavailable']`,
+  real `output_digest` already present — genuinely built, just stuck on provenance). Nothing
+  surprising awaits. NEXT: watch #2234 merge + deploy (not mine to rush), then re-dispatch
+  `bg_cohort` under the normal identity-separated path (executor SA build/authorize, verifier SA
+  `integrity_verified`/`asset_frozen`) — the PR's own test plan hands this off to L0 explicitly. This
+  is now THE highest-priority eligible work the instant the fix is live. `bg_cohort`'s own W2
+  evidence already independently reverified fresh (prior cycle) — no re-stamp needed at dispatch time.
