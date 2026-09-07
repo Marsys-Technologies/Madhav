@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 159; MAJOR: #2180 got a real reply -- Conductor RULED, root-caused the natural_key_partition gap to 7 chart_facts co-writers, authorized L1 to author natural_key_partition (all 7) + output_digest_spec (ga_positions) as registry-configuration fixes. Shipped fix 1 for ga_positions only this cycle (migration 868, PR #2205): natural_key_partition verified directly against ga_positions_writer.py's actual write sites (graha_position, graha_sign_attributes, bhava_cusps, house_chalit -- NOT the same as the serving-tool mapping). Applied locally, verified the registry-invalidation trigger fired correctly. Posted status to #2180. Remaining 6 co-writers + ga_positions' own output_digest_spec still needed before wave 1 -- ga_sensitive in particular found to own a much larger category set than assumed, deferred rather than guessed. #2113 still quiet
+last_updated: 2026-09-07 — C8 v2.3 cycle 160; shipped natural_key_partition fix 2/7 (ga_ayurdaya, migration 869, PR #2208) -- simplest of the seven, a single hardcoded FACT_CATEGORY="ayurdaya" constant, zero overlap confirmed with the other six writers. Applied locally, verified. 5 co-writers (ga_nakshatra, ga_panchanga, ga_sade_sati, ga_sensitive, ga_sensitive_degree) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet (own comments stand), checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8838,3 +8838,27 @@ record — they are the only entries in this table with a real wall-clock behind
   co-writers' `natural_key_partition` values, `ga_positions`' own `output_digest_spec` (fix 2),
   and a possible correction to cycle 156's `esoteric_point_sphuta_fertility`/`_yogi_system`
   "unreachable" finding all remain; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T14xZ -- CYCLE 160 (C8 v2.3). PR hygiene: `#2205`/`#2201` both `BLOCKED`/
+  `MERGEABLE`, zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, clean.
+  #2113/#2180: identical comment counts to cycle 159 -- still no reply beyond my own last posts.
+  Continued the `natural_key_partition` backfill authorized by #2180's ruling, one migration at
+  a time per the established discipline. Picked `ga_ayurdaya` next -- the simplest of the
+  remaining six, already fully verified from earlier F-B32 work (`FACT_CATEGORY = "ayurdaya"`,
+  `ga_ayurdaya_writer.py:57`, a single hardcoded constant, nothing else written). Re-confirmed
+  zero overlap by grepping all six sibling writers for the literal string `"ayurdaya"`.
+  Checked migration numbering carefully before writing the file: `ls platform/migrations/`
+  showed the highest as 867 on this branch, but that's because migration 868 (last cycle's
+  `ga_positions` fix, PR #2205) hasn't merged to `origin/main` yet -- confirmed via `git ls-tree
+  origin/main -- platform/migrations/` (867 is genuinely the highest ON MAIN) and via
+  `git show origin/codex/nirmana-l1-ga-positions-natural-key-partition` (868 is real, just on an
+  unmerged branch) that 868 is reserved by my own pending PR, not actually free. Used 869 to
+  avoid a numbering collision. Wrote migration 869, ran `npx tsx scripts/migrate.ts --dry-run`
+  (confirmed 869 as the only pending migration), applied for real, verified `asset_registry.
+  natural_key_partition` now set for `ga_ayurdaya`. Branched fresh off `origin/main`, re-checked
+  869 was still free there too (no concurrent claim), committed, pushed, opened PR #2208,
+  queued, confirmed `autoMergeRequest` armed.
+  CYCLE 160 L1: PR hygiene clean; shipped `natural_key_partition` fix 2/7 (`ga_ayurdaya`, PR
+  #2208) -- next: 5 co-writers remain (`ga_nakshatra`, `ga_panchanga`, `ga_sade_sati`,
+  `ga_sensitive`, `ga_sensitive_degree` -- `ga_sensitive` needs the most careful verification,
+  found to own ~25 categories), plus `ga_positions`' own `output_digest_spec` (fix 2 of the
+  ruling's own two-part authorization); keep re-checking #2113/#2180 every cycle regardless.
