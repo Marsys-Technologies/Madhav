@@ -381,6 +381,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:36:03Z` — cycle 953: **Found `ga_dashas`' real blocker — ruled #2276, the
+  actual reason it's been stuck ~2h.** L1's own PR #2290 named it: waiting on nirmana-adjudication
+  #2276, which I hadn't seen. Real gap: `create_campaign_run`'s guard (dispatch_nirmana_
+  campaign_wave.py ~1111-1125) refuses ANY new build_runs row for an asset that ever reached
+  `accepted_rebuild_observed`, with no generation-scoping — so `ga_dashas`' legit post-acceptance
+  registry-only fix (the integrity_check_sql perf migration 882) can never get a fresh build to
+  satisfy `requireAcceptedRebuildProvenance`'s timing check. Ruled (comment 5570743439): this is
+  Conductor-owned shared tooling (charter C5/#1716), not the FROZEN orchestrator — authorized
+  Option 1, scope the guard to the asset's CURRENT live-registry generation (compare the bound
+  `optimization_verdict_accepted`'s `registry_fingerprint_sha256` against
+  `_live_registry_fingerprint()`; stale-generation acceptances no longer block, current ones still
+  do). Handed implementation to L1 (full context, already offered) rather than writing the patch
+  myself mid-monitoring-cycle. Also flagged `ga_transit_anchors`'s separate `BLOCKED-NO-ROUTE` gap
+  as untouched by this ruling. Δfrozen still +0 (55/128). Fleet DIRTY: same 2 known stale native
+  PRs. Own-PR hygiene: none open. Adjudications unchanged (11, though this resolves #2276).
 - `2026-09-07T12:33:42Z` — cycle 952: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
   same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:31:24Z` — cycle 951: **IDLE-OK, Δfrozen +0.** No reply yet on #1770 ruling
