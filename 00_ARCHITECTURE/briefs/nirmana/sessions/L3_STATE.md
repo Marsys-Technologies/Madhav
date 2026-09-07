@@ -497,6 +497,20 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~425:0xZ — L3-W4 — PR hygiene: `#2294`'s pre-queue
+  checks running (`DB Integration Tests` passed, `Unit Tests`/
+  `Governance Gates` still `pending`, nothing red). Two new
+  `origin/main` merges: `#2285` (L1 frontier-drain dispatch,
+  includes `ga_sensitive` — consistent with the live freeze already
+  confirmed) and `#2289` (L1 froze `ga_strength`/`ga_ayurdaya`/
+  `ga_sensitive_degree`, title claims "frontier collapses to
+  `ga_dashas`"). Re-verified `ga_dashas` live directly against
+  `nirmana_evidence.nirmana_elevation_campaign_events`: still no
+  `asset_frozen` event (only `accepted_rebuild_observed`/
+  `asset_analysis_accepted`/`implementation_accepted`/
+  `optimization_verdict_accepted`, no freeze). D-CND-26 hold
+  UNCHANGED. IDLE-OK. — blocked on: `#2294` clearing checks/queue;
+  next action: same, keep watching `ga_dashas`.
 - `2026-09-07T~424:0xZ — L3-W4 — PR hygiene: `#2288` confirmed
   MERGED. Rebased 28 local commits onto fresh `origin/main`, 11
   empty-theirs conflicts auto-resolved cleanly, zero markers left.
