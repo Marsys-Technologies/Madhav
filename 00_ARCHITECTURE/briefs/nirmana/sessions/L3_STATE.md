@@ -495,6 +495,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~193:0xZ — L3-W4 — PR hygiene: `#2210`'s own `merge_group`
+  build still `in_progress` (~7.5min, within the confirmed ~11min
+  normal range, still on the same `pytest` step — genuine progress).
+  `Unit Tests` now passed; only `Governance Gates` remains pending. No
+  new `origin/main` merges, no new E-gate opening. IDLE-OK. — blocked
+  on: `#2210` finishing; next action: same.
 - `2026-09-07T~192:0xZ — L3-W4 — PR hygiene: `#2210`'s own `merge_group`
   build still `in_progress` (~5.5min on the known-slow `pytest —
   pyjhora_adapter + pipeline` / npm-test steps, well within the
