@@ -381,6 +381,19 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:06:50Z` — cycle 942: **Found L2's REAL reason — a stale-info problem, not
+  non-compliance, and it's already resolved.** Read #2271's own diff: L2 was correctly holding
+  `bo_sudarshana` because `natural_key_partition` was NULL and their last check of
+  `_migrations_applied` read stuck at 879 — a genuine, well-reasoned caution. Live-verified this
+  cycle: migration `880_nirmana_l2_bo_sudarshana_natural_key_partition.sql` applied 09:42:58Z
+  (2+ hours ago); `asset_registry.natural_key_partition` for `bo_sudarshana` is populated
+  (`bodha_msr_signals.signal_type_class = sudarshana_agreement`), not NULL;
+  `_migrations_applied` is at id 892 now, many cycles past L2's cached reading. Posted this
+  directly to #1713 (comment 5570386499) — nothing blocks `bo_sudarshana` or the other 3
+  newly-eligible bodha assets, told L2 to re-check live rather than trust the stale note. This
+  reframes the whole L2 "silence" narrative from earlier cycles: it was a real, correct hold on
+  outdated information, not ignoring the directive. Δfrozen still +0 (52/128). Fleet DIRTY: clean.
+  Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:04:38Z` — cycle 941: **L1 dispatching `ga_strength`** (newly-eligible from
   cycle 939's frontier expansion) — `implementation_accepted` landed 12:03:05, real-time reaction
   to the refreshed list. Δfrozen still +0 (52/128). Fleet DIRTY: same 2 known stale native PRs.
