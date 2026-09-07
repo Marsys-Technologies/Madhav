@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 198; **PR hygiene surfaced a new, previously-undetected defect class**: `#2277` had ZERO CI check-runs ever, despite `OPEN`/`MERGEABLE`/`BLOCKED`/auto-merge-armed looking superficially healthy — root cause: cycle 195's `gh pr edit --base main` retarget changed only PR metadata, never a push event, so CI never triggered and the PR could never actually merge on its own. Fixed by rebasing onto fresh `main` and force-pushing (a real push event); confirmed CI now running. Cross-checked `#2295`/`#2296` clean (real check-runs in flight). New standing lesson: after any `gh pr edit --base` retarget, verify the head commit has real check-runs via the GitHub API directly, not just `gh pr checks`'s framing — `mergeStateStatus: BLOCKED` looks identical whether CI is in flight or permanently stalled. `ga_dashas` redispatch remains gated on both `#2295` (cycle 197's #2276 guard fix) and `#2277` merging — neither ready yet. No new Conductor replies on #2113/#2180/#2224/#2276. No W3 fallback work exists.
+last_updated: 2026-09-07 — C8 v2.3 cycle 199; **`ga_dashas` is FROZEN** — the session's longest-standing block, resolved by running cycle 197's #2276 guard fix locally (the dispatcher script needs no merge to be usable) ahead of a lost-then-won OIDC race. Opens `ga_condition`/`ga_structural`/`ga_tajaka` as newly `OPEN-PENDING-PIN`. Attempted `ga_condition` next per the frontier-drain directive and hit a genuine NEW orchestrator defect, root-caused precisely: a delta-skip rebuild (`_skip_no_delta`/`reattribute_unchanged_receipt`, `provenance.py`) never reconciles `asset_freshness`, so `ga_dashas`' `registry_changed`-stale flag (from migration 882) is now structurally permanent even though the asset is genuinely frozen and correct — filed nirmana-adjudication #2300 with a scoped proposed fix rather than hand-edit the FROZEN orchestrator's state table. All three newly-eligible assets deferred pending that ruling. `ga_condition`'s own `output_digest_spec` (migration 894, PR #2301) landed independently. `ga_transit_anchors` remains `BLOCKED-NO-ROUTE` on #2224, unchanged. `capsule_audit.sql` §1/§2 clean throughout.
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3409,7 +3409,7 @@ none accepted yet (blocked on #1736).
 |---|---:|---|---|
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary. **FROZEN (cycle 188)** — full W4→W5 evidence chain complete: `build_run_authorized` → real Cloud Run Job rebuild (`0ac321ee-192d-4c86-bd67-495613a76780`) → `accepted_rebuild_observed` → `integrity_verified` (verifier SA, live `integrity_check_sql` re-evaluated server-side) → `asset_frozen` (verifier SA). Verified via `capsule_audit.sql` §1 (complete chain) and §2 (no identity crossing). Freezing this asset opened the L1 fleet's frontier: 8 siblings now E-gate `OPEN-PENDING-PIN`. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds). **F-B32 fix (cycle 184, PR #2252)**: `sun_derived_upagraha` (`ga_sensitive_writer.py`-owned, joins `get_positions.ts`'s `include_upagrahas` bundle since it carries `house_d1` -- frame facet applies) and `sandhi_flag` (this asset's own `_build_chalit_rows`, already in `natural_key_partition` since migration 876 but never served, categories-only opt-in -- no `house_d1`, not an upagraha) both closed -- the deliberately-deferred, higher-blast-radius file finally gets its own careful pass |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | **FROZEN (cycle 194)** — full W4→W5 chain against a real rebuild; F-A1's canonical-chart D1-sign instance confirmed fixed by the same rebuild (chart 1c826d5a's own 3 mismatches remain real, out of scope, migration 884 scoped the check accordingly). F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
-| ga_dashas | 483,870 / **536,471** | rebuild_only | **W4 IN PROGRESS (cycle 189-190), NOT frozen** — `asset_analysis_accepted`/`optimization_verdict_accepted`/`implementation_accepted`/`accepted_rebuild_observed` all recorded clean against a real Cloud Run Job build (`1f89fd4c-...`, ~20 min, matches the migration-879 `estimated_seconds` re-baseline of 1118s). `asset_output_digest_specs` gap discovered+fixed (migration 880, PR #2272) — see last_updated. Blocked at `integrity_verified`: `integrity_check_sql` measures 48.5s real (direct `psql`), over the ingress pool's 25s `statement_timeout` — genuine, reproducible, not transient (scans all 3 canonical charts unscoped, ~1.46M rows). Fix deliberately deferred, not rushed: the check's own comments (mentions chart `1c826d5a` explicitly) suggest multi-chart coverage is intentional, so narrowing to canonical-chart-only is a real tradeoff needing its own pass. floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
+| ga_dashas | 483,870 / **536,471** | rebuild_only | **FROZEN (cycle 199)** — the session's longest-standing L1 block, resolved via #2276's ruled+implemented generation-scoped `accepted_rebuild_observed` guard fix (PR #2295), run locally ahead of its own merge. `integrity_check_sql` perf fix (migration 882, PR #2277) landed; `asset_output_digest_specs` gap fixed (migration 880→881, PR #2272). Second dispatch attempt (first lost the OIDC-mint race, orphaning one harmless-but-unusable build) reached `accepted_rebuild_observed`/`integrity_verified`/`asset_frozen` cleanly. Opens `ga_condition`/`ga_structural`/`ga_tajaka` — but see #2300: the rebuild took the delta-skip fast path (output byte-identical to prior), which never reconciled `asset_freshness`'s `registry_changed`-stale flag, so downstream dispatch is blocked pending that ruling despite `ga_dashas` itself being genuinely correct and frozen. F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
 | ga_nakshatra | 2,847 / 1,802 | rebuild_only | **FROZEN (cycle 194)** — full W4→W5 chain; caught and fixed a real bug in its own output_digest_spec (where_in must be sorted) before ever pushing it. F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract`. **The "15/16 categories entirely absent, 1 misrouted" F-B32/F-B33 follow-up FIXED (cycle 180, PR #2242, migration 878)** — investigation found the close report's own 3-category "docstring overclaim" characterization was itself wrong for 2/3: `nakshatra_lord_placement` is a genuine overclaim (zero writer emission, removed from docstring/const/`count_sql`), but `graha_degree_flags`/`nakshatra_exchange` are real writer-owned categories (migration 872 had already confirmed this) wrongly read as zero-live-rows build lag — added to `coverage_matrix.ts`. Separately found `nakshatra_cross_ayanamsha` was missing from `natural_key_partition` since migration 872 (that migration never checked `pipeline/orchestrator/writers/ga_nakshatra.py`, which emits it directly, 17 live rows) — added. True category count: 15, not 16. Verified: `tsc --noEmit` clean, integration test 3/3, 40/40 Python tests, zero blast radius (1-line digest delta, L0/L2-L5 untouched in layer pins) |
 | ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | **FROZEN (cycle 194)** — full W4→W5 chain; output_digest_spec's 32 concrete fact_category values enumerated live since its natural_key_partition is a LIKE pattern. F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for. F-B28 (`get_panchanga.ts` half) **FIXED (cycle 123, PR #2155)** — `total` was the PAGE size, not the true matching count; confirmed live this was ACTIVELY manifesting (221 real rows vs 200-row default limit — a genuine silent truncation, not hypothetical); added a real `COUNT(*)`, `total_matching`, `more_available`, `empty_reason`, `density_contract` |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | **FROZEN (cycle 194)** — full W4→W5 chain; WP-6 chart_facts→chart_fact_identity CASCADE acknowledged with a fresh snapshot. deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962). **F-B32 fix (cycle 182, PR #2247)**: `esoteric_point_sphuta_fertility`/`esoteric_point_yogi_system` (70/25 live rows) had zero serving path anywhere — the cycle-156 sweep mischaracterized them as needing new-endpoint work; actually a simple oversight in `get_sensitive_points.ts`'s existing `esoteric_point_*` family. Added directly (both single-writer-owned by `ga_sensitive_writer.py` alone, no ambiguity) |
@@ -11526,3 +11526,98 @@ the instant BOTH merge, redispatch `ga_dashas` immediately (fresh evidence stand
 waiting), verify `asset_frozen`, then re-run `egate.sql` to drain the 8-asset downstream cascade
 per the standing frontier-drain directive. Apply this cycle's new lesson to every future
 `gh pr edit --base` retarget going forward, not just this one PR.
+
+## CYCLE 199 (C8 v2.3) — `ga_dashas` FINALLY FROZEN (breaks the longest-standing L1 block this
+## whole session); opens 3 new eligible assets; found and filed a genuine new orchestrator defect
+## (#2300) blocking all three before any of them could actually dispatch
+
+PR hygiene: `#2277`/`#2295`/`#2297` all real check-runs in flight, no failures, no DIRTY/RED/
+unqueued. #2113/#2180/#2224/#2276 re-checked: no new Conductor replies.
+
+**Realized `dispatch_nirmana_campaign_wave.py` runs locally, not as a deployed service** --
+cycle 197's #2295 fix didn't need to WAIT for merge to be usable; the script is invoked directly
+from a local checkout, and the fix was already fully tested (45/45) and live-verified against
+production. Switched to the local `codex/nirmana-l1-w4-dashas-guard-adj2276` branch and
+redispatched `ga_dashas` immediately rather than sit idle on a merge that has zero bearing on
+script correctness.
+
+**First attempt lost the OIDC race** (mixed `2>&1` when minting the identity token, capturing a
+gcloud warning line ahead of the JWT; had to re-mint clean, costing ~15-20s -- `ga_dashas`'
+writer is fast, ~20s total, and the run flipped to `completed` before the corrected token could
+post `build_run_authorized`). The run's write was real and harmless (§N.3 delete-then-insert
+idempotency) but its evidence trail is permanently unusable (the authorization gate cannot be
+satisfied post-hoc once `state != 'planned'`) -- redispatched cleanly a second time, this time
+pre-minting the token BEFORE `--commit` per the session's own established discipline, and won
+the race (`{"outcome":"created"}`). Polled to `completed`, confirmed `receipt_state='proven'`,
+submitted `accepted_rebuild_observed` (citing the CURRENT generation's already-standing
+`decision_digest`/`implementation_digest` from cycles 197's own accepted evidence -- no
+re-derivation needed, exactly as expected), computed `integrity_contract_sha256` fresh via the
+dispatcher's own `_live_registry_contract`/`_sha256_json` functions, submitted `integrity_
+verified`, computed `lifecycle_digest` via the genuine Node.js replica over ALL 9 lifecycle
+events across BOTH generations (the stale 8523e32a... one AND the current b85a6d11... one -- the
+digest is generation-agnostic by design, confirmed by re-reading `requireFreezeProvenance`'s own
+lifecycle query rather than assuming), submitted `asset_frozen`. **`ga_dashas` is FROZEN** --
+the single longest-standing blocker this entire session (first flagged stale by the Conductor at
+cycle-194's mid-turn interrupt, escalated via #2276 at cycle 192, ruled cycle 197, finally
+resolved cycle 199). `capsule_audit.sql` §1 (0 rows) / §2 (all `ok`) confirmed clean; §3 shows
+L1 10/19 frozen (was 9).
+
+**`egate.sql` re-run confirms the cascade opened exactly as predicted**: `ga_condition`,
+`ga_structural`, `ga_tajaka` newly `OPEN-PENDING-PIN`; `ga_medical`/`ga_sade_sati`/`ga_vastu`/
+`ga_vichara`/`ga_yoga` now block only on those three, not on `ga_dashas`. Per the standing
+frontier-drain directive ("do not do one and drift back to W3"), continued immediately rather
+than stopping.
+
+**`ga_condition` dispatch attempt surfaced a genuine, previously-undiscovered orchestrator
+defect, not a transient failure.** Authored and applied `ga_condition`'s missing `asset_output_
+digest_specs` row first (migration 894 -- target `ga_condition_composite`, key columns
+`(chart_id, ayanamsha_id, graha)` matching its own DB UNIQUE constraint, 0 NULLs live-verified).
+Submitted `implementation_accepted` (verdict was `correct`, needed before dispatch per the usual
+ordering). Dispatch failed immediately with a DEP-ASSERT anomaly:
+`ga_dashas: expected state 'lit', actual 'receipt:stale', but 483870 data rows ARE present`.
+
+**Root-caused precisely rather than retried blindly**, tracing `deps_unsatisfied`
+(`asset_runner.py:47`): `asset_throughput.state='lit'` for `ga_dashas` (satisfied), but `asset_
+freshness.freshness_state='stale'` (reason `registry_changed`, from migration 882's
+`integrity_check_sql` edit) -- unchanged since `10:38:49Z`, genuinely NOT reconciled by the
+`12:58:47Z` rebuild that just froze it. Traced further: `build_run_assets.disposition=
+'skip_no_delta'` for that rebuild -- the writer's own delta-skip gate (O-wave WP-2) found its
+computed output byte-identical to the prior receipt, so it took `_skip_no_delta` →
+`reattribute_unchanged_receipt` (`provenance.py:316`) instead of the normal completion path
+(`capture_and_persist_receipt` → `persist_successful_receipt` → `_upsert_freshness`). `reattribute
+_unchanged_receipt` only re-stamps `build_id`/`observed_at` on the receipt -- it never touches
+`asset_freshness` at all, an assumption that's correct for an already-`fresh` asset rebuilding
+with no change, but wrong for a `registry_changed`-stale asset: THIS is exactly the run that was
+supposed to verify "still correct under the new contract," and the fast path silently skips that
+reconciliation, making the stale flag structurally permanent.
+
+**Filed nirmana-adjudication #2300** with the full trace, blast radius (blocks all 3 newly-
+eligible assets, likely campaign-wide exposure for any asset whose registry contract changes
+without its writer output changing -- the exact §N.4 "surgical migrations" pattern this whole
+campaign uses routinely), and a scoped proposed fix (have `_skip_no_delta` also call `_upsert_
+freshness(freshness='fresh')` after re-stamping the receipt -- the byte-identical-content
+reconfirmation this run just proved makes `'fresh'` unambiguously correct, one line mirroring
+`persist_successful_receipt`'s own logic). Did NOT hand-edit `asset_freshness` -- `asset_runner.
+py`/`provenance.py` is the FROZEN orchestrator (§N.2), same posture as #2276's own dispatcher
+gap: stop, diagnose precisely, propose a scoped fix, request authorization.
+
+Confirmed `ga_structural`/`ga_tajaka` both also directly depend on `ga_dashas` -- would hit the
+identical wall, so did NOT burn slot claims attempting either this cycle. Released the `ga_
+condition` slot with `outcome: failed` and the full diagnosis, explicitly deferring all three.
+Landed migration 894 as its own PR (#2301, auto-merge armed) -- independently correct and needed
+regardless of #2300's ruling, not wasted work.
+
+CYCLE 199 L1: PR hygiene clean; **`ga_dashas` FROZEN** (the session's longest-standing block,
+resolved via cycle 197's #2276 guard fix run locally ahead of its own merge, second dispatch
+attempt after losing an OIDC race on the first) -- opens `ga_condition`/`ga_structural`/
+`ga_tajaka` as newly eligible; attempted `ga_condition` next per the frontier-drain directive,
+hit and precisely root-caused a genuine NEW orchestrator defect (delta-skip rebuilds never
+reconcile `asset_freshness`, permanently stranding any `registry_changed`-stale asset whose
+content doesn't actually change) -- filed #2300 with a scoped proposed fix rather than hand-edit
+the FROZEN orchestrator's own state table. All three newly-eligible assets deferred pending that
+ruling. Migration 894 (`ga_condition`'s output_digest_spec) landed independently (PR #2301) --
+next: check #2300 for a ruling every cycle; the instant it's authorized-and-implementable,
+redispatch `ga_condition`/`ga_structural`/`ga_tajaka` back-to-back (all three's own W1/W2/
+implementation evidence for `ga_condition` already stands; the other two still need their own
+digest specs authored first). Keep checking #2113/#2180/#2224/#2276 regardless. `ga_transit_
+anchors` remains `BLOCKED-NO-ROUTE` on #2224, separately.
