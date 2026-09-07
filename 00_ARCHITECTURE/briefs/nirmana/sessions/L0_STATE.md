@@ -801,3 +801,8 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   other layers too per #2224's cross-layer concern; and the build_runs dedup-vs-stuck-receipt
   blocker, asking for a sanctioned path forward). D-L0-II's underlying wall is now provably fixed and
   deployed — what remains is purely this dispatch-mechanics gap. NEXT: await #2240's ruling.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs (last work was a direct push to this heartbeat
+  branch, nothing queued). Posted #2240's findings to #1713 for Conductor visibility. #2240 itself has
+  no comments yet (filed last cycle). Checked #1713's tail before posting — no new Conductor activity
+  since the force-deploy announcement. Nothing else eligible: `bg_cohort` is L0's only gap and it's
+  correctly blocked pending #2240's ruling — not mine to force past the dedup guard. Idle-waiting.
