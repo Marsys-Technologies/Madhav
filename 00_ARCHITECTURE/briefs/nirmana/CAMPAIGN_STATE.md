@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:18:04Z` — cycle 759: **IDLE-OK (milestone watched).** PR #2220 —
+  `ga_positions`' `output_digest_spec` (migration 875), **fix 2/2 of #2180's ruling now done**.
+  Combined with cycle 755's 7/7 partition completion, both authorized prerequisite fixes for
+  `ga_positions` specifically are complete — should be able to reach `fresh` on next dispatch.
+  Still outstanding: the 3 L0 `output_digest_spec` rows (`bg_ephemeris_engine`/`bg_panchanga`/
+  `bg_cohort`), L0's own responsibility. All fleet PRs healthy. Own-PR hygiene clean;
+  adjudications unchanged (10).
 - `2026-09-07T03:15:34Z` — cycle 758: **IDLE-OK (verified).** #2216 merged. Fleet healthy, none
   CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:12:57Z` — cycle 757: **IDLE-OK (verified).** Fleet PR list normal turnover
