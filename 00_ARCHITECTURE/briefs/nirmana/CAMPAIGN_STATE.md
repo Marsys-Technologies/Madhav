@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T16:25:00Z` — cycle 1034: **IDLE-OK, Δfrozen +0.** Fleet confirmed active (merge
+  at 16:23:54Z, L1 grant fix). Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications: 5
+  open.
 - `2026-09-07T16:22:37Z` — cycle 1033: **IDLE-OK, Δfrozen +0.** Fleet DIRTY: same 2 known stale
   native PRs. Own-PR hygiene: none open. Adjudications: 5 open.
 - `2026-09-07T16:20:18Z` — cycle 1032: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet DIRTY:
