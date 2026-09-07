@@ -495,6 +495,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~151:0xZ — L3-W3 — PR hygiene: `#2192` MERGED (squash
+  `54174fca3`). Rebased the 9 not-yet-merged local commits (migrations
+  864/865 + heartbeat, plus 10 pre-#2192 commits already absorbed into
+  #2192's squash) onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern once (auto-resolved), no non-standard
+  conflicts. Verified zero conflict markers, migration-number guard
+  PASS, all 15 migration-864/865 tests still pass post-rebase, held
+  rows intact (including the new `ka_sangam` unreconciled-gap note).
+  Renamed branch to `codex/nirmana-l3-f-l3-4-batch-4`, pushed, opened
+  **PR #2195**, armed auto-merge (checks running now, not yet queued —
+  normal). No new bounded work this cycle beyond the rebase/PR-open
+  itself (`ga_positions` still `OPEN-PENDING-PIN`). — blocked on:
+  nothing new; next action: verify `#2195` clears its checks and queues
+  cleanly next cycle. F-L3-4 status unchanged: 16 of 20 closed;
+  `ka_kshetra`/`ka_sangam` remain, both genuinely investigated without a
+  safe number reached.
 - `2026-09-07T~150:0xZ — L3-W3 — PR hygiene: `#2192` build ~8.7min,
   within normal range, nothing red. Continued the `ka_sangam` F-L3-4
   investigation from last cycle: answered every fact last cycle's note
