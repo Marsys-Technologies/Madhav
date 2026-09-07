@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 175; deploy still hasn't caught up to `ga_dashas`' F-A17 merge (checked live again, same `0ffdd44f4` SHA as last cycle -- genuinely stalled, not just slow), so deferred it again rather than compute against stale code. Pivoted to independently re-verifying F-C8 (`ga_condition`'s `varga_dignity_composite` NULL-on-135/135 finding), one of the close report's own 6 "claimed closed, cycle 125 sweep only -- no dedicated citation found" MUST-tier groups. Confirmed genuinely fixed in code: `_compute_varga_composite`'s dignity-label-normalization fallback is BOTH correct and necessary -- live-confirmed `chart_divisionals.varga_dignity` NEVER populates the numeric `overall_dignity_score` field (1305 rows, 100% text-label-only), so without this exact fallback path every varga's score is None and the composite is unconditionally None. Live: `ga_condition_composite.varga_dignity_composite` still 0/45 non-NULL for the canonical chart -- genuinely needs a rebuild, which is blocked by the same `asset_frozen` E-gate as wave 1 (`ga_condition` is wave 2, depends on `ga_dashas`/`ga_positions`/`ga_vargas`). Also re-confirmed and properly cited F-A10/F-A12 in the disposition table (verified cycles 171-172 but their own table rows still said "flagged, not re-verified" until now -- fixed the inconsistency). Close report's uncited-groups count now 2 remaining (`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`), down from 6 at segment start. #2113/#2180/#2224 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 176; **found and fixed a real, previously-undiscovered SQL bug while independently re-verifying F-A4/B2/B12** (migration 877, PR #2237). `ga_positions`/`ga_sensitive_degree`'s count_sql already correct (match migrations 868/876/870's own verified category lists exactly). `ga_sensitive`'s count_sql had a genuine operator-precedence bug -- a trailing `OR fact_category = 'bhava_arudha'` sat OUTSIDE its chart_id-scoped parenthesized group; since SQL's AND binds tighter than OR, this silently unscoped that one branch from chart_id entirely. Confirmed real consequences live (not theoretical): bhava_arudha rows exist for all 3 production charts (210 each); buggy query returned 9195 for the canonical chart, correct query returns 8775 -- a 420-row inflation from the other two charts' bhava_arudha rows leaking in. Fixed by folding bhava_arudha into the main IN(...) list; verified via PREPARE/EXECUTE parameterized query (matching the cockpit's real invocation) post-apply. Deploy caught up to ga_dashas' F-A17 merge mid-cycle (a Monitor confirmed it) but I was already deep in this investigation and finished it as this cycle's unit rather than context-switch -- ga_dashas' first-time evidence submission is now genuinely ready for next cycle (deploy no longer the blocker). Close report's uncited-groups count now down to F-A9/B1/D14/E1/E15 alone (1 remaining, from 6 at segment start). #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9816,3 +9816,70 @@ stale disposition-table inconsistency for F-A10/F-A12 found along the way — ne
 `ga_dashas`' evidence once the deploy resumes, or independently re-verify the 2 remaining uncited
 MUST groups (`F-A4/B2/B12`, `F-A9/B1/D14/E1/E15`); keep re-checking #2113/#2180/#2224 every cycle
 regardless.
+
+## CYCLE 176 (C8 v2.3) — found and fixed a real SQL operator-precedence bug (`ga_sensitive`
+## count_sql) while re-verifying F-A4/B2/B12; deploy caught up mid-cycle, deliberately finished
+## the investigation already underway rather than context-switch
+
+PR hygiene: `#2228` (this state branch) `MERGEABLE`/`BLOCKED` with zero RED checks. No other
+L1-authored PR open. Nothing DIRTY/RED/unqueued. Re-checked `#2113`/`#2180`/`#2224`: no new
+Conductor reply beyond my own prior comments.
+
+**Re-checked the deployed SHA first, per standing discipline**: still `0ffdd44f4...`, the SAME
+value for the third consecutive cycle — genuinely worth a sanity check rather than assuming
+either "still stalled" or "surely ready by now." Checked `gh run list --workflow=deploy.yml`
+directly rather than just re-polling the Cloud Run service: found the deploy pipeline was
+actively running (one completed `success` at `05:19:48Z`, one `in_progress` 8m41s in, one
+freshly `pending`) — NOT actually stalled, just between completed deploys at the exact moments I
+'d checked in prior cycles. Started a `Monitor` polling for the deploy to include the F-A17 merge
+commit, and used the wait productively rather than idle.
+
+**Unit of work: independently re-verify F-A4/B2/B12** (`L1_W2_DECIDE_v1_0.md` #93: `count_sql`
+"omits rows the writer writes and the serving layer serves... Cockpit truth is wrong",
+`ga_positions`/`ga_sensitive`/`ga_sensitive_degree`), the next of the close report's own uncited
+MUST-tier groups after F-C8. Read all three assets' LIVE `count_sql` directly. `ga_positions`'
+5-category list exactly matches migration 876's own verified writer-ownership finding;
+`ga_sensitive_degree`'s 2-category list exactly matches migration 870's — both genuinely correct,
+no action needed.
+
+**`ga_sensitive`'s `count_sql` had a real, previously-undiscovered SQL bug** — not a wrong
+category list (its coverage, read carefully, is otherwise exactly the same 37 categories migration
+874 already verified: 18 explicit literals + `LIKE 'esoteric_point_%'` (15) + `LIKE 'tajik_%'`
+(3) + a trailing `bhava_arudha`), but a genuine operator-precedence error in how that trailing
+`bhava_arudha` clause was attached: `WHERE chart_id = $1 AND (... category checks ...) OR
+fact_category = 'bhava_arudha'` — SQL's `AND` binds tighter than `OR`, so this parses as
+`(chart_id = $1 AND (...)) OR (fact_category = 'bhava_arudha')`, silently un-scoping the
+`bhava_arudha` branch from `chart_id` entirely.
+
+**Confirmed this has real, measurable consequences, not just a theoretical footgun**: queried
+live — `bhava_arudha` rows exist for all 3 production charts (210 rows each, identical). Ran the
+buggy query as literally stored: **9195** for the canonical chart. Ran the correctly-parenthesized
+version: **8775**. The exact 420-row difference matches the other two charts' `210+210
+bhava_arudha` rows leaking in unscoped — not an estimate, a precise reproduction of the bug's
+exact mechanism.
+
+Fixed by folding `bhava_arudha` directly into the main `IN (...)` list (removing the ambiguous
+structure entirely, not just adding defensive parens around the existing shape). Re-verified the
+fix BEFORE writing the migration (ran the corrected SQL live, got 8775) and cross-checked
+`DISTINCT` category coverage under the new filter — 34, exactly matching migration 874's own
+live-verified category-presence finding (34/37 present, 3 legitimately absent, already
+documented). Migration numbering re-verified live (main highest 876) — used **877**. Applied,
+verified via direct `psql`, then **re-verified post-apply via `PREPARE`/`EXECUTE` with a
+parameterized `$1`**, matching the cockpit's actual invocation pattern rather than trusting a
+hardcoded-literal test alone — confirmed 8775. Committed, pushed, opened PR #2237, queued.
+
+**Deploy caught up to the F-A17 merge partway through this investigation** (the Monitor
+notification fired mid-cycle). Deliberately did NOT context-switch to `ga_dashas`' evidence
+submission at that point — this SQL-bug investigation was already substantially underway with a
+concrete, real defect found, and finishing one clean unit beats abandoning it half-done to chase
+a second. `ga_dashas`' first-time evidence submission is now genuinely unblocked for a future
+cycle (the deploy is no longer the obstacle).
+
+CYCLE 176 L1: PR hygiene clean; **found and fixed a real SQL operator-precedence bug**
+(`ga_sensitive`'s `count_sql`, migration 877, PR #2237) while independently re-verifying
+F-A4/B2/B12 — confirmed live, real consequences (420-row inflation from cross-chart leakage), not
+theoretical; `ga_positions`/`ga_sensitive_degree` confirmed already correct. Deploy caught up to
+`ga_dashas`' F-A17 fix mid-cycle but finished this investigation first rather than context-switch
+— next: `ga_dashas`' first-time evidence submission is now genuinely ready (deploy unblocked), or
+independently re-verify the last remaining uncited group, `F-A9/B1/D14/E1/E15`; keep re-checking
+#2113/#2180/#2224 every cycle regardless.
