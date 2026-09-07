@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 162; shipped natural_key_partition fix 4/7 (ga_sade_sati, migration 871, PR #2212): 14 categories confirmed via the writer's own fact_category literals (sade_sati_* x8, *_shani_period x6, dhaiya_period), zero overlap with the other six writers. Applied locally, verified. 3 co-writers (ga_nakshatra, ga_panchanga, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 163; shipped natural_key_partition fix 5/7 (ga_nakshatra, migration 872, PR #2213): 14 categories re-confirmed directly against ga_nakshatra_emitters.py + ga_kp_significators.py (not the get_nakshatra.ts serving tool's own overclaiming 16-category const), zero overlap with the other six writers. Applied locally, verified. 2 co-writers (ga_panchanga, ga_sensitive) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8931,3 +8931,33 @@ record — they are the only entries in this table with a real wall-clock behind
   `ga_sensitive` is the one needing the most careful verification, ~25 categories) plus
   `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle
   regardless.
+- 2026-09-07T17xZ -- CYCLE 163 (C8 v2.3). PR hygiene: `#2209` genuinely `is:queued` (GraphQL
+  confirmed); `#2212`/`#2201` `BLOCKED`/`MERGEABLE`, zero `fail`, autoMergeRequest armed on
+  both -- known mid-CI pattern, nothing to fix. #2113/#2180: identical comment counts to cycle
+  162 -- still no reply.
+  Continued the `natural_key_partition` backfill, one migration at a time. Picked `ga_nakshatra`
+  next -- already fully characterized from cycle 159's own investigation into the DEP-ASSERT
+  gate work. Re-confirmed fresh for this migration rather than trusting the earlier finding
+  verbatim: grepped `ga_nakshatra_emitters.py` and `ga_kp_significators.py` directly again for
+  every fact_category-shaped literal, checked each suspicious hit's actual context (several
+  looked like fact_category candidates but turned out to be `fact_key` arguments or dict-lookup
+  keys -- `nakshatra_lord`, `nakshatra_id`, `cusp_boundaries`, `kp_cuspal_house` -- confirmed by
+  reading the surrounding `_row(...)` call's positional-argument order, not assumed from the
+  string alone). Landed on the same 14 categories as cycle 159's finding: 12 from the emitters
+  module, 2 (`kp_house_significators`, `kp_planet_significations`) from the KP significators
+  module via its `emit_kp_significators()` call. Distinct from `get_nakshatra.ts`'s own
+  `NAKSHATRA_CATEGORIES` const (16 -- the 2 extra, `nakshatra_lord_placement` and `nakshatra_
+  cross_ayanamsha`, have zero live rows and no writer call site, re-confirmed here as still
+  true). Checked overlap against all six sibling writers -- zero hits.
+  Migration numbering: 868/869 merged (confirmed via `git ls-tree origin/main`); 870/871 still
+  reserved by cycles 161/162's own open PRs. Used 872. Wrote the migration, ran `--dry-run` (872
+  the only pending), applied for real, verified `asset_registry.natural_key_partition` now set
+  for `ga_nakshatra`. Rewrote the migration's own header comment once mid-draft after noticing
+  an awkward, rambling self-correction in the first version (caught before committing, not
+  after) -- cleaned it up rather than leaving the visible false-start in a permanent migration
+  file. Branched fresh off `origin/main`, re-confirmed 872 still free there, committed, pushed,
+  opened PR #2213, queued, confirmed `autoMergeRequest` armed.
+  CYCLE 163 L1: PR hygiene clean; shipped `natural_key_partition` fix 5/7 (`ga_nakshatra`, PR
+  #2213) -- next: 2 co-writers remain (`ga_panchanga`, `ga_sensitive` -- `ga_sensitive` is the
+  one needing the most careful verification, ~25 categories) plus `ga_positions`' own
+  `output_digest_spec` (fix 2); keep re-checking #2113/#2180 every cycle regardless.
