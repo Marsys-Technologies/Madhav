@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~328:0xZ — L3-W4 — PR hygiene: `#2256` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (`#2247`, L1
+  `get_sensitive_points.ts` closing 2 mischaracterized esoteric-point
+  categories, no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2256` clearing checks/queue; next action: same.
 - `2026-09-07T~327:0xZ — L3-W4 — PR hygiene: `#2251` MERGED (confirmed
   `merged: true`, `mergedAt` set — the flake diagnosis held: 15/16
   jobs green on the fresh run, no repeat failure). Rebased the 26
