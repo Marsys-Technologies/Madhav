@@ -381,6 +381,8 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T15:06:15Z` — cycle 1002: **IDLE-OK, Δfrozen +0.** Frontier unchanged. Fleet
+  DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T15:03:11Z` — cycle 1001: **Tried a different channel for L3 — direct PR comment
   instead of #2224.** ~37 min since the last #2224 nudge, still no reply; L3's own #1734
   adjudication thread is stale since Sep 5, not actively monitored either. Posted directly on
