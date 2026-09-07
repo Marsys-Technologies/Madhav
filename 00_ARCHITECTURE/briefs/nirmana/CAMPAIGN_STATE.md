@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T10:13:42Z` — cycle 895: **IDLE-OK, Δfrozen +0.** `asset_throughput` confirms build
+  genuinely done (`state='lit'`, no error) — ~8 min since `accepted_rebuild_observed`, notably
+  slower than the `ga_positions` precedent but no new diagnostic evidence to escalate on (unlike
+  the L3 auth case, nothing points to a specific blocker here yet); watching without re-nudging
+  on a bare timer alone. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T10:11:22Z` — cycle 894: **IDLE-OK, Δfrozen +0.** ~6 min since `accepted_rebuild_
   observed`, no `integrity_verified` yet — giving it more room since the mechanism already proved
   itself this attempt. L3 frontier (5 named assets) still zero events. Fleet DIRTY: same 2 known
