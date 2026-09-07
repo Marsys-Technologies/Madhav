@@ -457,6 +457,34 @@ L5 on a colliding identity would bake it into my prediction ids.
 
 ## Heartbeat
 
+- 2026-09-07T05:28Z (C8 v2.3 cycle 790) — **`#2232` MERGED — the thirty-eighth state-recovery PR
+  closed out.** Thirty-eighth recurrence of the exact same pattern (cycles 442, 453, 461, 473,
+  482, 492, 502, 511, 519, 528, 534, 545, 557, 568, 578, 588, 591, 600, 609, 618, 625, 634, 644,
+  652, 663, 675, 685, 695, 706, 717, 727, 738, 749, 760, 772, 783, now 790). 6 local-only commits
+  (cycles 784-789, single-file, pure additions) recovered via patch onto a fresh
+  `codex/nirmana-l5-heartbeat-recovery-38` branch off `origin/main`. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:26Z (C8 v2.3 cycle 789) — **IDLE-OK, verified.** #2232 still OPEN/`is:queued`,
+  unchanged. #2234 (new, non-layer-prefixed title) confirmed Conductor's via branch
+  `fix/nirmana-conductor-bg-cohort-service-upstream`, out of scope. #2233 confirmed L3's. Main
+  tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:23Z (C8 v2.3 cycle 788) — **IDLE-OK, verified.** #2232 still OPEN/`is:queued`,
+  unchanged. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets unchanged. Nothing
+  eligible.
+- 2026-09-07T05:21Z (C8 v2.3 cycle 787) — **IDLE-OK, verified.** #2232 still OPEN/`is:queued`,
+  unchanged. #2228 confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all 11
+  remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:19Z (C8 v2.3 cycle 786) — **IDLE-OK, verified.** #2232 now genuinely `is:queued`,
+  `mergeStateStatus=UNKNOWN` (normal mid-queue). Main tip advanced to `df28f4088` (#2229, L1's —
+  merged, out of scope). E-gate re-run: all 11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:15Z (C8 v2.3 cycle 785) — **IDLE-OK, verified.** #2232 down to its last check
+  (Governance Gates), no failures. Not yet `is:queued`. Main tip unchanged. E-gate re-run: all
+  11 remaining L5 assets unchanged. Nothing eligible.
+- 2026-09-07T05:12Z (C8 v2.3 cycle 784) — **IDLE-OK, verified.** #2232 (recovery #37) not yet
+  `is:queued` — `autoMergeRequest` confirms genuinely armed (`enabledAt: 05:09:43Z`), CI
+  `IN_PROGRESS` (Unit Tests, DB Integration Tests, Governance Gates), no failures. #2229
+  confirmed L1's, out of scope. Main tip unchanged. E-gate re-run: all 11 remaining L5 assets
+  unchanged. Nothing eligible.
 - 2026-09-07T05:09Z (C8 v2.3 cycle 783) — **`#2230` MERGED — the thirty-seventh state-recovery
   PR closed out.** Discovered via `gh pr view --json mergeCommit` after `gh pr checks` showed all
   green with nothing in progress — merge commit `4fae99f4f` confirmed as the fresh `origin/main`
