@@ -497,7 +497,6 @@ your layer close.
 
 ## Heartbeat
 
-<<<<<<< HEAD
 - `2026-09-07T~386:0xZ — L3-W4 — PR hygiene: `#2280` advanced to
   position 2, `state: MERGEABLE` (its own checks are done — only
   `#2279` (L1: state cycles 192-193) remains ahead in queue,
