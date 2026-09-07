@@ -1,9 +1,18 @@
 /**
  * L1 retrieval: esoteric / sensitive points
- * Covers: all esoteric_point_* (13 sub-categories), bhrigu_nadi_point,
+ * Covers: all esoteric_point_* (15 sub-categories), bhrigu_nadi_point,
  *         lal_kitab_special_point, maharsi_specific_point, midpoint,
  *         saham_position, saturn_derived_point, nakshatra_pada_sensitive
  * Tool: marsys://tool/L1/get_sensitive_points
+ *
+ * F-B32 (L1_W6_CLOSE_REPORT_v1_0.md §5, cycle 182): `esoteric_point_sphuta_fertility`
+ * (BEEJA_SPHUTA/KSHETRA_SPHUTA, 70 live rows) and `esoteric_point_yogi_system` (YOGI_GRAHA
+ * sign/nakshatra/longitude, 25 live rows) are genuine `ga_sensitive_writer.py`-owned esoteric
+ * points the cycle-156 F-B32 sweep found had zero serving path anywhere — mischaracterized in
+ * this report's own prior text as "ambiguous multi-writer ownership" alongside a different,
+ * genuinely ambiguous group; corrected here (they are single-writer, `ga_sensitive` only, and
+ * fit this tool's existing `esoteric` tradition family exactly — same flat SELECT shape as
+ * every other `esoteric_point_*` sibling already served here, no special handling needed).
  *
  * MC-029 (Śodhana-Śeṣa W2) reconciliation note: this surface's `esoteric_point_yogi` /
  * `esoteric_point_avayogi` rows include a `bphs_93_20` formula_id variant that computes
@@ -23,9 +32,10 @@ import { query } from '@/lib/db/client'
 const SP_CATEGORIES = [
   'esoteric_point_avayogi', 'esoteric_point_bhrigu_bindu', 'esoteric_point_brahma',
   'esoteric_point_chatushphuta', 'esoteric_point_mrityu', 'esoteric_point_panchasphuta',
-  'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sri_yantra_position',
-  'esoteric_point_trikona_dasha_sphuta', 'esoteric_point_trisphuta', 'esoteric_point_vishnu',
-  'esoteric_point_yogi', 'bhrigu_nadi_point', 'lal_kitab_special_point',
+  'esoteric_point_pranapada_sphuta', 'esoteric_point_shiva', 'esoteric_point_sphuta_fertility',
+  'esoteric_point_sri_yantra_position', 'esoteric_point_trikona_dasha_sphuta',
+  'esoteric_point_trisphuta', 'esoteric_point_vishnu', 'esoteric_point_yogi',
+  'esoteric_point_yogi_system', 'bhrigu_nadi_point', 'lal_kitab_special_point',
   'maharsi_specific_point', 'midpoint', 'saham_position', 'saturn_derived_point',
   'nakshatra_pada_sensitive',
 ]
@@ -37,14 +47,15 @@ export const getSensitivePointsCapability: CapabilityDescriptor = {
   name: 'get_sensitive_points',
   description:
     'Retrieve esoteric and sensitive mathematical points for a chart. ' +
-    'Includes: 13 tradition-specific esoteric points (Yogi/Avayogi, Brahma/Vishnu/Shiva, ' +
-    'Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, Trisphuta, Panchasphuta, ' +
-    'Pranapada, Chatushphuta, Bhrigu Bindu), ' +
+    'Includes: 15 tradition-specific esoteric points (Yogi/Avayogi, Yogi-system sign/nakshatra/ ' +
+    'longitude, Brahma/Vishnu/Shiva, Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, ' +
+    'Trisphuta, Panchasphuta, Pranapada, Chatushphuta, Sphuta Fertility (Beeja/Kshetra), ' +
+    'Bhrigu Bindu), ' +
     'Bhrigu Nadi point, 100 Lal Kitab special points, ' +
     'Maharṣi-specific points, midpoints (all graha pairs), ' +
     '2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, ' +
     'and nakshatra-pada sensitive degrees. ' +
-    'Covers 20 fact_categories (a large row set per chart).',
+    'Covers 22 fact_categories (a large row set per chart).',
   input_schema: {
     chart_id:     { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id: { type: 'string', description: 'Filter by ayanamsha. Omit for all.' },
