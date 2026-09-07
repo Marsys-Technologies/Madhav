@@ -1008,3 +1008,8 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. #1713 has
+  new activity: Conductor's fleet-status post (cycle 853) independently confirms L0 is genuinely
+  40/40 frozen (live-verified on their side too) and notes "L0's W6 layer-freeze ceremony can now
+  close" — informational, not an action request directed at L0; the actual W6 stage-transition
+  mechanism (#1945) remains open/parked, correctly not forced from here. Nothing eligible.
