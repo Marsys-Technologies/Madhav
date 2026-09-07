@@ -494,6 +494,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~148:0xZ — L3-W3 — PR hygiene: `#2192` now genuinely
+  `isInMergeQueue: true` (position 1, `CLEAN`). Nothing to fix.
+  Revisited `ka_gochara_v3_century_materialize` — one of the 3 assets
+  deferred last cycle as "too large" — and found its ROW-COUNT shape is
+  actually separable from its intensity-scoring complexity and genuinely
+  tractable: 18 of 27 event classes serve a flat one-row-per-
+  find_threshold_crossings-interval production (10-40 rows/class,
+  chart-specific), the other 9 additionally get up to 3 peak-anchored
+  month + 3 day rows per era window (`MAX_PEAKS_PER_ERA_WINDOW=3`,
+  sourced from `services/gochara_v3/resolution_hierarchy.py`). **Self-
+  caught a real error mid-authoring**: a first draft wrongly generalised
+  the flat tier to a uniform "10 rows per class" from an incomplete,
+  terminal-truncated query — caught by re-running the FULL breakdown
+  before committing, corrected to the real per-class-variable counts
+  (290 flat + 90 era + 267 month + 267 day = 914). Migration 865 +
+  paired test authored (no self-transaction wrapper from the start); the
+  test's live checks independently re-derive the complete breakdown from
+  source specifically to guard against a repeat of that exact mistake —
+  all 8 tests pass. Migration-number guard PASS (865, confirmed free).
+  Committed locally (`6d30f1c2a`), held from push — `#2192` still
+  mid-queue-attempt. — blocked on: nothing new; next action: push once
+  `#2192` merges or clearly finishes. **F-L3-4 status: 16 of 20
+  originally-NULL L3 assets now closed** across 14 migrations
+  (852-865); only `ka_kshetra` (8.6M target rows, worst DAG declaration)
+  and `ka_sangam` (2975-line 12-current convergence scoring engine with
+  genuine multi-tier predicate selection/pooling, target_floor 14868)
+  remain — both re-confirmed this cycle as genuinely warranting a
+  dedicated investigation rather than a rushed one-cycle attempt, unlike
+  century_materialize which turned out tractable on a second look.
 - `2026-09-07T~147:0xZ — L3-W3 — PR hygiene: `#2192` checks running
   pre-queue (4 pending, nothing red), not yet queued — nothing to fix.
   Continued F-L3-4 with `ka_yojaka` — the SIMPLEST derivation in the
