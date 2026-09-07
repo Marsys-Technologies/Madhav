@@ -65,6 +65,99 @@ def test_compute_upstream_hash_uses_global_scope_when_the_build_itself_is_global
     assert params == (None, "bg_fixture")
 
 
+def _proven_row(asset_id, output_digest="out-digest", **overrides):
+    row = {
+        "asset_id": asset_id,
+        "receipt_version": "nirmana-provenance-receipt-v2",
+        "code_digest": "code", "config_digest": "config",
+        "upstream_digest": "up", "partition_digest": "part",
+        "output_digest": output_digest,
+        "receipt_state": "proven",
+        "observed_at": datetime(2026, 9, 7, tzinfo=timezone.utc),
+        "asset_kind": "data", "service_health": None,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_compute_upstream_hash_declared_deps_requires_proven_receipts_for_data_deps(monkeypatch):
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: [
+        _proven_row("ga_positions"),
+        _proven_row("ga_dashas", receipt_state="unknown"),
+    ])
+
+    assert ar.compute_upstream_hash(_Cursor([]), "ga_yoga", "chart-a", ["ga_positions", "ga_dashas"]) is None
+
+
+def test_compute_upstream_hash_accommodates_a_healthy_service_dependency_stuck_unknown(monkeypatch):
+    """§7.2 (D-NATIVE-07): a service whose receipt is 'unknown' solely because
+    output_digest_spec doesn't apply to it must not block its dependents --
+    the service's own real, already-persisted output_digest is used, gated on
+    a live asset_kind='service' + service_health='healthy' check."""
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: [
+        _proven_row(
+            "bg_ephemeris_engine", output_digest="probe-digest",
+            receipt_state="unknown", asset_kind="service", service_health="healthy",
+        ),
+    ])
+
+    digest = ar.compute_upstream_hash(_Cursor([]), "bg_cohort", None, ["bg_ephemeris_engine"])
+
+    assert digest is not None
+    assert len(digest) == 64
+
+
+def test_compute_upstream_hash_service_accommodation_is_not_a_blanket_bypass(monkeypatch):
+    """A service dependency that is unhealthy, or a non-service dependency
+    that is merely unproven, must still block -- the accommodation only
+    fires for a live-verified healthy service, never as a general escape
+    hatch for any 'unknown' receipt."""
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: [
+        _proven_row(
+            "bg_ephemeris_engine", output_digest="probe-digest",
+            receipt_state="unknown", asset_kind="service", service_health="degraded",
+        ),
+    ])
+    assert ar.compute_upstream_hash(_Cursor([]), "bg_cohort", None, ["bg_ephemeris_engine"]) is None
+
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: [
+        _proven_row("ga_structural", receipt_state="unknown", asset_kind="data", service_health=None),
+    ])
+    assert ar.compute_upstream_hash(_Cursor([]), "ga_yoga", "chart-a", ["ga_structural"]) is None
+
+
+def test_compute_upstream_hash_still_requires_a_real_output_digest_from_a_healthy_service(monkeypatch):
+    """A healthy service that has never been probed (no output_digest at
+    all) is a genuinely unavailable upstream, not an accommodated one."""
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: [
+        _proven_row(
+            "bg_ephemeris_engine", output_digest=None,
+            receipt_state="unknown", asset_kind="service", service_health="healthy",
+        ),
+    ])
+
+    assert ar.compute_upstream_hash(_Cursor([]), "bg_cohort", None, ["bg_ephemeris_engine"]) is None
+
+
+def test_compute_upstream_hash_excludes_asset_kind_and_service_health_from_the_digest_payload(monkeypatch):
+    """asset_kind/service_health are live lookups added to help this
+    decision, not part of the receipt's own identity -- the digest a data
+    dependency produces must be unaffected by their presence."""
+    rows_without = [_proven_row("ga_positions")]
+    for row in rows_without:
+        del row["asset_kind"]
+        del row["service_health"]
+    rows_with = [_proven_row("ga_positions")]
+
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: rows_without)
+    without = ar.compute_upstream_hash(_Cursor([]), "ga_yoga", "chart-a", ["ga_positions"])
+
+    monkeypatch.setattr(ar, "load_upstream_receipts", lambda cur, deps, cid: rows_with)
+    with_fields = ar.compute_upstream_hash(_Cursor([]), "ga_yoga", "chart-a", ["ga_positions"])
+
+    assert without == with_fields
+
+
 def test_writer_source_hash_is_content_based_and_order_independent(monkeypatch, tmp_path):
     first = tmp_path / "a_writer.py"
     second = tmp_path / "b_helper.py"

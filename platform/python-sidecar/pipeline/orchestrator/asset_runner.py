@@ -176,15 +176,22 @@ def canonical_upstream_hash(
 
 
 def load_upstream_receipts(cur, declared_deps: list[str], chart_id: str | None) -> list[dict[str, object]]:
-    """Load exact, scoped successful receipts without consulting mutable DAG metadata."""
+    """Load exact, scoped successful receipts without consulting mutable DAG metadata.
+
+    Also carries each dependency's live `asset_kind`/`service_health` (asset
+    identity + current health, not a DAG edge) so `compute_upstream_hash` can
+    apply the §7.2 service-dependency accommodation without a second query.
+    """
     if not declared_deps:
         return []
     cur.execute(
         """
         SELECT dep.asset_id, p.receipt_version, p.code_digest, p.config_digest,
                p.upstream_digest, p.partition_digest, p.output_digest,
-               p.receipt_state, p.observed_at
+               p.receipt_state, p.observed_at,
+               reg.asset_kind, reg.service_health
         FROM unnest(%s::text[]) AS dep(asset_id)
+        LEFT JOIN asset_registry reg ON reg.asset_id = dep.asset_id
         LEFT JOIN LATERAL (
             SELECT receipt_version, code_digest, config_digest, upstream_digest,
                    partition_digest, output_digest, receipt_state, observed_at
@@ -207,20 +214,42 @@ def compute_upstream_hash(
     chart_id: str | None,
     declared_deps: list[str] | None = None,
 ) -> str | None:
-    """Return a reproducible digest of this execution's actual scoped upstream receipts."""
+    """Return a reproducible digest of this execution's actual scoped upstream receipts.
+
+    §7.2 service-dependency accommodation (D-NATIVE-07, 2026-09-07): a healthy
+    service dependency has no relational output for `output_digest_spec` to
+    describe, so its own receipt can never reach `receipt_state='proven'` via
+    that requirement alone -- that is a structural property of being a service,
+    not evidence the dependency is actually unverified. For such a dependency
+    ONLY, this accepts its already-real, already-persisted `output_digest`
+    (the probe-result digest `_persist_probe_receipt` writes) without also
+    requiring `receipt_state == 'proven'`, verified fresh here against the live
+    `asset_registry.service_health` column -- never trusted from the
+    dependency's own possibly-stale/unknown receipt, and never a fabricated
+    stand-in digest. A data dependency, or a service that has never been
+    probed GREEN (no `output_digest` at all), is unaffected: it still requires
+    a genuinely proven receipt.
+    """
     if declared_deps is not None:
         from .provenance import canonical_digest
         receipts = load_upstream_receipts(cur, declared_deps, chart_id)
-        if len(receipts) != len(declared_deps) or any(
-            row.get("receipt_state") != "proven" or not row.get("output_digest")
-            for row in receipts
-        ):
+        if len(receipts) != len(declared_deps):
             return None
+        for row in receipts:
+            if not row.get("output_digest"):
+                return None
+            if row.get("receipt_state") == "proven":
+                continue
+            if row.get("asset_kind") != "service" or row.get("service_health") != "healthy":
+                return None
         return canonical_digest({
             "version": "nirmana-upstream-receipts-v2",
             "asset_id": asset_id,
             "chart_id": chart_id,
-            "receipts": receipts,
+            "receipts": [
+                {key: value for key, value in row.items() if key not in ("asset_kind", "service_health")}
+                for row in receipts
+            ],
         })
     cur.execute(
         """
