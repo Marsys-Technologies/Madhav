@@ -1298,3 +1298,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   actionable here — noted for awareness. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Conductor ruled on #2224 (drop the redundant source_ref check, authorized L1 to implement) — not
+  L0's task. Nothing eligible.
