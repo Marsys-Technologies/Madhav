@@ -495,6 +495,26 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~156:0xZ — L3-W3 — PR hygiene: `#2195` MERGED (squash
+  `fc2ce2326`). Rebased the 9 not-yet-merged local commits (migrations
+  866/867 + heartbeat, plus 7 pre-#2195 commits already absorbed into
+  #2195's squash) onto fresh `origin/main`. Hit the standard empty-
+  theirs prepend-conflict pattern twice (auto-resolved), plus ONE
+  genuine content conflict on the `ka_sangam` Held-items row: HEAD
+  carried the "second cycle, still unreconciled" version, theirs
+  carried the OLDER "first cycle" version it had already superseded —
+  resolved by keeping HEAD's more-evolved text and dropping theirs
+  (both were about to be replaced by the RESOLVED text two commits
+  later anyway). Verified zero conflict markers, migration-number guard
+  PASS, all 16 migration-866/867 tests still pass post-rebase (kshetra's
+  live tests ~28s, expected given the 8.6M-row table), `ka_dasha_kala`
+  held row intact. Renamed branch to `codex/nirmana-l3-f-l3-4-final`,
+  pushed, opened **PR #2197**, armed auto-merge (checks running now, not
+  yet queued — normal). No new bounded work this cycle beyond the
+  rebase/PR-open itself (`ga_positions` still `OPEN-PENDING-PIN`). —
+  blocked on: nothing new; next action: verify `#2197` clears its
+  checks and queues cleanly next cycle — once it merges, F-L3-4 is
+  closed in full on `origin/main` for real, not just in a pending PR.
 - `2026-09-07T~155:0xZ — L3-W4/W3 — PR hygiene: `#2195` own `merge_group`
   build confirmed healthy (~9min, within normal range). Nothing to fix.
   With F-L3-4 now CLOSED, swept the rest of the findings ledger (F-L3-1
