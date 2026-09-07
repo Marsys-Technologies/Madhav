@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T01:04:23Z` — cycle 712: **CLOSED #1840.** PR #1844 confirmed merged
+  (2026-09-06T12:19:05Z) — `mi_vistara` output_digest_spec authored per D-CND-27; #2167
+  (mi_kula's own spec, same recipe) also merged since, confirming generalization worked.
+  15→14 open adjudications. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T01:02:01Z` — cycle 711: **RULED + CLOSED #1810.** Answered the dormant
   house-vs-sign question directly from source rather than waiting on L1: read
   `ga_strength_writer.py`'s own docstring (CR-99a) confirming `ashtakavarga_bindu`'s `HOUSE_<N>`
