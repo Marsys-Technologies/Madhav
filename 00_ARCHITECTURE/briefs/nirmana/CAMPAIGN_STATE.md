@@ -381,6 +381,11 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:00:16Z` — cycle 807: **Fleet sweep — second nudge on #2227/#2228.** Both still
+  unqueued ~1h36m despite first nudges; #2228 briefly queued then fell back out while L1 went on
+  to open #2237 (L1 confirmed active, just not tending this one PR); #2227/L2 has produced
+  nothing since it was opened (~1h36m silence). Posted pointed second nudges. Own-PR hygiene
+  clean; adjudications unchanged (11); fleet DIRTY empty otherwise.
 - `2026-09-07T05:56:35Z` — cycle 806: **IDLE-OK (verified).** Fleet PR list unchanged, all
   MERGEABLE. Own-PR hygiene clean; adjudications unchanged (11).
 - `2026-09-07T05:53:47Z` — cycle 805: **IDLE-OK (verified).** #2235 merged, normal turnover.
