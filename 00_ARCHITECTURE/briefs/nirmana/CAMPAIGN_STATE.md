@@ -381,6 +381,21 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:27:06Z` — cycle 859: **D-NATIVE-08 >1-cycle staleness confirmed → ruled #2180,
+  the real ga_positions blocker.** Frontier re-check: `ga_positions`/`ka_gochara_resonance` still
+  undispatched (frozen_total still 46/128, Δfrozen=0), now genuinely stale >1 cycle per the
+  native's own threshold. Rather than re-nudging with no new information, found the actual
+  technical objection sitting open at #2180 (unaddressed ~4.5h): a real fact_id-derivation change
+  (PR #1898) means a `ga_positions` rebuild produces different fact_ids than 3 downstream array
+  columns (`ga_yoga_firings`, `bodha_msr_signals`, `bodha_cgm_edges`) currently reference,
+  risking orphaning. **Ruled**: live-verified none of the 6 currently-frozen kala/mimamsa assets
+  depend (even transitively via their stored `depends_on`) on `ga_yoga`/`bo_laksana`/the CGM
+  writers — all trace only to `bg_*`. So nothing frozen is at risk; the "orphaned" rows are
+  pre-freeze WIP that those three writers need to rebuild anyway before their own W4/freeze. Ruled:
+  dispatch `ga_positions` now, no campaign-wide migration script, downstream consumers rebuild in
+  normal dependency order and must not be read as authoritative until they do. Posted as binding
+  ruling on #2180 (comment 5567680598). Own-PR hygiene: none open. Fleet DIRTY: empty.
+  Adjudications unchanged (11).
 - `2026-09-07T08:23:29Z` — cycle 858: **D-NATIVE-08 fleet refocus — enforced, Δfrozen +0.**
   Native ruling: asset-frontier overrides sub-wave batching; report Δfrozen-count, not PR
   activity. Ran the eligible-frontier query (every active-writer asset not `asset_frozen` whose
