@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 148; quantified F-B32 precisely AND caught a real error in my own cycle-146 measurement: the live category count must be scoped to chart_id=native per coverage_matrix.ts's own stated purpose (219, not the unscoped cross-chart 223 I used cycle 146) -- the gap has NOT widened, it is flat at 169-vs-219, unchanged since the original W1 measurement. Ran a full comm diff: 57 live categories missing from the 169-list, 6 phantom entries in the list that don't exist for ANY chart (ashtakavarga_anubindu, dosha_fires, esoteric_point_chatushphuta/panchasphuta/trisphuta, yoga_fires), 1 more (karaka_web_per_varga) real but not yet built for the canonical chart. Corrected L1_W6_CLOSE_REPORT_v1_0.md (§0/§2/§5/§6, 0.5-DRAFT->0.6-DRAFT) with the corrected count and the full diff. Did not attempt the actual 57-category tool-mapping edit -- needs per-category serving-code verification, still not a single bounded unit. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 149; began closing F-B32's 57-category gap incrementally, one verified cluster at a time (PR #2193, queued): the 5 graha_avastha_*_per_varga categories, confirmed genuinely reachable via get_avasthas.ts's own data-driven `fact_category = ANY($2)` query (opt-in via the `categories` param, same precedent as the file's existing ashtakavarga_bindu_per_varga entries), non-trivial live row counts checked before adding, tsc + coverage_gate.test.ts (6/6) both green. ~52 of 57 remain open. #2180/#2113 still quiet, checked again this cycle
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8361,3 +8361,33 @@ record — they are the only entries in this table with a real wall-clock behind
   stale" restatement -- next: the actual tool-mapping edit (57 additions + resolving 6 phantom
   entries) remains the standing highest-priority unheld W3 item, now with a concrete worklist
   instead of an estimate; keep re-checking #2113/#2180 every cycle regardless.
+- 2026-09-07T3xZ -- CYCLE 149 (C8 v2.3). PR hygiene: `#2191` was `CLEAN`/`MERGEABLE` with every
+  check `pass` but NOT in `is:queued` -- queued it explicitly (`gh pr merge --auto`), re-verified
+  via GraphQL `is:queued` search, now genuinely queued. `#2178` `BLOCKED`/`MERGEABLE`, only
+  3 checks still `pending`, zero `fail`, autoMergeRequest armed -- known mid-CI pattern, no action.
+  #2113/#2180: same comment counts/timestamps as cycle 148 -- still no reply.
+  Started closing F-B32's 57-category gap (cycle 148's own worklist) incrementally rather than in
+  one unverified bulk pass -- mapping a category to the wrong tool would be a worse defect than an
+  honest gap. Picked the `graha_avastha_*_per_varga` cluster (5 of the 57) as the first verified
+  slice: read `get_avasthas.ts` directly and confirmed its query is `fact_category = ANY($2::
+  text[])` over the caller's `categories` input param -- `AVASTHA_CATEGORIES` (the 6 base
+  categories already in the list) is only the DEFAULT subset passed when the caller omits
+  `categories`, not a hard SQL filter. This means the 5 per-varga variants
+  (`graha_avastha_baladi_per_varga`, `_deeptaadi_per_varga`, `_jagradadi_per_varga`,
+  `_lajjitadi_per_varga`, `_sayanadi_per_varga`) are genuinely reachable TODAY via the same
+  already-listed tool, opt-in only -- exactly the same doctrine this file already applies to
+  `ashtakavarga_bindu_per_varga` a few sections up (verified by reading that precedent's own
+  comment, not assumed). Checked live row counts before adding anything: 1305/1305/45/45/45 on
+  the canonical chart -- real, populated, not stray single rows. Added all 5 to both
+  `CHART_FACTS_CATEGORIES` (alphabetically) and `CATEGORY_TOOL_COVERAGE` (TypeScript's
+  `Record<ChartFactsCategory, string[]>` forced both to move together -- confirmed via `tsc
+  --noEmit` catching the mismatch until both were done), with a comment explaining the
+  verification chain for whoever reads this next. Added a header note recording F-B32's
+  incremental-closure status and the exact five categories closed today, so the next session
+  doesn't have to re-derive what's left from scratch. Ran `coverage_gate.test.ts` -- 6/6 still
+  pass (no brittle count assertion in that test, confirmed by reading it first). Branched fresh
+  off origin/main (`codex/nirmana-l1-f-b32-avastha-per-varga`), committed, pushed, opened PR
+  #2193, queued, confirmed `autoMergeRequest` armed. CYCLE 149 L1: PR hygiene clean (queued one
+  clean-but-unqueued PR); shipped the first verified slice of F-B32's real fix (5/57 categories,
+  PR #2193) -- next: ~52 categories remain; continue one verified cluster per cycle rather than
+  rushing a bulk pass; keep re-checking #2113/#2180 every cycle regardless.
