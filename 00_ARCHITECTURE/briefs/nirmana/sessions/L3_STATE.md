@@ -165,7 +165,7 @@ Frozen definition `t0-2026-09-01-0e5b06fb`. `E-gate` = live C10 result at the ti
 | ka_vedha_gochara | data | build | 0 | **rebuild_only** | W2-done | 1 (ga_positions) | — | quality overlay; dep `bg_sarvatobhadra_grid` is empty-by-ruling |
 | ka_muhurta_seva | service | probe | 1 | **probe** | **W4 FROZEN (real)** | **— (frozen)** | `asset_frozen` 2026-09-06T21:10:00Z | **Layer's SECOND genuine, non-artefactual `asset_frozen` — and the FIRST done correctly per D-CND-35 from the start** (a genuinely separate fresh subagent executed all 3 verifier-role events, no post-hoc-remediation needed this time, unlike `ka_graha_sancara`). Full chain: `probe_accepted` (201, live probe re-called independently by the subagent itself, GREEN, 5/5 checks incl. native-overlay 33.0/28.000000000000004) → `integrity_verified` (201, server re-probes under the integrity-contract framing since `integrity_check_sql`/`count_sql` are both NULL for this service asset) → `asset_frozen` (201, `lifecycle_digest` over the 4 prior events). Independently re-verified by this session via direct DB query (not trusted from the subagent's report alone): all 5 rows present, correct `source_ref` per event type, correct verifier-SA attribution. `egate.sql` re-run: `ka_muhurta_seva` no longer appears anywhere in the not-yet-frozen output. |
 | ka_gochara_sweep | data | retired_with_disposition | 1 | **retired** | W2-done | 1 (ka_gochara_resonance) | — | **v1 archive — HARD-FLOOR PROTECTED** |
-| ka_dasha_kala | service | probe | 0 | **probe** | W2-done | 2 | — | |
+| ka_dasha_kala | service | probe | 0 | **probe** | **W4 FROZEN (real)** — `asset_frozen` 2026-09-07T18:06:36Z. **Layer's THIRD genuine freeze, done correctly per D-CND-35 from the start**: full chain (`probe_accepted` 18:04:46 → `integrity_verified` 18:05:20 → `asset_frozen` 18:06:36, all verifier-SA) executed by a genuinely fresh subagent that independently re-derived every precondition (W2 events, ancestor freezes, C2.3 pin recompute — both digests byte-identical to the W2 payloads), exercised the D-CND-34 proxy probe itself (GREEN 3/3: config valid, single-engine importable, 7-system constant set intact), oracle-validated its `lifecycle_digest` replication against `ka_muhurta_seva`'s recorded `61ba8e5d…` before submitting (own digest `501e66ca…9445`, server accepted first try), and DB-re-verified each 201. Independently re-verified by THIS session after the report: 5 rows, correct identities/source_refs, `egate.sql` shows the asset absent everywhere incl. all `waiting_on` lists. Server re-ran the probe itself at both probe/integrity steps (authoritative re-derivation, by design). Prior status: W2 accepted 17:53Z same day (see below) | **0 — OPEN** | — | Both W2 events recorded via `nrec --as executor` (HTTP 201 ×2, DB re-verified: correct executor SA, `source_ref git:3de867a75…` = the verified currently-deployed sha from Cloud Run's `NIRMANA_DEPLOYED_SHA`). Digests computed with the SERVER'S OWN functions (`tsx` + `--conditions=react-server`), input assembly proven byte-exact first: both frozen-manifest fingerprints recomputed to exact match AND `ka_muhurta_seva`'s recorded live fingerprint `286e6ccc…` + analysis digest `53d927c…` reproduced exactly. `registry_fingerprint_sha256=bfbce037987c25d7b468e896483459fad49a74f6d4713363f17257b1d8207a8c`, `analysis_digest=5ca4c816e6fe7deed61a64a79215f71622f7e9d108cac10a2d6aecd2c1a98072`. Ancestors verified frozen first (recursive closure = {ga_dashas, ga_positions}, both frozen 2026-09-07). `egate.sql` re-run: **OPEN-PENDING-PIN**. Next: W4 probe/freeze chain via a genuinely fresh subagent (D-CND-35 — NOT this session's context). |
 | ka_gochara | data | build | 1 | **changed** | W2-done | 2 | — | v2/v3 authority question |
 | ka_gochara_v3_century_materialize | data | build | 1 | **changed** | W2-done | 6 | — | **MONSTER — solo slot** |
 | ka_avadhi | data | build | 0 | **changed** | W2-done | 20 | — | |
@@ -229,7 +229,7 @@ not an L3 code problem, and outside this session's authority to fix directly.
 | ~~`ka_muhurta_seva`'s W4 probe/freeze dispatch~~ | ~~nothing, was ready~~ | **RESOLVED 2026-09-06T21:10:00Z — `asset_frozen` recorded for real, via a genuinely fresh subagent from the start (no D-CND-35 process gap this time).** See asset table + heartbeat for the full chain and independent re-verification. |
 | ~~deploy-pipeline defect (`migrate` job checks out wrong commit)~~ | ~~Conductor/native ruling on #2159~~ | **RESOLVED — RULED + FIXED (PR #2161, merged 2026-09-06T19:45:43Z), CLOSED by Conductor.** Confirmed my diagnosis exactly right (root cause, evidence chain, the `deploy-web` precedent to mirror); added the identical commit-provenance guard to `migrate` PLUS 3 more jobs an independent review found also missing it (`deploy-sidecar`, `deploy-mcp`, `deploy-pipeline-job`) — all 4 now fail loud on a SHA mismatch. `DEPLOY_SHA`'s own resolution strategy deliberately left open (separate, larger decision). Discovered this cycle via a related fix, `#2172` ("CONDUCTOR: changed-paths gate diffs from last successful deploy"), which explicitly cites #2159 as "same defect class, different root cause" (that job's diff base, not `DEPLOY_SHA`'s checkout) — a second, independently-caught instance of the same underlying class, campaign-wide validation the finding mattered. |
 | ~~20 of 23 assets' W4 (declared OR true ancestors unfrozen)~~ | ~~L0/L1/L2 freezes (E-gate, C2)~~ | **PARTIALLY RESOLVED T~344:0xZ — `ga_positions` has FROZEN.** Confirmed live: it no longer appears anywhere in `egate.sql`'s not-yet-frozen output for any layer, and no L1/L3 asset lists it as a blocking ancestor any more. This ancestor-clears (but does not yet W4-dispatch-ready) `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_sudarshana_varsha`, `ka_tithi_pravesha`, `ka_vedha_gochara` — all 5 now `unfrozen_ancestors: 0`, gate reads `BLOCKED-NO-ROUTE`. **UPDATE T~424:0xZ — `ga_sensitive` has ALSO now frozen** (confirmed live directly against `nirmana_evidence.nirmana_elevation_campaign_events`, independent of the noisy L1 PR churn around it — `#2286`/`#2290` both closed unmerged, but the underlying DB write landed). Of D-CND-26's three true ancestors for `ka_gochara_resonance`, 2/3 (`ga_positions`, `ga_sensitive`) are now frozen; only `ga_dashas` remains open (`w2_analysis`/`w2_verdict` both `true`, no `asset_frozen` event yet). D-CND-26's true-closure hold is THEREFORE STILL UNCHANGED (needs all three, not two of three) but is now one ancestor away — watch `ga_dashas` closely. See the new row below for what `BLOCKED-NO-ROUTE` actually requires for the 5 ancestor-clear assets. |
-6 assets' `BLOCKED-NO-ROUTE` gate (`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/`ka_tithi_pravesha`/`ka_vedha_gochara`/`ka_gochara_resonance` — **`ka_gochara_resonance` joined this set T~436:0xZ once D-CND-26's true-ancestor condition was independently satisfied, see the row above**) — **fully scoped, blocked on missing super-admin auth (T~348:0xZ)** | `POST /api/admin/nirmana-elevation/evidence` requires `requireSuperAdmin()` (session/cookie auth); this session's DB credential (`amjis_app`) has `SELECT`-only on the events table, no `INSERT`; no CLI bypass found | **Real, non-fabricated `registry_fingerprint_sha256` (`03f402f8…4f625`) and `analysis_digest` (`654705d4…7d7d1d`) computed for `ka_tithi_pravesha` directly from live DB data (never hand-transcribed); the exact `optimization_verdict_accepted` payload shape confirmed against a real live precedent (`ga_dashas`'s event); `source_ref` confirmed to be a freshness anchor (any real recent commit SHA), not content-specific. Everything needed to submit is known and correct — the only missing piece is an authenticated actor to POST it.** Did NOT attempt a privileged-write workaround (correctly out of scope for this session's access). Superseded, fuller account below at T~344–348:0xZ heartbeat entries. |
+~~6 assets' `BLOCKED-NO-ROUTE` gate~~ — **RESOLVED 2026-09-07T~548:0xZ: all 12 W2 acceptance events recorded live via `nrec --as executor` (12× HTTP 201), DB-re-verified, `egate.sql` confirms all 6 now OPEN-PENDING-PIN. The "missing super-admin auth" conclusion was a wrong-route artifact — T~348 examined the cookie-auth `/api/admin/nirmana-elevation/evidence` route, but the campaign's actual submission path is `/api/admin/internal/nirmana-elevation-executor` via `nrec` SA impersonation (the very mechanism the two service freezes had already used). Digest values from T~348 (`03f402f8…`/`654705d4…` for ka_tithi_pravesha) were correct and byte-matched today's independent recompute.** Original row (for audit): 6 assets (`ka_kota_chakra`/`ka_moorti_nirnaya`/`ka_sudarshana_varsha`/`ka_tithi_pravesha`/`ka_vedha_gochara`/`ka_gochara_resonance`) — fully scoped, believed blocked on missing super-admin auth (T~348:0xZ) | `POST /api/admin/nirmana-elevation/evidence` requires `requireSuperAdmin()` (session/cookie auth); this session's DB credential (`amjis_app`) has `SELECT`-only on the events table, no `INSERT`; no CLI bypass found | **Real, non-fabricated `registry_fingerprint_sha256` (`03f402f8…4f625`) and `analysis_digest` (`654705d4…7d7d1d`) computed for `ka_tithi_pravesha` directly from live DB data (never hand-transcribed); the exact `optimization_verdict_accepted` payload shape confirmed against a real live precedent (`ga_dashas`'s event); `source_ref` confirmed to be a freshness anchor (any real recent commit SHA), not content-specific. Everything needed to submit is known and correct — the only missing piece is an authenticated actor to POST it.** Did NOT attempt a privileged-write workaround (correctly out of scope for this session's access). Superseded, fuller account below at T~344–348:0xZ heartbeat entries. |
 | ~~5 assets' `BLOCKED-NO-ROUTE` gate — INVESTIGATED T~344:0xZ~~ | ~~missing `asset_analysis_accepted` + `optimization_verdict_accepted` campaign events~~ | **superseded by the row above — same investigation, continued to a conclusive stopping point.** **INVESTIGATED T~344:0xZ, correcting an initial wrong hypothesis.** First guessed this meant an `asset_registry.health_probe` JSON was missing (wrong column — these 5 are `rebuild_only`/`verified_reuse` route, not `probe` route, so `health_probe` is irrelevant to them). Read `egate.sql` itself: `BLOCKED-NO-ROUTE` = C2.2 = no `asset_analysis_accepted`/`optimization_verdict_accepted` events recorded in `nirmana_evidence.nirmana_elevation_campaign_events` — confirmed live, zero rows for all 5. Checked whether this is a deliberate hold: `L3_W2_DECIDE_v1_0.md` line 169 cites `#1715` as holding ALL L3 W2-acceptance-event writes — but `L3_STATE.md`'s own held-items table already shows `#1715` RESOLVED (Option A granted, evidence spine `#1736` merged+deployed, `ka_graha_sancara`'s event already recorded live) — so writing these events is NOT currently blocked by any standing ruling; it just hasn't been exercised for these 5 yet. Real W1/W2 analysis already exists and is NOT missing: `L3_W2_DECIDE_v1_0.md` rows 47–51 carry a genuine `examined_and_already_efficient` verdict for all 5, each with a real one-line finding (not fabricated). The submission mechanism is `platform/src/app/api/admin/nirmana-elevation/evidence` (an authenticated admin API route; schema in `evidence-command.ts` — `asset_analysis_accepted` needs `registry_fingerprint_sha256` + `analysis_digest` SHA-256 + `source_ref` as an exact `git:<40-hex>` + `layer`; `optimization_verdict_accepted` needs a registry/analysis-bound verdict+basis+proposal + the same `source_ref`/`layer` shape) — NOT `dispatch_nirmana_campaign_wave.py` (that script only DISPATCHES BUILD waves and explicitly never records acceptance evidence, per its own docstring, though its `_live_registry_fingerprint()` helper is the right reference for computing `registry_fingerprint_sha256` correctly). Did not attempt the actual submission this cycle: correctly computing `registry_fingerprint_sha256`/`analysis_digest` and finding a valid `git:<40-hex>` source_ref for the existing analysis needs care this cycle didn't have budget left for after the investigation; a wrong digest would corrupt real campaign evidence, not just fail loudly. Left fully scoped for a dedicated future cycle. |
 | MSR re-run (`ka_yojaka`→`ka_kalasutra`→`ka_sangam`→spine) | L2's `bo_laksana` rebuild (blast radius now 864,733 rows/12 tables/3L, per Conductor's deeper trace) going FIRST | genuinely open — re-confirmed 2026-09-05T~14:5x (see heartbeat); do not act on the earlier "hold lifted" cross-session note, it was superseded |
 | Salience temporal-multiplier wiring (D-TIME → D-SALIENCE) | L2 consensus/salience capabilities (C6) | genuinely open — PR #1741 landed the WRITER only (confirmed via `L2_STATE.md` CAPABILITIES LANDED); data unreachable until the (held) `bo_laksana` rebuild |
@@ -511,6 +511,157 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-08T~551:0xZ — L3-W4 OVERNIGHT — **build run VERIFIED: 4/5 complete
+  with real content; the acceptance gap found and closed at root.** Execution
+  `brahma-build-pipeline-job-npj4c` finished 19:57:04Z; `build_run_assets`
+  read directly (not trusted from exit code): kota/moorti/sudarshana/
+  tithi_pravesha all `complete`+`output_changed=t`+`disposition=build`;
+  post-rebuild canonical-chart counts real (585/71/120/120).
+  **ka_vedha_gochara DEP-ASSERT-refused** — `bg_sarvatobhadra_grid
+  (receipt:absent)`: the freshness gate colliding with that dep's
+  empty-by-ruling disposition; run state `failed` overall because of it;
+  appended to #2387 for the Conductor. **Found the acceptance blocker before
+  hitting it:** zero `asset_output_digest_specs` rows exist for ANY ka_*
+  asset (the D-CND-27 authoring gap L1 hit at migrations 891-896) —
+  `accepted_rebuild_observed` is unrecordable without them. Authored
+  **migration 900** (all five overlays incl. vedha, ready for redispatch):
+  key_columns = the tables' real DB UNIQUE constraints read from
+  pg_constraint; 0-NULL live-checked on every key column; id/computed_at
+  excluded; spec_sha256 formula oracle-verified byte-exact against migration
+  895's own recorded value before computing anything new. PR raised from
+  fresh main carrying this state history (~545-551). — blocked on: migration
+  900 merging+deploying (migrate.ts applies on deploy); next action: verify
+  spec rows live → `accepted_rebuild_observed` ×4 (executor) →
+  fresh-subagent verifier integrity/freeze ×4 (D-CND-35) → slot release.
+- `2026-09-08T~550:0xZ — L3-W4 OVERNIGHT — **DISPATCHED: L3's first-ever
+  data-asset build wave is running.** Deploy 34156601067 completed (pipeline
+  image now `brahma-pipeline:a4b2fa926…`, carries the #2300 fix; web sha
+  a4b2fa926 — hazard from ~549 cleared, re-verified from Cloud Run directly).
+  Learned en route, the honest way: re-recording the 5 verdicts under the new
+  sha was REFUSED by the server (409 "conflicting lifecycle receipt for this
+  registry/analysis generation") — ga_dashas' double-pair precedent had a
+  CHANGED generation; ours is unchanged, so the original verdicts stand and
+  `--reviewed-deployment-sha` correctly takes the verdicts' own review anchor
+  (822a0b041), with content-currency enforced by the dispatcher's independent
+  canonical-digest recompute (verified: 822a0b041→a4b2fa926 delta is L2's
+  bo_grounding only, zero ka_* digest changes). Dry-run PASSED (manifest
+  digest `adcd8f33…`), commit PASSED: execution
+  `brahma-build-pipeline-job-npj4c`, build_run
+  `08983928-3820-4bdb-bf77-125caecd1b2c`, assets ka_kota_chakra +
+  ka_moorti_nirnaya + ka_sudarshana_varsha + ka_tithi_pravesha +
+  ka_vedha_gochara, snapshot `cloudsql-backup:1788810079574`, slot 1/3
+  claimed on #1713. No --acknowledge-destroys demanded (no cascade/orphan
+  radius computed). Execution watched in background. — blocked on: the build
+  run; next action on completion: verify build outcome per asset →
+  `accepted_rebuild_observed` ×5 (executor, payload per NirmanaRebuildEvidence
+  schema) → fresh-subagent verifier for integrity_verified + asset_frozen ×5
+  (D-CND-35).
+- `2026-09-08T~549:0xZ — L3-W4 OVERNIGHT — frontier-drain cycle 1: dispatch
+  PREPARED, deliberately held ~20min on a verified image-staleness hazard.
+  Hygiene: no open L3 PRs. Rulings absorbed: **#1793 RULED (D-CND-17)** —
+  cb73cd3d formally DAMAGED, four L3 assets HELD from integrity_verified
+  (ka_avadhi/ka_yojaka/ka_kalasutra/century_materialize — none in tonight's
+  six); the destructive-dispatch hold characterized by the Conductor as
+  covering the MSR→kala chain. Conductor's #1713 status note directed L3:
+  "your own W2 acceptances are the only gap; that queue is fully in your
+  hands" — done last cycle. **Filed #2387**: (a) requesting discharge of
+  #1734's canary hold for ka_gochara_resonance (gate now measures — 19
+  D-CND-03 contracts live), (b) decide-and-log notification narrowing the
+  F-L3-12 commitment to the MSR→kala chain per the Conductor's own #1793
+  wording — the 5 ga_*-descended overlays dispatch tonight, resonance held.
+  Prepared: fresh snapshot `cloudsql-backup:1788810079574` (19:41:19Z),
+  slot 1/3 claimed on #1713 with honest held-until note. **Held because:**
+  pipeline image `3cb59e59a` predates a4b2fa926 (the Conductor's own #2300
+  delta-skip freshness fix, merged 19:20Z) — my rebuild_only overlays are
+  prime delta-skip candidates and would reproduce the exact adjudicated
+  defect; deploy run 34156601067 (a4b2fa926) is in flight, watched in
+  background. Learned from the dispatcher's own code (#2317/#2224 comments)
+  + ga_dashas' double-pair history: after the deploy lands the 5
+  optimization_verdict events must be RE-RECORDED under the new deployed sha
+  (verdict source_ref must equal reviewed-deployment-sha; analysis events
+  survive on content match since a4b2fa926 touches no ka writer). Plan on
+  deploy completion: re-verify image ancestry ⊇ a4b2fa926 → re-record 5
+  verdicts → dry-run (digest bakes in snapshot-ref) → commit-dispatch →
+  accepted_rebuild_observed per asset → fresh-subagent verifier freezes.
+  — blocked on: deploy 34156601067; next action: the chain above.
+- `2026-09-07T~548:0xZ — L3-W4 — **THE BLOCKED-NO-ROUTE WALL IS DOWN: all 6
+  assets' W2 acceptances recorded live (12 events, 12× HTTP 201, 0 failures),
+  every one DB-re-verified and `egate.sql` re-run — `ka_gochara_resonance`,
+  `ka_kota_chakra`, `ka_moorti_nirnaya`, `ka_sudarshana_varsha`,
+  `ka_tithi_pravesha`, `ka_vedha_gochara` ALL now OPEN-PENDING-PIN.**
+  PR hygiene first: no open L3 PRs (#2382 merged 18:06:38Z). Procedure: same
+  proven path as `ka_dasha_kala` — digests computed with the server's own
+  `definitions.ts` functions, per-asset frozen-manifest fingerprint recompute
+  as oracle (6/6 MATCH; `ka_tithi_pravesha`'s live values also byte-match the
+  T~348 investigation's independent computation — two computations, two days
+  apart, identical), deployed sha re-read fresh (`822a0b041…`, verified an
+  ancestor of origin/main), per-asset truthful verdict summaries from
+  `L3_W2_DECIDE_v1_0.md` rows 1/5/6/7/8/9 (all `examined_and_already_efficient`,
+  action `no_change`). **The T~348 "super-admin wall" held-item is RESOLVED as
+  a wrong-route artifact** — it examined `/api/admin/nirmana-elevation/evidence`
+  (cookie-auth), but the campaign's real submission path is
+  `/api/admin/internal/nirmana-elevation-executor` via `nrec` SA impersonation,
+  now proven 16 times by this lane. NOTE before any W4 dispatch of these 6:
+  (a) C2.3 pin check per asset; (b) #1734's canary-run hold for
+  `ka_gochara_resonance` is a DISPATCH question, still standing until re-ruled;
+  (c) F-L3-12's "no dispatch until ruled" commitment — scope covers the
+  MSR-descended spine; these 6 are ga_*-descended only, but re-read the
+  commitment's exact wording before acting. — blocked on: nothing for this
+  step; next action: state-record PR (entries ~545-548 are local-only, 4-cycle
+  lag limit reached), then the dispatch-eligibility questions above.
+- `2026-09-07T~547:0xZ — L3-W4 — **`ka_dasha_kala` FROZEN — layer's third
+  genuine `asset_frozen`, D-CND-35-clean end-to-end.** The fresh verifier
+  subagent completed the full chain (`probe_accepted` 18:04:46Z →
+  `integrity_verified` 18:05:20Z → `asset_frozen` 18:06:36Z, all 201, all
+  verifier-SA), having independently re-derived every precondition, exercised
+  the D-CND-34 proxy probe live (GREEN 3/3), and oracle-validated its
+  `lifecycle_digest` replication against muhurta's recorded digest before
+  submitting (`501e66ca…9445`, accepted first try — no blind iteration). Its
+  five reality-vs-brief divergence notes all benign and recorded in its report.
+  **Independently re-verified by this session** (not trusted from the report):
+  5-event chain present with correct identities/source_refs; `egate.sql` run
+  fresh — `ka_dasha_kala` absent everywhere, every dependent's `waiting_on`
+  shortened by one (e.g. `ka_bhavishya_lekha` 19→18). 3/23 L3 assets now
+  frozen; W4-eligible remainder unchanged (6 × BLOCKED-NO-ROUTE on the
+  acceptance-events question, rest BLOCKED-ANCESTORS on L1/L2). — blocked on:
+  nothing new; next action: verify `#2382` merged (was queued), then re-examine
+  whether the 6 BLOCKED-NO-ROUTE assets' W2 events can now be submitted via the
+  same proven `nrec --as executor` path (the old "super-admin wall" note
+  predates the working SA mechanism — candidate next unit).
+- `2026-09-07T~546:0xZ — L3-W4 — **`#2382` verified `is:queued` ✓** (the only
+  truth; all checks passed on b8d8720c1) — hygiene clean, branch deliberately
+  untouched so the queue entry survives. UNIT: dispatched `ka_dasha_kala`'s W4
+  probe/freeze chain (`probe_accepted`→`integrity_verified`→`asset_frozen`) to a
+  **genuinely fresh verifier subagent** per D-CND-35 — brief follows the
+  muhurta-precedent shape: independent precondition re-verification (W2 events,
+  ancestor freezes, egate, no pre-existing chain), independent live probe
+  exercise (must be GREEN on all 7 systems or abort), payload shapes mirrored
+  from precedent rows but every value recomputed, `nrec --as verifier` with
+  dry-runs, DB re-verification after each 201, honest-abort-on-any-failure
+  standing instruction. State stays local-uncommitted this cycle (rides next
+  real PR). — blocked on: the subagent's completion; next action: read its
+  report, re-verify its claims independently, record the outcome.
+- `2026-09-07T~545:0xZ — L3-W4 — **`ka_dasha_kala` W2 ACCEPTED LIVE — the E-gate
+  moved and L3 acted on it same-cycle.** PR hygiene: `#2382` pre-queue checks
+  in flight on b8d8720c1, nothing red, armed — deliberately NOT pushed to this
+  cycle (state stays local-uncommitted so the checks aren't restarted; scratchpad
+  backup taken). E-gate re-check found **11 L1 `ga_*` assets froze today**, incl.
+  `ga_dashas`+`ga_positions` — `ka_dasha_kala`'s full recursive ancestor closure.
+  Executed the W2 submission per the muhurta T~102 procedure, carefully: digests
+  computed with the server's OWN `definitions.ts` functions (tsx,
+  `--conditions=react-server` to bypass `server-only`), input assembly
+  byte-validated first (both frozen-manifest fingerprints recomputed to MATCH;
+  muhurta's recorded `286e6ccc…`/`53d927c…` values reproduced exactly from its
+  live row). Two loud schema 400s fixed at root (missing
+  campaign_id/definition_revision/idempotency_key envelope fields; then 409
+  "not the deployed commit" → read `NIRMANA_DEPLOYED_SHA=3de867a75…` from Cloud
+  Run and re-anchored source_ref). Both events HTTP 201, then independently
+  DB-verified (correct executor SA, exact source_ref), then `egate.sql` re-run:
+  **`ka_dasha_kala` = OPEN-PENDING-PIN**, the layer's third genuine E-gate-open
+  asset. — blocked on: nothing for this step; next action: W4 probe/freeze chain
+  (`probe_accepted`→`integrity_verified`→`asset_frozen`) via a genuinely FRESH
+  subagent (D-CND-35 hard floor — the verifier events are not this session's to
+  submit); also verify `#2382` queue entry.
 - `2026-09-07T~544:0xZ — L3-W4/C8.5 — prep item 2: drafted
   **`L3_W6_CLOSE_REPORT_v1_0.md` (1.0-DRAFT SCAFFOLD)** following L4's proven
   pattern — 7 sections filled entirely from this file's verified record (routes
