@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~279:0xZ — L3-W4 — PR hygiene: `#2239` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. One new `origin/main` merge (`#2237`, L1 `count_sql`
+  operator-precedence bugfix, no L3 overlap). `ga_positions` still
+  `OPEN-PENDING-PIN`, no new E-gate opening. IDLE-OK. — blocked on:
+  `#2239` clearing checks/queue; next action: same.
 - `2026-09-07T~278:0xZ — L3-W4 — PR hygiene: `#2236` MERGED (confirmed
   `merged: true`, `mergedAt` set). Rebased the 25 not-yet-merged
   local heartbeat commits onto fresh `origin/main`. Hit the standard
