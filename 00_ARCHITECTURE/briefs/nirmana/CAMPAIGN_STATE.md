@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T05:27:55Z` — cycle 795: **IDLE-OK (verified).** #2234 still genuinely queued
+  (`is:queued` confirmed), progressing normally through the merge queue. Fleet DIRTY empty;
+  adjudications unchanged (11).
 - `2026-09-07T05:25:39Z` — cycle 794: **IDLE-OK (verified).** #2234 confirmed `is:queued`
   (checks passed enough to enter the queue). Fleet DIRTY empty; adjudications unchanged (11).
 - `2026-09-07T05:22:37Z` — cycle 793: **IDLE-OK (verified).** #2234 checks still running
