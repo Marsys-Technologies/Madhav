@@ -1173,3 +1173,10 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   a correct, different evidence path (`producer_covered`, not its own `accepted_rebuild_observed`) —
   not a gap. All 40 L0 assets already reached `asset_frozen` independent of this table, confirming
   L0 was never exposed to L1's issue. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. New
+  adjudication #2276 (L1): `dispatch_nirmana_campaign_wave.py` has no supported redispatch path
+  once ANY `accepted_rebuild_observed` exists for an asset, even a stale one from a superseded
+  registry generation — a genuine structural gap that could bite L0 too in the future if a
+  post-freeze registry-only fix is ever needed on an already-frozen `bg_*` asset. Not currently
+  actionable (no L0 asset needs this); noted for future awareness. Awaiting Conductor/native
+  ruling, not L0's to act on. Nothing eligible.
