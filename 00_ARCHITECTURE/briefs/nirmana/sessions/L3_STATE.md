@@ -495,6 +495,16 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~195:0xZ — L3-W4 — PR hygiene: `#2210`'s checks finished
+  (0 failures), `mergeStateStatus: CLEAN` but genuinely CLEAN-but-
+  unqueued (`isInMergeQueue: false`). Queued it (`gh pr merge --auto`
+  first returned the standard merge-queue-strategy message, so
+  re-verified via GraphQL — still not queued; retried `gh pr merge
+  --auto` without `--squash`, got "already queued to merge", then
+  confirmed genuinely `isInMergeQueue: true`, `QUEUED`, position 3). No
+  new `origin/main` merges relevant to L3, no new E-gate opening.
+  IDLE-OK. — blocked on: `#2210` finishing its queue turn; next
+  action: same.
 - `2026-09-07T~194:0xZ — L3-W4 — PR hygiene: `#2210`'s last check, same
   run, now ~9.65min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step (step-level
