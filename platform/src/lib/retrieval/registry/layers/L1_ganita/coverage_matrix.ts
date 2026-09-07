@@ -8,6 +8,26 @@
  * Phase R2 target: every category maps to ≥1 tool.
  *
  * Authored: Wave 3 Phase R1/R2 (2026-06-16)
+ *
+ * F-B32 (NIRMĀṆA campaign, 2026-09-07): this list was found stale against the live canonical
+ * chart's fact_category universe (169 hand-maintained vs. 219 live — see
+ * L1_W6_CLOSE_REPORT_v1_0.md §2/§5 for the full audit). Being closed incrementally, one verified
+ * cluster at a time, rather than in one unverified bulk pass — each addition here must be
+ * confirmed against the real serving tool's actual query logic, not inferred from naming alone.
+ * `graha_avastha_*_per_varga` (5 categories) closed 2026-09-07 slice 1; `graha_{cheshta,drik,
+ * kala,sthana}_bala_per_varga` (4 categories) closed 2026-09-07 slice 2; the get_nakshatra.ts
+ * cluster (12 categories) closed 2026-09-07 slice 3; special_lagna/upapada_lagna/
+ * sensitive_point_gulika_mandi (get_sensitive_points.ts) + sensitive_degree_check/
+ * sensitive_point_yogi (get_sensitive_degrees.ts) closed 2026-09-07 slice 4 (5 categories);
+ * `ayurdaya` (get_ayurdaya.ts, unconditionally served) closed 2026-09-07 slice 5; `bhava_cusps`
+ * (get_kp_cusps.ts, unconditional) + `house_bhava_bala_ratio`/`house_chalit` (get_bhava_bala.ts,
+ * opt-in) closed 2026-09-07 slice 6 (3 categories); the remaining ~27 are still open. Note:
+ * `graha_yuddha_per_varga` (17 live rows) was investigated and found
+ * genuinely UNREACHABLE by any tool — get_graha_yuddha.ts hardcodes `fact_category =
+ * 'graha_yuddha'` (a bare, zero-row-for-this-chart category) with no override mechanism, so the
+ * per-varga variant cannot be opted into like every other per_varga category in this file. This
+ * is a deeper defect than a stale list entry (a real computed category with no path to any
+ * tool at all) and is recorded as its own finding, not force-mapped here.
  */
 
 /** Every chart_facts.fact_category that exists for chart_id=native */
@@ -37,6 +57,7 @@ export const CHART_FACTS_CATEGORIES = [
   'aspect_parashari_per_varga',
   'aspect_parashari_received',
   'aspect_tajik',
+  'ayurdaya',
   'bhadra_flag',
   'bhava_arudha',
   'bhava_bala_aspectual',
@@ -46,11 +67,13 @@ export const CHART_FACTS_CATEGORIES = [
   'bhava_bala_positional',
   'bhava_bala_temporal',
   'bhava_bala_total_extended',
+  'bhava_cusps',
   'bhrigu_nadi_point',
   'chandra_bala_natal_baseline',
   'composite_dispositor_strength',
   'conjunction_per_varga',
   'conjunction_within_orb',
+  'cusp_kp_lords',
   'dhaiya_period',
   'dispositor_chain_per_varga',
   'dosha_fires',
@@ -70,19 +93,31 @@ export const CHART_FACTS_CATEGORIES = [
   'esoteric_point_vishnu',
   'esoteric_point_yogi',
   'graha_avastha_baladi',
+  'graha_avastha_baladi_per_varga',
   'graha_avastha_deepta',
+  'graha_avastha_deeptaadi_per_varga',
   'graha_avastha_jagrad',
+  'graha_avastha_jagradadi_per_varga',
   'graha_avastha_lajjitadi',
+  'graha_avastha_lajjitadi_per_varga',
   'graha_avastha_lifetime_exposure_summary',
   'graha_avastha_sayanadi',
+  'graha_avastha_sayanadi_per_varga',
+  'graha_cheshta_bala_per_varga',
   'graha_composite_state_classification',
   'graha_dignity_per_varga',
   'graha_dispositor_chain',
+  'graha_drik_bala_per_varga',
   'graha_effective_dignity_modified_by_aspects',
   'graha_functional_class_per_ascendant',
+  'graha_gandanta',
   'graha_in_house_composite_strength',
   'graha_ishta_phala',
+  'graha_kala_bala_per_varga',
   'graha_kashta_phala',
+  'graha_kp_lords',
+  'graha_nakshatra_join',
+  'graha_pada_join',
   'graha_position',
   'graha_saptavargaja_bala_component',
   'graha_shadbala_cheshta',
@@ -94,6 +129,8 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_shadbala_total',
   'graha_sign_attributes',
   'graha_special_state_rollup',
+  'graha_sthana_bala_per_varga',
+  'graha_tara_bala',
   'graha_tri_deva_role_strength',
   'graha_vargottama_amplification_factor',
   'graha_vimsopaka_dasavarga',
@@ -101,8 +138,10 @@ export const CHART_FACTS_CATEGORIES = [
   'graha_vimsopaka_shadvarga',
   'graha_vimsopaka_shodasavarga',
   'graha_yoga_karaka_flag',
+  'house_bhava_bala_ratio',
   'house_bhava_bala_subscore',
   'house_bhava_bala_total',
+  'house_chalit',
   'house_strength_classification_rollup',
   'jaimini_tri_deva_role_per_graha',
   'janma_shani_period',
@@ -115,14 +154,20 @@ export const CHART_FACTS_CATEGORIES = [
   'karakamsa_position',
   'karakatva_strength_per_significance',
   'kp_cuspal_significators',
+  'kp_house_significators',
+  'kp_planet_significations',
   'kp_ruling_planets_natal',
   'lal_kitab_special_point',
   'lord_aspects_lord_per_varga',
   'lord_in_house_per_varga',
   'maharsi_specific_point',
   'midpoint',
+  'nakshatra_cogravity',
+  'nakshatra_conjunction',
   'nakshatra_cross_ayanamsha',
+  'nakshatra_dispositor',
   'nakshatra_pada_sensitive',
+  'nakshatra_statistics',
   'panchaka_flag',
   'panchanga_abhijit_muhurta',
   'panchanga_agni_vasa',
@@ -169,12 +214,17 @@ export const CHART_FACTS_CATEGORIES = [
   'sade_sati_saturn_retrograde_subset',
   'saham_position',
   'saturn_derived_point',
+  'sensitive_degree_check',
+  'sensitive_point_gulika_mandi',
+  'sensitive_point_yogi',
+  'special_lagna',
   'swamsa_position',
   'tajik_hadda_lord',
   'tajik_triraashipathi',
   'tajik_vargottama_specific',
   'tara_bala_natal_baseline',
   'upagraha_position',
+  'upapada_lagna',
   'vargottama_per_varga',
   'vimsopaka_bala_per_graha',
   'virodha_argala_natal_matrix',
@@ -205,6 +255,15 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   graha_shadbala_naisargika:            ['marsys://tool/L1/get_strength'],
   graha_shadbala_sthana:                ['marsys://tool/L1/get_strength'],
   graha_shadbala_total:                 ['marsys://tool/L1/get_strength'],
+  // F-B32 (2026-09-07, slice 2/N): opt-in only, same doctrine as the avastha per-varga slice
+  // above — get_strength.ts's query is `fact_category = ANY($2)` over the caller's `categories`
+  // param, `STRENGTH_CATEGORIES` being only the default 21. Real per-varga breakdown of the
+  // cheshta/drik/kala/sthana shadbala components above; 735/735/735/735 live rows (canonical
+  // chart) confirm populated, not stray.
+  graha_cheshta_bala_per_varga:         ['marsys://tool/L1/get_strength'],
+  graha_drik_bala_per_varga:            ['marsys://tool/L1/get_strength'],
+  graha_kala_bala_per_varga:            ['marsys://tool/L1/get_strength'],
+  graha_sthana_bala_per_varga:          ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_dasavarga:            ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_saptavarga:           ['marsys://tool/L1/get_strength'],
   graha_vimsopaka_shadvarga:            ['marsys://tool/L1/get_strength'],
@@ -258,6 +317,12 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   house_bhava_bala_subscore:        ['marsys://tool/L1/get_bhava_bala'],
   house_bhava_bala_total:           ['marsys://tool/L1/get_bhava_bala'],
   house_strength_classification_rollup: ['marsys://tool/L1/get_bhava_bala'],
+  // F-B32 (2026-09-07, slice 6/N): opt-in only, same "fact_category = ANY($2)" doctrine as
+  // every prior opt-in slice (get_bhava_bala.ts:57) — neither is in the tool's own default
+  // BB_CATEGORIES, but the query is fully data-driven. Live rows (canonical chart):
+  // house_bhava_bala_ratio=60, house_chalit=225.
+  house_bhava_bala_ratio:           ['marsys://tool/L1/get_bhava_bala'],
+  house_chalit:                     ['marsys://tool/L1/get_bhava_bala'],
 
   // ── Aspects ───────────────────────────────────────────────────────────────
   aspect_parashari_given:    ['marsys://tool/L1/get_aspects'],
@@ -307,6 +372,13 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   dhaiya_period:                    ['marsys://tool/L1/get_sade_sati'],
   vishakha_shani_period:            ['marsys://tool/L1/get_sade_sati'],
   kantaka_shani_period:             ['marsys://tool/L1/get_sade_sati'],
+
+  // ── Āyurdāya ──────────────────────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 5/N): get_ayurdaya.ts unconditionally serves this category via a
+  // hardcoded `fact_category = 'ayurdaya'` filter (get_ayurdaya.ts:71) — no opt-in ambiguity,
+  // the whole tool exists for exactly this one category. 130 live rows (canonical chart),
+  // matching the tool's own docstring count exactly.
+  ayurdaya:                          ['marsys://tool/L1/get_ayurdaya'],
 
   // ── Panchanga ─────────────────────────────────────────────────────────────
   panchanga_abhijit_muhurta:         ['marsys://tool/L1/get_panchanga'],
@@ -364,6 +436,23 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   saham_position:                    ['marsys://tool/L1/get_sensitive_points'],
   saturn_derived_point:              ['marsys://tool/L1/get_sensitive_points'],
   nakshatra_pada_sensitive:          ['marsys://tool/L1/get_sensitive_points'],
+  // F-B32 (2026-09-07, slice 4/N): opt-in only, same "fact_category = ANY($2)" doctrine as
+  // every prior slice (get_sensitive_points.ts:78) — none of these three are in the tool's own
+  // default SP_CATEGORIES, but tool_name_bridge.ts:87 explicitly maps the retired
+  // `query_special_lagnas` tool name onto this URI, confirming special_lagna's data now lives
+  // here rather than in a since-removed dedicated tool. Live rows (canonical chart):
+  // special_lagna=245, upapada_lagna=10, sensitive_point_gulika_mandi=70.
+  special_lagna:                     ['marsys://tool/L1/get_sensitive_points'],
+  upapada_lagna:                     ['marsys://tool/L1/get_sensitive_points'],
+  sensitive_point_gulika_mandi:      ['marsys://tool/L1/get_sensitive_points'],
+
+  // ── Sensitive Degrees (Yogi/Avayogi + classical degree checks) ────────────
+  // F-B32 (2026-09-07, slice 4/N): get_sensitive_degrees.ts unconditionally serves BOTH
+  // categories on its default page via SERVED_FACT_CATEGORIES (not opt-in — no caller override
+  // exists, unlike every other tool in this file). F-B14's own fix. Live rows (canonical chart):
+  // sensitive_degree_check=275, sensitive_point_yogi=60.
+  sensitive_degree_check:            ['marsys://tool/L1/get_sensitive_degrees'],
+  sensitive_point_yogi:              ['marsys://tool/L1/get_sensitive_degrees'],
 
   // ── Karakas / KP / Jaimini ───────────────────────────────────────────────
   arudha_pada:                   ['marsys://tool/L1/get_karakas'],
@@ -381,13 +470,61 @@ export const CATEGORY_TOOL_COVERAGE: Record<ChartFactsCategory, string[]> = {
   kp_ruling_planets_natal:       ['marsys://tool/L1/get_karakas'],
   jaimini_tri_deva_role_per_graha:['marsys://tool/L1/get_karakas'],
 
+  // ── KP Cusps (dedicated) ───────────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 6/N): get_kp_cusps.ts (CR-30's dedicated KP-cusp face) spreads its
+  // fixed KP_CATEGORIES unconditionally on every call (get_kp_cusps.ts:130) — no opt-in needed.
+  // `cusp_kp_lords`/`kp_ruling_planets_natal` are already covered above via get_karakas;
+  // `bhava_cusps` is the one category from that same const that had no entry anywhere in this
+  // file. 360 live rows (canonical chart).
+  bhava_cusps:                    ['marsys://tool/L1/get_kp_cusps'],
+
   // ── Avasthas ─────────────────────────────────────────────────────────────
   graha_avastha_baladi:                   ['marsys://tool/L1/get_avasthas'],
   graha_avastha_deepta:                   ['marsys://tool/L1/get_avasthas'],
   graha_avastha_jagrad:                   ['marsys://tool/L1/get_avasthas'],
   graha_avastha_lajjitadi:                ['marsys://tool/L1/get_avasthas'],
   graha_avastha_lifetime_exposure_summary:['marsys://tool/L1/get_avasthas'],
+  // F-B32 (2026-09-07): opt-in only (not on the default page — the query is
+  // `fact_category = ANY($2)` over the caller's `categories` param, `AVASTHA_CATEGORIES`
+  // being only the default subset — get_avasthas.ts:11); real, computed, previously-uncatalogued
+  // per-varga refinement categories, same "opt-in still counts as served" doctrine as
+  // ashtakavarga_bindu_per_varga above. 1305/1305/45/45/45 live rows respectively (canonical
+  // chart) confirm these are populated, not stray.
+  graha_avastha_baladi_per_varga:         ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_deeptaadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_jagradadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_lajjitadi_per_varga:      ['marsys://tool/L1/get_avasthas'],
+  graha_avastha_sayanadi_per_varga:       ['marsys://tool/L1/get_avasthas'],
   graha_avastha_sayanadi:                 ['marsys://tool/L1/get_avasthas'],
+
+  // ── Nakshatra Semantic Layer ──────────────────────────────────────────────
+  // F-B32 (2026-09-07, slice 3/N): get_nakshatra.ts (F-B18/F-B19's fix — this asset previously
+  // had NO dedicated serving tool at all) had zero entries in this file despite covering 16
+  // fact_categories by its own header comment and NAKSHATRA_CATEGORIES const. These 12 are the
+  // ones directly named in that const with confirmed non-trivial live rows (canonical chart):
+  // graha_nakshatra_join=700, graha_pada_join=200, graha_kp_lords=200, cusp_kp_lords=240,
+  // graha_gandanta=50, nakshatra_dispositor=200, nakshatra_conjunction=1, nakshatra_cogravity=10,
+  // graha_tara_bala=150, nakshatra_statistics=34, kp_house_significators=540,
+  // kp_planet_significations=505. Three other categories named in the tool's own const
+  // (nakshatra_lord_placement, graha_degree_flags, nakshatra_exchange) have ZERO live rows for
+  // the canonical chart and are deliberately NOT added here — that is the tool's own docstring
+  // claiming coverage for categories that do not exist, a distinct finding from F-B32 and out of
+  // this slice's scope. Three more from the F-B32 diff that look nakshatra-adjacent by name
+  // (nakshatra_co_tenancy, nakshatra_dispositor_chain, nakshatra_lord_relationship) do NOT
+  // appear in get_nakshatra.ts's own category list at all and are NOT added here either — they
+  // need their own tool-ownership verification, not an assumed match by naming similarity.
+  graha_nakshatra_join:        ['marsys://tool/L1/get_nakshatra'],
+  graha_pada_join:             ['marsys://tool/L1/get_nakshatra'],
+  graha_kp_lords:              ['marsys://tool/L1/get_nakshatra'],
+  cusp_kp_lords:               ['marsys://tool/L1/get_nakshatra'],
+  graha_gandanta:              ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_dispositor:        ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_conjunction:       ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_cogravity:         ['marsys://tool/L1/get_nakshatra'],
+  graha_tara_bala:             ['marsys://tool/L1/get_nakshatra'],
+  nakshatra_statistics:        ['marsys://tool/L1/get_nakshatra'],
+  kp_house_significators:      ['marsys://tool/L1/get_nakshatra'],
+  kp_planet_significations:    ['marsys://tool/L1/get_nakshatra'],
 
   // ── Tajik ─────────────────────────────────────────────────────────────────
   tajik_hadda_lord:          ['marsys://tool/L1/get_tajik'],
