@@ -1281,3 +1281,9 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   Adjudication list and #1713 tail unchanged. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
   Adjudication list and #1713 tail unchanged. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows. New
+  adjudication #2291 (L2): `output_digest_spec`'s `jsonb_build_object` mechanism hits PostgreSQL's
+  100-arg limit for tables with >50 real columns (`bodha_msr_signals` has 82). Genuine tooling
+  ceiling, correctly not worked around unilaterally. Not currently L0-actionable — all 40 L0 assets
+  already have working output_digest_specs (verified earlier this session), so no `bg_*` table has
+  hit this ceiling. Noted for awareness only. Nothing eligible.
