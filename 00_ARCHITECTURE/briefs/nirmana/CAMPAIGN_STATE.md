@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:54:42Z` — cycle 960: **IDLE-OK, Δfrozen +0.** #2295's checks all pending,
+  nothing red. Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open.
+  Adjudications unchanged (11).
 - `2026-09-07T12:52:12Z` — cycle 959: **L1 shipped the #2276 fix — PR #2295, "scope accepted-
   rebuild guard to current generation," `BLOCKED`/checks running.** Implemented within ~8 min of
   the ruling. `ga_dashas` should reach `asset_frozen` once this merges. Δfrozen still +0
