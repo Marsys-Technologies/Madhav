@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 179; **L1's zero-evidence bucket cleared, 5/5, verified live.** Submitted first-time campaign evidence for `ga_condition`/`ga_medical`/`ga_panchanga`/`ga_tajaka`/`ga_vastu` -- the last remaining assets with zero campaign evidence ever. Confirmed all 7 cited fixing PRs (across the 5 assets' §1 close-report rows) genuinely merged before submitting, not just claimed. Computed fresh registry_fingerprint/analysis_digest for each, submitted all 10 record_evidence calls back-to-back (zero gap) -- all 201, independently re-verified live: all 5 clean complete pairs, matching source_ref, no orphans (one hiccup along the way: ga_panchanga silently dropped from a batched Python loop's output for no visible error -- re-ran it in isolation, worked cleanly, manually merged its values back in rather than trust the batch script blindly). **Every ga_* asset this session has touched now has current, valid campaign evidence except ga_transit_anchors** (still orphaned from cycle 171's finding, registry unchanged since). Posted the result to #2224. #2113/#2180 checked -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 180; **F-B32/F-B33's `ga_nakshatra` follow-up FIXED (PR #2242, migration 878), correcting the close report's own prior mischaracterization along the way.** Investigated the cycle-157-deferred "3-category docstring overclaim" finding: only `nakshatra_lord_placement` is a genuine overclaim (zero emission anywhere); `graha_degree_flags`/`nakshatra_exchange` are real writer-owned categories the close report itself wrongly called overclaims (build-lag zero-rows, same pattern already corrected for 6 sibling categories) — added to `coverage_matrix.ts` (31→33/57 F-B32 closures). Separately found `nakshatra_cross_ayanamsha` missing from `natural_key_partition` since migration 872, whose investigation never checked `pipeline/orchestrator/writers/ga_nakshatra.py` itself (17 live rows there) — fixed via migration 878. Hit a real RED gate during PR hygiene: my own docstring edit shifted `get_nakshatra.ts`'s SQL query from line 82→88, breaking the line-pinned `fact_category_pin_allowlist.json` entry (not a new defect — fixed the stale pointer, verified 0 new violations locally before re-push). PR #2242 open, CI re-dispatched, autoMergeRequest armed. #2113/#2180/#2224 checked -- no new Conductor reply
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -3410,7 +3410,7 @@ none accepted yet (blocked on #1736).
 | ga_positions | 890 / 50 | rebuild_only | layer root; canary. F-A16 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 5, re-measured live mean 17s (n=54 complete builds) |
 | ga_vargas | 23,542 / 22,092 | changed → fixed (cycle 1, PR #1766) | F-A1 (wrong-instant longitudes) + F-A3 (delete-grain row loss) both fixed at the writer level; stale "MUST" corrected cycle 99 — a GA.1-class registry-disagreement in this same table (D-L1-105/106 precedent), not a live open item |
 | ga_dashas | 483,859 / **536,471** | rebuild_only | floor decomposed to 5 named causes, sums exactly (F-A). F-A11 **AUDITED (cycle 111)** — `get_dashas.ts`'s yogini-deity→graha `factSubjectForLord` resolver (R-43) was genuinely fixed and correct (verified byte-identical against `ga_dashas_writer.py`'s own `YOGINI_SEQUENCE`), but had never had a test despite being marked "exported for unit testing" — closed via a 20-test unit suite (PR #2130), no production code touched |
-| ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift (15/16 categories entirely absent, 1 misrouted to `get_positions`) deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract` |
+| ga_nakshatra | 2,847 / 1,802 | rebuild_only | F-B18/F-B19 **FIXED (cycle 103, PR #2118)** — `ganita_nakshatra_get` never had an implementation at all (not just misrouted); added `get_nakshatra.ts` serving all 16 owned categories via category/domain/ayanamsha filters, mirroring `get_sensitive_points.ts`'s shape; `coverage_matrix.ts`'s own drift deliberately left as F-B32/F-B33's own separate follow-up, not folded in here. F-A14 integrity_check_sql (#1959). F-B22 **FIXED (cycle 110, migration 847)** — `estimated_seconds` was 16, re-measured live mean 59s (n=48). F-B28 (`get_tara_chandra_bala.ts` half) **FIXED (cycle 123, PR #2155)** — same `total`=page-size defect as `get_panchanga.ts`; added real `COUNT(*)`/`total_matching`/`more_available`/`empty_reason`/`density_contract`. **The "15/16 categories entirely absent, 1 misrouted" F-B32/F-B33 follow-up FIXED (cycle 180, PR #2242, migration 878)** — investigation found the close report's own 3-category "docstring overclaim" characterization was itself wrong for 2/3: `nakshatra_lord_placement` is a genuine overclaim (zero writer emission, removed from docstring/const/`count_sql`), but `graha_degree_flags`/`nakshatra_exchange` are real writer-owned categories (migration 872 had already confirmed this) wrongly read as zero-live-rows build lag — added to `coverage_matrix.ts`. Separately found `nakshatra_cross_ayanamsha` was missing from `natural_key_partition` since migration 872 (that migration never checked `pipeline/orchestrator/writers/ga_nakshatra.py`, which emits it directly, 17 live rows) — added. True category count: 15, not 16. Verified: `tsc --noEmit` clean, integration test 3/3, 40/40 Python tests, zero blast radius (1-line digest delta, L0/L2-L5 untouched in layer pins) |
 | ga_panchanga | 437 / 437 | changed → fixed (cycle 5, PR #1841) | F-B24 (`*_arambha_iso` stored the anga END, not the beginning) fixed at the writer level; stale "MUST" corrected cycle 99. F-B31 **FIXED (cycle 105, migration 843)** — `target_floor` 221→437, matching live achieved; the false `expected_volume_formula='AYANAMSHAS'` half was already NULL. F-B26 (zero `two_pass_verified` on the 4 FORENSIC anchors) investigated and correctly declined: `verification_pass_status='single'` is the CANONICAL (non-deprecated) honest tier per `verification_vocab.py` for a genuine single-pass classical table-lookup with no independent second-derivation method available — not a defect to fabricate a fix for. F-B28 (`get_panchanga.ts` half) **FIXED (cycle 123, PR #2155)** — `total` was the PAGE size, not the true matching count; confirmed live this was ACTIVELY manifesting (221 real rows vs 200-row default limit — a genuine silent truncation, not hypothetical); added a real `COUNT(*)`, `total_matching`, `more_available`, `empty_reason`, `density_contract` |
 | ga_sensitive | 8,565 / **8,610** | rebuild_only | deficit = floor-vintage mismatch, not a defect (F-B); F-A14 integrity_check_sql (#1962) |
 | ga_sensitive_degree | 275 / 0 | rebuild_only | derives to 335; `count_sql` omits 60 served rows (F-B); F-A14 integrity_check_sql (#1963). F-B14 **FIXED (cycle 112, PR #2133)** — `get_sensitive_degrees.ts` never selected `verification_pass_status`, flattening 225 `single` + 50 `pending_w3_verification` + 60 `two_pass_verified` rows into one undifferentiated array (§N.6 item 1 violation); now selects the tier on every row and adds `tier_breakdown`/`unverified_rows_in_page` to the response, no rows dropped |
@@ -10044,3 +10044,83 @@ verdict — next: with evidence-submission work now essentially exhausted for L1
 natural remaining priorities are the still-blocked `asset_frozen` E-gate workstream (#2224,
 cross-layer, awaiting further Conductor/fleet progress) or a fresh sweep for any not-yet-
 considered W3 finding; keep re-checking #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 180 (C8 v2.3) — closed the `get_nakshatra.ts` "3-category docstring overclaim"
+## finding the close report flagged at cycle 157 as needing its own investigation, and
+## corrected the close report's own prior mischaracterization of 2 of the 3 categories
+
+PR hygiene first: `is:queued` showed only #2228 (state, CLEAN) genuinely queued among L1-lane
+PRs; nothing DIRTY or RED before starting this cycle's unit.
+
+**Unit of work:** the close report's §5/§1 note on `ga_nakshatra` has said since cycle 157 that
+`get_nakshatra.ts`'s docstring claims 16 `fact_categories` while 3 (`nakshatra_lord_placement`,
+`graha_degree_flags`, `nakshatra_exchange`) were believed to have zero live rows — flagged as
+"remains untouched and genuinely needs its own separate investigation" and never picked up since.
+This cycle did that investigation, cross-checking all three source files independently:
+`get_nakshatra.ts`, `pipeline/orchestrator/writers/ga_nakshatra.py` (the orchestrator adapter —
+distinct from `ga_writers/ga_nakshatra_emitters.py`), and `asset_registry`'s own
+`natural_key_partition`/`count_sql`.
+
+**Finding: the close report's own characterization was itself wrong for 2 of the 3 categories.**
+- `nakshatra_lord_placement` — a genuine overclaim. Grepped every `ga_nakshatra` source file for
+  a literal fact_category construction: zero hits outside its own declared-but-unused
+  `GA_NAKSHATRA_FACT_CATEGORIES` list entry in the writer. Zero live rows, confirmed live.
+- `graha_degree_flags` / `nakshatra_exchange` — genuinely real, writer-owned categories. Migration
+  872 had *already* independently confirmed these as real emissions back when it fixed 6 sibling
+  categories on this exact writer for the same build-lag zero-rows misreading.
+  `coverage_matrix.ts`'s own F-B32 slice-3 comment never got the memo and called all three
+  "docstring overclaims with zero live rows" — itself a stale claim, not a fresh one.
+- `nakshatra_cross_ayanamsha` — a genuine, previously-undetected MISS. Present in `count_sql` and
+  `get_nakshatra.ts`'s own `NAKSHATRA_CATEGORIES` const, but absent from `natural_key_partition`
+  since migration 872, because that migration's investigation checked
+  `ga_writers/ga_nakshatra_emitters.py` + `ga_kp_significators.py` but never the orchestrator
+  adapter file itself, which emits this category directly via a live `run_substep` path
+  (`replace_prior_chart_facts`, `fact_key`s `nak_5ay_consistency`/`stable_nakshatra_id`) —
+  confirmed live: 17 rows for the canonical chart.
+
+True, complete category ownership for `ga_nakshatra`: the 14 already in `natural_key_partition`
+plus `nakshatra_cross_ayanamsha` = 15, excluding `nakshatra_lord_placement`.
+
+**Fix, migration 878:** `natural_key_partition` gains `nakshatra_cross_ayanamsha`; `count_sql`
+drops `nakshatra_lord_placement` (numerically harmless — the count was identical, 2847, before and
+after — but semantically wrong to claim as counted). Applied via `migrate.ts`, verified live via
+`psql`.
+
+**Fix, code (3 files):** `get_nakshatra.ts` (docstring "16"→"15", `NAKSHATRA_CATEGORIES` const,
+`DOMAIN_MAP.identity` — briefly worried this last edit had accidentally also dropped
+`graha_degree_flags`, re-read the file directly before "fixing" a non-bug and confirmed it was
+already correctly present); `pipeline/orchestrator/writers/ga_nakshatra.py` (docstring, its own
+unused `GA_NAKSHATRA_FACT_CATEGORIES` constant); `coverage_matrix.ts` (added
+`graha_degree_flags`/`nakshatra_exchange` to `CHART_FACTS_CATEGORIES` + `CATEGORY_TOOL_COVERAGE` →
+2 more F-B32 closures, 31→33/57; rewrote the slice-3 comment to correct its own prior wrong claim;
+confirmed `nakshatra_cross_ayanamsha` was already correctly covered there via `get_positions`, a
+separate earlier W2 SC-5 entry — not duplicated).
+
+Adding categories to `CHART_FACTS_CATEGORIES` without a matching `CATEGORY_TOOL_COVERAGE` entry is
+a hard TypeScript error (`Record<ChartFactsCategory, string[]>` enforces completeness) — caught
+live via compiler diagnostics during editing, fixed in the same pass.
+
+**PR hygiene caught a real RED gate on my own PR #2242 before merge**, not a rubber-stamp pass:
+the docstring expansion shifted `get_nakshatra.ts`'s SQL query from line 82 to line 88, and
+`fact_category_pin_allowlist.json`'s entry for that query is line-pinned — the shift made
+`check_fact_category_pinning.py` report it as a NEW non-allowlisted violation (correctly; the
+guard has no way to know a shifted line is the same pre-audited query). Not a real new defect —
+same paginated multi-category SELECT shape as the already-allowlisted `get_positions.ts`/
+`get_sensitive_points.ts` siblings. Fixed the line pointer only (82→88), verified locally:
+`check_fact_category_pinning.py` → "0 new violations (43 pre-existing, allowlisted). PASS."
+Pushed as a second commit; CI re-dispatched, `autoMergeRequest` armed, not yet in `is:queued` as
+of this cycle's close (queues once green).
+
+Verified before opening the PR: `npx tsc --noEmit -p .` clean (exit 0);
+`get_nakshatra.integration.test.ts` 3/3 live; `test_nar_ga_nakshatra_cross_ayanamsha_agreement.py`
++ `test_ga_nakshatra.py` 40/40; `ga_nakshatra.py` confirmed not imported by any other writer (zero
+blast-radius risk); regenerated `nirmana-writer-digests.json` (`git diff --stat` — exactly 1 line,
+only `ga_nakshatra`'s own entry) and L1's `nirmana-analysis-layer-pins.json` (tool's own output:
+"layers untouched: L0, L2, L3, L4, L5") before committing either — applying cycle 173's
+blast-radius discipline correctly this time, not after the fact.
+
+CYCLE 180 L1: closed the close report's `get_nakshatra.ts` 3-category finding (PR #2242, migration
+878) — 1 genuine overclaim removed, 2 wrongly-flagged categories restored (F-B32 31→33/57), 1
+previously-undetected missing category added, plus a real RED gate on my own PR (stale
+allowlist line-pin) found and fixed at root during PR hygiene → next: confirm #2242 reaches
+`is:queued` next cycle before starting new work; #2113/#2180/#2224 still open, keep re-checking.

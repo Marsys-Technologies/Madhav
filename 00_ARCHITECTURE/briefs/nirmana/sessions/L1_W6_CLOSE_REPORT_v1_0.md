@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.36-DRAFT"
+version: "0.37-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -30,8 +30,8 @@ canonical-chart-scoped — cycle 146's own "223" was itself a mis-scoped, correc
 — 57 categories missing; the 6 entries originally called "phantom" (cycle 148) were CORRECTED
 cycle 157 — all trace to real, active writer code awaiting the already-ruled wave 1-3 rebuild,
 not stale names; no list edit needed for them. Being closed incrementally
-cycle 149 onward (31/57 landed across 7 slices, PR #2202; ~25 remaining reframed cycle 156 as
-genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
+cycle 149 onward (33/57 landed across 8 slices, PR #2202 + #2242; ~23 remaining reframed cycle
+156 as genuinely unreachable by any tool, not a list-staleness gap). See §2 for the corrected
 disposition and §5 for the forward item; NEVER-LATER correctly parked by design) but **not yet
 formally declared closed** (that ruling belongs to the Conductor/native, not a unilateral session
 call — see the W3 STATUS SNAPSHOT in `L1_STATE.md`) · **W4 ⛔ PARTIALLY UNBLOCKED, cycle 155.**
@@ -271,7 +271,7 @@ silently equal to it.
 | F-E16, F-E17 | ga_tajaka | Fixed at writer level | §1 row 18 |
 | F-E21, F-E22 | ga_prashna | Recorded/corrected, ruled out-of-scope | Adjudication #2123 (§1 row 19) |
 | F-A14/A15, F-B35, F-C15, F-D28, F-E27 | all 19 | `integrity_check_sql` rollout CLOSED; underlying F-A14 contract still genuinely RED for some assets pending rebuild | Rollout confirmed complete cycle 124 (§1/§2); F-A14 contract red for `ga_vargas`/`ga_structural` specifically, awaiting the #2180-ruled rebuild |
-| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 31/57 closed across 7 slices (PR #2202), ~25 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157 | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
+| F-B32, F-B33 | cross | **PARTIALLY CLOSED, actively tracked** — F-B33 CLOSED (PR #2191); F-B32 33/57 closed across 8 slices (PR #2202, #2242), ~23 remaining reframed as genuinely-unreachable-by-any-tool (not a list-staleness gap); the "6 phantom entries" sub-claim was itself wrong and corrected cycle 157; the `get_nakshatra.ts` 3-category sub-finding CLOSED cycle 180 (2 of 3 were themselves mischaracterized as overclaims, migration 878) | See §2 and §3.5 for the full, current account — this is the most-detailed row in this table because it is the one this session found cycle 125's blanket "MUST tier closed" claim to be actually wrong about |
 
 **Honest count**: of 20 id-groups, **all 20 now have a specific, checkable citation in this
 report** — 14 from the original pass, plus `F-A10`/`F-A12` (independently re-verified cycles
@@ -553,8 +553,19 @@ awaits either a dedicated prep cycle or genuine W6 close.
   (`ga_structural`, `ga_sensitive`) are already-documented `rebuild_only` and inside the SAME
   waves 1-3 scope adjudication #2180 already ruled on — once dispatched, these categories
   populate naturally. No `coverage_matrix.ts` change needed for any of the 6; the correction was
-  to this report's own prior claim. The get_nakshatra.ts 3-category docstring overclaim remains
-  untouched and genuinely needs its own separate investigation. **New finding, cycle 153**:
+  to this report's own prior claim. **`get_nakshatra.ts`'s own 3-category docstring overclaim
+  CLOSED cycle 180 (slice 8, PR #2242, migration 878)**: on investigation the claim was itself
+  wrong for 2 of the 3 — `nakshatra_lord_placement` is a genuine overclaim (zero emission
+  anywhere, removed from the docstring/const/`count_sql`), but `graha_degree_flags` and
+  `nakshatra_exchange` are real, writer-owned categories (migration 872 had already confirmed
+  this for 6 sibling categories on the same writer; the zero-live-rows reading behind the
+  "overclaim" framing was the same build-lag artifact, unfixed here until now) — added to
+  `coverage_matrix.ts` (+2 slice-8 closures, 31→33/57). Separately found `nakshatra_cross_
+  ayanamsha` missing from `natural_key_partition` since migration 872 (that migration checked
+  `ga_nakshatra_emitters.py` + `ga_kp_significators.py` but never the orchestrator adapter
+  `pipeline/orchestrator/writers/ga_nakshatra.py` itself, which emits it directly — 17 live rows,
+  confirmed) — added via migration 878. Already correctly covered in `coverage_matrix.ts` via
+  `get_positions` (a separate, earlier, correct W2 SC-5 entry), not duplicated. **New finding, cycle 153**:
   `graha_yuddha_per_varga`
   (17 live rows) was checked against `get_graha_yuddha.ts` and found genuinely UNREACHABLE by
   any tool — that tool hardcodes `fact_category = 'graha_yuddha'` (a bare, zero-row category for
@@ -593,12 +604,13 @@ Per-finding disposition table — MUST tier built §2.5 (cycle 158), 6 id-groups
 resting on an uncited cycle-125 claim rather than a dedicated re-check; NOW/NEVER-LATER tiers
 still not tabulated per-finding · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
-categories) landed cycles 149-156, PR #2202; ~25 remaining reframed cycle 156 as genuinely
+categories) landed cycles 149-156, PR #2202; slice 8 (2 more categories) landed cycle 180, PR
+#2242, migration 878 — `get_nakshatra.ts`'s own 3-category docstring overclaim CLOSED, 2 of 3
+were themselves mischaracterized as overclaims; ~23 remaining reframed cycle 156 as genuinely
 unreachable by any tool — a tool-coverage gap, not a list-staleness gap; the "6 phantom
 categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-ruled wave 1-3
-rebuild, no edit needed; get_nakshatra.ts's own 3-category docstring overclaim remains, unheld,
-does not need
-#2113)** · **~25 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
+rebuild, no edit needed
+#2113)** · **~23 genuinely-unreachable categories, `graha_yuddha_per_varga` included (§5 — new
 cycle 153/156, distinct from F-B32's own list-repair scope)**
 · W4 partially unblocked (wave 0 dispatched cycle 155; RULED cycle 159; `natural_key_partition`
 6/7 shipped — `ga_positions` PR #2205, `ga_ayurdaya` PR #2208, `ga_sensitive_degree` PR #2209,
