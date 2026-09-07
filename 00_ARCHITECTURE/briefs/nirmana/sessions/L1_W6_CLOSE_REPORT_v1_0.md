@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.22-DRAFT"
+version: "0.23-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -67,7 +67,17 @@ for `ga_positions` only, same cycle** (migration 868, PR #2205): `graha_position
 verified locally (registry-invalidation trigger fired correctly). Remaining 6 co-writers'
 partitions and `ga_positions`' own `output_digest_spec` (fix 2) still needed before wave 1 —
 `ga_sensitive` found to own a much larger category set than assumed, deferred rather than
-guessed. Did not attempt wave 1 this cycle. · **W5 ⛔ BLOCKED** (no completed post-W4
+guessed. Did not attempt wave 1 this cycle. **Shipped incrementally cycles 160-165: `ga_
+sensitive_degree` (870), `ga_sade_sati` (871, 14 categories), `ga_nakshatra` (872, 14 categories
+across two source files), `ga_panchanga` (873, 34 categories — literal grep undercounted to 16;
+corrected via a dynamic-construction trace of `f"panchanga_{window_name}"`), `ga_sensitive`
+(874, 37 categories — same undercount class repeated: a for-loop-constructed `cat` variable in
+`_build_brahma_vishnu_shiva_rows` hid 3 categories a literal grep alone found only 34 of). **All
+7/7 `natural_key_partition` backfills from fix 1 are now shipped** (five of the seven still
+mid-CI/queued as of cycle 165's close, not yet confirmed merged to `main`). Only fix 2 remains
+before wave 1 can genuinely dispatch and read back `fresh`: `ga_positions`' own `output_digest_
+spec` (D-CND-27 recipe, precedent migrations 820/821/822) — not yet started. · **W5 ⛔ BLOCKED**
+(no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
@@ -363,12 +373,15 @@ awaits either a dedicated prep cycle or genuine W6 close.
   `output_digest_spec` for `ga_positions`+3 L0 assets). `natural_key_partition` shipped for
   `ga_positions` (migration 868, PR #2205), `ga_ayurdaya` (migration 869, PR #2208),
   `ga_sensitive_degree` (migration 870, PR #2209), `ga_sade_sati` (migration 871, PR #2212),
-  `ga_nakshatra` (migration 872, PR #2213), and `ga_panchanga` (migration 873, PR #2216, cycle
+  `ga_nakshatra` (migration 872, PR #2213), `ga_panchanga` (migration 873, PR #2216, cycle
   164 — found to own 34 categories via 16 literal constants + 18 dynamically-constructed window
-  names, not the ~16 this session had assumed) — 6/7. **Still open**: `natural_key_partition`
-  for `ga_sensitive` (the last co-writer, needs careful per-category verification, found to own
-  ~25 categories) and `ga_positions`' own `output_digest_spec` (fix 2) — both needed before
-  wave 1 can genuinely dispatch.
+  names, not the ~16 this session had assumed), and `ga_sensitive` (migration 874, PR #2217,
+  cycle 165 — same undercount class: a literal-string grep found 34 categories, but a
+  for-loop-constructed `cat` variable in `_build_brahma_vishnu_shiva_rows` hid 3 more, true
+  total 37) — **7/7, all shipped**. **Still open**: `ga_positions`' own `output_digest_spec`
+  (fix 2 of #2180's two-part ruling) — the last prerequisite needed before wave 1 can genuinely
+  dispatch and read back `fresh`; five of the seven `natural_key_partition` PRs also not yet
+  confirmed merged to `main` as of cycle 165's close (mid-CI/queued).
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated

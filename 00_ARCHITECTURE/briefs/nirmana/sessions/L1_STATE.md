@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 164; shipped natural_key_partition fix 6/7 (ga_panchanga, migration 873, PR #2216): found the writer owns 34 categories, not the ~16 this session had assumed -- 16 literal constants + 18 dynamically-constructed window categories (f"panchanga_{window_name}"). 33/34 confirmed live (amrit_kaal legitimately absent). Expressed as a LIKE prefix match rather than a 34-item list, confirmed no other writer emits anything with that prefix. Applied locally, verified. 1 co-writer (ga_sensitive, the most complex, ~25 categories) + ga_positions' own output_digest_spec still needed before wave 1. #2113/#2180 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 165; shipped natural_key_partition fix 7/7 -- the FINAL co-writer, ga_sensitive (migration 874, PR #2217). A literal-string-only grep found 34 categories, but ga_sensitive repeats ga_panchanga's exact undercount pattern (cycle 164): _build_brahma_vishnu_shiva_rows constructs its category via a for-loop over a literal tuple list, so the call site passes a bare variable invisible to a literal-argument grep -- surfacing 3 more categories (esoteric_point_brahma/vishnu/shiva). True total 37, confirmed no other dynamic-construction path exists (no f-strings; other variable-based calls are internal to _long_rows's own body; two dict-literal fallback rows both hardcode the already-counted kp_cuspal_significators). 34/37 confirmed live; the 3 absent (trisphuta/chatushphuta/panchasphuta) are an honest B.10 gap -- _build_trisphuta_family_rows needs sunrise_jd/birth_jd its sole caller never supplies. No overlap with any of the other six sibling writers. Applied locally, verified via psql, PR queued (autoMergeRequest armed, CI pending as of this cycle). **All 7/7 natural_key_partition fixes (fix 1 of #2180's two-part ruling) now shipped.** Only fix 2 remains before wave 1 can genuinely dispatch: ga_positions' own output_digest_spec (D-CND-27 recipe, not yet started). #2113/#2180 checked again this cycle -- no new Conductor reply (the 01:59:43 comment on #2180 is this session's own cycle-155 status update, already known)
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8994,3 +8994,77 @@ record — they are the only entries in this table with a real wall-clock behind
   next: only `ga_sensitive` remains (the most complex, ~25 categories, deliberately saved for a
   dedicated cycle) plus `ga_positions`' own `output_digest_spec` (fix 2); keep re-checking
   #2113/#2180 every cycle regardless.
+
+## CYCLE 165 (C8 v2.3) — `natural_key_partition` fix 7/7: `ga_sensitive` (migration 874, PR
+## #2217) — ALL SEVEN co-writer partitions from #2180's fix 1 now shipped
+
+PR hygiene: `#2216` genuinely `is:queued` at cycle open (later confirmed merged during this
+cycle — 868-872 now all on `origin/main`, 873 the sole remaining reservation on the panchanga
+branch). `#2201` (this state branch) `mergeStateStatus: CLEAN`. Nothing DIRTY/RED/unqueued.
+Re-checked `#2113`/`#2180`: `#2180` shows a comment at `2026-09-07T01:59:43Z` from `amonty84`
+that is, on inspection, this session's own cycle-155 status write-up ("Ruling received and acted
+on — fix 1 for ga_positions is authored, PR #2205... The remaining six... are queued as
+follow-up work"), not a new Conductor reply — already fully accounted for in this state file.
+`#2113` unchanged since cycle 145's nudge. No new adjudication traffic either issue.
+
+**Unit of work: `ga_sensitive`'s `natural_key_partition`, the seventh and final co-writer of
+`chart_facts`.** Deliberately deferred every cycle since 159 as "most complex" — justified: a
+literal-string-only Python regex extraction (`_(?:make_row|long_rows)\(\s*"([a-z_]+)"` over the
+whole 3187-line file) found 34 categories across the writer's 31 `_build_*` functions and two
+shared row-helpers (`_make_row`, `_long_rows`, both taking `category` as their first positional
+param) — but this session's own cycle-164 lesson (`ga_panchanga`'s dynamically-constructed
+`f"panchanga_{window_name}"` categories, invisible to a literal grep) turned out to apply here
+too. `_build_brahma_vishnu_shiva_rows` (line 1069) builds its category via
+`for cat, subj, long_val, prov in [("esoteric_point_brahma", ...), ("esoteric_point_vishnu",
+...), ("esoteric_point_shiva", ...)]:` then calls `_long_rows(cat, subj, long_val, ...)` — a bare
+variable at the call site, invisible to the literal-argument regex. Surfaced 3 additional
+categories not in the 34-item list: `esoteric_point_brahma`, `esoteric_point_vishnu`,
+`esoteric_point_shiva`.
+
+Ruled out any further hidden sources before concluding the list was complete: (a) `grep -c
+'_make_row(f"\|_long_rows(f"'` → 0, no f-string category construction anywhere in the file; (b)
+`grep -n "for .*cat.* in \["` → exactly one hit, the brahma/vishnu/shiva loop itself, confirming
+no second dynamic-construction site; (c) the other variable-based call sites found via `grep -n
+"_make_row(cat\b\|_make_row(category\b\|_long_rows(cat\b\|_long_rows(category\b"` (lines
+473-502) sit entirely inside `_long_rows`'s own body (defined line 423–505), reusing its own
+`category` parameter — internal implementation, not a second category source; (d) the two
+direct dict-literal fallback rows in `_build_kp_cuspal_rows` (lines 1839-1865, 1916-1940 — honest
+`[EXTERNAL_COMPUTATION_REQUIRED]`/`KP_PARSE_ERROR` skip-rows built as raw dicts, not via
+`_make_row`) both hardcode `"kp_cuspal_significators"`, already in the 34. **True total: 37**
+(34 literal-call-site + 3 brahma/vishnu/shiva).
+
+Live cross-check against the canonical chart's `chart_facts` (same `comm`-diff discipline as
+`ga_panchanga`): 34/37 present. The 3 absent (`esoteric_point_trisphuta`,
+`esoteric_point_chatushphuta`, `esoteric_point_panchasphuta`) traced to `_build_trisphuta_
+family_rows` (line 891) requiring `sunrise_jd`+`birth_jd` (Swiss Ephemeris values) that its sole
+call site (line 2762) never supplies — the function logs `[EXTERNAL_COMPUTATION_REQUIRED]` and
+returns zero rows every build (B.10-compliant honest gap), the exact same shape as
+`ga_panchanga`'s `amrit_kaal` precedent: declared scope, currently-unreachable value, not a bug.
+
+Overlap check: grepped all six already-migrated sibling writers for all 37 category strings —
+zero hits. `ga_kp_significators.py`'s own `kp_cuspal_house` confirmed as a distinct,
+non-colliding name from `ga_sensitive`'s `kp_cuspal_significators`.
+
+Migration numbering: re-verified live — `origin/main` highest was 872 (868-872 all merged); 873
+still reserved by the still-open panchanga PR #2216. Used **874**. Branched fresh off
+`origin/main`, wrote the migration (`IN (...)` enumeration of all 37 — no clean shared prefix
+exists across `esoteric_point_*`/`tajik_*`/`kp_*`/standalone names, unlike `ga_panchanga`'s
+single-prefix case), ran `--dry-run` (874 the only pending), applied for real, verified
+`asset_registry.natural_key_partition` now set for `ga_sensitive` via direct `psql`. Committed,
+pushed, opened PR #2217, queued via `gh pr merge --auto` (`autoMergeRequest.enabledAt` confirmed
+set; `mergeStateStatus: BLOCKED` pending CI — the standard just-opened pattern, not a failure).
+
+**All 7/7 `natural_key_partition` backfills from #2180's fix 1 are now shipped**: `ga_positions`
+(868, merged), `ga_ayurdaya` (869, merged), `ga_sensitive_degree` (870), `ga_sade_sati` (871),
+`ga_nakshatra` (872), `ga_panchanga` (873), `ga_sensitive` (874, this cycle) — the latter five
+still mid-CI/queued as of this cycle's close, not yet confirmed merged to `main`. Only fix 2 of
+the two-part ruling remains before wave 1 can genuinely dispatch and read back `fresh`:
+`ga_positions`' own `output_digest_spec` (D-CND-27 recipe — JSON spec with `components`/
+`key_columns`/`value_columns`, `spec_sha256` via the real `canonical_digest()` server function,
+precedent migrations 820/821/822) — not yet started.
+
+CYCLE 165 L1: PR hygiene clean; shipped `natural_key_partition` fix **7/7** (`ga_sensitive`, PR
+#2217) — the final co-writer, correcting this session's own 34-category undercount to the true
+37 via the same dynamic-construction lesson `ga_panchanga` taught last cycle — next: `ga_positions`'
+own `output_digest_spec` (fix 2 of #2180, the last prerequisite before wave 1 can dispatch); keep
+re-checking #2113/#2180 every cycle regardless.
