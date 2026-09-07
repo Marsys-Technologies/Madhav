@@ -495,6 +495,13 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~169:0xZ — L3-W4 — PR hygiene: `#2199`'s last check
+  finished (checked the live log directly — pytest completed "43 passed
+  in 0.34s" at ~12min, just past the usual pattern but genuinely done,
+  not stuck) and it's now genuinely `isInMergeQueue: true`, `QUEUED`,
+  position 1 — past its own checks, waiting for its merge turn. No new
+  `origin/main` merges, no new E-gate opening. — blocked on: `#2199`
+  finishing; next action: same.
 - `2026-09-07T~168:0xZ — L3-W4 — PR hygiene: `#2199`'s last check, same
   run, now ~9.7min, checked step-level detail directly — still on the
   same consistently-slow `pytest` step, genuine progress not a stall.
