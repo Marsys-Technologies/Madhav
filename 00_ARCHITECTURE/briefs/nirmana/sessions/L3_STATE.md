@@ -497,6 +497,86 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~379:0xZ — L3-W4 — PR hygiene: `#2275`'s last check, same
+  run, now ~10.1min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_dashas`/`ga_sensitive` still
+  `OPEN-PENDING-PIN`, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2275` finishing; next
+  action: same.
+- `2026-09-07T~378:0xZ — L3-W4 — PR hygiene: `#2275` advanced to
+  position 1 (top of queue), own `merge_group` build still
+  `in_progress`, `Unit Tests` now passed, only `Governance Gates`
+  remains (~7.75min, within range, same run; `mergeStateStatus`
+  briefly `UNKNOWN`, normal async lag). One new `origin/main` merge
+  (an L5 heartbeat PR, no L3 overlap). `ga_dashas`/`ga_sensitive`
+  still `OPEN-PENDING-PIN`, `ga_positions` re-confirmed still frozen.
+  No new E-gate opening for L3. IDLE-OK. — blocked on: `#2275`
+  finishing; next action: same.
+- `2026-09-07T~377:0xZ — L3-W4 — PR hygiene: `#2275` still position 2,
+  `AWAITING_CHECKS` — located its own `merge_group` run directly
+  (`gh-readonly-queue/main/pr-2275-...`), step-level checked: `Unit
+  Tests` + `Governance Gates` both `in_progress` ~4.25min in, well
+  within normal range, genuine progress not a stall. No new
+  `origin/main` merges. `ga_dashas`/`ga_sensitive` still
+  `OPEN-PENDING-PIN`, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening for L3. IDLE-OK. — blocked on: `#2275`
+  finishing; next action: same.
+- `2026-09-07T~376:0xZ — L3-W4 — PR hygiene: `#2275`'s checks finished
+  (0 failures — the ~9.4min run resolved cleanly). Now genuinely
+  `isInMergeQueue: true`, `AWAITING_CHECKS`, position 2 — its own
+  `merge_group` run has started. **Noteworthy**: one new
+  `origin/main` merge — `ga_dashas` was DISPATCHED (L1's own state,
+  cycles 189-190) — this is one of D-CND-26's two remaining required
+  true ancestors for `ka_gochara_resonance` (`ga_dashas`,
+  `ga_sensitive`, alongside the now-frozen `ga_positions`). Checked
+  live: dispatched ≠ frozen — `ga_dashas` and `ga_sensitive` both
+  still read `OPEN-PENDING-PIN`, so the D-CND-26 hold is genuinely
+  UNCHANGED. Worth watching closely though: this is real forward
+  movement on the specific remaining blocker. `ga_positions`
+  re-confirmed still frozen. No new E-gate opening for L3 yet.
+  IDLE-OK. — blocked on: `#2275` finishing; next action: same, watch
+  `ga_dashas`/`ga_sensitive` closely now that dispatch has started.
+- `2026-09-07T~375:0xZ — L3-W4 — PR hygiene: `#2275`'s last check, same
+  run, now ~9.4min — approaching but still within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2275` finishing; next
+  action: same.
+- `2026-09-07T~374:0xZ — L3-W4 — PR hygiene: `#2275`'s last check
+  (`Governance Gates`) ~7.1min, within normal range, `Unit Tests` now
+  also passed. No new `origin/main` merges, `ga_positions`
+  re-confirmed still frozen. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2275` finishing; next action: same.
+- `2026-09-07T~373:0xZ — L3-W4 — PR hygiene: `#2275`'s pre-queue check
+  run still `in_progress` (~4.75min on the known-slow `pytest —
+  pyjhora_adapter + pipeline` step, well within the confirmed ~11min
+  normal range). `DB Integration Tests` now passed. No new
+  `origin/main` merges, `ga_positions` re-confirmed still frozen. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2275` finishing; next
+  action: same.
+- `2026-09-07T~372:0xZ — L3-W4 — PR hygiene: `#2275` pre-queue checks
+  running (`Unit Tests`, `DB Integration Tests`, `Governance Gates`
+  all pending, nothing red), `autoMergeRequest.enabledAt` confirmed
+  set. No new `origin/main` merges relevant to L3, `ga_positions`
+  re-confirmed still frozen. No new E-gate opening. IDLE-OK. —
+  blocked on: `#2275` clearing checks/queue; next action: same.
+- `2026-09-07T~371:0xZ — L3-W4 — PR hygiene: `#2270` MERGED (confirmed
+  `merged: true`, `mergedAt` set — the ~11.4min edge precedent held
+  once more). Rebased the 24 not-yet-merged local heartbeat commits
+  onto fresh `origin/main`. Hit the standard empty-theirs prepend-
+  conflict pattern 10x (auto-resolved via the marker-strip loop, each
+  verified empty-theirs before stripping). Verified zero conflict
+  markers remain; rebased diff vs `origin/main` is `L3_STATE.md`-only.
+  Renamed branch to `codex/nirmana-l3-heartbeat-idle-22`, pushed,
+  opened PR `#2275`, armed auto-merge (confirmed via GraphQL
+  `autoMergeRequest.enabledAt` set). Re-ran `egate.sql` live:
+  `ga_positions` still frozen, `ka_gochara_resonance` still correctly
+  HELD. No new E-gate opening. IDLE-OK. — blocked on: `#2275`
+  clearing checks/queue (if `gh pr merge --auto` doesn't self-resolve
+  within a couple tries, fall back to the direct
+  `enqueuePullRequest` GraphQL mutation, per last cycle's finding);
+  next action: same monitoring cadence.
 - `2026-09-07T~370:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
   run, now ~11.4min — at the recurring edge-of-range pattern. Step-
   level unchanged, no separate stall signal. No new `origin/main`
