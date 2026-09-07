@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~431:0xZ — L3-W4 — PR hygiene: `#2294` still position
+  2, `AWAITING_CHECKS` — `#2292`'s own `merge_group` run: `TAP CI`/
+  `EKV` both completed/passed, `CI — Ganga Quality Gate` still
+  `in_progress`, genuine progress not a stall. No new `origin/main`
+  merges. IDLE-OK. — blocked on: `#2292` finishing; next action:
+  same.
 - `2026-09-07T~430:0xZ — L3-W4 — PR hygiene: `#2294`'s checks
   finished (0 failures — the ~11.3min run resolved cleanly, same
   edge precedent held once more). Now genuinely `isInMergeQueue:
