@@ -381,6 +381,19 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:33:31Z` — cycle 861: **Ruling #2180 worked — `ga_positions` rebuilt for real,
+  Δfrozen still +0 pending W4 acceptance.** Checked `build_runs` for anything since the ruling
+  (08:27:06): a real L1 wave-0 run against `ga_positions` dispatched at 08:31:16, `state=
+  completed`. `asset_throughput` for the canonical chart confirms it: `last_built_at=
+  2026-09-07T08:31:41Z`, `state='lit'`, `rows_written=1205`, `last_error=null`,
+  `built_against_writer_hash` matching the current fingerprint's `expected_code_digest`
+  (`106c428d...`) — a genuine fresh rebuild, not a stale re-read. No `accepted_rebuild_observed`/
+  `integrity_verified`/`asset_frozen` campaign event has fired yet (checked events since 08:28:00:
+  none) — the rebuild succeeded but W4 evidence-acceptance hasn't been submitted/processed yet,
+  only ~2 min old at check time, not yet nudge-worthy. Not force-nudging prematurely; will
+  re-check next cycle and escalate specifically on the acceptance step (not the rebuild) if it's
+  still missing then. Own-PR hygiene: none open. Fleet DIRTY: none new (still #1180/#446,
+  unchanged, native's own). Adjudications unchanged (11).
 - `2026-09-07T08:30:36Z` — cycle 860: **IDLE-OK, Δfrozen +0 (expected — rulings just posted last
   2 cycles, no time for L1/L3 to act yet).** PR hygiene: `--author @me` (gh auth is the shared
   `amonty84` identity, not a Conductor-specific bot — confirms all my adjudication comments post
