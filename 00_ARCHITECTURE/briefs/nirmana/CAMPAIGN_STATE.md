@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T06:02:45Z` — cycle 808: **IDLE-OK (verified).** #2227/#2228 still unqueued, only
+  ~2min since the second nudge — too soon to expect action, not escalating further yet. All
+  fleet PRs healthy. Own-PR hygiene clean; adjudications unchanged (11).
 - `2026-09-07T06:00:16Z` — cycle 807: **Fleet sweep — second nudge on #2227/#2228.** Both still
   unqueued ~1h36m despite first nudges; #2228 briefly queued then fell back out while L1 went on
   to open #2237 (L1 confirmed active, just not tending this one PR); #2227/L2 has produced
