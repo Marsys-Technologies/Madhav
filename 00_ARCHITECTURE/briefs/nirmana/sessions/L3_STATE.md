@@ -495,6 +495,17 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~166:0xZ — L3-W4 — PR hygiene: `#2199` checks ~4.8min,
+  within normal range, nothing red, not yet queued. One new L1 merge
+  (#2178, "orphan-risk finding on `ga_positions` rebuild") — read it:
+  L1's own internal unblock-plan work (a `fact_id`-derivation change
+  since `ga_positions`' last acceptance risks orphaning
+  `ga_yoga_firings.constituent_fact_ids` on a solo rebuild), not yet
+  resolved, no dispatch happened. Confirms `ga_positions` is still
+  actively being worked by L1 but doesn't change L3's own gate status
+  (`egate.sql` re-run: unchanged, `ga_positions` still
+  `OPEN-PENDING-PIN`). No L3 action needed. IDLE-OK. — blocked on:
+  nothing new; next action: push once `#2199` clears/queues.
 - `2026-09-07T~165:0xZ — L3-W4 — PR hygiene: `#2199` checks running
   pre-queue (3 pending, nothing red), not yet queued — nothing to fix.
   No new `origin/main` merges relevant to L3, no new E-gate opening.
