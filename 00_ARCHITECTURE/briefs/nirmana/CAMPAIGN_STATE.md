@@ -381,6 +381,13 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:53:43Z` — cycle 997: **MILESTONE — `ga_transit_anchors` FROZE. Δfrozen +1
+  (56→57).** Closes out the entire chain from #2224's original discovery through #2307's fix
+  through #2317's dispatch-time echo — a genuine multi-hour, multi-ruling saga now fully
+  resolved. L1's original 9-asset frontier is completely drained. Remaining fleet-wide frontier:
+  L2's 4 bodha assets (bo_sudarshana blocked on #2291's digest-arity fix, 3 others untouched),
+  L3's 7 kala assets (still citing the old auth wall despite the nrec fix). Fleet DIRTY: same 2
+  known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
 - `2026-09-07T14:51:27Z` — cycle 996: **`ga_transit_anchors` one step from freeze —
   `integrity_verified` landed.** Only `asset_frozen` left. Δfrozen still +0 (56/128). Fleet
   DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (12).
