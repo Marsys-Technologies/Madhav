@@ -381,6 +381,12 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T00:51:21Z` — cycle 707: **#1770 status update, not a new ruling.** Live-queried
+  `nirmana_evidence.nirmana_elevation_campaign_events`: L0's 3 named blockers
+  (`bg_dasha_systems`/`bg_rules`/`bg_yogas`) are now frozen — L1's 12 `ga_*` ancestors remain
+  the sole blocker on `bo_laksana`'s E-gate. Flagged the ordering interaction with #2180: L1's
+  W6 freeze ceremony should run AFTER the #2180 waves-0-3 rebuild, not before, or the freeze
+  captures pre-fix data and needs redoing. Own-PR hygiene: none open. Fleet DIRTY: empty.
 - `2026-09-07T00:48:07Z` — cycle 706: **CLOSED #2169.** PR #2172 confirmed merged
   (2026-09-06T21:43:20Z), fix live, no follow-up expected — clean adjudication close (20→19
   open). Own-PR hygiene: none open. Fleet DIRTY: empty.
