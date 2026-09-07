@@ -497,6 +497,35 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~365:0xZ — L3-W4 — PR hygiene: `#2270`'s checks finished
+  (0 failures), was genuinely CLEAN-but-unqueued
+  (`isInMergeQueue: false`). **New failure mode this cycle**: `gh pr
+  merge --auto[/--squash]` returned the usual merge-queue-strategy
+  message (or, once, no output at all) across 4 separate attempts,
+  each time re-verified via GraphQL still showing
+  `isInMergeQueue: false` — unlike every prior CLEAN-but-unqueued
+  case this session, where 1-3 `gh pr merge --auto` retries always
+  eventually engaged the queue. Checked for a genuine blocker first
+  (`mergeable: MERGEABLE`, `reviewDecision` empty, queue itself only
+  had 1 unrelated PR — no congestion, no branch-protection block
+  visible). Tried the direct GraphQL `enablePullRequestAutoMerge`
+  mutation — succeeded, confirmed `autoMergeRequest.enabledAt` was
+  already set, but still `isInMergeQueue: false`. **Root cause found
+  and fixed**: this repo apparently requires an EXPLICIT
+  `enqueuePullRequest` GraphQL mutation to actually add a
+  checks-passed, auto-merge-armed PR to the queue — enabling
+  auto-merge alone does not always auto-trigger enqueueing (this is
+  the first time in ~70+ cycles of this exact hygiene loop that the
+  normal `gh pr merge --auto` path didn't self-resolve within 1-3
+  tries, so noting the working alternative for future reference).
+  Called `enqueuePullRequest(input: {pullRequestId: ...})` directly —
+  succeeded immediately, confirmed genuinely `isInMergeQueue: true`,
+  `QUEUED`, position 2 via a fresh GraphQL query (not trusted from
+  the mutation response alone). No new `origin/main` merges,
+  `ga_positions` re-confirmed still frozen. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2270` finishing its queue turn; next
+  action: same, and remember the `enqueuePullRequest` mutation as a
+  fallback if `gh pr merge --auto` doesn't self-resolve again.
 - `2026-09-07T~364:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
   run, now ~9.4min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
