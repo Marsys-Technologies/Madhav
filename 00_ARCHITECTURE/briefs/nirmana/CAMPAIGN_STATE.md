@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T12:04:38Z` — cycle 941: **L1 dispatching `ga_strength`** (newly-eligible from
+  cycle 939's frontier expansion) — `implementation_accepted` landed 12:03:05, real-time reaction
+  to the refreshed list. Δfrozen still +0 (52/128). Fleet DIRTY: same 2 known stale native PRs.
+  Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T12:02:04Z` — cycle 940: **IDLE-OK, Δfrozen +0.** `ga_dashas` has a fresh W2
   re-acceptance round (`asset_analysis_accepted`/`optimization_verdict_accepted`/`implementation_
   accepted` all at ~10:39-10:41) sitting on top of its earlier `accepted_rebuild_observed` — still
