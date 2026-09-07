@@ -495,6 +495,14 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~259:0xZ — L3-W4 — PR hygiene: `#2233`'s last check, same
+  run, now ~11.2min — at the recurring edge-of-range pattern. Checked
+  the FULL job list: 15/16 jobs `success`, only `Governance Gates`
+  itself still genuinely `in_progress` — the run's own longest tail,
+  not a stall. No new `origin/main` merges, `ga_positions` still
+  `OPEN-PENDING-PIN`. No new E-gate opening. IDLE-OK. — blocked on:
+  `#2233` finishing; next action: same, expect resolution next cycle
+  per precedent.
 - `2026-09-07T~258:0xZ — L3-W4 — PR hygiene: `#2233`'s last check, same
   run, now ~8.9min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
