@@ -497,6 +497,110 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~423:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `state: MERGEABLE` (its own checks done — `#2287` ahead
+  finishing up, mergeStateStatus transition normal, not a stall). No
+  new `origin/main` merges. IDLE-OK. — blocked on: `#2287`'s merge
+  completing; next action: same.
+- `2026-09-07T~422:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `AWAITING_CHECKS` — `#2287`'s last check, same run, now
+  ~9.6min — approaching but still within the confirmed ~11min normal
+  range, still on the same `pytest` step. No new `origin/main`
+  merges. IDLE-OK. — blocked on: `#2287` finishing; next action:
+  same.
+- `2026-09-07T~421:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `AWAITING_CHECKS` — `#2287`'s `Unit Tests` now passed; only
+  `Governance Gates` remains (~7.5min, within normal range, same
+  `pytest` step). No new `origin/main` merges. IDLE-OK. — blocked
+  on: `#2287` finishing; next action: same.
+- `2026-09-07T~420:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `AWAITING_CHECKS` — `#2287`'s `Unit Tests`/`Governance Gates`
+  both `in_progress` ~5.4min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges. IDLE-OK. —
+  blocked on: `#2287` finishing; next action: same.
+- `2026-09-07T~419:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  2, `AWAITING_CHECKS` — `#2287`'s own `merge_group` run: `TAP CI`/
+  `EKV` both completed/passed, `CI — Ganga Quality Gate` still
+  `in_progress`, genuine progress not a stall. No new `origin/main`
+  merges. IDLE-OK. — blocked on: `#2287` finishing; next action:
+  same.
+- `2026-09-07T~418:0xZ — L3-W4 — PR hygiene: `#2288` advanced to
+  position 2 — `#2286` was `CLOSED` **without merging** (confirmed
+  via GraphQL: `merged: false`, `mergeCommit: null`), not landed on
+  `origin/main`. Investigated: this is L1's own PR-churn pattern
+  (same rebase-and-reopen cycle this session uses) — `#2286` was
+  superseded by newer L1 PRs, `#2289` and `#2290` (both still
+  `OPEN`), with `#2290`'s own title claiming "8 assets frozen,
+  frontier collapses to `ga_dashas`" (i.e. `ga_sensitive` frozen too,
+  leaving only `ga_dashas` open). **Not acting on this** — nothing
+  has actually merged to `origin/main` yet, and this is L1's own
+  session's scope, not mine; will re-verify `ga_dashas`/
+  `ga_sensitive` live via the E-gate query once something genuinely
+  lands. `origin/main` itself unchanged this cycle. IDLE-OK. —
+  blocked on: `#2287` clearing ahead of `#2288`; next action: same,
+  watch for any L1 PR actually merging then re-verify D-CND-26
+  ancestors live.
+- `2026-09-07T~417:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  3, `AWAITING_CHECKS` — `#2286`'s `Governance Gates` job now
+  ~10.1min, at the upper edge of the confirmed normal range, still
+  on the same `pytest` step, genuine progress not a stall. No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2286`/`#2287`
+  clearing ahead of `#2288`; next action: same.
+- `2026-09-07T~416:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  3, `AWAITING_CHECKS` — `#2286`'s `Governance Gates` job now
+  ~8.1min into the known-slow `pytest — pyjhora_adapter + pipeline`
+  step, within the confirmed ~11min normal range, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2286`/`#2287` clearing ahead of `#2288`; next action: same.
+- `2026-09-07T~415:0xZ — L3-W4 — PR hygiene: `#2288` still position
+  3, `AWAITING_CHECKS`. `#2286`'s own `merge_group` run: `TAP CI`/
+  `EKV` both completed/passed, `CI — Ganga Quality Gate` still
+  `in_progress`, genuine progress not a stall. Not yet merged — still
+  watching before re-verifying `ga_sensitive`'s freeze status. No
+  new `origin/main` merges. IDLE-OK. — blocked on: `#2286`/`#2287`
+  clearing ahead of `#2288`; next action: same, watch for `#2286`'s
+  merge.
+- `2026-09-07T~414:0xZ — L3-W4 — PR hygiene: `#2288`'s checks
+  finished (0 failures) and it's now genuinely `isInMergeQueue: true`,
+  `AWAITING_CHECKS`, position 3 — two unrelated PRs ahead
+  (`#2286` pos 1, `#2287` pos 2). **Noteworthy**: `#2286`'s own
+  title claims "L1: state cycle 194 — frontier-drain: 5 assets
+  frozen (`ga_vargas`, `ga_sensitive`, `ga_panchanga`, `ga_prashna`,
+  `ga_nakshatra`)" — `ga_sensitive` is one of D-CND-26's three true
+  ancestors for `ka_gochara_resonance`. Not yet merged (still
+  `AWAITING_CHECKS`), so not acting on this yet — will re-verify live
+  via the E-gate query once it lands on `origin/main`, per standing
+  discipline (dispatched/claimed ≠ frozen until confirmed). No new
+  `origin/main` merges yet. IDLE-OK. — blocked on: `#2286`/`#2287`
+  clearing ahead of `#2288`; next action: watch for `#2286`'s merge,
+  then re-verify `ga_sensitive`'s freeze status live.
+- `2026-09-07T~413:0xZ — L3-W4 — PR hygiene: `#2288`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.1min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2288` finishing; next
+  action: same.
+- `2026-09-07T~412:0xZ — L3-W4 — PR hygiene: `#2288`'s pre-queue
+  check run in progress (~4min, `Unit Tests` and `Governance Gates`
+  both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2288` finishing; next action: same.
+- `2026-09-07T~411:0xZ — L3-W4 — PR hygiene: `#2288`'s pre-queue
+  checks running (`Unit Tests`, `DB Integration Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2288` clearing checks/queue; next action: same.
+- `2026-09-07T~410:0xZ — L3-W4 — PR hygiene: `#2284` confirmed
+  MERGED. Rebased 27 local commits onto fresh `origin/main`. Hit 12
+  conflicts, all standard empty-theirs (patch content already
+  present via the squash-merged predecessor PR), all auto-resolved
+  with the per-hunk verification method; one further commit's
+  content was already upstream and git skipped it automatically.
+  Verified zero leftover markers before pushing. Renamed branch to
+  `codex/nirmana-l3-heartbeat-idle-26`, pushed, opened `#2288`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2288`'s own
+  checks completing; next action: same monitoring cadence.
+
 - `2026-09-07T~409:0xZ — L3-W4 — PR hygiene: `#2284` still position
   1, `AWAITING_CHECKS` — same run, now ~10.8min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
