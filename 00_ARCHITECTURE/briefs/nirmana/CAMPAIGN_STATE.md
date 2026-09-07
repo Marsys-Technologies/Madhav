@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T09:08:47Z` — cycle 874: **IDLE-OK, Δfrozen +0.** `ga_dashas` `last_built_at`
+  advanced 09:00:45→09:07:58 (fresh, 49s old at check) — genuinely active, not stuck, no error.
+  Fleet DIRTY: same 2 known stale native PRs. Own-PR hygiene: none open. Adjudications unchanged
+  (11).
 - `2026-09-07T09:06:26Z` — cycle 873: **IDLE-OK, Δfrozen +0.** `ga_dashas` still `state='building'`
   in `asset_throughput` (last progress 09:00:45, `last_error=null`) — genuinely in flight, not
   stuck, just a heavier writer than `ga_positions` was; ~9 min since `implementation_accepted`
