@@ -1,7 +1,7 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.25-DRAFT"
+version: "0.26-DRAFT"
 status: DRAFT — sections filled as evidence lands; NOT a close claim
 session: L1
 layer: L1 — Gaṇita
@@ -91,12 +91,17 @@ categories, not the 4 migrations 868/875 declared — `_build_chalit_rows` also 
 and retired+replaced the `output_digest_spec` row with a matching filter; new digest computed
 over 1205 live rows, matching cycle 155's own original wave-0 dispatch report ("1205 rows
 written") exactly — independent confirmation 5 is the true, complete count. Corrected before
-continuing the wave-1 attempt rather than proceeding on known-wrong data. Not yet attempted: a
-genuine `ga_positions` re-dispatch to confirm `asset_freshness` actually reads back `'fresh'` —
-the original symptom that opened this sub-investigation. The fresh-evidence-recording mechanics
-(OIDC impersonation of `amjis-nirmana-executor@...` via `gcloud auth print-identity-token`, the
-`record_evidence` command shape) are now understood and confirmed working, ready for use next
-cycle. · **W5 ⛔ BLOCKED** (no completed post-W4
+continuing the wave-1 attempt rather than proceeding on known-wrong data. **RESOLVED cycle 168,
+verified live end-to-end**: recomputed fresh registry_fingerprint/analysis_digest, submitted
+fresh evidence via the `record_evidence` executor route (two real blockers found and fixed along
+the way — `gcloud auth print-identity-token` needs `--include-email` for the JWT to carry an
+`email` claim at all, and `source_ref` must be the Cloud Run service's own `NIRMANA_DEPLOYED_SHA`
+env var, not `origin/main` HEAD), took a fresh Cloud SQL backup, dispatched `ga_positions` wave 0
+for real. `asset_freshness` now carries a genuinely new row keyed by the real partition text
+showing `freshness_state='fresh'`, `reasons=[]` — the original symptom that opened this whole
+sub-investigation (cycle 155) is now confirmed fixed, not assumed. `chart_fact_identity`
+re-rebuilt post-cascade (124,388 → 125,593, exact dry-run match). Posted the resolution to #2180.
+· **W5 ⛔ BLOCKED** (no completed post-W4
 run exists to mechanically check or verify) — one prep artifact exists ahead of need:
 `platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
 runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
@@ -407,12 +412,17 @@ awaits either a dedicated prep cycle or genuine W6 close.
   to the true 5-category set and retired+replaced the `output_digest_spec` row; new digest over
   1205 live rows matches cycle 155's own original wave-0 dispatch report exactly, confirming 5 is
   the true complete count. **Both fixes of #2180's two-part ruling now fully shipped, with the
-  correct category scope.** **Still open**: whether a genuine `ga_positions` re-dispatch now
-  actually reads `asset_freshness.freshness_state` back as `'fresh'` — not yet attempted (the
-  fresh-evidence-recording mechanics, including OIDC impersonation of the executor service
-  account, are understood and confirmed working as of cycle 167); the `ga_sensitive`
-  `natural_key_partition` PR also not yet confirmed merged to `main` as of cycle 167's close
-  (mid-CI/queued).
+  correct category scope, AND verified live end-to-end cycle 168**: recomputed fresh
+  registry_fingerprint/analysis_digest, submitted fresh evidence via the `record_evidence`
+  executor route (fixing two real operational blockers along the way — `gcloud auth
+  print-identity-token` needs `--include-email` for the returned JWT to carry an `email` claim at
+  all; `source_ref` must be the Cloud Run service's own `NIRMANA_DEPLOYED_SHA`, not `origin/main`
+  HEAD), took a fresh Cloud SQL backup, and dispatched `ga_positions` wave 0 for real.
+  `asset_freshness` now carries a genuinely new row keyed by the real partition text showing
+  `freshness_state='fresh'`, `reasons=[]` — the original cycle-155 symptom is confirmed fixed,
+  not assumed. `chart_fact_identity` re-rebuilt post-cascade (124,388 → 125,593, exact dry-run
+  match). Resolution posted to #2180. **Still open**: wave 1 itself (the remaining 14 assets from
+  the original waves 0-3 scope) has not been dispatched — a new, separate, larger unit of work.
 - **Adjudication #2122** (PR #2153, L0's fix for the `from_moon_view` mis-pointing) — CLOSED,
   merged and independently re-verified live (cycle 130). Recorded here so Phase Z sees the
   L1-visible symptom (F-D21/D23) was correctly attributed to L0's root cause, not re-litigated

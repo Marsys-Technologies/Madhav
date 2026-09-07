@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 167; SELF-CAUGHT AND FIXED a real undercount in this session's own already-applied migrations 868/875 (migration 876, PR #2221). While recomputing ga_positions' live registry fingerprint via dispatch_nirmana_campaign_wave.py's own _load_candidates() ahead of a wave-1 verification attempt, its live count_sql showed 5 chart_facts categories for ga_positions, not the 4 both prior migrations declared -- ga_positions_writer.py's `_build_chalit_rows` also emits `sandhi_flag` (own docstring names it explicitly; lines 511-523 are the real write site), confirmed live and exhaustively re-checked for further gaps (none). Corrected natural_key_partition to the true 5-category set and retired+replaced the output_digest_spec row with a matching corrected filter -- new digest computed over 1205 live rows, matching cycle 155's own original wave-0 dispatch report ("1205 rows written") EXACTLY, confirming 5 is the true complete count. Rehearsed live (rollback-only) before writing the migration; independently re-confirmed the identical digest after applying for real. Did not complete the wave-1 verification attempt this cycle -- this self-correction took priority once found. #2113/#2180 checked again this cycle -- no new Conductor reply
+last_updated: 2026-09-07 — C8 v2.3 cycle 168; **#2113/#2180's freshness-gate investigation genuinely RESOLVED for ga_positions.** Recomputed live registry_fingerprint_sha256/analysis_digest via dispatch_nirmana_campaign_wave.py's own functions (now correctly reflecting migration 876's fix); submitted fresh asset_analysis_accepted + optimization_verdict_accepted evidence via the record_evidence executor route (OIDC via `gcloud auth print-identity-token --impersonate-service-account=amjis-nirmana-executor@... --include-email` -- the missing `--include-email` flag was the actual blocker behind an initial opaque 403; source_ref had to be the Cloud Run service's OWN deployed commit, read from `gcloud run services describe amjis-web`'s `NIRMANA_DEPLOYED_SHA` env var, NOT origin/main HEAD -- a second opaque rejection ("does not match currently deployed commit") until this was found). Took a fresh on-demand Cloud SQL backup, dry-ran with --snapshot-ref to get the correct commit-mode manifest digest (cycle 155's own lesson, re-applied), then dispatched `ga_positions` wave 0 for real with --acknowledge-destroys. Build completed in ~9s, chart_facts unchanged at 1205 rows (content never changed, only registry metadata did) -- and **asset_freshness now carries a NEW row keyed by the real partition text showing freshness_state='fresh', reasons=[]** -- the fixes work end-to-end. Re-ran build_fact_identity_index.py after the WP-6 cascade (124,388 -> 125,593, exact dry-run match). Wave 1 dispatch itself is the next, separate unit of work. #2113/#2180 checked again this cycle -- no new Conductor reply; posted this resolution to #2180 as a status update
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9225,3 +9225,83 @@ known-wrong data — next: resume the wave-1 verification attempt (compute fresh
 now-correct registry contract, submit via the `record_evidence` executor route using the now-
 confirmed OIDC impersonation mechanics, dispatch, and check whether `asset_freshness` reads back
 `'fresh'`); keep re-checking #2113/#2180 every cycle regardless.
+
+## CYCLE 168 (C8 v2.3) — the #2113/#2180 freshness-gate investigation genuinely RESOLVED for
+## `ga_positions`, verified live end-to-end
+
+PR hygiene: `#2220` (`output_digest_spec`) genuinely `is:queued`. `#2221` (`sandhi_flag` fix) and
+`#2201` (this state branch) both `BLOCKED` with zero RED checks. `#2217` (`ga_sensitive`)
+confirmed `MERGED`. Nothing DIRTY, nothing RED, nothing CLEAN-but-unqueued. Re-checked
+`#2113`/`#2180`: unchanged at cycle open (no new reply); posted this cycle's resolution to #2180
+as a status update once the work was done.
+
+**Unit of work: complete the wave-1 verification attempt begun and interrupted last cycle.**
+Recomputed `ga_positions`' live `registry_fingerprint_sha256`/`analysis_digest` via
+`dispatch_nirmana_campaign_wave.py`'s own functions, now correctly reflecting migration 876's
+5-category fix: `registry_fingerprint_sha256=bd0a9b1e...`, `analysis_digest=e319352d...`.
+
+**Evidence submission — two real, non-obvious blockers found and fixed, not assumed away:**
+1. First `record_evidence` POST (via `gcloud auth print-identity-token
+   --impersonate-service-account=amjis-nirmana-executor@...`) returned a bare `403 forbidden`.
+   Decoded the minted JWT directly (`base64.urlsafe_b64decode` on the payload segment, with
+   correct `=` padding) — it carried NO `email` claim at all (`aud`/`azp`/`sub`/`iss` only). The
+   executor route's `verifyOidcToken` check requires `identity.email` to match one of two
+   allowed principals; an absent email claim can never match, hence the opaque 403. Root cause:
+   `gcloud auth print-identity-token` omits the `email`/`email_verified` claims by default for an
+   impersonated service account — fixed with `--include-email` (confirmed via the decoded JWT
+   afterward: `email: amjis-nirmana-executor@madhav-astrology.iam.gserviceaccount.com`,
+   `email_verified: true`).
+2. Second attempt (correct auth now) returned `409 "Evidence Git source does not match the
+   currently deployed commit"`. Had used `origin/main` HEAD as `source_ref` — WRONG: the server
+   compares against its OWN `NIRMANA_DEPLOYED_SHA` environment variable (`definitions.ts` line
+   440), which is the Cloud Run service's actual deployed commit, not necessarily `origin/main`'s
+   current tip (a deploy can legitimately lag a merge). Read it directly via `gcloud run services
+   describe amjis-web --region=asia-south1` (`NIRMANA_DEPLOYED_SHA=64aa9c91d...`, confirmed a live
+   ancestor of `origin/main` via `git merge-base --is-ancestor`) — resubmitted with this as
+   `source_ref` and both `asset_analysis_accepted` and `optimization_verdict_accepted` events
+   returned `201 {"outcome":"created"}`.
+
+**Dispatch, following cycle 155's exact playbook**: fresh on-demand Cloud SQL backup taken first
+(`gcloud sql backups create --instance=amjis-postgres`, confirmed `SUCCESSFUL`). Dry-run WITHOUT
+`--snapshot-ref` succeeded (evidence matched — confirming the fresh evidence submission worked)
+but produces a DIFFERENT manifest digest than commit mode needs; re-ran dry-run WITH
+`--snapshot-ref <backup-id>` to get the correct `--expected-manifest-digest` (cycle 155's own
+documented lesson, re-applied correctly this time on the first attempt). Committed with
+`--commit --confirm NIRMANA_CAMPAIGN_WAVE --acknowledge-destroys` (same WP-6 blast radius as
+cycle 155: cascade to `chart_fact_identity`, naive tool-reported count 375,856 whole-table rows,
+true scope ~1205 rows for this dispatch). Cloud Run Job `brahma-build-pipeline-job-jqrjm`
+dispatched; `build_runs.state='completed'` in ~9 seconds, `last_error` empty.
+
+**Verified the actual claim, not a proxy — this is the whole point of the investigation**:
+`asset_throughput.state='lit'` for `ga_positions`; `chart_facts` unchanged at exactly 1205 rows
+(the writer's real output never changed — only the registry's OWN description of it was being
+corrected); and, checking `asset_freshness` directly: a **genuinely NEW row now exists, keyed by
+the real partition text** (`chart_facts.fact_category IN (graha_position,
+graha_sign_attributes, bhava_cusps, house_chalit, sandhi_flag)`, not the old
+`__whole_asset__` key) showing **`freshness_state='fresh'`, `reasons=[]`**. The stale
+`__whole_asset__` row from before `natural_key_partition` existed remains in the table as a
+harmless dead artifact under a now-superseded partition key — any consumer querying by the
+CURRENT partition key sees the correct, fresh state.
+
+Re-ran `build_fact_identity_index.py` post-cascade (`chart_fact_identity` had dropped from
+125,593 to 124,388 — exactly the 1205-row difference from the cascade delete, confirming the
+cascade touched exactly the expected scope, not the naive whole-table figure): dry-run showed
+`total_facts=139471, parsed=125593, gap=0, coverage=100.0%`; ran for real, verified restored to
+exactly 125,593, matching the dry-run's own parse count.
+
+Posted the full resolution to adjudication #2180 as a status comment (not a new ruling request —
+informational, closing the loop the Conductor's own investigation opened cycle 155).
+
+**Both fixes of #2180's second ruling are now not just shipped but LIVE-VERIFIED to work.**
+Cleaned up temp evidence-payload files. **Not yet done, and NOT attempted this cycle**:
+dispatching wave 1 itself (the remaining 14 assets from the original waves 0-3 scope) — a
+separate, larger, genuinely new unit of work for a future cycle, not a continuation of this
+verification.
+
+CYCLE 168 L1: PR hygiene clean; **completed the #2113/#2180 freshness-gate investigation** —
+`ga_positions` genuinely re-dispatched and verified `asset_freshness` now reads back `'fresh'`
+end-to-end, fixing two real operational blockers (missing `--include-email` on OIDC token
+minting; wrong `source_ref` — needed the Cloud Run service's actual `NIRMANA_DEPLOYED_SHA`, not
+`origin/main` HEAD) along the way; posted the resolution to #2180 — next: dispatch wave 1 itself
+(the remaining 14 assets), a new, separate unit of work; keep re-checking #2113/#2180 every cycle
+regardless.
