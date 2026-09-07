@@ -916,3 +916,10 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
     (not L0's to drive), keep doing PR hygiene + heartbeat cycles, and pick up any new L0-scoped work
     that surfaces (registry drift, new adjudications, etc.) — L0 has no more of its own 40 assets to
     process.
+- 2026-09-07 — **IDLE-OK (verified), first cycle of the post-40/40 era.** No open L0 PRs. Ran
+  `egate.sql -v layer=L0` directly against the live DB as the ground-truth check (not just trusting
+  yesterday's count): **0 rows** — confirms zero unfrozen L0 assets remain, nothing pending. Checked
+  the full `nirmana-adjudication` open-issue list: nothing new targets L0 specifically (#1945 is
+  still open but is the campaign-wide W6 mechanism, Conductor/cross-layer scoped, not L0's to act on;
+  #2224 is L1's cross-layer flag, already cross-referenced). #1713's tail is still my own 40/40 post,
+  no new activity since. Nothing eligible.
