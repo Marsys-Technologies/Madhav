@@ -497,6 +497,72 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~495:0xZ — L3-W4 — PR hygiene: `#2339` still position
+  1, `AWAITING_CHECKS` — same run, now ~10.7min, at the upper edge
+  of the confirmed normal range, still on the same `pytest` step,
+  genuine progress not a stall. No new `origin/main` merges.
+  IDLE-OK. — blocked on: `#2339` finishing; next action: same.
+- `2026-09-07T~494:0xZ — L3-W4 — PR hygiene: `#2339` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.6min, within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2339` finishing;
+  next action: same.
+- `2026-09-07T~493:0xZ — L3-W4 — PR hygiene: `#2339` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6.5min, within normal range). No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2339` finishing;
+  next action: same.
+- `2026-09-07T~492:0xZ — L3-W4 — PR hygiene: `#2339` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4.4min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges. IDLE-OK. —
+  blocked on: `#2339` finishing; next action: same.
+- `2026-09-07T~491:0xZ — L3-W4 — PR hygiene: `#2339` still position
+  1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
+  CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
+  `in_progress`. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2339` finishing; next action: same.
+- `2026-09-07T~490:0xZ — L3-W4 — PR hygiene: `#2339`'s checks
+  finished (0 failures — the ~11min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1
+  (top of queue) — no PRs ahead. No new `origin/main` merges. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2339` finishing; next
+  action: same.
+- `2026-09-07T~489:0xZ — L3-W4 — PR hygiene: `#2339`'s last check,
+  same run, now ~10.4min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. One new `origin/main` merge (`#2333`, L5 heartbeat —
+  no L3 overlap). No new E-gate opening. IDLE-OK. — blocked on:
+  `#2339` finishing; next action: same.
+- `2026-09-07T~488:0xZ — L3-W4 — PR hygiene: `#2339`'s last check,
+  same run, now ~8.3min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2339` finishing; next
+  action: same.
+- `2026-09-07T~487:0xZ — L3-W4 — PR hygiene: `#2339`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.2min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2339` finishing; next
+  action: same.
+- `2026-09-07T~486:0xZ — L3-W4 — PR hygiene: `#2339`'s pre-queue
+  check run in progress (~4.2min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2339` finishing; next action: same.
+- `2026-09-07T~485:0xZ — L3-W4 — PR hygiene: `#2339`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2339` clearing checks/queue; next action: same.
+- `2026-09-07T~484:0xZ — L3-W4 — PR hygiene: `#2330` confirmed
+  MERGED (queue congestion resolved once more). Rebased 24 local
+  commits onto fresh `origin/main`, 9 empty-theirs conflicts
+  auto-resolved cleanly, zero markers left. Renamed to
+  `codex/nirmana-l3-heartbeat-idle-33`, pushed, opened `#2339`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2339`'s own
+  checks completing; next action: same monitoring cadence.
+
 - `2026-09-07T~483:0xZ — L3-W4 — PR hygiene: `#2330` advanced to
   position 1 (top of queue) — `#2328` merged (unrelated L2
   heartbeat/output-digest PR, confirmed via `origin/main`, no L3
