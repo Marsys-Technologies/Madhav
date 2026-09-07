@@ -381,6 +381,16 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:47:36Z` — cycle 771: **Milestone — #2180's freshness gate genuinely resolved
+  for `ga_positions`, verified live by L1, no ruling needed.** #2221 (sandhi_flag fix, migration
+  876) turned out to be part of the same fix chain — the partition count was undercounted at 4
+  categories, `_build_chalit_rows` emits a 5th (`sandhi_flag`); corrected before verification.
+  L1 recomputed live fingerprints via the real dispatch-script functions, submitted fresh
+  evidence through the executor route, took a backup, and re-dispatched `ga_positions` for
+  real: `asset_freshness` now shows `freshness_state='fresh'`, keyed by the real partition, not
+  `__whole_asset__`. Both #2180 fixes confirmed working end-to-end. Wave 1 (14 remaining assets)
+  not yet attempted — separate unit. Fleet healthy. Own-PR hygiene clean; adjudications
+  unchanged (10).
 - `2026-09-07T03:45:08Z` — cycle 770: **IDLE-OK (verified).** Fleet PR list unchanged, all
   MERGEABLE. Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:42:47Z` — cycle 769: **IDLE-OK (verified).** #2220 merged — both authorized
