@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T08:51:32Z` — cycle 867: **IDLE-OK, Δfrozen +0.** Cascade update posted last cycle;
+  no new `build_runs` yet (checked since 08:45:00) — too soon to expect lane reaction, not a
+  stall. Fleet DIRTY: clean. Own-PR hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T08:48:57Z` — cycle 866: **MILESTONE — `ga_positions` FROZE. Δfrozen +1 (46→47),
   frontier cascades 2→16 eligible.** The #2180 ruling's full payoff: `asset_frozen` fired,
   completing rebuild→`implementation_accepted`→`accepted_rebuild_observed`→`integrity_verified`
