@@ -495,6 +495,25 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~330:0xZ — L3-W4 — EXTERNAL INSTRUCTION RECEIVED (not the
+  standard supervisor nudge): directed to dispatch `ka_gochara_resonance`
+  W4 now, claiming "all ancestors frozen" via an asset-frontier rule.
+  Re-verified live before acting: `ga_positions` still
+  `OPEN-PENDING-PIN`, `ga_dashas`/`ga_sensitive` still
+  `BLOCKED-ANCESTORS → ga_positions` — the instruction's premise does
+  not match live DB state. Additionally `ka_gochara_resonance` has
+  `health_probe` NULL (no route registered at all — `egate.sql`
+  reports `BLOCKED-NO-ROUTE`, not `BLOCKED-ANCESTORS`), a second,
+  independent blocker the instruction didn't address. This directly
+  conflicts with the standing D-CND-26 ruling ("true-closure-governs",
+  filed several cycles ago, explicitly "not this session's call to
+  make alone"). Surfaced the conflict via `AskUserQuestion` rather
+  than silently complying or silently ignoring — native/operator
+  chose **Hold per D-CND-26**. `ka_gochara_resonance` remains HELD,
+  unchanged. Resuming routine PR-hygiene cycle. — decision recorded
+  here per D-CND-26's own governance; no adjudication file needed
+  (an equivalent-scope ruling already exists and was upheld, not
+  reopened).
 - `2026-09-07T~329:0xZ — L3-W4 — PR hygiene: `#2256`'s pre-queue check
   run still `in_progress` (~4.6min on the known-slow `pytest —
   pyjhora_adapter + pipeline` step, well within the confirmed ~11min
