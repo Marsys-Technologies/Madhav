@@ -1180,3 +1180,5 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
   post-freeze registry-only fix is ever needed on an already-frozen `bg_*` asset. Not currently
   actionable (no L0 asset needs this); noted for future awareness. Awaiting Conductor/native
   ruling, not L0's to act on. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** No open L0 PRs. `egate.sql -v layer=L0`: still 0 rows.
+  Adjudication list and #1713 tail unchanged. Nothing eligible.
