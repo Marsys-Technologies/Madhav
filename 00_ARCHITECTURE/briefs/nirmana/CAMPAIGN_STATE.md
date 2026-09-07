@@ -381,6 +381,10 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T11:54:11Z` — cycle 937: **Δfrozen +1 (51→52). `ga_nakshatra` froze.** L1's 5th
+  freeze this drive; 11 assets remain campaign-wide (2 more L1, `bo_sudarshana`, 6 `ka_*`). L2/L3
+  still zero movement, no reply on #1713. Fleet DIRTY: same 2 known stale native PRs. Own-PR
+  hygiene: none open. Adjudications unchanged (11).
 - `2026-09-07T11:51:47Z` — cycle 936: **IDLE-OK, Δfrozen +0.** Still no L2/L3 reply, ~7 min
   since the sharp nudge. `ga_nakshatra` unchanged since last check. Fleet DIRTY: same 2 known
   stale native PRs. Own-PR hygiene: none open. Adjudications unchanged (11).
