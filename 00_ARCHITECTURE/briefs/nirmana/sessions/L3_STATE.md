@@ -497,6 +497,92 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~534:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — same run, now ~10.9min, near the observed
+  edge-case precedent, still on the same `pytest` step, no failure
+  signal. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2369` finishing; next action: same, watch closely.
+- `2026-09-07T~533:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — same run, now ~8.8min, within the confirmed
+  ~11min normal range, still on the same `pytest` step. No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2369` finishing;
+  next action: same.
+- `2026-09-07T~532:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — `Unit Tests` now passed; only `Governance
+  Gates` remains (~6.7min, within normal range). No new
+  `origin/main` merges. IDLE-OK. — blocked on: `#2369` finishing;
+  next action: same.
+- `2026-09-07T~531:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — `Unit Tests`/`Governance Gates` both
+  `in_progress` ~4.4min in, well within normal range, genuine
+  progress not a stall. No new `origin/main` merges. IDLE-OK. —
+  blocked on: `#2369` finishing; next action: same.
+- `2026-09-07T~530:0xZ — L3-W4 — PR hygiene: `#2369` still position
+  1, `AWAITING_CHECKS` — own `merge_group` run has started: `TAP
+  CI`/`EKV` both completed/passed, `CI — Ganga Quality Gate`
+  `in_progress`. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2369` finishing; next action: same.
+- `2026-09-07T~529:0xZ — L3-W4 — PR hygiene: `#2369`'s checks
+  finished (0 failures — the ~11min run resolved cleanly). Now
+  genuinely `isInMergeQueue: true`, `AWAITING_CHECKS`, position 1
+  (top of queue) — no PRs ahead. No new `origin/main` merges. No new
+  E-gate opening. IDLE-OK. — blocked on: `#2369` finishing; next
+  action: same.
+- `2026-09-07T~528:0xZ — L3-W4 — PR hygiene: `#2369`'s last check,
+  same run, now ~10.7min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. IDLE-OK. — blocked on:
+  `#2369` finishing; next action: same.
+- `2026-09-07T~527:0xZ — L3-W4 — PR hygiene: `#2369`'s last check,
+  same run, now ~8.6min — within the confirmed ~11min normal range,
+  still on the same `pytest` step. No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2369` finishing; next
+  action: same.
+- `2026-09-07T~526:0xZ — L3-W4 — PR hygiene: `#2369`'s `Unit Tests`
+  now passed; only `Governance Gates` remains (~6.5min, within
+  normal range, same `pytest` step). No new `origin/main` merges. No
+  new E-gate opening. IDLE-OK. — blocked on: `#2369` finishing; next
+  action: same.
+- `2026-09-07T~525:0xZ — L3-W4 — PR hygiene: `#2369`'s pre-queue
+  check run in progress (~4.5min, `Unit Tests` and `Governance
+  Gates` both `in_progress`, well within normal range). No new
+  `origin/main` merges. No new E-gate opening. IDLE-OK. — blocked
+  on: `#2369` finishing; next action: same.
+- `2026-09-07T~524:0xZ — L3-W4 — PR hygiene: `#2369`'s pre-queue
+  checks running (`DB Integration Tests`, `Unit Tests`,
+  `Governance Gates` all `pending`, nothing red), early stage. One
+  new `origin/main` merge (`#2360`, L5 heartbeat — no L3 overlap).
+  No new E-gate opening. IDLE-OK. — blocked on: `#2369` clearing
+  checks/queue; next action: same.
+- `2026-09-07T~523:0xZ — L3-W4 — PR hygiene: `#2358` confirmed
+  MERGED. Rebased 29 local commits onto fresh `origin/main`. **Hit a
+  rebase-tooling incident this cycle**: while resolving a genuine
+  (non-empty-theirs) conflict — a duplicate-timestamp-label case
+  where an earlier commit had accidentally reused `T~505` for
+  content that should have been `T~504` — a Python script that
+  spliced the file by hand-computed line indices used STALE indices
+  (from an earlier Read, not re-verified against the file's actual
+  current state) and truncated ~500 lines of heartbeat history on
+  write. **Caught immediately** via a routine line-count sanity check
+  (`grep -c heartbeat-entry-pattern` before staging) — the count
+  dropped from 390 to a handful, an unmistakable signal. Ran `git
+  rebase --abort` to cleanly discard the bad write (rebase was still
+  mid-conflict, nothing had been staged/committed), verified the
+  restored file was back to 390 entries/zero markers, then redid the
+  SAME two genuine conflicts (this one recurred identically across
+  a couple of the later cherry-picks too) by reading fresh exact
+  byte content each time and asserting line content before writing,
+  never trusting stale line numbers across edits. Post-rebase,
+  did a thorough integrity pass: 390 heartbeat entries (exact
+  pre-incident match), zero duplicate timestamps, D-CND-26 table
+  content confirmed intact. Renamed to
+  `codex/nirmana-l3-heartbeat-idle-36`, pushed, opened `#2369`,
+  auto-merge armed (`BLOCKED`, own checks pending — normal). No new
+  E-gate opening this cycle. IDLE-OK. — blocked on: `#2369`'s own
+  checks completing; next action: same monitoring cadence, and going
+  forward re-verify line numbers fresh (not from a prior Read) before
+  any manual splice-by-index conflict resolution.
+
 - `2026-09-07T~522:0xZ — L3-W4 — PR hygiene: `#2358` still position
   1, `AWAITING_CHECKS` — same run, now ~10.2min, at the upper edge
   of the confirmed normal range, still on the same `pytest` step,
