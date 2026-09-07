@@ -381,6 +381,9 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T03:38:01Z` — cycle 767: **IDLE-OK (verified).** #2220 confirmed queued
+  (progressing despite `UNKNOWN` transient state). Fleet list unchanged otherwise, all healthy.
+  Own-PR hygiene clean; adjudications unchanged (10); no new #2180 reply.
 - `2026-09-07T03:35:33Z` — cycle 766: **IDLE-OK (verified).** Normal fleet turnover, all
   healthy, none CONFLICTING. Own-PR hygiene clean; adjudications unchanged (10); no new #2180
   reply.
