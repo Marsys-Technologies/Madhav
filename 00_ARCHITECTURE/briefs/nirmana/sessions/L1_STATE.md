@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 172; **closed F-A17** (`ga_dashas`' "bare tier literals", untracked since W2, PR #2229). Root cause: the writer already imports named constants from `brahmagyan.verification_vocab` (TWO_PASS_VERIFIED/CLASSICAL_MATCH/UNVERIFIED_DEFAULT) and uses them correctly in SOME places, but 38 other call sites emitted the equivalent bare string literal instead -- exactly CLAUDE.md §N.4's forbidden pattern. `scope_cap_sentinel` additionally had NO named constant to import at all (legal vocab member, no symbol) -- added `SCOPE_CAP_SENTINEL` to verification_vocab.py following `CLASSICAL_MATCH`'s own precedent (no new vocabulary member, just a symbol). Scripted the 38-site replacement, individually spot-checked, left 4 docstring/comment prose lines untouched (quoting the strings in English, not emitting them). Added a static regression test (greps source text, not runtime behavior, since the emitted VALUE is identical either way -- only a text-level check can catch this class of drift). All 60 tests across the touched/adjacent suites pass. This closes `ga_dashas`' last blocking MUST-tier uncertainty -- its evidence submission (F-A10/F-A12 already confirmed fixed in code, needs a rebuild to apply to canonical-chart data) is now safe to attempt in a future cycle. #2113/#2180/#2224 checked -- no new Conductor reply beyond my own comments
+last_updated: 2026-09-07 — C8 v2.3 cycle 173; **fixed a RED CI gate on PR #2229** (F-A17's own PR) rather than starting new work — this cycle's PR-hygiene step surfaced a genuine failure, not a formality. My cycle-172 fix had added `SCOPE_CAP_SENTINEL` to the SHARED L0 `verification_vocab.py`, which failed "writer digest inventory is stale". Naively regenerating the inventory revealed a real, much larger problem: `asset_runner.py`'s digest walks each writer's TRANSITIVE local-import closure, so editing a shared L0 module shifts EVERY writer that imports it -- confirmed live, ~24 unrelated L1+L2 writers' digests moved, and `nirmana_analysis_layer_pins.py --check` then reported L0/L1/L2 ALL stale. This is the exact "would invalidate already-frozen capsules, not forced through unilaterally" residual `ga_dashas_writer.py`'s own F-A10 fix already named for this same module -- not something an L1 session has authority to force through solo, since it would silently invalidate L2's (and L0's) already-accepted evidence. Reverted the shared-module edit entirely (byte-identical to origin/main again); resolved F-A17's scope_cap_sentinel half via a single controlled `entry_for()` lookup inside `ga_dashas_writer.py` itself instead, zero blast radius. Regenerated the digest inventory (now genuinely only `ga_dashas`' own entry changes) and ONLY L1's own analysis-layer pin (tool-supported `--layer L1` scoping, confirmed L0/L2/L3/L4/L5 explicitly untouched). Updated the regression test to match and added a tripwire test asserting `verification_vocab.py` does NOT export the symbol (guards against this exact blast radius silently reappearing). All 60 targeted tests + both governance checks pass; pushed; fresh CI dispatch confirmed no RED. #2113/#2180/#2224 checked -- no new Conductor reply beyond my own comments
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -9603,3 +9603,78 @@ own F-A17/ID-collision finding demanded rather than deferring further — next: 
 first-time campaign evidence (all three of its MUST findings now confirmed genuinely closed) or
 complete `ga_transit_anchors`' still-orphaned evidence pair; keep re-checking
 #2113/#2180/#2224 every cycle regardless.
+
+## CYCLE 173 (C8 v2.3) — PR hygiene found a genuine RED gate on my own PR #2229 and fixed it
+## at root: a cross-layer digest blast radius, not a superficial CI flake
+
+Step 1 PR hygiene is not a formality this cycle: `is:queued` search returned zero L1 PRs;
+`#2229` (F-A17) showed `mergeStateStatus: BLOCKED` with a genuine **failing** check —
+"Governance Gates (drift / schema / edge / native-literal / py-sidecar)" — not merely pending.
+Per the contract's own explicit instruction ("RED → fix root cause, never weaken the check"),
+investigated before anything else.
+
+Fetched the job log directly (`gh api .../actions/jobs/<id>/logs`, since `gh run view` refuses
+logs on an in-progress overall run even when the specific failed job has completed) and found the
+exact failure: `"writer digest inventory is stale: run python -m pipeline.orchestrator.
+provenance_inventory --output .../nirmana-writer-digests.json"`. Root cause, confirmed via the
+committed docstring on THAT very command: my cycle-172 fix had added `SCOPE_CAP_SENTINEL` to
+`brahmagyan/verification_vocab.py` — a checked-in artifact any Python writer change must
+regenerate, which I'd genuinely missed.
+
+**Naively regenerating surfaced a much bigger problem than a stale file.** The diff touched ~24
+UNRELATED writers' digest entries (`bg_kp_sublord_division`, a dozen `bo_*` assets, several other
+`ga_*` assets), not just `ga_dashas`. Traced why directly in `asset_runner.py`:
+`get_writer_source_hash` walks each writer's TRANSITIVE local-import closure
+(`_writer_source_files` → `_local_import_files`, recursively) — so `verification_vocab.py` being
+a shared L0 module every `ga_*`/`bo_*` writer (directly or transitively) imports means ANY byte
+changed there legitimately shifts every one of their computed digests, by design (a real
+content-addressed provenance signal, not a bug). Ran `nirmana_analysis_layer_pins.py --check`
+next and confirmed the consequence: **L0, L1, AND L2's `writer_inventory_sha256` all went stale**
+simultaneously.
+
+**This is not a novel problem — it's the EXACT residual `ga_dashas_writer.py`'s own F-A10 fix
+(migration 652) already documented and deliberately did NOT force through**: "Regenerating the
+writer-digest inventory... shifts `bg_kp_sublord_division`'s digest too... `nirmana_analysis_
+layer_pins.py`'s own safety check refuses to regenerate ANY layer's pin once it detects L0's
+frozen inputs have drifted, citing 'would invalidate 29 already-frozen L0 capsules'. Not forced
+through unilaterally... Left for a deliberate, coordinated follow-up." Applying the SAME
+discipline here: regenerating L0's and L2's pins to paper over my own L1 fix would silently
+invalidate L2's (and L0's) already-accepted campaign evidence — a cross-layer consequence with
+zero authority for an L1 session to force through solo, exactly the class of action this
+campaign's own precedent already ruled out once.
+
+**Fixed at the actual root instead of forcing the regeneration through**: reverted the
+`verification_vocab.py` edit completely (confirmed `git diff origin/main` empty — byte-identical
+again). Resolved F-A17's `scope_cap_sentinel` half without touching the shared module: `ga_dashas_
+writer.py` now derives `SCOPE_CAP_SENTINEL` via one controlled `entry_for("scope_cap_sentinel")`
+lookup against the canonical vocabulary at module-load time (with a runtime assertion the entry
+still exists) instead of either a bare literal at its two use sites or a second hardcoded copy of
+the string — one lookup site instead of two emission sites, reading the single source of truth
+rather than duplicating it. Regenerated `nirmana-writer-digests.json`: confirmed via `git diff
+--stat` this time it touches **exactly one line** (`ga_dashas`'s own entry — legitimate, since the
+writer's own source genuinely changed). Regenerated **only L1's own** analysis-layer pin
+(`nirmana_analysis_layer_pins.py --layer L1`, a tool-supported per-layer scope, reusing the pin's
+existing `convergence_commit` since no reference-commit change was intended) — the tool's own
+output confirmed `layers untouched: L0, L2, L3, L4, L5`.
+
+Updated the F-A17 regression test to match the new shape: checks `SCOPE_CAP_SENTINEL` resolves via
+`entry_for()` rather than a duplicated literal, and added a NEW tripwire test asserting
+`verification_vocab.py` does NOT export a `SCOPE_CAP_SENTINEL` symbol — a deliberate guard against
+this exact blast-radius mistake silently reappearing in a future edit. Re-ran all 60 targeted
+tests (clean) plus both governance checks (`provenance_inventory --check` and
+`nirmana_analysis_layer_pins.py --check`, both clean — no staleness reported by either). Ran the
+exact CI pytest invocation locally too; one unrelated local-environment collection error
+(`ModuleNotFoundError: asyncpg` in `test_permission_curve_route.py`, a missing local dependency,
+not present in CI's own `requirements-ci.txt`-provisioned environment) confirmed unrelated by
+re-running with that one file excluded. Committed (a second commit on the same PR branch, not an
+amend, per standing git discipline), pushed, confirmed `autoMergeRequest` still armed, and
+confirmed a fresh CI dispatch on the new commit shows Governance Gates re-running (not
+immediately re-failing) with zero RED checks so far.
+
+CYCLE 173 L1: PR hygiene surfaced and fixed a genuine RED gate on `#2229` (F-A17's own PR) — not a
+flake, a real cross-layer digest blast-radius mistake in my cycle-172 fix, resolved by reverting
+the shared-L0-module edit and deriving the value via a single controlled vocabulary lookup inside
+`ga_dashas_writer.py` instead, then correctly regenerating ONLY L1's own digest/pin artifacts
+(confirmed zero L0/L2 impact this time) — next: watch `#2229`'s fresh CI run through to a genuine
+merge, then resume `ga_dashas`' first-time campaign evidence submission or `ga_transit_anchors`'
+orphaned evidence pair; keep re-checking #2113/#2180/#2224 every cycle regardless.
