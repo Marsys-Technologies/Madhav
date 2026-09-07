@@ -497,6 +497,12 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~370:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
+  run, now ~11.4min — at the recurring edge-of-range pattern. Step-
+  level unchanged, no separate stall signal. No new `origin/main`
+  merges, `ga_positions` re-confirmed still frozen. No new E-gate
+  opening. IDLE-OK. — blocked on: `#2270` finishing; next action:
+  same, expect resolution next cycle per precedent.
 - `2026-09-07T~369:0xZ — L3-W4 — PR hygiene: `#2270`'s last check, same
   run, now ~9.1min — approaching but still within the confirmed
   ~11min normal range, still on the same `pytest` step. No new
