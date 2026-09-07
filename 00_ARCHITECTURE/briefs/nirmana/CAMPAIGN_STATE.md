@@ -381,6 +381,20 @@ governance (#1762).
 
 ### CONDUCTOR log
 
+- `2026-09-07T14:38:35Z` — cycle 991: **Third bug in the same family, found and ruled — #2317,
+  the dispatch-time echo of #2224.** #2307 (the #2224 fix) is live and confirmed working
+  (`ga_transit_anchors`' verdict submission succeeded against the deployed code) — but
+  `dispatch_nirmana_campaign_wave.py`'s own `validate_wave_evidence_bindings` requires BOTH the
+  analysis AND verdict events to share one `source_ref` == `reviewed_deployment_sha`, which
+  #2224's fix makes structurally impossible for any pair straddling a deploy (the verdict's
+  source_ref is necessarily later than an analysis accepted before an intervening deploy). L1
+  correctly stopped rather than guessing between two live fix shapes. **Ruled** (comment
+  5572239319): option (b) — keep the `source_ref` match on the VERDICT only (proves decision-
+  currency, a real property content-digests don't cover), drop it for the ANALYSIS event (already
+  proven via `canonical_analysis_digests`, matching #2224's own reasoning exactly). Same
+  Conductor-owned-tooling standing as #2276/#2224. `ga_transit_anchors` should dispatch clean the
+  moment this lands. Δfrozen still +0 (56/128). Fleet DIRTY: same 2 known stale native PRs. Own-PR
+  hygiene: none open. Adjudications unchanged (12, net +1 new: #2317).
 - `2026-09-07T14:36:08Z` — cycle 990: **IDLE-OK, Δfrozen +0.** Fleet confirmed active (merges
   through 14:31:16Z), L3's own PR still heartbeat-only. Fleet DIRTY: same 2 known stale native
   PRs. Own-PR hygiene: none open. Adjudications unchanged (12).
