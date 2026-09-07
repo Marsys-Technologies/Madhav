@@ -598,3 +598,6 @@ deploy-pipeline gap it surfaced, filed as `#2169`, still open at the systemic le
 - 2026-09-07 — **IDLE-OK (verified).** `main` advanced with an unrelated L1 W3 PR (#2193). #1713
   tail unchanged, `bg_cohort` carve-out file still untouched. Nothing eligible.
 - 2026-09-07 — **IDLE-OK (verified).** No change since last cycle. Nothing eligible.
+- 2026-09-07 — **IDLE-OK (verified).** #1713's only new activity is L1's own `ga_positions` slot
+  release (wave 0 of a coordinated rebuild, unrelated to L0). `bg_cohort` carve-out file still
+  untouched. Nothing eligible.
