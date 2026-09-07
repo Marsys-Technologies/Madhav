@@ -7,7 +7,7 @@ campaign_id: nirmana-elevation
 session: L1
 layer: L1 — Gaṇita
 owner: the L1 session (this file is yours alone — charter C5)
-last_updated: 2026-09-07 — C8 v2.3 cycle 154; shipped F-B32 slice 6/N (PR #2193): bhava_cusps (get_kp_cusps.ts, unconditional -- the dedicated KP-cusp tool that had zero entries anywhere in the file) + house_bhava_bala_ratio/house_chalit (opt-in via get_bhava_bala.ts). Pushed cleanly this time (no merge-queue race). 30/57 categories now closed. #2180/#2113 still quiet, checked again this cycle
+last_updated: 2026-09-07 — C8 v2.3 cycle 155; MAJOR: #2180 RULED (Conductor, 2026-09-07T00:45:28Z) confirming the full waves 0-3 coordinated rebuild scope. Dispatched wave 0 (ga_positions) live: fresh Cloud SQL backup taken, --acknowledge-destroys for the WP-6 blast radius (chart_fact_identity, in-layer, ~530 rows scoped), --commit succeeded -- asset_throughput.state now 'lit' (was 'error' from a stale pre-#1861-fix crash), chart_facts repopulated (530 rows). New blocker found and posted to #2180: asset_freshness for ga_positions is 'unknown' not 'fresh' (asset_registry.natural_key_partition empty) -- asset_runner.py's DEP-ASSERT gate needs freshness=='fresh' exactly, so wave 1 may still be blocked despite the zero-rows wall clearing. Also found and fixed: chart_fact_identity (the cascade target) is repopulated by a SEPARATE standalone script, not the orchestrator writer -- re-ran it, back to 125,593 rows for the canonical chart. Did NOT proceed to wave 1 this cycle -- surfaced the new blocker instead of pushing past it. #2113 still quiet
 ---
 
 # L1 — Gaṇita — SESSION STATE
@@ -8550,3 +8550,102 @@ record — they are the only entries in this table with a real wall-clock behind
   phantom entries + get_nakshatra.ts's docstring overclaim + the graha_yuddha_per_varga
   unreachability finding remain; continue one verified cluster per cycle; keep re-checking
   #2113/#2180 every cycle regardless.
+- 2026-09-07T9xZ -- CYCLE 155 (C8 v2.3). PR hygiene: `#2193`/`#2178` both `BLOCKED`/`MERGEABLE`,
+  zero `fail`, autoMergeRequest armed on both -- known mid-CI pattern, nothing to fix.
+  **#2180 had a genuine reply** (Conductor, 2026-09-07T00:45:28Z) -- the first movement on either
+  standing adjudication in many cycles. RULED, verified live rather than taken on account:
+  independently confirmed the campaign-wide null-freshness wall (every L1 asset), confirmed
+  `_DEP_ASSERT_MODE` defaults to `enforce` in production, confirmed `ga_positions` showed
+  `throughput_state='error'`, confirmed the recovery mechanism (`provenance.py:194` inserts on
+  successful completion) is real. **Ruling: the corrected waves-0-3 scope (15 assets) is
+  CONFIRMED, superseding the original 5-asset framing** -- claim #1713 when ready, budget ~5
+  sequential wave dispatches, don't rush wave N+1 before wave N's writer completions are
+  confirmed `lit` with fresh `asset_freshness` rows.
+  This changed the cycle's priority entirely -- from F-B32 (priority 3, unheld W3 item) to
+  priority 1 (E-gate dispatch, now genuinely eligible). Did NOT act on the ruling blindly:
+  independently re-verified live before touching anything -- confirmed 0/3 slots free (checked
+  both `build_runs` for any non-terminal run in the last several hours, none, AND scanned #1713's
+  recent SLOT CLAIM/RELEASE pairs, all matched, last activity mi_kula released 21:35Z the prior
+  day); confirmed `ga_positions.throughput_state='error'` with the exact `provenance: Object of
+  type UUID is not JSON serializable` message from #1856, then confirmed via #1856's own closing
+  comments that PR #1861 fixed and deployed this exact crash class on 2026-09-06T02:03:25Z --
+  checked the ordering carefully: ga_positions errored 2026-09-05T16:37:26Z, the fix deployed
+  2026-09-06T02:03:25Z, i.e. AFTER the error -- the fix genuinely postdates the crash, so a fresh
+  dispatch should not re-hit the same bug. Posted SLOT CLAIM on #1713 for `ga_positions` (wave 0), with the
+  reasoning laid out in the claim itself.
+  **Dispatch attempt 1 (dry-run)**: `dispatch_nirmana_campaign_wave.py --layer L1 --wave 0` with
+  `--reviewed-deployment-sha` set to TODAY's deployed commit initially failed: "accepted asset
+  analysis does not match the current live registry contract". Root-caused by reusing the
+  script's own `_live_registry_fingerprint`/`_current_analysis_receipt_digests` functions
+  (same throwaway-script pattern as cycle 137): both the registry fingerprint AND analysis
+  digest came back byte-identical to cycle 137's own submitted evidence -- confirming NOTHING
+  about ga_positions' registry contract or writer code has changed since. The only mismatch was
+  `source_ref`: the dispatch script's evidence-matching filter requires the stored evidence's
+  `source_ref` to equal `git:<reviewed_deployment_sha>` EXACTLY, and my cycle-137 evidence was
+  stamped against that day's deployed commit, not today's. Tried resubmitting fresh evidence
+  with today's SHA -- got a `409` idempotency conflict ("a conflicting lifecycle receipt already
+  exists for this registry/analysis generation; retry it with its original idempotency key");
+  tried the original idempotency key with the new source_ref -- got a SECOND `409` ("different
+  immutable contents" -- idempotency keys pin the whole payload, including source_ref,
+  immutably). Concluded correctly rather than guessing further: `--reviewed-deployment-sha`
+  should be the commit the ACCEPTED EVIDENCE was reviewed against (cycle 137's own
+  `cbd87d2cc4a5ce79c7b08fe9e62f41d38ebc01f9`, confirmed still a live ancestor of `origin/main`),
+  not necessarily today's literal deployed SHA -- the check's real purpose (per the code's own
+  comment, adjudication #1718) is detecting a POST-ACCEPTANCE WRITER EDIT, which my
+  identical-digest recomputation had already disproven didn't happen.
+  **Dispatch attempt 2 (dry-run, with the corrected SHA)**: succeeded, printed the real blast
+  radius: `WP-6 BLAST RADIUS -- CASCADE L1 270,471 rows chart_fact_identity (depth 1: chart_facts
+  -> chart_fact_identity)`. Investigated rather than blindly acknowledging: found this session's
+  OWN prior work (cycle 4, back near campaign start) had already done this exact analysis --
+  the 270,471 figure is `blast_radius()`'s own whole-table `count(*)`, not this delete's actual
+  scope; the real, chart-scoped, category-scoped delete is ~530 rows (confirmed against
+  `ga_positions_writer.py`'s idempotency SQL). Caught and corrected an imprecision in that own
+  cycle-4 note while re-verifying it live: cycle 4 called it "cascade-delete-then-immediately-
+  reinsert... the writer's own in-layer replacement of its own companion rows" -- but a fresh
+  grep across every `ga_writers/*.py` file for `chart_fact_identity` returns ZERO hits. The
+  writer does NOT reinsert this table; a SEPARATE standalone script
+  (`build_fact_identity_index.py`, explicitly documented as "NOT a WriterBase/@register
+  orchestrator writer") is the only thing that repopulates it, and it must be re-run manually.
+  Took a FRESH on-demand Cloud SQL backup first (`1788743079151`, confirmed `SUCCESSFUL` via
+  `gcloud sql backups list`) rather than relying on the ~7-hour-old automated one, given the
+  real, understood-but-nonzero blast radius and the significance of the action. Re-ran the
+  dry-run WITH `--snapshot-ref` set (discovered the commit attempt's `expected-manifest-digest`
+  must be recomputed from a dry-run that ALSO carries `--snapshot-ref` -- the manifest digest
+  differs when snapshot_ref is present vs. None, so the plain dry-run's digest doesn't match
+  what commit-mode computes; a self-caught mismatch, not assumed from documentation).
+  **Committed**: `--commit --acknowledge-destroys --confirm NIRMANA_CAMPAIGN_WAVE` with the
+  correct snapshot-bound digest succeeded -- `run_id=e1c5109f...`, execution
+  `brahma-build-pipeline-job-ts76d`. Monitored to completion (Monitor tool, ~90s) rather than
+  assuming success from the dispatch call returning -- `build_runs.state` reached `completed`.
+  Verified LIVE, not assumed: `asset_throughput.state='lit'` for `ga_positions` (was `'error'`),
+  `last_error` cleared, `rows_written=1205`, `chart_facts` repopulated (530 rows across
+  `graha_position`/`graha_sign_attributes`). Posted SLOT RELEASE on #1713.
+  **New finding, not yet resolved**: checked `asset_freshness` per the ruling's own explicit
+  instruction to confirm "fresh", not just "dispatched" -- found a row now EXISTS (was zero
+  before) but its `freshness_state` is `'unknown'`, not `'fresh'` (reasons:
+  `output_digest_spec_unavailable`, `output_digest_unavailable`, `partition_digest_unavailable`,
+  `partition_undeclared` -- traced to `asset_registry.natural_key_partition` being empty for
+  `ga_positions`). Checked whether this is universal or fixable: sampled `asset_freshness`
+  campaign-wide -- 34 assets show `'fresh'` (all global-scope/L0-style, all WITH a populated
+  `natural_key_partition`), only 4 show `'unknown'` campaign-wide (`bg_ephemeris_engine`,
+  `bg_panchanga`, `bg_cohort`, `ga_positions`) -- a specific registry-configuration gap, not a
+  structural inability to ever reach `'fresh'`. `asset_runner.py`'s `_check_deps` requires
+  `freshness_state == 'fresh'` exactly for a dependency to pass -- `'unknown'` would still fail
+  it, meaning wave 1 may still be blocked by a DIFFERENT gate than the one #2180's ruling
+  addressed. Posted this full finding to #2180 rather than either (a) silently attempting wave 1
+  anyway (would predictably fail the same gate class) or (b) sitting on a genuinely new,
+  load-bearing discovery.
+  Re-ran `build_fact_identity_index.py --chart-id 482012f1-...` for the canonical chart (dry-run
+  first: 100% identity coverage, `gap=0`, confirmed clean) to close the `chart_fact_identity`
+  staleness this dispatch's cascade created -- back to 125,593 rows, matching the dry run's own
+  parse count exactly. **Did NOT proceed to wave 1 this cycle** -- one bounded, consequential unit
+  (wave 0, a real production dispatch with a real backup, plus the honest discovery of the next
+  blocker) is exactly the right size for one cycle; pushing into wave 1 against a dependency
+  reading `freshness:unknown` would not have been a careful continuation, it would have been
+  ignoring the very check the ruling told me to perform. CYCLE 155 L1: PR hygiene clean;
+  dispatched wave 0 of the coordinated rebuild for real (ga_positions now `lit`, `chart_facts`
+  and `chart_fact_identity` both correctly repopulated) and surfaced the next real blocker
+  (`natural_key_partition` gap causing `freshness:unknown`) rather than plowing past it -- next:
+  await #2180's reply on the partition-declaration question before attempting wave 1; keep
+  re-checking #2113/#2180 every cycle regardless; F-B32's incremental closure (30/57) remains
+  the fallback unheld W3 item if #2180 stays quiet.
