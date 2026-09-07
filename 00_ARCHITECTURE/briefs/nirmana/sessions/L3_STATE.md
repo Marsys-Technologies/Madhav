@@ -497,6 +497,22 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~418:0xZ — L3-W4 — PR hygiene: `#2288` advanced to
+  position 2 — `#2286` was `CLOSED` **without merging** (confirmed
+  via GraphQL: `merged: false`, `mergeCommit: null`), not landed on
+  `origin/main`. Investigated: this is L1's own PR-churn pattern
+  (same rebase-and-reopen cycle this session uses) — `#2286` was
+  superseded by newer L1 PRs, `#2289` and `#2290` (both still
+  `OPEN`), with `#2290`'s own title claiming "8 assets frozen,
+  frontier collapses to `ga_dashas`" (i.e. `ga_sensitive` frozen too,
+  leaving only `ga_dashas` open). **Not acting on this** — nothing
+  has actually merged to `origin/main` yet, and this is L1's own
+  session's scope, not mine; will re-verify `ga_dashas`/
+  `ga_sensitive` live via the E-gate query once something genuinely
+  lands. `origin/main` itself unchanged this cycle. IDLE-OK. —
+  blocked on: `#2287` clearing ahead of `#2288`; next action: same,
+  watch for any L1 PR actually merging then re-verify D-CND-26
+  ancestors live.
 - `2026-09-07T~417:0xZ — L3-W4 — PR hygiene: `#2288` still position
   3, `AWAITING_CHECKS` — `#2286`'s `Governance Gates` job now
   ~10.1min, at the upper edge of the confirmed normal range, still
