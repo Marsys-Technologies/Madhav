@@ -497,6 +497,11 @@ your layer close.
 
 ## Heartbeat
 
+- `2026-09-07T~501:0xZ — L3-W4 — PR hygiene: `#2347`'s last check,
+  same run, now ~10.6min — at the upper edge of the confirmed
+  normal range, still on the same `pytest` step, genuine progress
+  not a stall. No new `origin/main` merges. No new E-gate opening.
+  IDLE-OK. — blocked on: `#2347` finishing; next action: same.
 - `2026-09-07T~500:0xZ — L3-W4 — PR hygiene: `#2347`'s last check,
   same run, now ~8.5min — within the confirmed ~11min normal range,
   still on the same `pytest` step. One new `origin/main` merge
