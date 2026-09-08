@@ -1635,7 +1635,6 @@ def test_non_l0_dispatch_reconstructs_receipts_and_fails_closed_per_layer(
             "registry_contract": module._live_registry_contract(candidates["ga_positions"]),
         },
         writer_digest="b" * 64,
-        convergence_commit=convergence_sha,
     )
 
     # Fail closed PER LAYER: an L1 writer edit invalidates L1 and nothing else.
@@ -1656,3 +1655,198 @@ def test_non_l0_dispatch_reconstructs_receipts_and_fails_closed_per_layer(
         writer_digests=untouched,
     )
     assert still_valid == digests
+
+
+def _v2_ruling_selected_asset() -> dict:
+    return {
+        "asset_id": "ga_positions",
+        "layer": "L1",
+        "wave_index": 0,
+        "execution_obligation": "build",
+        "depends_on": [],
+        "registry_contract": _contract(sort_order=1, target_table="chart_facts"),
+        "registry_fingerprint_sha256": "3" * 64,
+    }
+
+
+def test_v2_digest_is_invariant_to_a_sibling_writer_deploy(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Adjudication #2450 structural ruling (Conductor cycle 320), red path (i).
+
+    A sibling writer deploy regenerates the layer pin — new convergence commit,
+    new writer-inventory aggregate — while the untouched asset's own writer
+    digest and registry contract stay put.  Under the v1 receipt the shared pin
+    was hashed into every asset's identity, so this scenario moved EVERY digest
+    in the layer (the #2450 evidence treadmill).  Under v2 the untouched
+    asset's canonical digest must not move.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    selected = [_v2_ruling_selected_asset()]
+    candidates = {"ga_positions": _candidate(selected[0])}
+
+    def digest_under(pin_sha: str, sibling_digest: str) -> str:
+        writer_digests = {"ga_positions": "b" * 64, "ga_sibling": sibling_digest}
+        inventory_sha = _digest({"ga_positions": "b" * 64, "ga_sibling": sibling_digest})
+        pins = _layer_pins(pin_sha, inventory_sha, layer="L1")
+        pins_path = tmp_path / f"pins-{pin_sha[:6]}-{sibling_digest[:6]}.json"
+        pins_path.write_text(json.dumps(pins), encoding="utf-8")
+        monkeypatch.setattr(module, "ANALYSIS_LAYER_PINS_PATH", pins_path)
+        digests, _ = module._current_analysis_receipt_digests(
+            layer="L1",
+            selected_assets=selected,
+            candidates_by_id=candidates,
+            writer_digests=writer_digests,
+        )
+        return digests["ga_positions"]
+
+    before_sibling_deploy = digest_under("a" * 40, "c" * 64)
+    after_sibling_deploy = digest_under("f" * 40, "d" * 64)
+    assert after_sibling_deploy == before_sibling_deploy
+
+
+def test_v2_digest_moves_on_own_writer_or_own_registry_change() -> None:
+    """Red paths (ii)+(iii): the detector still fires for the asset's OWN contract."""
+    module = _load_dispatch_module()
+    assert module is not None
+    selected = _v2_ruling_selected_asset()
+    candidate = _candidate(selected)
+    contract = {
+        "asset_id": "ga_positions",
+        "layer": "L1",
+        "depends_on": [],
+        "registry_contract": module._live_registry_contract(candidate),
+    }
+    baseline = module._canonical_analysis_digest(
+        layer="L1",
+        frozen_manifest_asset=selected,
+        current_registry_contract=contract,
+        writer_digest="b" * 64,
+    )
+    own_writer_changed = module._canonical_analysis_digest(
+        layer="L1",
+        frozen_manifest_asset=selected,
+        current_registry_contract=contract,
+        writer_digest="d" * 64,
+    )
+    assert own_writer_changed != baseline
+    changed_contract = {
+        **contract,
+        "registry_contract": {
+            **contract["registry_contract"],
+            "count_sql": "SELECT count(*) FROM chart_facts WHERE TRUE",
+        },
+    }
+    own_registry_changed = module._canonical_analysis_digest(
+        layer="L1",
+        frozen_manifest_asset=selected,
+        current_registry_contract=changed_contract,
+        writer_digest="b" * 64,
+    )
+    assert own_registry_changed != baseline
+
+
+def test_v1_reconstruction_shape_stays_byte_stable_and_matches_the_ts_compat_pin() -> None:
+    """Red path (iv): stored v1 history must stay re-derivable byte-for-byte.
+
+    The expected digest was produced by the PRE-v2 TypeScript implementation
+    (canonicalNirmanaAssetAnalysisReceiptDigest at origin/main 3c6699da7) over
+    this exact payload, and is pinned by the same constant in
+    definitions.test.ts — one fixture asserting v1 stability AND TS/Python
+    digest parity at once.  If _canonical_analysis_digest_v1 drifts, the #2457
+    submission-time reconstruction silently stops validating v1 history.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    registry_contract = {
+        "sort_order": 1, "scope": "global", "asset_kind": "data", "catalog_status": "CURRENT",
+        "is_active": True, "has_writer": True, "target_table": "bg_prashna_rules",
+        "count_sql": "SELECT count(*) FROM bg_prashna_rules", "integrity_check_sql": None,
+        "health_probe": None, "natural_key_partition": None, "superseded_by": None,
+        "data_disposition": None, "dead_flag": None,
+    }
+    frozen_manifest_asset = {"asset_id": "bg_prashna_rules", "layer": "L0"}
+    current_registry_contract = {
+        "asset_id": "bg_prashna_rules",
+        "layer": "L0",
+        "depends_on": [],
+        "registry_contract": registry_contract,
+    }
+    v1_digest = module._canonical_analysis_digest_v1(
+        layer="L0",
+        frozen_manifest_asset=frozen_manifest_asset,
+        current_registry_contract=current_registry_contract,
+        writer_digest="1" * 64,
+        convergence_commit="a" * 40,
+    )
+    assert v1_digest == "a7a6789160c56e12014e414723741413e5f2f93d9cd40207801d66b4c39e367e"
+    # The schema version is part of identity: the v2 digest over the same
+    # contract surface can never coincide with the v1 digest.
+    assert v1_digest != module._canonical_analysis_digest(
+        layer="L0",
+        frozen_manifest_asset=frozen_manifest_asset,
+        current_registry_contract=current_registry_contract,
+        writer_digest="1" * 64,
+    )
+
+
+def test_submission_time_reconstruction_still_derives_the_v1_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The #2457 historical-reconstruction path must keep producing v1 digests
+    (with the pin state read from the evidence commit), never v2 — only
+    pre-cycle-320 rows can carry a pin-moved digest, and only the v1 shape can
+    reproduce what their write-side validator accepted."""
+    module = _load_dispatch_module()
+    assert module is not None
+    commit = "9" * 40
+    then_convergence = "e" * 40
+    selected = _v2_ruling_selected_asset()
+    candidate = _candidate(selected)
+    contract = {
+        "asset_id": "ga_positions",
+        "layer": "L1",
+        "depends_on": [],
+        "registry_contract": module._live_registry_contract(candidate),
+    }
+
+    class _FakeCompleted:
+        def __init__(self, stdout: str) -> None:
+            self.stdout = stdout
+
+    def _fake_run(cmd, **_kwargs):
+        target = cmd[-1]
+        assert target.startswith(f"{commit}:")
+        if target.endswith("nirmana-analysis-layer-pins.json"):
+            return _FakeCompleted(json.dumps({
+                "layers": {"L1": {"convergence_commit": then_convergence}},
+            }))
+        if target.endswith("nirmana-writer-digests.json"):
+            return _FakeCompleted(json.dumps({"writers": {"ga_positions": "b" * 64}}))
+        raise AssertionError(f"unexpected git show target: {target}")
+
+    monkeypatch.setattr(module.subprocess, "run", _fake_run)
+
+    reconstructed = module._submission_time_analysis_digest(
+        layer="L1",
+        asset_id="ga_positions",
+        source_ref=f"git:{commit}",
+        frozen_manifest_asset=selected,
+        current_registry_contract=contract,
+        current_writer_digest="b" * 64,
+    )
+    assert reconstructed == module._canonical_analysis_digest_v1(
+        layer="L1",
+        frozen_manifest_asset=selected,
+        current_registry_contract=contract,
+        writer_digest="b" * 64,
+        convergence_commit=then_convergence,
+    )
+    assert reconstructed != module._canonical_analysis_digest(
+        layer="L1",
+        frozen_manifest_asset=selected,
+        current_registry_contract=contract,
+        writer_digest="b" * 64,
+    )

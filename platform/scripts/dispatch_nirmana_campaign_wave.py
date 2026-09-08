@@ -191,9 +191,52 @@ def _canonical_analysis_digest(
     frozen_manifest_asset: Mapping[str, Any],
     current_registry_contract: Mapping[str, Any],
     writer_digest: str,
+) -> str:
+    """Match canonicalNirmanaAssetAnalysisDigestForRegistryRow exactly (v2).
+
+    Adjudication #2450 structural ruling (Conductor cycle 320): the hashed
+    identity is exactly the asset's OWN contract surface — asset_id, layer, own
+    writer digest, frozen manifest asset, live registry contract.  The
+    layer-shared convergence pin is deliberately absent: it remains the
+    per-layer availability gate (_validated_layer_writer_inventory) and
+    provenance metadata, but hashing it into per-asset identity meant every
+    sibling writer deploy moved every untouched asset's digest — the #2450
+    evidence treadmill.  For v2 rows, strict digest equality at every gate is
+    correct again; no currency relaxation is ever needed for sibling deploys.
+    """
+    asset_id = frozen_manifest_asset.get("asset_id")
+    if not isinstance(asset_id, str) or frozen_manifest_asset.get("layer") != layer:
+        raise RuntimeError(f"canonical {layer} analysis receipt has an invalid frozen asset")
+    return _sha256_json(
+        {
+            "schema_version": "nirmana-asset-analysis-receipt/v2",
+            "asset_id": asset_id,
+            "layer": layer,
+            "writer_digest_sha256": writer_digest,
+            "frozen_manifest_asset": dict(frozen_manifest_asset),
+            "current_registry_contract": dict(current_registry_contract),
+        },
+        ensure_ascii=False,
+    )
+
+
+def _canonical_analysis_digest_v1(
+    *,
+    layer: str,
+    frozen_manifest_asset: Mapping[str, Any],
+    current_registry_contract: Mapping[str, Any],
+    writer_digest: str,
     convergence_commit: str,
 ) -> str:
-    """Match canonicalNirmanaAssetAnalysisDigestForRegistryRow exactly."""
+    """The pre-cycle-320 v1 receipt shape, byte-for-byte.
+
+    Kept ONLY for _submission_time_analysis_digest's historical reconstruction:
+    stored v1 evidence rows hashed the full receipt base (layer-shared
+    convergence pin included), so proving one was live-current at its own
+    submission commit requires re-deriving that exact shape with the pin state
+    read from that commit.  Never used for CURRENT digests — new evidence and
+    every gate's canonical recomputation are v2.
+    """
     asset_id = frozen_manifest_asset.get("asset_id")
     if not isinstance(asset_id, str) or frozen_manifest_asset.get("layer") != layer:
         raise RuntimeError(f"canonical {layer} analysis receipt has an invalid frozen asset")
@@ -266,7 +309,6 @@ def _current_analysis_receipt_digests(
                 "registry_contract": _live_registry_contract(candidate),
             },
             writer_digest=writer_digest,
-            convergence_commit=pin["convergence_commit"],
         )
     return digests, pin["convergence_commit"]
 
@@ -366,7 +408,12 @@ def _submission_time_analysis_digest(
         return None
     if writers_then.get(asset_id) != current_writer_digest:
         return None
-    return _canonical_analysis_digest(
+    # v1 shape on purpose: only PRE-cycle-320 evidence can carry a digest that
+    # moved with the shared pin, so historical reconstruction re-derives the v1
+    # receipt.  A v2 row never needs this path — its digest is pin-independent,
+    # so a v2 mismatch means the asset's OWN contract changed, which this
+    # relaxation must not (and structurally cannot) rescue.
+    return _canonical_analysis_digest_v1(
         layer=layer,
         frozen_manifest_asset=frozen_manifest_asset,
         current_registry_contract=current_registry_contract,
