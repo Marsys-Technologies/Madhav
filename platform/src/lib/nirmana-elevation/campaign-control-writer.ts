@@ -71,7 +71,7 @@ export async function getNirmanaCampaignControlWriterPool(): Promise<Pool> {
       keepAliveInitialDelayMillis: 10_000,
       idleTimeoutMillis: 15_000,
       connectionTimeoutMillis: 5_000,
-      options: '-c statement_timeout=25000',
+      options: '-c statement_timeout=1800000',
     }
     if (process.env[CONTROL_DATABASE_URL]) {
       globalPools.__nirmanaCampaignControlWriterPool = new Pool({
