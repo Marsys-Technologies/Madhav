@@ -1,4 +1,4 @@
--- 935_nirmana_l2_bo_bimba_output_digest_spec.sql
+-- 937_nirmana_l2_bo_bimba_output_digest_spec.sql
 --
 -- NIRMĀṆA L1 — RESOLUTION_L1 v5 priority 3 (chain pre-clear). Closes the
 -- `asset_output_digest_specs` gap for `bo_bimba`. Confirmed via `SELECT *
