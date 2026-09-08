@@ -1,0 +1,112 @@
+-- 950_nirmana_l5_mi_darshana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit -- first L5 pick per STATE_l1.md w372's own next-cycle
+-- note (item 4d: "several mi_* names may be chart-scorecard-shaped ...
+-- worth checking once the L2 leftovers are exhausted"). mi_darshana
+-- turned out NOT to be single-row-per-chart (115 live rows for the
+-- canonical chart) but IS a clean single-table, single-writer asset with
+-- an already-deterministic natural key, matching the established
+-- multi-row pattern (e.g. bo_bimba, migration 937) rather than the
+-- scorecard pattern (bo_pramana_mapa, migration 948).
+--
+-- MiDarshana (pipeline/orchestrator/writers/mi_darshana.py,
+-- @register("mi_darshana")) is the SOLE writer of mimamsa_insight_units --
+-- confirmed via grep across all .py files for INSERT/UPDATE against this
+-- table (only mi_darshana.py itself; the two hits under tests/ are test
+-- files, not writers).
+--
+-- HEAVY writer, 3 substeps ("insight_units", "embeddings", "views_verify"),
+-- PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM mimamsa_insight_units WHERE chart_id = %s` immediately
+-- before the INSERT batch (plus a sibling delete on
+-- mimamsa_insight_embeddings, a different table, not this asset's own
+-- content) -- standard L1+ delete-then-insert-per-chart per CLAUDE.md
+-- SS N.3, no build_id scoping needed for this asset's own idempotency.
+--
+-- Natural key: (chart_id, insight_id) -- this is ALREADY the table's own
+-- PRIMARY KEY (confirmed via psql \d mimamsa_insight_units:
+-- "mimamsa_insight_units_pkey" PRIMARY KEY, btree (chart_id, insight_id)).
+-- insight_id is NOT a random uuid -- it is deterministically constructed
+-- per insight_type from stable source-row identifiers, confirmed by
+-- reading every insight_id assignment site in the writer:
+--   calibrated_outlook   -- f"cal_{stratum_key}_{i}"          (line 237)
+--   manifestation_grammar-- f"gram_{domain}_{channel}_{i}"    (line 313)
+--   emergent_law         -- f"disc_{discovery_id}"            (line 355)
+--   load_bearing         -- f"lb_{conclusion_id}"              (line 398)
+--   verdict_object       -- f"verdict_{event_class_id}"  (lines ~514, 693)
+-- All inputs (stratum_key, discovery_id, conclusion_id, event_class_id,
+-- channel_id/domain) are themselves deterministic keys from upstream
+-- mimamsa_*/brahma_event_ontology rows, re-derived identically on every
+-- rebuild -- no bare uuid.uuid4() anywhere in this writer.
+--
+-- `updated_at` excluded -- DEFAULT now(), a wall-clock write-time
+-- timestamp (changes every rebuild regardless of content), same
+-- exclusion class as every prior spec's build_id/computed_at/scored_at
+-- columns in this series. `last_calibrated_at` also excluded -- for 2 of
+-- 5 insight_type branches (manifestation_grammar, emergent_law) it is set
+-- to `datetime.utcnow()` at write time (lines ~318, ~373: `now` param),
+-- i.e. a second wall-clock write-time stamp on this table, not a
+-- content-derived value; the other 3 branches (calibrated_outlook,
+-- load_bearing, verdict_object) always pass None for it. Both exclusions
+-- verified by reading every INSERT tuple construction site in the writer
+-- end to end (5 distinct `rows.append((...))` call sites), not inferred
+-- from the column name alone.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the whole writer for
+-- `cell_id`/`node_id`/`cgm_node`/`cdlm_cell` -- zero hits. The
+-- verdict_object branch's `ranked_evidence`/`domain_contras` JSONB
+-- payloads (embedded in `provenance_chain`) cite `bodha_msr_signals.
+-- signal_id` and `constituent_facts_array` (legitimate L1 fact_id
+-- references per CLAUDE.md SS N.5) and `bodha_contradictions.
+-- signal_a_id`/`signal_b_id` (also MSR signal ids) -- none of these are
+-- the known-contaminated bodha_cgm_nodes.node_id / bodha_cdlm_cells.
+-- cell_id columns. Every other insight_type's provenance_chain content
+-- (stratum_key, channel_id, discovery_id, conclusion_id/signal_id) comes
+-- from this asset's own L5 sibling tables (mimamsa_reliability,
+-- mimamsa_manifestation_grammar, mimamsa_discoveries,
+-- mimamsa_load_bearing), not from any L2 Bodha table in the do-not-
+-- attempt contamination list.
+--
+-- value_columns = every live column on mimamsa_insight_units EXCEPT
+-- updated_at, last_calibrated_at (2 excluded, per above). Live schema
+-- re-verified via psql \d mimamsa_insight_units immediately before
+-- authoring this migration: 18 columns total, 16 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                             # == the literal below
+--   print(_validate_spec('mi_darshana', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='mi_darshana') -> got back a clean digest hex
+-- (dc5480285c1e2950159a867ac286debc10defd441ce030e30a108bec5f2aee13, no
+-- exception, key-preflight passed over 115 live rows for the canonical
+-- chart) -> conn.rollback() -> re-queried asset_output_digest_specs from
+-- a FRESH connection afterward and confirmed 0 rows for mi_darshana,
+-- i.e. genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_darshana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_darshana',
+  '04f78467695d6ce300976d000a742ad01ec1b4e0d2c8d9b71958f527b4ce9fcc',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_insight_units","relation":"mimamsa_insight_units","key_columns":["chart_id","insight_id"],"value_columns":["chart_id","insight_id","insight_type","domain","horizon","question_lens","statement","rank_consequence","confidence_band","n_support","leakage_status","evidence_grade","freshness_lel_version","provenance_chain","is_negative_knowledge","surface_formula_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
