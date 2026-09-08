@@ -2228,6 +2228,7 @@ it('atomically supersedes the exact current frozen definition with the server-de
     expect(rebuildQuery?.[0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
     expect(rebuildQuery?.[0]).toContain("run.plan_manifest #>> '{campaign_control,campaign_id}' = $5")
     expect(rebuildQuery?.[0]).toContain('run.started_at > $7::timestamptz')
+    expect(rebuildQuery?.[0]).toContain("run.created_at >= now() - interval '10 minutes'")
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
   })
 
