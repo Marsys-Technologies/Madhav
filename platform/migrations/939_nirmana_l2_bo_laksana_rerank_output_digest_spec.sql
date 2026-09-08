@@ -1,0 +1,101 @@
+-- 939_nirmana_l2_bo_laksana_rerank_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Closes the last named #2455-class output_digest_spec gap flagged on
+-- #1770 (RESOLUTION_L1 v5 priority 3 audit, cycle ~22:38Z 2026-09-08):
+-- bo_laksana_rerank was the ONE asset of the 7-asset chain-pre-clear list
+-- judged "likely tractable without a writer fix", since its target column
+-- (graph_node_strength_contribution_jsonb) is already deterministic --
+-- unlike bo_karanajala/bo_cgm_motifs/bo_cgm_paths/bo_samskara/bo_sangati,
+-- which remain genuinely blocked on their own bare-uuid4() identity defect
+-- (see that comment for the full account; those five are NOT touched here).
+--
+-- bo_laksana_rerank (BoLaksanaRerankWriter, pipeline/orchestrator/writers/
+-- bo_laksana.py:3905) is UPDATE-only and owns no row identity in
+-- bodha_msr_signals -- it enriches existing rows other writers created. Read
+-- the writer's run() body directly (source of truth over any docstring) to
+-- enumerate exactly which columns it writes, chart-wide, with NO
+-- signal_type_class scoping (it can touch a row of any class that resolves
+-- a primary graha via CGM centrality, or that started as
+-- valence_source='keyword_heuristic_v1'):
+--   1. graph_node_strength_contribution_jsonb -- UPDATE ... WHERE
+--      signal_id = %s, one row at a time, inside the CR-84 rerank loop.
+--      Exclusively written by this asset (migration 446: "previously
+--      always NULL" until this writer's post-CGM pass).
+--   2. system_convergence_count, cross_system_consensus_count,
+--      contradicts_signals_array -- _populate_synthesis_rollups()'s two
+--      SQL UPDATEs (_SYNTHESIS_ROLLUP_SQL / _CONTRADICTS_SQL), chart+
+--      ayanamsha scoped, D-SYNTHESIS ruling #1720. Exclusively written by
+--      this asset -- no other writer in the codebase sets these three
+--      columns (grepped bo_laksana.py + every other bo_*/writers/*.py
+--      writer file for the column names; zero other emit sites).
+--   3. valence, valence_source -- PARK-#4 reclaim, but ONLY on rows that
+--      started as valence_source='keyword_heuristic_v1', and other writers
+--      (e.g. bo_laksana itself, satellite signal writers) also set these
+--      two columns at insert time on rows this asset never touches.
+--      DELIBERATELY EXCLUDED from value_columns below: including a
+--      shared-write column chart-wide would make this digest sensitive to
+--      OTHER assets' valence changes, breaking the "digest measures only
+--      this asset's own declared output" boundary (crib precedent, #1770).
+--
+-- Because the writer's own WHERE clauses carry no signal_type_class filter
+-- (unlike bo_bimba/bo_arudha/bo_laksana's owned-class specs), and the spec
+-- DSL (output_digest.py's _where_filter) has no "IS NOT NULL" primitive to
+-- scope down to just the touched rows, this component's where_equals is
+-- chart_id-only, spanning the FULL bodha_msr_signals population for the
+-- canonical chart. Untouched rows serialize their (mostly NULL) values for
+-- these four columns same as any touched row's real payload -- deterministic
+-- either way, and exactly the "cross-writer UPDATE on a shared table is IN
+-- SCOPE for the row-owning asset's digest" precedent already established
+-- for bo_bimba's bodha_cgm_nodes scoping (#1770 crib).
+--
+-- Live-verified against the canonical chart (482012f1-710e-4a25-994a-
+-- 93821f5871aa) 2026-09-08 ~23:xx UTC:
+--   - bodha_msr_signals: 50,678 total rows for this chart, 0 with
+--     signal_id NULL, 50,678 distinct signal_id (key-preflight clean).
+--   - graph_node_strength_contribution_jsonb IS NOT NULL: 0 rows for THIS
+--     chart right now (10,968 non-NULL exist fleet-wide, but only on charts
+--     1c826d5a.../cb73cd3d..., not the canonical one). asset_throughput
+--     confirms why: bo_laksana_rerank last built the canonical chart
+--     2026-08-12 15:33:52Z (state now 'stale'), while bo_laksana's OWN
+--     delete-then-insert rebuild ran LATER (build_run 7c8f2195..., cycle
+--     2026-09-08 ~15:32-15:34Z per migration 929's header) -- that later
+--     rebuild replaced every row (including the previously-enriched ones)
+--     with fresh NULL-hook rows, and bo_laksana_rerank has not re-run since
+--     to re-populate them. This is an HONEST empty-for-now state, not a
+--     defect: the digest mechanism handles a 0-row-matched component
+--     correctly (deterministic hash of the component name + row_count=0),
+--     and will pick up real content the next time bo_laksana_rerank rebuilds
+--     (already `state='stale'`, i.e. already due). Authoring the spec now
+--     unblocks that FUTURE rebuild's asset_provenance_receipts instead of
+--     re-deriving the same audit later.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented, then rehearsed end-to-end against
+-- live prod inside a ROLLED-BACK transaction (INSERT spec -> real
+-- compute_output_digest() call -> confirmed a digest hex string returns,
+-- key-preflight passes, no exception -> ROLLBACK; re-queried
+-- asset_output_digest_specs afterward to confirm 0 rows, i.e. genuinely
+-- rolled back, nothing persisted by the rehearsal):
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == the literal below
+--   print(_validate_spec('bo_laksana_rerank', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_laksana_rerank' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_laksana_rerank',
+  '6470c095e5c39c7fe2f3c12bfaebf5b2b97706000029db9185d096848b1c524a',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_msr_signals","relation":"bodha_msr_signals","key_columns":["signal_id"],"value_columns":["signal_id","graph_node_strength_contribution_jsonb","system_convergence_count","cross_system_consensus_count","contradicts_signals_array"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
