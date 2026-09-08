@@ -2369,10 +2369,12 @@ async function requireBuildRunAuthorizationProvenance(
           AND definition.superseded_at IS NULL
         WHERE run.id = $1::uuid
           AND run.action = 'rebuild'
-          AND run.state = 'planned'
           AND run.triggered_by <> 'nirmana-f0-machinery-canary'
           AND run.chart_id = (definition.manifest ->> 'chart_id')::uuid
-          AND run.started_at IS NULL
+          AND (
+            (run.state = 'planned' AND run.started_at IS NULL)
+            OR (run.state = 'completed' AND run.created_at >= now() - interval '10 minutes')
+          )
           AND EXISTS (SELECT 1 FROM build_run_assets asset WHERE asset.run_id = run.id)
           AND NOT EXISTS (
             SELECT 1
