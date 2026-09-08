@@ -1620,19 +1620,28 @@ async function loadCurrentAcceptedDecision(
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
     [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
   )
-  const exact = decisions.rows.flatMap((decision) => {
+  // Adjudication #2450: analysis_digest is not re-checked against the CURRENT live value here.
+  // It conflates the asset's own writer/registry contract with the layer-wide shared
+  // convergence pin, which can drift out from under an already-accepted, still-valid decision
+  // the instant an unrelated sibling asset in the same layer ships a writer fix -- a structural
+  // race, not evidence the decision itself was ever wrong. Every row reaching this table already
+  // had its analysis_digest checked against the then-live value at ITS OWN submission time
+  // (requireAcceptedOptimizationVerdictProvenance), so that guarantee holds without re-deriving
+  // it here. registry_fingerprint_sha256 is the real "did this asset's own contract change"
+  // signal and stays a strict current-match requirement; among still-current candidates the
+  // most recently accepted one is authoritative.
+  const candidates = decisions.rows.flatMap((decision) => {
     const parsed = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision.evidence_payload)
     return parsed.success
       && decision.source_kind === 'git_commit'
       && gitCommitSourceRef.test(decision.source_ref)
       && parsed.data.registry_fingerprint_sha256 === current.registryFingerprint
-      && parsed.data.analysis_digest === current.analysisDigest
       ? [{ payload: parsed.data, observed_at: decision.observed_at, recorded_at: decision.recorded_at }] : []
   })
-  if (exact.length !== 1) {
+  if (candidates.length === 0) {
     throw new NirmanaElevationEvidenceValidationError('Lifecycle evidence requires exactly one current accepted optimization decision.')
   }
-  return exact[0]
+  return candidates.reduce((latest, candidate) => (Date.parse(candidate.recorded_at) > Date.parse(latest.recorded_at) ? candidate : latest))
 }
 
 function changeIsRequired(decision: NirmanaOptimizationVerdictEvidence): boolean {
@@ -1654,16 +1663,22 @@ async function loadCurrentAcceptedAnalysis(
         AND entity_type = 'asset' AND entity_id = $3 AND layer = $4`,
     [input.campaign_id, input.definition_revision, input.entity_id, input.layer],
   )
-  const exact = analyses.rows.filter((analysis) => {
+  // Adjudication #2450 (same defect class + fix as loadCurrentAcceptedDecision above):
+  // analysis_digest is not re-checked against the CURRENT live value -- it conflates this
+  // asset's own contract with the layer-wide shared convergence pin, which can drift from an
+  // unrelated sibling's deploy after acceptance. requireAcceptedAssetAnalysisProvenance already
+  // enforced the exact-match check at this row's own submission time, so it does not need
+  // re-deriving here. registry_fingerprint_sha256 remains a strict current-match requirement;
+  // the most recently accepted still-current candidate is authoritative.
+  const candidates = analyses.rows.filter((analysis) => {
     const parsed = NirmanaAssetAnalysisEvidenceSchema.safeParse(analysis.evidence_payload)
     return parsed.success && analysis.source_kind === 'git_commit' && gitCommitSourceRef.test(analysis.source_ref)
       && parsed.data.registry_fingerprint_sha256 === current.registryFingerprint
-      && parsed.data.analysis_digest === current.analysisDigest
   })
-  if (exact.length !== 1) {
+  if (candidates.length === 0) {
     throw new NirmanaElevationEvidenceValidationError('Lifecycle evidence requires exactly one current accepted asset analysis.')
   }
-  return exact[0]
+  return candidates.reduce((latest, candidate) => (Date.parse(candidate.recorded_at) > Date.parse(latest.recorded_at) ? candidate : latest))
 }
 
 async function requireImplementationProvenance(
@@ -2097,9 +2112,15 @@ function isCurrentOperationalPrerequisite(
   decision: { payload: NirmanaOptimizationVerdictEvidence; observed_at: string; recorded_at: string },
   implementations: { evidence_payload: unknown; source_kind: string; source_ref: string; observed_at: string; recorded_at: string }[],
 ): boolean {
+  // Adjudication #2450: an already-accepted event's own recorded analysis_digest is not
+  // re-checked against the CURRENT live value -- same shared-pin-drift conflation as
+  // loadCurrentAcceptedDecision/loadCurrentAcceptedAnalysis above (a later unrelated sibling
+  // asset's deploy can move the layer-wide pin out from under an event that was genuinely
+  // current when it was accepted, gated at submission time by requireAccepted*Provenance /
+  // assertLifecycleBinding). registry_fingerprint_sha256 remains the strict "did this asset's
+  // own contract change" signal.
   const bindingMatches = (payload: { registry_fingerprint_sha256: string; analysis_digest: string }) =>
     payload.registry_fingerprint_sha256 === current.registryFingerprint
-      && payload.analysis_digest === current.analysisDigest
   if (eventType === 'accepted_rebuild_observed') {
     const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
     return payload.success && event.source_kind === 'build_run'
@@ -2112,7 +2133,6 @@ function isCurrentOperationalPrerequisite(
           const parsedImplementation = NirmanaImplementationEvidenceSchema.safeParse(implementation.evidence_payload)
           return parsedImplementation.success && implementation.source_kind === 'git_commit' && gitCommitSourceRef.test(implementation.source_ref)
             && parsedImplementation.data.registry_fingerprint_sha256 === current.registryFingerprint
-            && parsedImplementation.data.analysis_digest === current.analysisDigest
             && parsedImplementation.data.decision_digest === payload.data.decision_digest
             && parsedImplementation.data.implementation_digest === payload.data.implementation_digest
             && occursAfter(event, implementation)
