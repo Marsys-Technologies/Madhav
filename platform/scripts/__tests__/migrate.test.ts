@@ -752,9 +752,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; seven known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07)', () => {
+  it('the checked-in allowlist parses; nine known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition (2026-09-09)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 7.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 9.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -783,10 +783,18 @@ describe('loadRenumberDisclosures', () => {
     //   schema, PR #2346, ahead of PR #2329 in the merge queue) before either PR had actually
     //   merged to main. Disclosed 2026-09-07 (caught by the merge queue's speculative
     //   merge-group Unit Tests run for PR #2329, by the L1 NIRMANA campaign lane).
+    // Entry 8: 935_nirmana_l2_bo_bimba_output_digest_spec.sql applied to production under the
+    //   DB-only fast-path ruling (#1770, cycle 361) on this same PR's own branch, renumbered to
+    //   937 after colliding with two OTHER concurrently open PRs (#2472/#2473) also claiming
+    //   935/936 for an unrelated grant pair. Disclosed 2026-09-09 (self-diagnosed during this
+    //   PR's own pre-merge PR-hygiene pass, by the L1 NIRMANA campaign lane).
+    // Entry 9: 936_nirmana_l2_bo_bimba_natural_key_partition.sql, sibling to Entry 8, same
+    //   three-way collision, same in-branch renumber commit, renumbered to 938. Disclosed
+    //   2026-09-09 (same pre-merge discovery as Entry 8).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(7)
+    expect(map.size).toBe(9)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -829,6 +837,18 @@ describe('loadRenumberDisclosures', () => {
     expect(entry898!.sql_identity).toBe('fe69f2f440828433117c3542f861538e17182b54c55a65706471d3a8df00f8a9')
     expect(entry898!.disposition).toBe('already-applied-under-old-name')
     expect(entry898!.disclosed_on).toBe('2026-09-07')
+    const entry937 = map.get('937_nirmana_l2_bo_bimba_output_digest_spec.sql')
+    expect(entry937).toBeDefined()
+    expect(entry937!.applied_filename).toBe('935_nirmana_l2_bo_bimba_output_digest_spec.sql')
+    expect(entry937!.sql_identity).toBe('e419cdc9c08e809af17c95c552aa3df9810ba98c527aede5dd61e46eefb4f385')
+    expect(entry937!.disposition).toBe('already-applied-under-old-name')
+    expect(entry937!.disclosed_on).toBe('2026-09-09')
+    const entry938 = map.get('938_nirmana_l2_bo_bimba_natural_key_partition.sql')
+    expect(entry938).toBeDefined()
+    expect(entry938!.applied_filename).toBe('936_nirmana_l2_bo_bimba_natural_key_partition.sql')
+    expect(entry938!.sql_identity).toBe('c25c9f3f7f522018ead3ce8e5b69c415c08a97aa1487e3f497366ccb887d32d3')
+    expect(entry938!.disposition).toBe('already-applied-under-old-name')
+    expect(entry938!.disclosed_on).toBe('2026-09-09')
   })
 })
 
