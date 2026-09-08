@@ -1,0 +1,112 @@
+-- 946_nirmana_l2_bo_grounding_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. This cycle picked bo_grounding off the NEXT CYCLE
+-- candidate list (STATE_l1.md w370): a small, well-scoped pick flagged
+-- as "0 rows fleet-wide -- genuinely never-succeeded build (upstream
+-- dependency bo_laksana did not complete), same honest-empty precedent
+-- as bo_laksana_rerank/bo_drishti" -- confirmed unchanged this cycle
+-- (0 rows fleet-wide AND for the canonical chart).
+--
+-- BoGroundingWriter (pipeline/orchestrator/writers/bo_grounding.py,
+-- @register at line 107) is the SOLE writer of bodha_grounding_matches
+-- (migration 897) -- confirmed via grep: no other file contains an
+-- INSERT/UPDATE against this table.
+--
+-- Natural key: the table's own live unique constraint (confirmed via
+-- \d bodha_grounding_matches) is
+-- (chart_id, ayanamsha_id, target_kind, target_id, build_id). build_id
+-- is EXCLUDED from the digest key/value columns: it is the orchestrator's
+-- per-run identifier (build_id=run_id, asset_runner.py), fresh on every
+-- rebuild even when content is unchanged -- the same non-determinism
+-- class as a bare uuid4 PK, just at run-granularity instead of row-
+-- granularity. The writer's own idempotency helper
+-- (replace_prior_grounding_matches, bodha_writers/_idempotency.py:195)
+-- confirms this is safe: delete-then-insert is scoped to
+-- (chart_id, ayanamsha_id) only ("no co-writer sharing, so scope is the
+-- whole slice"), so only one build's rows exist at a time per
+-- (chart_id, ayanamsha_id) -- (ayanamsha_id, target_kind, target_id) is
+-- therefore a sufficient live natural key once build_id and chart_id
+-- (via where_equals) are set aside.
+--
+-- `match_id` is a bare `uuid.uuid4()` (writer line ~84; also the column's
+-- own DB default `gen_random_uuid()`) -- excluded per the established
+-- random-PK-exclusion rule, same as every prior spec in this series.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): bo_grounding's two source
+-- reads are `ga_yoga_firings` (L1, ga_yoga's own output -- not on any
+-- do-not-attempt list) and `bodha_msr_signals` (bo_laksana's own output
+-- -- also not on the do-not-attempt list; `signal_id` is the same
+-- already-established-safe key every prior spec in this series
+-- referencing bodha_msr_signals relies on, e.g. bo_pratijna's
+-- supporting_signal_ids/contradicting_signal_ids). Neither
+-- `bodha_cgm_nodes` nor `bodha_cdlm_cells` (the two known-contaminated
+-- shared tables) is read anywhere in bo_grounding.py or
+-- bodha_writers/grounding_matcher.py (grepped both for `node_id`,
+-- `cell_id`, `bodha_cgm_nodes`, `bodha_cdlm_cells` -- zero hits). No
+-- contamination risk found.
+--
+-- value_columns = every live column on bodha_grounding_matches EXCEPT
+-- match_id (random uuid, excluded above) and {build_id, computed_at}
+-- (the standard table-invariant exclusion set used by every prior spec
+-- in this series). Live schema re-verified via psql \d
+-- bodha_grounding_matches immediately before authoring this migration:
+-- 13 columns total, 10 in the spec (3 excluded: match_id, build_id,
+-- computed_at). `citation_granularity`, `grounding_evidence_jsonb`,
+-- `derivation_chain`, `matched_rule_id` are all nullable by the table's
+-- own check-constraint design (tier-conditional fields, e.g.
+-- `citation_granularity` is required only when `grounding_tier='sruti'`)
+-- -- kept per the standing "partially-NULL is fine, only 100%-NULL is
+-- excluded" rule; moot for this migration since the table has 0 rows
+-- fleet-wide as of this cycle (see below), so no live NULL pattern to
+-- check yet.
+--
+-- Honest-empty precedent (bo_laksana_rerank/bo_drishti, prior cycles):
+-- bodha_grounding_matches has 0 rows fleet-wide, including for the
+-- canonical chart -- verified live this cycle
+-- (select count(*) from bodha_grounding_matches = 0;
+-- select count(*) ... where chart_id = '482012f1-...' = 0). This is an
+-- already-attempted build that has never produced output (its own
+-- asset_registry-adjacent DAG dependency bo_laksana gates it), not a
+-- build that "hasn't run yet" -- specced honestly the same way as its
+-- precedents; compute_output_digest() over 0 matched rows still returns
+-- a real, deterministic digest (row_count=0 hashed), verified in the
+-- rehearsal below.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                             # == the literal below
+--   print(_validate_spec('bo_grounding', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur, asset_id='bo_grounding')
+-- -> got back a clean digest hex
+-- (2ae8e7c12c434381a9287a6b575e1f0817959c69489779881dd0267773a86e1c,
+-- no exception, key-preflight passed trivially over 0 rows) ->
+-- conn.rollback() -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for bo_grounding, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_grounding' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_grounding',
+  '1c2a348aacbafbe70f911b5665757e3f5434dfddf31beccf973aaa9f1e8ff93d',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_grounding_matches","relation":"bodha_grounding_matches","key_columns":["ayanamsha_id","target_kind","target_id"],"value_columns":["chart_id","ayanamsha_id","target_kind","target_id","grounding_tier","citation_granularity","grounding_evidence_jsonb","derivation_chain","matched_rule_id","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
