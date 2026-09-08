@@ -1,0 +1,128 @@
+-- 916_nirmana_l1_ga_medical_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_medical`. Confirmed via `SELECT count(*) FROM asset_output_digest_specs
+-- WHERE asset_id = 'ga_medical'` returning ZERO rows before this migration.
+-- Without a spec row, `compute_output_digest()` (platform/python-sidecar/
+-- pipeline/orchestrator/output_digest.py) always returns `(None, None)` for
+-- this asset, so its provenance receipt (platform/python-sidecar/pipeline/
+-- orchestrator/provenance.py) can never leave `receipt_state = 'unknown'` --
+-- same defect class as migrations 914 (`ga_structural`) and 915 (`ga_tajaka`)
+-- and the wave-891/892/893/894/895 precedent. This migration closes the gap
+-- for `ga_medical` only; `ga_sade_sati`, `ga_vastu`, `ga_vichara`, `ga_yoga`
+-- are deliberately left for separate migrations rather than rushed into one
+-- batch.
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────────
+--
+-- `ga_medical`'s writer (`platform/python-sidecar/ga_writers/ga_medical_writer.py`)
+-- writes to exactly ONE relation, `ga_medical`, via a single plain `INSERT INTO
+-- ga_medical (...)` (line 371) -- one insert call site, one relation, no
+-- `fact_category`-partitioned `chart_facts` write and no dedicated-varsha-style
+-- multi-insert pattern.
+--
+-- Ownership cross-check: `grep -rln 'ga_medical\b' platform/python-sidecar
+-- --include=*.py` (excluding __pycache__/__tests__) finds five other
+-- referencing files -- `pipeline/orchestrator/writers/bg_medical_mappings.py`
+-- (docstring mention only), `pipeline/orchestrator/writers/ga_medical.py`
+-- (the orchestrator @register('ga_medical') adapter, which only imports and
+-- calls `build_ga_medical_substep` -- delegates, does not itself write SQL),
+-- `pipeline/orchestrator/writers/bo_laksana.py` (a string-literal asset-id
+-- lookup-table entry `"ga_medical": "medical"`, not a table write), and
+-- `brahmagyan/l0_medical.py` (docstring/comment mentions only). None of the
+-- five contains an `INSERT INTO ga_medical` or `UPDATE ga_medical`. `ga_medical
+-- _writer.py`'s own `_insert_rows`-equivalent block plus the shared
+-- delete-then-insert idempotency helper (`ga_writers/_idempotency.py`, the
+-- standard `(chart_id, ayanamsha_id)`-scoped DELETE before rebuild) are the
+-- only write paths. `ga_medical_writer.py` is confirmed the sole writer.
+--
+-- ── key + value columns (verified against live data + DB schema) ────────────────
+--
+-- Table has 15 columns total (`\d ga_medical`): `id` (PK, serial integer --
+-- NOT a stable content key, see exclusion note below), `chart_id`,
+-- `ayanamsha_id`, `graha`, `natal_sign`, `natal_nakshatra`,
+-- `indication_strength`, `dosha_aggravated`, `organ_watch`, `body_part_watch`,
+-- `nakshatra_body_part`, `indication_tier`, `not_diagnosis`,
+-- `classical_citation`, `computed_at`. There is no `build_id` column on this
+-- table at all (unlike 914/915's tables).
+--
+-- Two columns are excluded from both `key_columns` and `value_columns`:
+--   * `computed_at` -- a per-rebuild timestamp, not content (same rationale as
+--     every precedent migration, e.g. 894/914/915's `computed_at` exclusion).
+--   * `id` -- NOT a stable content key. It is a plain `serial` (auto-
+--     incrementing integer) primary key, confirmed via `\d ga_medical`
+--     (`nextval('ga_medical_id_seq'::regclass)`), not a value the writer ever
+--     sets explicitly (the writer's own INSERT statement, verified at source
+--     line 371, does not list `id` among its target columns at all). Because
+--     the idempotency pattern is DELETE-then-INSERT, a fresh rebuild reassigns
+--     entirely new sequence values on every run even when the astrological
+--     content is byte-identical to the prior build -- including `id` in
+--     `value_columns` would make the digest change on every rebuild for no
+--     content reason, defeating the digest's purpose. This is the same
+--     per-rebuild-identifier exclusion class as 915's `varsha_id` (there:
+--     random UUID; here: auto-incrementing serial -- different mechanism,
+--     identical non-determinism-across-rebuilds hazard), and as 914/915's
+--     `build_id`/`computed_at`.
+--
+-- `key_columns = [chart_id, ayanamsha_id, graha]` was chosen as the stable
+-- natural key: it is exactly the table's own DB UNIQUE CONSTRAINT
+-- (`ga_medical_chart_id_ayanamsha_id_graha_key`), and matches the writer's own
+-- documented "Natural key: (chart_id, ayanamsha_id, graha)" docstring comment
+-- (source line 6). Live-verified on the canonical chart (`482012f1`):
+-- `SELECT chart_id, ayanamsha_id, graha, count(*) FROM ga_medical WHERE
+-- chart_id = '482012f1-...' GROUP BY 1,2,3 HAVING count(*) > 1` returns ZERO
+-- rows -- the natural key is genuinely unique with no collisions, confirmed
+-- against live data, not assumed from the DB constraint alone. Live row shape:
+-- 9 grahas x 5 ayanamshas = 45 rows total for this chart, exactly matching the
+-- writer's own docstring ("Rows per chart: 9 grahas × 5 ayanamshas = 45"),
+-- confirmed via `SELECT count(*) FROM ga_medical WHERE chart_id = '482012f1-
+-- ...'` = 45.
+--
+-- `value_columns` is every remaining column (13 total): `chart_id`,
+-- `ayanamsha_id`, `graha`, `natal_sign`, `natal_nakshatra`,
+-- `indication_strength`, `dosha_aggravated`, `organ_watch`, `body_part_watch`,
+-- `nakshatra_body_part`, `indication_tier`, `not_diagnosis`,
+-- `classical_citation` -- matching precedent 894/915's pattern of including the
+-- key columns themselves in `value_columns` too (they are genuine content, not
+-- merely an index).
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914/915: a plain INSERT with no ON CONFLICT
+-- clause. `asset_output_digest_specs`'s PRIMARY KEY is the composite
+-- `(asset_id, spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a
+-- legal target (Postgres requires the conflict target to match a real
+-- unique/exclusion constraint). `ga_medical` has zero existing rows in this
+-- table (confirmed at the top of this file), so this plain INSERT cannot
+-- collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps`
+-- with `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then
+-- `sha256().hexdigest()`). Produced by IMPORTING the real module and calling
+-- it directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_medical', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- `_validate_spec` raised nothing (spec accepted as well-formed) and printed:
+--   f03e6e6108ba4b0d519bc0a08c3f12cdd1358de755e82dc6bb6346d7d167ad9a
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_medical',
+  'f03e6e6108ba4b0d519bc0a08c3f12cdd1358de755e82dc6bb6346d7d167ad9a',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"ga_medical","relation":"ga_medical","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"key_columns":["chart_id","ayanamsha_id","graha"],"value_columns":["chart_id","ayanamsha_id","graha","natal_sign","natal_nakshatra","indication_strength","dosha_aggravated","organ_watch","body_part_watch","nakshatra_body_part","indication_tier","not_diagnosis","classical_citation"]}]}'::jsonb
+);
+
+COMMIT;
