@@ -1,4 +1,4 @@
--- 934_nirmana_evidence_ingress_writer_bodha_signal_identity_grant.sql
+-- 935_nirmana_evidence_ingress_writer_bodha_signal_identity_grant.sql
 --
 -- NIRMĀṆA — same class of gap as migrations 645/646/885/890/898/903/921/922/923: the
 -- server-side `integrity_verified` re-evaluation runs each asset's `integrity_check_sql` as
@@ -24,7 +24,7 @@ BEGIN;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nirmana_evidence_ingress_writer') THEN
-    RAISE EXCEPTION 'migration 934 requires nirmana_evidence_ingress_writer (migration 632) to already exist';
+    RAISE EXCEPTION 'migration 935 requires nirmana_evidence_ingress_writer (migration 632) to already exist';
   END IF;
 
   IF NOT EXISTS (
@@ -34,7 +34,7 @@ BEGIN
       AND p.proname = 'bodha_signal_identity'
       AND pg_get_function_identity_arguments(p.oid) = 'p_chart_id uuid, p_ayanamsha_id text, p_signal_type_id text, p_varga_id text, p_configuration jsonb'
   ) THEN
-    RAISE EXCEPTION 'migration 934 requires bodha_signal_identity(uuid,text,text,text,jsonb) (migration 661) to already exist';
+    RAISE EXCEPTION 'migration 935 requires bodha_signal_identity(uuid,text,text,text,jsonb) (migration 661) to already exist';
   END IF;
 
   EXECUTE format(
