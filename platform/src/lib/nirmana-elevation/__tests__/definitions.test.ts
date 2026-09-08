@@ -2232,6 +2232,65 @@ it('atomically supersedes the exact current frozen definition with the server-de
     expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
   })
 
+  acceptedReceiptIt('accepts integrity_verified for a build asset whose accepted decision/implementation/rebuild predate a shared-pin drift (#2450)', async () => {
+    // Adjudication #2450: the L2 layer-wide analysis pin can regenerate from an
+    // unrelated sibling asset's deploy after this asset's own decision chain was
+    // legitimately accepted, changing the CURRENT analysis_digest out from under
+    // an in-flight chain even though this asset's own registry_fingerprint_sha256
+    // never changed. The historical decision/implementation/rebuild rows below
+    // carry a stale analysis_digest standing in for that drift; only the fresh
+    // integrity_verified submission binds to the live (current) digest.
+    const liveRow = registryRowsFor(manifest)[0]
+    const liveFingerprint = canonicalRegistryContractDigest({
+      asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract,
+    })
+    const liveAnalysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, manifestAsset)
+    const staleBinding = { registry_fingerprint_sha256: liveFingerprint, analysis_digest: 'e'.repeat(64) }
+    const liveBinding = { registry_fingerprint_sha256: liveFingerprint, analysis_digest: liveAnalysisDigest }
+    const decision = {
+      ...staleBinding, verdict: 'optimize' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'optimize' as const, summary: 'A prior change was required.', output_contract: 'digest_identical' as const },
+    }
+    const implementation = {
+      ...staleBinding,
+      decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+      implementation_digest: 'c'.repeat(64),
+    }
+    const rebuild = {
+      ...staleBinding,
+      build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      wave_index: 0,
+      authorization_sha256: '9'.repeat(64),
+      decision_digest: implementation.decision_digest,
+      implementation_digest: implementation.implementation_digest,
+      output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:30:00.000Z', recorded_at: '2026-08-25T07:30:00.000Z' }] })
+      // requireIntegrityProvenance's own prior-execution-receipt lookup (the
+      // already-accepted accepted_rebuild_observed row) is parameterized.
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{ evidence_payload: rebuild, source_kind: 'build_run', source_ref: `build_run:${rebuild.build_run_id}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      if (statement.includes('SELECT count(*) FROM bg_prashna_rules')) return Promise.resolve({ rows: [{ count: 5 }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:pin-drift',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...liveBinding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(registry_contract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
   it('authorizes build runs only for execution-permitting manifest obligations', async () => {
     useEvidenceTransaction()
     queryMock
