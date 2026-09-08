@@ -811,6 +811,7 @@ def _fetch_bhava_lordship_facts(conn, chart_id: str, aya: str) -> list[dict]:
            FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND fact_category = 'lord_in_house_per_varga'
+             AND fact_key = 'lord_placement'
              AND fact_subject LIKE 'D1\\_H%%'""",
         [chart_id, aya],
     ).fetchall()
