@@ -3060,6 +3060,15 @@ async function findExistingLifecycleReceipt(
  * that they attest.  A contract drift legitimately starts a new generation;
  * an unbound legacy fact remains mutually exclusive rather than becoming an
  * escape hatch for duplicating an old lifecycle step.
+ *
+ * Post-decision receipts (implementation_accepted, accepted_rebuild_observed)
+ * also carry a decision_digest binding them to the specific optimization
+ * verdict they implement. A superseding W2 verdict on the same
+ * (registry_fingerprint, analysis_digest) pair is a legitimate new decision,
+ * not a duplicate of the prior one -- so the decision_digest folds into the
+ * generation key whenever the payload carries it. Without this, a
+ * resubmission under a new decision collided with the stale generation key
+ * and was permanently rejected instead of accepted (#1770).
  */
 function lifecycleEvidenceGeneration(payload: unknown): string {
   if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
@@ -3068,7 +3077,11 @@ function lifecycleEvidenceGeneration(payload: unknown): string {
       analysis_digest: (payload as Record<string, unknown>).analysis_digest,
     })
     if (binding.success) {
-      return `${binding.data.registry_fingerprint_sha256}:${binding.data.analysis_digest}`
+      const decisionDigest = (payload as Record<string, unknown>).decision_digest
+      const decisionSuffix = typeof decisionDigest === 'string' && /^[a-f0-9]{64}$/.test(decisionDigest)
+        ? `:${decisionDigest}`
+        : ''
+      return `${binding.data.registry_fingerprint_sha256}:${binding.data.analysis_digest}${decisionSuffix}`
     }
   }
   return 'legacy-unbound'
