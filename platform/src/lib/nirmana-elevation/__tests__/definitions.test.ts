@@ -1544,6 +1544,33 @@ it('atomically supersedes the exact current frozen definition with the server-de
         || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
     })
 
+    it('excludes D-NATIVE-11 supporting writers from the live snapshot so the denominator is preserved', async () => {
+      // bo_grounding holds a real asset_registry row (migration 899) purely for
+      // orchestrator ordering; the flip snapshot must not count it against the
+      // frozen denominator.
+      const liveRowsWithSupportingWriter = [
+        ...liveRowsWithDependsOnDrift,
+        {
+          ...registryRowsFor(manifest)[0],
+          asset_id: 'bo_grounding',
+          layer: 'bodha' as const,
+          depends_on: ['bg_alpha'],
+          sort_order: 25,
+          target_table: 'bodha_grounding_matches',
+          count_sql: 'SELECT count(*) FROM bodha_grounding_matches',
+          catalog_status: 'DRAFT',
+        },
+      ]
+      mockMidCampaignTransaction({ liveRows: liveRowsWithSupportingWriter })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput({ mode: 'dry_run' })))
+        .resolves.toMatchObject({
+          outcome: 'dry_run_ok',
+          asset_count: 3,
+          new_manifest_sha256: t1Candidate.manifest_sha256,
+        })
+    })
+
     it('hard-asserts the identical asset denominator between t0 and the live snapshot', async () => {
       const liveRowsMissingAsset = liveRowsWithDependsOnDrift.filter((row) => row.asset_id !== 'bg_beta')
         .map((row) => row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha'] } : row)

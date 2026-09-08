@@ -38,8 +38,12 @@ export const NIRMANA_ANALYSIS_LAYERS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as c
  * remaining IN the writer-inventory aggregate above: a supporting writer's
  * code change still fails the spine closed and forces a reviewed re-pin.
  * Mirrors SUPPORTING_WRITERS in scripts/generate/nirmana_analysis_layer_pins.py.
+ *
+ * Exported because the elevation library enforces the same exclusion on every
+ * manifest-vs-registry surface (candidate snapshot, denominator asserts) — one
+ * TS definition, not a second copy free to drift from this one.
  */
-const SUPPORTING_WRITERS: ReadonlySet<string> = new Set(['bo_grounding'])
+export const NIRMANA_SUPPORTING_WRITERS: ReadonlySet<string> = new Set(['bo_grounding'])
 export type NirmanaAnalysisLayer = (typeof NIRMANA_ANALYSIS_LAYERS)[number]
 
 // A durable receipt identifier, not a SQL relation reference.  Keeps existing
@@ -117,7 +121,7 @@ function buildLayerReceipts(layer: NirmanaAnalysisLayer): Readonly<Record<string
   if (inventory === null) return Object.freeze({})
   const assetIds = [
     ...Object.keys(inventory).filter(
-      (assetId) => assetId.startsWith(pin.asset_prefix) && !SUPPORTING_WRITERS.has(assetId),
+      (assetId) => assetId.startsWith(pin.asset_prefix) && !NIRMANA_SUPPORTING_WRITERS.has(assetId),
     ),
     ...pin.non_writer_assets,
   ].sort()

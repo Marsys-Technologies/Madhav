@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import type { PoolClient } from 'pg'
 import { z } from 'zod'
 import { getNirmanaCampaignControlWriterPool } from './campaign-control-writer'
-import { getNirmanaAnalysisReceiptBase } from '@/generated/nirmana-analysis-receipts'
+import { getNirmanaAnalysisReceiptBase, NIRMANA_SUPPORTING_WRITERS } from '@/generated/nirmana-analysis-receipts'
 import { getNirmanaEvidenceIngressPool } from './evidence-ingress'
 import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from './release'
 import { NIRMANA_STAGE_IDS } from './vocab'
@@ -340,12 +340,23 @@ export function parseFreezableNirmanaElevationManifest(manifest: unknown): Nirma
   }
 }
 
+/**
+ * D-NATIVE-11 (#2258): supporting writers (bo_grounding et al.) hold
+ * asset_registry rows purely for orchestrator ordering — they are not
+ * elevation-denominator assets, so every manifest-vs-registry comparison sees
+ * the registry without them. A manifest that (wrongly) contains one still
+ * fails closed: the filtered registry view reports it as absent.
+ */
+function elevationDenominatorRegistryRows(rows: NirmanaRegistryContractRow[]): NirmanaRegistryContractRow[] {
+  return rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id))
+}
+
 export function assertManifestMatchesRegistry(
   manifest: NirmanaElevationManifest,
   registryRows: NirmanaRegistryContractRow[],
 ): void {
   const manifestById = new Map(manifest.assets.map((asset) => [asset.asset_id, asset]))
-  const registryById = new Map(registryRows.map((row) => [row.asset_id, row]))
+  const registryById = new Map(elevationDenominatorRegistryRows(registryRows).map((row) => [row.asset_id, row]))
   if (manifestById.size !== registryById.size) {
     throw new Error(`Frozen manifest contains ${manifestById.size} assets but the live registry contains ${registryById.size}.`)
   }
@@ -378,7 +389,7 @@ export function assertManifestMatchesRegistryIdentity(
   registryRows: NirmanaRegistryContractRow[],
 ): void {
   const manifestById = new Map(manifest.assets.map((asset) => [asset.asset_id, asset]))
-  const registryById = new Map(registryRows.map((row) => [row.asset_id, row]))
+  const registryById = new Map(elevationDenominatorRegistryRows(registryRows).map((row) => [row.asset_id, row]))
   if (manifestById.size !== registryById.size) {
     throw new Error(`Frozen manifest contains ${manifestById.size} assets but the live registry contains ${registryById.size}.`)
   }

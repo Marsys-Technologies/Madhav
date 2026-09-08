@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { canonicalManifestDigest, type NirmanaRegistryContractRow } from '../definitions'
+import {
+  assertManifestMatchesRegistry,
+  assertManifestMatchesRegistryIdentity,
+  canonicalManifestDigest,
+  type NirmanaRegistryContractRow,
+} from '../definitions'
 import { canonicalLabelCatalogueDigest } from '../labels'
 import {
   buildNirmanaBaselineCandidate,
@@ -90,6 +95,28 @@ describe('Nirmana elevation monitor baseline', () => {
     const reversed = buildNirmanaBaselineCandidate([...rows].reverse())
 
     expect(reversed).toEqual(forward)
+  })
+
+  it('excludes D-NATIVE-11 supporting writers from the candidate manifest, labels, and digests', () => {
+    // depends_on names assets absent from this fixture: were bo_grounding not
+    // filtered BEFORE manifest validation, the parse itself would throw.
+    const supportingWriter = registryRow('bo_grounding', {
+      layer: 'bodha',
+      depends_on: ['ga_yoga', 'bo_laksana'],
+      sort_order: 25,
+      catalog_status: 'DRAFT',
+      english_name: 'Grounding Tier Matches',
+    })
+
+    expect(buildNirmanaBaselineCandidate([...rows, supportingWriter])).toEqual(buildNirmanaBaselineCandidate(rows))
+  })
+
+  it('compares manifests against the registry without supporting writers in both denominator asserts', () => {
+    const candidate = buildNirmanaBaselineCandidate(rows)
+    const liveRowsWithSupportingWriter = [...rows, registryRow('bo_grounding', { layer: 'bodha', sort_order: 25, catalog_status: 'DRAFT' })]
+
+    expect(() => assertManifestMatchesRegistryIdentity(candidate.manifest, liveRowsWithSupportingWriter)).not.toThrow()
+    expect(() => assertManifestMatchesRegistry(candidate.manifest, liveRowsWithSupportingWriter)).not.toThrow()
   })
 
   it('renders the governed placeholder when every human label is absent', () => {
