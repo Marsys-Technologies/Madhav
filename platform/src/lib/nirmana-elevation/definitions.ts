@@ -1332,7 +1332,11 @@ export function canonicalNirmanaIntegrityResultDigest(registryContract: unknown,
   return createHash('sha256').update(stableJson({ registry_contract: RegistryContractSchema.parse(registryContract), observation })).digest('hex')
 }
 
-const NirmanaAssetAnalysisReceiptSchema = z.object({
+// v1 receipts hash the whole receipt BASE, whose grounding carries the
+// layer-shared convergence pin.  Retained verbatim for historical rows: stored
+// v1 digests stay re-derivable (the dispatcher's #2457 reconstruction path and
+// any audit re-hash of v1 history parse through this schema unchanged).
+const NirmanaAssetAnalysisReceiptV1Schema = z.object({
   schema_version: z.literal('nirmana-asset-analysis-receipt/v1'),
   base: z.object({
     schema_version: z.literal('nirmana-asset-analysis-receipt-base/v1'),
@@ -1358,6 +1362,29 @@ const NirmanaAssetAnalysisReceiptSchema = z.object({
   current_registry_contract: RegistryFingerprintInputSchema,
 }).strict()
 
+// Adjudication #2450 structural ruling (Conductor cycle 320): v2 scopes the
+// hashed identity to the asset's OWN contract surface -- asset_id, layer, own
+// writer digest (which already closes over the writer's local import graph),
+// frozen manifest asset, live registry contract.  The layer-shared
+// grounding.convergence_commit and the writer-inventory aggregate are
+// deliberately ABSENT: they remain provenance metadata and the per-layer
+// fail-closed availability gate (nirmana-analysis-receipts.ts), but hashing
+// them into per-asset identity is what made EVERY sibling writer deploy move
+// an untouched asset's digest -- the #2450 treadmill this schema retires.
+const NirmanaAssetAnalysisReceiptV2Schema = z.object({
+  schema_version: z.literal('nirmana-asset-analysis-receipt/v2'),
+  asset_id: z.string().min(1),
+  layer: LayerSchema,
+  writer_digest_sha256: z.string().regex(/^[a-f0-9]{64}$/).nullable(),
+  frozen_manifest_asset: ManifestAssetSchema,
+  current_registry_contract: RegistryFingerprintInputSchema,
+}).strict()
+
+const NirmanaAssetAnalysisReceiptSchema = z.discriminatedUnion('schema_version', [
+  NirmanaAssetAnalysisReceiptV1Schema,
+  NirmanaAssetAnalysisReceiptV2Schema,
+])
+
 export type NirmanaAssetAnalysisReceipt = z.infer<typeof NirmanaAssetAnalysisReceiptSchema>
 
 export function canonicalNirmanaAssetAnalysisReceiptDigest(receipt: unknown): string {
@@ -1382,9 +1409,15 @@ export function canonicalNirmanaAssetAnalysisDigestForRegistryRow(
   if (!receiptBase) {
     throw new NirmanaElevationEvidenceValidationError(`No deployed ${manifestAsset.layer} analysis receipt base exists for ${assetId}.`)
   }
+  // v2 (adjudication #2450, cycle-320 structural ruling): only the base's OWN
+  // identity fields are hashed.  receiptBase.grounding (layer-shared
+  // convergence pin) is availability-gated upstream and stays out of identity,
+  // so a sibling writer deploy no longer moves this asset's digest.
   return canonicalNirmanaAssetAnalysisReceiptDigest({
-    schema_version: 'nirmana-asset-analysis-receipt/v1',
-    base: receiptBase,
+    schema_version: 'nirmana-asset-analysis-receipt/v2',
+    asset_id: receiptBase.asset_id,
+    layer: receiptBase.layer,
+    writer_digest_sha256: receiptBase.writer_digest_sha256,
     frozen_manifest_asset: manifestAsset,
     current_registry_contract: registryContractFingerprintInput(registryRow),
   })

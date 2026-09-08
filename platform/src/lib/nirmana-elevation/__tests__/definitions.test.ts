@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import {
   assertNirmanaL0WriterInventoryMatchesConvergence,
@@ -14,6 +14,15 @@ vi.mock('server-only', () => ({}))
 // checkout.  Lifecycle validation must still be exercised against a pinned
 // receipt base; this mock replaces only the lookup consumed by definitions,
 // leaving the generated-inventory assertions below against their real value.
+//
+// The overrides simulate the two receipt-base changes the v2 digest ruling
+// (adjudication #2450, cycle 320) distinguishes: a SIBLING writer deploy moves
+// only the layer-shared convergence pin (must NOT move an untouched asset's
+// digest), while an OWN writer change moves the asset's own digest (must).
+const receiptBaseOverrides = vi.hoisted(() => ({
+  convergenceCommit: null as string | null,
+  writerDigest: null as string | null,
+}))
 vi.mock('@/generated/nirmana-analysis-receipts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/generated/nirmana-analysis-receipts')>()
   return {
@@ -24,9 +33,12 @@ vi.mock('@/generated/nirmana-analysis-receipts', async (importOriginal) => {
             schema_version: 'nirmana-asset-analysis-receipt-base/v1' as const,
             asset_id: assetId,
             layer: 'L0' as const,
-            writer_digest_sha256: assetId === 'bg_prashna_rules' ? '1'.repeat(64) : null,
+            writer_digest_sha256: assetId === 'bg_prashna_rules'
+              ? (receiptBaseOverrides.writerDigest ?? '1'.repeat(64))
+              : null,
             grounding: {
-              convergence_commit: actual.NIRMANA_ANALYSIS_LAYER_PINS.L0.convergence_commit,
+              convergence_commit: receiptBaseOverrides.convergenceCommit
+                ?? actual.NIRMANA_ANALYSIS_LAYER_PINS.L0.convergence_commit,
               frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
               writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
             },
@@ -73,6 +85,7 @@ import {
   canonicalNirmanaOptimizationVerdictDigest,
   canonicalNirmanaRunPlanManifestDigest,
   canonicalNirmanaAssetAnalysisDigestForRegistryRow,
+  canonicalNirmanaAssetAnalysisReceiptDigest,
   canonicalNirmanaProbeContractDigest,
   canonicalNirmanaProbeResponseDigest,
   canonicalNirmanaIntegrityContractDigest,
@@ -2650,5 +2663,105 @@ it('atomically supersedes the exact current frozen definition with the server-de
     await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
     expect(queryMock).not.toHaveBeenCalled()
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+})
+
+describe('asset analysis digest v2 — per-asset identity scoping (adjudication #2450, cycle-320 structural ruling)', () => {
+  const currentRegistryRow = registryRowsFor(manifest)[0]
+
+  afterEach(() => {
+    receiptBaseOverrides.convergenceCommit = null
+    receiptBaseOverrides.writerDigest = null
+  })
+
+  it('(i) a sibling writer deploy — layer-shared convergence pin moved, own contract untouched — does NOT move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    receiptBaseOverrides.convergenceCommit = 'f'.repeat(40)
+    const afterSiblingDeploy = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    // Under v1 this assertion fails: the pin was hashed into every asset's
+    // identity, so ANY sibling writer deploy moved every digest in the layer —
+    // the #2450 evidence treadmill.
+    expect(afterSiblingDeploy).toBe(before)
+  })
+
+  it('(ii) an own-writer (or imported-helper) change DOES move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    receiptBaseOverrides.writerDigest = '2'.repeat(64)
+    const afterOwnWriterChange = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    expect(afterOwnWriterChange).not.toBe(before)
+  })
+
+  it('(iii) an own-registry-row change DOES move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const changedRow = { ...currentRegistryRow, count_sql: 'SELECT count(*) FROM bg_prashna_rules WHERE TRUE' }
+    const afterRegistryChange = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', changedRow, manifestAsset)
+    expect(afterRegistryChange).not.toBe(before)
+  })
+
+  it('(iv) v1 historical receipts still parse and re-derive byte-identically via the compat schema', () => {
+    // The digest below was computed by the PRE-v2 implementation of
+    // canonicalNirmanaAssetAnalysisReceiptDigest over this exact payload
+    // (verified against origin/main 3c6699da7 before the v2 change landed).
+    // If the v1 arm of the schema union drifts, stored v1 history silently
+    // stops being re-derivable — that is the compat path this pins.
+    expect(canonicalNirmanaAssetAnalysisReceiptDigest({
+      schema_version: 'nirmana-asset-analysis-receipt/v1',
+      base: {
+        schema_version: 'nirmana-asset-analysis-receipt-base/v1',
+        asset_id: 'bg_prashna_rules',
+        layer: 'L0',
+        writer_digest_sha256: '1'.repeat(64),
+        grounding: {
+          convergence_commit: 'a'.repeat(40),
+          frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+          writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
+        },
+      },
+      frozen_manifest_asset: { asset_id: 'bg_prashna_rules', layer: 'L0' },
+      current_registry_contract: {
+        asset_id: 'bg_prashna_rules', layer: 'L0', depends_on: [],
+        registry_contract: {
+          sort_order: 1, scope: 'global', asset_kind: 'data', catalog_status: 'CURRENT',
+          is_active: true, has_writer: true, target_table: 'bg_prashna_rules',
+          count_sql: 'SELECT count(*) FROM bg_prashna_rules', integrity_check_sql: null,
+          health_probe: null, natural_key_partition: null, superseded_by: null,
+          data_disposition: null, dead_flag: null,
+        },
+      },
+    })).toBe('a7a6789160c56e12014e414723741413e5f2f93d9cd40207801d66b4c39e367e')
+  })
+
+  it('the layer stays bound in v2: the same base served under another layer digest cannot collide', () => {
+    // v1 bound the layer through the nested base; v2 must keep it bound
+    // through its own top-level fields. Serve the identical registry row and
+    // manifest asset but relabel the layer — the digest must move.
+    const l0Digest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    expect(() => canonicalNirmanaAssetAnalysisDigestForRegistryRow(
+      'bg_prashna_rules',
+      currentRegistryRow,
+      { ...manifestAsset, layer: 'L1' },
+    )).toThrow(/does not match its deployed analysis receipt base/i)
+    expect(l0Digest).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('v2 and v1 digests over the same contract surface never coincide (version is part of identity)', () => {
+    const v2Digest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const v1Equivalent = canonicalNirmanaAssetAnalysisReceiptDigest({
+      schema_version: 'nirmana-asset-analysis-receipt/v1',
+      base: {
+        schema_version: 'nirmana-asset-analysis-receipt-base/v1',
+        asset_id: 'bg_prashna_rules',
+        layer: 'L0',
+        writer_digest_sha256: '1'.repeat(64),
+        grounding: {
+          convergence_commit: 'a'.repeat(40),
+          frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+          writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
+        },
+      },
+      frozen_manifest_asset: manifestAsset,
+      current_registry_contract: registryContractFingerprintInput(currentRegistryRow),
+    })
+    expect(v2Digest).not.toBe(v1Equivalent)
   })
 })
