@@ -2555,7 +2555,7 @@ async function requireAcceptedRebuildProvenance(
   const exactRun = verified.rows.filter((run) => run.plan_manifest_digest !== null
     && canonicalNirmanaRunPlanManifestDigest(run.plan_manifest) === run.plan_manifest_digest)
   if (exactRun.length !== 1) {
-    throw new Error('accepted_rebuild_observed requires a completed exact run/asset with a matching proven content receipt.')
+    throw new NirmanaElevationEvidenceValidationError('accepted_rebuild_observed requires a completed exact run/asset with a matching proven content receipt.')
   }
 }
 

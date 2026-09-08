@@ -1130,17 +1130,23 @@ def test_stale_generation_accepted_rebuild_does_not_block_redispatch() -> None:
     if module is None:
         pytest.skip("dispatch script unavailable")
 
+    analysis_digest = "analysis" + "0" * 56
     rows = [
         {
             "entity_id": "ga_dashas",
-            "evidence_payload": {"registry_fingerprint_sha256": "stale" + "0" * 59},
+            "evidence_payload": {
+                "registry_fingerprint_sha256": "stale" + "0" * 59,
+                "analysis_digest": analysis_digest,
+            },
         }
     ]
     live_fingerprints = {"ga_dashas": "current" + "0" * 57}
+    live_analysis_digests = {"ga_dashas": analysis_digest}
 
     assert module._current_generation_accepted_rebuilds(
         accepted_rebuild_rows=rows,
         live_registry_fingerprints=live_fingerprints,
+        live_analysis_digests=live_analysis_digests,
     ) == []
 
 
@@ -1155,18 +1161,59 @@ def test_current_generation_accepted_rebuild_still_blocks_redispatch() -> None:
         pytest.skip("dispatch script unavailable")
 
     fingerprint = "current" + "0" * 57
+    analysis_digest = "analysis" + "0" * 56
     rows = [
         {
             "entity_id": "ga_vargas",
-            "evidence_payload": {"registry_fingerprint_sha256": fingerprint},
+            "evidence_payload": {
+                "registry_fingerprint_sha256": fingerprint,
+                "analysis_digest": analysis_digest,
+            },
         }
     ]
     live_fingerprints = {"ga_vargas": fingerprint}
+    live_analysis_digests = {"ga_vargas": analysis_digest}
 
     assert module._current_generation_accepted_rebuilds(
         accepted_rebuild_rows=rows,
         live_registry_fingerprints=live_fingerprints,
+        live_analysis_digests=live_analysis_digests,
     ) == ["ga_vargas"]
+
+
+def test_current_fingerprint_but_moved_analysis_digest_does_not_block_redispatch() -> None:
+    """Adjudication #2427 (ruled 2026-09-08, option (a)): the exact ga_yoga
+
+    deadlock. A sibling-asset deploy moved convergence_commit and with it the
+    asset's analysis_digest, while its registry fingerprint stayed put. The
+    server's freeze path (bindingMatches: fingerprint AND analysis digest)
+    already refused the stale acceptance as a prerequisite; a guard matching
+    fingerprint alone refused the fresh rebuild too, leaving no path forward.
+    "Current generation" must mean the same thing on both sides: a mismatch on
+    EITHER field permits redispatch.
+    """
+    module = _load_dispatch_module()
+    if module is None:
+        pytest.skip("dispatch script unavailable")
+
+    fingerprint = "current" + "0" * 57
+    rows = [
+        {
+            "entity_id": "ga_yoga",
+            "evidence_payload": {
+                "registry_fingerprint_sha256": fingerprint,
+                "analysis_digest": "stale" + "0" * 59,
+            },
+        }
+    ]
+    live_fingerprints = {"ga_yoga": fingerprint}
+    live_analysis_digests = {"ga_yoga": "current" + "0" * 57}
+
+    assert module._current_generation_accepted_rebuilds(
+        accepted_rebuild_rows=rows,
+        live_registry_fingerprints=live_fingerprints,
+        live_analysis_digests=live_analysis_digests,
+    ) == []
 
 
 def test_current_generation_accepted_rebuild_mixed_wave_blocks_only_the_current_one() -> None:
@@ -1176,24 +1223,36 @@ def test_current_generation_accepted_rebuild_mixed_wave_blocks_only_the_current_
         pytest.skip("dispatch script unavailable")
 
     current_fingerprint = "current" + "0" * 57
+    current_analysis_digest = "analysis" + "0" * 56
     rows = [
         {
             "entity_id": "ga_dashas",
-            "evidence_payload": {"registry_fingerprint_sha256": "stale" + "0" * 59},
+            "evidence_payload": {
+                "registry_fingerprint_sha256": "stale" + "0" * 59,
+                "analysis_digest": current_analysis_digest,
+            },
         },
         {
             "entity_id": "ga_vargas",
-            "evidence_payload": {"registry_fingerprint_sha256": current_fingerprint},
+            "evidence_payload": {
+                "registry_fingerprint_sha256": current_fingerprint,
+                "analysis_digest": current_analysis_digest,
+            },
         },
     ]
     live_fingerprints = {
         "ga_dashas": current_fingerprint,
         "ga_vargas": current_fingerprint,
     }
+    live_analysis_digests = {
+        "ga_dashas": current_analysis_digest,
+        "ga_vargas": current_analysis_digest,
+    }
 
     assert module._current_generation_accepted_rebuilds(
         accepted_rebuild_rows=rows,
         live_registry_fingerprints=live_fingerprints,
+        live_analysis_digests=live_analysis_digests,
     ) == ["ga_vargas"]
 
 
@@ -1209,15 +1268,26 @@ def test_accepted_rebuild_with_malformed_payload_is_treated_as_non_blocking() ->
     rows = [
         {"entity_id": "ga_dashas", "evidence_payload": "not-a-mapping"},
         {"entity_id": "ga_vargas", "evidence_payload": {}},
+        {
+            "entity_id": "ga_yogas",
+            "evidence_payload": {"registry_fingerprint_sha256": "current" + "0" * 57},
+        },
     ]
     live_fingerprints = {
         "ga_dashas": "current" + "0" * 57,
         "ga_vargas": "current" + "0" * 57,
+        "ga_yogas": "current" + "0" * 57,
+    }
+    live_analysis_digests = {
+        "ga_dashas": "analysis" + "0" * 56,
+        "ga_vargas": "analysis" + "0" * 56,
+        "ga_yogas": "analysis" + "0" * 56,
     }
 
     assert module._current_generation_accepted_rebuilds(
         accepted_rebuild_rows=rows,
         live_registry_fingerprints=live_fingerprints,
+        live_analysis_digests=live_analysis_digests,
     ) == []
 
 
