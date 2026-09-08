@@ -666,6 +666,162 @@ def test_still_rejects_a_verdict_whose_own_source_ref_is_not_the_reviewed_deploy
         )
 
 
+def test_pin_drift_relaxation_accepts_evidence_reconstructed_current_at_its_own_commit() -> None:
+    """Adjudication #2450, second instance (ruled 2026-09-08 cycle 313).
+
+    A sibling writer deploy moves the layer-wide convergence pin and with it
+    every asset's canonical analysis digest — including assets whose own
+    writer/registry never changed. Evidence whose digest reconstructs exactly
+    at its own source_ref commit (and whose registry fingerprint still
+    matches live) stays current for dispatch; only the shared pin moved.
+    """
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    drifted_digest = "2" * 64
+    canonical_now = "5" * 64
+    deploy_sha = "b" * 40
+    assert drifted_digest != canonical_now
+
+    bindings = module.validate_wave_evidence_bindings(
+        asset_ids=["ga_transit_anchors"],
+        live_registry_fingerprints={"ga_transit_anchors": current_fingerprint},
+        canonical_analysis_digests={"ga_transit_anchors": canonical_now},
+        reviewed_deployment_sha=deploy_sha,
+        reconstruct_submission_digest=lambda asset_id, source_ref: drifted_digest,
+        evidence_rows=[
+            _evidence_row(
+                event_id=1,
+                asset_id="ga_transit_anchors",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=drifted_digest,
+                source_ref=f"git:{deploy_sha}",
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="ga_transit_anchors",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=drifted_digest,
+                source_ref=f"git:{deploy_sha}",
+            ),
+        ],
+    )
+
+    assert bindings == {
+        "ga_transit_anchors": {
+            "registry_fingerprint_sha256": current_fingerprint,
+            "analysis_digest": drifted_digest,
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    "reconstructed",
+    [None, "6" * 64],
+    ids=["own_writer_changed_reconstructs_none", "reconstruction_mismatch"],
+)
+def test_pin_drift_relaxation_still_rejects_unreconstructable_evidence(
+    reconstructed: str | None,
+) -> None:
+    """The ruling's non-relaxation: an own-writer change (reconstruction
+    returns None) or a digest that does not reproduce at its own commit still
+    forces real W1/W2 resubmission."""
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    drifted_digest = "2" * 64
+    deploy_sha = "b" * 40
+
+    with pytest.raises(RuntimeError, match="current live registry contract"):
+        module.validate_wave_evidence_bindings(
+            asset_ids=["ga_transit_anchors"],
+            live_registry_fingerprints={"ga_transit_anchors": current_fingerprint},
+            canonical_analysis_digests={"ga_transit_anchors": "5" * 64},
+            reviewed_deployment_sha=deploy_sha,
+            reconstruct_submission_digest=lambda asset_id, source_ref: reconstructed,
+            evidence_rows=[
+                _evidence_row(
+                    event_id=1,
+                    asset_id="ga_transit_anchors",
+                    event_type="asset_analysis_accepted",
+                    registry_fingerprint_sha256=current_fingerprint,
+                    analysis_digest=drifted_digest,
+                    source_ref=f"git:{deploy_sha}",
+                ),
+                _evidence_row(
+                    event_id=2,
+                    asset_id="ga_transit_anchors",
+                    event_type="optimization_verdict_accepted",
+                    registry_fingerprint_sha256=current_fingerprint,
+                    analysis_digest=drifted_digest,
+                    source_ref=f"git:{deploy_sha}",
+                ),
+            ],
+        )
+
+
+def test_pin_drift_relaxation_prefers_an_exact_current_pair_over_drifted_history() -> None:
+    """A fresh resubmission under the live pin outranks pin-drifted history:
+    no ambiguity error, and the exact-current digest is the one bound."""
+    module = _load_dispatch_module()
+    assert module is not None
+    current_fingerprint = "1" * 64
+    drifted_digest = "2" * 64
+    canonical_now = "5" * 64
+    deploy_sha = "b" * 40
+
+    bindings = module.validate_wave_evidence_bindings(
+        asset_ids=["ga_transit_anchors"],
+        live_registry_fingerprints={"ga_transit_anchors": current_fingerprint},
+        canonical_analysis_digests={"ga_transit_anchors": canonical_now},
+        reviewed_deployment_sha=deploy_sha,
+        reconstruct_submission_digest=lambda asset_id, source_ref: drifted_digest,
+        evidence_rows=[
+            _evidence_row(
+                event_id=1,
+                asset_id="ga_transit_anchors",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=drifted_digest,
+                source_ref=f"git:{deploy_sha}",
+            ),
+            _evidence_row(
+                event_id=2,
+                asset_id="ga_transit_anchors",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=drifted_digest,
+                source_ref=f"git:{deploy_sha}",
+            ),
+            _evidence_row(
+                event_id=3,
+                asset_id="ga_transit_anchors",
+                event_type="asset_analysis_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=canonical_now,
+                source_ref=f"git:{deploy_sha}",
+            ),
+            _evidence_row(
+                event_id=4,
+                asset_id="ga_transit_anchors",
+                event_type="optimization_verdict_accepted",
+                registry_fingerprint_sha256=current_fingerprint,
+                analysis_digest=canonical_now,
+                source_ref=f"git:{deploy_sha}",
+            ),
+        ],
+    )
+
+    assert bindings == {
+        "ga_transit_anchors": {
+            "registry_fingerprint_sha256": current_fingerprint,
+            "analysis_digest": canonical_now,
+        }
+    }
+
+
 def test_l0_dispatch_receipt_binding_rejects_stale_convergence_source() -> None:
     module = _load_dispatch_module()
     assert module is not None
