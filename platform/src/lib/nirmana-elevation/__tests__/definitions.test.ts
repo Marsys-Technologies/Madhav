@@ -85,6 +85,7 @@ import {
   recordNirmanaElevationEvidence,
   registryContractFingerprintInput,
   supersedeNirmanaElevationDefinition,
+  supersedeNirmanaElevationDefinitionMidCampaign,
   type NirmanaRegistryContractRow,
 } from '../definitions'
 import { buildNirmanaBaselineCandidate } from '../monitor'
@@ -1387,6 +1388,215 @@ it('atomically supersedes the exact current frozen definition with the server-de
       .rejects.toThrow(/fresh in-sync quiet/i)
     expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
     expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  describe('mid-campaign supersession (D-NATIVE-13)', () => {
+    const t0Rows: NirmanaRegistryContractRow[] = [
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_alpha'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
+    ]
+    const liveRowsWithDependsOnDrift = t0Rows.map((row) =>
+      row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha', 'bg_beta'] } : row)
+    const t0Candidate = buildNirmanaBaselineCandidate(t0Rows)
+    const t1Candidate = buildNirmanaBaselineCandidate(liveRowsWithDependsOnDrift)
+
+    function midCampaignInput(overrides: Record<string, unknown> = {}) {
+      return {
+        campaign_id: 'nirmana-elevation' as const,
+        expected_current_revision: 'v1',
+        expected_current_manifest_sha256: t0Candidate.manifest_sha256,
+        new_definition_revision: 'v2',
+        native_authorization: 'D-NATIVE-13' as const,
+        created_by: 'conductor-1',
+        mode: 'execute' as const,
+        ...overrides,
+      }
+    }
+
+    function mockMidCampaignTransaction({
+      candidate = t1Candidate,
+      storedRows,
+      inflight = 0,
+      usage = { event_count: 500, build_run_count: 91 },
+      liveRows = liveRowsWithDependsOnDrift,
+      insertError,
+      retryReceipt,
+    }: {
+      candidate?: ReturnType<typeof buildNirmanaBaselineCandidate>
+      storedRows?: unknown[]
+      inflight?: number
+      usage?: { event_count: number; build_run_count: number }
+      liveRows?: NirmanaRegistryContractRow[]
+      insertError?: Error
+      retryReceipt?: Record<string, unknown>
+    } = {}) {
+      const stored = storedRows ?? [{
+        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: t0Candidate.manifest_sha256,
+        manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: null,
+      }]
+      transactionQueryMock.mockImplementation((sql: string) => {
+        const statement = String(sql)
+        if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+          || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+          || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+        if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')
+          && statement.includes('ORDER BY definition_revision')) return Promise.resolve({ rows: stored })
+        if (statement.includes('AS inflight_count')) return Promise.resolve({ rows: [{ inflight_count: inflight }] })
+        if (statement.includes('AS event_count')) return Promise.resolve({ rows: [usage] })
+        if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+        if (statement.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+          return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+        }
+        if (statement.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+          return insertError ? Promise.reject(insertError) : Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
+        }
+        if (statement.includes('SELECT evidence_payload FROM nirmana_evidence.nirmana_elevation_campaign_events')) {
+          return Promise.resolve({ rows: retryReceipt ? [retryReceipt] : [] })
+        }
+        if (statement.includes('SELECT definition_status, manifest FROM nirmana_evidence')) {
+          return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+        }
+        if (statement.includes('SELECT event_type, entity_type, entity_id, layer')) {
+          return Promise.resolve({ rows: [] })
+        }
+        if (statement.includes('SELECT count(*)::int AS label_count')) {
+          return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+        }
+        if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+          return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+        }
+        if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+          return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+        }
+        throw new Error(`Unexpected SQL: ${statement}`)
+      })
+    }
+
+    it('flips t0 to t1 under D-NATIVE-13 while historical events and build runs stay bound to t0', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .resolves.toMatchObject({
+          outcome: 'superseded',
+          superseded_revision: 'v1',
+          new_definition_revision: 'v2',
+          new_manifest_sha256: t1Candidate.manifest_sha256,
+          bound_event_count: 500,
+          bound_build_run_count: 91,
+          asset_count: 3,
+        })
+
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      const updateSql = transactionSql.find((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions'))
+      expect(updateSql).toContain("SET definition_status = 'superseded', superseded_at = clock_timestamp()")
+      expect(String(updateSql).split('WHERE')[0]).not.toContain('manifest')
+      const insertedDefinition = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))
+      expect(JSON.parse(String(insertedDefinition?.[1]?.[2]))).toEqual(t1Candidate.manifest)
+      const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).includes("'definition_superseded_mid_campaign'"))
+      expect(receiptCall).toBeDefined()
+      const receiptPayload = JSON.parse(String((receiptCall?.[1] as unknown[])?.[3]))
+      expect(receiptPayload).toMatchObject({
+        native_authorization: 'D-NATIVE-13',
+        superseded_revision: 'v1',
+        superseded_manifest_sha256: t0Candidate.manifest_sha256,
+        bound_event_count: 500,
+        bound_build_run_count: 91,
+      })
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('COMMIT')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
+
+    it('exercises the whole flip in dry-run mode and rolls back without committing', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput({ mode: 'dry_run' })))
+        .resolves.toMatchObject({ outcome: 'dry_run_ok', new_manifest_sha256: t1Candidate.manifest_sha256 })
+
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(true)
+      expect(transactionSql.some((sql) => sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(true)
+      expect(transactionSql).not.toContain('COMMIT')
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
+
+    it('refuses supersession without the exact D-NATIVE-13 native authorization before touching the database', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-99' })))
+        .rejects.toThrow(/D-NATIVE-13/)
+      expect(transactionQueryMock).not.toHaveBeenCalled()
+    })
+
+    it('refuses supersession while any build run is in flight', async () => {
+      mockMidCampaignTransaction({ inflight: 1 })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/in-flight build runs/i)
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      const inflightSql = transactionSql.find((sql) => sql.includes('AS inflight_count'))
+      expect(inflightSql).toContain("state IN ('planned', 'running', 'paused')")
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    })
+
+    it('hard-asserts the identical asset denominator between t0 and the live snapshot', async () => {
+      const liveRowsMissingAsset = liveRowsWithDependsOnDrift.filter((row) => row.asset_id !== 'bg_beta')
+        .map((row) => row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha'] } : row)
+      mockMidCampaignTransaction({ liveRows: liveRowsMissingAsset })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/denominator/i)
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    })
+
+    it('refuses supersession when the live snapshot is identical to the current frozen manifest', async () => {
+      mockMidCampaignTransaction({ liveRows: t0Rows, candidate: t0Candidate })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/identical/i)
+    })
+
+    it('treats only an exact completed mid-campaign supersession retry as idempotent', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [
+          { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: t0Candidate.manifest_sha256, manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: '2026-09-08T00:00:00.000Z' },
+          { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: t1Candidate.manifest_sha256, manifest: t1Candidate.manifest, created_by: 'conductor-1', superseded_at: null },
+        ],
+        retryReceipt: { evidence_payload: { native_authorization: 'D-NATIVE-13' } },
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .resolves.toMatchObject({ outcome: 'idempotent', new_definition_revision: 'v2' })
+      expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('FROM asset_registry'))).toBe(false)
+    })
+
+    it('refuses supersession when the expected current definition is not the frozen one', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [{
+          definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: 'd'.repeat(64),
+          manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: null,
+        }],
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/current frozen definition/i)
+    })
+
+    it('rolls back the flip and leaves t0 current when the replacement insert fails', async () => {
+      mockMidCampaignTransaction({ insertError: new Error('replacement insert failed') })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow('replacement insert failed')
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
   })
 
  it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
