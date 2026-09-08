@@ -15,7 +15,7 @@ import subprocess
 import sys
 import uuid
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 
 CAMPAIGN_ID = "nirmana-elevation"
@@ -305,6 +305,76 @@ def _live_registry_fingerprint(
     )
 
 
+def _submission_time_analysis_digest(
+    *,
+    layer: str,
+    asset_id: str,
+    source_ref: str,
+    frozen_manifest_asset: Mapping[str, Any],
+    current_registry_contract: Mapping[str, Any],
+    current_writer_digest: str,
+) -> str | None:
+    """Recompute an evidence row's canonical analysis digest as of its own
+    submission-time repo state (adjudication #2450, second instance, ruled
+    cycle 313: extend the shared-pin-drift relaxation to the dispatch gate).
+
+    ``analysis_digest`` bakes the layer-wide ``convergence_commit`` pin into
+    every asset's receipt, so ANY sibling writer deploy moves the canonical
+    digest for assets whose own writer/registry never changed.  The evidence
+    row's ``source_ref`` commit pins the repo state it was accepted under;
+    reading that commit's pin record and writer inventory lets us re-derive
+    the digest the write-side validator checked at submission time.
+
+    Returns the reconstructed digest only when this asset's OWN writer digest
+    is unchanged between the evidence commit and now — the ruling's explicit
+    non-relaxation: a changed own-writer (or own-registry, enforced upstream
+    via the fingerprint match) still forces real W1/W2 resubmission.  Returns
+    None (caller falls back to the strict exact-current path) whenever the
+    historical state cannot be read.
+    """
+    if not source_ref.startswith("git:"):
+        return None
+    commit = source_ref[4:]
+    if not _valid_git_commit_sha(commit):
+        return None
+    repo_root = Path(__file__).resolve().parents[2]
+
+    def _json_at_commit(path: Path) -> Any:
+        relative = path.relative_to(repo_root).as_posix()
+        try:
+            shown = subprocess.run(
+                ["git", "-C", str(repo_root), "show", f"{commit}:{relative}"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout
+            return json.loads(shown)
+        except (subprocess.CalledProcessError, OSError, json.JSONDecodeError, ValueError):
+            return None
+
+    pins_then = _json_at_commit(ANALYSIS_LAYER_PINS_PATH)
+    inventory_then = _json_at_commit(WRITER_DIGESTS_PATH)
+    if not isinstance(pins_then, Mapping) or not isinstance(inventory_then, Mapping):
+        return None
+    pin_then = (pins_then.get("layers") or {}).get(layer)
+    if not isinstance(pin_then, Mapping) or not _valid_git_commit_sha(
+        pin_then.get("convergence_commit")
+    ):
+        return None
+    writers_then = inventory_then.get("writers")
+    if not isinstance(writers_then, Mapping):
+        return None
+    if writers_then.get(asset_id) != current_writer_digest:
+        return None
+    return _canonical_analysis_digest(
+        layer=layer,
+        frozen_manifest_asset=frozen_manifest_asset,
+        current_registry_contract=current_registry_contract,
+        writer_digest=current_writer_digest,
+        convergence_commit=pin_then["convergence_commit"],
+    )
+
+
 def validate_wave_evidence_bindings(
     *,
     asset_ids: Sequence[str],
@@ -312,6 +382,7 @@ def validate_wave_evidence_bindings(
     evidence_rows: Sequence[Mapping[str, Any]],
     canonical_analysis_digests: Mapping[str, str] | None = None,
     reviewed_deployment_sha: str | None = None,
+    reconstruct_submission_digest: Callable[[str, str], str | None] | None = None,
 ) -> dict[str, dict[str, str]]:
     """Require one exact current analysis and one verdict bound to it per asset."""
     expected_assets = set(asset_ids)
@@ -370,8 +441,27 @@ def validate_wave_evidence_bindings(
                 # the same registry fingerprint while an explicitly reviewed
                 # deployment advances the canonical receipt/source pair.  It
                 # remains auditable history, not current dispatch authority.
+                #
+                # Adjudication #2450, second instance (ruled 2026-09-08 cycle
+                # 313): the canonical digest also bakes in the layer-wide
+                # shared convergence pin, which moves on ANY sibling writer
+                # deploy — so exact equality alone permanently strands a
+                # contract-unchanged asset's accepted evidence the moment an
+                # unrelated sibling ships mid-flight.  Mirror PR #2452's
+                # two-condition currency test: the fingerprint match above
+                # carries the real "did this asset itself change" signal, and
+                # the evidence stays current if its digest was correctly
+                # live-current at its own submission time (reconstructed from
+                # the evidence commit's own pin/inventory; own-writer changes
+                # reconstruct to None and still force resubmission).
                 if analysis_digest != canonical_analysis_digests[asset_id]:
-                    continue
+                    reconstructed = (
+                        reconstruct_submission_digest(asset_id, row["source_ref"])
+                        if reconstruct_submission_digest is not None
+                        else None
+                    )
+                    if reconstructed is None or reconstructed != analysis_digest:
+                        continue
                 # Adjudication #2317 (ruled 2026-09-07, Option (b)): the analysis
                 # event's content is already independently verified above against
                 # the freshly-recomputed canonical digest, so requiring its OWN
@@ -393,6 +483,20 @@ def validate_wave_evidence_bindings(
                 ):
                     continue
             current_rows[row["event_type"]].append((row, analysis_digest))
+
+        if canonical_analysis_digests is not None:
+            # An exact-current pair (a fresh resubmission under the live pin)
+            # outranks pin-drifted-but-valid history: when one exists, the
+            # relaxed rows drop back to auditable history and the original
+            # single-exact-match discipline applies unchanged.
+            exact_digest = canonical_analysis_digests[asset_id]
+            if any(digest == exact_digest for _, digest in current_rows["asset_analysis_accepted"]):
+                current_rows = {
+                    event_type: [
+                        (row, digest) for row, digest in rows if digest == exact_digest
+                    ]
+                    for event_type, rows in current_rows.items()
+                }
 
         analyses = current_rows["asset_analysis_accepted"]
         if not analyses:
@@ -1095,12 +1199,47 @@ def create_campaign_run(
                 list(required_evidence_types),
             ),
         )
+        # Adjudication #2450 second instance (ruled cycle 313): give the gate
+        # a way to prove a digest-mismatched row was live-current at its own
+        # submission commit, using the exact same contract inputs the current
+        # canonical receipts were reconstructed from above.
+        current_pin = _load_layer_receipt_pin(layer)
+        current_layer_inventory = _validated_layer_writer_inventory(
+            writer_digests,
+            layer=layer,
+            asset_prefix=current_pin["asset_prefix"],
+            expected_aggregate=current_pin["writer_inventory_sha256"],
+        )
+        selected_by_id = {asset["asset_id"]: asset for asset in selected}
+
+        def _reconstruct_for_dispatch(asset_id: str, source_ref: str) -> str | None:
+            frozen_asset = selected_by_id.get(asset_id)
+            candidate = candidate_by_id.get(asset_id)
+            writer_digest = current_layer_inventory.get(asset_id)
+            if frozen_asset is None or candidate is None or writer_digest is None:
+                return None
+            return _submission_time_analysis_digest(
+                layer=layer,
+                asset_id=asset_id,
+                source_ref=source_ref,
+                frozen_manifest_asset=frozen_asset,
+                current_registry_contract={
+                    "asset_id": asset_id,
+                    "layer": layer,
+                    # Sorted to match _current_analysis_receipt_digests exactly.
+                    "depends_on": sorted(candidate.get("depends_on") or []),
+                    "registry_contract": _live_registry_contract(candidate),
+                },
+                current_writer_digest=writer_digest,
+            )
+
         validate_wave_evidence_bindings(
             asset_ids=asset_ids,
             live_registry_fingerprints=live_registry_fingerprints,
             evidence_rows=cur.fetchall(),
             canonical_analysis_digests=canonical_analysis_digests,
             reviewed_deployment_sha=reviewed_deployment_sha,
+            reconstruct_submission_digest=_reconstruct_for_dispatch,
         )
 
         prerequisites = campaign_prerequisite_asset_ids(
