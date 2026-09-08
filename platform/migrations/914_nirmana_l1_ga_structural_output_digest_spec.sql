@@ -1,4 +1,4 @@
--- 913_nirmana_l1_ga_structural_output_digest_spec.sql
+-- 914_nirmana_l1_ga_structural_output_digest_spec.sql
 --
 -- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
 -- `ga_structural`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
@@ -129,12 +129,18 @@
 -- cleanly. This migration was NOT applied to any database — authored only, per
 -- CLAUDE.md §N.4 ("Surgical migrations, verified").
 --
--- Migration number: max applied fleet-wide per `_migrations_applied` at authoring
--- time was 912 (`912_nirmana_l0_bg_sarvatobhadra_grid_provenance_receipt.sql`,
--- itself one past this worktree's on-disk max of 910) — 913 avoids a numbering
--- collision with concurrent lanes (L0/L2/L3 all landed migrations past 904 while
--- this lane was in flight). Migration 904 (`ga_structural_integrity_check_scope`,
--- already committed on this branch) is NOT reused.
+-- Migration number: originally authored as 913, but by the time this PR's branch
+-- was rebased onto current `main`, `main` already carried a DIFFERENT migration
+-- claiming 913 (`913_bo_nakshatra_semantic_add_ga_structural_dep.sql`, itself a
+-- renumber of an L2 PR that collided with #2400's 911 — same class of concurrent-
+-- lane numbering race this comment originally warned about, just one hop later).
+-- Renumbered 913→914 to clear that collision; `spec_sha256` below is computed from
+-- the spec's own JSON content (via `canonical_digest()`), not the filename, so the
+-- renumber does not require recomputing it — verified by re-reading
+-- `output_digest.py`'s `_validate_spec()` / `canonical_digest()` call sites, which
+-- key on `asset_id` + the spec dict, never on the migration filename. Migration 904
+-- (`ga_structural_integrity_check_scope`, already committed on this branch) is NOT
+-- reused.
 
 BEGIN;
 
