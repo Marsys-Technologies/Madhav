@@ -28,11 +28,17 @@ SOURCE = Path(__file__).resolve().parents[1] / "bo_laksana.py"
 
 
 class _FakeCursor:
-    """Returns a derived-looking id per row, echoing the input index."""
+    """Returns a derived-looking id per row, echoing the input index.
+
+    fetchall() returns DICT rows -- the production connection uses a dict_row
+    factory, and mimicking tuples here is exactly how the 2026-09-08 TypeError
+    (fixed in PR #2448) stayed invisible to this suite: the fake let the old
+    tuple-unpacking loop pass while production crashed on its first real fetch.
+    """
 
     def __init__(self, log: list) -> None:
         self._log = log
-        self._rows: list[tuple[int, str]] = []
+        self._rows: list[dict] = []
 
     def __enter__(self) -> "_FakeCursor":
         return self
@@ -44,13 +50,17 @@ class _FakeCursor:
         self._log.append((sql, params))
         payload = json.loads(params[0])
         # Mimic bodha_signal_identity: a pure function of the identity tuple.
+        # sort_keys mirrors jsonb's key-order normalisation, so a payload that
+        # embeds the configuration OBJECT is order-invariant here just as it is
+        # in Postgres -- while a pre-serialised string embedded by mistake stays
+        # a string and derives a different id (see the double-encoding test).
         self._rows = [
-            (
-                e["i"],
-                "det-{}-{}-{}".format(
+            {
+                "i": e["i"],
+                "sid": "det-{}-{}-{}".format(
                     e["ayanamsha_id"], e["signal_type_id"], json.dumps(e["configuration_jsonb"], sort_keys=True)
                 ),
-            )
+            }
             for e in payload
         ]
 
@@ -123,6 +133,26 @@ def test_reports_collapse_honestly_rather_than_assuming_none() -> None:
     collapsed = assign_deterministic_signal_ids(_FakeConn(), rows)
     assert collapsed == 1
     assert assign_deterministic_signal_ids(_FakeConn(), [_row(None), _row(None, stype="t2")]) == 0
+
+
+def test_preserialised_config_derives_the_same_id_as_the_object() -> None:
+    """The identity payload must embed the configuration OBJECT, never the string.
+
+    Emit sites store configuration_jsonb pre-serialised (json.dumps) for the
+    INSERT's ::jsonb cast. Passing that string into the identity payload
+    double-encodes it -- bodha_signal_identity then hashes Python's emit-order
+    serialisation instead of the key-order-normalised jsonb object, so the
+    stored signal_id is not derivable from the stored row (migration 661 PART 4;
+    verified live on 150,280/150,280 rows, #2455). The writer must parse the
+    string back to an object before deriving.
+    """
+    from pipeline.orchestrator.writers.bo_laksana import assign_deterministic_signal_ids
+
+    as_object = [_row(None, cfg={"b": 1, "a": 2})]
+    as_string = [_row(None, cfg=json.dumps({"a": 2, "b": 1}))]  # different key order too
+    assign_deterministic_signal_ids(_FakeConn(), as_object)
+    assign_deterministic_signal_ids(_FakeConn(), as_string)
+    assert as_object[0]["signal_id"] == as_string[0]["signal_id"]
 
 
 def test_no_emit_site_can_construct_a_random_signal_id() -> None:

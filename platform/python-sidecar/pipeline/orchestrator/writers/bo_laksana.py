@@ -3170,6 +3170,24 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
     """
     if not rows:
         return 0
+
+    def _config_object(row: dict) -> Any:
+        # Rows carry configuration_jsonb PRE-SERIALISED (json.dumps(config) at the
+        # emit sites, for the INSERT's ::jsonb cast). The identity function must
+        # receive the parsed OBJECT, not that string: embedding the string here
+        # double-encodes it, so jsonb_array_elements yields a jsonb *string
+        # scalar* and bodha_signal_identity() ends up hashing Python's emit-order
+        # serialisation instead of the key-order-normalised jsonb object. That
+        # silently defeats both properties migration 661 builds the identity on --
+        # key-order invariance, and derivability of signal_id from the stored
+        # row's own columns (661 PART 4's conformance detector, now bo_laksana's
+        # integrity_check_sql via migration 931). Verified live 2026-09-08:
+        # 150,280/150,280 rows failed re-derivation before this fix (#2455).
+        config = row.get("configuration_jsonb")
+        if isinstance(config, str):
+            return json.loads(config)
+        return config
+
     payload = [
         {
             "i": index,
@@ -3177,7 +3195,7 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
             "ayanamsha_id": row.get("ayanamsha_id"),
             "signal_type_id": row.get("signal_type_id"),
             "varga_id": row.get("varga_id"),
-            "configuration_jsonb": row.get("configuration_jsonb"),
+            "configuration_jsonb": _config_object(row),
         }
         for index, row in enumerate(rows)
     ]
