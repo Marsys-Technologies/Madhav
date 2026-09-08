@@ -28,11 +28,20 @@ SOURCE = Path(__file__).resolve().parents[1] / "bo_laksana.py"
 
 
 class _FakeCursor:
-    """Returns a derived-looking id per row, echoing the input index."""
+    """Returns a derived-looking id per row, echoing the input index.
+
+    fetchall() returns dicts keyed "i"/"sid" -- matching the real
+    connection's row_factory=dict_row (db.py), not positional tuples. A
+    tuple-shaped mock here previously hid the production bug where
+    `for index, sid in cur.fetchall()` unpacked each dict's KEYS instead of
+    its values, crashing with "list indices must be integers or slices, not
+    str" the first time this path ever ran (bo_laksana's first build, cycle
+    #40 WP-6 dispatch attempt).
+    """
 
     def __init__(self, log: list) -> None:
         self._log = log
-        self._rows: list[tuple[int, str]] = []
+        self._rows: list[dict] = []
 
     def __enter__(self) -> "_FakeCursor":
         return self
@@ -45,12 +54,12 @@ class _FakeCursor:
         payload = json.loads(params[0])
         # Mimic bodha_signal_identity: a pure function of the identity tuple.
         self._rows = [
-            (
-                e["i"],
-                "det-{}-{}-{}".format(
+            {
+                "i": e["i"],
+                "sid": "det-{}-{}-{}".format(
                     e["ayanamsha_id"], e["signal_type_id"], json.dumps(e["configuration_jsonb"], sort_keys=True)
                 ),
-            )
+            }
             for e in payload
         ]
 
