@@ -19,6 +19,7 @@ import {
 import {
   NirmanaLegacyAliasSchema,
 } from './label-contract'
+import { NIRMANA_SUPPORTING_WRITERS } from '@/generated/nirmana-analysis-receipts'
 import { loadNirmanaReleaseStatus, type NirmanaReleaseStatus } from './release'
 
 const layerIds = {
@@ -209,7 +210,13 @@ function deriveWaveIndices(manifest: NirmanaElevationManifest): Map<string, numb
 }
 
 export function buildNirmanaBaselineCandidate(rows: NirmanaRegistryContractRow[]): NirmanaBaselineCandidate {
-  const orderedRows = orderedRegistryRows(rows)
+  // D-NATIVE-11 (#2258): supporting writers register in asset_registry so the
+  // orchestrator runs them in dependency order, but they are not elevation-
+  // denominator assets. The candidate elevation manifest — and every label,
+  // identity, and contract digest derived from it — excludes them, so a live
+  // registry carrying bo_grounding still yields the frozen 128-asset
+  // denominator the D-NATIVE-13 flip and the stage-spine guards hard-assert.
+  const orderedRows = orderedRegistryRows(rows.filter((row) => !NIRMANA_SUPPORTING_WRITERS.has(row.asset_id)))
   const manifestWithoutWaves = NirmanaElevationManifestSchema.parse({
     chart_id: CANONICAL_NIRMANA_CHART_ID,
     assets: orderedRows.map((row) => {
