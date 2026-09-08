@@ -1,202 +1,225 @@
-# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-08T22:10Z (≈2026-09-09T03:40+05:30) — cycle #80
+# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-08T22:33Z (≈2026-09-09T04:03+05:30) — cycle #81
 
 ## POSITION
 
-**Deploy caught up — confirmed live commit is now `04e6c0eeb` (#2470), which is a descendant of
-`ea78a6508` (#2468, trap-93 fix) via `git merge-base --is-ancestor` on `origin/main`. This
-unblocked bo_vargottama_dhana, and this cycle drove it all the way to FROZEN.**
+**bo_laksana's freeze is now unblocked at the DB-permission layer. This cycle found and fixed the
+actual reason the hinge asset couldn't freeze, but the freeze submission itself was still running
+in a background subagent when this cycle had to close — NEXT CYCLE MUST CHECK DB STATE FIRST
+(see NEXT ACTION #1) before re-doing any of this work.**
 
-**PR hygiene (STEP 1):** `gh pr list --search "is:queued"` → empty. Only own open PR is stale
-draft `#1500` (not queued, not dirty/red) — no action.
+**PR hygiene (STEP 1):** `is:queued` empty. Only stale draft `#1500` (not queued/dirty/red, no
+action, unchanged for many cycles).
 
-**Deploy verification this cycle (gcloud method, gh Actions API unavailable — see below):**
-`gcloud run services describe amjis-web --region asia-south1` → serving revision
-`amjis-web-02188-9kq` (created `2026-09-08T20:27:40Z`), image digest
-`sha256:974a8002...5324d63`. That exact digest appears in the artifact registry push batch at
-`2026-09-09T01:56:23` IST (`=2026-09-08T20:26:23Z`), the SAME batch as the multi-arch manifest row
-tagged `04e6c0eeb511be38a423756207f0780e63adc9f8` + `latest`. Timestamps line up (image pushed
-~1 min before the revision's creation). **This is the revision→digest→artifact-tag method (trap
-101/102) — did NOT get to cross-check via trap 103's job-log method this cycle because the
-`gh api .../actions/runs/*` endpoint was returning `HTTP 403 API rate limit exceeded for user ID
-214666590` for the specific runs/{id} lookup (see Trap 104 below) while `gh pr view`/`gh pr list`
-worked fine seconds apart.** Confidence is still high: the revision-digest-registry-tag method
-reads Cloud Run's actual serving state directly, which is stronger ground truth than a CI job log
-— but the NEXT cycle should still do the job-log cross-check opportunistically if `gh run view`
-recovers, purely for completeness, not because there's live doubt.
+**Fleet slot: FREE** — `SELECT count(*) FROM public.build_runs WHERE state IN
+('planned','running','paused')` → `0`. No build was dispatched this cycle (evidence-only + one
+migration).
 
-`git log --oneline origin/main` confirms ancestry: `04e6c0eeb (#2470)` → `90327f52c (#2469)` →
-`ea78a6508 (#2468)` → `b4b9a3c3a (#2466)` → ... — i.e. **live now includes #2468, #2469, #2470,
-all three previously-unconfirmed merges.**
+## WHAT CYCLE #81 DID
 
-**Fleet slot: FREE** — confirmed directly, `SELECT count(*) FROM public.build_runs WHERE state IN
-('planned','running','paused')` → `0`, checked twice this cycle (before and after the evidence
-work; evidence submission does not create build_runs, only build dispatch does).
+1. Read RESOLUTION_L2 v4 + STATE #80. STATE #80's NEXT ACTION #1 said "trigger a fresh bo_laksana
+   dispatch from a clean worktree" — **investigated first rather than blindly re-dispatching, and
+   found the full W1-W4 re-run was NOT actually needed.**
+2. Found a stale `wt-bolaksana` worktree at `/private/tmp/claude-504/.../1f0521f3.../scratchpad/
+   wt-bolaksana` (leftover from an earlier cycle/session, commit `36fa3c8d2`, an ancestor of
+   `origin/main`). Updated it to `origin/main` HEAD (`04e6c0eeb`, #2470) and re-ran its leftover
+   `compute_bo_laksana_digests.py` script: **registry_fingerprint_sha256 and analysis_digest for
+   bo_laksana are UNCHANGED from the pair already accepted at 18:38-18:39 UTC** (`425a432c0a.../
+   da8c5ed1c6...`) — i.e. bo_laksana's own contract has NOT moved since the last W1/W2, despite 26+
+   commits landing on `origin/main` since. **No fresh W1/W2 was needed.**
+3. Queried `nirmana_evidence.nirmana_elevation_campaign_events` (schema `nirmana_evidence`, NOT
+   `public` — table is `nirmana_elevation_campaign_events`) directly and found bo_laksana's chain
+   already had a self-consistent `asset_analysis_accepted` (18:38:27) → `optimization_verdict_
+   accepted` (18:39:22) pair, PLUS an `implementation_accepted` from 18:35:12 (i.e. submitted
+   BEFORE the final re-verdict) — this is exactly the situation the 18:39:22 verdict's own
+   evidence_refs described: "Re-binds already-completed build_run a7c45a8b-8b72-40fd-b657-
+   88d042470496 ... to the live v2 contract so implementation_accepted->accepted_rebuild_observed
+   can proceed." **The actual expensive BUILD had already run and completed successfully
+   (build_run a7c45a8b, state=completed, `asset_provenance_receipts` row proven, output_digest
+   `5189f53d01...`) — this was never actually about re-running W1-W4, only about re-binding
+   evidence to it.**
+4. Attempted `accepted_rebuild_observed` directly, reusing implementation_accepted's stored
+   `decision_digest` (`5b3933dc...`) — **rejected: HTTP 409 "accepted_rebuild_observed must bind
+   the exact current optimization decision."** Root cause: the 18:35:12 `implementation_accepted`
+   was bound to an EARLIER verdict (before the 18:39:22 re-verdict), so its `decision_digest` no
+   longer equals `canonicalNirmanaOptimizationVerdictDigest` of the CURRENT (most recent) verdict.
+   **NEW TRAP (105):** submitting a re-verdict (`optimization_verdict_accepted`) AFTER an already-
+   accepted `implementation_accepted` silently strands that implementation binding — the very next
+   `accepted_rebuild_observed` attempt will reject with "must bind the exact current optimization
+   decision" even though nothing about the implementation itself changed. **Fix:** recompute
+   `canonicalNirmanaOptimizationVerdictDigest` fresh against the CURRENT (most recent)
+   `optimization_verdict_accepted` row's `evidence_payload`, and resubmit `implementation_accepted`
+   with that new `decision_digest` (same `implementation_digest` value is fine and correct — it is
+   submitter-chosen/opaque, never server-recomputed, per `requireImplementationProvenance` in
+   `definitions.ts` — it only needs to be a fresh, unique, schema-valid 64-hex value bound to the
+   right decision).
+5. Computed the fresh `decision_digest` via a standalone Node script (zod + a byte-exact
+   reimplementation of `stableJson` + `NirmanaOptimizationVerdictEvidenceSchema` from
+   `definitions.ts`, run from `/Users/Dev/nirmana-s/l2/platform` where `zod` resolves — do NOT try
+   to import `definitions.ts` directly, it has `import 'server-only'` + a huge dependency graph;
+   reimplementing the pure hash logic standalone is the reliable path, confirmed working twice now
+   across different sessions per `/private/tmp/compute_decision_digest*.{ts,mjs}` precedents) fed
+   the LATEST verdict's actual `evidence_payload` (fetched via `psql -t -A` to avoid transcription
+   errors) → **`0283a4d608b384194b966f4a14adb700797e9fdad4ac164faecafe8869e5a768`**.
+6. Submitted fresh `implementation_accepted` (same registry_fingerprint/analysis_digest/
+   implementation_digest, new decision_digest, source_ref=git:04e6c0eeb511be38a423756207f0780e
+   63adc9f8 = current deployed commit) via `nrec --as executor` → **HTTP 201**.
+7. Submitted `accepted_rebuild_observed` re-binding build_run `a7c45a8b-8b72-40fd-b657-
+   88d042470496` (authorization_sha256 `8a21e786...` read from its `build_run_authorized` event;
+   output_digest `5189f53d01...` + output_digest_spec_sha256 `39827b99...` read from
+   `asset_provenance_receipts`) with the NEW decision_digest → **HTTP 201**. Chain now:
+   `asset_analysis_accepted`(18:38) → `optimization_verdict_accepted`(18:39) →
+   `implementation_accepted`(22:19:17) → `accepted_rebuild_observed`(22:19:44).
+8. Dispatched a fresh-context INDEPENDENT VERIFIER subagent (foreground) to run
+   `integrity_verified`+`asset_frozen`. It did real, honest work — independently re-derived
+   `registry_fingerprint_sha256`, confirmed the chain, **actually ran bo_laksana's live
+   `integrity_check_sql` and confirmed it PASSES** (50,529 canonical-chart rows, real counts) — but
+   the `integrity_verified` SUBMISSION itself got HTTP 500 (generic uncaught exception, not a
+   validation 409). It root-caused this FOR REAL rather than guessing: `bo_laksana`'s migration-931
+   `integrity_check_sql` calls `bodha_signal_identity(uuid,text,text,text,jsonb)` (the migration-661
+   identity function); the server runs `server_reconstructed` evidence (i.e.
+   `integrity_verified`/`asset_frozen`) as DB role `nirmana_evidence_ingress_writer`
+   (`evidence-ingress.ts`), which had **no EXECUTE grant on that function** (confirmed directly:
+   `has_function_privilege(...)` = false). Same defect class as migrations 921/922/923 (a
+   table/function a specific asset's integrity check needs, never granted to this role) — just a
+   FUNCTION grant instead of a TABLE grant this time.
+9. **Authored, applied-live-and-verified, committed, and PR'd migration 934**
+   (`platform/migrations/934_nirmana_evidence_ingress_writer_bodha_signal_identity_grant.sql`) —
+   `GRANT EXECUTE ON FUNCTION bodha_signal_identity(uuid,text,text,text,jsonb) TO
+   nirmana_evidence_ingress_writer`. Applied directly to production DB THIS cycle (surgical-
+   migrations-verified standard); confirmed `has_function_privilege(...)` flips false→true.
+   Note: main worktree HEAD (`/Users/Dev/nirmana-s/l2`) was 26 commits behind `origin/main` (its
+   own commit `2f26ca840` had already merged as #2469 under a squashed hash) — branched the
+   migration off a FRESH `origin/main` checkout (`git checkout -b ... origin/main`), not off the
+   stale local HEAD, per trap 83. **PR #2472, auto-merge armed.**
+10. Dispatched ANOTHER fresh-context INDEPENDENT VERIFIER subagent (background, agent id
+    `ab1863b5fd7283573`) to retry `integrity_verified`+`asset_frozen` now that the grant is live.
+    **This was still running when the cycle had to close — its outcome is UNKNOWN. Do not assume
+    it succeeded OR failed; check the DB directly (NEXT ACTION #1).** In hindsight this should have
+    been run in the foreground like step 8's verifier (which completed cleanly in ~6 min) — running
+    the retry in the background was a process mistake this cycle, since a fresh-context session next
+    cycle cannot reliably receive that agent's completion notification. If the DB shows the chain
+    still stuck at `accepted_rebuild_observed` (not `integrity_verified`/`asset_frozen`) when you
+    read this, that background agent's work was lost/orphaned — just redispatch a FRESH
+    (foreground) verifier following the exact recipe embedded in this cycle's dispatch prompt
+    (steps 8-9 above cover everything it needs: schemas, the now-live grant, the digest values, the
+    `integrity_contract_sha256` a prior verifier already computed once —
+    `1e6d48ac808bb1e9febc6aae61eb545bf0480c3cbd07bcf1809a8cbf4c2e2eea` — independently recompute it
+    fresh rather than trust it, but it's a strong prior).
 
-## WHAT CYCLE #80 DID
-
-1. Read RESOLUTION_L2.md (v4, unchanged) and STATE #79 in full.
-2. PR hygiene: `is:queued` empty, no action.
-3. Attempted STATE #79's NEXT ACTION #1 (check run `34272429897` via job log) — `gh run view` /
-   `gh api runs/{id}` both hit `HTTP 403 rate limit exceeded for user ID 214666590` repeatedly for
-   that specific call, while `gh pr view`/`gh pr list` succeeded seconds before and after (see Trap
-   104). Pivoted to the independent gcloud revision→digest→artifact-tag method instead of
-   waiting/retrying (LAWS: never poll in-session).
-4. Found: current serving revision `amjis-web-02188-9kq` (created `20:27:40Z`) → image digest
-   matches the artifact-registry push batch tagged `04e6c0eeb`(#2470)+`latest`, pushed `20:26:23Z`.
-   **Live has moved past #2466 to #2470**, confirmed further via `git merge-base --is-ancestor
-   ea78a6508 04e6c0eeb` → yes, #2468's trap-93 fix is included in what's live.
-5. Per RESOLUTION_L2 priority + STATE #79 NEXT ACTION #2: with #2468 confirmed live, resubmitted
-   `accepted_rebuild_observed` for `bo_vargottama_dhana` (fresh `observed_at`, referencing the
-   already-COMPLETED build_run `93dc7283-a39b-4379-bb95-d3c7b7badc92`). Sourced every digest field
-   by READING it (never hand-computed, per trap 87):
-   - `analysis_digest`, `registry_fingerprint_sha256`, `decision_digest`, `implementation_digest`
-     — read from the already-accepted `implementation_accepted` event's own `evidence_payload`.
-   - `authorization_sha256` — read from the `build_run_authorized` event
-     (`entity_type='build_run'`, `entity_id=<build_run uuid>`, per trap 84).
-   - `output_digest` + `output_digest_spec_sha256` — read from
-     `public.asset_provenance_receipts` (`receipt_state='proven'`, matched to `build_id=93dc7283...`).
-   - `wave_index=0`, `build_run_id`, `source_ref='build_run:93dc7283...'`, `source_kind='build_run'`.
-   Submitted via `nrec --as executor --file <cmd.json>` → **HTTP 201 `{"outcome":"created"}`**.
-6. Dispatched a fresh-context INDEPENDENT VERIFIER subagent (not the executor identity) to:
-   run `bo_vargottama_dhana`'s actual `integrity_check_sql` against the live DB itself (not trust
-   the executor's claim), confirm a genuine pass with real row counts (10 `dhana_axis` +
-   4 `vargottama_amplification` rows for the canonical chart), then submit `integrity_verified`
-   and `asset_frozen` via `nrec --as verifier`. The subagent discovered `integrity_verified`'s real
-   schema requires `integrity_contract_sha256` + `result_digest` (NOT the `{}`-payload my task
-   brief guessed) — it computed `integrity_contract_sha256` by invoking the actual production
-   `canonicalNirmanaIntegrityContractDigest` function (via a `server-only`-stubbed `tsx` shim),
-   confirmed correct because the server's own independent re-execution of the integrity SQL
-   (visible in the persisted row's `detector_observation`) matched. For `asset_frozen`'s
-   `lifecycle_digest` (checked exactly, not server-recomputed), it replayed the server's own
-   `stableJson`+SHA-256 algorithm (read verbatim from `definitions.ts`) against the real 7-event
-   lifecycle chain in a small Node script — accepted on the first submission, confirming byte-exact
-   correctness. Both submissions returned **HTTP 201**.
-7. **Verified directly via psql** (not just trusting the subagent's report):
-   ```
-   entity_id=bo_vargottama_dhana, definition_revision=t1-2026-09-08-be255ffe:
-   asset_analysis_accepted → optimization_verdict_accepted → asset_analysis_accepted →
-   optimization_verdict_accepted → implementation_accepted → accepted_rebuild_observed →
-   integrity_verified → asset_frozen   (8 rows, chain complete, ends in asset_frozen 22:06:48Z)
-   ```
-   **BO_VARGOTTAMA_DHANA IS NOW FROZEN UNDER LIVE t1.**
-8. Did not attempt a fresh bo_laksana dispatch this cycle (RESOLUTION priority #1's hinge) — that
-   is genuinely the next unit of work (a full W1/W2 re-run + redispatch from a clean worktree is a
-   large bounded task on its own; this cycle's bounded unit was the bo_vargottama_dhana unblock).
-
-Wall-clock: ~35 min (includes the ~8 min independent-verifier subagent).
+Wall-clock: ~50 min total (includes ~6 min for the first foreground verifier).
 
 ## NEXT ACTION (in order)
 
-1. **Trigger a fresh bo_laksana dispatch from a CLEAN `origin/main` worktree** (NOT
-   `/Users/Dev/nirmana-s/l2`, which stays far behind `origin/main` and should never be built from
-   directly — trap 83). This is now RESOLUTION_L2 v4's priority #1, the campaign's hinge — bo_bimba
-   / bo_samskara and the rest of the DAG queue behind it. Sequence: fresh worktree at
-   `origin/main` HEAD (now `04e6c0eeb`+ whatever's newer) → symlink `node_modules` from
-   `/Users/Dev/nirmana-s/l2` (trap 83) → full W1/W2 re-run as executor (trap 75/88 — own-contract-
-   changed requires full re-run, NOT just a resubmit) → dispatch → evidence chain
-   (asset_analysis_accepted → optimization_verdict_accepted → implementation_accepted →
-   build_run_authorized → accepted_rebuild_observed) → `integrity_verified` + `asset_frozen` via a
-   fresh-context INDEPENDENT VERIFIER subagent (same pattern used successfully this cycle for
-   bo_vargottama_dhana — reuse that pattern/prompt shape).
-2. **Once bo_laksana is FROZEN:** dispatch the DAG chain in ancestor order — bo_bimba / bo_samskara
-   expected first (their contracts were being pre-written by the L1 lane as of RESOLUTION v4;
-   re-verify current status before assuming still true — re-read the coordination issue). If a
-   contract is missing for the expected-next asset, say so on the coordination issue and take the
-   NEXT ready asset per RESOLUTION_L2 v4 priority #2, rather than stalling.
-3. **Opportunistic, not blocking:** if `gh run view`/`gh api actions/runs/{id}` has recovered from
-   the rate-limit seen this cycle (Trap 104), do the trap-103 job-log cross-check on deploy run
-   `34272429897`/`34271739354`'s "Build and push web image" step purely to close the loop — but do
-   NOT let this block bo_laksana dispatch; the gcloud revision-digest-tag method already gives high
-   confidence live=`04e6c0eeb`(#2470).
-4. #2450: bookkeeping-only OPEN, structural fix live — no further action unless an explicit
-   Conductor closure comment appears.
-5. #2434, #2467, #2406: CLOSED, no further action.
-6. #1770: RULED, fix #2470 now confirmed LIVE (this cycle) — consider this fully resolved; no
-   further action unless new evidence contradicts.
+1. **FIRST THING: check DB state directly before doing anything else.**
+   ```sql
+   SELECT event_type, recorded_at FROM nirmana_evidence.nirmana_elevation_campaign_events
+   WHERE entity_id='bo_laksana' AND definition_revision='t1-2026-09-08-be255ffe'
+   ORDER BY recorded_at DESC LIMIT 3;
+   ```
+   - If top row is `asset_frozen` → **BO_LAKSANA IS FROZEN.** The campaign hinge is cleared. Move
+     straight to dispatching the DAG chain in ancestor order (bo_bimba/bo_samskara expected first —
+     re-check the coordination issue for current contract status, RESOLUTION_L2 priority #2).
+   - If top row is still `accepted_rebuild_observed` (22:19:44) → the background verifier (agent
+     `ab1863b5fd7283573`) did not land its work (orphaned/lost, or still running with no way for
+     this fresh session to observe it). **Redispatch a FRESH foreground verifier subagent** for
+     `integrity_verified`+`asset_frozen` — migration 934's grant is live in the DB regardless of PR
+     #2472's merge status (it was applied directly), so this should now succeed cleanly. Use the
+     same task recipe as cycle #81 step 8/10 (full schemas, bound digests, the now-confirmed-live
+     grant) — do NOT re-diagnose from scratch, the root cause and fix are already known and applied.
+   - If top row is `integrity_verified` (not yet `asset_frozen`) → just need the `asset_frozen`
+     step; read the lifecycle_digest reconstruction logic in `definitions.ts` and submit it.
+2. **Check PR #2472's merge status** (`gh pr view 2472`) — should auto-merge cleanly (pure
+   additive GRANT migration, same pattern as 921/922/923 which all merged without issue). Not
+   blocking for bo_laksana's freeze (grant already live), just close the loop.
+3. **Once bo_laksana is FROZEN:** dispatch the DAG chain in ancestor order — bo_bimba/bo_samskara
+   expected first per RESOLUTION_L2 v4. Re-verify current contract status on the coordination issue
+   before assuming still true. If a contract is missing for the expected-next asset, say so on the
+   coordination issue and take the NEXT ready asset rather than stalling.
+4. #2450: bookkeeping-only OPEN, structural fix live — no further action unless explicit Conductor
+   closure comment appears.
+5. #2434, #2467, #2406: CLOSED, no further action. #1770: RULED, fix confirmed LIVE — resolved.
 
 ## TRAPS (permanent — cite before every future dispatch)
 
-**Trap 104 (cycle #80, NEW):** `gh run view <id>` / `gh api repos/.../actions/runs/{id}` can return
-`HTTP 403 "API rate limit exceeded for user ID 214666590"` for that SPECIFIC call while `gh pr
-view`/`gh pr list` succeed seconds before/after on the same token — this is NOT the primary
-`core`/`search` rate limit (`gh api rate_limit` showed `remaining: 5000/5000` at the same moment).
-Read as a secondary/abuse-detection throttle on the Actions-runs endpoint specifically, plausibly
-from fleet-wide concurrent polling across lanes (conductor/L1/L2/L3 all watching deploy runs). **Do
-NOT loop-retry this in-session (LAWS: never poll)** — fall back immediately to the independent
-gcloud revision→digest→artifact-tag method (trap 101/102), which reads Cloud Run's actual serving
-state directly and needs no GitHub Actions API call at all. Re-attempt the trap-103 job-log
-cross-check next cycle only opportunistically, never as a gate.
-**Trap 103 (cycle #79):** a `workflow_run`-triggered "Deploy to Cloud Run" run's `head_sha` field
-(via `gh run list`/`gh api runs/{id}`) can DISAGREE with the `env.DEPLOY_SHA` the job body actually
-used (`.github/workflows/deploy.yml` line 65) — only that run's own job-log `DEPLOY_SHA:` line (or
-the docker tag it pushed) is trustworthy for "what did this run ship."
-**Trap 102 (cycle #78):** `gcloud run services/revisions describe` for `amjis-web` needs
-`--region asia-south1`. Artifact registry `CREATE_TIME` is IST (no `Z`); Cloud Run
-`creationTimestamp` is UTC (`Z`) — apply +5:30 before comparing.
-**Trap 101 (cycle #77):** to find the true live commit, resolve serving revision → image digest →
-artifact-registry tag, AND cross-check via trap 103's job-log method where available.
-**Trap 100 (cycle #76):** diff each uncommitted worktree item individually vs `origin/main` before
-discarding; never blanket `git clean -fd`/`reset --hard`.
-**Trap 99 (cycle #75):** #2470 (bo_laksana trap-99 fix) won the double-open tie-break permanently
-— MERGED and now confirmed LIVE (cycle #80). #2471 stays CLOSED, do not reopen.
-**Trap 98/97/96b/96/95/94 (cycles #73-74):** see git history — PR/state verification discipline.
-**Trap 93 (cycle #69):** `accepted_rebuild_observed`'s independent `run.started_at >
-authorization.recorded_at`-family check — fix #2468, confirmed LIVE this cycle (#80), and its
-resubmission for `bo_vargottama_dhana` succeeded cleanly (HTTP 201) with no timing rejection.
-**Trap 92/91/90/89/88/87/86/85/84/83/82/81/80(b) (cycles #65-69):** see git history — evidence
+**Trap 105 (cycle #81, NEW):** submitting a re-verdict (`optimization_verdict_accepted`) for an
+asset AFTER an `implementation_accepted` has already been accepted for it silently STRANDS that
+implementation binding — `accepted_rebuild_observed` will reject with "must bind the exact current
+optimization decision" (HTTP 409, looks like an idempotency conflict but is a real validation
+failure) because the implementation's stored `decision_digest` no longer equals
+`canonicalNirmanaOptimizationVerdictDigest` of the now-current (most recent) verdict. **Fix:**
+recompute the digest fresh against the LATEST `optimization_verdict_accepted` row's
+`evidence_payload` (standalone Node script reimplementing `stableJson` +
+`NirmanaOptimizationVerdictEvidenceSchema` from `definitions.ts`, run from
+`/Users/Dev/nirmana-s/l2/platform` where `zod` resolves — see
+`/private/tmp/compute_decision_digest*.{ts,mjs}` for working precedents from earlier sessions, and
+`/private/tmp/claude-504/.../scratchpad/compute_bo_laksana_decision_digest.mjs` this cycle's copy)
+and resubmit `implementation_accepted` with the SAME `implementation_digest` (submitter-chosen,
+never server-recomputed — confirmed by reading `requireImplementationProvenance` in
+`definitions.ts`) but the NEW `decision_digest`. This is now the 3rd time this exact "re-verdict
+strands prior W3" pattern has appeared for bo_laksana across different digest-staleness episodes —
+check for it FIRST (compare implementation_accepted's decision_digest against a fresh
+canonicalNirmanaOptimizationVerdictDigest of the CURRENT verdict) before assuming a full W1/W2/W3
+re-run is needed, the way STATE #80 assumed.
+**Trap 104 (cycle #80):** `gh run view`/`gh api actions/runs/{id}` can hit a secondary rate limit
+independent of the primary `core`/`search` limit — fall back to the gcloud revision→digest→
+artifact-tag method, don't loop-retry.
+**Trap 103 (cycle #79):** a deploy run's `head_sha` field can disagree with the job's actual
+`DEPLOY_SHA` — only the job log or pushed docker tag is trustworthy.
+**Trap 102/101 (cycles #77-78):** gcloud region flag + IST/UTC timestamp comparison for the
+revision→digest→artifact-tag live-commit method.
+**Trap 100 (cycle #76):** diff each uncommitted worktree item individually before discarding.
+**Trap 99 (cycle #75):** #2470 won the double-open tie-break permanently, confirmed LIVE. #2471
+stays CLOSED.
+**Trap 98-80(b) (cycles #65-74):** see git history — PR/state verification discipline, evidence
 payload field names, entity_type conventions, digest sourcing discipline, worktree hygiene.
-**NEW learning (cycle #80, not yet numbered as a trap — informational):** `integrity_verified`'s
-real evidence_payload schema requires `integrity_contract_sha256` + `result_digest` in addition to
-`registry_fingerprint_sha256` + `analysis_digest` — NOT an empty `{}` payload as might be assumed
-from the base schema's `.default({})`. `integrity_contract_sha256` must be computed via the actual
-production `canonicalNirmanaIntegrityContractDigest` function (`definitions.ts`) — the server
-independently re-runs the integrity SQL and overwrites `result_digest`/`detector_observation`
-server-side regardless of what's submitted, so a schema-valid placeholder for `result_digest` is
-fine, but `integrity_contract_sha256` must be genuinely computed (cross-verify by checking the
-server's own recomputed value matches in the persisted row). `asset_frozen`'s `lifecycle_digest` is
-checked EXACTLY (not server-recomputed) — must replay the server's own `stableJson`+SHA-256
-algorithm (read verbatim from `definitions.ts` lines ~2206-2213) against the real lifecycle event
-rows for that entity/definition_revision. Full worked example: see cycle #80's verifier subagent
-transcript, or replicate against `bo_vargottama_dhana`'s now-frozen chain as a reference.
-See git history of this file for traps 1–92 in full detail.
+**NEW learning (cycle #80):** `integrity_verified` requires `integrity_contract_sha256` +
+`result_digest` (computed via `canonicalNirmanaIntegrityContractDigest`, server overwrites
+`result_digest`/`detector_observation` regardless of submission). `asset_frozen`'s `lifecycle_digest`
+IS checked exactly (replay the server's `stableJson`+SHA-256 over the accepted lifecycle event set).
+**NEW learning (cycle #81):** the campaign events table is `nirmana_evidence
+.nirmana_elevation_campaign_events` — NOT `public.nirmana_lifecycle_events` or any `public.*event*`
+table (there is no such public table; don't waste a query guessing table names, go straight to the
+`nirmana_evidence` schema). `asset_provenance_receipts` (public schema) holds `output_digest`/
+`output_digest_spec_sha256`/`receipt_state` keyed by `build_id` — read it directly rather than
+recomputing. A `build_run_authorized` event's `authorization_sha256` is submitter-chosen (per trap
+84 from earlier cycles) — read it from the existing event, never recompute.
+See git history of this file for traps 1-99 in full detail.
 
 ## STANDING CONSTRAINTS (carried forward, verify each cycle)
 
-- Live deployed commit as of cycle #80: **`04e6c0eeb` (#2470)**, confirmed via gcloud
-  revision→digest→artifact-tag method (serving revision `amjis-web-02188-9kq`, region
-  `asia-south1`, created `2026-09-08T20:27:40Z`). Ancestry-confirmed to include #2468 and #2469.
-  RE-VERIFY before reuse if more than ~1hr has passed — deploys are landing frequently.
-- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) still far behind `origin/main`** — do not build
-  new campaign work (e.g. the bo_laksana dispatch) on this worktree's HEAD; use a fresh
-  `origin/main` worktree, symlink `node_modules` from here, remove the symlink before committing.
-  Not re-diffed this cycle (no writes made here beyond reading files and running psql/nrec).
+- Live deployed commit as of cycle #81: **`04e6c0eeb` (#2470)** confirmed cycle #80 via gcloud
+  method; not re-verified independently this cycle (no new deploy-status check was needed — this
+  cycle's work was evidence-submission + one DB grant, not deploy-dependent). RE-VERIFY if stale.
+- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) is now ON BRANCH
+  `l2-bo-laksana-migration-934-signal-identity-grant`** (checked out fresh from `origin/main` this
+  cycle specifically to avoid trap 83 — the branch's prior state, `l2-bo-arudha-predispatch-
+  contract-926-927` at commit `2f26ca840`, was 26 commits behind `origin/main` but its own content
+  had already merged as PR #2469 under a squashed hash, so nothing was lost). **Next cycle: this
+  worktree is now current with `origin/main` as of `04e6c0eeb` + migration 934's commit — safe to
+  build from directly, or `git fetch && git checkout origin/main` fresh if further behind by then.**
 - `nrec` = `bash platform/scripts/nirmana/nrec`; `--as executor` for W1/W2/implementation/rebuild/
-  authorization, `--as verifier` for integrity_verified/asset_frozen; body needs top-level
-  `"command":"record_evidence"` + `idempotency_key` + `definition_revision` + `observed_at` +
-  `evidence_payload` + correct `entity_type` (trap 84). Schemas live in
-  `platform/src/lib/nirmana-elevation/definitions.ts` (search `NirmanaLifecycleBindingSchema`,
-  `NirmanaRebuildEvidenceSchema`) and `evidence-command.ts` (search `assetReceipt`,
-  `typedLifecyclePayloads`) — read them directly rather than guessing payload shape; this cycle's
-  verifier subagent had to correct a wrong assumption about `integrity_verified`'s payload shape.
-- ONE non-terminal build_run per chart (fleet cap 3). **Fleet slot FREE**, confirmed directly twice
-  this cycle (`SELECT count(*) FROM public.build_runs WHERE state IN ('planned','running','paused')`
-  → 0 both times).
+  authorization, `--as verifier` for integrity_verified/asset_frozen. Schemas in
+  `platform/src/lib/nirmana-elevation/definitions.ts` (`NirmanaLifecycleBindingSchema` and its
+  `.extend()`s) and `evidence-command.ts` (envelope/source_kind rules) — read them directly.
+- ONE non-terminal build_run per chart (fleet cap 3). **Fleet slot FREE**, confirmed this cycle. No
+  build was dispatched this cycle.
 - `--definition-revision t1-2026-09-08-be255ffe` always explicit.
 - DATABASE_URL export each cycle: `postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@localhost:5432/amjis`;
   explicit `timeout 30` on every psql/dispatch invocation. Never `git stash`. No heartbeat branches.
   Never self-certify capsules (executor and verifier must be genuinely separate identities/subagent
-  contexts — this cycle correctly used a fresh-context subagent for the verifier role rather than
-  self-certifying). `gh pr merge <n> --auto` bare flag only (merge-queue-managed org).
-- Issues ledger: **#2434 CLOSED**; **#2467 CLOSED**; **#1770 — RULED, fix #2470 CONFIRMED LIVE this
-  cycle**; **#2450 OPEN** (bookkeeping only, structural fix #2461 live); **#2447 OPEN**; **#2443
-  OPEN** (stale, no action); **#2446 OPEN**; **#2415 OPEN**; **#2406 CLOSED**.
-- PRs: **#2470 MERGED + CONFIRMED LIVE** (cycle #80); **#2471 CLOSED PERMANENTLY** (do not reopen);
-  **#2469 MERGED + LIVE** (bo_arudha migrations 926/927); **#2468 MERGED + LIVE** (trap-93 fix);
-  #2466/#2464/#2463/#2461/#2460/#2458/#2457/#2454/#2453/#2452/#2451 all MERGED+LIVE (older).
-- **Frozen under live t1 (definition_revision `t1-2026-09-08-be255ffe`): bo_nakshatra_semantic,
-  bo_special_lagna, bo_vargottama_dhana (NEW this cycle).** bo_arudha/bo_sudarshana frozen under
-  an earlier definition_revision (not re-verified under t1 this cycle — check on next touch if it
-  matters for DAG-dependency purposes). **bo_laksana: NOT yet frozen** — dead generation
-  `425a432c0a...:da8c5ed1c69...` stays dead per #1770's ruling (now fully resolved/live); needs a
-  FRESH dispatch from a clean `origin/main` worktree (STATE NEXT ACTION #1 above) — this is now the
-  single most important open item, RESOLUTION_L2 v4 priority #1, the campaign's hinge.
+  contexts). Prefer FOREGROUND verifier subagents over background ones for this fresh-context-per-
+  cycle campaign — a background agent's completion notification may not reach the next cycle's
+  fresh session (see cycle #81 step 10's mistake). `gh pr merge <n> --auto` bare flag only.
+- Issues ledger: **#2434 CLOSED**; **#2467 CLOSED**; **#1770 RULED, fix LIVE**; **#2450 OPEN**
+  (bookkeeping only); **#2447 OPEN**; **#2443 OPEN** (stale); **#2446 OPEN**; **#2415 OPEN**;
+  **#2406 CLOSED**.
+- PRs: **#2472 OPEN, auto-merge armed** (migration 934, this cycle — grant already applied live
+  independent of merge status); #2470/#2469/#2468/#2466/#2464/#2463/#2461/#2460/#2458/#2457/#2454/
+  #2453/#2452/#2451 all MERGED+LIVE (older). #2471 CLOSED PERMANENTLY (do not reopen).
+- **Frozen under live t1 (`t1-2026-09-08-be255ffe`): bo_nakshatra_semantic, bo_special_lagna,
+  bo_vargottama_dhana.** bo_laksana: chain now complete through `accepted_rebuild_observed`
+  (22:19:44 this cycle); `integrity_verified`/`asset_frozen` attempted via background verifier,
+  OUTCOME UNKNOWN — check DB first thing next cycle (NEXT ACTION #1). The DB-permission blocker
+  that caused the FIRST `integrity_verified` attempt to 500 is fixed and confirmed live (migration
+  934). bo_arudha/bo_sudarshana frozen under an earlier definition_revision (not re-verified under
+  t1 this cycle).
