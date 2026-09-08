@@ -16,9 +16,18 @@ import layerPinRecord from './nirmana-analysis-layer-pins.json'
  *     and its own writer-inventory aggregate.  A writer edit invalidates only
  *     that layer's receipts.  A single global pin would let any layer's writer
  *     fix silently invalidate every other layer's accepted analyses.
- *  2. **The digest stays a real detector.** `analysis_digest` binds the receipt
- *     base, the frozen manifest asset, and the live registry contract.  Drop any
- *     of the three and C2 condition 3 stops being able to fail.
+ *  2. **The digest stays a real detector — scoped to the asset's OWN contract.**
+ *     Since `nirmana-asset-analysis-receipt/v2` (adjudication #2450, Conductor
+ *     cycle-320 structural ruling), `analysis_digest` binds the base's identity
+ *     fields (asset_id, layer, own writer digest — which closes over the
+ *     writer's local import graph), the frozen manifest asset, and the live
+ *     registry contract.  Drop any of those and C2 condition 3 stops being able
+ *     to fail.  `grounding` (the layer-shared convergence commit) is provenance
+ *     METADATA plus the per-layer availability gate above — it is deliberately
+ *     NOT hashed into per-asset identity, because a layer-shared pin in the
+ *     identity meant every sibling writer deploy moved every untouched asset's
+ *     digest (the #2450 evidence treadmill).  v1 receipts (which did hash the
+ *     full base, grounding included) remain re-derivable for stored history.
  *
  * The pin record is generated, not hand-maintained — see
  * `platform/scripts/generate/nirmana_analysis_layer_pins.py`.  A committed
