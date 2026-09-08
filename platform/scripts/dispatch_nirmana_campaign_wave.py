@@ -435,6 +435,7 @@ def _current_generation_accepted_rebuilds(
     *,
     accepted_rebuild_rows: Sequence[Mapping[str, Any]],
     live_registry_fingerprints: Mapping[str, str],
+    live_analysis_digests: Mapping[str, str],
 ) -> list[str]:
     """Which of these ``accepted_rebuild_observed`` rows still block a fresh run.
 
@@ -450,12 +451,25 @@ def _current_generation_accepted_rebuilds(
     generation still blocks (unchanged safety property); one bound to a
     generation the live registry has since moved past does not.
 
-    ``evidence_payload.registry_fingerprint_sha256`` on every
-    ``accepted_rebuild_observed`` row is the authoritative generation the
-    server bound that acceptance to at submission time (``assertLifecycleBinding``
-    in ``definitions.ts`` requires it equal the then-current live fingerprint,
-    and it is immutable evidence thereafter) -- reading it directly here, rather
-    than re-deriving it in Python from ``decision_digest`` via a hand-ported
+    Adjudication #2427 (ruled 2026-09-08, option (a)): "current generation"
+    here must mean the SAME thing it means to the server's
+    ``isCurrentOperationalPrerequisite`` / ``assertLifecycleBinding``
+    (``bindingMatches`` in ``definitions.ts``): registry fingerprint AND
+    analysis digest, both current. Matching the fingerprint alone left a
+    deadlock -- a sibling-asset deploy moves ``convergence_commit`` and with it
+    every L1 asset's ``analysis_digest``, so the server's freeze path refused
+    the stale-digest acceptance as a prerequisite while this guard, seeing an
+    unmoved fingerprint, refused the fresh rebuild too. Every mismatch on
+    EITHER field now permits redispatch; only a fully-current acceptance
+    (fingerprint and analysis digest both live) blocks.
+
+    ``evidence_payload.registry_fingerprint_sha256`` and
+    ``evidence_payload.analysis_digest`` on every ``accepted_rebuild_observed``
+    row are the authoritative generation the server bound that acceptance to at
+    submission time (``assertLifecycleBinding`` in ``definitions.ts`` requires
+    them equal the then-current live values, and they are immutable evidence
+    thereafter) -- reading them directly here, rather than re-deriving them in
+    Python from ``decision_digest`` via a hand-ported
     ``canonicalNirmanaOptimizationVerdictDigest``, reaches the identical
     generation identity without reimplementing a JS canonicalization/hash
     routine a second time in a different language, a known correctness risk
@@ -467,14 +481,16 @@ def _current_generation_accepted_rebuilds(
     for row in accepted_rebuild_rows:
         entity_id = row.get("entity_id")
         payload = row.get("evidence_payload")
-        bound_fingerprint = (
-            payload.get("registry_fingerprint_sha256")
-            if isinstance(payload, Mapping)
-            else None
-        )
-        if not isinstance(entity_id, str):
+        if not isinstance(entity_id, str) or not isinstance(payload, Mapping):
             continue
-        if bound_fingerprint is not None and bound_fingerprint == live_registry_fingerprints.get(entity_id):
+        bound_fingerprint = payload.get("registry_fingerprint_sha256")
+        bound_analysis_digest = payload.get("analysis_digest")
+        if (
+            bound_fingerprint is not None
+            and bound_fingerprint == live_registry_fingerprints.get(entity_id)
+            and bound_analysis_digest is not None
+            and bound_analysis_digest == live_analysis_digests.get(entity_id)
+        ):
             current.append(entity_id)
     return current
 
@@ -1047,7 +1063,7 @@ def create_campaign_run(
         # Every layer, not just L0 (adjudication #1718, folded into #1715's
         # ruling): reconstructing the canonical analysis digest from CURRENT
         # code is what makes a post-acceptance writer edit detectable.
-        canonical_analysis_digests: Mapping[str, str] | None
+        canonical_analysis_digests: Mapping[str, str]
         canonical_analysis_digests, _convergence_commit = (
             _current_analysis_receipt_digests(
                 layer=layer,
@@ -1191,6 +1207,10 @@ def create_campaign_run(
         # live registry has since moved past (e.g. a post-acceptance
         # integrity_check_sql performance/scope fix) does not permanently wall
         # off redispatch; one bound to the still-current generation still does.
+        # Adjudication #2427 (ruled 2026-09-08, option (a)): "current generation"
+        # is fingerprint AND analysis digest, matching the server's own
+        # bindingMatches definition -- a sibling deploy that moved only the
+        # analysis digest no longer deadlocks redispatch.
         cur.execute(
             """
             SELECT entity_id, evidence_payload
@@ -1204,6 +1224,7 @@ def create_campaign_run(
         accepted = _current_generation_accepted_rebuilds(
             accepted_rebuild_rows=cur.fetchall(),
             live_registry_fingerprints=live_registry_fingerprints,
+            live_analysis_digests=canonical_analysis_digests,
         )
         if accepted:
             raise RuntimeError(
