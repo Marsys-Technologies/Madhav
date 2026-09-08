@@ -2585,7 +2585,7 @@ async function requireAcceptedRebuildProvenance(
             (run.started_at > $7::timestamptz
              AND run.started_at > $8::timestamptz
              AND ($9::timestamptz IS NULL OR run.started_at > $9::timestamptz))
-            OR run.created_at >= now() - interval '10 minutes'
+            OR run.created_at >= $7::timestamptz - interval '10 minutes'
           )
           AND run.plan_manifest #>> '{campaign_control,campaign_id}' = $5
           AND run.plan_manifest #>> '{campaign_control,definition_revision}' = $6
