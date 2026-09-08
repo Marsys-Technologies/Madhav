@@ -2805,6 +2805,67 @@ async function requireFoundationLaneProvenance(
   }
 }
 
+/**
+ * The freeze-lifecycle verifier for a layer EXIT (ruling #2428 item 2). A layer stage
+ * (L0..L5) may only be exited once every asset the CURRENT frozen manifest places in that
+ * layer has a genuinely complete evidence chain behind it — reconstructed here from the raw
+ * event log, the same five markers `capsule_audit.sql §1` and `requireFreezeProvenance` (the
+ * per-asset asset_frozen gate) already treat as "complete": a W2 analysis, a W2 verdict, some
+ * terminal acceptance (build/probe/static/empty/producer_covered/source/retired), an
+ * integrity_verified, and the asset_frozen receipt itself. This is a real detector against the
+ * actual claim ("every asset receipt reconstructs clean"), not a proxy over asset_registry/
+ * asset_throughput state (§N.8 Earned-Signal Principle) — a partially-evidenced asset cannot
+ * satisfy it by any registry-side bookkeeping alone.
+ *
+ * Asset lifecycle events are not revision-scoped the way foundation-lane/stage-transition
+ * receipts are (an asset frozen before a mid-campaign definition supersession keeps its
+ * capsule) — see `capsule_audit.sql §1`, which likewise queries across all revisions. This
+ * verifier does the same: it looks up each layer asset's events by campaign_id + entity_id
+ * only, not the transition's own definition_revision.
+ */
+async function assertLayerFreezeLifecycleComplete(
+  client: PoolClient,
+  input: RecordNirmanaElevationEvidenceInput,
+  manifest: NirmanaElevationManifest,
+  layer: NirmanaElevationManifest['assets'][number]['layer'],
+): Promise<void> {
+  const layerAssetIds = manifest.assets.filter((asset) => asset.layer === layer).map((asset) => asset.asset_id)
+  if (layerAssetIds.length === 0) {
+    throw new NirmanaElevationEvidenceValidationError(`Freeze-lifecycle verifier found no ${layer} assets in the current frozen manifest.`)
+  }
+  const chain = await client.query<{
+    entity_id: string
+    frozen: boolean
+    w2_analysis: boolean
+    w2_verdict: boolean
+    integrity_verified: boolean
+    terminal_acceptance: boolean
+  }>(
+    `SELECT entity_id,
+            bool_or(event_type = 'asset_frozen')                  AS frozen,
+            bool_or(event_type = 'asset_analysis_accepted')       AS w2_analysis,
+            bool_or(event_type = 'optimization_verdict_accepted') AS w2_verdict,
+            bool_or(event_type = 'integrity_verified')            AS integrity_verified,
+            bool_or(event_type IN ('accepted_rebuild_observed', 'probe_accepted', 'static_accepted',
+                                    'empty_accepted', 'producer_covered', 'source_accepted',
+                                    'retired_with_disposition'))  AS terminal_acceptance
+       FROM nirmana_evidence.nirmana_elevation_campaign_events
+      WHERE campaign_id = $1 AND entity_type = 'asset' AND entity_id = ANY($2::text[])
+      GROUP BY entity_id`,
+    [input.campaign_id, layerAssetIds],
+  )
+  const byId = new Map(chain.rows.map((row) => [row.entity_id, row]))
+  const incomplete = layerAssetIds.filter((assetId) => {
+    const row = byId.get(assetId)
+    return !row || !row.frozen || !row.w2_analysis || !row.w2_verdict || !row.integrity_verified || !row.terminal_acceptance
+  })
+  if (incomplete.length > 0) {
+    throw new NirmanaElevationEvidenceValidationError(
+      `Layer ${layer} exit blocked: freeze-lifecycle verifier found ${incomplete.length} asset(s) without a complete evidence chain (${incomplete.slice(0, 8).join(', ')}${incomplete.length > 8 ? ', …' : ''}).`,
+    )
+  }
+}
+
 async function requireStageTransitionProvenance(
   client: PoolClient,
   input: RecordNirmanaElevationEvidenceInput,
@@ -2884,7 +2945,7 @@ async function requireStageTransitionProvenance(
     }
   }
   if (expectedFrom !== null && ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'].includes(expectedFrom)) {
-    throw new NirmanaElevationEvidenceValidationError(`Campaign stage ${expectedFrom} exit is fail-closed until a server-side freeze-lifecycle verifier reconstructs every asset receipt.`)
+    await assertLayerFreezeLifecycleComplete(client, input, manifest, expectedFrom as NirmanaElevationManifest['assets'][number]['layer'])
   }
   if (receipt.to_stage === 'COMPLETE') {
     const status = await loadNirmanaReleaseStatus()

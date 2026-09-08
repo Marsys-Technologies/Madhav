@@ -2496,19 +2496,68 @@ it('atomically supersedes the exact current frozen definition with the server-de
     })).rejects.toThrow(/migration-ledger/i)
   })
 
-  it('fails closed on an L0 exit rather than trusting asset_frozen rows alone', async () => {
+  it('rejects an L0 exit when the freeze-lifecycle verifier finds an asset with no evidence at all', async () => {
     useEvidenceTransaction()
     queryMock
       .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
       .mockResolvedValueOnce({ rows: [{ present: false }] })
       .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({ rows: [] })
     await expect(recordNirmanaElevationEvidence({
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-presence',
       event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
       evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
       source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
       observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
-    })).rejects.toThrow(/fail-closed/i)
+    })).rejects.toThrow(/without a complete evidence chain/i)
+  })
+
+  it('rejects an L0 exit when the freeze-lifecycle verifier finds a partial chain (missing integrity_verified)', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({
+        rows: [{
+          entity_id: 'bg_prashna_rules', frozen: true, w2_analysis: true, w2_verdict: true,
+          integrity_verified: false, terminal_acceptance: true,
+        }],
+      })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-partial',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/bg_prashna_rules/)
+  })
+
+  acceptedReceiptIt('admits an L0 exit once the freeze-lifecycle verifier reconstructs a complete chain for every L0 asset', async () => {
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes('evidence_payload ->> \'to_stage\' = $3')) return Promise.resolve({ rows: [{ present: true }] })
+      if (statement.includes('entity_id = $3')) return Promise.resolve({ rows: [{ present: false }] })
+      if (statement.includes('GROUP BY entity_id')) {
+        return Promise.resolve({
+          rows: [{
+            entity_id: 'bg_prashna_rules', frozen: true, w2_analysis: true, w2_verdict: true,
+            integrity_verified: true, terminal_acceptance: true,
+          }],
+        })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-complete',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
   })
 
   it('rejects BOOTSTRAP to T0 when the frozen denominator no longer has a canonical registry identity', async () => {
