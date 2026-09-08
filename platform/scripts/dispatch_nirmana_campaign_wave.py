@@ -1110,14 +1110,28 @@ def create_campaign_run(
             dispatch_asset_ids=asset_ids,
         )
         if prerequisites:
+            # No definition_revision filter: asset lifecycle events (unlike
+            # foundation-lane/stage-transition receipts) are NOT revision-scoped
+            # by design — a frozen asset's capsule carries across a definition
+            # flip (D-NATIVE-13). This mirrors the campaign's own canonical
+            # E-gate reference (scripts/nirmana/egate.sql's `frozen` CTE) and
+            # capsule_audit.sql §1, both of which check `asset_frozen` with no
+            # revision filter. Filtering by definition_revision here (as this
+            # query previously did) desynced this gate from that semantics:
+            # every ancestor frozen before a t0->t1 flip would read as
+            # "unfrozen" under t1 forever, even though its evidence chain is
+            # complete and revision-transcending (confirmed live, issue #2437 —
+            # L2's bo_nakshatra_semantic dispatch blocked on 13 long-frozen L0
+            # ancestors that have zero asset_frozen rows under t1's literal
+            # definition_revision).
             cur.execute(
                 """
                 SELECT DISTINCT entity_id
                   FROM nirmana_evidence.nirmana_elevation_campaign_events
-                 WHERE campaign_id=%s AND definition_revision=%s
+                 WHERE campaign_id=%s
                    AND event_type='asset_frozen' AND entity_id = ANY(%s)
                 """,
-                (CAMPAIGN_ID, definition_revision, prerequisites),
+                (CAMPAIGN_ID, prerequisites),
             )
             frozen_prerequisites = {row["entity_id"] for row in cur.fetchall()}
             missing_prerequisites = [
