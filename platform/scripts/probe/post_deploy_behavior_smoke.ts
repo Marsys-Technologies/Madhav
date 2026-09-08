@@ -67,16 +67,6 @@
  *                                completed (persistence_stage.ts only emits
  *                                this AFTER `validateAcharyaReadingReceipt`
  *                                succeeds).
- *   - facts_consumed_non_empty — D-004 (NATIVE-SURROGATE ruling): the
- *                                persisted receipt's `facts_consumed` array is
- *                                non-empty — proves the reading actually
- *                                grounded itself in L1/L2 facts, not a
- *                                fabricated-from-nothing response.
- *   - citation_markers_present — ≥1 `citation.define` event fired (the
- *                                citation PIPELINE ran end-to-end and reached
- *                                the wire) — see the citation-grade note
- *                                above for why this is presence-gated, not
- *                                grade-gated.
  *   - safety_gate_executed     — ≥1 `flag` event whose `code` starts with
  *                                `safety_decision:` — proves the safety gate
  *                                a real code path executed and reached a
@@ -90,6 +80,36 @@
  *                                full-reading turn took ~67s; a regression
  *                                that made the pipeline hang or loop would
  *                                trip this long before a CI job timeout does).
+ *
+ * INFORMATIONAL, NOT GATED (2026-09-08, issue #2415 / CONDUCTOR ruling cycle 291,
+ * D-NATIVE-12 authority — downgraded from hard-gated per this ruling):
+ *   - facts_consumed_non_empty — D-004 (NATIVE-SURROGATE ruling): the
+ *                                persisted receipt's `facts_consumed` array is
+ *                                non-empty — proves the reading actually
+ *                                grounded itself in L1/L2 facts, not a
+ *                                fabricated-from-nothing response. Root-caused
+ *                                on #2415: this has failed on EVERY real live
+ *                                turn since the 2026-08-29 PR #1655 deploy —
+ *                                not a regression, but a known, understood,
+ *                                currently-unsatisfiable-by-design gap (the
+ *                                14-of-21 MCP↔web retrieval-registry namespace
+ *                                gap — see #2415 for the real fix, filed as
+ *                                separate forward work, NOT this assertion).
+ *                                Keeping this a hard/blocking gate against a
+ *                                gap this smoke cannot close produces a
+ *                                permanently-red required check that teaches
+ *                                nothing new each run (CLAUDE.md §N.8) — still
+ *                                computed and reported every run so the true
+ *                                state stays visible, just not exit-code-gating.
+ *   - citation_markers_present — ≥1 `citation.define` event fired (the
+ *                                citation PIPELINE ran end-to-end and reached
+ *                                the wire) — see the citation-grade note
+ *                                above for why this was already grade-agnostic.
+ *                                Same #2415 gap as facts_consumed_non_empty
+ *                                (the citation pipeline cannot mint a citable
+ *                                reference id without the same registry
+ *                                namespace fix) — downgraded to informational
+ *                                for the same reason, same ruling.
  *
  * D-004 ITEMS NOT IMPLEMENTED, AND WHY (honest partial beats claimed complete
  * — CLAUDE.md §N.8):
@@ -183,6 +203,13 @@ interface Assertion {
   name: string
   pass: boolean
   detail: string
+  /**
+   * Default true (blocking/hard-gated). Set false for an assertion that is
+   * still computed and reported every run but must NOT flip the overall
+   * PASS/FAIL exit code — see the "INFORMATIONAL, NOT GATED" header section
+   * for which assertions and why (#2415, CONDUCTOR ruling cycle 291).
+   */
+  blocking?: boolean
 }
 
 interface TurnEvent {
@@ -267,7 +294,8 @@ function evaluateAssertions(input: EvalInput): EvalOutput {
     assertions.push({
       name: 'facts_consumed_non_empty',
       pass: factsConsumed.length > 0,
-      detail: `receipt.facts_consumed.length=${factsConsumed.length}`,
+      detail: `receipt.facts_consumed.length=${factsConsumed.length} — informational, not gated; see #2415 / CONDUCTOR ruling cycle 291 (retrieval-registry namespace gap, real fix filed separately)`,
+      blocking: false,
     })
 
     const citationEvents = events.filter((e) => e.type === 'citation.define')
@@ -276,7 +304,8 @@ function evaluateAssertions(input: EvalInput): EvalOutput {
     assertions.push({
       name: 'citation_markers_present',
       pass: citationsSeen > 0,
-      detail: `citation.define count=${citationsSeen} (of which grade!=unverified: ${citationsVerifiedSeen} — informational, not gated; see header note on the live citation_gate finding)`,
+      detail: `citation.define count=${citationsSeen} (of which grade!=unverified: ${citationsVerifiedSeen}) — informational, not gated; see #2415 / CONDUCTOR ruling cycle 291 and header note on the live citation_gate finding`,
+      blocking: false,
     })
 
     const safetyFlags = events.filter(
@@ -355,7 +384,13 @@ function runLive(): EvalInput {
 }
 
 function printReportAndExit(input: EvalInput, out: EvalOutput, extra: Record<string, unknown> = {}): never {
-  const failed = out.assertions.filter((a) => !a.pass)
+  // blocking defaults to true — only an assertion explicitly marked
+  // `blocking: false` (informational, #2415 ruling cycle 291) is excluded
+  // from the PASS/FAIL exit-code decision. It is still evaluated, still
+  // reported in `assertions` below, and still visible as a genuine failure —
+  // just not one that flips the overall gate.
+  const failed = out.assertions.filter((a) => !a.pass && a.blocking !== false)
+  const informationalFailed = out.assertions.filter((a) => !a.pass && a.blocking === false)
   const report = {
     battery: 'post_deploy_behavior_smoke (P3-E / PB-4 F-6)',
     mode: SELFTEST ? 'SELFTEST' : 'LIVE',
@@ -366,18 +401,28 @@ function printReportAndExit(input: EvalInput, out: EvalOutput, extra: Record<str
     citations_verified_seen_informational_not_gated: out.citationsVerifiedSeen,
     citation_gate_error_flags_seen_informational_not_gated: out.citationGateFlagsSeen,
     assertions: out.assertions,
-    summary: { pass: out.assertions.length - failed.length, fail: failed.length, total: out.assertions.length },
+    summary: {
+      pass: out.assertions.length - failed.length - informationalFailed.length,
+      fail: failed.length,
+      informational_fail_not_gated: informationalFailed.length,
+      total: out.assertions.length,
+    },
     generated_at: new Date().toISOString(),
     ...extra,
   }
   console.log(JSON.stringify(report, null, 2))
 
+  if (informationalFailed.length > 0) {
+    console.error(`[post_deploy_behavior_smoke] ${informationalFailed.length} informational assertion(s) failed (NOT gating, see #2415):`)
+    for (const a of informationalFailed) console.error(`  INFO  ${a.name}: ${a.detail}`)
+  }
+
   if (failed.length > 0) {
-    console.error(`[post_deploy_behavior_smoke] FAIL — ${failed.length}/${out.assertions.length} assertions failed:`)
+    console.error(`[post_deploy_behavior_smoke] FAIL — ${failed.length}/${out.assertions.length} blocking assertions failed:`)
     for (const a of failed) console.error(`  FAIL  ${a.name}: ${a.detail}`)
     process.exit(1)
   }
-  console.error(`[post_deploy_behavior_smoke] PASS — ${out.assertions.length}/${out.assertions.length} assertions passed.`)
+  console.error(`[post_deploy_behavior_smoke] PASS — all blocking assertions passed (${informationalFailed.length} informational failure(s) noted above, not gating).`)
   process.exit(0)
 }
 

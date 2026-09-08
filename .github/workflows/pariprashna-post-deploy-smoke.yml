@@ -257,3 +257,38 @@ jobs:
         run: |
           echo "::error::[p3-e-smoke] Post-deploy behaviour smoke FAILED — see the step above for which assertion failed and why."
           echo "::error::[p3-e-smoke] This is a real engine-behaviour check (receipt assembly / persistence chain, facts_consumed grounding, citation pipeline, safety-gate execution, non-trivial prose, zero stream errors) — NOT a liveness ping. Do not count this toward green×7 (DD-7 / W-1) until it is understood."
+
+  # ── §N.8 fix (#2415, CONDUCTOR ruling cycle 291, D-NATIVE-12 authority) ──
+  # PROBLEM THIS CLOSES: `behaviour-smoke` above deliberately SKIPS (not
+  # fails) whenever it follows a failed upstream deploy (`if:` guard, see
+  # that job). A skipped job does not make a GitHub Actions workflow RUN
+  # report a non-success conclusion by itself — if every job that DID run
+  # (i.e. `assertion-selftest`) succeeded, the run-level conclusion reads
+  # `success` even though the one job whose green is supposed to feed the
+  # DD-7/W-1 "green×7" counter never executed at all. Confirmed live on
+  # #2415: every "green" of this workflow since 2026-08-29 05:26Z was
+  # exactly this shape — a real skip wearing a counted-green's clothes.
+  # This job exists solely to make that impossible: on any trigger the
+  # green×7 cadence actually polls, it fails loudly unless `behaviour-smoke`
+  # itself reports a genuine `success`, so the workflow-run conclusion can
+  # never again misrepresent "no live turn ran" as a green.
+  require-live-smoke-for-green-counter:
+    name: Gate — only a REAL behaviour-smoke success may read as green (not gating on pull_request)
+    needs: behaviour-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    # pull_request runs never execute behaviour-smoke by design (see the
+    # trigger note at the top of this file — a real paid turn is not spent
+    # on every PR) and are not polled toward green×7 in the first place, so
+    # this gate does not apply to them at all.
+    if: always() && github.event_name != 'pull_request'
+    steps:
+      - name: Refuse to let a non-success behaviour-smoke read as a workflow-level green
+        run: |
+          result="${{ needs.behaviour-smoke.result }}"
+          echo "behaviour-smoke result: $result"
+          if [ "$result" != "success" ]; then
+            echo "::error::[p3-e-smoke] behaviour-smoke did not report success (result=$result) on trigger '${{ github.event_name }}', which IS one of the triggers the DD-7/W-1 green×7 cadence polls. Failing this job so the overall workflow-run conclusion cannot be misread as a green with zero real live turns behind it. A 'skipped' result here is most likely an upstream deploy that failed (see behaviour-smoke's own if: guard) — that is a legitimate reason to skip the live turn, but it must never count toward green×7 either. (#2415, CONDUCTOR ruling cycle 291, CLAUDE.md §N.8: a green needs a detector that actually ran and measured the claim it asserts.)"
+            exit 1
+          fi
+          echo "[p3-e-smoke] behaviour-smoke genuinely succeeded — this run is a legitimate candidate for the green×7 counter."
