@@ -186,14 +186,20 @@ class TestBuildDispositorEdges:
         assert edges == [], "Missing target node must not raise"
 
     def test_edge_fields_complete(self) -> None:
-        """Required edge fields are present and non-null."""
+        """Required edge fields are present and non-null.
+
+        edge_id is deliberately excluded: it is `None` at this builder-level call
+        (migration 950's assign_deterministic_edge_ids() fills it in at the single
+        insert path in run(), not at the emit site — mirrors bo_bimba's node_id).
+        """
         node_map = self._make_node_map({"Sun": "node-sun", "Saturn": "node-sat"})
         graha_signs = {"Sun": 10, "Saturn": 10}
         edges = _build_dispositor_edges(CHART_ID, AYA, BUILD_ID, graha_signs, node_map, NOW)
         sun_edges = [e for e in edges if e["from_node_id"] == "node-sun"]
         assert sun_edges
         e = sun_edges[0]
-        for field in ("edge_id", "chart_id", "ayanamsha_id", "build_id", "edge_type",
+        assert "edge_id" in e, "edge_id key must be present (as a placeholder)"
+        for field in ("chart_id", "ayanamsha_id", "build_id", "edge_type",
                       "from_node_id", "to_node_id", "direction", "computed_strength",
                       "verification_pass_status", "citation_ref", "computed_at"):
             assert e.get(field) is not None, f"Required field '{field}' is None"

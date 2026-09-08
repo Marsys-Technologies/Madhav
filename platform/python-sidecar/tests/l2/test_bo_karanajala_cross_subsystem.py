@@ -14,12 +14,29 @@ wiring, not the live-data resync (a separate, later rebuild).
 """
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 BUILD_ID = "b1b1b1b1-1111-1111-1111-111111111111"
 AYA      = "lahiri_chitrapaksha"
 NOW      = "2026-06-29T00:00:00+00:00"
+
+
+class _FakeNodeIdentityResult:
+    """conn.execute(sql, [json_payload]) result for the deterministic node-identity
+    round-trip added by migration 950 (_resolve_arudha_special_lagna_node_ids). Mirrors
+    _FakeConn in pipeline/orchestrator/writers/tests/test_bo_bimba_node_identity.py."""
+
+    def __init__(self, params) -> None:
+        payload = json.loads(params[0])
+        self._rows = [
+            (e["i"], "det-{}-{}".format(e["node_type"], e["node_subject"]))
+            for e in payload
+        ]
+
+    def fetchall(self):
+        return self._rows
 
 
 def _facts_fixture() -> dict:
@@ -34,6 +51,7 @@ def _run(node_map: dict) -> list[dict]:
 
     conn = MagicMock()
     conn.cursor.return_value.__enter__.return_value = MagicMock()
+    conn.execute.side_effect = lambda sql, params=None: _FakeNodeIdentityResult(params)
     with patch(
         "pipeline.orchestrator.writers.bo_karanajala._fetch_arudha_special_lagna_facts",
         return_value=_facts_fixture(),

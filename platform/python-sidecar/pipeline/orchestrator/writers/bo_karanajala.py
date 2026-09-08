@@ -28,7 +28,6 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -562,7 +561,9 @@ def _build_argala_edges(
             _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
             _traditions = ["parashari"]
             edges.append({
-                "edge_id": str(uuid.uuid4()),
+                # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+                # before any write; see migration 950. Never reaches the database.
+                "edge_id": None,
                 "chart_id": chart_id,
                 "ayanamsha_id": aya,
                 "build_id": build_id,
@@ -640,7 +641,9 @@ def _build_dispositor_edges(
         _strength, _vichara_ids = _edge_strength_v1(0.6, graha, None, lookups)
         _traditions = ["parashari"]
         edges.append({
-            "edge_id":                         str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+            # before any write; see migration 950. Never reaches the database.
+            "edge_id":                         None,
             "chart_id":                        chart_id,
             "ayanamsha_id":                    aya,
             "build_id":                        build_id,
@@ -753,7 +756,9 @@ def _graha_bhava_edge(
     _strength, _vichara_ids = _edge_strength_v1(base_strength, graha, None, lookups)
     _traditions = ["parashari"]
     return {
-        "edge_id":                         str(uuid.uuid4()),
+        # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+        # before any write; see migration 950. Never reaches the database.
+        "edge_id":                         None,
         "chart_id":                        chart_id,
         "ayanamsha_id":                    aya,
         "build_id":                        build_id,
@@ -989,7 +994,9 @@ def _membership_edge(
     _strength, _vichara_ids = _edge_strength_v1(0.5, _graha_subject, None, lookups)
     _traditions = ["parashari"]
     return {
-        "edge_id":                         str(uuid.uuid4()),
+        # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+        # before any write; see migration 950. Never reaches the database.
+        "edge_id":                         None,
         "chart_id":                        chart_id,
         "ayanamsha_id":                    aya,
         "build_id":                        build_id,
@@ -1117,7 +1124,9 @@ def _build_edges_and_contradictions(
                     _strength, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
                     _traditions = [tradition]
                     edges.append({
-                        "edge_id": str(uuid.uuid4()),
+                        # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+                        # before any write; see migration 950. Never reaches the database.
+                        "edge_id": None,
                         "chart_id": chart_id,
                         "ayanamsha_id": aya,
                         "build_id": build_id,
@@ -1167,7 +1176,9 @@ def _build_edges_and_contradictions(
                     _magnitude, _vichara_ids = _edge_strength_v1(round(salience, 6), graha, [domain], lookups)
                     _traditions = [tradition]
                     edges.append({
-                        "edge_id": str(uuid.uuid4()),
+                        # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+                        # before any write; see migration 950. Never reaches the database.
+                        "edge_id": None,
                         "chart_id": chart_id,
                         "ayanamsha_id": aya,
                         "build_id": build_id,
@@ -1234,7 +1245,9 @@ def _build_edges_and_contradictions(
                         round(salience, 6), graha, list(domains), lookups)
                     _traditions = [tradition]
                     edges.append({
-                        "edge_id": str(uuid.uuid4()),
+                        # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+                        # before any write; see migration 950. Never reaches the database.
+                        "edge_id": None,
                         "chart_id": chart_id,
                         "ayanamsha_id": aya,
                         "build_id": build_id,
@@ -1336,7 +1349,9 @@ def _detect_contradictions(
         if graha:
             basis["graha"] = graha
         rows.append({
-            "contradiction_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_contradiction_ids()
+            # before any write; see migration 950. Never reaches the database.
+            "contradiction_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -1402,6 +1417,111 @@ def _detect_contradictions(
             _emit(dom_yogas[0], dom_doshas[0], {domain}, "domain_promise_vs_denial", None)
 
     return rows
+
+
+def assign_deterministic_edge_ids(conn, edges: list[dict]) -> int:
+    """Replace each row's edge_id with its DERIVED identity. Returns the collapse count.
+
+    Same defect class as bo_bimba's node_id (Nirmana #1888, D-CND-29) and mirrors
+    bo_bimba.assign_deterministic_node_ids() exactly: edge_id was randomly generated at
+    every one of bo_karanajala.py's emit sites, so every rebuild minted new identities for
+    the same logical edge -- the mechanism behind bodha_cgm_paths' path_edge_ids_array and
+    bodha_cgm_motifs' involved_edge_ids_array/edge_ids_array going orphaned the moment
+    bo_karanajala rebuilds without them in the same pass.
+
+    The identity is computed by `bodha_cgm_edge_identity()` in migration 950 -- the single
+    source of truth, never reimplemented here (a Python copy of the hash is free to drift
+    from the SQL one). Assigned back onto the row dicts before insert so the emit-site dicts
+    and the inserted rows always agree. One round-trip for the whole write, not one per edge
+    builder.
+    """
+    if not edges:
+        return 0
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "snapshot_type": row.get("snapshot_type"),
+            "edge_type": row.get("edge_type"),
+            "from_node_id": row.get("from_node_id"),
+            "to_node_id": row.get("to_node_id"),
+        }
+        for index, row in enumerate(edges)
+    ]
+    rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_cgm_edge_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 e->>'snapshot_type',
+                 e->>'edge_type',
+                 (e->>'from_node_id')::uuid,
+                 (e->>'to_node_id')::uuid
+               )::text AS eid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    for r in rows:
+        index, eid = (r["i"], r["eid"]) if isinstance(r, dict) else (r[0], r[1])
+        edges[index]["edge_id"] = eid
+
+    distinct_ids = len({e["edge_id"] for e in edges})
+    collapsed = len(edges) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_karanajala: %d of %d edge rows collapsed onto an existing deterministic "
+            "identity (same edge by the natural key). Investigate before trusting this "
+            "build's edge count.",
+            collapsed, len(edges),
+        )
+    return collapsed
+
+
+def assign_deterministic_contradiction_ids(conn, contradictions: list[dict]) -> int:
+    """Replace each row's contradiction_id with its DERIVED identity. Returns the collapse
+    count. Same rationale as assign_deterministic_edge_ids() above, via
+    `bodha_contradiction_identity()` (migration 950)."""
+    if not contradictions:
+        return 0
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "signal_a_id": row.get("signal_a_id"),
+            "signal_b_id": row.get("signal_b_id"),
+        }
+        for index, row in enumerate(contradictions)
+    ]
+    rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_contradiction_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 (e->>'signal_a_id')::uuid,
+                 (e->>'signal_b_id')::uuid
+               )::text AS cid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    for r in rows:
+        index, cid = (r["i"], r["cid"]) if isinstance(r, dict) else (r[0], r[1])
+        contradictions[index]["contradiction_id"] = cid
+
+    distinct_ids = len({c["contradiction_id"] for c in contradictions})
+    collapsed = len(contradictions) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_karanajala: %d of %d contradiction rows collapsed onto an existing "
+            "deterministic identity (same signal_a/signal_b pair by the natural key).",
+            collapsed, len(contradictions),
+        )
+    return collapsed
 
 
 def _batch_insert(conn, rows: list[dict], sql: str) -> int:
@@ -1487,6 +1607,43 @@ def _fetch_arudha_special_lagna_facts(conn, chart_id: str, aya: str) -> dict:
     return out
 
 
+def _resolve_arudha_special_lagna_node_ids(
+    conn, chart_id: str, aya: str, facts: dict,
+) -> dict[tuple[str, str], str]:
+    """Deterministic bodha_cgm_nodes.node_id for bo_karanajala's own arudha/special_lagna
+    node inserts, via the SAME bodha_cgm_node_identity() function bo_bimba.py already uses
+    (migration 714) -- these two node classes share bodha_cgm_nodes' single natural key
+    shape (chart_id, ayanamsha_id, node_type, node_subject), so migration 950 defines no new
+    function for nodes. Never reimplemented in Python -- a copy of the hash is free to drift
+    from the SQL one (mirrors assign_deterministic_node_ids in bo_bimba.py). One round-trip
+    for the whole (arudha + special_lagna) set, not one per node."""
+    if not facts:
+        return {}
+    keys = list(facts.keys())
+    payload = [
+        {"i": i, "chart_id": chart_id, "ayanamsha_id": aya, "node_type": nt, "node_subject": ns}
+        for i, (nt, ns) in enumerate(keys)
+    ]
+    rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_cgm_node_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 e->>'node_type',
+                 e->>'node_subject'
+               )::text AS nid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    out: dict[tuple[str, str], str] = {}
+    for r in rows:
+        index, nid = (r["i"], r["nid"]) if isinstance(r, dict) else (r[0], r[1])
+        out[keys[index]] = nid
+    return out
+
+
 def _build_arudha_special_lagna_nodes_and_edges(
     conn, chart_id: str, aya: str, build_id: str, now: str,
     node_map: dict, lookups: "ViharaLookups | None",
@@ -1498,11 +1655,14 @@ def _build_arudha_special_lagna_nodes_and_edges(
     facts = _fetch_arudha_special_lagna_facts(conn, chart_id, aya)
     inserted = 0
     edges: list[dict] = []
+    node_ids_by_key = _resolve_arudha_special_lagna_node_ids(conn, chart_id, aya, facts)
     with conn.cursor() as cur:
         for (node_type, node_subject), rec in facts.items():
             house = rec.get("house")
             node_row = {
-                "node_id": str(uuid.uuid4()),
+                # Deterministic (migration 714's bodha_cgm_node_identity(), same
+                # function bo_bimba.py uses) -- never a fresh uuid4() per rebuild.
+                "node_id": node_ids_by_key[(node_type, node_subject)],
                 "chart_id": chart_id,
                 "ayanamsha_id": aya,
                 "build_id": build_id,
@@ -1539,7 +1699,9 @@ def _build_arudha_special_lagna_nodes_and_edges(
         edge_type = "arudha_house" if node_type == "arudha" else "special_lagna_house"
         _traditions = ["jaimini" if node_type == "arudha" else "parashari"]
         edges.append({
-            "edge_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_edge_ids()
+            # before any write; see migration 950. Never reaches the database.
+            "edge_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -1756,6 +1918,13 @@ class BoKaranajalaWriter(WriterBase):
                 logger.warning(
                     "[bo_karanajala] %s — centrality computation skipped: %s", aya, pr_exc
                 )
+
+            # #1888/D-CND-29-class fix (migration 950): derive every edge_id/contradiction_id
+            # before anything is written, mirroring bo_bimba's assign_deterministic_node_ids()
+            # placement at its single insert path. A row that reaches the database with a
+            # uuid4() is precisely the defect this migration exists to remove.
+            assign_deterministic_edge_ids(conn, edges)
+            assign_deterministic_contradiction_ids(conn, contradictions)
 
             replace_prior_cgm_edges(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_contradictions(conn, chart_id, aya)
