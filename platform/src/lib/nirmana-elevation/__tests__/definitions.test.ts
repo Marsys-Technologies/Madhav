@@ -2429,6 +2429,91 @@ it('atomically supersedes the exact current frozen definition with the server-de
     expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
   })
 
+  it('still rejects a same-pair resubmission carrying no decision_digest (W1/W2 generation key unchanged)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:w2-first',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:w2-second',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('accepts a superseding decision_digest on the same (registry_fingerprint, analysis_digest) pair instead of stranding the prior receipt (#1770)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bo_laksana:implementation:decision-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bo_laksana', layer: 'L2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'd'.repeat(64),
+      },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'new' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bo_laksana:implementation:decision-2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'e'.repeat(64), implementation_digest: 'f'.repeat(64),
+      },
+    })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  it('still rejects a genuine duplicate carrying the identical decision_digest (dedup not weakened)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bo_laksana:implementation:dup-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bo_laksana', layer: 'L2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'd'.repeat(64),
+      },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bo_laksana:implementation:dup-2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'z'.repeat(64),
+      },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
   it('accepts an exact retried evidence receipt without overwriting the original actor', async () => {
     const input = {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
