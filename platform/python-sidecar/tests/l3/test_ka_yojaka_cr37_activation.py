@@ -342,3 +342,19 @@ def test_run_distribution_yoga_marks_always_on():
     rule = _json_mod.loads(conn.inserted[0][4])
     assert rule['constituent_lords'] == []
     assert rule['always_on_reason'] == 'distribution_yoga_all_grahas'
+
+
+def test_run_non_yoga_dosha_with_no_resolvable_lord_gets_generic_reason():
+    """#2456 W2 generalization: a non-YOGA/DOSHA signal (DIGNITY class) whose
+    config has no graha/sign key and no constituent facts to fall back on
+    previously fell through every resolution path silently — constituent_lords
+    stayed [] with no always_on_reason at all, indistinguishable from a bug.
+    It must now get the SAME disclosure field with a distinct, honest reason
+    (not the distribution-yoga string, since it isn't a distribution yoga)."""
+    sig = _sig('s3', 'tradition_specific_marker', [], stc='tradition_specific')
+    conn = _run([sig], [], [])
+    assert len(conn.inserted) == 1
+    rule = _json_mod.loads(conn.inserted[0][4])
+    assert rule['constituent_lords'] == []
+    assert rule['always_on_reason'] == 'no_resolvable_dasha_lord'
+    assert rule['constituent_lords_source'] == 'ka_yojaka:no_resolvable_lord'

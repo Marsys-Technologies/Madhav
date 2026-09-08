@@ -320,6 +320,26 @@ class KaYojakaWriter(WriterBase):
                     pred['dasha_eligibility_rule']['constituent_lords'] = lords
                     pred['dasha_eligibility_rule']['constituent_lords_source'] = 'ka_yojaka:fact_subject_tokens'
 
+        # #2456 W2 generalization (route `changed`, verdict `correct`): the CR-37
+        # always_on_reason disclosure was implemented only for the YOGA/DOSHA
+        # distribution-yoga case (~20 rows). Every OTHER predicate that reaches
+        # this point still empty — config/house-varga/fact_subject fallbacks all
+        # exhausted — was left with constituent_lords=[] and no explanation,
+        # indistinguishable from a resolver bug (9,347 of 9,367 undatable rows
+        # per the #2456 finding). Generalize the SAME disclosure field to every
+        # structurally-undatable predicate so the honest state is UNDATED, not
+        # silently empty (§N.6/§N.7 item 6). Reason text is deliberately
+        # distinct from the distribution-yoga reason ("no resolvable lord" vs
+        # "structurally always-on") so a reader of `reason` (not just the
+        # inherited `kind: 'always_on'` wrapper ka_kalasutra already emits for
+        # any always_on_reason) can tell the two apart.
+        for _sig, _sc, pred in enriched:
+            rule = pred['dasha_eligibility_rule']
+            if not rule.get('constituent_lords') and not rule.get('always_on_reason'):
+                rule['constituent_lords'] = []
+                rule['always_on_reason'] = 'no_resolvable_dasha_lord'
+                rule['constituent_lords_source'] = 'ka_yojaka:no_resolvable_lord'
+
         rows = []
         for sig, sc, pred in enriched:
             rows.append((
