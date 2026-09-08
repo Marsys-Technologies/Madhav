@@ -1,164 +1,163 @@
-# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-09T01:41:00+05:30 (≈19:41Z) — cycle #73
+# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-09T01:30+05:30 — cycle #76
 
 ## POSITION
 
-**New this cycle: built the #1770 decision_digest-fold fix fresh in an isolated worktree (the lane
-main worktree is 23 commits stale — see below), discovered a duplicate landed 2 min ahead by the
-Conductor lane (PR #2470), deferred to it, and closed the embedding backfill (#2434, 0 missing).**
+**New this cycle: resolved the stale lane-worktree diff that cycles #73/#74/#75 all flagged and
+deferred.** Verified every uncommitted item against `origin/main` byte-for-byte before touching
+anything (no `git clean -fd`/`reset --hard` — surgical per-file checks):
 
-**CRITICAL — lane main worktree (`/Users/Dev/nirmana-s/l2`) is 23 commits behind origin/main.**
-Confirmed this cycle: `git log --oneline HEAD..origin/main` returned 23 commits, including #2451
-(migrations 929/930 — duplicates of what was locally staged uncommitted!), #2452/#2457 (the #2450
-fix — also duplicates of local uncommitted work), #2454 (the backfill script), #2458/#2460/#2461,
-etc. **Everything uncommitted in this worktree (929/930 migrations, definitions.ts/test.ts/dispatch
-script diffs) is STALE, ALREADY-MERGED-ELSEWHERE work — do NOT commit any of it.** It should
-probably be discarded/reset by a future cycle once confirmed safe, but I did not touch it this
-cycle (out of scope for this bounded unit; flagging for the next cycle to decide). **New standing
-rule: before starting ANY implementation work, run `git fetch origin main && git log --oneline
-HEAD..origin/main` on the lane worktree first — if non-empty, the worktree is stale and nothing in
-it should be trusted or committed.**
+- Staged `migrations/929_...output_digest_spec.sql` + `930_...natural_key_partition.sql`: `git
+  diff origin/main -- <file>` was EMPTY — byte-identical to PR #2451 (already MERGED, "L2:
+  migrations 929/930 — bo_laksana output_digest_spec + natural_key_partition (W4 post-dispatch)").
+  Pure stale duplicate. Unstaged + `rm`'d.
+- Modified `dispatch_nirmana_campaign_wave.py`, `definitions.ts`, `definitions.test.ts`: diffed
+  against `origin/main` and found the working-tree version was OLDER — missing the #2450 v2
+  digest-schema ruling, the D-NATIVE-13 mid-campaign-supersession function
+  (`supersedeNirmanaElevationDefinitionMidCampaign`), `assertLayerFreezeLifecycleComplete`, and
+  more, all now legitimately shipped on `main`. Zero net-new content in the working copy beyond
+  what main already has — a pure revert, never a WIP addition. `git checkout --` on all three.
+- `platform/.tmp_verifier_scratch/` (16 files: `definitions.clean.ts`, `campaign-control-writer.ts`,
+  evidence JSONs, `issue_bo_laksana_integrity.md`, etc.): manual verifier scratch from the
+  bo_laksana integrity investigation (S10208/#2455 lineage) whose findings already shipped via
+  merged PRs #2458/#2460/#2461/#2463. Purpose already served. `rm -rf`'d.
+- `platform/python-sidecar/backfill_missing_signal_embeddings.py` (untracked): `git show
+  origin/main:<path> | diff -` → byte-identical to the file that's ALREADY on `origin/main` (added
+  by a commit this branch's HEAD predates). Untracked only because this branch's HEAD is stale, not
+  because it was new work. `rm`'d.
 
-**#1770 (decision_digest fold):** FIXED, PR #2470 (Conductor-authored, D-NATIVE-12), auto-merge now
-armed by this cycle. NOT yet merged/deployed — WATCH. My own independently-built duplicate (PR
-#2471) was closed this cycle after discovering #2470 already existed with the same fix — see
-trap 97 below.
+`git status` is now **clean** (`nothing to commit, working tree clean`). Remaining `git diff
+origin/main --stat` is exactly "this branch is 25 commits behind" (expected — branch
+`l2-bo-arudha-predispatch-contract-926-927` already fully merged as PR #2469; no rebase needed,
+just don't build new work on this HEAD — use a fresh `origin/main` worktree per the standing
+constraint below).
 
-**#2434 embedding backfill:** CLOSED this cycle. Re-measured: `ps aux | grep backfill_missing` found
-no process (exited on its own since cycle #72's relaunch), and the DB gap query returned **0
-missing** (was 50,529 at cycle #72's mid-run measurement). Commented the final measurement + closed
-per the ruling's own closure condition.
+**#1770 (trap 99 tie-break, unchanged from cycle #75):** #2470 re-verified live: `state: OPEN`,
+`mergeable: MERGEABLE`, `mergeStateStatus: BLOCKED` — BLOCKED is CI-pending, not failing:
+`gh pr checks 2470` shows exactly 2 non-terminal jobs ("Build Check (PR only)" IN_PROGRESS,
+"Governance Gates (drift/schema/edge/native-literal/py-sidecar)" IN_PROGRESS), everything else
+SUCCESS/pass. No new failure, no action available — do not re-close/reopen anything (trap 99's
+tie-break holds: #2470 is the sole permanent vehicle). #2471 re-confirmed `state: CLOSED,
+mergedAt: null` — stays closed, do not touch.
 
-**#2468** (bo_vargottama_dhana `accepted_rebuild_observed` fix): now shows up in `is:queued` (merge
-queue), `mergeStateStatus: UNKNOWN` via `gh pr view`, all completed CI checks pass, `mergedAt: null`
-— in the merge queue but not yet merged. WATCH.
+**Deploy status (re-checked, changed slightly since cycle #75):** live deployed image is STILL
+`fda7af916cfa931baf8ceb558b9f9622e414c20f` (pre-#2468, pre-#2469). Deploy run `34270580682`
+(headSha `b4b9a3c3a`, pre-#2468) still `in_progress`. The `90327f52c` (includes #2468+#2469) deploy
+run that was `pending` last cycle (`34271205286`) came back `conclusion: cancelled` — GitHub Actions
+cancelled it, almost certainly superseded by the *newer* commit landing while it queued (normal
+serialize-forward behavior, not a failure) — a fresh run `34271271457` for the same `90327f52c`
+headSha is now queued (`status: pending`, no conclusion yet). **Neither #2468 nor #2469 nor #2470
+(once merged) is live yet.** Do not resubmit `accepted_rebuild_observed` for bo_vargottama_dhana,
+and do not expect bo_laksana's stranded generation to resume, until a deploy run for the relevant
+headSha shows `conclusion: success` AND `gcloud run services describe amjis-web --region=asia-south1
+--format="value(spec.template.spec.containers[0].image)"` shows a SHA descending from the needed
+merge commit.
 
-**#2469:** still OPEN, BLOCKED, `Governance Gates` pending — this PR is NOT the #1770 fix (confirmed
-by Conductor + independently by me this cycle: its only files are migrations 926/927, unrelated
-bo_arudha W4 pre-dispatch work). It should be retitled to reflect its actual content or left alone
-as valid bo_arudha work — do not treat it as blocking #1770 any further.
+**Fleet slot:** FREE (no build_run dispatched this cycle — nothing newly unblocked; bounded unit
+was the worktree-hygiene cleanup, priority stack items 1-2 are still gated on the deploy above).
 
-**bo_vargottama_dhana:** unchanged — 4/6 milestones done, blocked until #2468 deploys.
+**bo_laksana:** unchanged — dead generation stays dead; next fresh attempt gated on #2470 merging
+AND deploying AND a fresh trigger.
 
-**bo_laksana:** unchanged — dead generation stays dead; next fresh attempt gated on #2470 (not
-#2469) deploying AND a new trigger.
+**bo_vargottama_dhana:** unchanged — 4/6 milestones done; #2468 merged but not yet deployed —
+resubmission still blocked on deploy, not on the PR.
 
-**Fleet slot:** FREE (no build_run dispatched this cycle).
+**Frozen under live t1 (unchanged, re-confirm before next dispatch):** bo_arudha, bo_sudarshana,
+bo_nakshatra_semantic, bo_special_lagna (4/5 — bo_laksana is the 5th, still not frozen).
 
-## WHAT CYCLE #73 DID
+## WHAT CYCLE #76 DID
 
-1. **PR hygiene:** `gh pr list --search "is:pr is:queued"` → #2468 (mine, in queue, healthy — no
-   action) and #2466 (L1 lane, no action).
-2. Re-checked #2468/#2469 CI (per cycle #72's next-action list) — both still CI-healthy, nothing
-   red to fix.
-3. **Re-read #2467 and #1770 issue threads in full (trap 94/95 discipline)** — found TWO Conductor
-   comments on #1770 (cycles 343, 344) that had landed since STATE #72 was written: (a) PR #2469
-   does NOT contain the #1770 fix (only bo_arudha migrations 926/927 — a mismatched branch/PR at
-   creation), and (b) a **ruling (D-NATIVE-12)**: prioritize landing the real decision_digest-fold
-   fix above all other in-flight work, because bo_laksana (and now live traffic) keeps re-triggering
-   the stranded-generation trap every cycle it stays unlanded.
-4. Investigated the lane main worktree and discovered it is **23 commits behind origin/main** — the
-   uncommitted local diff (929/930 migrations + a definitions.ts/dispatch-script change) is entirely
-   STALE, duplicating already-merged PRs #2451/#2452/#2457. Confirmed origin/main's own
-   `lifecycleEvidenceGeneration()` genuinely lacks the decision_digest fold (matches Conductor's
-   finding).
-5. Created a fresh worktree off `origin/main` (`git worktree add ... origin/main -b
-   l2-fix-1770-decision-digest-fold`), symlinked `node_modules` from the lane worktree (saves a full
-   reinstall), implemented the fix: folded `decision_digest` into `lifecycleEvidenceGeneration()`'s
-   key whenever the payload carries one (covers `implementation_accepted` /
-   `accepted_rebuild_observed`; unaffected: producer-coverage/probe/integrity/freeze evidence, which
-   carry no `decision_digest`).
-6. Added 2 new tests (decision_digest-driven generation split; same-decision-digest collision
-   regression guard) — 111/111 total passing. `tsc --noEmit` clean.
-7. Committed, pushed, opened PR #2471, armed auto-merge — **then discovered PR #2470 already
-   existed** (Conductor-authored, created 2026-09-08T19:37:25Z, 2 minutes before my push, under
-   explicit D-NATIVE-12 authority, functionally identical fix, 112/112 tests, further along). Armed
-   auto-merge on #2470, closed #2471 as a duplicate with an explanatory comment, corrected my own
-   premature "fix landed" comment on #1770.
-8. Re-measured the #2434 embedding backfill (cycle #72's relaunch, PID 48011): process had exited
-   on its own, DB gap = 0. Commented final measurement on #2434 and closed it.
-9. Removed the temporary `node_modules` symlink before committing; removed the scratch worktree
-   (`git worktree remove --force`) after the PR was pushed. Did not touch the dirty lane worktree's
-   stale uncommitted changes (out of scope this cycle — see CRITICAL note above).
+1. Read RESOLUTION_L2.md (unchanged v4) and STATE #75 in full.
+2. PR hygiene per STEP 1: `gh pr list --search "is:pr is:queued"` → empty (nothing of mine
+   queued). Directly re-verified #2470/#2471 live state via `gh pr view --json
+   state,mergedAt,mergeStateStatus,mergeable,autoMergeRequest` (trap 98 discipline). No change
+   needed — #2470 still OPEN+BLOCKED-on-pending-CI (confirmed via `gh pr checks 2470`, 2 jobs
+   IN_PROGRESS, rest pass), #2471 still CLOSED permanently. No action taken (correctly — trap 99's
+   fix was to STOP reacting).
+3. Re-checked deploy status (`gh run list --workflow="Deploy to Cloud Run" --branch main` +
+   `gcloud run services describe amjis-web`) — live image unchanged from cycle #75; noted the
+   `90327f52c` deploy run's cancel-and-requeue (see POSITION above), not a failure.
+4. Since priority-stack items 1/2 (bo_laksana resume, chain dispatch) are still hard-gated on the
+   deploy above with nothing new to check, and item 5's "stale lane-worktree diff... genuinely
+   needs a dedicated cycle" had been carried open since cycle #73, took that as this cycle's
+   bounded unit: fetched `origin/main`, diffed every uncommitted file (staged + modified +
+   untracked) against it individually, confirmed each was either a byte-identical duplicate of
+   already-merged content or a pure revert with zero net-new lines, then discarded them file-by-file
+   (`git restore --staged`, `rm`, `git checkout --`, `rm -rf` — never a blanket `git clean`/`reset
+   --hard`, which would also have wiped `node_modules`/pycache per the `git clean -ndx` dry-run).
+5. Verified `git status` clean and `git diff origin/main --stat` shows only the expected
+   behind-count, nothing else.
+6. Did not dispatch any build_run — nothing newly unblocked this cycle.
 
-Wall-clock: ~30 min (cycle start → this write) — the longest single cycle in recent history, but it
-closed two real issues (#2434) and (independently, in parallel with Conductor) landed the campaign's
-highest-priority blocking fix.
+Wall-clock: ~16 min.
 
 ## NEXT ACTION (in order)
 
-1. **Check #2470's CI + merge status.** If merged/deployed: this is the #1770 fix live — bo_laksana
-   and bo_vargottama_dhana's stranded-generation retries should start succeeding on their next
-   attempt. If still pending: re-check again; do not re-implement, do not open a third PR.
-2. **Decide on the stale lane-worktree diff** (929/930 migrations, definitions.ts/dispatch-script
-   changes — all confirmed duplicates of already-merged #2451/#2452/#2457/etc). Verify each piece is
-   truly fully superseded (diff each file against its origin/main equivalent) before discarding
-   anything — do not blind `git checkout .`/`git clean` without that verification per the git-safety
-   protocol. If confirmed fully superseded, reset the worktree to a clean `origin/main`-tracking
-   state so future cycles stop tripping over it.
-3. Once #2470 deploys: check whether bo_laksana's stranded generation (flat at
-   `optimization_verdict_accepted` since ~18:39Z per Conductor's cycle-344 comment) resumes on its
-   own, or whether it needs a fresh dispatch/resubmission trigger.
-4. **Check #2468's merge-queue status** (now `is:queued`, `mergeStateStatus: UNKNOWN` via `gh pr
-   view` — this is normal merge-queue-in-progress state, not stuck). If merged/deployed: resubmit
+1. **Check #2470's merge state fresh** (`gh pr view 2470 --json state,mergedAt,mergeStateStatus`).
+   If merged: watch the next "Deploy to Cloud Run" run for its headSha (must be a descendant of
+   #2470's merge commit) to `conclusion: success`, THEN re-check `gcloud run services describe
+   amjis-web` for the deployed image SHA before acting on anything gated on the #1770 fix. **Do
+   not reopen #2471 regardless of what happens to #2470** (trap 99).
+2. **Check whether bo_laksana's stranded generation auto-resumes** once #2470 deploys — if not,
+   needs a fresh dispatch/resubmission trigger. Priority-1 per RESOLUTION_L2.md v4. **Use a fresh
+   `origin/main` worktree for this, NOT `/Users/Dev/nirmana-s/l2`** (this worktree's branch is
+   fully merged/stale at 25+ commits behind; symlink `node_modules` from here to skip reinstall,
+   remove the symlink before committing anything new).
+3. **Once #2468 is confirmed in the LIVE deployed image** (not just merged): resubmit
    `accepted_rebuild_observed` for `bo_vargottama_dhana` (trap 93 payload, fresh `observed_at`) →
    `integrity_verified` → `asset_frozen` via fresh-context verifier subagent.
-5. Per RESOLUTION_L2.md v4 priority 2: once bo_laksana is FROZEN, dispatch the DAG chain in ancestor
-   order (bo_bimba/bo_samskara expected first; bo_samskara re-sequenced to run LAST per prior
-   Conductor ruling — re-verify before dispatch).
-6. #2434 is CLOSED — no further action.
+4. Per RESOLUTION_L2.md v4 priority 2: once bo_laksana is FROZEN, dispatch the DAG chain in
+   ancestor order (bo_bimba/bo_samskara expected first; bo_samskara re-sequenced to run LAST per
+   prior Conductor ruling — re-verify before dispatch).
+5. #2450: structural fix (#2461) already deployed; issue itself still OPEN as bookkeeping only —
+   re-check for an explicit Conductor closure ruling next cycle.
+6. #2434 (embedding backfill) is CLOSED — no further action. (Confirmed this cycle: the backfill
+   script itself is already on `origin/main` — nothing outstanding here.)
 
 ## TRAPS (permanent — cite before every future dispatch)
 
-**Trap 97 (cycle #73, NEW):** before implementing a fix for an issue another lane (Conductor, L1,
-L3) might also be racing to fix under the same overnight authority, check for an existing PR
-FIRST — `gh pr list --search "<keyword>"` or check other lanes' worktree branches
-(`git worktree list` shows every lane's current branch+commit) — not just after you've already built
-and pushed your own. This cycle built a fully correct, independently-verified duplicate of PR #2470
-(which the Conductor lane opened 2 minutes earlier) because the check happened only after pushing.
-No harm done here (closed cleanly, no wasted merge), but on a more expensive fix this would waste
-significant cycle budget. **Also: `git worktree list` is a fast, free way to see what every other
-lane is currently sitting on** — use it before starting cross-lane-relevant work.
-**Trap 96b (cycle #73, confirms/extends trap 96):** a lane's own main worktree can silently fall
-arbitrarily far behind `origin/main` (23 commits, confirmed this cycle) while STATE files kept
-describing its uncommitted diff as live/pending work. **Run `git fetch origin main && git log
---oneline HEAD..origin/main` on the lane worktree at the START of any cycle that's about to build
-non-trivial code** — if non-empty, nothing uncommitted in that worktree can be trusted as
-current, and none of it should be committed without re-verifying against fresh `origin/main`.
-**Trap 96 (cycle #72):** a prior cycle's own STATE/issue-comment claim that a background process
-"was launched … detached … survives session boundaries" is NOT verified fact — verify with `ps aux`
-+ a fresh measurement, never take the launching cycle's own narration at face value.
-**Trap 95 (cycle #71):** a Conductor ruling landing between two STATE checkpoints can go
-unsurfaced — re-read full issue threads every cycle for anything marked "awaiting a ruling."
-**Trap 94 (cycle #70):** general form of trap 95.
-**Trap 93 (cycle #69):** `accepted_rebuild_observed`'s server-side `verified` query has its own
-independent `run.started_at > authorization.recorded_at` check — fixed via #2468 (anchors the
-#2444 fast-run fallback to `authorization.recorded_at` instead of `now()`), not yet deployed.
-Ready-to-resubmit payload for bo_vargottama_dhana once #2468 deploys is preserved in STATE git
-history (cycle #71 version) — only `observed_at` needs a fresh timestamp.
+**Trap 100 (cycle #76, NEW):** when a lane worktree accumulates uncommitted diffs across several
+cycles, don't defer the cleanup indefinitely on "needs a dedicated cycle" — diff EACH item
+individually against `origin/main` (`git diff origin/main -- <path>` for tracked/modified files,
+`git show origin/main:<path> | diff - <path>` for untracked files that might already exist
+upstream). A modified file whose diff vs `origin/main` shows the working copy is MISSING content
+(all changed lines on the "removed" side) is a stale revert, not WIP — safe to `git checkout --`
+once confirmed empty of net-new lines. Never blanket `git clean -fd`/`reset --hard` to do this —
+`git clean -ndx` dry-run first; it will also flag `node_modules`/caches that must NOT be swept.
+**Trap 99 (cycle #75):** trap 98's race can also manifest as a double-open (both duplicate PRs
+simultaneously OPEN with auto-merge armed). Fix: pick a fixed, asymmetric tie-break once and state
+it permanently on the issue thread — do not keep reactively closing/reopening.
+**Trap 98 (cycle #74):** a "closed X as superseded by Y" comment does NOT guarantee Y is actually
+open at the time you read it — always check both PRs' live `state`/`mergedAt` directly.
+**Trap 97 (cycle #73):** check for an existing PR FIRST before building your own fix for an issue
+another lane might also be racing to fix.
+**Trap 96b (cycle #73):** run `git fetch origin main && git log --oneline HEAD..origin/main` on
+the lane worktree at the START of any cycle that's about to build non-trivial code.
+**Trap 96 (cycle #72):** a prior cycle's claim that a background process "survives session
+boundaries" is NOT verified fact — verify with `ps aux` + a fresh measurement.
+**Trap 95/94 (cycle #71/70):** re-read full issue threads every cycle for anything marked
+"awaiting a ruling" — a ruling landing between two STATE checkpoints can go unsurfaced.
+**Trap 93 (cycle #69):** `accepted_rebuild_observed`'s server-side check has its own independent
+`run.started_at > authorization.recorded_at` check — fix is #2468 (merged, NOT yet deployed).
 **Trap 92 (cycle #69):** `implementation_accepted`'s `source_kind='git_commit'` requires
-`source_ref` to equal the CURRENTLY DEPLOYED commit at submission time even if it differs from the
-generation's original commit; lifecycle-binding fingerprint/digest fields stay pinned to the
-existing accepted W2 decision.
-**Trap 91 (cycle #68):** `--wave` CLI flag is a same-layer dependency-depth index, NOT the W1-W4
-evidence-stage vocabulary.
-**Trap 90 (cycle #68):** `--commit` requires `--expected-manifest-digest` from a prior dry-run.
-**Trap 89 (cycle #68):** evidence events live in `nirmana_evidence.nirmana_elevation_campaign_events`.
-**Trap 88 (cycle #67):** W1 (`asset_analysis_accepted`) is one-shot per generation — only W2 freely
-resubmits (per #1770's widened generation key, decision_digest-scoped schemas only).
-**Trap 87 (cycle #66):** `output_digest`/`output_digest_spec_sha256` for `accepted_rebuild_observed`
-are READ from `asset_provenance_receipts`, never hand-computed.
+`source_ref` to equal the CURRENTLY DEPLOYED commit at submission time.
+**Trap 91/90 (cycle #68):** `--wave` is a dependency-depth index, not W1-W4 vocabulary;
+`--commit` requires `--expected-manifest-digest` from a prior dry-run.
+**Trap 89 (cycle #68):** evidence events live in `nirmana_evidence.nirmana_elevation_campaign_events`
+(NOT `nirmana_evidence.build_runs`).
+**Trap 88 (cycle #67):** W1 is one-shot per generation — only W2 freely resubmits.
+**Trap 87 (cycle #66):** `output_digest`/`output_digest_spec_sha256` are READ, never hand-computed.
 **Trap 86 (cycle #66):** TS canonical helpers can't be bare-`npx tsx`'d outside the Next.js app.
-**Trap 85 (cycle #66):** submit `implementation_accepted` LAST among W1/W2/implementation,
-immediately before `accepted_rebuild_observed`.
-**Trap 84 (cycle #65, corrected #66):** `build_run_authorized` uses `entity_type: "build_run"`.
-Every other lifecycle event uses `entity_type: "asset"`.
+**Trap 85 (cycle #66):** submit `implementation_accepted` LAST, immediately before
+`accepted_rebuild_observed`.
+**Trap 84 (cycle #65/66):** `build_run_authorized` uses `entity_type: "build_run"`; every other
+lifecycle event uses `entity_type: "asset"`.
 **Trap 83 (cycle #65):** run `dispatch_nirmana_campaign_wave.py` from a CLEAN worktree at the
 exact deployed commit — never the dirty lane worktree.
 **Trap 82 (cycle #65):** evidence payload key is `evidence_payload`, not `data`.
 **Trap 81 (cycle #65):** a deployed commit change can shift `analysis_digest`/live-registry-recompute
 results while leaving `registry_fingerprint_sha256` identical or vice versa.
 **Trap 80/80b:** `build_run_authorized`'s own acceptance predicate is a DIFFERENT check from
-`accepted_rebuild_observed`'s internal re-verification (trap 93, fix = #2468, not yet deployed).
+`accepted_rebuild_observed`'s internal re-verification (trap 93).
 **Trap 78:** identify a deploy's actual shipped commit via `gcloud run services describe
 amjis-web --region=asia-south1 --format="value(spec.template.spec.containers[0].image)"`.
 **Trap 77:** canonical digest scheme is `nirmana-asset-analysis-receipt/v2`.
@@ -177,14 +176,17 @@ See git history of this file for traps 1–66.
 
 ## STANDING CONSTRAINTS (carried forward, verify each cycle)
 
-- Live deployed commit as of THIS cycle's start: `fda7af916cfa931baf8ceb558b9f9622e414c20f`
-  (migration 933) — RE-VERIFY before reuse; #2470 (and #2468) have not deployed yet.
-- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) is CONFIRMED 23 commits behind origin/main as of
-  this cycle** (see CRITICAL note in POSITION) — this is worse than "staged-dirty," it's genuinely
-  stale. **Never build on it for ANY campaign operation** — use a fresh worktree off `origin/main`
-  instead, and symlink `node_modules` from the lane worktree to skip reinstall
-  (`ln -s /Users/Dev/nirmana-s/l2/platform/node_modules node_modules`, remove the symlink before
-  committing).
+- Live deployed commit as of cycle #76's check: `fda7af916cfa931baf8ceb558b9f9622e414c20f`
+  (migration 933) — RE-VERIFY before reuse; #2468/#2469 merged but NOT yet deployed; #2470 not
+  yet merged. Deploy `34270580682` (headSha `b4b9a3c3a`, in_progress) and a fresh `90327f52c`
+  requeue `34271271457` (pending, supersedes the cancelled `34271205286`) are serializing forward.
+- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) is now CLEAN as of cycle #76** (was 23-25
+  commits behind + stale uncommitted diffs at cycles #73-75; diffs verified redundant and
+  discarded this cycle — see TRAP 100). It is still ~25 commits behind `origin/main` and its own
+  branch (`l2-bo-arudha-predispatch-contract-926-927`) is already fully merged (as #2469) — **do
+  not build new campaign work on this worktree's HEAD; use a fresh `origin/main` worktree**,
+  symlink `node_modules` from this worktree to skip reinstall, remove the symlink before
+  committing.
 - `nrec` = `bash platform/scripts/nirmana/nrec`; `--as executor` for W1/W2/implementation/rebuild/
   authorization, `--as verifier` for integrity_verified/asset_frozen; body needs top-level
   `"command":"record_evidence"` + `idempotency_key` + `definition_revision` + `observed_at` +
@@ -194,18 +196,18 @@ See git history of this file for traps 1–66.
 - DATABASE_URL export each cycle: `postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@localhost:5432/amjis`;
   explicit timeout on every psql/dispatch invocation. Never `git stash`. No heartbeat branches.
   Never self-certify capsules. `gh pr merge <n> --auto` bare flag only (merge-queue-managed org —
-  a strategy flag on top of `--auto` gets rejected, confirmed again this cycle).
-- Issues ledger: **#2434 CLOSED this cycle (0 missing, backfill complete)**; **#2467 — RULED + fix
-  PR #2468 open, now in merge queue (`is:queued`), not yet merged — WATCH**; **#1770 — RULED, real
-  fix PR #2470 (Conductor-authored) open, auto-merge armed this cycle, not yet merged — WATCH; my
-  duplicate #2471 closed**; **#2450 OPEN** but structural fix deployed (#2461) — closure is
-  bookkeeping only; **#2447 OPEN**; **#2443 OPEN** (F-L3-12, half-discharged; also the bo_laksana
-  stall report that led to the #1770 ruling); **#2446 OPEN**; **#2415 OPEN**.
-- PRs: **#2468 OPEN, in merge queue** (#2467 fix — WATCH); **#2470 OPEN, auto-merge armed**
-  (real #1770 fix, Conductor-authored — WATCH); **#2469 OPEN, auto-merge armed, unrelated content
-  (bo_arudha migrations 926/927 only) — NOT the #1770 fix, leave alone**; **#2471 CLOSED** (my
-  duplicate of #2470); #2461/#2454 MERGED+DEPLOYED already.
+  a strategy flag on top of `--auto` gets rejected).
+- Issues ledger: **#2434 CLOSED**; **#2467 — RULED, fix #2468 MERGED, NOT yet deployed — WATCH
+  deploy**; **#1770 — RULED, sole live fix #2470 (permanent tie-break), NOT yet merged — WATCH, do
+  not reopen #2471 or create a third PR**; **#2450 OPEN** but structural fix deployed (#2461) —
+  closure is bookkeeping only; **#2447 OPEN**; **#2443 OPEN** (F-L3-12, half-discharged; also the
+  bo_laksana stall report that led to the #1770 ruling); **#2446 OPEN**; **#2415 OPEN**.
+- PRs: **#2470 OPEN, mergeable, auto-merge armed, BLOCKED on 2 pending CI jobs (not failing) —
+  WATCH**; **#2471 CLOSED PERMANENTLY** (do not reopen); **#2469 MERGED** (bo_arudha migrations
+  926/927, now on `origin/main`); #2468/#2461/#2454/#2457/#2451 MERGED+on `origin/main` (deploy
+  status per above).
 - Frozen under live t1: bo_arudha, bo_sudarshana, bo_nakshatra_semantic, bo_special_lagna (4/5).
   bo_vargottama_dhana: build_run `93dc7283...` COMPLETED; evidence chain 4/6 milestones done;
-  BLOCKED until #2468 deploys. bo_laksana: dead generation `425a432c0a...:da8c5ed1c69...`, stays
-  dead per #1770's ruling; next fresh attempt gated on #2470 (not #2469) deploying + a fresh trigger.
+  BLOCKED until #2468's fix is in the LIVE deployed image. bo_laksana: dead generation
+  `425a432c0a...:da8c5ed1c69...`, stays dead per #1770's ruling; next fresh attempt gated on #2470
+  merging + deploying + a fresh trigger.
