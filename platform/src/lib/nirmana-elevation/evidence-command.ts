@@ -23,6 +23,7 @@ import {
   freezeNirmanaElevationDefinition,
   recordNirmanaElevationEvidence,
   supersedeNirmanaElevationDefinition,
+  supersedeNirmanaElevationDefinitionMidCampaign,
 } from '@/lib/nirmana-elevation/definitions'
 import {
   NirmanaLabelCatalogueInputSchema,
@@ -237,6 +238,23 @@ const supersede = z.object({
   expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   new_definition_revision: revision,
 }).strict()
+// D-NATIVE-13 mid-campaign supersession (t0 -> t1). Unlike `supersede` above
+// (unused-definition replacement), this command flips the CURRENT frozen
+// definition while its historical events/build runs stay bound to it. The
+// literal `native_authorization` is part of the schema, so a call without the
+// exact ruling reference is refused before dispatch ever runs; every other
+// precondition (zero in-flight runs, live-registry snapshot, identical
+// asset-id denominator, t0 immutability) is enforced inside
+// supersedeNirmanaElevationDefinitionMidCampaign itself.
+const midCampaignSupersede = z.object({
+  command: z.literal('supersede_definition_mid_campaign'),
+  campaign_id: campaignId,
+  expected_current_revision: revision,
+  expected_current_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  new_definition_revision: revision,
+  native_authorization: z.literal('D-NATIVE-13'),
+  mode: z.enum(['dry_run', 'execute']),
+}).strict()
 const labelCatalogue = NirmanaLabelCatalogueInputSchema
   .omit({ recorded_by: true })
   .extend({ command: z.literal('record_label_catalogue') })
@@ -248,7 +266,7 @@ const baselineCandidateAcceptance = z.object({
   expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
 }).strict()
 
-export const nirmanaEvidenceCommand = z.union([definition, freeze, supersede, labelCatalogue, baselineCandidateAcceptance, receipt])
+export const nirmanaEvidenceCommand = z.union([definition, freeze, supersede, midCampaignSupersede, labelCatalogue, baselineCandidateAcceptance, receipt])
 export type NirmanaEvidenceCommand = z.infer<typeof nirmanaEvidenceCommand>
 
 /**
@@ -263,8 +281,9 @@ export async function handleNirmanaEvidenceCommand(
   parsedData: NirmanaEvidenceCommand,
   actorId: string,
 ): Promise<NextResponse> {
-  if (parsedData.command === 'accept_baseline_candidate' || parsedData.command === 'supersede_definition') {
-    const isSupersession = parsedData.command === 'supersede_definition'
+  if (parsedData.command === 'accept_baseline_candidate' || parsedData.command === 'supersede_definition'
+    || parsedData.command === 'supersede_definition_mid_campaign') {
+    const isSupersession = parsedData.command !== 'accept_baseline_candidate'
     let rateLimit
     try {
       rateLimit = await checkRateLimit(`admin:nirmana_${parsedData.command}:${actorId}`)
@@ -334,6 +353,43 @@ export async function handleNirmanaEvidenceCommand(
         await publishCockpitEvent({ type: 'nirmana.definition_superseded', definition_revision: parsedData.new_definition_revision })
       }
       return NextResponse.json({ outcome }, { status: outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } })
+    }
+
+    if (parsedData.command === 'supersede_definition_mid_campaign') {
+      const report = await supersedeNirmanaElevationDefinitionMidCampaign({
+        campaign_id: parsedData.campaign_id,
+        expected_current_revision: parsedData.expected_current_revision,
+        expected_current_manifest_sha256: parsedData.expected_current_manifest_sha256,
+        new_definition_revision: parsedData.new_definition_revision,
+        native_authorization: parsedData.native_authorization,
+        created_by: actorId,
+        mode: parsedData.mode,
+      })
+      await writeAuditLog(actorId, 'nirmana_definition_recorded', null, {
+        command: 'supersede_definition_mid_campaign',
+        campaign_id: parsedData.campaign_id,
+        expected_current_revision: parsedData.expected_current_revision,
+        expected_current_manifest_sha256: parsedData.expected_current_manifest_sha256,
+        new_definition_revision: parsedData.new_definition_revision,
+        native_authorization: parsedData.native_authorization,
+        mode: parsedData.mode,
+        outcome: report.outcome,
+        new_manifest_sha256: report.new_manifest_sha256,
+        new_catalogue_sha256: report.new_catalogue_sha256,
+        asset_count: report.asset_count,
+        bound_event_count: report.bound_event_count,
+        bound_build_run_count: report.bound_build_run_count,
+      })
+      if (report.outcome === 'superseded') {
+        await publishCockpitEvent({ type: 'nirmana.definition_superseded', definition_revision: report.new_definition_revision })
+      }
+      // The full report goes back to the operator: a dry run's entire value is
+      // what it observed (asset_count, bound event/run counts, digests) — a
+      // bare outcome string would discard the evidence the flip decision needs.
+      return NextResponse.json(
+        { outcome: report.outcome, report },
+        { status: report.outcome === 'superseded' ? 201 : 200, headers: { 'Cache-Control': 'no-store' } },
+      )
     }
 
     if (parsedData.command === 'record_label_catalogue') {

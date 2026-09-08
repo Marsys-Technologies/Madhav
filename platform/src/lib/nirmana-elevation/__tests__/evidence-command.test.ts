@@ -30,10 +30,12 @@ vi.mock('@/lib/mcp/rate_limiter', () => ({
 
 const recordEvidenceMock = vi.fn()
 const supersedeMock = vi.fn()
+const midCampaignSupersedeMock = vi.fn()
 vi.mock('@/lib/nirmana-elevation/definitions', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/nirmana-elevation/definitions')>()),
   recordNirmanaElevationEvidence: (...args: unknown[]) => recordEvidenceMock(...args),
   supersedeNirmanaElevationDefinition: (...args: unknown[]) => supersedeMock(...args),
+  supersedeNirmanaElevationDefinitionMidCampaign: (...args: unknown[]) => midCampaignSupersedeMock(...args),
 }))
 
 const CANONICAL_CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
@@ -273,5 +275,143 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
     const response = await handleNirmanaEvidenceCommand(assetFrozenCommand({ idempotency_key: 'asset:bg_prashna_rules:freeze:2' }), 'admin-1')
     expect(response.status).toBe(201)
     expect(await response.json()).toEqual({ outcome: 'created' })
+  })
+})
+
+// --- D-NATIVE-13 mid-campaign supersession command wiring -------------------
+// The underlying flip semantics (zero in-flight runs, live-registry snapshot,
+// identical denominator, t0 immutability, dry-run rollback) are exhaustively
+// covered in definitions.test.ts. These tests cover ONLY the command seam:
+// schema admission, rate-limit fail-closed, dispatch, audit, cockpit publish,
+// and conflict mapping.
+
+function midCampaignSupersedeCommand(overrides: Record<string, unknown> = {}) {
+  return {
+    command: 'supersede_definition_mid_campaign' as const,
+    campaign_id: 'nirmana-elevation' as const,
+    expected_current_revision: 't0-2026-09-01-0e5b06fb',
+    expected_current_manifest_sha256: 'a'.repeat(64),
+    new_definition_revision: 't1-2026-09-08-ffffffff',
+    native_authorization: 'D-NATIVE-13' as const,
+    mode: 'dry_run' as const,
+    ...overrides,
+  }
+}
+
+function midCampaignReport(overrides: Record<string, unknown> = {}) {
+  return {
+    outcome: 'dry_run_ok' as const,
+    superseded_revision: 't0-2026-09-01-0e5b06fb',
+    new_definition_revision: 't1-2026-09-08-ffffffff',
+    new_manifest_sha256: 'b'.repeat(64),
+    new_catalogue_sha256: 'c'.repeat(64),
+    asset_count: 128,
+    bound_event_count: 500,
+    bound_build_run_count: 91,
+    ...overrides,
+  }
+}
+
+describe('supersede_definition_mid_campaign command seam', () => {
+  beforeEach(() => {
+    publishMessage.mockClear()
+    topic.mockClear()
+    auditMock.mockReset().mockResolvedValue(undefined)
+    rateLimitMock.mockReset().mockResolvedValue({ allowed: true })
+    recordEvidenceMock.mockReset()
+    supersedeMock.mockReset()
+    midCampaignSupersedeMock.mockReset()
+    vi.stubEnv('GOOGLE_CLOUD_PROJECT', 'test-project')
+    vi.stubEnv('PUBSUB_DISABLED', '')
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('admits a well-formed command and rejects any weakening of the authorization contract', async () => {
+    const { nirmanaEvidenceCommand } = await import('../evidence-command')
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand()).success).toBe(true)
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ mode: 'execute' })).success).toBe(true)
+    // The literal D-NATIVE-13 reference is REQUIRED — absent, null, or any
+    // other string must be refused at the schema boundary, before dispatch.
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ native_authorization: undefined })).success).toBe(false)
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ native_authorization: 'D-NATIVE-12' })).success).toBe(false)
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ mode: 'commit' })).success).toBe(false)
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ expected_current_manifest_sha256: 'nope' })).success).toBe(false)
+    // .strict(): unknown keys must be refused, not silently dropped.
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ force: true })).success).toBe(false)
+  })
+
+  it('dispatches a dry run to the mid-campaign path, returns the full report, and never publishes', async () => {
+    midCampaignSupersedeMock.mockResolvedValue(midCampaignReport())
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand(), 'admin-1')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ outcome: 'dry_run_ok', report: midCampaignReport() })
+    expect(midCampaignSupersedeMock).toHaveBeenCalledTimes(1)
+    expect(midCampaignSupersedeMock).toHaveBeenCalledWith(expect.objectContaining({
+      campaign_id: 'nirmana-elevation',
+      expected_current_revision: 't0-2026-09-01-0e5b06fb',
+      native_authorization: 'D-NATIVE-13',
+      mode: 'dry_run',
+      created_by: 'admin-1',
+    }))
+    expect(publishMessage).not.toHaveBeenCalled()
+    expect(auditMock).toHaveBeenCalledWith('admin-1', 'nirmana_definition_recorded', null, expect.objectContaining({
+      command: 'supersede_definition_mid_campaign',
+      native_authorization: 'D-NATIVE-13',
+      mode: 'dry_run',
+      outcome: 'dry_run_ok',
+    }))
+  })
+
+  it('publishes nirmana.definition_superseded exactly once after an executed flip', async () => {
+    midCampaignSupersedeMock.mockResolvedValue(midCampaignReport({ outcome: 'superseded' }))
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand({ mode: 'execute' }), 'admin-1')
+    expect(response.status).toBe(201)
+    expect(publishMessage).toHaveBeenCalledTimes(1)
+    expect(publishMessage).toHaveBeenCalledWith(expect.objectContaining({
+      attributes: { chart_id: CANONICAL_CHART_ID, type: 'nirmana.definition_superseded' },
+    }))
+    const [[call]] = publishMessage.mock.calls
+    const payload = JSON.parse(Buffer.from(call.data).toString('utf-8'))
+    expect(payload).toEqual({ chart_id: CANONICAL_CHART_ID, type: 'nirmana.definition_superseded', definition_revision: 't1-2026-09-08-ffffffff' })
+  })
+
+  it('does not publish for an idempotent flip retry', async () => {
+    midCampaignSupersedeMock.mockResolvedValue(midCampaignReport({ outcome: 'idempotent' }))
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand({ mode: 'execute' }), 'admin-1')
+    expect(response.status).toBe(200)
+    expect(publishMessage).not.toHaveBeenCalled()
+  })
+
+  it('fails closed with 503 when the rate limiter is unavailable, without opening the flip path', async () => {
+    rateLimitMock.mockRejectedValue(new Error('limiter down'))
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand(), 'admin-1')
+    expect(response.status).toBe(503)
+    expect(midCampaignSupersedeMock).not.toHaveBeenCalled()
+  })
+
+  it('returns 429 when rate limited, without opening the flip path', async () => {
+    rateLimitMock.mockResolvedValue({ allowed: false, retry_after_seconds: 30 })
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand(), 'admin-1')
+    expect(response.status).toBe(429)
+    expect(response.headers.get('Retry-After')).toBe('30')
+    expect(midCampaignSupersedeMock).not.toHaveBeenCalled()
+  })
+
+  it('maps a definition conflict from the flip path to 409', async () => {
+    const { NirmanaElevationDefinitionConflictError } = await import('../definitions')
+    midCampaignSupersedeMock.mockRejectedValue(new NirmanaElevationDefinitionConflictError('in-flight build runs present'))
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(midCampaignSupersedeCommand({ mode: 'execute' }), 'admin-1')
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ error: 'in-flight build runs present' })
+    expect(publishMessage).not.toHaveBeenCalled()
   })
 })
