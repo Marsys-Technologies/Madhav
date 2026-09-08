@@ -3196,8 +3196,13 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
             """,
             [json.dumps(payload, default=str)],
         )
-        for index, sid in cur.fetchall():
-            rows[index]["signal_id"] = sid
+        # conn uses dict_row factory (see _fetch_dict above) — fetchall() rows are
+        # dict-like, not tuples. Unpacking `for index, sid in cur.fetchall()` silently
+        # iterated each row's KEYS ("i", "sid") instead of its values, producing a str
+        # index and crashing `rows[index]` with "list indices must be integers or
+        # slices, not str" on the very first row.
+        for id_row in cur.fetchall():
+            rows[id_row["i"]]["signal_id"] = id_row["sid"]
 
     # §N.8: report the collapse honestly rather than assume none. Two rows sharing
     # a derived identity ARE the same signal by the #1804 definition, so collapsing
