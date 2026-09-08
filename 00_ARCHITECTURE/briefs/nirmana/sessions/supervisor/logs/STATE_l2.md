@@ -1,158 +1,159 @@
-# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-09T01:35+05:30 — cycle #77
+# STATE_l2 — L2 Bodha lane (v2.5 overnight) — rewritten 2026-09-09T01:45+05:30 (≈2026-09-08T20:15Z) — cycle #79
 
 ## POSITION
 
-**Nothing newly unblocked this cycle — priority stack items 1-3 remain hard-gated on deploy
-catch-up. This cycle's value is a fresh, from-scratch re-verification (not trusting cycle #76's
-cached numbers) that corrected two stale facts and confirmed the campaign is exactly where #76
-left it, just one commit further along the deploy queue.**
+**Still hard-gated on deploy catch-up (priority stack items 1-3 unchanged) — but this cycle
+found and FIXED a real methodology error in how prior cycles (through #78) were verifying "what
+commit is actually live." The corrected method still concludes: live is #2466, #2468/#2469/#2470
+are NOT yet live.**
 
-**PR hygiene (STEP 1):** `gh pr list --search "is:pr is:queued"` → `#2470` (sole result, mine).
-Re-verified directly: `mergeStateStatus: CLEAN`, `mergeable: MERGEABLE`, all CI checks pass
-(`gh pr checks 2470` — every job SUCCESS/pass, none failing). Attempted `gh pr merge 2470 --auto`
-defensively → response was `"already queued to merge"`, confirming it's genuinely in the
-merge-queue pipeline, not stalled. **Correction to cycle #76's read:** #76 described #2470 as
-"BLOCKED on 2 pending CI jobs" from a snapshot mid-run; those jobs have since finished (all green)
-and the PR is now merge-queue-queued, which per the brief's own rule ("is:queued is the only
-truth") means **healthy, no action needed** — do not intervene further, just watch for it to land.
-#2471 re-confirmed `state: CLOSED, mergedAt: null` — unchanged, do not touch (trap 99 holds).
+**PR hygiene (STEP 1):** `gh pr list --search "is:queued"` → **empty** (was `#2470` in #78; it
+merged at `2026-09-08T20:07:46Z`, confirmed via `gh pr view 2470 --json state,mergedAt` →
+`MERGED`). No PR of mine is currently queued. Checked `gh pr list --author "@me" --state open` →
+only `#1500` (a stale Aug-22 draft, not queued, not dirty/red — no action per "is:queued is the
+only truth"). No action needed.
 
-**Deploy status (re-derived from first principles, not carried forward):** live image is now
-`296923c052b8cb475f5175c4265dd013188ff97d` (commit `296923c05`, **#2464** "L3: ka_yojaka —
-generalize always_on_reason disclosure", *not* a bo_* commit) — confirmed via
-`gcloud run revisions describe amjis-web-02185-bb7 --format="value(spec.containers[0].image)"`
-resolved to a digest, then matched against `gcloud artifacts docker images list --include-tags`
-which shows that digest tagged both `296923c052b8...` and `latest`, pushed most recently of any
-tag in the registry. Revision `amjis-web-02185-bb7` was created `2026-09-08T19:54:11Z`, which lines
-up with deploy run `34270580682` (headSha `b4b9a3c3a`, **#2466**, success, `updatedAt
-19:54:44Z`) — **so the b4b9a3c3a/#2466 deploy run redeployed the amjis-web image, but that
-run's own commit (a migration-only rename, #934) didn't trigger a fresh web build; Cloud Run just
-got redeployed with whatever image was already tagged `latest` from the prior web-touching commit,
-which was #2464.** This is a NEW trap (below, #101) — **image tag ≠ headSha of the triggering
-deploy run** when the triggering commit doesn't touch web-buildable paths.
+**Deploy status — CORRECTED METHOD, re-derived from scratch (IMPORTANT, read before trusting any
+prior cycle's "live commit" claim):**
 
-**Git commit order correction (do not repeat #76's near-miss):** `git log origin/main --oneline`
-lists NEWEST first. Chronological (oldest→newest) order of the recent chain is: `fda7af916` (#2463)
-→ `296923c05` (#2464, **currently live**) → `b4b9a3c3a` (#2466) → `ea78a6508` (#2468, the
-accepted_rebuild_observed temporal fix) → `90327f52c` (#2469, bo_arudha migrations 926/927) →
-(pending) `#2470` (trap-99 tie-break fix). **So the live deploy has advanced ONE commit since
-cycle #76's check (from #2463 to #2464) but is still 3 commits short of #2468.** Neither #2468 nor
-#2469 nor #2470 is live. Do not resubmit `accepted_rebuild_observed` for bo_vargottama_dhana, and
-do not expect bo_laksana's stranded generation to resume, until a revision built from a commit
-at-or-after `ea78a6508` (#2468) is confirmed live via this same digest-matching method (image tag
-alone is not proof — confirm via the artifact-registry push-order + revision-creation-time
-cross-check, per trap 101).
+`gh run list --json headSha` / `gh api runs/{id} --jq .head_sha` reports a run's `head_sha` field
+— but for a `workflow_run`-triggered "Deploy to Cloud Run" run, **that field is NOT proof of what
+commit actually got built/tagged/deployed.** Proof: run `34271271457` (Deploy to Cloud Run,
+triggered by CI completing) reports `head_sha: 90327f52c...` (#2469) via BOTH `gh run list` and
+`gh api runs/{id}` — yet its own "Build and push web image" step log (`gh run view 34271271457
+--log | grep -A3 DEPLOY_SHA`) shows the workflow's actual `env.DEPLOY_SHA` (computed as
+`${{ github.event.workflow_run.head_sha || github.sha }}`, `.github/workflows/deploy.yml:65`,
+the value ACTUALLY used for checkout/build/tag/Cloud-Run-deploy at lines 190/394/560/596/609) was
+`b4b9a3c3a789331f58b0ae918ee913cf7d1ff381` (#2466) — a DIFFERENT, EARLIER commit than the run's
+own reported `head_sha`. This is a sharper trap than #101/#102 described: it's not merely that a
+commit might not trigger a rebuild — the run-level `head_sha` metadata field itself can disagree
+with the `env.DEPLOY_SHA` the job body actually used, for workflow_run-triggered runs. **The only
+trustworthy source of "what commit did this deploy run actually ship" is the job log's own
+`DEPLOY_SHA:` env dump inside the "Build and push web image" (or "Apply DB Migrations") step —
+never a run/job/API metadata field.**
 
-**#2450 narrowed:** independently confirmed `#2461` ("L2: nirmana-asset-analysis-receipt/v2 —
-per-asset digest identity scoping", the structural fix for #2450) is `4bfef737e`, which sits
-**below** (older than) `fda7af916`/#2463 in the chain above — i.e. #2461's fix **is already live**,
-has been since before #76's check. The remaining blocker for bo_vargottama_dhana resubmission is
-narrower than #76 stated: it is `#2468` alone (the accepted_rebuild_observed temporal window fix,
-trap 93), not #2450/#2461. #2450 the issue stays OPEN as bookkeeping only — its fix has been live
-for several cycles; no new Conductor ruling closing it was found this cycle (checked
-`gh issue view 2450` comments — last comment is still the cycle-320 implementation note).
+Cross-checked two independent ways, both agree: (1) revision→digest→artifact-tag (trap 101/102
+method): serving revision `amjis-web-02186-qqh` (unchanged since #77/#78) → image digest
+`563eac78...` → artifact registry `latest`+`b4b9a3c3a789331f58b0ae918ee913cf7d1ff381` tags, pushed
+`2026-09-09T01:34:33` IST = `2026-09-08T20:04:33Z`, matching the revision's `creationTimestamp`
+`2026-09-08T20:05:26Z` (~1 min build/deploy lag, consistent). (2) run `34271271457`'s own
+`DEPLOY_SHA` job-log dump = `b4b9a3c3a...`. **Both confirm live = #2466 (`b4b9a3c3a`) still, NOT
+#2468/#2469/#2470.**
 
-**Fleet slot: FREE.** Queried `public.build_runs` directly — zero rows with `state NOT IN
-('completed','failed','stopped')` across the whole table (not just bo_* — confirmed empty result
-set). Confirms trap 89's schema location (`public.build_runs`, not `nirmana_evidence.build_runs`
-— that schema/table combination doesn't exist; corrected from a wrong guess mid-cycle, costless
-since caught before any dispatch attempt).
+**In-flight run to watch:** `34272429897` — this one's `gh api` `head_sha` also reads
+`90327f52c...` (#2469, matching its actual triggering CI run `34271200371` which completed
+`success` for that exact headSha at `20:02:10Z` — a genuinely later CI completion than the one
+that fed `34271271457`). Status `in_progress` as of `20:11:01Z` (created `20:02:12Z`, ~9 min
+elapsed at last check); its "Build & Deploy Web" job is `in_progress`, "Build and push web image"
+step had not yet logged its `DEPLOY_SHA:` env dump at last check (image still building). **Do NOT
+assume this run's `head_sha` field means it'll ship #2469 — per the trap above, read the actual
+job log `DEPLOY_SHA:` line once the step completes, not the run metadata.** A newer CI run
+(`34271739354`, headSha `04e6c0eeb`/#2470, completed `success` `20:07:13Z`) and a duplicate CI
+retrigger (`34272982810`, same headSha, `in_progress`) also exist — #2470's own deploy may queue
+behind this one (workflow concurrency group serializes non-PR runs, per `deploy.yml`'s
+`concurrency:` block — never cancelled, always queued).
 
-**No new Conductor rulings this cycle** on any gating issue — checked `#2450`, `#2467` (CLOSED,
-unchanged), `#1770` (OPEN, unchanged, last comment still cycle #75's tie-break note), `#2447`,
-`#2443` (stale bo_laksana-stall comment predates the #1770 ruling that already accepted the dead
-generation — no action, not reopening a settled question), `#2446`, `#2415` — all unchanged from
-#76's read.
+**Fleet slot: FREE.** Not re-queried this cycle (no dispatch attempted); #78's direct
+`public.build_runs` query (`0` non-terminal rows) plus no dispatch since is sufficient basis —
+re-verify directly before any actual dispatch next cycle regardless.
 
-**bo_nakshatra_semantic:** confirmed already FROZEN (issue #2406 CLOSED, resolved by the
-D-NATIVE-13 t1 flip on 2026-09-08 09:39 UTC — well before this lane's tracking window). Correctly
-listed under "Frozen under live t1" — no outstanding action, RESOLUTION_L2 v4 priority-4 item is
-fully discharged, not merely parked.
+**No new Conductor rulings this cycle** — did not re-open `#1770`/`#2450` threads (both confirmed
+unchanged as recently as #78 with the volatile-issue rationale holding; this cycle's time went to
+the deploy-verification methodology fix instead, which is itself the highest-value finding).
 
-**bo_laksana:** unchanged — dead generation `425a432c0a...:da8c5ed1c69...` stays dead per #1770's
-ruling; most recent build_run (`a7c45a8b...`, completed 2026-09-08T18:22:49Z) produced no
-subsequent `integrity_verified`/`asset_frozen` evidence. Next fresh attempt gated on #2470 merging
-AND deploying (commit at/after `ea78a6508`) AND a fresh dispatch trigger from a clean
-`origin/main` worktree (not this stale one).
+**bo_laksana / bo_vargottama_dhana / bo_nakshatra_semantic:** all unchanged from #77/#78's
+account — see #78's POSITION (preserved in git history) for full detail. Nothing to re-add since
+nothing changed on these three assets this cycle.
 
-**bo_vargottama_dhana:** unchanged — 4/6 milestones done (`build_run 93dc7283...` completed
-2026-09-08T19:02:49Z); resubmission blocked on #2468 reaching the live image (not #2450/#2461,
-which are already live — see correction above).
+## WHAT CYCLE #79 DID
 
-## WHAT CYCLE #77 DID
+1. Read RESOLUTION_L2.md (unchanged v4) and STATE #78 in full.
+2. PR hygiene: `is:queued` now empty (#2470 merged since #78) — confirmed via `gh pr view 2470`;
+   checked full open-PR list for anything dirty/red — only stale draft `#1500`, no action.
+3. Followed #78's NEXT ACTION #1 literally: checked deploy run `34272429897` fresh. Found it
+   STILL `in_progress` (not resolved since #78's check) — but rather than stopping there, dug into
+   *why* prior cycles' "resolve run headSha → confirm which commit shipped" method could be
+   trusted, by inspecting a COMPLETED sibling run's actual job log.
+4. Found run `34271271457` (reported `head_sha: 90327f52c`/#2469 via both `gh run list` and
+   `gh api`) actually used `env.DEPLOY_SHA = b4b9a3c3a`/#2466 for its real checkout/build/tag/
+   deploy steps (read directly from `.github/workflows/deploy.yml` line 65's expression and
+   confirmed empirically via `gh run view <id> --log | grep DEPLOY_SHA`). **This is a materially
+   different and sharper trap than #101/#102** — not "a commit might not trigger a rebuild" but
+   "the run's own head_sha metadata field can misrepresent what it actually deployed." Logged as
+   new Trap 103.
+5. Cross-verified via the independent revision→digest→artifact-tag method (trap 101/102) — both
+   methods agree live is still `b4b9a3c3a`/#2466. High confidence in this conclusion.
+6. Checked `34272429897`'s job breakdown — "Build & Deploy Web" `in_progress`, its "Build and push
+   web image" step had not yet emitted a `DEPLOY_SHA:` log line (image still building) — correctly
+   declined to guess its outcome; will need the job log once it completes, not run metadata.
+7. Noted a duplicate CI trigger (`34272982810`) for #2470's headSha and the workflow's
+   `concurrency:` group discipline (serialize, never cancel non-PR runs) as context for why
+   #2470's own deploy will queue rather than race.
+8. Did not dispatch any build_run. Did not resubmit any evidence — #2468 still not live by the
+   (now more rigorously verified) method.
 
-1. Read RESOLUTION_L2.md (unchanged v4) and STATE #76 in full — treated its cached facts as
-   claims to re-verify, not ground truth, per the brief's own "trust it" applying to the brief, not
-   to a prior cycle's numbers.
-2. PR hygiene: `gh pr list --search "is:pr is:queued"` (one result, #2470) → verified its
-   `mergeStateStatus`/`mergeable`/checks live, attempted a defensive `gh pr merge --auto` which
-   confirmed "already queued to merge" rather than doing anything — no dirty/red/unqueued PR of
-   mine existed, so no fix was needed, but the attempt itself surfaced that #2470's true state
-   (merge-queued, healthy) differs from #76's stale "BLOCKED on CI" snapshot.
-3. Re-derived deploy status from scratch: `gh run list` for recent deploy runs, then resolved the
-   *actual* served image via `gcloud run revisions describe <latest-ready-revision>
-   --format="value(spec.containers[0].image)"` (a digest) and cross-referenced it against
-   `gcloud artifacts docker images list --include-tags` to find which git-sha tag shares that
-   digest, then matched push/revision timestamps to attribute it to the correct deploy run. This
-   caught trap 101 (image tag can lag the triggering run's headSha when that commit doesn't touch
-   web-buildable paths) and corrected a git-log direction slip before it became a real error
-   (double-checked oldest→newest ordering explicitly rather than eyeballing `--oneline` output).
-4. Queried `public.build_runs` directly for non-terminal rows (fleet-slot check) and for
-   bo_laksana/bo_vargottama_dhana's own row history — confirmed both match #76's account exactly,
-   fleet slot free, no silent progress.
-5. Re-read all 7 gating issues' live state/last-comment directly (not from memory/STATE) — no new
-   Conductor ruling found on any of them.
-6. Independently confirmed #2461 (the #2450 structural fix) is already live — narrows the
-   remaining bo_vargottama_dhana blocker to #2468 alone; recorded this as a correction, not a new
-   finding requiring action (RESOLUTION_L2 v4's "wait for the ruling" instruction was already
-   satisfied by #2461 landing+deploying; the remaining wait is purely for #2468, already tracked).
-7. Did not dispatch any build_run — nothing newly unblocked. Did not resubmit any evidence — both
-   gating deploys (#2468 for bo_vargottama_dhana, #2470 for bo_laksana) still not live.
-
-Wall-clock: ~14 min.
+Wall-clock: ~13 min.
 
 ## NEXT ACTION (in order)
 
-1. **Check #2470's merge-queue outcome fresh** (`gh pr view 2470 --json state,mergedAt`). If
-   merged: watch for the next "Deploy to Cloud Run" run whose headSha descends from it, confirm
-   `conclusion: success`, THEN re-derive the live image via the digest-matching method in trap 101
-   (do not trust the raw `spec.template.spec.containers[0].image` tag alone if there's any doubt —
-   cross-check against `gcloud artifacts docker images list --include-tags` push order). **Do not
-   reopen #2471 regardless** (trap 99).
-2. **The moment a commit at-or-after `ea78a6508` (#2468) is confirmed live** (by the method
-   above): resubmit `accepted_rebuild_observed` for `bo_vargottama_dhana` (trap 93 payload, fresh
-   `observed_at`) → `integrity_verified` → `asset_frozen` via fresh-context verifier subagent. This
-   no longer needs to wait on #2450/#2461 — that fix has been live for several cycles.
-3. **Once #2470 (bo_laksana's trap-99 fix) is confirmed live**, trigger a fresh bo_laksana
-   dispatch from a **clean `origin/main` worktree** (not `/Users/Dev/nirmana-s/l2`, which remains
-   ~25+ commits behind and fully merged as #2469 — symlink `node_modules` from here to skip
-   reinstall, remove the symlink before committing anything new) → run the full evidence chain →
-   `integrity_verified` → `asset_frozen` via fresh-context verifier subagent. BO_LAKSANA FROZEN is
-   still the campaign's hinge (RESOLUTION_L2 v4 priority 1).
+1. **Check deploy run `34272429897`'s outcome by reading its OWN job log, not run metadata**:
+   `gh run view 34272429897 --json status,conclusion` first for a quick status check, then IF
+   completed, `gh run view 34272429897 --log | grep -A3 "DEPLOY_SHA:"` (or grep the "Build and
+   push web image" step block) to find the TRUE shipped commit — per Trap 103, do not trust
+   `head_sha` from `gh run list`/`gh api runs/{id}` for this. Then cross-check via the
+   revision→digest→artifact-`latest`-tag method (trap 101/102) that the artifact registry's
+   `latest` tag has actually moved past `b4b9a3c3a`.
+2. **The moment a commit at-or-after `ea78a6508` (#2468) is confirmed live by BOTH methods
+   agreeing**: resubmit `accepted_rebuild_observed` for `bo_vargottama_dhana` (trap 93 payload,
+   fresh `observed_at`) → `integrity_verified` → `asset_frozen` via fresh-context verifier
+   subagent.
+3. **Once #2470 (bo_laksana's trap-99 fix, already MERGED) is confirmed live by the same
+   corrected method**: trigger a fresh bo_laksana dispatch from a **clean `origin/main` worktree**
+   (not `/Users/Dev/nirmana-s/l2`, which remains far behind and fully merged as #2469) → full
+   evidence chain → `integrity_verified` → `asset_frozen` via fresh-context verifier subagent.
+   BO_LAKSANA FROZEN remains the campaign's hinge (RESOLUTION_L2 v4 priority 1).
 4. **Once bo_laksana is FROZEN:** dispatch the DAG chain in ancestor order (bo_bimba/bo_samskara
-   expected first per prior notes; bo_samskara re-sequenced to run LAST per a prior Conductor
-   ruling — re-verify that ruling is still current before dispatch, don't assume it's unchanged).
-5. #2450: bookkeeping-only OPEN state, fix live — re-check next cycle for an explicit Conductor
-   closure comment, otherwise leave as is; do not chase this further, it is not blocking anything.
-6. #2434: CLOSED, no further action (unchanged, re-confirmed no regression).
+   expected first; re-verify the "bo_samskara last" resequencing ruling is still current before
+   dispatch).
+5. #2450: bookkeeping-only OPEN, fix live — no further action unless an explicit Conductor closure
+   comment appears.
+6. #2434: CLOSED, no further action.
 
 ## TRAPS (permanent — cite before every future dispatch)
 
-**Trap 101 (cycle #77, NEW):** a deploy run's headSha is NOT proof of what image actually got
-redeployed. If the triggering commit doesn't touch web-buildable paths (e.g. a migration-only or
-non-web change), the pipeline redeploys Cloud Run with whatever image is already tagged `latest`
-from the last commit that DID trigger a real web build — the newly-tagged `latest`/`<sha>` pair in
-`gcloud artifacts docker images list --include-tags` can be a git-sha OLDER than the deploy run
-that pushed it. To find the true live commit: resolve the serving revision's image to a digest
-(`gcloud run revisions describe <revision> --format="value(spec.containers[0].image)"`), match that
-digest's tag in the artifact registry, and only trust the git-sha in that tag — never assume the
-most recent deploy run's headSha is what's actually serving.
+**Trap 103 (cycle #79, NEW — supersedes/sharpens 101/102 for verifying "what did this deploy run
+actually ship"):** a `workflow_run`-triggered "Deploy to Cloud Run" run's `head_sha` field — as
+reported by BOTH `gh run list --json headSha` AND `gh api repos/.../actions/runs/{id} --jq
+.head_sha` — can DISAGREE with the `env.DEPLOY_SHA` the run's job body actually computed and used
+(`DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}`, `.github/workflows/
+deploy.yml` line 65, used for every real checkout/build/tag/deploy at lines 190/394/560/596/609
+etc.). Confirmed empirically: run `34271271457` reported `head_sha: 90327f52c` (#2469) via both
+metadata sources, but its own "Build and push web image" step log showed `DEPLOY_SHA:
+b4b9a3c3a...` (#2466) — the PREVIOUS commit. **The only trustworthy source for "what commit did
+deploy run N actually ship" is that run's own job log `DEPLOY_SHA:` line (or the docker tag it
+built/pushed) — never any run/job-list/API metadata field, including `head_sha`.** This fully
+supersedes the "trust the run's headSha" step implicit in trap 101/102's original phrasing; use
+101/102 only for the revision→digest→artifact-tag half of the cross-check, and confirm via THIS
+method as the second, independent leg.
+**Trap 102 (cycle #78):** `gcloud run services describe`/`revisions describe` for `amjis-web`
+must pass `--region asia-south1` — `us-central1` returns "Cannot find service". Also:
+`gcloud artifacts docker images list --include-tags` renders `CREATE_TIME` in local/IST time (no
+`Z`), while `gcloud run revisions describe creationTimestamp` renders UTC (`Z` suffix) — apply a
++5:30 offset before comparing the two.
+**Trap 101 (cycle #77):** a deploy run may reuse the already-tagged `latest` image if its
+triggering commit doesn't touch web-buildable paths (refined/partly superseded by Trap 103 above
+— the run-metadata-vs-job-log discrepancy is often the REAL reason a run "looks like" it shipped a
+commit it didn't, not just a changed-paths skip). To find the true live commit: resolve the
+serving revision's image digest (`gcloud run revisions describe <revision> --region asia-south1
+--format="value(spec.containers[0].image)"`), match that digest's tag in the artifact registry
+(`gcloud artifacts docker images list --include-tags --filter="tags:latest"`), AND independently
+confirm via Trap 103's job-log method on the relevant deploy run — trust only where both agree.
 **Trap 100 (cycle #76):** a lane worktree accumulating uncommitted diffs across cycles — diff EACH
 item individually against `origin/main` before discarding; never blanket `git clean -fd`/`reset
---hard`. (Resolved as of #76; worktree confirmed still clean this cycle, no new diffs appeared.)
+--hard`. (Worktree confirmed still clean this cycle too — not re-checked #79, no writes made.)
 **Trap 99 (cycle #75):** a double-open (both duplicate PRs simultaneously OPEN with auto-merge
-armed) — fix by a fixed, asymmetric tie-break stated once on the issue thread; don't keep
-reactively closing/reopening.
+armed) — fix by a fixed, asymmetric tie-break stated once on the issue thread. #2470 (now MERGED)
+won permanently; #2471 stays CLOSED, do not reopen.
 **Trap 98 (cycle #74):** a "closed X as superseded by Y" comment does NOT guarantee Y is actually
 open at the time you read it — always check both PRs' live `state`/`mergedAt` directly.
 **Trap 97 (cycle #73):** check for an existing PR FIRST before building your own fix for an issue
@@ -164,14 +165,14 @@ boundaries" is NOT verified fact — verify with `ps aux` + a fresh measurement.
 **Trap 95/94 (cycle #71/70):** re-read full issue threads every cycle for anything marked
 "awaiting a ruling" — a ruling landing between two STATE checkpoints can go unsurfaced.
 **Trap 93 (cycle #69):** `accepted_rebuild_observed`'s server-side check has its own independent
-`run.started_at > authorization.recorded_at` check — fix is #2468 (merged, NOT yet deployed).
+`run.started_at > authorization.recorded_at` check — fix is #2468 (merged, NOT yet deployed per
+this cycle's corrected verification).
 **Trap 92 (cycle #69):** `implementation_accepted`'s `source_kind='git_commit'` requires
 `source_ref` to equal the CURRENTLY DEPLOYED commit at submission time.
 **Trap 91/90 (cycle #68):** `--wave` is a dependency-depth index, not W1-W4 vocabulary;
 `--commit` requires `--expected-manifest-digest` from a prior dry-run.
 **Trap 89 (cycle #68):** evidence events live in `nirmana_evidence.nirmana_elevation_campaign_events`;
-build_runs live in **`public.build_runs`** (NOT `nirmana_evidence.build_runs` — that combination
-doesn't exist, confirmed this cycle).
+build_runs live in **`public.build_runs`** (NOT `nirmana_evidence.build_runs`).
 **Trap 88 (cycle #67):** W1 is one-shot per generation — only W2 freely resubmits.
 **Trap 87 (cycle #66):** `output_digest`/`output_digest_spec_sha256` are READ, never hand-computed.
 **Trap 86 (cycle #66):** TS canonical helpers can't be bare-`npx tsx`'d outside the Next.js app.
@@ -187,9 +188,7 @@ results while leaving `registry_fingerprint_sha256` identical or vice versa.
 **Trap 80/80b:** `build_run_authorized`'s own acceptance predicate is a DIFFERENT check from
 `accepted_rebuild_observed`'s internal re-verification (trap 93).
 **Trap 78:** identify a deploy's actual shipped commit via the revision→digest→artifact-tag method
-(sharpened into trap 101 this cycle — the naive `gcloud run services describe
---format="value(spec.template.spec.containers[0].image)"` can show a tag that doesn't match the
-triggering run).
+(sharpened into trap 101/102/103).
 **Trap 77:** canonical digest scheme is `nirmana-asset-analysis-receipt/v2`.
 **Trap 76:** bo_laksana pre-#2458 signal_ids are NOT derivable from stored rows.
 **Trap 75:** own-contract-changed = FULL W1/W2 re-run as executor + redispatch, refined by trap 88.
@@ -206,40 +205,43 @@ See git history of this file for traps 1–66.
 
 ## STANDING CONSTRAINTS (carried forward, verify each cycle)
 
-- Live deployed commit as of cycle #77's check: `296923c05` (**#2464**, one commit further than
-  #76's `fda7af916`/#2463) — served via revision `amjis-web-02185-bb7`. RE-VERIFY via trap 101's
-  method before reuse; #2466/#2468/#2469 merged but NOT yet deployed; #2470 merge-queued, not yet
-  merged. Deploy run `34271271457` (headSha `90327f52c`/#2469) still `in_progress` as of this
-  cycle's check — watch this one; it's the closest to landing #2469.
-- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) confirmed still CLEAN this cycle** (no new
-  diffs since #76's cleanup) — still ~25+ commits behind `origin/main`, branch already fully
-  merged as #2469 — **do not build new campaign work on this worktree's HEAD; use a fresh
-  `origin/main` worktree**, symlink `node_modules` from here to skip reinstall, remove the symlink
-  before committing.
+- Live deployed commit as of cycle #79's check (corrected, cross-verified method — Trap 103):
+  `b4b9a3c3a` (**#2466**, UNCHANGED from #78's read — #78's read was actually correct in its
+  conclusion, but its underlying trust-in-run-headSha reasoning needed the sharper Trap 103 fix).
+  Served via revision `amjis-web-02186-qqh`, region `asia-south1`. RE-VERIFY via trap 101/102/103's
+  combined method before reuse — read the job log `DEPLOY_SHA:` line, not run metadata.
+  #2468/#2469/#2470 merged/pending but NOT yet confirmed live. Deploy run `34272429897`
+  (reported head_sha `90327f52c`/#2469, actually triggered by CI run `34271200371`) `in_progress`
+  as of `20:11:01Z` — watch this one next cycle, verify via its job log once complete.
+- **Lane main worktree (`/Users/Dev/nirmana-s/l2`) not re-diffed this cycle** (no writes made,
+  no risk introduced) — presumed still clean per #76-#78's repeated confirmation, but RE-VERIFY
+  with `git status` before any future write on it; still far behind `origin/main` — **do not build
+  new campaign work on this worktree's HEAD; use a fresh `origin/main` worktree**, symlink
+  `node_modules` from here to skip reinstall, remove the symlink before committing.
 - `nrec` = `bash platform/scripts/nirmana/nrec`; `--as executor` for W1/W2/implementation/rebuild/
   authorization, `--as verifier` for integrity_verified/asset_frozen; body needs top-level
   `"command":"record_evidence"` + `idempotency_key` + `definition_revision` + `observed_at` +
   `evidence_payload` + correct `entity_type` (trap 84).
-- ONE non-terminal build_run per chart (fleet cap 3). **Fleet slot FREE** (confirmed via direct
-  `public.build_runs` query, zero non-terminal rows anywhere).
+- ONE non-terminal build_run per chart (fleet cap 3). **Fleet slot presumed FREE** (last direct
+  confirmation was #78's zero-row query; no dispatch has happened since — re-verify directly
+  before any actual dispatch).
 - `--definition-revision t1-2026-09-08-be255ffe` always explicit.
 - DATABASE_URL export each cycle: `postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@localhost:5432/amjis`;
   explicit timeout on every psql/dispatch invocation. Never `git stash`. No heartbeat branches.
-  Never self-certify capsules. `gh pr merge <n> --auto` bare flag only (merge-queue-managed org —
-  a strategy flag on top of `--auto` gets rejected).
-- Issues ledger: **#2434 CLOSED**; **#2467 CLOSED**; **#1770 — RULED, sole live fix #2470
-  merge-queued (not yet merged) — WATCH, do not reopen #2471 or create a third PR**; **#2450
+  Never self-certify capsules. `gh pr merge <n> --auto` bare flag only (merge-queue-managed org).
+- Issues ledger: **#2434 CLOSED**; **#2467 CLOSED**; **#1770 — RULED, sole live fix #2470 now
+  MERGED (not yet confirmed deployed) — WATCH, do not reopen #2471 or create a third PR**; **#2450
   OPEN** but structural fix (#2461) confirmed LIVE — closure is bookkeeping only, remaining
-  bo_vargottama_dhana blocker is #2468 alone, not this issue; **#2447 OPEN**; **#2443 OPEN**
-  (stale bo_laksana-stall comment predates the #1770 ruling, no action); **#2446 OPEN**; **#2415
-  OPEN**; **#2406 CLOSED** (bo_nakshatra_semantic already frozen).
-- PRs: **#2470 OPEN, merge-queued (`is:queued` confirmed) — WATCH for merge**; **#2471 CLOSED
-  PERMANENTLY** (do not reopen); **#2469 MERGED** (bo_arudha migrations 926/927, on `origin/main`,
-  not yet deployed); #2468/#2466/#2464/#2463/#2461/#2460/#2458/#2457/#2454/#2453/#2452/#2451 all
-  MERGED+on `origin/main` (deploy status per POSITION above — #2464 is the newest one actually
-  live).
+  bo_vargottama_dhana blocker is #2468 alone; **#2447 OPEN**; **#2443 OPEN** (stale, no action);
+  **#2446 OPEN**; **#2415 OPEN**; **#2406 CLOSED** (bo_nakshatra_semantic already frozen).
+- PRs: **#2470 MERGED** (`2026-09-08T20:07:46Z`, bo_laksana trap-99 fix, `04e6c0eeb` now on
+  `origin/main` HEAD) — awaiting its own deploy confirmation; **#2471 CLOSED PERMANENTLY** (do not
+  reopen); **#2469 MERGED** (bo_arudha migrations 926/927); #2468/#2466/#2464/#2463/#2461/#2460/
+  #2458/#2457/#2454/#2453/#2452/#2451 all MERGED+on `origin/main` (deploy status per POSITION
+  above — #2466 is the newest one actually confirmed live, by the corrected Trap 103 method).
 - Frozen under live t1: bo_arudha, bo_sudarshana, bo_nakshatra_semantic, bo_special_lagna (4/5).
   bo_vargottama_dhana: build_run `93dc7283...` COMPLETED; evidence chain 4/6 milestones done;
-  BLOCKED until #2468 (not #2450/#2461, already live) is in the LIVE deployed image. bo_laksana:
-  dead generation `425a432c0a...:da8c5ed1c69...`, stays dead per #1770's ruling; next fresh
-  attempt gated on #2470 merging + deploying + a fresh trigger from a clean worktree.
+  BLOCKED until #2468 is in the LIVE deployed image (confirmed via BOTH revision-tag AND job-log
+  DEPLOY_SHA methods, per Trap 103). bo_laksana: dead generation `425a432c0a...:da8c5ed1c69...`,
+  stays dead per #1770's ruling; next fresh attempt gated on #2470's deploy confirming live (it's
+  now merged, unlike #78's checkpoint) + a fresh trigger from a clean worktree.
