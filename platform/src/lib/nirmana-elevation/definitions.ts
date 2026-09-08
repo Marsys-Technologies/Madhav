@@ -3060,6 +3060,14 @@ async function findExistingLifecycleReceipt(
  * that they attest.  A contract drift legitimately starts a new generation;
  * an unbound legacy fact remains mutually exclusive rather than becoming an
  * escape hatch for duplicating an old lifecycle step.
+ *
+ * `decision_digest` (present only on `NirmanaImplementationEvidenceSchema` /
+ * `NirmanaRebuildEvidenceSchema`) is folded into the key when the payload
+ * carries one: W1/W2 payloads have no such field, so their generation string
+ * is unchanged. Without this, a superseding W2 resubmission for the same
+ * (registry_fingerprint_sha256, analysis_digest) pair permanently strands an
+ * already-accepted implementation/rebuild receipt bound to the prior
+ * decision_digest -- see #1770.
  */
 function lifecycleEvidenceGeneration(payload: unknown): string {
   if (payload !== null && typeof payload === 'object' && !Array.isArray(payload)) {
@@ -3068,7 +3076,9 @@ function lifecycleEvidenceGeneration(payload: unknown): string {
       analysis_digest: (payload as Record<string, unknown>).analysis_digest,
     })
     if (binding.success) {
-      return `${binding.data.registry_fingerprint_sha256}:${binding.data.analysis_digest}`
+      const decisionDigest = (payload as Record<string, unknown>).decision_digest
+      const suffix = typeof decisionDigest === 'string' && /^[a-f0-9]{64}$/.test(decisionDigest) ? `:${decisionDigest}` : ''
+      return `${binding.data.registry_fingerprint_sha256}:${binding.data.analysis_digest}${suffix}`
     }
   }
   return 'legacy-unbound'

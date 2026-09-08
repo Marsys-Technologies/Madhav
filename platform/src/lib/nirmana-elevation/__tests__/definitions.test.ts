@@ -2429,6 +2429,90 @@ it('atomically supersedes the exact current frozen definition with the server-de
     expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
   })
 
+  // #1770: lifecycleEvidenceGeneration() folds decision_digest into the
+  // generation key (when the payload carries one) so a superseding W2 no
+  // longer strands an already-accepted implementation_accepted/
+  // accepted_rebuild_observed receipt bound to the prior decision. W1/W2
+  // payloads carry no decision_digest field, so their generation key is
+  // provably unchanged (test immediately below); a real duplicate for the
+  // *same* decision_digest still conflicts (second test after that).
+  it('leaves the W1/W2 registry:analysis generation key unchanged (no decision_digest field)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:w2-first',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:w2-second',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('does not strand a prior implementation/rebuild receipt when a superseding decision_digest lands on the same registry:analysis pair', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:decision-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64), decision_digest: '1'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'new' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    // Same (registry_fingerprint_sha256, analysis_digest) pair as `first`, but a
+    // different decision_digest -- the exact #1770 generation-stranding shape
+    // (a superseding W2 on the same asset/analysis generation). Must succeed,
+    // not 409, once decision_digest is folded into the generation key.
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:decision-2',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64), decision_digest: '2'.repeat(64) },
+    })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  it('still rejects a genuine duplicate implementation/rebuild receipt for the identical decision_digest', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:same-decision-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64), decision_digest: '1'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:same-decision-2',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64), decision_digest: '1'.repeat(64) },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
   it('accepts an exact retried evidence receipt without overwriting the original actor', async () => {
     const input = {
       campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
