@@ -1,0 +1,133 @@
+-- 918_nirmana_l1_ga_yoga_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_yoga`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_yoga'` returning ZERO rows before this migration. Without a
+-- spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/
+-- orchestrator/output_digest.py) always returns `(None, None)` for this asset, so
+-- its provenance receipt (platform/python-sidecar/pipeline/orchestrator/
+-- provenance.py) can never leave `receipt_state = 'unknown'`. Same defect class
+-- as migrations 914 (`ga_structural`)/915 (`ga_tajaka`)/916 (`ga_medical`)/917
+-- (`ga_vastu`) and the wave-891/892/893/894/895 precedent.
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────────
+--
+-- `ga_yoga`'s writer (`platform/python-sidecar/ga_writers/ga_yoga_writer.py`) has
+-- FOUR separate `INSERT INTO ga_yoga_firings` call sites (source lines 2520,
+-- 2724, 2913, 3009) — meaningfully more complex than every other L1 writer
+-- surveyed this campaign (all single-insert, single-relation). All four write
+-- into the SAME single relation, `ga_yoga_firings`, with near-identical column
+-- lists (site 2520 additionally sets `grounds_jsonb`; the other three omit it,
+-- leaving it NULL on those rows — still a real, digestible column value, not a
+-- schema difference). Each site is confirmed to write a DISJOINT
+-- `yoga_canonical_id` set (site 2520 = NBRY_CANONICAL_ID; site 2724 = `cid`;
+-- sites 2913/3009 = other per-branch canonical ids) — collision is also
+-- structurally impossible at runtime because the table's own UNIQUE CONSTRAINT
+-- (below) would raise on any overlap, and no such error is observed in
+-- production. Idempotency is a single shared helper (`_clear_prior_firings`,
+-- line 2774): `DELETE FROM ga_yoga_firings WHERE chart_id = %s AND
+-- ayanamsha_id = %s` — one delete-then-insert scope covering all four sites
+-- together, standard pattern.
+--
+-- Ownership cross-check: `grep -rn ga_yoga_firings platform/python-sidecar
+-- --include=*.py` (excluding tests) finds ~30 references across
+-- `ka_yojaka.py`, `bo_grounding.py`, `bo_laksana.py`, `bhavat_bhavam_amplifier.py`,
+-- `ga_vichara_writer.py`, `ga_structural_writer.py`, `ka_gochara_resonance/
+-- writer.py` — every one of them is a READ (`SELECT ... FROM ga_yoga_firings`)
+-- or a comment referencing the table; the ONLY write paths anywhere in
+-- non-test source are `ga_yoga_writer.py`'s own four INSERTs plus its own
+-- `_clear_prior_firings` DELETE. `ga_yoga_writer.py` is confirmed the sole
+-- writer.
+--
+-- ── key + value columns (verified against live data + DB schema) ────────────────
+--
+-- Table has 24 columns total (`\d ga_yoga_firings`): `id` (PK, integer,
+-- `nextval(...)`), `chart_id`, `build_id`, `ayanamsha_id`, `yoga_canonical_id`,
+-- `fired`, `constituent_fact_ids`, `constituent_planets`, `constituent_houses`,
+-- `strength`, `strength_formula_version`, `partial_formation_pct`, `is_partial`,
+-- `bhanga_active`, `bhanga_rule_fired`, `family_ids`, `activation_dasha_periods`,
+-- `computed_at`, `derivation`, `strength_label`, `citation_ref`,
+-- `citation_human`, `bhanga_na_reason`, `grounds_jsonb`.
+--
+-- Three columns excluded from both `key_columns` and `value_columns`:
+--   * `id` — serial PK (`nextval('ga_yoga_firings_id_seq')`), never set
+--     explicitly by any of the writer's four INSERT column lists (confirmed by
+--     reading all four `INSERT INTO ga_yoga_firings (...)` column lists at
+--     source lines 2520-2527, 2724-2731, 2913-2920, 3009-3016 — `id` appears in
+--     none of them). Same auto-incrementing-serial-PK hazard already confirmed
+--     on `ga_medical.id` (migration 916) and
+--     `ga_vastu_planet_direction_map.id` (migration 917) — a fresh value every
+--     rebuild would break digest stability if included.
+--   * `build_id`, `computed_at` — per-rebuild identifiers, not content (same
+--     rationale as every precedent migration, e.g. 894/914/915).
+--
+-- `activation_dasha_periods` is NOT excluded: `grep -rn
+-- activation_dasha_periods platform/python-sidecar --include=*.py` (excluding
+-- tests) returns ZERO matches — no writer anywhere in current source, including
+-- `ga_yoga_writer.py` itself, ever sets this column; it is always its schema
+-- default (NULL) on every row. This is unlike the PK/UUID/serial hazards above:
+-- an always-NULL column is still genuine (if currently empty) row content, not
+-- a per-rebuild-changing identifier, so it is included in `value_columns` like
+-- any other column the writer doesn't happen to populate.
+--
+-- `key_columns = [chart_id, ayanamsha_id, yoga_canonical_id]` is exactly the
+-- table's own DB UNIQUE CONSTRAINT
+-- (`ga_yoga_firings_chart_id_ayanamsha_id_yoga_canonical_id_key`) — this
+-- constraint does not include `build_id` at all (unlike `ga_tajaka`'s table),
+-- so no "minus build_id" adjustment is needed here. Live-verified on the
+-- canonical chart (`482012f1`): `SELECT chart_id, ayanamsha_id,
+-- yoga_canonical_id, count(*) FROM ga_yoga_firings WHERE chart_id =
+-- '482012f1-...' GROUP BY 1,2,3 HAVING count(*) > 1` returns ZERO rows — the
+-- natural key is genuinely unique with no collisions across all four insert
+-- sites, confirmed against live data. Live row count: 63 rows for this chart.
+--
+-- `value_columns` is every remaining column (21 total): `chart_id`,
+-- `ayanamsha_id`, `yoga_canonical_id`, `fired`, `constituent_fact_ids`,
+-- `constituent_planets`, `constituent_houses`, `strength`,
+-- `strength_formula_version`, `partial_formation_pct`, `is_partial`,
+-- `bhanga_active`, `bhanga_rule_fired`, `family_ids`,
+-- `activation_dasha_periods`, `derivation`, `strength_label`, `citation_ref`,
+-- `citation_human`, `bhanga_na_reason`, `grounds_jsonb` — matching precedent's
+-- pattern of including the key columns themselves in `value_columns` too (they
+-- are genuine content, not merely an index).
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914/915/916/917: a plain INSERT with no ON
+-- CONFLICT clause. `asset_output_digest_specs`'s PRIMARY KEY is the composite
+-- `(asset_id, spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a
+-- legal target. `ga_yoga` has zero existing rows in this table (confirmed at
+-- the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps` with
+-- `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then `sha256().
+-- hexdigest()`). Produced by IMPORTING the real module and calling it directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_yoga', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- `_validate_spec` raised nothing (spec accepted as well-formed) and printed:
+--   fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246
+-- Independently re-verified a second way (plain `hashlib.sha256()` over the
+-- migration's own literal JSON string, with NO import of `canonical_digest` at
+-- all) — both matched exactly.
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_yoga',
+  'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"ga_yoga_firings","relation":"ga_yoga_firings","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"key_columns":["chart_id","ayanamsha_id","yoga_canonical_id"],"value_columns":["chart_id","ayanamsha_id","yoga_canonical_id","fired","constituent_fact_ids","constituent_planets","constituent_houses","strength","strength_formula_version","partial_formation_pct","is_partial","bhanga_active","bhanga_rule_fired","family_ids","activation_dasha_periods","derivation","strength_label","citation_ref","citation_human","bhanga_na_reason","grounds_jsonb"]}]}'::jsonb
+);
+
+COMMIT;
