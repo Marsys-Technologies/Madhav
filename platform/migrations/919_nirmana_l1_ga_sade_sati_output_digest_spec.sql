@@ -1,0 +1,113 @@
+-- 919_nirmana_l1_ga_sade_sati_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_sade_sati`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_sade_sati'` returning ZERO rows before this migration. Without
+-- a spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/
+-- orchestrator/output_digest.py) always returns `(None, None)` for this asset,
+-- so its provenance receipt (platform/python-sidecar/pipeline/orchestrator/
+-- provenance.py) can never leave `receipt_state = 'unknown'` -- same defect
+-- class as migrations 914/915/916/917/918 (`ga_structural`/`ga_tajaka`/
+-- `ga_medical`/`ga_vastu`/`ga_yoga`). `ga_sade_sati` is BLOCKED-ANCESTOR on
+-- `ga_structural`'s freeze regardless, so this migration is speculative
+-- spec-drafting done ahead of that block clearing (spec-drafting itself has no
+-- dependency on `ga_structural`'s freeze state).
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────────
+--
+-- `ga_sade_sati`'s writer (`platform/python-sidecar/ga_writers/
+-- ga_sade_sati_writer.py`) writes exclusively into `chart_facts` (single
+-- `INSERT INTO chart_facts` at line 1833, via `_insert_rows`), the same
+-- `fact_category`-partitioned model as `ga_structural`/`ga_ayurdaya`/
+-- `ga_panchanga`/`ga_nakshatra` -- NOT the single-relation-with-own-table model
+-- `ga_tajaka`/`ga_medical`/`ga_vastu`/`ga_yoga` used.
+--
+-- `fact_category` values this writer emits (15 total, every literal traced to
+-- its own assignment in the writer source, not guessed):
+--   sade_sati_cycle (line 882), sade_sati_phase (line 943),
+--   sade_sati_modifier_overlay (line 1124), sade_sati_phase_quarter (line 1168),
+--   sade_sati_saturn_retrograde_subset (line 1209),
+--   sade_sati_cancellation_check (line 1230), vishakha_shani_period /
+--   janma_shani_period / anumukha_shani_period (line 1244 tuple list),
+--   sade_sati_concurrent_dasha_overlay (line 1271),
+--   sade_sati_downstream_cross_reference (line 1291), dhaiya_period (line 1377),
+--   kantaka_shani_period / ashtama_shani_period (line 1354 tuple list),
+--   ardha_ashtama_shani_period (line 1418).
+--
+-- Cross-checked two independent ways: (1) live DB query against the canonical
+-- chart -- `SELECT count(DISTINCT fact_category) FROM chart_facts WHERE
+-- chart_id = '482012f1-...' AND fact_category IN (<these 15>)` returns exactly
+-- 15 (none missing, none extra) with 6287 total rows and ZERO duplicate
+-- `fact_id`s across them; (2) `pipeline/orchestrator/writers/bo_laksana.py`'s
+-- own `_TIME_WINDOW_CATS`/`_MALEFIC_CATEGORIES` frozensets (an independent
+-- downstream reader's classification tables) list the identical 15 category
+-- names as its Sade-Sati/Dhaiya subset (that frozenset also carries
+-- `eclipse_proximity_natal` and three `tajik_*` categories belonging to OTHER
+-- writers -- `ga_vichara`/`ga_tajaka` respectively -- confirming the 15-item
+-- list is exactly `ga_sade_sati`'s share, not a superset or undercount).
+--
+-- Ownership cross-check: `grep -rln "sade_sati_cycle\|kantaka_shani_period\|
+-- ashtama_shani_period" platform/python-sidecar --include=*.py` (excluding
+-- tests/pycache) finds `bo_laksana.py`, `fact_identity_parser.py`,
+-- `services/gochara_v3/context.py`, `services/gochara_intensity/permission.py`,
+-- `services/gochara_grammar/primitives.py` besides the writer itself -- every
+-- one is a READ (`SELECT ... WHERE fact_category IN (...)`) or a comment;
+-- `ga_sade_sati_writer.py` is confirmed the sole writer of these categories.
+--
+-- ── key + value columns (verified against live data + DB schema + precedent) ────
+--
+-- `key_columns = [fact_id]` -- identical pattern to 914 (`ga_structural`) and
+-- every other `chart_facts`-based spec (`ga_ayurdaya`, `ga_panchanga`,
+-- `ga_nakshatra`): `fact_id` is the table's own deterministic content hash of
+-- `(fact_category, fact_subject, fact_key, chart_id, ayanamsha_id, build_id)`
+-- (see `_fact_id()` in the writer), confirmed unique with zero collisions
+-- across all 15 categories on the canonical chart (query above).
+--
+-- `value_columns` is the same 23-column set used by every other `chart_facts`
+-- spec (914/`ga_ayurdaya`/`ga_panchanga`/`ga_nakshatra`) -- `chart_facts` is one
+-- shared relation, so the column set is fixed regardless of which writer
+-- populates a given category; `build_id` and `computed_at` are excluded for the
+-- same reason as every precedent (per-rebuild identifiers, not content).
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914/915/916/917/918: a plain INSERT with no ON
+-- CONFLICT clause. `asset_output_digest_specs`'s PRIMARY KEY is the composite
+-- `(asset_id, spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a
+-- legal target. `ga_sade_sati` has zero existing rows in this table (confirmed
+-- at the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps`
+-- with `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then
+-- `sha256().hexdigest()`). Produced by IMPORTING the real module and calling it
+-- directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_sade_sati', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- `_validate_spec` raised nothing (spec accepted as well-formed) and printed:
+--   a9546af276e6b8d2a18c51453d6f829c4b049e51e1fedeaf7964a1ff849cc3e0
+--
+-- Independently recomputed a second way -- plain `hashlib.sha256()` over the
+-- migration's own literal JSON string, with NO import of `canonical_digest` at
+-- all -- both matched exactly.
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_sade_sati',
+  'a9546af276e6b8d2a18c51453d6f829c4b049e51e1fedeaf7964a1ff849cc3e0',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"chart_facts","relation":"chart_facts","where_in":{"fact_category":["anumukha_shani_period","ardha_ashtama_shani_period","ashtama_shani_period","dhaiya_period","janma_shani_period","kantaka_shani_period","sade_sati_cancellation_check","sade_sati_concurrent_dasha_overlay","sade_sati_cycle","sade_sati_downstream_cross_reference","sade_sati_modifier_overlay","sade_sati_phase","sade_sati_phase_quarter","sade_sati_saturn_retrograde_subset","vishakha_shani_period"]},"key_columns":["fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["fact_id","chart_id","ayanamsha_id","fact_category","fact_subject","fact_key","fact_value_text","fact_value_num","fact_value_jsonb","unit","citation_ref","citation_human","source_calculation","verification_pass_status","engine_version","salience_formula_ver","tolerance_arcsec","near_sign_boundary_flag","near_nakshatra_boundary_flag","vargottama_flag_at_point","formula_provenance_text","cross_ayanamsha_divergence_arcsec","formula_id"]}]}'::jsonb
+);
+
+COMMIT;
