@@ -1,25 +1,31 @@
 ---
 artifact: L1_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_L1_W6_CLOSE_REPORT
-version: "0.45-DRAFT"
-status: DRAFT — sections filled as evidence lands; NOT a close claim
+version: "1.0"
+status: CLOSED — L1 is 19/19 frozen; this is the real W6 close claim, not a draft
 session: L1
 layer: L1 — Gaṇita
-produced_on: 2026-09-07
+produced_on: 2026-09-08
 charter_ref: C11 (definition of done)
 warning: >
-  Started early, mirroring L5's own precedent (L5_W6_CLOSE_REPORT_v1_0.md, "your close report
-  feeds the Conductor's Phase Z directly — draft it early"), per PROMPT_L1.md's own naming of
-  this exact file as the W6 deliverable. It is NOT a claim of closure. No capsule, freeze event,
-  or completion is asserted anywhere in this file. Sections marked OPEN are genuinely open.
+  Promoted from DRAFT (v0.45, cycle 188) to a real close claim in the w38 cycle (2026-09-08,
+  ~09:40Z), the cycle immediately after `ga_vichara` — the 19th and final asset — froze
+  (`integrity_verified` 09:33:50Z, `asset_frozen` 09:34:30Z). §0/§4/§7/§8 are new/rewritten this
+  pass to state the completion honestly; §1-§6 below this point are the original draft's own
+  W1-W3/pre-rebuild record and are left substantially as first written (their own findings and
+  citations do not change just because the rebuild wave that was pending against them has now
+  landed) — §7 is where the post-cycle-188 wave 1-5 dispatch/verify/freeze history and the
+  night's defect log live. The one thing this report does NOT claim: the L0→L1 freeze-ordering
+  ceremony itself (Conductor's Phase Z ack, the A→E→C→B→D foundation refile under `t1`) — that is
+  fleet-level follow-up per `RESOLUTION_L1.md`, not a claim this lane's own session can make.
 ---
 
-# L1 — Gaṇita — W6 CLOSE REPORT (DRAFT)
+# L1 — Gaṇita — W6 CLOSE REPORT
 
 ## §0 — Status
 
-**NOT CLOSED.** W1 ✅ (19/19 assets analyzed, 5 batch files) · W2 ✅ (139 findings triaged,
-routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed cycle 122; MUST tier
+**CLOSED — 19/19 L1 assets frozen.** W1 ✅ (19/19 assets analyzed, 5 batch files) · W2 ✅ (139
+findings triaged, routed) · **W3 — finding-list-driven work complete** (NOW tier 18/18 closed cycle 122; MUST tier
 was claimed closed for L1's own scope cycle 125, but that claim was **wrong for one id-group**:
 F-B32/F-B33 (`coverage_matrix.ts`'s 169-entry hand-maintained list vs. live `chart_facts` category
 count, plus `concept_aliases.ts`'s citation of a CI check that does not exist) was independently
@@ -107,12 +113,16 @@ for real. `asset_freshness` now carries a genuinely new row keyed by the real pa
 showing `freshness_state='fresh'`, `reasons=[]` — the original symptom that opened this whole
 sub-investigation (cycle 155) is now confirmed fixed, not assumed. `chart_fact_identity`
 re-rebuilt post-cascade (124,388 → 125,593, exact dry-run match). Posted the resolution to #2180.
-· **W5 ⛔ BLOCKED** (no completed post-W4
-run exists to mechanically check or verify) — one prep artifact exists ahead of need:
-`platform/scripts/nirmana/l1_integrity_check_dry_run.sql` (PR #2163), a read-only reporter that
-runs all 19 assets' `integrity_check_sql` against LIVE pre-rebuild data (not a substitute for a
-real post-rebuild W5 pass, but confirms the mechanical-check half is ready the moment #2113
-clears) · W6 ⬜.
+· **W4 ✅ COMPLETE (cycle 188 → w38)**: all 19 assets dispatched through
+`build_run_authorized` → real rebuild → `accepted_rebuild_observed`, in DAG order, across waves
+0-5 (see §7 for the full post-cycle-188 account — this section is the original pre-rebuild
+prose, left as first written). **W5 ✅ COMPLETE**: every asset independently re-verified by a
+fresh-context VERIFIER identity (never the same session identity that dispatched it) —
+`integrity_verified` filed for all 19, `l1_integrity_check_dry_run.sql`'s original 4 tracked-red
+conjuncts (rows 2/9/10/11 in §1) confirmed flipped to PASS post-rebuild, plus two NEW defects
+the dry-run's live-pre-rebuild scope could not have caught (`ga_vastu`'s Saturn FORENSIC gate,
+`ga_vichara`'s orphaned constituent-fact refs — both in §7's defect log). **W6 ✅ THIS
+DOCUMENT.**
 
 No lane-death or stale-worktree incident this campaign (unlike L5's two). One self-inflicted
 mid-cycle branch/backup mixup (cycle 123, `fact_category_pin_allowlist.json` stale snapshot) —
@@ -445,6 +455,34 @@ to query) — attempting to fill it now would mean fabricating a number, which �
 outright. Correctly deferred to genuine W6 close, when real closing-session data would exist to
 report honestly, not treated as this cycle's job to invent.
 
+**Build-compute actuals (wave 0-5 rebuild dispatch, cycle 155 → w38, 2026-09-05 through
+2026-09-08): CLOSED — measured directly from `build_runs`, not estimated.** Query scope: all
+`build_runs` rows for the canonical chart (`482012f1-…`) with `scope_target` one of the 19
+`ga_*` assets, `started_at >= 2026-09-05`. **43 total dispatch attempts, 36 `completed` / 7
+`failed`** (retried same-cycle in every case — no asset required more than 3 attempts; the
+`failed` runs are real signal, not noise: `ga_positions`' first attempt, `ga_vargas`/
+`ga_nakshatra`/`ga_condition`/`ga_structural` (×2)/`ga_vastu`'s first attempts each surfaced a
+genuine blocker fixed before the next attempt — see §7's defect log for the two that were novel
+defects rather than transient/environmental). **Total wall-clock compute across the 36
+completed runs: ~5,673s (~94.5 min); across all 43 attempts including the 7 failed:
+~5,822s (~97 min).** Distribution is heavily right-skewed: `ga_structural`'s 3 completed
+attempts alone account for ~3,201s (56% of all completed compute — `1652s`/`757s`/`792s` for
+its 3 dispatches across cycles spanning the amplification_factor cross-check re-derivation, see
+§7), `ga_dashas`' 2 completed attempts ~2,168s (~38%), leaving the remaining 17 assets' 31
+completed runs at a combined ~305s (most single-digit-to-low-double-digit seconds — `ga_vichara`
+36s, `ga_yoga` 2.2-2.5s ×2, `ga_vastu` 2.6s, `ga_medical` ~6s total across 3 runs). No per-layer
+numeric forecast exists in `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5` to compare against
+(L1's entry there is qualitative — "little new computation; mostly verification + service
+hygiene" — see §0/§7); measured against that qualitative framing, the actuals are consistent:
+14/19 assets landed a real `correctness_change` (their rebuild's output differed from the stale
+table — a genuine data correction, not new computation) and 5/19 (`ga_transit_anchors`,
+`ga_condition`, `ga_structural`, `ga_vastu`, `ga_yoga`) rebuilt `digest_identical` (the rebuild
+confirmed no change was needed). **Session token/wall-clock half remains genuinely OPEN** — no
+external per-cycle token/wall-clock log exists for this session to query honestly; unlike the
+build-compute figures above (which come from a real, queryable table), inventing a token number
+here would violate §N.4/B.10 exactly as the original draft already noted. Left OPEN by design,
+not oversight.
+
 **Registry `estimated_seconds` half: CLOSED (cycle 187, migration 879).** This IS honestly
 measurable now, from real `build_run_assets` telemetry, and migration 847 (cycle 110) already
 started the exercise for 5 assets: `ga_positions` (was 5s, measured mean 17s/n=54) and
@@ -745,12 +783,168 @@ estimates are now current as of this cycle's live measurement.
   remaining piece genuinely needs closing-session data no mid-campaign cycle has, same gap
   L5's own report carries — correctly deferred to genuine W6 close, not fabricated here).
 
-## §6 — OPEN
+## §7 — Final closure: waves 0-5 dispatch/verify/freeze (cycle 188 → w38, 2026-09-08)
+
+This section covers everything after cycle 188's own last entry (`ga_positions` freeze) — the
+draft above stops there because that is genuinely where the last DRAFT save left off, not
+because nothing happened since. What happened since: **all 18 remaining assets were dispatched,
+independently re-verified, and frozen**, in DAG order, closing the campaign.
+
+### §7.1 — Final route/freeze table (19/19)
+
+Verdict/`output_contract` are each asset's LAST accepted `optimization_verdict_accepted` before
+its freeze (i.e. the verdict that actually authorized the dispatch that froze it), pulled
+directly from `nirmana_evidence.nirmana_elevation_campaign_events`. `route` restates
+`NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §5`'s L1 entry ("Routes: `rebuild_only` default;
+`verified_reuse` where recent build evidence + lineage holds") — in practice every one of the 19
+took the `rebuild_only` route (all 19 show ≥1 `accepted_rebuild_observed` event; L1's real build
+history, cited in that same plan line as the reason `verified_reuse` was available in principle,
+did not in the end substitute for a fresh dispatch for any asset — the #2180/#2224 generation-
+race findings below are exactly why: stale evidence needed re-derivation against the live
+generation before it could be trusted, which a `rebuild_only` dispatch does for free as a
+byproduct of actually rebuilding).
+
+| # | asset | final verdict | output_contract | rebuild attempts (completed/failed) | frozen_at (UTC) |
+|---|---|---|---|---:|---|
+| 1 | `ga_positions` | correct | correctness_change | 4/1 | 2026-09-07 08:45:00 |
+| 2 | `ga_vargas` | correct | correctness_change | 1/1 | 2026-09-07 11:13:00 |
+| 3 | `ga_sensitive` | correct | correctness_change | 1/0 | 2026-09-07 11:26:00 |
+| 4 | `ga_panchanga` | correct | correctness_change | 1/0 | 2026-09-07 11:31:00 |
+| 5 | `ga_prashna` | correct | correctness_change | 1/0 | 2026-09-07 11:45:00 |
+| 6 | `ga_nakshatra` | correct | correctness_change | 1/1 | 2026-09-07 11:55:00 |
+| 7 | `ga_strength` | correct | correctness_change | 1/0 | 2026-09-07 12:16:00 |
+| 8 | `ga_ayurdaya` | correct | correctness_change | 1/0 | 2026-09-07 12:16:15 |
+| 9 | `ga_sensitive_degree` | correct | correctness_change | 1/0 | 2026-09-07 12:20:00 |
+| 10 | `ga_dashas` | correct | correctness_change | 4/0 | 2026-09-07 13:01:10 |
+| 11 | `ga_transit_anchors` | examined_and_already_efficient | digest_identical | 1/0 | 2026-09-07 14:51:28 |
+| 12 | `ga_condition` | examined_and_already_efficient | digest_identical | 1/1 | 2026-09-07 20:37:01 |
+| 13 | `ga_tajaka` | correct | correctness_change | 3/0 | 2026-09-08 03:37:18 |
+| 14 | `ga_structural` | examined_and_already_efficient | digest_identical | 3/2 | 2026-09-08 03:58:21 |
+| 15 | `ga_medical` | correct | correctness_change | 3/0 | 2026-09-08 04:27:00 |
+| 16 | `ga_sade_sati` | correct | correctness_change | 2/0 | 2026-09-08 05:18:02 |
+| 17 | `ga_vastu` | examined_and_already_efficient | digest_identical | 2/1 | 2026-09-08 06:26:41 |
+| 18 | `ga_yoga` | examined_and_already_efficient | digest_identical | 2/0 | 2026-09-08 07:51:01 |
+| 19 | `ga_vichara` | correct | correctness_change | 1/0 | 2026-09-08 09:34:28 |
+
+19 DISTINCT L1 `entity_id`s carry an `asset_frozen` event, 19 events, zero duplicates
+(independently re-counted w38). `capsule_audit.sql §1` (evidence-completeness) re-run w38:
+**0 rows** — every frozen asset has a complete `build_run_authorized` →
+`accepted_rebuild_observed` → `integrity_verified` → `asset_frozen` chain, each leg filed by
+the correct identity (executor for the first three, VERIFIER service account — never the
+dispatching session's own identity — for the last two).
+
+### §7.2 — PR/migration ledger, cycle 188 → w38
+
+Continuing §1.5's ledger (which covered cycles 1-129) past its own stopping point:
+
+- **Registry prerequisites** (`output_digest_spec` — the D-CND-27 per-asset-authoring gap §3.5
+  item 3 first named, closed out asset-by-asset as each one's dispatch needed it): migration 913
+  (ga_structural, PR #2405, renumbered 914 after a cross-lane collision — PR fixed the header
+  comment to match, `#2405`), 915 (ga_tajaka, #2411), 916 (ga_medical, #2412), 917 (ga_vastu,
+  #2413), 918 (ga_yoga, #2414), 919 (ga_sade_sati, #2416), 920 (ga_vichara, #2417) — this last
+  one closed the fleet-wide digest-spec gap, per §7's own w37 entry below.
+- **`nirmana_evidence_ingress_writer` grant expansion** (evidence-filing needs read access to
+  each asset's own table to compute/verify digests): migration 921 (ga_medical, #2419), 922
+  (ga_vastu / `ga_vastu_planet_direction_map`, #2420), 923 (chart_vichara, #2422).
+  **PR #2409/#2410** raised the ingress role's `statement_timeout` 25s→30min — the pre-existing
+  25s cap was truncating exactly the kind of long-running digest computation these grants were
+  meant to enable (`ga_structural`'s own 792-1652s rebuilds in §4 would have tripped it).
+- **`ga_vastu` Saturn FORENSIC gate removal** — migration 924, issue #2421, PR #2423. Full defect
+  in §7.3 item 1.
+- **`ga_yoga` integrity_check_sql conjunct (a) scope fix** — migration 925, PR #2424. Full defect
+  in §7.3 item 2.
+- **#2427 redispatch-guard narrowing** — PR #2431 (`b83fac414`, merged onto `0587732b0`'s branch
+  work). Full defect in §7.3 item 4.
+
+### §7.3 — Defect log (the night's four genuinely new findings, beyond the pre-rebuild backlog)
+
+**1. `ga_vastu` Saturn FORENSIC gate — a hardcoded classical assertion conflicting with the
+writer's own composite formula (migration 924, issue #2421, ruled and fixed same-session).**
+`ga_vastu_writer.py` carried a hard `AssertionError` (and an identical `integrity_check_sql`
+conjunct) asserting "Saturn exalted in Libra → West direction must be 'strengthened'." Saturn
+genuinely IS exalted in Libra for the canonical chart (confirmed via dignity data across all 5
+ayanamshas) — the classical premise was correct. But `direction_impact` is derived from
+`ga_condition_composite.condition_score`, a weighted composite (`dignity_d1: 0.35, deeptaadi:
+0.20, baladi: 0.10, varga: 0.20`, combustion −0.15) whose own file comment states the max
+achievable score for a non-combust planet is 0.85 — exaltation's 0.35 alone does not guarantee
+crossing the 0.7 "strengthened" threshold; the other ~0.50 of achievable weight still has to
+pull its own weight, and for this chart it didn't. The gate was asserting a stronger classical
+claim than the writer's own scoring formula actually supports. Fixed by removing the hardcoded
+assertion (both the writer guard and the integrity conjunct) rather than forcing the score —
+per §N.4's honest-tier doctrine, the composite's real measured value is the correct output, not
+a value chosen to satisfy an assertion written before the formula existed in its current form.
+
+**2. `ga_yoga` integrity_check_sql conjunct (a) — scoped to ALL charts instead of the canonical
+chart (migration 925, PR #2424).** The stored check's conjunct (a) queried without a `chart_id`
+filter, so it evaluated stale rows belonging to non-canonical charts as if they were this
+campaign's own concern — a scope bug, not a data defect (the canonical chart's own rows were
+fine). Scoped the conjunct to `chart_id = '482012f1-…'` explicitly, matching every other L1
+asset's own convention (confirmed via `L1_STATE.md`'s own record that `ga_vichara`'s conjuncts
+carry the same explicit scope). Filed as adjudication issue #2426 for the broader
+non-canonical-chart staleness this surfaced (out of scope for a single-asset fix).
+
+**3. `ga_vichara` orphaned constituent-fact references — `chart_facts` rebuilds silently orphan
+`chart_vichara.constituent_fact_ids`/`constituent_facts_array` (w37, fixed by the campaign
+rebuild itself).** `ga_vichara` is the ONLY L1 asset that carries fact-reference arrays into
+another table (`fact_id` is a content hash, per `CLAUDE.md §N.5` — it changes whenever the
+referenced fact's content changes, even for an unrelated writer's rebuild). `ga_positions`' own
+wave-0 rebuild (cycle 155) changed `fact_id` derivation semantics (PR #1898, closing #1747) and
+regenerated `chart_facts` — `chart_vichara`'s stored references, computed against the OLD
+`fact_id` values, went stale silently (no FK, no constraint violation — just a reference to a
+hash that no longer exists). Measured before the fix: **21,388 orphaned refs across all 8,249
+canonical-chart rows (100%)**. The campaign's own `ga_vichara` rebuild (the unchanged writer
+re-deriving constituent references from live `chart_facts`) IS the correction — verified 0
+orphaned refs post-rebuild. Filed correctly as `correct`/`correctness_change` (a real data
+correction), explicitly NOT `examined_and_already_efficient` — per §N.7's honest-claim
+discipline, calling a rebuild that fixes 21,388 stale references "already efficient" would have
+been a false claim. All other 18 L1 assets were independently checked for the same
+fact-ref-array pattern at their own freezes and confirmed clean — this is a `ga_vichara`-specific
+defect, not a fleet-wide one, precisely because `ga_vichara` is the only asset with this shape
+of downstream reference.
+
+**4. #2427 — dispatch deadlock: the redispatch guard blocked re-dispatch of an asset whose
+*registry* was unchanged but whose *analysis* had moved (RULED, option (a), fixed same-session,
+PR #2431).** `dispatch_nirmana_campaign_wave.py`'s `_current_generation_accepted_rebuilds` used
+to treat ANY existing `accepted_rebuild_observed` event as sufficient to block a redispatch,
+without checking whether the accepted analysis it was filed under still matched the live
+generation. A same-session re-derivation (during `ga_yoga`'s dispatch prep) found the fingerprint
+unchanged but the analysis digest had moved (a prior cycle's deploy regenerated the L1
+writer-digest inventory) — the guard was about to block a dispatch that should have been allowed
+to proceed under the fresh analysis. Escalated as adjudication #2427; **RULED option (a)**:
+narrow the guard to require BOTH `registry_fingerprint_sha256` AND `analysis_digest` to match the
+live generation before an existing acceptance blocks redispatch — a stale-fingerprint-only match
+is no longer sufficient to wrongly block. Same PR also typed `requireAcceptedRebuildProvenance`'s
+bare `Error` (definitions.ts:2344) into `NirmanaElevationEvidenceValidationError` (a proper 4xx,
+not an opaque 500) — a caller hitting this path now gets an actionable error instead of a
+server-error-shaped one. Merged as PR #2431.
+
+**5. w36 — authorization-ordering lesson (process, not a code defect): `build_run_authorized`
+must be recorded before `started_at`, not after.** An early-wave dispatch attempt filed the
+`build_run_authorized` evidence event AFTER the build had already started, which is backwards —
+the evidence is supposed to authorize the run, not retroactively describe one already in
+flight. Fixed procedurally (scripted as ONE pipeline: commit the authorization, THEN dispatch —
+never the reverse) rather than as a code change, since the ordering constraint lives in how the
+session drives the two calls, not in a bug in either call itself.
+
+**6. w38 — deploy-vs-generation note: a Cloud Run SHA move does NOT necessarily move the L1
+generation.** D-NATIVE-13's PR #2433 deployed a new revision (`amjis-web-02168-jl2`,
+`03b850dd9` → `48d70dc9c`) mid-`ga_vichara`-dispatch. Re-derived the live fingerprint/analysis
+digest immediately, before filing anything under the new SHA: both were byte-identical to the
+pre-deploy values (`#2433`'s diff was code-only — a `SUPPORTING_WRITERS` rename/export, no pin
+value changed). No re-stamp was needed and the #2224/#2427-class generation race did NOT recur
+this time — but the check that confirmed that (re-derive live, don't assume) is the actual
+lesson: **the #2224-class race check must compare digests, not SHAs** — a SHA move is a
+necessary-but-not-sufficient trigger to re-check, never sufficient evidence by itself that a
+re-stamp is needed.
+
+## §8 — OPEN
 
 Per-finding disposition table — MUST tier built §2.5 (cycle 158); the 6 id-groups (9 F-ids)
 that once rested on an uncited cycle-125 claim were independently re-verified and cited by
 cycle 178 (see §2.5's own "Honest count" — this §6 bullet was stale, corrected cycle 186).
-NOW/NEVER-LATER tiers now tabulated per-finding (§2.6/§2.7, cycle 188) · cost actuals (§4) · **F-B32 real fix (§5 — F-B33 closed PR
+NOW/NEVER-LATER tiers now tabulated per-finding (§2.6/§2.7, cycle 188) · cost actuals (§4 —
+build-compute + registry `estimated_seconds` halves both CLOSED as of w38; session
+token/wall-clock half remains genuinely OPEN by design, no fabricated figure) · **F-B32 real fix (§5 — F-B33 closed PR
 #2191 cycle 147; F-B32 quantified cycle 148 at 57 missing categories; slices 1-7 (31
 categories) landed cycles 149-156, PR #2202; slice 8 (2 more categories) landed cycle 180, PR
 #2242, migration 878 — `get_nakshatra.ts`'s own 3-category docstring overclaim CLOSED, 2 of 3
@@ -780,14 +974,23 @@ categories" claim CORRECTED cycle 157 — all 6 are real, awaiting the already-r
 rebuild, no edit needed
 #2113)** · **F-B32 fully closed cycle 185 — no remaining categories (§5 — closed, distinct from
 F-B32's own list-repair scope, which is itself now complete)**
-· W4/W5 unblocked at the root: `ga_positions` (layer root, canary, the sole E-gate bottleneck
-for all 18 siblings) dispatched through the full W4→W5 pipeline and **FROZEN cycle 188** —
-`build_run_authorized` → real rebuild → `accepted_rebuild_observed` → `integrity_verified` →
-`asset_frozen`, verified via `capsule_audit.sql` §1/§2. 8 siblings now E-gate OPEN-PENDING-PIN
-(`ga_ayurdaya`, `ga_dashas`, `ga_nakshatra`, `ga_panchanga`, `ga_prashna`, `ga_sensitive`,
-`ga_sensitive_degree`, `ga_vargas`) and are the next dispatch targets, in DAG order; the
-remaining 9 are BLOCKED-ANCESTORS on one or more of those 8, plus `ga_transit_anchors`
-BLOCKED-NO-ROUTE (separate W2-verdict gap)
-· the Conductor's freeze-ordering ack · closure-safe sync proof ·
-this file's own promotion from DRAFT to a real close claim, which requires W4/W5/W6 to actually
-run — nothing in this file should be read as asserting that has happened.
+· W4/W5, once genuinely OPEN at cycle 188 (only `ga_positions` frozen, 18 siblings pending), are
+now **CLOSED — all 19/19 L1 assets dispatched, independently re-verified, and frozen** (§7.1's
+table is the complete record; the last asset, `ga_vichara`, froze w38, 2026-09-08 09:34:28Z).
+**This file's own promotion from DRAFT to a real close claim (this edit) is the direct
+consequence of that 19/19 completion — not asserted ahead of the evidence, per the original
+draft's own stated discipline.**
+
+**What is still genuinely open, and belongs to the fleet, not to a future L1 session:**
+- **The Conductor's freeze-ordering ceremony ack** (L0→L1 in the C2 ordering) — L1 is second in
+  line; its own 19/19 freeze is the dependency-satisfaction input the ceremony consumes, not the
+  ceremony itself. Filed as a nirmana-adjudication issue per `RESOLUTION_L1.md`'s own item 3
+  instruction (this cycle, alongside this document).
+- **F-B33/F-B32-class opportunistic hygiene items already closed** (§2's own record) — nothing
+  outstanding there; listed only so a future reader does not re-open what is already closed.
+- Per-finding disposition tables for NOW/NEVER-LATER tiers (§2.6/§2.7) are already built and
+  cited (cycle 188) — nothing further needed.
+
+**L1's own mission ends here.** Per `RESOLUTION_L1.md`'s priority stack, this session's next and
+final act is filing the ceremony-ack adjudication issue, after which `STATE_l1.md`'s header is
+marked DONE and all subsequent lane cycles are IDLE-OK one-liners with zero git writes.
