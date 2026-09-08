@@ -76,7 +76,7 @@ export async function getNirmanaEvidenceIngressPool(): Promise<Pool> {
       keepAliveInitialDelayMillis: 10_000,
       idleTimeoutMillis: 15_000,
       connectionTimeoutMillis: 5_000,
-      options: '-c statement_timeout=25000',
+      options: '-c statement_timeout=1800000',
     }
     if (process.env[INGRESS_DATABASE_URL]) {
       // Explicit local/test DSNs remain supported. Cloud Run's normal path is
