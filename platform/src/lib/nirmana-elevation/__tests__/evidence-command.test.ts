@@ -276,6 +276,38 @@ describe('handleNirmanaEvidenceCommand cockpit publish wiring', () => {
     expect(response.status).toBe(201)
     expect(await response.json()).toEqual({ outcome: 'created' })
   })
+
+  // #2435: an unhandled exception from the evidence write must never surface
+  // as an undiagnosable flat 500 -- known-retryable pg error classes get a
+  // distinguishable 503 + Retry-After, and every other unmapped error still
+  // carries a stable error_class the caller can log, instead of a constant body.
+  it('maps a pg query_canceled (57014) write failure to a retryable 503', async () => {
+    const pgError = Object.assign(new Error('canceling statement due to statement timeout'), { code: '57014' })
+    recordEvidenceMock.mockRejectedValue(pgError)
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(assetFrozenCommand({ idempotency_key: 'asset:bg_prashna_rules:freeze:3' }), 'admin-1')
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('5')
+    expect(await response.json()).toEqual({ error: 'failed to record Nirmana evidence', error_class: 'query_canceled' })
+  })
+
+  it('maps a pg deadlock_detected (40P01) write failure to a retryable 503', async () => {
+    const pgError = Object.assign(new Error('deadlock detected'), { code: '40P01' })
+    recordEvidenceMock.mockRejectedValue(pgError)
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(assetFrozenCommand({ idempotency_key: 'asset:bg_prashna_rules:freeze:4' }), 'admin-1')
+    expect(response.status).toBe(503)
+    expect(response.headers.get('Retry-After')).toBe('5')
+    expect(await response.json()).toEqual({ error: 'failed to record Nirmana evidence', error_class: 'deadlock_detected' })
+  })
+
+  it('keeps an unmapped write failure at 500 but adds a stable error_class', async () => {
+    recordEvidenceMock.mockRejectedValue(new Error('pool exhausted'))
+    const { handleNirmanaEvidenceCommand } = await import('../evidence-command')
+    const response = await handleNirmanaEvidenceCommand(assetFrozenCommand({ idempotency_key: 'asset:bg_prashna_rules:freeze:5' }), 'admin-1')
+    expect(response.status).toBe(500)
+    expect(await response.json()).toEqual({ error: 'failed to record Nirmana evidence', error_class: 'unknown' })
+  })
 })
 
 // --- D-NATIVE-13 mid-campaign supersession command wiring -------------------
