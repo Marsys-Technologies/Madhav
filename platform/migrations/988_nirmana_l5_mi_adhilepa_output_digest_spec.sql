@@ -1,0 +1,148 @@
+-- 988_nirmana_l5_mi_adhilepa_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling (subset-of-tables output_digest_spec APPROVED as the
+-- default pattern -- no per-instance sign-off needed).
+-- `mi_adhilepa` (pipeline/orchestrator/writers/mi_adhilepa.py, 366 lines)
+-- is a FIVE-TABLE writer -- NOT discoverable via a literal "INSERT INTO"
+-- grep: 4 of its 5 tables are inserted via an `OVERLAY_SQL.format(table=
+-- ...)` templated string (mimamsa_signal_adjustment, mimamsa_fact_adjustment,
+-- mimamsa_convergence_adjustment, mimamsa_anchor_adjustment); only the 5th
+-- (mimamsa_load_bearing) uses a literal INSERT. Full account read from the
+-- source, not grepped.
+--
+-- Co-writer check (tree-wide grep for each of the 5 tables across
+-- pipeline/orchestrator/writers/*.py, platform/scripts/*.py, brahmagyan/,
+-- excluding this writer's own file and tests/): all 5 tables confirmed
+-- sole BUILD-TIME writer.
+--   * mimamsa_signal_adjustment: also referenced by mi_seva.py, but only as
+--     a `tables_required` existence-check list in a service handler that
+--     writes NO build-time rows (ratified service-handler class, see
+--     RESOLUTION_L1/STATE_l1's running disposition list) -- not a co-writer.
+--   * mimamsa_load_bearing: also referenced by mi_darshana.py (read-only
+--     SELECT ... ORDER BY sensitivity DESC, not a writer) and
+--     platform/scripts/dispatch_nirmana_campaign_wave.py's NO_FK_REFERRERS
+--     registry (a blast-radius/orphan-tracking table, not a writer).
+--
+-- THIS MIGRATION SPECS 3 OF THE 5 TABLES: mimamsa_signal_adjustment,
+-- mimamsa_fact_adjustment, mimamsa_anchor_adjustment -- all three
+-- live-verified fully deterministic (content, not fetch/insert order --
+-- compute_output_digest's own SELECT carries `ORDER BY key_columns`
+-- regardless of how the writer inserted). The other two
+-- (mimamsa_convergence_adjustment, mimamsa_load_bearing) carry REAL,
+-- live-verified non-determinism defects and are deliberately excluded, not
+-- silently omitted -- see "DEFECTS FOUND, NOT FIXED HERE" below and the
+-- #1770 flag. Per #2502's own rationale ("fabricating coverage... violates
+-- B.10/N.8; silently omitting with no flag violates N.6"), the correct move
+-- is to spec the clean components, flag the rest, not block on them and not
+-- fabricate over them.
+--
+-- Non-determinism check on the 3 specced tables (each writer loop: one row
+-- per matched signal/fact/anchor, no top-N cut, no aggregation -- the SET
+-- of rows produced is independent of the feeding SELECT's fetch order):
+--   * mimamsa_signal_adjustment: fed by an unordered `SELECT ... FROM
+--     bodha_msr_signals WHERE chart_id = %s` -- one row emitted per
+--     matched signal_id, no LIMIT, no dedup-by-order -- content-safe.
+--   * mimamsa_fact_adjustment: fed by `SELECT ... FROM chart_facts WHERE
+--     chart_id = %s ORDER BY fact_id` -- explicitly ordered besides.
+--   * mimamsa_anchor_adjustment: fed by an unordered `SELECT anchor_id FROM
+--     phala_anchors WHERE chart_id = %s` -- no LIMIT, same content-safe
+--     shape as the signal loop.
+--   Live duplicate-key / NULL-key check across BOTH populated charts
+--   (canonical 482012f1, 1c826d5a) on all 3 tables: 0 duplicate
+--   (chart_id, origin_id, weight_id) groups, 0 NULL keys, across
+--   50104+50171 (signal), 61523+61749 (fact), 139+56 (anchor) live rows.
+--
+-- DEFECTS FOUND, NOT FIXED HERE (flagged on #1770, same disposition class
+-- as bo_cdlm_summary w399 / bo_sangati w392 / bo_cgm_motifs w395 --
+-- missing-tiebreak/unordered-LIMIT non-determinism, live-verified not just
+-- theorized):
+--   * mimamsa_convergence_adjustment: fed by `SELECT convergence_id FROM
+--     kala_convergence WHERE chart_id = %s LIMIT 500` -- NO ORDER BY on an
+--     unordered LIMIT. Live-verified BOTH populated charts exceed the
+--     cutoff (1c826d5a: 17,957 rows; cb73cd3d: 2,540 rows; the canonical
+--     chart 482012f1 currently has 0 kala_convergence rows, so the defect
+--     does not YET manifest there, but the query is unconditionally
+--     unsafe the moment that chart gets convergence data) -- which 500
+--     convergence_ids get an overlay row is not guaranteed stable across
+--     rebuilds.
+--   * mimamsa_load_bearing: `top_mults = sorted([(ref, m) for ref, m in
+--     multipliers.items() if applied_multiplier >= 1.0], key=applied_
+--     multiplier, reverse=True)[:5]` -- multipliers.items() iterates in
+--     the fetch order of `_load_multipliers`'s unordered `SELECT ...
+--     FROM mimamsa_multipliers WHERE chart_id = %s AND target_kind =
+--     'family'` (no ORDER BY). Python's sort is stable, so a tie at the
+--     >=1.0 cutoff resolves by fetch order, which PostgreSQL does not
+--     guarantee stable across rebuilds. Live-verified REAL tie on BOTH
+--     populated charts: fam_yoga and fam_msr_signal both applied_multiplier
+--     = 1.4, tied for rank 0/1 -- i==0 gets role='load_bearing' (the
+--     unique top classification), i==1 gets role='supporting'. Which
+--     family is "load_bearing" for a given rebuild is therefore
+--     non-deterministic on both 482012f1 (canonical) and 1c826d5a.
+--
+-- Natural key: `(chart_id, origin_id, weight_id)` -- matches each table's
+-- own live PRIMARY KEY exactly (confirmed via `\d <table>` against prod).
+-- The writer's own idempotent `DELETE FROM <table> WHERE chart_id = %s`
+-- (all 5 sibling tables, one shared loop) before the classification/insert
+-- passes means exactly the current run's row set exists per chart_id at
+-- any point in time; each origin_id yields at most one row per table
+-- (single family match per signal/fact/anchor) so the PK is never at risk
+-- of a same-run collision either -- live-verified 0 duplicate-key groups
+-- as above.
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns: created_at (wall-clock write-time artifact, same
+-- exclusion class as every prior spec this campaign's build_id/computed_at
+-- columns). derived_from_pramana_ids is always the literal `json.dumps([])`
+-- (not yet populated at this layer) -- constant, trivially deterministic,
+-- included in value_columns as-is.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                  # == the literal below
+--   print(_validate_spec('mi_adhilepa', spec, sha).asset_id)        # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row), calling the REAL
+-- `compute_output_digest(cur, asset_id='mi_adhilepa')` over the 3
+-- canonical-chart-482012f1 components (50,104 signal + 61,523 fact + 139
+-- anchor rows) -- got back a clean 65-hex digest
+-- (8c2012d9ed93f4c0cca7080962a1cf9169e244d75613fad5fc6e7ed05dda7d77, no
+-- exception, key-preflight passed on all 3 components) -> rolled back ->
+-- re-queried `asset_output_digest_specs` from a FRESH connection afterward
+-- and confirmed 0 rows for mi_adhilepa, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Numbering note: highest APPLIED migration in `_migrations_applied` at
+-- cycle start is 987 (bo_cdlm_summary, this lane's own prior cycle, PR
+-- #2504 still open/BLOCKED on the unrelated #2503 fleet gap). Checked every
+-- other open PR branch fresh this cycle (#2503 fix/nirmana-migration-
+-- 976-980-renumber-disclosure, #2504 itself, #1500, #1189, #899, #898) and
+-- origin/main for any 988 file -- zero hits. 988 confirmed free.
+--
+-- migrate.ts --dry-run/apply remains fleet-blocked by #2503's pending
+-- renumber-disclosure fix (unrelated, already flagged, not this lane's to
+-- fix) -- applying directly via `psql -f` per the established surgical
+-- pattern, hand-recording `_migrations_applied` via the REAL
+-- `sqlIdentityOf()` from scripts/migrate.ts.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_adhilepa' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_adhilepa',
+  'fb47cb6da7a4dd7844bd9fb7c32941e83c2a743e5bd181a1c228b5f24cd766bc',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_signal_adjustment","relation":"mimamsa_signal_adjustment","key_columns":["chart_id","origin_id","weight_id"],"value_columns":["chart_id","origin_layer","origin_asset_id","origin_id","weight_id","multiplier","raw_multiplier","applied_bound","evidence_n","leakage_status","applies_to_reading","derived_from_pramana_ids","overlay_formula_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"mimamsa_fact_adjustment","relation":"mimamsa_fact_adjustment","key_columns":["chart_id","origin_id","weight_id"],"value_columns":["chart_id","origin_layer","origin_asset_id","origin_id","weight_id","multiplier","raw_multiplier","applied_bound","evidence_n","leakage_status","applies_to_reading","derived_from_pramana_ids","overlay_formula_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"mimamsa_anchor_adjustment","relation":"mimamsa_anchor_adjustment","key_columns":["chart_id","origin_id","weight_id"],"value_columns":["chart_id","origin_layer","origin_asset_id","origin_id","weight_id","multiplier","raw_multiplier","applied_bound","evidence_n","leakage_status","applies_to_reading","derived_from_pramana_ids","overlay_formula_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
