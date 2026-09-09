@@ -268,7 +268,11 @@ def _find_convergent_chains(adj: dict[str, str], min_converging: int = 2) -> lis
     onto the SAME terminal via the SAME final 2+ hops. Returns
     [(terminal, [starts_that_converge])] for the most convergent terminal(s)."""
     terminals: dict[str, list[str]] = {}
-    for start in adj:
+    # sorted(): `adj`'s own insertion order traces back to the disp_edges
+    # fetch order (NIRMANA determinism fix) — explicit key here makes the
+    # `starts` list order reproducible even if that upstream order ever
+    # changes, rather than leaning on incidental dict-insertion stability.
+    for start in sorted(adj):
         node = start
         seen: set[str] = set()
         while node in adj and adj[node] != node and node not in seen:
@@ -283,6 +287,17 @@ def _detect_dispositor_cycles_and_chains(
     edges_by_id: dict[str, dict], nodes_by_id: dict[str, dict],
 ) -> list[dict]:
     """Graha-to-graha sign-dispositor graph (bo_karanajala 'dispositor' edges)."""
+    # ORDER BY from_subject (NIRMANA determinism fix): without an explicit
+    # ORDER BY, PostgreSQL does not guarantee fetch order is stable across
+    # rebuilds, and this order flows straight into adj_subject/edge_by_pair
+    # dict insertion order, which _find_convergent_chains iterates directly —
+    # letting member_node_ids_array/mechanism_name byte-order for
+    # convergent_dispositor_chain rows drift across rebuilds of the same
+    # chart. from_subject (one row per graha per chart x ayanamsha, live
+    # sign-dispositor structure) is a live-verified unique key here: 0
+    # duplicate (chart_id, ayanamsha_id, from_subject) groups fleet-wide
+    # across all charts/ayanamshas, so this ORDER BY alone is a complete,
+    # tie-free deterministic ordering.
     disp_edges = _fetch_dict(
         conn,
         """SELECT e.edge_id, e.from_node_id, e.to_node_id, e.computed_strength,
@@ -291,7 +306,8 @@ def _detect_dispositor_cycles_and_chains(
            FROM bodha_cgm_edges e
            JOIN bodha_cgm_nodes n1 ON n1.node_id = e.from_node_id
            JOIN bodha_cgm_nodes n2 ON n2.node_id = e.to_node_id
-           WHERE e.chart_id = %s AND e.ayanamsha_id = %s AND e.edge_type = 'dispositor'""",
+           WHERE e.chart_id = %s AND e.ayanamsha_id = %s AND e.edge_type = 'dispositor'
+           ORDER BY n1.node_subject""",
         [chart_id, aya],
     )
     if not disp_edges:
