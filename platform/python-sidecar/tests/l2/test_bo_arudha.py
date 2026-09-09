@@ -93,14 +93,19 @@ def test_class_prior_and_subsystem_ratified():
 
 
 def test_not_null_columns_populated():
+    """signal_id excluded: it is a placeholder (None) at emit time by design
+    (#1770/#1804) -- assign_deterministic_signal_ids() in bo_arudha.py overwrites
+    it with the DB-derived bodha_signal_identity() before any row reaches the
+    INSERT. See test_bo_arudha_signal_identity.py for that wiring."""
     arudha_facts = {"ARUDHA_A1": {"house_d1": {"num": 1, "fact_id": "fal"}, "sign": {"text": "Aries"}}}
     rows = build_signal_rows(
         chart_id="c", ayanamsha_id="lahiri_chitrapaksha", build_id="b",
         arudha_facts=arudha_facts, graha_houses={}, now="2026-07-16T00:00:00+00:00",
     )
     assert len(rows) == 1
+    assert rows[0]["signal_id"] is None  # placeholder; never persisted as-is
     not_null_cols = [
-        "signal_id", "chart_id", "ayanamsha_id", "build_id",
+        "chart_id", "ayanamsha_id", "build_id",
         "signal_type_id", "signal_type_class", "signal_tradition",
         "fact_kind", "source_l1_asset", "source_subsystem", "lel_origin",
         "configuration_jsonb", "constituent_facts_array",
