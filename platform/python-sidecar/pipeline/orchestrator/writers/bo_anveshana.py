@@ -132,7 +132,8 @@ def _compute_non_obviousness(conn: Any, chart_id: str, aya: str) -> list[dict]:
            LEFT JOIN bodha_cgm_nodes n
              ON n.chart_id = m.chart_id AND n.ayanamsha_id = m.ayanamsha_id
              AND n.msr_signal_id = m.signal_id
-           WHERE m.chart_id = %s AND m.ayanamsha_id = %s""",
+           WHERE m.chart_id = %s AND m.ayanamsha_id = %s
+           ORDER BY m.signal_id""",
         [chart_id, aya],
     )
     if not signals:
@@ -195,7 +196,8 @@ def _fetch_embeddings_np(conn: Any, chart_id: str, aya: str) -> tuple[list[str],
         conn,
         """SELECT signal_id, embedding_vec::text AS embedding_vec
            FROM bodha_signal_embeddings
-           WHERE chart_id = %s AND ayanamsha_id = %s""",
+           WHERE chart_id = %s AND ayanamsha_id = %s
+           ORDER BY signal_id""",
         [chart_id, aya],
     )
     if not rows:
@@ -342,7 +344,7 @@ def _compute_brokers(conn: Any, chart_id: str, aya: str) -> list[dict]:
                     n.betweenness_centrality, n.pagerank_score, n.msr_signal_id,
                     n.primary_domain, n.hub_flag
            HAVING COUNT(e.edge_id) > 0 OR n.hub_flag = TRUE
-           ORDER BY COUNT(e.edge_id) DESC, n.betweenness_centrality DESC NULLS LAST
+           ORDER BY COUNT(e.edge_id) DESC, n.betweenness_centrality DESC NULLS LAST, n.node_id ASC
            LIMIT %s""",
         [chart_id, aya, BROKER_TOP_N * 3],
     )
