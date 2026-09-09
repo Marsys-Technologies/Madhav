@@ -1,0 +1,109 @@
+-- 954_nirmana_l4_ph_sodhana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Third L5 pick this cycle attempt: screened mi_bhara,
+-- mi_bhavisya, mi_gunanaka first (per prior cycle's next-cycle note) but
+-- all three turned out non-viable for a clean single spec this cycle:
+--   - mi_bhara: genuinely a 5-table writer (kala_field_weight_versions,
+--     kala_field_weights, kala_field_skill, kala_field_gof, kala_insights)
+--     with an INSERT-only, non-delete-then-insert weights-version history
+--     table -- not the cheap single-table pattern this campaign has been
+--     picking off.
+--   - mi_bhavisya: mimamsa_predictions is co-mutated live by mi_abhilekha
+--     (UPDATE ... SET lifecycle_status, out-of-band re-sync) -- not a
+--     clean sole-writer table; mi_bhavisya only owns the pending/due
+--     subset at build time.
+--   - mi_gunanaka: mimamsa_multipliers is not sole-writer (mi_adhilepa,
+--     mi_seva also touch it), and mimamsa_calibration_snapshot is a
+--     RATIFIED accretion exception (F-188, PARISESA-V4) whose snapshot_id
+--     embeds int(time.time()) -- a digest over it could never be
+--     reproducible across rebuilds by design, so it cannot be a digest
+--     component at all.
+-- Pivoted to the entirely-unscreened L4 ph_* tail instead (item 4c on the
+-- prior cycle's next-cycle list) and screened all 8 found ph_* writer
+-- files (ph_rectification is a package, not screened) for INSERT targets:
+-- all 8 looked single-table. Picked `ph_sodhana` (phala_sodhana) as the
+-- cheapest read: 138-line writer, one INSERT block, one caller.
+--
+-- PhSodhanaWriter (pipeline/orchestrator/writers/ph_sodhana.py,
+-- @register('ph_sodhana')) is the SOLE writer of phala_sodhana --
+-- confirmed via grep across all .py files for the table name:
+-- ph_phaladesa.py and ph_suddha_sodhana.py (writer + its
+-- services/ph_suddha_sodhana/engine.py) only reference it in comments/
+-- SELECT (read-only, confirmed by reading each hit) for their own
+-- downstream flag-count / clean-vs-flagged logic; ph_sodhana.py itself is
+-- the only one that INSERTs or DELETEs it.
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_sodhana WHERE chart_id = %s` immediately before the
+-- INSERT loop -- standard L1+ delete-then-insert-per-chart per CLAUDE.md
+-- SS N.3. INSERT itself also carries `ON CONFLICT DO NOTHING` against the
+-- table's own natural-key unique index (belt-and-suspenders, not the
+-- primary idempotency mechanism).
+--
+-- Natural key: (anchor_id, anomaly_type, detected_field) -- this is
+-- ALREADY the table's own UNIQUE constraint (confirmed via psql \d
+-- phala_sodhana: "phala_sodhana_natural_key" UNIQUE, btree (anchor_id,
+-- anomaly_type, detected_field)). chart_id is not part of this unique
+-- index but is included in where_equals (chart scoping) and value_columns
+-- (per the established convention of also carrying chart_id as a value
+-- column, same as bo_pratijna/mi_sambandha) -- anchor_id itself is FK'd to
+-- phala_anchors(anchor_id) which is itself chart-scoped, so the
+-- (anchor_id, anomaly_type, detected_field) triple is already
+-- chart-unambiguous in practice.
+--
+-- `sodhana_id` (surrogate PK, gen_random_uuid() default) and `computed_at`
+-- (DEFAULT now(), a wall-clock write-time timestamp) excluded from the
+-- spec -- same exclusion class as every prior spec's build_id/computed_at/
+-- updated_at columns in this series (bo_pratijna, mi_darshana, mi_sambandha).
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the writer AND its
+-- services/ph_sodhana/engine.py for `cell_id`/`node_id`/`cgm_node`/
+-- `cdlm_cell`/`uuid4`/`bodha_` -- zero hits. The writer's sole read is
+-- phala_anchors (its own L4 sibling table), not any L2 Bodha table.
+--
+-- value_columns = every live column on phala_sodhana EXCEPT sodhana_id
+-- and computed_at (2 excluded). Live schema re-verified via psql \d
+-- phala_sodhana immediately before authoring this migration: 14 columns
+-- total, 12 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('ph_sodhana', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_sodhana') -> got back a clean digest hex
+-- (43dc6d76c6e8bd0cadbbd6a9e44426d25409d436d2f434a333e26bd43ef0be6c, no
+-- exception) over 0 live rows for the canonical chart (phala_sodhana is
+-- honestly empty for this chart -- same honest-empty precedent as
+-- bo_grounding/bo_drishti/bo_laksana_rerank: the anomaly detector found
+-- nothing to flag, which is a valid outcome, not a build failure) ->
+-- conn.rollback() -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for ph_sodhana, i.e. genuinely
+-- rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_sodhana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_sodhana',
+  '206bf517dcec859e496c720d9f96c4f39117288007c38abc6104a14e343a5352',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_sodhana","relation":"phala_sodhana","key_columns":["anchor_id","anomaly_type","detected_field"],"value_columns":["chart_id","anchor_id","anomaly_type","anomaly_severity","detected_field","expected_value_text","observed_value_text","leakage_class","recommendation_text","auto_action","derivation_ledger_jsonb","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
