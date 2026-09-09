@@ -1,4 +1,4 @@
--- 990_nirmana_l2_bo_sangati_output_digest_spec.sql
+-- 996_nirmana_l2_bo_sangati_output_digest_spec.sql
 --
 -- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
@@ -158,10 +158,21 @@
 --   "
 --
 -- Numbering note: highest migration on origin/main at cycle start is 989
--- (mi_adhilepa, L1 lane's prior PR #2505). Re-fetched immediately before
--- authoring this file to confirm 990/991 still free; no open PR touches
--- migrations/ (checked all four open PRs at cycle start: #1500, #1189, #899,
--- #898, none touch migrations/990+).
+-- (mi_adhilepa, L1 lane's prior PR #2505). Originally authored as 990/991
+-- after checking the four open PRs known at cycle start (#1500, #1189, #899,
+-- #898, none touching migrations/) -- but a later cycle found PR #2506
+-- (L1 lane, mi_bhavisya) had independently opened with its OWN 990/991 pair
+-- in the meantime, and PR #2509 (L1 lane, mi_pramana) had already claimed
+-- 994/995 -- a genuine cross-lane migration-number race (CAMPAIGN_
+-- COORDINATION.md SS2's own documented failure mode; that ledger itself was
+-- last updated at "912+ next free" and does not reflect either collision).
+-- RENUMBERED 990/991 -> 996/997 in place (per CCD SS2's own
+-- "renumber-on-collision stands" rule; the party that discovers an unmerged
+-- collision renumbers itself rather than waiting to see which PR's merge
+-- queue entry lands first) -- 996 is the next free number after the highest
+-- number claimed by any open PR touching migrations/ at renumber time (995,
+-- PR #2509). No file at 992-995 belongs to this migration; those are L1
+-- lane's own claims, untouched here.
 --
 -- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
 -- INSERT 0 1, then
