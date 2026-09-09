@@ -1,0 +1,94 @@
+-- 952_nirmana_l5_mi_sambandha_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Second L5 pick this cycle after mi_darshana (950/951).
+-- Screened `mi_adhilepa` first (per STATE_l1.md's own next-cycle note) but
+-- it turned out to write FIVE tables (mimamsa_signal_adjustment,
+-- mimamsa_fact_adjustment, mimamsa_convergence_adjustment,
+-- mimamsa_anchor_adjustment, mimamsa_load_bearing) via a
+-- `.format(table=...)` templated INSERT that a simple grep for a literal
+-- "INSERT INTO" string missed -- same open "does the spec model support a
+-- subset declaration" question already flagged for bo_upaya/
+-- bo_cdlm_summary/mi_pariksha, so NOT attempted this cycle.
+-- `mi_sambandha` (mimamsa_manifestation_grammar) screened clean as a
+-- normal single-table, single-writer asset instead.
+--
+-- MiSambandhaWriter (pipeline/orchestrator/writers/mi_sambandha.py,
+-- @register("mi_sambandha")) is the SOLE writer of
+-- mimamsa_manifestation_grammar -- confirmed via grep across all .py files
+-- for the table name: only mi_sambandha.py itself does INSERT/DELETE;
+-- mi_darshana.py only SELECTs from it (read-only, line 262); the
+-- test_mi_sambandha.py hit is a test file, not a writer.
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM mimamsa_manifestation_grammar WHERE chart_id = %s`
+-- immediately before the INSERT batch -- standard L1+ delete-then-insert-
+-- per-chart per CLAUDE.md SS N.3.
+--
+-- Natural key: (chart_id, origin_kind, origin_ref, channel_id) -- this is
+-- ALREADY the table's own PRIMARY KEY (confirmed via psql \d
+-- mimamsa_manifestation_grammar: "mimamsa_manifestation_grammar_pkey"
+-- PRIMARY KEY, btree (chart_id, origin_kind, origin_ref, channel_id)).
+-- `domain` is NOT part of the PK and is deliberately excluded from
+-- key_columns: reading the writer end to end, origin_ref is ALWAYS set
+-- equal to domain (both empirical rows at line 135 and prior-seed rows at
+-- line 214 build the same `key = ("prediction_set", domain, channel_id,
+-- domain)` tuple) -- domain is a value column redundant with origin_ref,
+-- not an independent key component. None of origin_kind ("prediction_set",
+-- a fixed literal), origin_ref, or channel_id is a random uuid4 -- they are
+-- deterministic strings (domain names / _PRIOR_PROPENSITIES dict keys),
+-- confirmed by reading both row-construction sites (empirical loop at
+-- line ~156, prior-seed loop at line ~210).
+--
+-- `updated_at` excluded -- DEFAULT now(), a wall-clock write-time
+-- timestamp, same exclusion class as every prior spec's build_id/
+-- computed_at/scored_at columns in this series.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the whole writer for
+-- `cell_id`/`node_id`/`cgm_node`/`cdlm_cell`/`uuid4` -- zero hits. All
+-- writer inputs come from this asset's own L5 sibling tables
+-- (mimamsa_manifestation_sets, mimamsa_calibration), not from any L2
+-- Bodha table in the do-not-attempt contamination list.
+--
+-- value_columns = every live column on mimamsa_manifestation_grammar
+-- EXCEPT updated_at (1 excluded). Live schema re-verified via psql \d
+-- mimamsa_manifestation_grammar immediately before authoring this
+-- migration: 17 columns total, 16 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                              # == the literal below
+--   print(_validate_spec('mi_sambandha', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='mi_sambandha') -> got back a clean digest hex
+-- (8d1c5c055e45dd4a10c812edc235d4c15e41d5cc4347e4c1a717f09756ead744, no
+-- exception, key-preflight passed over 24 live rows for the canonical
+-- chart) -> conn.rollback() -> re-queried asset_output_digest_specs from a
+-- FRESH connection afterward and confirmed 0 rows for mi_sambandha, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_sambandha' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_sambandha',
+  '82e146aef587087174c8fec32d9184e3200a6cde1400ab0916385eecba4187f6',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_manifestation_grammar","relation":"mimamsa_manifestation_grammar","key_columns":["chart_id","origin_kind","origin_ref","channel_id"],"value_columns":["chart_id","origin_kind","origin_ref","channel_id","domain","fire_count","opportunity_count","scored_count","channel_propensity","prior_propensity","propensity_delta","n_support","confidence_band","evidence_grade","citation_ref","grammar_formula_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
