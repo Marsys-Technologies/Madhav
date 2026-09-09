@@ -1,4 +1,4 @@
--- 976_nirmana_l3_ka_sangam_output_digest_spec.sql
+-- 980_nirmana_l3_ka_sangam_output_digest_spec.sql
 --
 -- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
@@ -138,15 +138,15 @@
 -- actually built for that chart, which is honest and expected, not a
 -- defect in the spec itself.
 --
--- Numbering note: origin/main's highest applied migration is 973
--- (ka_kala_darshana, #2493, merged). This lane's own #2494 (974/975,
--- ka_bhavishya_lekha) is still open with auto-merge armed
--- ("already queued to merge") -- reserving 974/975. Highest RESERVED
--- across every other open PR branch (checked fresh this cycle:
--- pariprashna/p4-g at 587, gochara3/w61 at 562,
--- preserve/parishodhana-20260730 and preserve/unknown-provenance-
--- 20260730 both at 474) is 587 -- 976/977 confirmed free against all of
--- them.
+-- Numbering note: origin/main's highest applied migration was 973
+-- (ka_kala_darshana, #2493, merged) when this migration was first opened
+-- as 976/977. Renumbered to 980/981 by the CONDUCTOR lane (cycle 436,
+-- 2026-09-09) after a genuine cross-lane collision surfaced in the merge
+-- queue: L2's #2495 (bo_karanajala, migration 976) enqueued first and
+-- merged first, claiming 976 on main; this PR's own sibling #2497
+-- (bo_samskara) had independently claimed 978/979. 980/981 confirmed
+-- free against main (976 highest applied) and all open PRs (#2497 at
+-- 978/979) at renumber time.
 --
 -- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
 -- INSERT 0 1, then

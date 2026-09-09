@@ -1,9 +1,13 @@
--- 977_nirmana_l3_ka_sangam_natural_key_partition.sql
+-- 981_nirmana_l3_ka_sangam_natural_key_partition.sql
 --
 -- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
 --
--- Sibling migration to 976 (ka_sangam output_digest_spec) -- see that
+-- Renumbered from 977 to 981 by the CONDUCTOR lane (cycle 436,
+-- 2026-09-09) alongside its sibling -- see 980's header for the full
+-- cross-lane collision account.
+--
+-- Sibling migration to 980 (ka_sangam output_digest_spec) -- see that
 -- migration's header for the full verified account: sole-writer
 -- co-writer investigation (brahmagyan/kala/convergence.py is dead,
 -- unimported, unregistered code), the non-determinism screen of
