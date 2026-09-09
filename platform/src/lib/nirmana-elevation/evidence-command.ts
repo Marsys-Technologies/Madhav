@@ -474,6 +474,28 @@ export async function handleNirmanaEvidenceCommand(
       return NextResponse.json({ error: error.message }, { status: 409, headers: { 'Cache-Control': 'no-store' } })
     }
     console.error('[nirmana-elevation/evidence-command] write failed', error)
-    return NextResponse.json({ error: 'failed to record Nirmana evidence' }, { status: 500, headers: { 'Cache-Control': 'no-store' } })
+    // #2435: known-retryable pg error classes get a distinguishable 503 +
+    // Retry-After instead of the flat 500, so an autonomous caller can tell
+    // "transient infra, retry" from "evidence permanently unrecordable"
+    // without guessing. Every other error remains an unmapped 500, now at
+    // least carrying a stable error_class the caller can log.
+    const pgCode = typeof error === 'object' && error !== null && 'code' in error && typeof (error as { code: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : null
+    const retryablePgErrorClasses: Record<string, string> = {
+      '57014': 'query_canceled',
+      '40P01': 'deadlock_detected',
+    }
+    const retryableClass = pgCode ? retryablePgErrorClasses[pgCode] : undefined
+    if (retryableClass) {
+      return NextResponse.json(
+        { error: 'failed to record Nirmana evidence', error_class: retryableClass },
+        { status: 503, headers: { 'Cache-Control': 'no-store', 'Retry-After': '5' } },
+      )
+    }
+    return NextResponse.json(
+      { error: 'failed to record Nirmana evidence', error_class: pgCode ?? 'unknown' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
+    )
   }
 }
