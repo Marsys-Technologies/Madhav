@@ -1,0 +1,128 @@
+-- 984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear, widened
+-- fleet-wide audit). Re-confirmed `bo_karanajala`'s spec is live on
+-- origin/main (migration 976, PR #2495 MERGED). This migration picks
+-- `bo_chart_gestalt` (Chart Gestalt / Pratinidhi Synthesis,
+-- pipeline/orchestrator/writers/bo_chart_gestalt.py, 696 lines, LIGHT
+-- writer, no services/ package) -- next-smallest of the remaining
+-- transitive-contamination candidates after `bo_sangati` and
+-- `bo_yantra_mechanism` were both RULED OUT (genuine live non-determinism
+-- defects, no migration attempted, flagged on #1770). Read in full.
+--
+-- Co-writer investigation (FOUR checks): tree-wide grep for
+-- `bodha_chart_gestalt` INSERT/DELETE/UPDATE/SELECT-for-write across
+-- pipeline/orchestrator/writers/*.py, services/*.py, and
+-- bodha_writers/_idempotency.py: the sole live INSERT/DELETE/UPDATE site
+-- is `bo_chart_gestalt.py`'s own `run()` (idempotent
+-- `DELETE FROM bodha_chart_gestalt WHERE chart_id = %s` followed by one
+-- `_write_aya()` insert per ayanamsha, plus a post-loop
+-- `_patch_fragility()` UPDATE of `headline_epistemic_jsonb` on the SAME
+-- rows the SAME run just wrote). The only other references in the tree
+-- are two test files (`tests/l2/test_bo_a7_writers.py`,
+-- `tests/l2/test_n8_earned_signal_detectors.py`) that import this
+-- writer's own internal helpers (`_write_aya`, module reference) verbatim
+-- -- not distinct co-writers, same precedent as prior specs' CLI-script
+-- reuse carve-out. `BoChartGestaltWriter` (`@register('bo_chart_gestalt')`)
+-- is the confirmed sole live BUILD-TIME writer of `bodha_chart_gestalt`.
+--
+-- Non-determinism check -- BOTH defect shapes confirmed this campaign
+-- (max-pick value-selection AND array/string byte-order):
+--   * Every SELECT feeding a top-N/first-match pick in `_write_aya`
+--     (`top_signals`, `strong_cells`, `top_nodes`, `malefic_signals`,
+--     `benefic_top`, `outlier_discoveries`, `contested`) carries an
+--     explicit deterministic tiebreak in its ORDER BY (signal_id ASC /
+--     cell_id ASC / node_id ASC / domain ASC), so no live tie-check is
+--     needed for those sites -- ties resolve identically every rebuild.
+--   * `domain_signals` uses `DISTINCT ON (unnested_domain) ... ORDER BY
+--     unnested_domain, computed_salience DESC NULLS LAST, signal_id ASC`
+--     -- PostgreSQL requires ORDER BY to lead with the DISTINCT ON
+--     column, so both the per-domain pick AND the dict-insertion order
+--     `domain_verdict_map`/`zoom_spine.domain_entry_points` inherit from
+--     it are alphabetical-by-domain, fully deterministic.
+--   * The ONE site with NO ORDER BY: `final_disp_nodes`
+--     (`SELECT DISTINCT to_node_id FROM bodha_cgm_paths WHERE ... AND
+--     is_final_dispositor = true`) -- its fetch-order feeds directly into
+--     the STORED `center_of_gravity_node_ids` array (appended after
+--     `top_nodes`) and into `zoom_spine_jsonb.cgm_hub_node_ids` -- the
+--     exact byte-order-non-determinism shape flagged as a live defect in
+--     `bo_yantra_mechanism` this same campaign. Live-verified DIRECTLY,
+--     across ALL 3 charts and ALL 5 ayanamshas (not just canonical):
+--     `GROUP BY chart_id, ayanamsha_id HAVING count(DISTINCT to_node_id) >
+--     1` over `bodha_cgm_paths WHERE snapshot_type = 'static_natal' AND
+--     is_final_dispositor = true` returns ZERO rows -- every chart x
+--     ayanamsha combination has EXACTLY ONE final-dispositor node. A
+--     `SELECT DISTINCT` over a single-row result set is trivially
+--     order-invariant (there is only one possible output), so this site
+--     is confirmed SAFE on live data, not merely assumed so -- same
+--     precedent as `bo_cgm_paths`'s own zero-tie-groups confirmation.
+--   * `_assess_fragility`'s per-domain cross-ayanamsha comparison stores
+--     only `sorted(compared_domains)` / `sorted(disagreeing_domains)` and
+--     a boolean-derived `fragility_class` -- order-independent by
+--     construction (built from a Python `set()` membership check, not a
+--     first-match pick), no live tie-check applicable.
+--
+-- Natural key: `(chart_id, ayanamsha_id)` -- the table's own live UNIQUE
+-- CONSTRAINT `bodha_chart_gestalt_chart_id_ayanamsha_id_key` minus
+-- `build_id` is not even present in that constraint (the table has no
+-- build_id in its unique key at all: the writer's own idempotent
+-- `DELETE FROM bodha_chart_gestalt WHERE chart_id = %s` removes ALL prior
+-- ayanamsha rows for the chart before inserting one row per ayanamsha, so
+-- exactly 5 rows exist per chart at any time). Live-verified 0
+-- duplicate-key groups and 0 NULL chart_id/ayanamsha_id across all 15
+-- live rows (5 rows x 3 charts: 482012f1 canonical, 1c826d5a, cb73cd3d).
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns (same exclusion class as every prior spec in this
+-- campaign): bodha_chart_gestalt.gestalt_id (surrogate PK, uuid4-generated
+-- by the writer), .build_id (build-run identifier), and .computed_at
+-- (bound to a Python `datetime.now(timezone.utc)` value at write time --
+-- the standard wall-clock write-time-artifact exclusion).
+--
+-- The canonical chart 482012f1 already HAS 5 live rows in
+-- bodha_chart_gestalt today (bo_chart_gestalt has run to completion for
+-- it) -- rehearsal ran directly against it, no substitute-chart
+-- workaround needed.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                   # == the literal below
+--   print(_validate_spec('bo_chart_gestalt', spec, sha).asset_id)    # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row), calling the REAL
+-- `compute_output_digest(cur, asset_id='bo_chart_gestalt')` over all 5
+-- canonical-chart rows -- got back a clean 65-hex digest
+-- (adb84f6255f7b0d9d35edeab237fed3b77c94794242c89fddfcbbb0034c6bd53, no
+-- exception, key-preflight passed) -> rolled back -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for bo_chart_gestalt, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Numbering note: highest APPLIED migration in `_migrations_applied` at
+-- cycle start is 983 (bo_cgm_paths, this lane's own prior cycle). Checked
+-- every other open PR branch fresh this cycle for any 984/985 file --
+-- zero hits (l1-w389/390/391 own branches, pariprashna/p4-g,
+-- gochara3/w61, both preserve/* all clean). 984/985 confirmed free
+-- against `_migrations_applied`, every open PR branch, and origin/main.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_chart_gestalt' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_chart_gestalt',
+  '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_chart_gestalt","relation":"bodha_chart_gestalt","key_columns":["chart_id","ayanamsha_id"],"value_columns":["chart_id","ayanamsha_id","gestalt_formula_version","defining_threads_jsonb","central_dynamics_ids","pivot_ids","center_of_gravity_node_ids","domain_verdict_map_jsonb","headline_jsonb","watch_list_jsonb","central_question_jsonb","headline_confidence","headline_epistemic_jsonb","outliers_jsonb","contested_areas_jsonb","zoom_spine_jsonb","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
