@@ -886,6 +886,7 @@ def _fetch_graha_cdlm_cells(conn: Any, chart_id: str, aya: str) -> dict[str, lis
         SELECT graha, cell_id::text AS cell_id
         FROM per
         WHERE n_graha > 0 AND graha_sal >= cell_sal / n_graha
+        ORDER BY graha, cell_id
         """,
         {"chart_id": chart_id, "aya": aya},
     ).fetchall()
@@ -1097,7 +1098,8 @@ def _fetch_active_doshas_by_graha(conn: Any, chart_id: str, aya: str) -> dict[st
            FROM chart_facts
            WHERE chart_id = %s AND ayanamsha_id = %s
              AND fact_category = 'dosha_label'
-             AND fact_value_jsonb->>'fires' = 'true'""",
+             AND fact_value_jsonb->>'fires' = 'true'
+           ORDER BY fact_subject""",
         [chart_id, aya],
     ).fetchall()
     out: dict[str, list[str]] = {}
@@ -1289,7 +1291,7 @@ def _fetch_remedies_for_graha(conn: Any, planet: str, limit: int = 5) -> list[di
                   contraindications, cost_tier
            FROM brahma_remedy_corpus
            WHERE lower(planet) = %s AND scaffold_status = 'live'
-           ORDER BY confidence DESC NULLS LAST
+           ORDER BY confidence DESC NULLS LAST, remedy_id
            LIMIT %s""",
         [planet.lower(), limit],
     ).fetchall()
