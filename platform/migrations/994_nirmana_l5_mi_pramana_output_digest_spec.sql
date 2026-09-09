@@ -1,0 +1,133 @@
+-- 994_nirmana_l5_mi_pramana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling. `mi_pramana` (pipeline/orchestrator/writers/mi_pramana.py,
+-- 567 lines, HEAVY writer, 3 substeps: match/score/reliability) writes TWO
+-- tables: mimamsa_calibration, mimamsa_reliability -- both via literal
+-- INSERT (executemany), no templated/dynamic SQL (confirmed by reading the
+-- full source, not just grepping).
+--
+-- THIS MIGRATION SPECS BOTH TABLES -- unlike the prior 3 landed specs this
+-- campaign (bo_cdlm_summary, mi_adhilepa, mi_bhavisya, all partial under
+-- #2502), no exclusion was needed here: this writer has NO top-N cut, NO
+-- fetch-order-dependent dedup, and NO first-row selection anywhere in its
+-- row-set or column-value construction. Full account below.
+--
+-- Co-writer check (tree-wide grep for INSERT/UPDATE/DELETE across
+-- pipeline/orchestrator/writers/*.py, brahmagyan/, services/, excluding
+-- this writer's own file and tests/):
+--   * mimamsa_calibration: 0 hits outside mi_pramana.py (mi_gunanaka.py
+--     writes a DIFFERENT table, mimamsa_calibration_snapshot -- confirmed
+--     by exact grep, not a match on this table).
+--   * mimamsa_reliability: 0 hits outside mi_pramana.py.
+--   Also checked every TS file tree-wide referencing either table name
+--   (calibration_producer.ts, outcome_recorder.ts, outcome_calibration.ts,
+--   calibration_leak_guard.ts, query_calibration.ts, mimamsa_outcome.ts,
+--   etc.) -- none contain INSERT/UPDATE against either table; all are
+--   read-only consumers (serve-time query layer). MiPramanaWriter
+--   (@register('mi_pramana')) confirmed sole BUILD-TIME writer of both.
+--
+-- Non-determinism check (full source read, not just the SELECTs):
+--   * mimamsa_calibration row set: `_substep_match` builds `self._matches`
+--     from an unbounded nested loop -- `for pred in preds: for ev in
+--     events: if window contains ev_date: append` -- over the FULL fetch
+--     of both `mimamsa_predictions` and `mimamsa_event_provenance`
+--     (chart-scoped SELECT *, no ORDER BY, no LIMIT). Every valid
+--     (prediction, event) pair within the observation window becomes
+--     exactly one row, keyed by match_id = f"{prediction_id}_{event_id}"
+--     -- a deterministic composite of the two source PKs. No top-N cut,
+--     no dedup-by-first: the row SET is the full set of window-matching
+--     pairs regardless of fetch/iteration order.
+--   * mimamsa_calibration column values: `_score_timing`/`_score_magnitude`
+--     /`_score_domain`/`_score_falsifier` are pure functions of the
+--     matched pred/event row's own columns. `_score_manifestation` is a
+--     documented stub that unconditionally returns the constant `(0.5,
+--     None)` regardless of its `channels`/`event` arguments (see its own
+--     docstring) -- so `mfn_channels` (built from an unordered, uncapped
+--     `SELECT prediction_id, channel_id FROM mimamsa_manifestation_sets`)
+--     never actually influences any output column; its own internal
+--     order is moot. `_load_base_rates` returns `{}` unconditionally
+--     (honest-null per A-F-24/#1738, see the writer's own docstring) so
+--     `base_rate`/`brier_vs_null` are None on every row today -- a
+--     deterministic constant, not a source of drift. `_load_scoring_weights`
+--     is a single-row keyed lookup (`constant_id = 'mi_pramana_scoring_weights'`)
+--     against brahma_formula_constants -- deterministic. IMPORTANT: this
+--     writer reads `observation_window`, `domain`, `magnitude_expected`,
+--     `falsifier_jsonb`/`structured_falsifier_jsonb`, `posterior`/
+--     `confidence_high` from mimamsa_predictions -- it does NOT read
+--     `driving_signals`, so mi_bhavisya's known live non-determinism
+--     defect in that column (flagged migration 990/991, #1770) does not
+--     propagate into this writer's output.
+--   * mimamsa_reliability: `_substep_reliability` aggregates ALL
+--     mimamsa_calibration rows for the chart (chart-scoped SELECT, no
+--     ORDER BY, no LIMIT) into fixed probability-decile bins (Decimal-based
+--     indexing -- the A-F-34 float-floor bug this same file already fixed
+--     is verified absent by reading the current source) via sum/count over
+--     the FULL bin membership -- order-independent aggregation, no top-N
+--     cut, no first-row pick. Bin membership and every aggregate (n,
+--     observed_rate, brier_score) are pure functions of the full row set,
+--     never of fetch order.
+--
+-- Live duplicate-key / NULL-key check on both natural keys, all populated
+-- charts (only canonical 482012f1 currently has data for this writer --
+-- 1c826d5a has 0 rows in either table, presumably not yet built/no clean
+-- events to match): mimamsa_calibration (chart_id, match_id) -- 57 rows,
+-- 0 duplicate groups, 0 NULL keys. mimamsa_reliability (chart_id,
+-- stratum_key, predicted_prob_bin) -- 6 rows, 0 duplicate groups, 0 NULL
+-- keys.
+--
+-- Natural keys: mimamsa_calibration (chart_id, match_id); mimamsa_reliability
+-- (chart_id, stratum_key, predicted_prob_bin) -- both match the tables'
+-- own live PRIMARY KEYs exactly (confirmed via \d against prod).
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from
+-- value_columns: mimamsa_calibration.scored_at, mimamsa_reliability.
+-- computed_at -- both plain `DEFAULT now()` wall-clock write-time
+-- timestamps, same exclusion class as every prior spec this campaign.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == literal below
+--   print(_validate_spec('mi_pramana', spec, sha).asset_id)       # passes server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_pramana')` -- got back a
+-- clean 65-hex digest
+-- (ef77ec933d46e866e00e155dc6ceedc28dd7ed4f58e0ca455b8daea0b3e691cc, no
+-- exception, key-preflights passed for both components) -> rolled back ->
+-- re-queried asset_output_digest_specs from a FRESH connection afterward
+-- and confirmed 0 rows for mi_pramana, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Numbering note: 990/991 (highest applied at cycle start, mi_bhavisya)
+-- collide with open PR #2508 (L2, bo_sangati) which authored its own
+-- 990/991 against a stale origin/main snapshot that predated this lane's
+-- DB-apply. Flagged on #2508 and #1770 recommending L2 renumber to
+-- 992/993. To avoid re-colliding with that recommendation, this migration
+-- and its sibling use 994/995 -- confirmed free against `_migrations_applied`
+-- (DB, numeric-cast sort), local `platform/migrations/`, `origin/main`, and
+-- every open PR branch's git tree (including #2508's claimed 990/991 and
+-- all other open branches' actual top numbers, none above 991) as of this
+-- cycle.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_pramana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_pramana',
+  'd26af71b49af423f63439efbd2f2680091444c54dca96aa2138bb08642e88792',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_calibration","relation":"mimamsa_calibration","key_columns":["chart_id","match_id"],"value_columns":["chart_id","match_id","prediction_id","event_id","score_timing","score_magnitude","score_domain","score_falsifier","score_manifestation","manifestation_channel","composite_verdict","composite_score","base_rate_adjusted_skill","evidence_admissibility","n_for_stratum","leakage_status","scoring_formula_version","base_rate","brier_vs_null"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"mimamsa_reliability","relation":"mimamsa_reliability","key_columns":["chart_id","stratum_key","predicted_prob_bin"],"value_columns":["chart_id","stratum_key","predicted_prob_bin","observed_rate","n","ci_low","ci_high","brier_score","log_loss","ece","hit_rate_by_tier","held_out_validity","evidence_grade","calibration_formula_ver"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
