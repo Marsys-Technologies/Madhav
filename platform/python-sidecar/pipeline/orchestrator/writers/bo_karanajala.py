@@ -1569,7 +1569,7 @@ INSERT INTO bodha_cgm_nodes (
   %(graph_compute_library)s, %(graph_compute_library_version)s,
   %(verification_pass_status)s, %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s
 )
-ON CONFLICT (chart_id, ayanamsha_id, build_id, snapshot_type, node_type, node_subject)
+ON CONFLICT (node_id)
 DO NOTHING
 """
 
@@ -1650,9 +1650,11 @@ def _build_arudha_special_lagna_nodes_and_edges(
     node_map: dict, lookups: "ViharaLookups | None",
 ) -> tuple[int, list[dict]]:
     """Inserts arudha (A1-A12) + special-lagna (Ghati/Hora/Bhava-lagna/…) nodes
-    into bodha_cgm_nodes (idempotent, ON CONFLICT DO NOTHING per-build) and
-    returns (nodes_inserted, house-joining edges). Edge base weight 0.6
-    ('occupies its house', mirrors the 'occupancy' base_relation_weight)."""
+    into bodha_cgm_nodes (idempotent across rebuilds via ON CONFLICT (node_id)
+    DO NOTHING -- node_id is deterministic per migration 950/bodha_cgm_node_identity(),
+    so a rebuild resolves the SAME node_id and this is a true cross-build no-op, not
+    a per-build one) and returns (nodes_inserted, house-joining edges). Edge base
+    weight 0.6 ('occupies its house', mirrors the 'occupancy' base_relation_weight)."""
     facts = _fetch_arudha_special_lagna_facts(conn, chart_id, aya)
     inserted = 0
     edges: list[dict] = []
