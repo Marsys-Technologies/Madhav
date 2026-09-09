@@ -1,0 +1,149 @@
+-- 972_nirmana_l3_ka_kala_darshana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear, widened
+-- fleet-wide audit). All single-file/package `ph_*` (L4) writers are now
+-- exhausted (ph_sodhana through ph_rectification, 954-971); this cycle
+-- moves into the entirely-unscreened `ka_*` (L3) set per standing
+-- next-cycle notes item 4b. Fresh fleet-wide audit at cycle start: 39
+-- rows (bg_sign_medical, 11 bo_*, 17 ka_*, ph_nimitta, 9 mi_*).
+--
+-- Screened three short ka_* shims first and found them all
+-- service-handler class (zero build-time INSERT rows, matching the
+-- already-ratified bo_samvada/mi_sankalpa/mi_abhilekha/mi_seva pattern --
+-- decide-and-log applied directly per D-NATIVE-12 overnight authority,
+-- same category, not re-litigated per-asset):
+--   ka_dasha_kala   -- services/ka_dasha_kala/writer.py always returns
+--                       WriterResult(rows_inserted=0); "FORENSIC self-test
+--                       + health-update logic" only, per its own docstring.
+--   ka_tulana       -- services/ka_tulana/writer.py always returns
+--                       WriterResult(rows_inserted=0); docstring: "service
+--                       asset, no data rows". Reads kala_convergence /
+--                       kala_darshana read-only for ranking, writes
+--                       nothing.
+--   ka_muhurta_seva -- services/ka_muhurta_seva/writer.py always returns
+--                       WriterResult(rows_inserted=0); "FORENSIC self-test
+--                       + health write" only, per its own docstring.
+-- These are NOT picked here and should not be re-flagged as spec gaps --
+-- same disposition class as the four already-ratified service handlers,
+-- zero build-time rows to digest.
+--
+-- Also found (separate finding, NOT fixed here, flagged on #1770 for
+-- whoever owns writer-registry hygiene): `ka_gochara_sweep` shows
+-- has_writer=true in the live asset_registry, but its shim
+-- (pipeline/orchestrator/writers/ka_gochara_sweep.py) is a RETIRED
+-- tombstone whose @register import was deliberately removed (MR-09,
+-- 2026-08-10) -- discover_all() no longer registers 'ka_gochara_sweep'
+-- at all. A stale has_writer=true row is why it still appears in the
+-- fleet-wide missing-spec audit; it is not a real spec candidate (no
+-- writer fires, nothing to digest) and should not be picked by any lane
+-- until the registry flag itself is corrected.
+--
+-- `ka_kshetra`'s shim is only 52 lines but its service package
+-- (services/ka_kshetra/) is 19,016 lines total (writer.py alone ~131KB,
+-- HEAVY writer with plan_substeps/run_substep across 8+ stages) -- far
+-- too large to screen inside one bounded cycle unit. Deferred, not
+-- ruled out; flagged in STATE_l1.md for a future cycle with a wider
+-- budget.
+--
+-- Picked instead: `ka_kala_darshana` (234 lines, fully self-contained
+-- single-table WriterBase -- no services/ package, "display-ready
+-- temporal view synthesizer" reading kala_convergence + kala_obstruction
+-- and writing kala_darshana). Read in full.
+--
+-- Co-writer investigation (THREE checks, per this campaign's established
+-- discipline): grepped all .py files for `kala_darshana` (excluding
+-- __pycache__/tests) --
+--   (1) pipeline/orchestrator/kala_derivation_completeness_guard.py --
+--       prose/config only (declares the kala_convergence -> kala_darshana
+--       derivation-completeness edge for its own audit, does not write).
+--   (2) pipeline/orchestrator/writers/ka_bhavishya_lekha.py -- read-only
+--       (`FROM kala_darshana kd` in a SELECT; a WriterResult note
+--       referencing "run ka_kala_darshana first"), no INSERT/UPDATE.
+--   (3) pipeline/orchestrator/writers/ka_jivana_parva.py -- read-only
+--       (`LEFT JOIN kala_darshana kd ON kc.convergence_id =
+--       kd.convergence_id`), no INSERT/UPDATE.
+--   (4) bodha_writers/_idempotency.py -- a code-comment table-size
+--       reference only, not a live reference.
+--   (5) services/ka_tulana/__init__.py + ranker.py -- explicit "reads
+--       only" / "NEVER restates or recomputes kala_convergence /
+--       kala_darshana scores" docstrings, read-only.
+-- KaKalaDarshanaWriter (this migration's asset) is the confirmed sole
+-- writer of `kala_darshana`.
+--
+-- Non-determinism check: no random/uuid/datetime.now/utcnow/date.today/
+-- time.time in the writer. `effective_score` and `net_label` are pure
+-- functions of `convergence_score` (read from kala_convergence, an
+-- upstream writer's concern, not this one's) and `obstructions` (read
+-- from kala_obstruction). The one apparent non-determinism risk --
+-- `conv_score is None` substituting a 0.5 neutral with a loud warning
+-- log -- is an already-fixed F-DARSH/SS N.7-item-6-class guard (see the
+-- code comment at ka_kala_darshana.py:78-96): live-measured 793 rows with
+-- convergence_score = 0 and 0 NULLs on kala_convergence, so this path has
+-- never fired; if it ever does the warning makes it visible, not silent.
+-- `source_citation` is the fixed literal
+-- 'ka_kala_darshana:v1.0:conv={conv_id}' (deterministic, includes only
+-- the natural key). `peak_date`/`window_start`/`window_end` are
+-- `.isoformat()` of dates read straight through from kala_convergence,
+-- no wall-clock involved.
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns (same exclusion class as every prior spec in this
+-- campaign): kala_darshana.id (surrogate PK, bigint sequence -- NOT even
+-- written explicitly by the INSERT's column list, confirmed by reading
+-- the INSERT statement in full) and kala_darshana.computed_at (DEFAULT
+-- now(), also not in the writer's INSERT column list).
+--
+-- Natural key IS the table's own live UNIQUE constraint reachable via
+-- convergence_id (idx_kala_darshana_convergence, UNIQUE btree on
+-- convergence_id WHERE convergence_id IS NOT NULL -- globally unique,
+-- which trivially subsumes chart-scoped uniqueness since convergence_id
+-- FKs to kala_convergence.convergence_id and every row this writer emits
+-- always sets it from that upstream SELECT). Declared here as
+-- (chart_id, convergence_id) for consistency with every other spec in
+-- this campaign (chart-scoped key first). Table-wide live check: 750
+-- rows, 0 NULLs on chart_id or convergence_id, 0 duplicate-key groups on
+-- (chart_id, convergence_id).
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                    # == the literal below
+--   print(_validate_spec('ka_kala_darshana', spec, sha).asset_id)     # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ka_kala_darshana') -> got back a clean 65-hex digest
+-- (0e3aec42e59c073190de0d91cf2ea7d2c6a946023c1416fab4cdead569207bd1, no
+-- exception, key-preflight passed over all 750 live rows for the
+-- canonical chart) -> conn.rollback() -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and
+-- confirmed 0 rows for ka_kala_darshana, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Numbering note: main's highest applied migration is 963
+-- (ph_pratikara, #2489); highest RESERVED across all open PR branches
+-- (checked this lane's own open branch AND every other open PR's
+-- branch: l1-w381-ph-muhurta at 969, l2-w3-bo-karanajala at 966, plus
+-- this lane's own local 970/971 for ph_rectification, still unmerged
+-- at cycle start) is 971 -- 972/973 confirmed free against all of them.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_kala_darshana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_kala_darshana',
+  '4c2bf6bb2e657c030061dc91e25efce275521ab76b3ae34c3d36a94f534fc7bd',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_darshana","relation":"kala_darshana","key_columns":["chart_id","convergence_id"],"value_columns":["chart_id","convergence_id","signal_id","effective_score","net_label","peak_date","window_start","window_end","obstruction_summary","narrative","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
