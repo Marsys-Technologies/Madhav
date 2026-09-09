@@ -23,6 +23,7 @@ LIGHT writer: loops over the 5 canonical ayanamshas in a single run() call
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -61,6 +62,83 @@ def _signature_tier(computed_salience: float) -> str:
     if computed_salience >= _TIER_SUPPORTING:
         return "supporting"
     return "background"
+
+
+def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
+    """Replace each row's signal_id with its DERIVED identity. Returns the collapse count.
+
+    Nirmana #1770/#1804 (CONDUCTOR ruling on #2524/#2535, 2026-09-09): every
+    bodha_msr_signals writer must assign signal_id via bodha_signal_identity()
+    (migration 660), never `str(uuid.uuid4())` -- a random id means every rebuild
+    mints fresh identities for the same signals, orphaning every downstream
+    reference (bodha_triangulation, L3/L4/L5 consumers). bo_laksana got this fix
+    first (#1804); this ports the same pattern here, one signal_id column, one
+    call site (this writer has a single emit call per ayanamsha, not bo_laksana's
+    three), so the emit site itself is unreachable to any code path that inserts
+    before deriving.
+
+    The identity is computed by `bodha_signal_identity()` in migration 660 -- the
+    single source of truth -- and never reimplemented here (same discipline as
+    bo_laksana.py / bo_bimba.py: a Python copy of the algorithm is free to drift
+    from the SQL one).
+
+    Mirrors bo_bimba.py's `assign_deterministic_node_ids` shape (conn.execute(...)
+    .fetchall(), not the cursor-context-manager style bo_laksana.py uses) -- this
+    writer already calls conn.execute() directly elsewhere (see _fetch_sign_facts).
+    """
+    if not rows:
+        return 0
+
+    def _config_object(row: dict) -> Any:
+        # Rows carry configuration_jsonb PRE-SERIALISED (json.dumps at the emit
+        # site, for the INSERT's ::jsonb cast). The identity function must receive
+        # the parsed OBJECT, not that string -- embedding the string double-encodes
+        # it and defeats jsonb key-order invariance (same trap bo_laksana's version
+        # of this function documents in detail).
+        config = row.get("configuration_jsonb")
+        if isinstance(config, str):
+            return json.loads(config)
+        return config
+
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "signal_type_id": row.get("signal_type_id"),
+            "varga_id": row.get("varga_id"),
+            "configuration_jsonb": _config_object(row),
+        }
+        for index, row in enumerate(rows)
+    ]
+    id_rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_signal_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 e->>'signal_type_id',
+                 e->>'varga_id',
+                 e->'configuration_jsonb'
+               )::text AS sid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    for id_row in id_rows:
+        rows[id_row["i"]]["signal_id"] = id_row["sid"]
+
+    # Report the collapse honestly rather than assume none (§N.8) -- two rows
+    # sharing a derived identity ARE the same signal by the #1804 definition.
+    distinct_ids = len({row["signal_id"] for row in rows})
+    collapsed = len(rows) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_sudarshana: %d of %d signal rows collapsed onto an existing "
+            "deterministic identity (same signal by the #1804 definition).",
+            collapsed, len(rows),
+        )
+    return collapsed
 
 
 def _fetch_sign_facts(conn: Any, chart_id: str, aya: str) -> dict[str, dict]:
@@ -155,6 +233,8 @@ class BoSudarshanaWriter(WriterBase):
 
             if not rows:
                 continue
+
+            assign_deterministic_signal_ids(conn, rows)
 
             deleted = replace_prior_msr_signals(conn, rows)
             logger.info("[bo_sudarshana] %s — deleted %d prior, inserting %d signals",

@@ -29,7 +29,6 @@ do not invent new values; a change requires a new DR-n.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any
 
 from bodha_writers.formulas import (
@@ -291,7 +290,11 @@ def build_signal_row(
     )
 
     return {
-        "signal_id": str(uuid.uuid4()),
+        # #1770/#1804: never a random id here. assign_deterministic_signal_ids()
+        # in bo_sudarshana.py (the writer, not this emitter) overwrites this with
+        # the DB-derived bodha_signal_identity() before any row reaches the INSERT.
+        # Placeholder only -- never persisted as-is.
+        "signal_id": None,
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,

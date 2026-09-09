@@ -206,7 +206,13 @@ def test_build_signal_row_uses_ratified_class_prior():
 
 
 def test_build_signal_row_not_null_columns_populated():
-    """Every NOT NULL bodha_msr_signals column (migration 325) must be non-None."""
+    """Every NOT NULL bodha_msr_signals column (migration 325) must be non-None.
+
+    signal_id excluded: it is a placeholder (None) at emit time by design
+    (#1770/#1804) -- assign_deterministic_signal_ids() in bo_sudarshana.py
+    overwrites it with the DB-derived bodha_signal_identity() before any row
+    reaches the INSERT. See test_bo_sudarshana_signal_identity.py for that wiring.
+    """
     tri = compute_tri_frame(graha_sign0=4, lagna_sign0=0, moon_sign0=4, sun_sign0=8)
     row = build_signal_row(
         chart_id="482012f1-710e-4a25-994a-93821f5871aa",
@@ -217,8 +223,9 @@ def test_build_signal_row_not_null_columns_populated():
         fact_ids={"graha": "f1", "lagna": "f2", "moon": "f3", "sun": "f4"},
         now="2026-07-15T00:00:00+00:00",
     )
+    assert row["signal_id"] is None  # placeholder; never persisted as-is
     not_null_cols = [
-        "signal_id", "chart_id", "ayanamsha_id", "build_id",
+        "chart_id", "ayanamsha_id", "build_id",
         "signal_type_id", "signal_type_class", "signal_tradition",
         "fact_kind", "source_l1_asset", "source_subsystem", "lel_origin",
         "configuration_jsonb", "constituent_facts_array",
