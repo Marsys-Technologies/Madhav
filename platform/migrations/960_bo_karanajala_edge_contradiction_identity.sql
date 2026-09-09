@@ -1,4 +1,4 @@
--- 958_bo_karanajala_edge_contradiction_identity.sql
+-- 960_bo_karanajala_edge_contradiction_identity.sql
 --
 -- NIRMĀṆA L2-W3 — deterministic bo_karanajala edge_id / contradiction_id / node_id.
 -- Same defect class as migration 714 (bo_bimba node_id, adjudication #1888/D-CND-29),
