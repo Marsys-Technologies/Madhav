@@ -1,0 +1,115 @@
+-- 958_nirmana_l4_ph_pramana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit -- third L4 pick (after ph_sodhana 954/955,
+-- ph_suddha_sodhana 956/957). Per STATE_l1.md w376's next-cycle note
+-- (item 4b): ph_pramana (219 lines) was deliberately deprioritized in the
+-- prior cycle only because CLAUDE.md flags it as a "D5 NO-SCORING gate"
+-- governance-sensitive item -- read in full this cycle, both
+-- pipeline/orchestrator/writers/ph_pramana.py and
+-- services/ph_pramana/engine.py.
+--
+-- D5 NO-SCORING gate assessment: the writer's own `_d5_gate()` hard-checks
+-- every record for forbidden scoring attributes
+-- (calibration_score/posterior_probability/accuracy_rate/hit_rate/
+-- precision/recall/brier_score/empirical_score) before every INSERT and
+-- raises D5ViolationError (build-halt) if any are present. The engine
+-- (derive_pramana_records) is DB-free and produces only structural
+-- classification fields (evidence_type, window_status,
+-- evidence_strength_label) -- no scoring value ever reaches
+-- phala_pramana. This digest spec captures exactly those structural
+-- columns; it does not create, imply, or require any calibration/scoring
+-- semantics -- fully compatible with the D5 boundary (L5 Mimamsa owns all
+-- calibration; L4 never scores).
+--
+-- PhPramanaWriter (pipeline/orchestrator/writers/ph_pramana.py,
+-- @register("ph_pramana")) is the SOLE writer of phala_pramana --
+-- confirmed via grep across all .py files for INSERT/UPDATE against this
+-- table (zero other hits; ph_phaladesa.py reads it via a LEFT JOIN,
+-- never writes).
+--
+-- LIGHT writer, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_pramana WHERE chart_id = %s` immediately before the
+-- INSERT loop, standard L1+ delete-then-insert-per-chart per CLAUDE.md
+-- SS N.3 (the writer's INSERT also carries `ON CONFLICT DO NOTHING` as a
+-- same-transaction safety net against the table's own natural-key
+-- constraint).
+--
+-- Natural key: (chart_id, anchor_id) -- derive_pramana_records() produces
+-- exactly ONE PramanaRecord per anchor in ctx.anchors (see the function's
+-- own docstring: "Each anchor gets exactly ONE primary record"), so
+-- anchor_id alone is a sufficient per-chart key even though the table's
+-- own live UNIQUE constraint is the broader
+-- (anchor_id, evidence_type, COALESCE(lel_entry_id, -1)) --
+-- "phala_pramana_natural_key". anchor_id FKs to phala_anchors(anchor_id)
+-- ON DELETE CASCADE, this asset's own L4 sibling table -- one row per
+-- anchor per chart, never a random per-row uuid.
+--
+-- `pramana_id` excluded -- surrogate PK (gen_random_uuid() default), same
+-- exclusion class as every prior spec's surrogate-PK column.
+-- `computed_at` excluded -- DEFAULT now(), a wall-clock write-time
+-- timestamp, same exclusion class as every prior spec's
+-- build_id/computed_at/updated_at columns in this series.
+--
+-- `window_status` note (worth recording for anyone touching this asset
+-- again): classify_window_status() derives this from
+-- `today = date.today()` compared against the anchor's window_start/
+-- window_end -- it is content-bearing at build time (the actual
+-- classification the writer produced for this row), not a wall-clock
+-- artifact like computed_at, so it is KEPT in value_columns. It CAN
+-- legitimately differ across builds taken on different calendar days for
+-- the same anchor (pending -> open -> past_window as time passes) --
+-- this is expected, not a determinism defect: the digest is a snapshot
+-- of what the writer produced at build time, and a window-status
+-- transition over time is genuine content, not drift.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the whole writer AND
+-- its services/ph_pramana/engine.py for
+-- `cell_id`/`node_id`/`cgm_node`/`cdlm_cell`/`uuid4`/`bodha_` -- zero
+-- hits. The writer's only reads are phala_anchors (anchor enumeration)
+-- and the global life_events table (LEL; not chart-scoped, no chart_id
+-- column, loaded via a SAVEPOINT-wrapped query that tolerates the table
+-- being absent on a fresh DB), per the writer's own docstring header.
+--
+-- value_columns = every live column on phala_pramana EXCEPT pramana_id,
+-- computed_at (2 excluded, per above). Live schema re-verified via psql
+-- \d phala_pramana immediately before authoring this migration: 14
+-- columns total, 12 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                          # == the literal below
+--   print(_validate_spec('ph_pramana', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_pramana') -> got back a clean digest hex
+-- (9be8aa71ba66e200d52c3303191c505b8d489bbf23289985ce85aff35076bf87, no
+-- exception, key-preflight passed over 4 live rows for the canonical
+-- chart) -> conn.rollback() -> re-queried asset_output_digest_specs from
+-- a FRESH connection afterward and confirmed 0 rows for ph_pramana, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_pramana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_pramana',
+  '4d96a9fcd066a85b89b01609c6f2c7ecebef958c1b1e329efaeb3c3771077a5c',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_pramana","relation":"phala_pramana","key_columns":["chart_id","anchor_id"],"value_columns":["chart_id","anchor_id","evidence_type","evidence_strength_label","falsifier_text","observable_criteria_jsonb","window_status","lel_entry_id","lel_entry_jsonb","linked_sodhana_id","derivation_ledger_jsonb","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
