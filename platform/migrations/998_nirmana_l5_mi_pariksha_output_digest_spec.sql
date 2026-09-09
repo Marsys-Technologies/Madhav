@@ -1,0 +1,170 @@
+-- 998_nirmana_l5_mi_pariksha_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling. `mi_pariksha` (pipeline/orchestrator/writers/mi_pariksha.py,
+-- 860 lines, HEAVY writer, 7 substeps: retrodiction/control_windows/
+-- ablation/attribution/neg_control/discovery/tail_only) writes THREE
+-- tables: mimamsa_attribution, mimamsa_qa_eval, mimamsa_discoveries.
+--
+-- THIS MIGRATION SPECS ONLY mimamsa_qa_eval (1 of 3) -- a partial spec
+-- under the #2502 subset-declaration ruling, same pattern as
+-- bo_cdlm_summary/mi_adhilepa/mi_bhavisya. Full account below.
+--
+-- Co-writer check (tree-wide grep for INSERT/UPDATE/DELETE across
+-- pipeline/orchestrator/writers/*.py, brahmagyan/, services/, plus every
+-- TS file referencing any of the 3 table names, excluding this writer's
+-- own file and tests/):
+--   * mi_darshana.py references mimamsa_attribution/mimamsa_discoveries
+--     in comments and ONE read-only SELECT (grading query) -- not a writer.
+--   * brahmagyan/mimamsa/answer_quality.py DOES contain a live
+--     INSERT/UPDATE against `public.mimamsa_qa_eval` (a "golden Q&A"
+--     persistence path, `persist_qa_eval`-style function) -- but its
+--     column list (question, expected_domains, actual_response,
+--     b11_compliance, layer_coverage, grounding_score, evaluated_at,
+--     source_citation, eval_id) does not match the table's ACTUAL live
+--     schema at all (confirmed via `\d mimamsa_qa_eval`: chart_id [NOT
+--     NULL], check_id, check_type, target, result_score, status, detail,
+--     checked_at -- PK (chart_id, check_id)). This function's INSERT
+--     omits chart_id entirely (NOT NULL, no default) and references
+--     columns that do not exist on the live table -- any call would raise
+--     UndefinedColumn/NotNullViolation. Same disconnected-legacy-schema
+--     dead-code pattern already documented for mi_bhavisya's
+--     `log_prediction` route (migration 990/991, w401) -- confirmed
+--     non-blocking, not a live threat. All TS references (query_attribution
+--     .ts, query_mimamsa_discoveries.ts, query_calibration.ts,
+--     query_insights.ts, mimamsa_outcome.ts) are read-only serve-time
+--     consumers. MiParikshaWriter (@register('mi_pariksha')) confirmed
+--     sole live BUILD-TIME writer of mimamsa_qa_eval.
+--
+-- Non-determinism check (full source read of all 7 substeps, not just
+-- grep) -- this is why only 1 of 3 tables is specced:
+--   * mimamsa_qa_eval (SPECCED, genuinely clean): written by 4 of the 7
+--     substeps (_substep_control_windows, _substep_ablation,
+--     _substep_neg_control, _substep_tail_only), each verified clean:
+--       - control_windows: 3 fixed offset windows per event
+--         (+365/-365/+730d), ctrl_id = f"ctrl_{event_id}_w{i+1}" --
+--         deterministic per event, no top-N/dedup.
+--       - ablation: one row per active family_id (full set, no LIMIT,
+--         no ORDER BY needed since every family is processed); values
+--         are order-independent sum/count aggregates over the full
+--         mimamsa_calibration row set for the chart. marginal_skill is
+--         always exactly 0.0 by construction (masked_scores is a verbatim
+--         copy of composite_score, not a real per-family rerun) -- stored
+--         honestly under status='structural_proxy', not 'pass' (this
+--         writer's own inline comment flags the distinction explicitly).
+--       - neg_control: one row per catalog control_id (mimamsa_
+--         negative_controls, static reference data) plus one
+--         degenerate_distribution row from a chart-wide AVG(composite_score)
+--         (order-independent). Every neg-control row is status=
+--         'not_implemented' (this writer's own inline comment: no
+--         synthetic-injection harness exists yet, so the prior comparison
+--         was a tautology that could never fail -- JL-019) -- an honest
+--         null, not a fabricated pass.
+--       - tail_only: reads bodha_msr_signals ORDER BY computed_salience
+--         ASC and slices the bottom 30% (`all_signals[:n_tail]`) -- a
+--         cutoff with NO secondary tiebreak, so WHICH signals land in the
+--         tail can vary across rebuilds if ties exist at the boundary.
+--         BUT the only value this substep ever persists is
+--         len(tail_signal_ids) (the tail_signal_count in `detail`, plus
+--         tail_mean/full_mean/marginal_skill, all of which are computed
+--         from the UNFILTERED chart-wide mimamsa_calibration average, not
+--         from the tail set itself -- confirmed by reading the assignment:
+--         `tail_mean = sum(...) / len(all_cal)` never references
+--         tail_signal_ids). `n_tail = max(1, len(all_signals)*30//100)` is
+--         a pure function of the total signal COUNT, and
+--         `len(all_signals[:n_tail]) == n_tail` always (slicing to a
+--         prefix no longer than the list). So the tie-prone ORDER BY can
+--         change WHICH signals are in the tail without ever changing what
+--         gets written -- the persisted row is stable.
+--     Live dup/NULL-key check, all populated charts: 0 duplicate groups,
+--     0 NULL keys (canonical 482012f1: 168 rows; 1c826d5a: 6 rows).
+--
+--   * mimamsa_attribution (EXCLUDED, live-verified propagated defect):
+--     `_substep_attribution` reads `p.driving_signals` directly from
+--     `mimamsa_predictions` (LEFT JOIN on prediction_id) and iterates
+--     `for sig in driving[:10]`. `driving_signals` is the EXACT column
+--     already live-verified non-deterministic when `mi_bhavisya` was
+--     excluded from its own spec (migration 990/991, w401): a
+--     top-5-by-computed_salience selection with NO secondary tiebreak,
+--     real ties confirmed at the cutoff in 9/10 domains on the canonical
+--     chart. Per the established rule from that same finding ("a table's
+--     own known defect in ONE column does not automatically propagate to
+--     every downstream reader -- check which columns THIS writer actually
+--     reads"), mi_pariksha FAILS that check: it reads driving_signals
+--     directly and truncates it to the first 10 elements, so any
+--     rebuild-to-rebuild reordering of that array changes WHICH signals
+--     receive attribution credit in mimamsa_attribution. Flagged on
+--     #1770, not fixed this cycle (writer fix belongs to whoever owns
+--     mi_bhavisya.py's driving_signals ORDER BY).
+--
+--   * mimamsa_discoveries (EXCLUDED, two independent live-verified risks):
+--     (1) `_substep_retrodiction` picks up to 3 phala_anchors per event
+--     via `ORDER BY posterior DESC NULLS LAST LIMIT 3` with no secondary
+--     tiebreak -- a live top-N cut on a table this lane has not
+--     characterized for ties, so WHICH 3 anchors (and hence the recorded
+--     `strength`/`top_k` evidence_refs content) land in each
+--     discovery_class='retrodiction' row is not yet proven stable.
+--     (2) `_substep_discovery` (discovery_class='emergent_law') aggregates
+--     directly from the mimamsa_attribution table's own rows (`FROM
+--     mimamsa_attribution a ... WHERE a.chart_id = %s`) -- since that
+--     table's row set is itself non-deterministic per the driving_signals
+--     finding above, `emergent_law` discoveries inherit the same instability
+--     transitively even though this substep's own SQL is fully ordered
+--     (`ORDER BY a.signal_id, a.dimension, a.match_id`) and its 20-row cap
+--     is a deterministic function of a non-deterministic input. Both
+--     discovery_class values share one table, so the whole table is
+--     excluded rather than attempting a row-subset spec (no precedent
+--     this campaign for specing part of one table by row predicate rather
+--     than by column). Flagged on #1770, not fixed this cycle.
+--
+-- Natural key: mimamsa_qa_eval (chart_id, check_id) -- matches the
+-- table's own live PRIMARY KEY exactly (confirmed via \d against prod).
+--
+-- Surrogate/non-owned column excluded from value_columns: checked_at --
+-- plain wall-clock DEFAULT now() write-time timestamp, same exclusion
+-- class as every prior spec this campaign.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == literal below
+--   print(_validate_spec('mi_pariksha', spec, sha).asset_id)      # passes server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_pariksha')` -- got back a
+-- clean 65-hex digest
+-- (563570703418a7cbbebe69ae108b130b37ba37a425dfe4c4c43906930edac37c, no
+-- exception, key-preflight passed) -> rolled back -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and
+-- confirmed 0 rows for mi_pariksha, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Numbering note: highest applied at cycle start was 995 (mi_pramana,
+-- this lane, w402). Open PR #2508 (L2, bo_sangati) claims 996/997 (its
+-- diff, not its stale PR title text which still reads 990/991 -- prior
+-- cycle's flagged 990/991 collision was already resolved by L2 before
+-- this cycle started). This migration and its sibling use 998/999 --
+-- confirmed free against `_migrations_applied` (DB, numeric-cast sort),
+-- local `platform/migrations/`, and every open PR branch's actual claimed
+-- numbers (highest found: 997, on #2508) as of this cycle.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_pariksha' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_pariksha',
+  '7da73f24923bf4c2f4468091fd978ce9eb250bdecca71eda5a9705ff111b381f',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_qa_eval","relation":"mimamsa_qa_eval","key_columns":["chart_id","check_id"],"value_columns":["chart_id","check_id","check_type","target","result_score","status","detail"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
