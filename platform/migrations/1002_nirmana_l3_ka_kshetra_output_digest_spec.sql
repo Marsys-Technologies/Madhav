@@ -1,0 +1,200 @@
+-- 1002_nirmana_l3_ka_kshetra_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling (the last named single-asset candidate from that ruling).
+-- `ka_kshetra` (services/ka_kshetra/writer.py, 2467 lines, HEAVY writer
+-- with substeps across stage0-1-2-3-4-5-6-6.5-8 + snapshot; plus 4 plugin
+-- stage modules stage0_kinematics.py/stage1_symbolization.py/
+-- stage2_promise.py/stage3_clocks.py wired via _optional_stage_plugins)
+-- writes 15 tables across all its stages. Screened all 15 via 6 parallel
+-- full-source-read audits (one per stage file/table group), each doing the
+-- established methodology: full source read (not grep-only), dynamic-SQL
+-- check, tree-wide co-writer grep with live-schema cross-check for any
+-- brahmagyan/*.py hit, non-determinism trace from every SELECT/loop/dict
+-- construction to the actual persisted column, and live tie-check on both
+-- populated charts (482012f1 canonical, 1c826d5a).
+--
+-- RESULT: 13 of 15 tables SAFE (this migration). 2 EXCLUDED for a real,
+-- live-confirmed non-determinism defect each -- see migration 1003's
+-- natural_key_partition note for the full account of both:
+--   * kala_field_routes -- path_edge_ids embeds the SURROGATE bigserial id
+--     of kala_field_promise_edges rows, which is reassigned on every
+--     chart rebuild (delete-then-insert never resets the sequence) --
+--     live-confirmed: sequence at 6108, only 220 live rows, proving heavy
+--     churn. Not a tie-prone SELECT, but a genuinely non-reproducible
+--     persisted value.
+--   * kala_field_boundaries -- every chart_dashas query in stage3_clocks.py
+--     EXCEPT kp_window_redundancy omits `ayanamsha_id`, unlike this same
+--     module's own chart_facts reads (which correctly scope by
+--     DEFAULT_AYANAMSHA_ID). Live-confirmed on chart 482012f1: the 5
+--     ayanamsha copies of vimshottari's earliest MD row disagree on
+--     lord_graha (Moon vs Mars) with NO ayanamsha tiebreak in
+--     `_system_sigma_t`'s `rows[0]` pick -- and separately, the boundary
+--     dedup's (level_n, start_iso) key collapses genuinely-differing tied
+--     rows in up to 1434 groups (yogini) / 513 groups (naisargika) per
+--     chart, with no third sort key.
+--
+-- Per-table verdict summary (13 SAFE, this migration's components; full
+-- co-writer + non-determinism trace detail for each retained in the L1
+-- lane's #1770 write-up for this cycle, referenced from there):
+--   1. kala_field_kinematics (stage0_kinematics.py) -- co-writer clean.
+--      Natural key uses (chart_id, event_kind, body, t_days) WITHOUT
+--      target_ref: the live unique index is
+--      (chart_id, event_kind, body, COALESCE(target_ref,''), t_days), but
+--      target_ref is NULL for sign_ingress/nakshatra_ingress/station rows
+--      and the digest framework's own key-preflight rejects any NULL key
+--      column tree-wide (not just within a where_equals scope) -- so
+--      target_ref must stay a value_column, not a key_column. Verified
+--      live: dropping it from the key still yields 0 duplicate groups on
+--      both charts (the reduced key is independently unique). One
+--      `LIMIT 1` w/o ORDER BY on chart_facts (natal longitude) is
+--      structurally safe -- ga_positions_writer's delete-then-insert is
+--      scoped to (chart_id, fact_category, ayanamsha_id), not build_id,
+--      so exactly one row always exists per key at read time (live-
+--      verified, 5/5 ayanamshas). Flagged in passing, not fixed: the
+--      natal_lagna branch of fetch_natal_longitude queries a fact_key
+--      that is never populated for LAGNA (queries 'longitude', actual
+--      rows use 'longitude_sidereal' same as graha rows) -- transit-to-
+--      Lagna contact episodes are silently never computed for any chart
+--      (deterministic gap, not a digest-safety issue).
+--   2. kala_field_primitives (stage1_symbolization.py) -- co-writer clean
+--      (hazard.py only labels in-memory ProvenanceEdge metadata with this
+--      table's name, never writes it). Natural key similarly drops
+--      object_ref (nullable) from key_columns for the same preflight
+--      reason -- verified independently unique live. The one live-
+--      manifesting tie (sandhi_band's source boundary rows, up to 4-way
+--      collision on t_boundary, 148,696 of 165,628 rows distinct) does
+--      NOT taint this table: every persisted primitive column is a pure
+--      function of t_boundary alone (no system_id/level/lord persisted),
+--      so colliding source rows collapse to byte-identical primitive rows
+--      -- live count matches exactly. Flagged in passing: build_moorti_
+--      primitive/build_vedha_primitive/build_panchanga_limb_primitive are
+--      fully implemented + unit-tested but never called from run_substep
+--      (dead in production, 3 of 10 primitive_kind enum values unused,
+--      no CoverageGap logged for the gap).
+--   3. kala_field_promise_nodes (stage2_promise.py) -- co-writer clean.
+--      Unordered _fetch_cgm_nodes feeds a keep-first dedup by node_id;
+--      live-verified 0 (node_type,node_subject) collisions on either
+--      chart, so the unordered fetch does not currently produce a tie.
+--      Flagged: chart 482012f1's bodha_cgm_nodes carries an orphaned
+--      second build_id (26 phantom nodes, no edges) not filtered by
+--      build_id -- latent risk if a future orphan build ever overlaps
+--      subjects with the live build, not a live defect today.
+--   4. kala_field_promise_edges (stage2_promise.py) -- co-writer clean.
+--      Unordered _fetch_cgm_edges is safe because bodha_cgm_edges' own
+--      unique constraint + single live build_id per chart forecloses any
+--      two source edges normalizing to the same (from,to,edge_kind).
+--   5. kala_field_clocks (stage3_clocks.py) -- co-writer clean. Every
+--      value traces to hardcoded SYSTEM_META, correctly-ayanamsha-scoped
+--      chart_facts lookups, or order-independent chart_dashas
+--      aggregates/EXISTS checks -- no code path extracts a specific row
+--      from an ambiguous multi-row chart_dashas set (contrast with
+--      kala_field_boundaries below, which does).
+--   6. kala_field (writer.py, stage4_field.py) -- co-writer clean. Route
+--      selection (Yen's K-shortest via stage2_promise) has an explicit
+--      total-order tiebreak (round(cost,12), path-string); empirically
+--      stress-tested (300+100 shuffled re-orderings of the real promise
+--      graph against the real production functions) with 0 mismatches
+--      despite confirmed real cost ties in the corpus.
+--   7. kala_field_null (writer.py, dhara_null.py) -- co-writer clean. NOT
+--      a Monte Carlo sampler: exact enumeration over a computed circular-
+--      shift grid, explicitly documented "NO RNG ANYWHERE" and grep-
+--      confirmed (zero random/seed/default_rng hits across the module
+--      set) -- the RNG-non-determinism risk this table's kind of writer
+--      is normally screened for is structurally absent.
+--   8. kala_field_windows (writer.py, integrator.py) -- co-writer clean.
+--      Window boundaries solved in closed form (never scanned); the one
+--      true argmax (peak time on a plateau) has an explicit documented
+--      earliest-wins tiebreak.
+--   9. kala_field_provenance (writer.py) -- co-writer clean. Real
+--      floating-point hazard-term contributions (verified they reconcile
+--      to ln(lambda_peak) within 1e-9), every reduction feeding it has a
+--      total order (sorted clock edges, fixed-tuple modifiers, sorted
+--      suppression dict, already-tiebroken route rank).
+--  10. kala_field_salience (writer.py, stage6_salience.py,
+--      submodular.py) -- co-writer clean. Submodular greedy selection is
+--      tie-safe by construction: heap entries are (-gain, window_id)
+--      tuples, ties resolve to the lexicographically lower window_id
+--      (explicit in code + docstring); largest-omission iterates
+--      sorted(unselected, key=window_id) with strict comparison.
+--  11. kala_insights (writer.py, stage65_insights.py) -- REAL, VERIFIED
+--      co-writer: mi_bhara/db.py's upsert_biographical_echo_insights
+--      (@register('mi_bhara'), L5) writes lel_derived=TRUE rows under a
+--      disjoint discriminator, independently re-confirmed (not just
+--      trusted from the prior #2502 characterization): insight_id is a
+--      content hash of (chart_id|insight_type|discriminator) on both
+--      sides so even a hypothetical collision would require the same
+--      insight_type, and ka_kshetra's 7 detectors are enforced (by
+--      NON_LEL_INSIGHT_TYPES) to never emit 'biographical_echo'. Live:
+--      0 lel_derived=TRUE rows exist anywhere in the DB (mi_bhara's call
+--      site currently always passes an empty list) -- confirming the
+--      partition is real today AND adding `lel_derived: false` to
+--      where_equals below so the spec stays correctly scoped if Lane E
+--      ever starts emitting real rows, not just accidentally correct on
+--      today's empty co-writer output.
+--  12. kala_timeline_spec (writer.py, stage8_spec.py) -- co-writer clean.
+--      Pure module (no DB/clock/RNG per its own header); every list
+--      (intervals/points/bands) explicitly .sort()ed before being placed
+--      in the spec blob; the module's own header states the design
+--      intent "build twice, assert bit-identical."
+--  13. kala_field_snapshots (writer.py, stage4_field.py) -- co-writer
+--      clean. field_content_hash sorts every hashed row by
+--      (table, canonical_json(natural_key)) with sort_keys=True --
+--      order-independent of streaming/read order, asserted by the
+--      codebase's own hash-replay test. event_classes is DB-ORDER-BY'd;
+--      skipped_classes is NOT explicitly sorted before json.dumps
+--      (inconsistent with the adjacent built_event_classes() helper) but
+--      is safe today because the orchestrator's substep driver is a
+--      plain sequential loop under the current frozen contract -- flagged
+--      as defensive-hardening debt, not a live defect.
+--
+-- Live duplicate-key / NULL-key check, all 13 components, BOTH populated
+-- charts (482012f1 canonical: 120,377 / 166,205 / … / 11,012,657 (kala_
+-- field) / 2,229,768 (provenance) / 39,000 (salience) / 846 (insights,
+-- lel_derived=false) / 12 (timeline_spec) / 2 (snapshots) rows; 1c826d5a
+-- also checked clean): 0 duplicate natural-key groups, 0 NULL key-column
+-- rows, in every one of the 13 tables. Re-verified directly via SQL for
+-- the two largest tables (kala_field, kala_field_provenance) after the
+-- Python end-to-end streaming rehearsal (below) was interrupted by a
+-- server-closed-connection on the live proxy partway through streaming
+-- kala_field's 11M rows -- not a spec defect, a long-lived-transaction/
+-- proxy timeout on an unusually large table for this campaign.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == literal below
+--   print(_validate_spec('ka_kshetra', spec, sha).asset_id)       # passes server's own validator
+--   "
+--
+-- Rehearsal note (SS N.4 -- never trust a silent no-op, but also never
+-- claim a check ran when it didn't): the per-component NULL-key preflight
+-- and streaming digest computation via the REAL `compute_output_digest`
+-- ran successfully (no ValueError) through kinematics/primitives/
+-- promise_nodes/promise_edges/clocks and into the kala_field streaming
+-- pass inside a ROLLED-BACK transaction, then the connection was
+-- terminated server-side mid-stream (11M-row table, ~17 minutes in --
+-- this campaign's largest table by two orders of magnitude). Substituted
+-- direct SQL NULL-key + duplicate-key verification (shown above) for the
+-- remaining components since the framework-level preflight logic is
+-- itself a straightforward NULL/uniqueness check already independently
+-- confirmed. Static validation (canonical_digest + _validate_spec) DID
+-- complete and is the sha256 below.
+--
+-- Post-apply verification (SS N.4): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_kshetra' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_kshetra',
+  '093132b1feb050e1273c4d19a0634f72cd47c0127b7c89b5a2c2c73968395344',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_field_kinematics","relation":"kala_field_kinematics","key_columns":["chart_id","event_kind","body","t_days"],"value_columns":["chart_id","event_kind","body","target_kind","target_ref","t_days","event_ts","longitude_deg","velocity_dps","latitude_deg","episode_id","dwell_days","dwell_weight","orb_deg","orb_source","eclipse_candidate","gamma_proxy","precision_regime","ayanamsha_id","source_table"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_primitives","relation":"kala_field_primitives","key_columns":["chart_id","primitive_kind","subject","t_start"],"value_columns":["chart_id","primitive_kind","subject","object_ref","t_start","t_end","envelope","polarity","class_label","source_kind","source_table","source_pk","source_fact_id","kinematics_ids"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_promise_nodes","relation":"kala_field_promise_nodes","key_columns":["chart_id","node_id"],"value_columns":["chart_id","node_id","node_kind","label","source_kind","source_table","source_pk","source_fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_promise_edges","relation":"kala_field_promise_edges","key_columns":["chart_id","from_node","to_node","edge_kind"],"value_columns":["chart_id","from_node","to_node","edge_kind","conductance","conductance_source","source_fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_clocks","relation":"kala_field_clocks","key_columns":["chart_id","system_id"],"value_columns":["chart_id","system_id","applicability_state","exclusion_reason","competence_class","seniority_rank","quality","quality_basis","is_predictive","source_table"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field","relation":"kala_field","key_columns":["chart_id","event_class","segment_index"],"value_columns":["chart_id","event_class","segment_index","t_start","t_end","alpha","gamma","lambda_start","lambda_end","integral_days","promise_term","clock_term_start","modifier_term_start","suppression_term_start","signed_obstruction_start","refinement_depth","refinement_exhausted","refinement_residual","weights_version","x_schema_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_null","relation":"kala_field_null","key_columns":["chart_id","event_class","bucket_days","field_snapshot_id"],"value_columns":["chart_id","event_class","replicates","horizon_days","q_threshold","bucket_days","null_max_stats","shift_grid_step","weights_version","x_schema_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_windows","relation":"kala_field_windows","key_columns":["chart_id","window_id"],"value_columns":["chart_id","window_id","event_class","t_start","t_end","window_start","window_end","peak_date","t_peak","lambda_peak","expected_count","duration_days","promise_state","temporal_shape","precision_regime","null_p","null_r","null_resolution","null_exceeding","robustness","confidence_tier","weakest_link","adrishta_residual","weights_version","x_schema_version","field_snapshot_id","baseline_is_synthetic"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_provenance","relation":"kala_field_provenance","key_columns":["chart_id","field_snapshot_id","target_kind","target_id","term_key"],"value_columns":["chart_id","field_snapshot_id","target_kind","target_id","term_role","term_key","term_value","log_contribution","weight_id","weight_value","weights_version","source_kind","source_table","source_pk","source_fact_id","authority_basis"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_salience","relation":"kala_field_salience","key_columns":["chart_id","window_id"],"value_columns":["chart_id","window_id","event_class","factor_informativeness","factor_consequence","factor_relevance","factor_reliability","factor_actionability","salience","salience_weights_version","salience_basis","selected","selection_rank","marginal_gain","atoms_newly_covered","coverage_fraction","largest_omission_window_id","largest_omission_marginal_gain","weights_version","cohort_version","x_schema_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_insights","relation":"kala_insights","key_columns":["chart_id","insight_id"],"value_columns":["chart_id","insight_id","insight_type","event_class","window_id","t_start","t_end","statement_key","statement_params","fact_ids","cohort_surprise","cohort_version","surprise_basis","robustness","insight_score","lel_derived","weights_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","lel_derived":false}},{"name":"kala_timeline_spec","relation":"kala_timeline_spec","key_columns":["chart_id","generated_for","field_snapshot_id"],"value_columns":["chart_id","generated_for","spec_version","field_snapshot_id","weights_version","spec","n_tracks","n_intervals","n_points","n_bands","empty_reason"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"kala_field_snapshots","relation":"kala_field_snapshots","key_columns":["chart_id","field_snapshot_id"],"value_columns":["chart_id","field_snapshot_id","field_content_hash","weights_version","x_schema_version","corpus_pin","config_pin","cohort_version","substrate_build_ids","hashed_tables","event_classes","skipped_classes","horizon_days"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
