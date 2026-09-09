@@ -442,17 +442,25 @@ def _detect_mutual_aspects(
                 if tid in graha_id_set:
                     asp.setdefault(gid, {})[tid] = str(e["edge_id"])
 
-    # mutual pairs: A→B and B→A both present
-    mutual_edge: dict[frozenset, list[str]] = {}
+    # mutual pairs: A→B and B→A both present. Store the pair as a sorted
+    # (lo, hi) tuple, not the raw discovery-order (a, b) — a plain
+    # `tuple(frozenset)` would iterate in the frozenset's internal
+    # hash-bucket order, which for str/uuid keys depends on Python's
+    # per-process hash randomization (PYTHONHASHSEED is not pinned anywhere
+    # in this pipeline). Left unfixed, involved_node_ids_array/
+    # involved_edge_ids_array/motif_name for mutual_aspect motifs could
+    # silently reorder across rebuilds of the identical chart.
+    mutual_edge: dict[frozenset, tuple[str, str]] = {}
     for a, targets in asp.items():
         for b, eid_ab in targets.items():
             eid_ba = asp.get(b, {}).get(a)
             if eid_ba is not None:
-                mutual_edge[frozenset({a, b})] = [eid_ab, eid_ba]
+                mutual_edge[frozenset({a, b})] = tuple(sorted((a, b)))
 
-    # emit pairs
-    for pair, edge_ids in mutual_edge.items():
-        a, b = tuple(pair)
+    # emit pairs — node/edge order fixed to (lo, hi) regardless of how
+    # asp/mutual_edge were populated.
+    for pair, (a, b) in mutual_edge.items():
+        edge_ids = [asp[a][b], asp[b][a]]
         motifs.append({
             "motif_class": "mutual_aspect",
             "motif_name": f"Mutual Aspect: {_label(node_by_id[a], a)} ↔ {_label(node_by_id[b], b)}",
@@ -466,10 +474,12 @@ def _detect_mutual_aspects(
             ),
         })
 
-    # triangles: three nodes pairwise in mutual aspect
+    # triangles: three nodes pairwise in mutual aspect. (a, b) here is
+    # already the sorted (lo, hi) tuple stored above, so this loop's own
+    # iteration order over `mutual_edge` (a dict — insertion order, not
+    # hash-random) doesn't affect the values placed in mutual_adj.
     mutual_adj: dict[str, set[str]] = {}
-    for pair in mutual_edge:
-        a, b = tuple(pair)
+    for a, b in mutual_edge.values():
         mutual_adj.setdefault(a, set()).add(b)
         mutual_adj.setdefault(b, set()).add(a)
     seen_tri: set[frozenset] = set()
@@ -485,10 +495,14 @@ def _detect_mutual_aspects(
                 if tri in seen_tri:
                     continue
                 seen_tri.add(tri)
+                # a < b < c is guaranteed by the guards above, so each
+                # asp[x][y] lookup below is unambiguous (mutual ⇒ both
+                # directions exist) — no dependence on frozenset iteration
+                # order the way the old mutual_edge[frozenset(...)] lookup had.
                 edge_ids = (
-                    mutual_edge[frozenset({a, b})]
-                    + mutual_edge[frozenset({a, c})]
-                    + mutual_edge[frozenset({b, c})]
+                    [asp[a][b], asp[b][a]]
+                    + [asp[a][c], asp[c][a]]
+                    + [asp[b][c], asp[c][b]]
                 )
                 labels = [_label(node_by_id[n], n) for n in (a, b, c)]
                 motifs.append({
@@ -647,8 +661,10 @@ def _compute_sub_graphs(
         n = len(comp)
         max_edges = n * (n - 1) / 2
         density = round(len(set(edge_ids)) / max_edges, 6) if max_edges else 0.0
-        # centroid = highest intra-component degree
-        centroid = max(comp, key=lambda x: len(adj[x] & comp_set))
+        # centroid = highest intra-component degree; ties broken by smallest
+        # node_id (deterministic — comp's own traversal order is a DFS
+        # artifact, not a meaningful tiebreak key).
+        centroid = min(comp, key=lambda x: (-len(adj[x] & comp_set), x))
         labels = sorted(_label(node_by_id[c]) for c in comp)
         rows.append({
             "subgraph_id": str(uuid.uuid4()),
@@ -657,7 +673,11 @@ def _compute_sub_graphs(
             "build_id": build_id,
             "subgraph_type": "connected_component",
             "subgraph_label": f"Component of {n} nodes centred on {_label(node_by_id[centroid])}",
-            "node_ids_array": comp,
+            # sorted(): comp's raw order is a DFS-over-adjacency-sets
+            # traversal artifact — deterministic given a fixed input order,
+            # but not a meaningful order in itself, so store the stable
+            # sorted form rather than lean on traversal-order stability.
+            "node_ids_array": sorted(comp),
             "edge_ids_array": sorted(set(edge_ids)),
             "subgraph_density": density,
             "subgraph_centroid_node_id": centroid,
@@ -689,7 +709,10 @@ def _compute_topology(
 
     degree = {n: len(adj[n]) for n in node_ids}
     sum_degree = sum(degree.values()) or 1
-    ranked = sorted(node_ids, key=lambda x: degree[x], reverse=True)
+    # explicit secondary key (node_id ascending) rather than relying on
+    # Python's stable sort + already-ordered input to break degree ties —
+    # makes the tiebreak reproducible even if the input order ever changes.
+    ranked = sorted(node_ids, key=lambda x: (-degree[x], x))
     top_hubs = [
         {"node_id": n, "label": _label(node_by_id[n]), "degree": degree[n]}
         for n in ranked[:5] if degree[n] > 0
@@ -755,12 +778,20 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> t
     """Detect + write motifs, sub_graphs, topology for one ayanamsha.
     Returns (motif_rows, subgraph_rows, topology_rows)."""
 
+    # ORDER BY node_id / edge_id (NIRMANA determinism fix): every derived
+    # array/label below (top_5_hub_nodes_jsonb, isolated_node_ids_array,
+    # yoga_cluster/mutual_reception/stellium/parivartana_chain member and
+    # edge ordering) is built by iterating all_nodes/all_edges in fetch
+    # order. Without an explicit ORDER BY, PostgreSQL does not guarantee
+    # that order is stable across rebuilds — pin it so the writer's output
+    # is reproducible rather than incidentally stable.
     all_nodes = _fetch_dict(
         conn,
         """SELECT node_id, node_type, node_subject, node_label_human,
                   position_in_chart_jsonb, strength_score
            FROM bodha_cgm_nodes
-           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
+           ORDER BY node_id""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
     if not all_nodes:
@@ -772,7 +803,8 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> t
         """SELECT edge_id, from_node_id, to_node_id, edge_type, relationship_basis,
                   computed_strength
            FROM bodha_cgm_edges
-           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s""",
+           WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
+           ORDER BY edge_id""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
 
