@@ -1,0 +1,177 @@
+-- 1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Unblocks accepted_rebuild_observed for bo_cgm_motifs (NIRMANA campaign
+-- wave 3): its asset_provenance_receipts row for the wave-3 build carries
+-- receipt_state='unknown' / unknown_reasons=["output_digest_spec_unavailable",
+-- "output_digest_unavailable"] because no row existed yet in
+-- asset_output_digest_specs. Same class as 976 (bo_karanajala), 982/983
+-- (bo_cgm_paths), 996/997 (bo_sangati) -- the #1888/D-CND-29 transitive-
+-- contamination class this campaign has been clearing asset-by-asset.
+--
+-- BoCgmMotifsWriter (pipeline/orchestrator/writers/bo_cgm_motifs.py, read in
+-- full, 895 lines post-fix) is a LIGHT, chart-scoped delete-then-insert
+-- writer over THREE tables, one pass per ayanamsha (5 canonical
+-- ayanamshas), all rewritten every run:
+--   1. bodha_cgm_motifs                -- one row per detected structural
+--      motif (yoga_cluster, mutual_reception, stellium, parivartana_chain,
+--      mutual_aspect, mutual_aspect_triangle).
+--   2. bodha_cgm_sub_graphs            -- one row per connected component
+--      (>=2 nodes) over the real CGM edge set.
+--   3. bodha_cgm_chart_topology_summary -- one row per ayanamsha: graph-level
+--      structural facts (hub ranking, isolated nodes, triangle/SCC counts,
+--      diameter, density, dispositor cycles).
+--
+-- Co-writer investigation (grepped tree-wide for INSERT/DELETE/UPDATE INTO
+-- each of the three tables across pipeline/orchestrator/writers/*.py,
+-- excluding this writer's own file and test files): every other hit across
+-- all three tables is a READ (bo_yantra_mechanism, bo_karanajala, bo_bimba,
+-- bo_upaya read bodha_cgm_motifs and/or the other two). BoCgmMotifsWriter is
+-- the confirmed sole writer of all three tables.
+--
+-- CONFIRMED NON-DETERMINISM, FIXED AT THE SOURCE (not carved out of the
+-- digest -- unlike 996/997's bo_sangati precedent, this was cheap and safe
+-- to fix in the writer itself rather than exclude columns from the spec):
+--   1. Both source SELECTs (bodha_cgm_nodes, bodha_cgm_edges) fetched with
+--      NO ORDER BY. Everything downstream that iterates all_nodes/all_edges
+--      in fetch order (top_5_hub_nodes_jsonb tie-breaking,
+--      isolated_node_ids_array order, and the member/edge ordering inside
+--      yoga_cluster/mutual_reception/stellium/parivartana_chain motifs) was
+--      therefore only incidentally stable, not guaranteed reproducible
+--      across rebuilds. Fixed: both queries now carry
+--      `ORDER BY node_id` / `ORDER BY edge_id`.
+--   2. _detect_mutual_aspects built its A-vs-B pair adjacency via a Python
+--      `set`/`frozenset` (graha_id_set, mutual_edge keyed by frozenset,
+--      mutual_adj), then read back `a, b = tuple(pair)` -- iterating a
+--      frozenset's internal hash-bucket order, which for str/uuid keys
+--      depends on Python's per-process hash randomization
+--      (PYTHONHASHSEED is not pinned anywhere in this pipeline; confirmed by
+--      grepping the whole platform/ tree for PYTHONHASHSEED -- the only
+--      hits are an L0 test harness and three L0 integrity-contract
+--      migrations, unrelated to this writer or its runtime). This made
+--      involved_node_ids_array / involved_edge_ids_array / motif_name for
+--      EVERY mutual_aspect and mutual_aspect_triangle motif silently
+--      reorder across separate process runs of the identical chart+input.
+--      Fixed: pair order is now always the sorted (lo, hi) tuple, and
+--      edge_ids are re-derived directly from the `asp` adjacency dict by
+--      that fixed order, never from frozenset iteration.
+--   3. bodha_cgm_sub_graphs.node_ids_array (`comp`, a DFS traversal over
+--      Python `set`-typed adjacency) had the same hash-order dependency.
+--      Fixed: stored as `sorted(comp)`. subgraph_centroid_node_id's
+--      max()-by-degree tie-break (never actually contended on the
+--      canonical chart's real edge set -- see the live tie-check below --
+--      but strengthened regardless) now breaks ties by smallest node_id
+--      instead of first-in-traversal-order.
+--
+-- LIVE VERIFICATION (not just code review): live-verified this class of
+-- non-determinism was REAL, not theoretical, by running the pure detector
+-- functions against the canonical chart's live bodha_cgm_nodes/
+-- bodha_cgm_edges twice under different PYTHONHASHSEED values on the
+-- PRE-FIX code (via `git show HEAD:...` into a throwaway copy) -- outputs
+-- diverged (different node_ids/edge_ids/motif_name for the same logical
+-- motifs, e.g. "Mutual Aspect: Jupiter <-> Ketu" under one seed became
+-- "Mutual Aspect: Jupiter <-> Mars" at the same array position under
+-- another). Re-ran the identical comparison against the POST-FIX code
+-- under PYTHONHASHSEED=0, PYTHONHASHSEED=99999, and PYTHONHASHSEED=random,
+-- across all 5 canonical ayanamshas -- byte-identical JSON output every
+-- time. Also confirms no functional regression: motif/sub_graph counts and
+-- classes match the live production table exactly (120 motifs -- 36
+-- mutual_aspect + 84 mutual_aspect_triangle, 0 from the other four detector
+-- classes on this chart's current real edge set -- and 1 sub_graph per
+-- ayanamsha), for all 5 ayanamshas.
+--
+-- Degree-tie check (the other class of risk this campaign's precedent
+-- checks for, per bo_cgm_paths/bo_sangati): live-queried
+-- bodha_cgm_nodes.degree_in+degree_out for the canonical chart's latest
+-- build -- only degree 0 (130 isolated nodes) has any tie; every non-zero
+-- degree value is unique. That column isn't what this writer's own
+-- undirected-adjacency degree computation uses for hub ranking (it
+-- recomputes degree locally from the real edge set), so this is
+-- corroborating, not conclusive, evidence -- the ORDER BY fix above removes
+-- the dependency on fetch-order-driven tie-breaking regardless of whether a
+-- tie is ever actually hit.
+--
+-- Verified separately: existing unit test suite
+-- (tests/l2/test_bo_wp22_cgm_motifs.py, 18 tests) passes unchanged against
+-- the fixed writer; no other test file imports bo_cgm_motifs's internals.
+--
+-- Column exclusions (dead/never-written columns, not order-sensitive ones
+-- -- same "correctly excluded rather than digested as a constant NULL"
+-- class as 996's bodha_cdlm_cells findings, confirmed via
+-- information_schema.columns default/nullable + the INSERT column lists in
+-- bo_cgm_motifs.py:86-146):
+--   - bodha_cgm_sub_graphs.classical_archetype_match -- writer always sets
+--     it to Python None (bo_cgm_motifs.py, `_compute_sub_graphs`).
+--   - bodha_cgm_sub_graphs.graphml_export_jsonb / gexf_export_jsonb --
+--     nullable, absent from _SUBGRAPH_INSERT's column list entirely.
+--   - bodha_cgm_chart_topology_summary.chart_topology_embedding_vec /
+--     per_graha_story_arc_jsonb / graphml_full_export_jsonb /
+--     gexf_full_export_jsonb -- nullable, absent from _TOPOLOGY_INSERT's
+--     column list entirely.
+-- Also excluded (identity/lifecycle columns, not this writer's content):
+-- motif_id / subgraph_id / summary_id (fresh uuid4 per row, not
+-- reproducible by design), build_id (changes every rebuild, not part of
+-- output content per this campaign's established convention), computed_at
+-- (wall-clock timestamp).
+--
+-- Natural key (per component; no live UNIQUE constraint exists on any of
+-- the three tables, so these are the writer's own dedup invariants, live-
+-- verified against the canonical chart 482012f1-710e-4a25-994a-93821f5871aa,
+-- 0 duplicate-key groups and 0 NULL keys in every case):
+--   - bodha_cgm_motifs: (chart_id, ayanamsha_id, snapshot_type,
+--     fingerprint_hash) -- fingerprint_hash IS this writer's own declared
+--     "deterministic hash for a motif: sorted node_ids + motif_class"
+--     (_fingerprint(), bo_cgm_motifs.py:161), the intended per-motif
+--     identity. 600 rows (120 x 5 ayanamshas), 0 dupes, 0 NULLs.
+--   - bodha_cgm_sub_graphs: (chart_id, ayanamsha_id,
+--     subgraph_centroid_node_id) -- centroid is drawn from the component's
+--     own (disjoint) member set, so no two components in the same
+--     ayanamsha can share a centroid; nullable in the schema but never
+--     actually NULL (always computed via max()/min() over a non-empty
+--     component). 5 rows (1 x 5 ayanamshas), 0 dupes, 0 NULLs.
+--   - bodha_cgm_chart_topology_summary: (chart_id, ayanamsha_id,
+--     snapshot_type) -- the table's own live UNIQUE constraint minus
+--     build_id (standard REPLACE-per-chart precedent). 5 rows, 0 dupes.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented, then rehearsed end-to-end against
+-- live prod inside a ROLLED-BACK transaction (psycopg3, autocommit=False,
+-- dict_row) calling the REAL compute_output_digest(cur, asset_id=
+-- 'bo_cgm_motifs') over all live canonical-chart rows across all three
+-- components -- got back a clean 64-hex digest
+-- (6353b55b5d5fd4d2b8dedc4dec73e25197c371f6b82f3dad9c3c39d65e2c1665), no
+-- exception, all three key-preflights passed -> rolled back -> re-queried
+-- asset_output_digest_specs from a fresh connection afterward and confirmed
+-- 0 rows for bo_cgm_motifs, i.e. genuinely rolled back, nothing persisted
+-- by the rehearsal.
+--
+-- Numbering note: highest migration on origin/main at cycle start is 991
+-- (mi_bhavisya, PR #2506, merged). Highest number claimed by any OPEN PR
+-- touching migrations/ at authoring time is 999 (PR #2511, L1 lane,
+-- mi_pariksha 998/999) -- swept live via `gh pr list` + per-PR
+-- `gh pr diff --name-only` across every open PR before picking a number
+-- (996/997 bo_sangati's own renumber-collision lesson, re-applied
+-- preventively rather than reactively this time). 1000 is therefore the
+-- next free number.
+--
+-- Authored on its own branch/PR, separate from the in-flight bo_sangati PR
+-- (#2508, migrations 996/997) despite sharing this wave's original
+-- "bo-cgm-motifs-sangati" branch name -- that PR already has CI mostly
+-- green and auto-merge armed; this migration pairs with a real writer code
+-- change (not just a migration), so it gets its own review-sized PR rather
+-- than risking delaying #2508's merge with an extra CI cycle.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_cgm_motifs' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_cgm_motifs',
+  '273e75ee1d579cf1a4039daf7d9b74dbf9213fd28698aad30048bc769026e717',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_cgm_motifs","relation":"bodha_cgm_motifs","key_columns":["chart_id","ayanamsha_id","snapshot_type","fingerprint_hash"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","fingerprint_hash","motif_class","motif_name","involved_node_ids_array","involved_edge_ids_array","motif_strength","classical_citation_id","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_cgm_sub_graphs","relation":"bodha_cgm_sub_graphs","key_columns":["chart_id","ayanamsha_id","subgraph_centroid_node_id"],"value_columns":["chart_id","ayanamsha_id","subgraph_centroid_node_id","subgraph_type","subgraph_label","node_ids_array","edge_ids_array","subgraph_density","representative_path_jsonb","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_cgm_chart_topology_summary","relation":"bodha_cgm_chart_topology_summary","key_columns":["chart_id","ayanamsha_id","snapshot_type"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","total_nodes","total_edges","top_5_hub_nodes_jsonb","top_5_central_nodes_jsonb","triangle_count","strongly_connected_components_count","graph_diameter","graph_density","isolated_node_ids_array","dispositor_cycle_jsonb","hub_dominance_score","fragmentation_score","graph_fingerprint_hash","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
