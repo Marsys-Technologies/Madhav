@@ -1,0 +1,102 @@
+-- 964_nirmana_l4_ph_phaladesa_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Sixth L4 pick this cycle's stream after ph_sodhana
+-- (954/955), ph_suddha_sodhana (956/957), ph_pramana (958/959),
+-- ph_sankrama (960/961), ph_pratikara (962/963). Still no ruling on the
+-- deferred mi_bhavisya/bo_upaya/bo_cdlm_summary/mi_pariksha/mi_pramana/
+-- mi_adhilepa subset-of-tables question (re-raised on #1770, unanswered
+-- across 4+ cycles now) -- continuing down the independent single-table
+-- `ph_*` work stream per standing next-cycle notes.
+--
+-- PhPhaladesakWriter (pipeline/orchestrator/writers/ph_phaladesa.py,
+-- @register("ph_phaladesa")) is the SOLE writer of phala_phaladesa --
+-- the writer's own docstring states "NEVER writes outside phala_phaladesa"
+-- and test_ph_wave7.py::test_writer_only_writes_phala_phaladesa asserts
+-- this in source. Grep across all .py files for the table name found no
+-- other INSERT/UPDATE/DELETE site.
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_phaladesa WHERE chart_id = %s` immediately before the
+-- INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3), plus an
+-- `ON CONFLICT (chart_id, domain) DO UPDATE` upsert as a second idempotency
+-- layer (belt-and-suspenders, not the primary mechanism).
+--
+-- Natural key: (chart_id, domain) -- this IS the table's own live UNIQUE
+-- index `phala_phaladesa_natural_key`. domain is CHECK-constrained to the
+-- 13-member canonical domain vocabulary (migration 386, superseding the
+-- original 7-member vocabulary migration 339 shipped with). Live-checked
+-- for the canonical chart: 13 rows (one per canonical domain), 0 NULLs
+-- across both key columns, 0 duplicate (chart_id, domain) groups.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped writer + engine.py for
+-- `cell_id`/`cgm_node`/`cdlm_cell`/`node_id`/`uuid4` -- the only hit is the
+-- writer's own module docstring listing `bodha_msr_signals`/
+-- `bodha_cdlm_cells`/`bodha_cgm_edges` as B.11 WHOLE-CHART-READ inputs the
+-- writer READS from (aggregated into a per-domain average score, never
+-- copied verbatim) -- not a written field. Engine (services/ph_phaladesa/
+-- engine.py) is DB-free and structurally deterministic.
+--
+-- ONE GENUINE NON-DETERMINISM FOUND, handled by exclusion (not by fixing
+-- the writer -- out of this migration's scope; flagged on #1770 for the
+-- record): `narration_jsonb` is built by the writer's own
+-- `_build_deterministic_narration()` helper and embeds
+-- `"generated_at": date.today().isoformat()` -- rebuilding the SAME chart
+-- on two different calendar days produces a different `narration_jsonb`
+-- value even though every substantive input (magnitude, confidence,
+-- malleability, spillovers, mitigation/muhurta availability, pramana
+-- status, contradiction summary) is unchanged. This is the same class of
+-- problem `computed_at`/surrogate-PK exclusion already solves for every
+-- prior spec in this campaign -- a column whose value is metadata about
+-- WHEN the row was materialized, not WHAT was computed -- so it is
+-- excluded from value_columns here for the same reason, not folded into
+-- the "genuine content change" surface a digest is supposed to detect.
+-- The narration TEXT's substantive content is fully redundant with the
+-- other included columns (it is a template rendering of them), so nothing
+-- is lost from the digest's change-detection power by excluding the
+-- wrapper JSON that carries the wall-clock stamp alongside it.
+--
+-- Excluded from spec: `phaladesa_id` (surrogate PK, `gen_random_uuid()`
+-- default), `computed_at` (DEFAULT now()) -- same exclusion class as every
+-- prior spec -- and `narration_jsonb` (non-deterministic `generated_at`,
+-- new exclusion class this migration, documented above). 28 value_columns
+-- of 31 live columns.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                              # == the literal below
+--   print(_validate_spec('ph_phaladesa', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_phaladesa') -> got back a clean 64-hex digest
+-- (7cb5b3e1fea4bbe7f958e59e08f256613fbf15acf0b72f47a73a68e86e21c500, no
+-- exception, key-preflight passed over all 13 live rows for the canonical
+-- chart, 0 NULLs across both key columns) -> conn.rollback() -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and
+-- confirmed 0 rows for ph_phaladesa, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_phaladesa' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_phaladesa',
+  '8d1d67d3b4e0ba838b2fcf489b9724c259665a7dcda1ad0e87e5a0ed61285582',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_phaladesa","relation":"phala_phaladesa","key_columns":["chart_id","domain"],"value_columns":["chart_id","domain","anchor_count","clean_anchor_count","staged_revision_count","anomaly_flag_count","top_anchor_id","prediction_window_start","prediction_window_end","peak_date","magnitude","confidence_low","confidence_high","malleability","spillover_domains_jsonb","incoming_spillover_count","mitigation_available","muhurta_available","pramana_window_status","evidence_type","precedent_refs_jsonb","contradiction_summary_jsonb","derivation_summary_jsonb","narration_status","narration_requested_at","narration_model","derivation_ledger_jsonb","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
