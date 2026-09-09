@@ -1,0 +1,177 @@
+-- 990_nirmana_l2_bo_sangati_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Unblocks accepted_rebuild_observed for bo_sangati (NIRMANA campaign wave 3,
+-- build_run_id 1a7889d2-af83-4f39-a0d4-253248529875): its
+-- asset_provenance_receipts row for that build carries
+-- receipt_state='unknown' / unknown_reasons=["output_digest_spec_unavailable",
+-- "output_digest_unavailable"] because no row existed yet in
+-- asset_output_digest_specs. Same class as 976 (bo_karanajala), 982/983
+-- (bo_cgm_paths), 939/940 (bo_laksana_rerank) -- the #1888/D-CND-29 transitive-
+-- contamination class this campaign has been clearing asset-by-asset now that
+-- bo_karanajala/bo_bimba/bo_laksana are frozen with deterministic identities.
+--
+-- bo_sangati (BoSangatiWriter, pipeline/orchestrator/writers/bo_sangati.py:403)
+-- is a LIGHT, chart+ayanamsha-scoped replace-then-insert writer over THREE
+-- tables (read the file in full, 456 lines):
+--   1. bodha_cdlm_cells    -- one row per (domain_row, domain_col) pair
+--      sharing >=1 bodha_msr_signals row, via replace_prior_cdlm_cells()
+--      (bodha_writers/_idempotency.py) then batched INSERT.
+--   2. bodha_convergence   -- one row per domain with >=1 signal, via
+--      replace_prior_convergence() then batched INSERT.
+--   3. bodha_triangulation -- one row per (question_class=domain, tradition)
+--      pair with >=1 signal for that tradition, via an inline
+--      DELETE FROM bodha_triangulation WHERE chart_id=%s AND ayanamsha_id=%s
+--      then per-row INSERT ... ON CONFLICT (chart_id, ayanamsha_id,
+--      question_class, tradition) DO UPDATE.
+-- All three DELETEs/replace helpers are chart(+ayanamsha)-scoped and all 5
+-- ayanamshas are rewritten every run, so a chart-wide component spec is a
+-- valid REPLACE-per-chart digest surface for each table (standard precedent).
+--
+-- Co-writer investigation (grepped tree-wide for INSERT/DELETE/UPDATE INTO
+-- each of the three tables across pipeline/orchestrator/writers/*.py and
+-- bodha_writers/_idempotency.py, excluding this writer's own file and test
+-- files): every other hit across all three tables is a READ (bo_pramana_mapa,
+-- ka_yojaka, ph_phaladesa, ph_sankrama, bo_upaya, bo_cdlm_summary,
+-- bo_chart_gestalt read bodha_cdlm_cells; bo_pramana_mapa, bo_anveshana,
+-- bo_samvada read bodha_convergence; mi_darshana reads bodha_triangulation).
+-- BoSangatiWriter is the confirmed sole live writer of all three tables.
+--
+-- Programmatic column<->VALUES pairing (never hand-counted -- a Python script
+-- regex-paired each INSERT's column list against its VALUES tuple 1:1) found
+-- a real, confirmed dead-computation defect: bodha_cdlm_cells.
+-- domain_relationship_class is COMPUTED in Python (_build_cdlm_cells assigns
+-- it into the cell dict) but the INSERT statement binds that column position
+-- to a literal NULL, never %(domain_relationship_class)s -- the computed
+-- value is silently discarded, never persisted. Same finding for a dozen
+-- other bodha_cdlm_cells columns (contradicting_signal_pairs_jsonb,
+-- shared_factor_keys_jsonb, cgm_*_jsonb, weakest_constituent_graha_jsonb,
+-- etc.) and several bodha_convergence columns (dynamic_system_id/
+-- dynamic_maha_lord/dynamic_antar_lord, and bodha_convergence.
+-- classical_sources_jsonb which is not in the writer's INSERT column list at
+-- all) -- all always NULL for every row this writer has ever produced, not a
+-- writer BUG worth fixing here (out of scope for a digest-spec migration; a
+-- column nothing ever writes is not "this writer's declared output"), just
+-- correctly EXCLUDED from value_columns below rather than digested as a
+-- constant NULL.
+--
+-- CONFIRMED NON-DETERMINISM (live-verified, deliberately excluded, NOT a
+-- silent gap): both `_fetch_signals()` (bo_sangati.py:196) and the domain/
+-- tradition grouping loops that consume it run over bodha_msr_signals with NO
+-- ORDER BY. Two derived array columns select a top-N subset by
+-- computed_salience and are therefore sensitive to which physical row a tied
+-- salience value lands on when PostgreSQL's row order is unspecified:
+--   - bodha_convergence.top_signal_ids_array (top-5 signal_ids by salience
+--     per domain)
+--   - bodha_triangulation.signal_ids (the FULL, un-sorted list of signal_ids
+--     per (domain, tradition) in raw fetch order -- not even limited to a
+--     top-N window)
+-- Live-verified directly against the canonical chart (RANK()/COUNT() OVER
+-- window query, all 5 ayanamshas): salience ties at and around the top-5
+-- boundary are common and real, not a hypothetical edge case -- e.g.
+-- krishnamurti/relationship has a 13-way tie at rank 1, krishnamurti/family a
+-- 4-way tie at rank 1 and a 3-way tie at rank 5. This is the same
+-- non-determinism defect CLASS the bo_cgm_paths migration (982) checked for
+-- and found absent (zero dispositor-edge ties); here the ties are real, so
+-- the two order-sensitive array columns are excluded from value_columns
+-- rather than digested unreproducibly. Every OTHER column derived from the
+-- same tied signal set is unaffected and safely included:
+--   - all COUNT/SUM/MAX/mean aggregates (convergence_count, salience_*,
+--     shared_signal_count, etc.) are order-independent by construction.
+--   - convergence_score / computed_linkage_strength / net_linkage_strength
+--     (linkage_formula_v1, convergence_formula_v1 in bodha_writers/
+--     formulas.py, both read start-to-finish) are pure sum/len/max/set
+--     reductions over the (order-irrelevant) signal set -- no positional
+--     dependence anywhere in either formula.
+--   - bodha_triangulation.verdict_inputs.top5_saliences and
+--     .concordance_score select the top-5 VALUES by descending salience: at
+--     a tie boundary, swapping which physical row occupies a tied rank
+--     yields the identical VALUE at that position (the values are equal by
+--     definition of "tied"), so the resulting value list -- and therefore
+--     concordance_score, its mean -- is deterministic even though which
+--     specific signal_id fills that slot is not. Only the ID selection is
+--     unreproducible, not the score.
+--   - shared_signal_ids_array (bodha_cdlm_cells) is explicitly
+--     `sorted(shared_ids)` in Python before storage -- deterministic,
+--     included.
+--   - top_k_rank_in_snapshot (bodha_cdlm_cells) ranks cells by
+--     computed_strength (an order-independent value) via Python's stable
+--     sort over `all_pairs = combinations(CANONICAL_DOMAINS_SORTED, 2)` --
+--     fixed, code-defined iteration order, not database fetch order -- so
+--     even a strength tie between two cells resolves to a fixed rank
+--     assignment every rebuild. Included.
+--   - *_jsonb columns (shared_signals_by_tradition_jsonb,
+--     tradition_breakdown_jsonb, verdict_inputs) are immune to Python dict
+--     insertion-order variance: PostgreSQL's jsonb type canonicalizes object
+--     key order on parse, independent of input order (this does NOT apply to
+--     native array columns like signal_ids/top_signal_ids_array, which
+--     preserve insertion order exactly -- the reason those two are the ones
+--     excluded here).
+-- Flagging this for a future writer fix (add a deterministic secondary sort
+-- key, e.g. `ORDER BY computed_salience DESC, signal_id ASC`, to the two
+-- top-N selections) is worthwhile but out of scope for this migration --
+-- narrowing the digest to the writer's genuinely-reproducible surface is a
+-- data-scoping decision within a migration's normal authority, not a code
+-- change, and unblocks the campaign today without waiting on that fix.
+--
+-- Natural key (per component, matches each table's live UNIQUE constraint
+-- minus build_id and the dynamic_system_id/dynamic_maha_lord/
+-- dynamic_antar_lord/tradition_view_id/subdomain_row/subdomain_col columns
+-- this writer always leaves NULL): bodha_cdlm_cells (chart_id, ayanamsha_id,
+-- snapshot_type, domain_row, domain_col); bodha_convergence (chart_id,
+-- ayanamsha_id, snapshot_type, domain); bodha_triangulation (chart_id,
+-- ayanamsha_id, question_class, tradition) -- this last one IS the table's
+-- own live UNIQUE constraint verbatim (no build_id in it at all; the writer
+-- uses ON CONFLICT ... DO UPDATE on exactly this key, not delete-then-insert,
+-- though the per-ayanamsha DELETE immediately prior makes the two
+-- equivalent in practice for a single build). Live-verified against the
+-- canonical chart 482012f1-710e-4a25-994a-93821f5871aa: 0 duplicate-key
+-- groups and 0 NULL keys across all three tables (280 bodha_cdlm_cells rows,
+-- 60 bodha_convergence rows, 195 bodha_triangulation rows).
+--
+-- bodha_triangulation carries 143 dangling signal_ids references today from
+-- BEFORE bo_laksana's deterministic-identity fix (documented in
+-- bo_laksana.py's assign_deterministic_signal_ids() docstring, Nirmana
+-- #1804/D-NATIVE-05 §5) -- irrelevant to this spec since bo_sangati's own
+-- rebuild (this campaign wave) fully replaces every bodha_triangulation row
+-- for the chart before this digest is ever computed against fresh output.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented, then rehearsed end-to-end against
+-- live prod inside a ROLLED-BACK transaction (psycopg3, autocommit=False,
+-- dict_row) calling the REAL compute_output_digest(cur, asset_id=
+-- 'bo_sangati') over all live canonical-chart rows across all three
+-- components -- got back a clean 65-hex digest
+-- (1dcdac108da1e17fd512b2c6d543d2c1043b04f24fb3838e3584ca11ed8e4d30), no
+-- exception, all three key-preflights passed -> rolled back -> re-queried
+-- asset_output_digest_specs from a fresh statement afterward and confirmed 0
+-- rows for bo_sangati, i.e. genuinely rolled back, nothing persisted by the
+-- rehearsal:
+--   cd platform/python-sidecar && PYTHONPATH=. python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec, compute_output_digest
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('bo_sangati', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Numbering note: highest migration on origin/main at cycle start is 989
+-- (mi_adhilepa, L1 lane's prior PR #2505). Re-fetched immediately before
+-- authoring this file to confirm 990/991 still free; no open PR touches
+-- migrations/ (checked all four open PRs at cycle start: #1500, #1189, #899,
+-- #898, none touch migrations/990+).
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_sangati' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_sangati',
+  'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_cdlm_cells","relation":"bodha_cdlm_cells","key_columns":["chart_id","ayanamsha_id","snapshot_type","domain_row","domain_col"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","domain_row","domain_col","shared_signal_count","shared_factor_count","unique_signals_row_domain","unique_signals_col_domain","shared_signal_salience_sum","shared_signal_max_salience","positive_contribution","negative_contribution","net_linkage_strength","computed_linkage_strength","linkage_formula_version","contradicting_signal_pairs_count","cross_domain_contradiction_flag","shared_signal_ids_array","shared_signals_by_tradition_jsonb","top_k_rank_in_snapshot","msr_salience_version_used","verification_pass_status","citation_ref","citation_human","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_convergence","relation":"bodha_convergence","key_columns":["chart_id","ayanamsha_id","snapshot_type","domain"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","domain","convergence_count","convergence_score","convergence_formula_version","cross_tradition_count","tradition_breakdown_jsonb","salience_weighted_sum","salience_max","contradiction_count","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_triangulation","relation":"bodha_triangulation","key_columns":["chart_id","ayanamsha_id","question_class","tradition"],"value_columns":["chart_id","ayanamsha_id","question_class","tradition","verdict_inputs","concordance_score","formula_version","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
