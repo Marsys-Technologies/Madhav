@@ -1,0 +1,142 @@
+-- 990_nirmana_l5_mi_bhavisya_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling (subset-of-tables output_digest_spec APPROVED as the
+-- default pattern -- no per-instance sign-off needed).
+-- `mi_bhavisya` (pipeline/orchestrator/writers/mi_bhavisya.py, 274 lines)
+-- is a TWO-TABLE writer: mimamsa_predictions, mimamsa_manifestation_sets
+-- (both via literal INSERT, no templated/dynamic SQL -- confirmed by
+-- reading the full source, not just grepping).
+--
+-- THIS MIGRATION SPECS 1 OF THE 2 TABLES: mimamsa_manifestation_sets only.
+-- mimamsa_predictions is DELIBERATELY EXCLUDED -- see "DEFECT FOUND, NOT
+-- FIXED HERE" below and the #1770 flag. Per #2502's own rationale
+-- ("fabricating coverage... violates B.10/N.8; silently omitting with no
+-- flag violates N.6"), the correct move is to spec the clean component,
+-- flag the rest, not block on it and not fabricate over it.
+--
+-- Co-writer check (tree-wide grep for both tables across
+-- pipeline/orchestrator/writers/*.py, brahmagyan/, excluding this writer's
+-- own file and tests/):
+--   * mimamsa_manifestation_sets: mi_sambandha.py and mi_pramana.py both
+--     read-only (SELECT ... FROM mimamsa_manifestation_sets, no INSERT/
+--     UPDATE/DELETE) -- MiBhavisyaWriter confirmed sole BUILD-TIME writer.
+--   * mimamsa_predictions: mi_pramana.py/mi_gunanaka.py/mi_pariksha.py are
+--     all read-only (SELECT/LEFT JOIN, no writes). mi_abhilekha.py is a
+--     ratified service-handler (ratified no-build-time-rows class) that
+--     UPDATEs lifecycle_status on this writer's OWN rows post-hoc -- by
+--     design, this is the documented IRREPLACEABLE-outcome mutation the
+--     writer's own idempotency comment already accounts for (rows past
+--     'pending'/'due' are excluded from this writer's DELETE scope).
+--     brahmagyan/mimamsa/prediction_ledger.py's log_prediction is mounted
+--     LIVE at POST /api/brahma/mimamsa/log_prediction and DOES insert into
+--     public.mimamsa_predictions -- but its INSERT column list
+--     (prediction_text, confidence, falsifier, source_citation,
+--     predicted_at) targets columns that DO NOT EXIST on the live table
+--     (confirmed via \d mimamsa_predictions: the real columns are
+--     outcome_claim, confidence_band, falsifier_jsonb, source_pramana_id,
+--     emitted_at -- no prediction_text/confidence/falsifier/
+--     source_citation/predicted_at columns at all). Any live call to this
+--     endpoint would raise psycopg.errors.UndefinedColumn -- dead/broken
+--     on arrival, not a live co-writer threat. Same disconnected-legacy-
+--     schema pattern brahmagyan/mimamsa/outcome.py's own inline comment
+--     already documents for its sibling calibration path. Flagged on
+--     #1770 as a separate schema-drift defect (broken API route), not
+--     this migration's blocker.
+--
+-- DEFECT FOUND, NOT FIXED HERE -- mimamsa_predictions excluded from this
+-- spec (flagged on #1770, same disposition class as mi_adhilepa's
+-- mimamsa_load_bearing w400 -- missing-tiebreak non-determinism,
+-- live-verified not just theorized):
+--   mi_bhavisya.py:165-171's driving_signals field picks, per prediction,
+--   either `msr_by_domain[domain]` (top-5 bodha_msr_signals rows per
+--   domain, built by iterating an unordered-tie-wise `SELECT ... FROM
+--   bodha_msr_signals WHERE chart_id = %s ORDER BY computed_salience DESC
+--   NULLS LAST`, capped at 5 per domain bucket) or, if no domain match, a
+--   chart-wide top-5 fallback (`list(msr_signals.keys())[:5]`, same
+--   ordering). A LIVE window-function tie-check on bodha_msr_signals for
+--   the canonical chart (482012f1) found REAL ties AT THE TOP-5 CUTOFF in
+--   9 of 10 domains checked: health (grp of 6 tied, spanning rank 4-9),
+--   transition (8 tied, rank 4-11), residence (4 tied, rank 3-6), progeny
+--   (10 tied, rank 5-14), relationship (14 tied, rank 1-14 -- the ENTIRE
+--   candidate set for this domain is one tied salience value), wealth (2
+--   tied, rank 5-6), family (14 tied, rank 5-18), education (8 tied, rank
+--   4-11), travel (4 tied, rank 3-6), spirituality (16 tied, rank 1-16).
+--   Which specific signal_ids land in the top-5 for any of these domains
+--   is therefore not guaranteed stable across rebuilds -- this is not a
+--   corner case on this writer, it is the dominant behavior for the
+--   canonical chart itself. (The chart-wide fallback path itself has 0
+--   ties at its own top-5 cutoff -- the defect is entirely in the
+--   per-domain bucket path, which is the PRIMARY path whenever a domain
+--   match exists.) This is a genuine writer-level non-determinism defect,
+--   not a co-writer artifact -- needs a secondary ORDER BY tiebreak key
+--   (e.g. signal_id) added to the writer's own query before any spec
+--   covering mimamsa_predictions.driving_signals can be attempted.
+--   Wall-clock columns (emitted_at, frozen_bundle_hash -- the latter is
+--   itself a hash OF emitted_at, per _hash_bundle -- and created_at) would
+--   also need exclusion from value_columns regardless (same class as
+--   every prior spec this campaign), but are moot given the driving_signals
+--   defect already disqualifies the table outright.
+--
+-- Non-determinism check on the 1 specced table (mimamsa_manifestation_sets):
+-- fed by `SELECT * FROM phala_anchors WHERE chart_id = %s ORDER BY
+-- anchor_id` -- explicitly ordered, one row emitted per anchor, no top-N
+-- cut, no aggregation -- content-set independent of fetch order.
+-- Live duplicate-key / NULL-key check on the natural key (chart_id,
+-- prediction_id, channel_id) across BOTH populated charts (canonical
+-- 482012f1: 139 rows, 1c826d5a: 56 rows): 0 duplicate groups, 0 NULL keys.
+--
+-- Natural key: `(chart_id, prediction_id, channel_id)` -- matches the
+-- table's own live PRIMARY KEY exactly (confirmed via \d
+-- mimamsa_manifestation_sets against prod).
+--
+-- Surrogate/non-deterministic-across-rebuilds column excluded from the
+-- digest value columns: frozen_at (wall-clock write-time artifact, same
+-- exclusion class as created_at throughout this campaign -- this writer
+-- computes ONE emitted_at/frozen_at timestamp per run and stamps every
+-- row with it, so it differs every rebuild regardless of underlying
+-- chart-fact content).
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                  # == the literal below
+--   print(_validate_spec('mi_bhavisya', spec, sha).asset_id)        # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_bhavisya')` -- got back a
+-- clean 65-hex digest
+-- (4a6726e8f82c1e77bf5844b7eac6b7f8c196c2ecdd3c16bcd96863818740b2c6, no
+-- exception, key-preflight passed) -> rolled back -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for mi_bhavisya, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Numbering note: highest APPLIED migration in `_migrations_applied` at
+-- cycle start is 989 (mi_adhilepa, this lane's own prior cycle). Checked
+-- origin/main and every open PR branch's git tree fresh this cycle for any
+-- 990/991 file -- zero hits. 990 confirmed free. #2503's renumber-
+-- disclosure fleet blocker MERGED prior to this cycle -- `migrate.ts
+-- --dry-run` re-confirmed clean fresh this cycle, so this migration is
+-- applied via the NORMAL migrate.ts path, not the surgical psql workaround.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_bhavisya' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_bhavisya',
+  '4fce81cc32933c560a50521477689fe3b7feebe87f32a9b25ce4645f69d90a13',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_manifestation_sets","relation":"mimamsa_manifestation_sets","key_columns":["chart_id","prediction_id","channel_id"],"value_columns":["chart_id","prediction_id","channel_id","domain","source","citation_ref","is_literal"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
