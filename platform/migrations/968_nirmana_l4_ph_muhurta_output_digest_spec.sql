@@ -1,0 +1,115 @@
+-- 968_nirmana_l4_ph_muhurta_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Seventh L4 pick this cycle's stream after ph_sodhana
+-- (954/955), ph_suddha_sodhana (956/957), ph_pramana (958/959),
+-- ph_sankrama (960/961), ph_pratikara (962/963), ph_phaladesa (964/965).
+-- Still no ruling on the deferred mi_bhavisya/bo_upaya/bo_cdlm_summary/
+-- mi_pariksha/mi_pramana/mi_adhilepa subset-of-tables question (re-raised
+-- on #1770, unanswered across 5+ cycles now) -- continuing down the
+-- independent single-table `ph_*` work stream per standing next-cycle
+-- notes. Numbering note: 966 is reserved on L2's open #2482 branch
+-- (bo_karanajala) against an older main -- skipped to 968/969 to avoid a
+-- second cross-lane collision (see #1770 write-up for the first one,
+-- 958 on L1 vs L2's stale reservation).
+--
+-- PhMuhurtaWriter (pipeline/orchestrator/writers/ph_muhurta.py,
+-- @register("ph_muhurta")) is the SOLE BUILD-TIME writer of
+-- phala_muhurta -- grep across all .py files for the table name found
+-- exactly one other reference to writing it: brahmagyan/phala/muhurta.py
+-- (legacy PH-4-4 module, "BRAHMA-PH-4-4", 2026-06-04) exposes an HTTP
+-- action endpoint `POST /phala/seed_muhurta` (mounted via
+-- phala_muhurta_router in main.py) whose handler calls a DB function,
+-- `seed_phala_muhurta_native_sample(chart_id::UUID)`. Investigated as a
+-- potential co-writer and ruled OUT, for a stronger reason than the usual
+-- liveness/reachability check (the mi_adhilepa/ph_pratikara precedent):
+-- the function's LIVE definition (read via
+-- `pg_get_functiondef` against the running prod DB, not just the
+-- migration file) still targets the ORIGINAL PH-4-4 schema --
+-- `INSERT INTO phala_muhurta (chart_id, action_type, window_start,
+-- window_end, auspiciousness_score, factors, source_citation)` -- and
+-- `action_type`/`auspiciousness_score`/`factors` do NOT exist on the live
+-- table (confirmed via `\d phala_muhurta`: the real columns are
+-- `action_class`/`composite_quality`, no `factors` column at all --
+-- PhMuhurtaWriter's own schema, installed by a later migration that
+-- superseded PH-4-4's original one). Any live invocation of this
+-- endpoint would raise `column "action_type" does not exist` and insert
+-- ZERO rows -- it is not merely unreached, it is structurally guaranteed
+-- to fail against the current schema. Confirmed by grep this is the
+-- ONLY other reference to `seed_phala_muhurta_native_sample`/
+-- `seed_native_muhurta` in the whole tree outside its own definition.
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency:
+-- unconditional `DELETE FROM phala_muhurta WHERE chart_id = %s`
+-- immediately before the INSERT batch (delete-then-insert-per-chart,
+-- CLAUDE.md SS N.3), plus an `ON CONFLICT DO NOTHING` against the live
+-- unique constraint as a second idempotency layer.
+--
+-- Natural key: (chart_id, action_class, window_start) -- this IS the
+-- table's own live UNIQUE index `phala_muhurta_natural_key`. Live-checked
+-- for the canonical chart: 134 rows, 0 NULLs across all three key
+-- columns, 0 duplicate (chart_id, action_class, window_start) groups
+-- across the WHOLE table (not just this chart).
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped writer + engine.py for
+-- `cell_id`/`cgm_node`/`cdlm_cell`/`node_id`/`uuid4` -- zero hits. This
+-- writer's own B.11 read surface is ga_condition_composite / phala_anchors
+-- / kala_obstruction+kala_convergence / brahma_activity_ontology /
+-- chart_facts, plus a live serve-time ephemeris call into panchang_engine
+-- for real tarabala/chandrabala (JL-016) -- none of it copies a
+-- cross-layer surrogate id verbatim into a written column.
+--
+-- Non-determinism check (per the ph_phaladesa `date.today()`-in-jsonb
+-- lesson carried forward this campaign): grepped writer + engine.py for
+-- `date.today()`/`datetime.now()`/`utcnow()`/`uuid4()`/`random(` -- zero
+-- hits in either file. `tarabala_chandrabala_jsonb` is computed from
+-- `candidate_start` (itself derived deterministically from each anchor's
+-- own `window_start`/`peak_date`, not wall-clock) plus the chart's own
+-- natal Moon nakshatra/sign already in chart_facts -- a live ephemeris
+-- call, but over a deterministic historical/future instant, not "now".
+-- `panchanga_snapshot_jsonb` is a static `{'source':
+-- 'ka_muhurta_seva_proxy', 'graha': ...}` dict, not a computed panchanga
+-- read.
+--
+-- Excluded from spec: `muhurta_id` (surrogate PK, `gen_random_uuid()`
+-- default) and `computed_at` (DEFAULT now()) -- same exclusion class as
+-- every prior spec. 22 value_columns of 24 live columns.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('ph_muhurta', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_muhurta') -> got back a clean 65-hex digest
+-- (503fa4740715fc9fc728ab5aab8041591dcaef6c1b182af3fd0f81e21320f2f0, no
+-- exception, key-preflight passed over all 134 live rows for the
+-- canonical chart, 0 NULLs across all three key columns) ->
+-- conn.rollback() -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for ph_muhurta, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_muhurta' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_muhurta',
+  '444e28902841beb4caff75d1998da424ad38b39e3bae8024ffec4813b0bdc68f',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_muhurta","relation":"phala_muhurta","key_columns":["chart_id","action_class","window_start"],"value_columns":["chart_id","action_class","window_start","window_end","hora_lord","panchanga_score","panchanga_snapshot_jsonb","chart_personalization_score","personalization_graha","personal_adversity_penalty","overlapping_obstruction_id","linked_anchor_id","composite_quality","window_quality_verdict","verdict_reason","classical_citation","derivation_ledger_jsonb","source_citation","tarabala_chandrabala_jsonb","significators_met_jsonb","fructification_anchor","follow_up_hook_jsonb"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
