@@ -1,0 +1,207 @@
+-- 1011_nirmana_l5_mi_bhara_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v6 priority 2 (grant/contract pre-flight
+-- sweep, output_digest_spec dimension). `mi_bhara`
+-- (pipeline/orchestrator/writers/mi_bhara.py, ~21KB, LIGHT writer,
+-- has_substeps=False -- STAGE 9 of the W2 temporal-field pipeline) is the
+-- smallest of the remaining untouched non-LARGE real-gap candidates as of
+-- this cycle (`bo_upaya` 117KB and `ka_gochara_v3_century_materialize`
+-- 128KB reserved for subagent delegation per STATE precedent).
+--
+-- SCOPE: mi_bhara's sole writer output as of this cycle is TWO tables --
+-- `kala_field_skill` and `kala_field_gof` (confirmed via a tree-wide grep:
+-- mi_bhara.py is the only non-test file in the repo referencing either
+-- table). `kala_field_weight_versions` / `kala_field_weights` are declared
+-- in services/mi_bhara/db.py (insert_weights_version,
+-- supersede_previous_active) but NEVER CALLED from the writer's current
+-- run()/_fit_and_publish() path -- the writer's own docstring states the
+-- real parameter refit is pending Lane C's (ka_kshetra) basis columns, so
+-- today it only republishes skill+GOF against the AS-BUILT field. This is
+-- documented, honest scope (not a hidden defect) and out of scope for this
+-- spec until the writer actually writes those tables.
+-- `kala_insights` (the biographical-join refresh) is also out of scope:
+-- `upsert_biographical_echo_insights(conn, chart_id, [])` is called with a
+-- hardcoded empty list at mi_bhara.py:366 -- the writer inserts 0 rows
+-- there today (Lane E's biographical-join content generation is not yet
+-- wired up), so there is nothing yet to cover.
+--
+-- Non-determinism check (full source read of mi_bhara.py + every
+-- services/mi_bhara/*.py module it imports -- db.py, field.py, skill.py,
+-- gof.py, weights.py, living_lel.py -- applying the ka_taranga/ka_avadhi/
+-- ka_kalasutra/ka_jivana_parva/ka_gochara-cycle lesson that "small and
+-- simple-looking" is not "automatically clean"):
+--   * Every SQL fetch carries an explicit, deterministic, TOTAL-ORDER
+--     tiebreak: `fetch_field_segments` ORDER BY segment_index;
+--     `fetch_event_classes` DISTINCT ... ORDER BY event_class;
+--     `fetch_lel_events` ORDER BY event_date, event_id (module docstring
+--     states this is intentionally total so a same-date tie is
+--     reproducible); `fetch_open_predictions` ORDER BY prediction_id;
+--     `weights.py::_SELECT_ACTIVE` ORDER BY (fitted_from_chart_id = %s)
+--     DESC, activated_at DESC, version_id DESC (version_id DESC is an
+--     explicit documented tiebreak for concurrent resolution).
+--     `fetch_null_replicate_count` uses MAX(), an order-independent
+--     aggregate.
+--   * Every Python-side list that feeds a persisted column is re-sorted
+--     regardless of fetch order before use: `times = sorted(...)`
+--     (mi_bhara.py:264) feeds both the skill score's
+--     model_log_intensity/null_log_intensity_per_replicate AND the GOF's
+--     rescaled_z; `field.py::segments_from_rows` explicitly
+--     `.sort(key=lambda s: s.t_start)`s its input before
+--     `_validate_contiguous` even though the SQL is already ordered
+--     (belt-and-suspenders).
+--   * `aggregate_chart_skill`'s `pooled_d = np.concatenate([... for s in
+--     scored])` (skill.py:232) depends on `per_class`'s iteration order,
+--     which traces back to `fetch_event_classes`'s alphabetical ORDER BY
+--     -- deterministic across rebuilds, not physical-row-order-dependent.
+--   * The only RNG in the module is `np.random.default_rng(seed)` with
+--     `seed = int(sha256(f'{chart_id}|{weights_version}|{event_class}')
+--     [:8], 16)` (skill.py bootstrap_seed) -- a fixed function of
+--     reviewed inputs, no OS entropy, and `_null_shifts`'s shift grid is
+--     an explicit arithmetic sequence with a module comment stating "No
+--     RNG anywhere."
+--   * The "fit" phase intentionally does NOT compute new weights (see
+--     SCOPE above) -- `_fit_and_publish` publishes skill/GOF against the
+--     already-pinned, already-stored field, so there is no hidden
+--     data-dependent branch that could vary run to run.
+--   No tie-prone ORDER BY/LIMIT cutoff, no wall-clock read back into
+--   persisted business content (`released_at`/`computed_at` are plain
+--   DEFAULT now() write-time stamps, excluded from value_columns below,
+--   same exclusion class as every prior spec this campaign), no
+--   cross-chart leakage (every read is chart_id-scoped).
+--
+-- THE NULLABLE-KEY-COLUMN WRINKLE (why this spec has THREE components,
+-- not two). Both `kala_field_skill` and `kala_field_gof` share the same
+-- functional UNIQUE index shape: `(chart_id, COALESCE(event_class, ''),
+-- weights_version, field_snapshot_id)` -- `event_class` is legitimately
+-- NULLABLE, because `_fit_and_publish` inserts ONE extra row per
+-- (chart_id, weights_version, field_snapshot_id) with `event_class = NULL`
+-- for the chart-level aggregate skill score (mi_bhara.py:339-362,
+-- `aggregate_chart_skill`). `output_digest.py::_component_key_preflight`
+-- rejects (raises) any row where a declared key_column IS NULL -- so a
+-- naive single component keyed on `(chart_id, event_class,
+-- weights_version, field_snapshot_id)` would hard-fail digest computation
+-- the instant a chart has an aggregate row, which the canonical chart
+-- already does TODAY (live-verified below). The fix, following the exact
+-- `where_in`-pinned-catalog pattern already established in this campaign
+-- (migration 875, ga_positions' `fact_category` where_in over a closed
+-- 4-value set): split `kala_field_skill` into two components --
+--   1. `kala_field_skill_by_class` -- `where_in: {event_class: [... the
+--      27-id closed catalog ...]}` naturally matches only the per-class
+--      rows (`= ANY(array)` against NULL is never true in SQL, so the
+--      aggregate row is excluded without an explicit NOT-NULL filter,
+--      which the output_digest.py filter DSL does not expose).
+--   2. `kala_field_skill_aggregate` -- `where_is_null: ["event_class"]`,
+--      keyed on `(chart_id, weights_version, field_snapshot_id)` alone
+--      (no event_class in key_columns at all -- these three columns are
+--      already unique among aggregate rows per the same UNIQUE index,
+--      since COALESCE(NULL,'') is constant, so dropping event_class from
+--      the key does not create a collision risk).
+-- `kala_field_gof` needs no such split: verified live (query below) that
+-- mi_bhara has NEVER inserted a NULL-event_class GOF row (there is no
+-- `aggregate_chart_skill`-equivalent GOF aggregate anywhere in
+-- `_fit_and_publish` -- only per-class GOF rows are ever written), so its
+-- one component uses its full natural key as-is, matching precedent
+-- ("natural key matches the table's own live UNIQUE constraint exactly").
+-- If a future writer change ever adds an aggregate GOF row, the
+-- key-preflight will raise loudly rather than silently corrupt the
+-- digest -- the correct §N.8 failure mode, not something to defensively
+-- filter around today.
+--
+-- The 27-id closed catalog is NOT a manually-curated guess: it is read
+-- directly from `brahmagyan/l0_ghatana.py::EVENT_CLASSES`, the stated SSoT
+-- for `brahma_event_ontology` ("27 classes" per that module's own
+-- docstring; `brahmagyan/lel_event_class_resolver.py` cites the same SSoT
+-- for its DOMAIN_TO_EVENT_CLASS resolver). `kala_field.event_class`
+-- (mi_bhara's upstream) draws from this exact vocabulary -- confirmed
+-- live: `SELECT DISTINCT event_class FROM kala_field` returns 25 values,
+-- all 25 a subset of the 27-id catalog (only `birth_anchor` and
+-- `career_change` are not yet exercised by any built chart). Extending
+-- this ontology in the future is itself a reviewed, versioned change (a
+-- new brahma_event_ontology row), so it is the correct level to pin the
+-- catalog at, exactly as migration 875 pinned `fact_category`.
+--
+-- Natural keys:
+--   kala_field_skill_by_class: (chart_id, event_class, weights_version,
+--     field_snapshot_id) -- matches the table's own live UNIQUE index
+--     (uq_kala_field_skill) exactly, restricted to the non-null subset.
+--   kala_field_skill_aggregate: (chart_id, weights_version,
+--     field_snapshot_id) -- unique among event_class IS NULL rows per the
+--     same live UNIQUE index (COALESCE(event_class,'') is constant across
+--     this subset).
+--   kala_field_gof: (chart_id, event_class, weights_version,
+--     field_snapshot_id) -- matches the table's own live UNIQUE index
+--     (uq_kala_field_gof) exactly; live-verified 0 NULL-event_class rows.
+--
+-- Excluded from value_columns (surrogate/per-run wall-clock columns, same
+-- exclusion class as every prior spec this campaign):
+--   * kala_field_skill.id, kala_field_gof.id -- surrogate identity PK.
+--   * kala_field_skill.released_at, kala_field_gof.computed_at -- plain
+--     wall-clock DEFAULT now() write-time stamps.
+--
+-- Live checks against prod (both charts holding kala_field/ka_kshetra
+-- data checked, not just canonical -- per the ka_kalasutra-cycle lesson):
+-- kala_field_skill has 7 rows for the canonical chart (482012f1) -- 6
+-- per-class rows (childbirth, foreign_settlement, marriage x1,
+-- relocation x2, separation, surgery) + exactly 1 aggregate row
+-- (event_class IS NULL). kala_field_gof has 6 rows for the canonical
+-- chart, 0 with event_class NULL. The Abhinandan operator-E2E chart
+-- (1c826d5a) has 0 rows in either table -- ka_kshetra/mi_bhara have not
+-- yet built for it. 0 duplicate key groups in either component, checked
+-- across ALL charts holding data.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                   # == literal below
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_bhara')` -- got back a
+-- clean 64-hex digest
+-- (dc768390360fb491bdaed7145032f6f37064c982f377f7e80bb8ddcdd6cff2ec, no
+-- exception on either of the two key-preflight checks -- confirming the
+-- three-component split actually resolves the nullable-key wrinkle rather
+-- than merely reasoning about it) and confirmed `_validate_spec` accepts
+-- it -> rolled back -> re-queried asset_output_digest_specs from a fresh
+-- cursor afterward and confirmed 0 rows for mi_bhara, i.e. genuinely
+-- rolled back, nothing persisted by the rehearsal.
+--
+-- Grant pre-flight (RESOLUTION_L1 v6 priority 2, grant dimension): mi_bhara's
+-- integrity_check_sql reads kala_field_skill, kala_field_gof,
+-- kala_field_weight_versions and kala_field -- all four already carry
+-- SELECT for nirmana_evidence_ingress_writer (verified live via
+-- information_schema.table_privileges this cycle). No grant gap; no
+-- migration needed on that dimension for this asset.
+--
+-- Numbering note: origin/main highest migration file at cycle start was
+-- 1007 (mi_sankalpa, merged). This lane's own migration 1008
+-- (mi_gunanaka, PR #2523) was still open with green CI, not yet merged.
+-- `_migrations_applied` in the connected DB showed 1005/1006/1009/1010
+-- applied (1009/1010 = bo_yantra_mechanism, L2's PR #2526, still OPEN per
+-- `gh pr view` -- applied ahead of merge by another lane, not this
+-- lane's concern to resolve) but NOT 1007/1008 (deploy pending). No open
+-- PR (`gh pr list ... --json files`) claims any file matching
+-- `migrations/10(1[1-9]|[2-9][0-9])_`. 1011 confirmed free against
+-- origin/main's tree, the local migrations dir, the DB's
+-- `_migrations_applied`, and every open PR's file list. Authored on a
+-- FRESH branch off origin/main per STATE precedent (this lane's 1008
+-- branch was already checked out at cycle start).
+--
+-- Post-apply verification (§N.8 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_bhara' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_bhara',
+  '7419a15473aac5397ca9f35866c5b3e5b67d19b8af3480c4bf8e700c2a97bed7',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_field_skill_by_class","relation":"kala_field_skill","key_columns":["chart_id","event_class","weights_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"where_in":{"event_class":["achievement_recognition","bereavement","birth_anchor","business_launch","career_advancement","career_change","career_entry","career_setback","childbirth","chronic_onset","education_milestone","exam_outcome","financial_deception","foreign_settlement","illness_acute","major_gain","major_loss","marriage","parental_event","property_acquisition","psychological_arc","relocation","romantic_start","separation","spiritual_turn","surgery","travel_event"]},"value_columns":["chart_id","event_class","weights_version","field_snapshot_id","n_events","n_prospective","n_backfill","skill_score","skill_lo","skill_hi","skill_state","skill_prospective","null_replicates","bootstrap_resamples","bootstrap_seed"]},{"name":"kala_field_skill_aggregate","relation":"kala_field_skill","key_columns":["chart_id","weights_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"where_is_null":["event_class"],"value_columns":["chart_id","event_class","weights_version","field_snapshot_id","n_events","n_prospective","n_backfill","skill_score","skill_lo","skill_hi","skill_state","skill_prospective","null_replicates","bootstrap_resamples","bootstrap_seed"]},{"name":"kala_field_gof","relation":"kala_field_gof","key_columns":["chart_id","event_class","weights_version","field_snapshot_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["chart_id","event_class","weights_version","field_snapshot_id","n","ks_statistic","ks_p","ljung_box_p","ljung_box_stat","ljung_box_lags","gof_state","failing_statistic","rescaled_z","ks_band_95"]}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
