@@ -752,9 +752,9 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; ten known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix (2026-09-09)', () => {
+  it('the checked-in allowlist parses; twelve known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 10.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 12.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
@@ -797,10 +797,17 @@ describe('loadRenumberDisclosures', () => {
     //   to 966 before merging, but the already-applied production row stayed under the OLD
     //   filename. Disclosed 2026-09-09 (self-diagnosed by the L1 NIRMANA campaign lane via a
     //   blocked migrate.ts --dry-run the cycle immediately after PR #2482 merged).
+    // Entry 11: 976_nirmana_l3_ka_sangam_output_digest_spec.sql, applied to production by the L1
+    //   lane (PR #2496), renumbered to 980 by a later in-lane commit for a cross-lane collision
+    //   after the 976/977 files had already merged and deployed. Disclosed 2026-09-09 (Conductor
+    //   lane, diagnosed from a real post-merge deploy failure, run 34307247313).
+    // Entry 12: 977_nirmana_l3_ka_sangam_natural_key_partition.sql, sibling to Entry 11, same
+    //   renumber commit, renumbered to 981. Disclosed 2026-09-09 (Conductor lane, proactively
+    //   alongside Entry 11 in the same pass).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(10)
+    expect(map.size).toBe(12)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -861,6 +868,18 @@ describe('loadRenumberDisclosures', () => {
     expect(entry966!.sql_identity).toBe('f6861ea379e2999c470975a490419efa44a02fd4e68c475199f6cb34fc29d867')
     expect(entry966!.disposition).toBe('already-applied-under-old-name')
     expect(entry966!.disclosed_on).toBe('2026-09-09')
+    const entry980 = map.get('980_nirmana_l3_ka_sangam_output_digest_spec.sql')
+    expect(entry980).toBeDefined()
+    expect(entry980!.applied_filename).toBe('976_nirmana_l3_ka_sangam_output_digest_spec.sql')
+    expect(entry980!.sql_identity).toBe('b7d0df3aa24185f00c92548b52a6d58abc5603f1825c2a15aade429bd8e9f3fb')
+    expect(entry980!.disposition).toBe('already-applied-under-old-name')
+    expect(entry980!.disclosed_on).toBe('2026-09-09')
+    const entry981 = map.get('981_nirmana_l3_ka_sangam_natural_key_partition.sql')
+    expect(entry981).toBeDefined()
+    expect(entry981!.applied_filename).toBe('977_nirmana_l3_ka_sangam_natural_key_partition.sql')
+    expect(entry981!.sql_identity).toBe('42c24b6385b5c05c9da4e4b062fe428b1412f74ac4f185d46eb84a4e791e8c21')
+    expect(entry981!.disposition).toBe('already-applied-under-old-name')
+    expect(entry981!.disclosed_on).toBe('2026-09-09')
   })
 })
 
