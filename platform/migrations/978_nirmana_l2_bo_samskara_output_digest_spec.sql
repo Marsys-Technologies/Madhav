@@ -1,0 +1,149 @@
+-- 978_nirmana_l2_bo_samskara_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear, widened
+-- fleet-wide audit). This cycle's audit re-run confirmed `bo_karanajala`
+-- (previously deferred as too large to screen in one bounded cycle) now
+-- has a live spec on an open PR (#2495, branch
+-- l2-w4-bo-karanajala-rebuild-node-conflict-target) -- unblocking the
+-- entire transitive-contamination class that was do-not-attempt pending
+-- it: bo_cgm_motifs, bo_cgm_paths, bo_samskara, bo_sangati,
+-- bo_yantra_mechanism, bo_chart_gestalt, bo_anveshana. This migration
+-- picks `bo_samskara` (Signal Embeddings), the smallest of the seven
+-- (318-line shim, pipeline/orchestrator/writers/bo_samskara.py, no
+-- services/ package). Read in full.
+--
+-- Co-writer investigation (FOUR checks, per this campaign's established
+-- discipline): grepped tree-wide (excluding __pycache__) for
+-- `bodha_signal_embeddings` INSERT/DELETE/UPDATE statements:
+--   (1) liveness/reachability -- the writer's own `_INSERT` (ON CONFLICT
+--       (signal_id) DO UPDATE) is reused VERBATIM (same columns, same
+--       statement, imported directly) by two operator CLI tools:
+--       `run_bo_samskara_parallel.py` (full per-ayanamsha delete-then-
+--       reinsert for one hardcoded chart, calls the writer's own
+--       `_fetch_signals`/`_build_input_summary`/`_embed_batch`/
+--       `_batch_insert`/`replace_prior_signal_embeddings`) and
+--       `backfill_missing_signal_embeddings.py` (Conductor-ruled #2434
+--       INSERT-ONLY backfill for signal_ids with no existing embedding
+--       row, across all charts, reusing the SAME writer helpers and the
+--       SAME `_INSERT`'s ON-CONFLICT-DO-UPDATE branch as a no-op safety
+--       net, never its own independent write path). Neither introduces a
+--       different column set or a different natural key -- both are
+--       operator variants of the SAME writer content, not distinct
+--       co-writers, matching this campaign's established
+--       parallel-runner/backfill-script precedent (e.g. ka_gochara_v3's
+--       w45_post_fit_rebuild.py).
+--   (2) The ONE other file with a real INSERT INTO bodha_signal_embeddings
+--       is `brahmagyan/bodha/l2_embeddings.py` (BRAHMA-BO-2-8 scaffold-era
+--       module, dot-notation asset id `bodha.embeddings` -- retired per
+--       CLAUDE.md SS N.1). Grepped tree-wide for any import of this module
+--       (`l2_embeddings`, `from brahmagyan.bodha import`) outside itself:
+--       ZERO hits (the two hits that exist, tests/l2/test_bo22_..., tests/
+--       l0/test_f184_..., import unrelated siblings `bo22`/
+--       `_grounding_engine`, not this module). Confirmed dead by this
+--       campaign's liveness/reachability test. Its own INSERT statement
+--       targets columns (`signal_id, embedding, model_name, embed_text`)
+--       that DO NOT EXIST on the live `bodha_signal_embeddings` schema
+--       (`\\d` confirms the live columns are `embedding_id, signal_id,
+--       chart_id, ayanamsha_id, build_id, embedding_vec, embedding_model,
+--       embedding_model_version, embedding_input_summary, computed_at`)
+--       -- this module would raise on the very first execution if it were
+--       ever invoked against prod today, independent confirmation it is
+--       not a live co-writer risk.
+--   (3)/(4) `BoSamskaraWriter` (`@register('bo_samskara')`) is the
+--       confirmed sole live BUILD-TIME writer of `bodha_signal_embeddings`.
+--
+-- Non-determinism check: `_fetch_signals` selects from `bodha_msr_signals`
+-- with no explicit ORDER BY, but the writer never reduces that result set
+-- through a dict/Counter/max-pick keyed by a non-unique column -- every
+-- signal is written 1:1 (`signal_id` is `bodha_msr_signals`'s own PRIMARY
+-- KEY, live-verified elsewhere this campaign as a genuinely unique key),
+-- so the DB-fetch-without-ORDER-BY defect class that sank
+-- ka_avadhi/ka_kalasutra/ka_taranga/ka_yojaka/ka_gochara this campaign
+-- cannot arise here: there is no collapsing reduction for row order to
+-- affect. `_fetch_existing_embeddings`'s reuse-prior-embedding dict is
+-- also keyed by `signal_id` for the same reason. The one live external
+-- call, Vertex AI `embed_content` (text-multilingual-embedding-002), is
+-- treated as a deterministic transform of its input text per CLAUDE.md
+-- SS N.4 ("embeddings are a deterministic transform and are fine") --
+-- same standing as every other embedding column already included in a
+-- prior spec's value_columns in this campaign (e.g. bodha_cgm_nodes.
+-- node_embedding_vec in 937, excluded there only because it was 100%
+-- NULL for every live row, not because vector columns are categorically
+-- excluded).
+--
+-- Natural key: `signal_id` IS `bodha_signal_embeddings`'s own live UNIQUE
+-- constraint (`bodha_signal_embeddings_signal_id_key`), independently
+-- reinforced by a FOREIGN KEY to `bodha_msr_signals(signal_id) ON DELETE
+-- CASCADE` (itself that table's PRIMARY KEY) -- signal_id cannot
+-- duplicate across charts or ayanamshas by construction, so no
+-- chart_id/ayanamsha_id partition columns are needed in key_columns (same
+-- single-global-key-column precedent as bo_karanajala's `edge_id`).
+-- Live-verified 0 duplicate signal_id groups and 0 NULLs across all
+-- 150,724 live rows (50,678 for the canonical chart 482012f1-710e-
+-- 4a25-994a-93821f5871aa + 50,171 for chart 1c826d5a + 49,875 for chart
+-- cb73cd3d).
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns (same exclusion class as every prior spec in this
+-- campaign): bodha_signal_embeddings.embedding_id (surrogate PK,
+-- uuid4-generated by the writer, not table content), .build_id (build-run
+-- identifier, excluded per this campaign's standard build_id/computed_at
+-- exclusion class -- see e.g. 943/948/958), and .computed_at (bound to a
+-- Python `datetime.now(timezone.utc)` value at write time -- a wall-clock
+-- write-time artifact per this campaign's standard exclusion rationale,
+-- same as every DEFAULT-now()-driven timestamp column excluded elsewhere,
+-- notwithstanding that this one is parameterized rather than a SQL
+-- literal).
+--
+-- The canonical chart 482012f1 already HAS 50,678 live rows in
+-- bodha_signal_embeddings today (bo_samskara has run to completion for
+-- it) -- unlike the two most recent kala_convergence-downstream specs,
+-- this rehearsal runs directly against the canonical chart's own real
+-- data, no substitute chart needed.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == the literal below
+--   print(_validate_spec('bo_samskara', spec, sha).asset_id)      # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row), calling the REAL
+-- `compute_output_digest(cur, asset_id='bo_samskara')` over all 50,678
+-- canonical-chart rows -- got back a clean 65-hex digest
+-- (eb1de8b608ebb81bae9ed46949afed663150ad65a466102b934598fddda54204, no
+-- exception, key-preflight passed over all 50,678 live rows) -> rolled
+-- back -> re-queried `asset_output_digest_specs` from a FRESH connection
+-- afterward and confirmed 0 rows for bo_samskara, i.e. genuinely rolled
+-- back, nothing persisted by the rehearsal.
+--
+-- Numbering note: origin/main's highest applied migration is 975
+-- (ka_bhavishya_lekha, #2494). This lane's own #2496 (976/977,
+-- ka_sangam) is open with auto-merge armed, reserving 976/977. L2's open
+-- PR #2495 (branch l2-w4-bo-karanajala-rebuild-node-conflict-target)
+-- separately reserves a 976 (bo_karanajala) on ITS OWN branch (pre-dating
+-- a rebase against this lane's 976/977 -- that PR's own renumbering is
+-- L2's concern, not this migration's). Highest reserved across every
+-- other open PR branch (checked fresh this cycle: pariprashna/p4-g at
+-- 587, gochara3/w61 at 546, both preserve/* branches at 474) is well
+-- below both. 978/979 confirmed free against all of them.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_samskara' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_samskara',
+  '2dfa3618343da68a6c5fcdfc37fd9a773e02e5bafcdf43a5575146b72cb3f5c9',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_signal_embeddings","relation":"bodha_signal_embeddings","key_columns":["signal_id"],"value_columns":["signal_id","chart_id","ayanamsha_id","embedding_vec","embedding_model","embedding_model_version","embedding_input_summary"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
