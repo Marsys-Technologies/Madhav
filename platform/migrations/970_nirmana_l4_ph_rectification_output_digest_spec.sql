@@ -1,0 +1,152 @@
+-- 970_nirmana_l4_ph_rectification_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Eighth L4 pick this cycle's stream after ph_sodhana
+-- (954/955), ph_suddha_sodhana (956/957), ph_pramana (958/959),
+-- ph_sankrama (960/961), ph_pratikara (962/963), ph_phaladesa (964/965),
+-- ph_muhurta (968/969). `ph_nimitta` was screened this cycle first (per
+-- standing next-cycle notes item 4a) and RULED OUT, not picked -- see
+-- STATE_l1.md for the finding: `SELECT event_class_id, domain,
+-- base_rate_by_age FROM brahma_event_ontology` has no ORDER BY, feeding a
+-- `event_class_by_domain.setdefault(domain, event_class_id)` first-wins
+-- pattern; live-checked and confirmed NOT theoretical (career=5, health=3,
+-- wealth=3, relationship=3, education=2, residence=2, transition=2,
+-- travel=2 candidate event_class_id rows per domain on the live
+-- brahma_event_ontology table) -- a genuine unresolved non-determinism
+-- defect (same class as the historical F26 finding on this same writer),
+-- not something a digest-spec migration should paper over. Flagged on
+-- #1770 for the Conductor/writer-owning lane; ph_nimitta needs a writer-
+-- level ORDER BY fix before it is safe to spec. Fell through to
+-- `ph_rectification` (a PACKAGE writer, not a single .py file --
+-- pipeline/orchestrator/writers/ph_rectification/__init__.py -- an
+-- earlier cycle's file-existence check reported "FILE NOT FOUND" and it
+-- was never screened until now) per standing next-cycle notes item 4b.
+-- Numbering note: main's highest applied migration is 963
+-- (ph_pratikara, #2489 already merged); highest RESERVED across all open
+-- PR branches is 969 (this lane's own #2491) and 966 (L2's open #2482,
+-- bo_karanajala) -- 970/971 confirmed free against both.
+--
+-- PhRectificationWriter (pipeline/orchestrator/writers/ph_rectification/
+-- __init__.py, @register("ph_rectification")) is a genuine TWO-TABLE
+-- writer -- phala_rectification (185 candidate rows: 37 offsets * 5
+-- ayanamshas) + phala_rectification_best (1 row) -- but unlike the
+-- deferred mi_bhavisya/bo_upaya/bo_cdlm_summary/mi_pariksha/mi_pramana/
+-- mi_adhilepa cases, this writer is the CONFIRMED SOLE WRITER of BOTH
+-- tables in full -- not a subset-of-tables case, so this pick does NOT
+-- need the still-unruled subset-spec question (re-raised on #1770,
+-- 6+ cycles unanswered) and is safe to author as a genuine 2-component
+-- spec under the existing multi-component precedent (bg_reference=11
+-- components, ga_vichara=2 components split by discriminator column --
+-- this case splits by relation instead, same mechanism).
+--
+-- Co-writer investigation (THREE checks, per this campaign's established
+-- discipline): grepped all .py files for `phala_rectification` --
+-- (1) services/ka_kshetra/uncertainty.py -- read-only SELECT for a sigma_T
+--     posterior lookup, no write.
+-- (2) services/mimamsa/lel_calibration.py -- prose docstring mention only
+--     (describes where judgment_flags() output is persisted by THIS
+--     writer), no write.
+-- (3) brahmagyan/phala/rectification.py::seed_phala_rectification() --
+--     a legacy pre-writer module (schema note: "candidate_time TIME,
+--     alignment_score, rectification_confidence, source_citation,
+--     computed_at") whose own INSERT statement targets columns
+--     (`candidate_time`, `alignment_score`, `rectification_confidence`,
+--     `source_citation`, `computed_at`) and an `ON CONFLICT (chart_id,
+--     candidate_time)` clause that do NOT exist on the live table at all
+--     (confirmed via \d phala_rectification: real columns are
+--     candidate_birth_utc/offset_minutes/ayanamsha_id/lagna_sign/etc.,
+--     unique constraint is (chart_id, offset_minutes, ayanamsha_id)) --
+--     same structurally-guaranteed-to-fail-if-invoked pattern as the
+--     ph_muhurta/ph_pratikara legacy-module findings. Stronger than
+--     those two: this function has ZERO call sites anywhere in the tree
+--     (grepped `seed_phala_rectification` -- only its own definition;
+--     the one other file referencing the module, brahmagyan/phala/
+--     outlook.py, calls a *different*, read-only DB function
+--     `phala_get_rectification(chart_id)` instead) -- not merely
+--     unreached via a dead guard, genuinely never called by anything.
+--
+-- Non-determinism check: grepped services/ph_rectification/engine.py for
+-- `random`/`uuid4`/`datetime.now`/`utcnow`/`date.today`/`time.time` --
+-- zero hits. Candidate generation (`run_rectification` ->
+-- `build_candidate_offsets()` -> `score_candidate()`) and best-selection
+-- (`select_best`, sort key `(-score, not stable, abs(offset))`, no ties
+-- possible since offset itself is a tiebreak and each offset appears
+-- exactly once per group) are both pure/deterministic given the same
+-- birth_params + chart-scoped life_events + chart_dashas inputs. The
+-- PyJHora ascendant function (`_build_ascendant_fn`) is real ephemeris
+-- computed from the chart's own fixed birth datetime/lat/lon/tz, not
+-- wall-clock.
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from both
+-- components (same exclusion class as every prior spec in this
+-- campaign):
+--   phala_rectification.id            -- surrogate PK, gen_random_uuid()
+--   phala_rectification.scored_at     -- DEFAULT now()
+--   phala_rectification_best.id                 -- surrogate PK, gen_random_uuid()
+--   phala_rectification_best.best_candidate_id   -- FK to
+--     phala_rectification.id, which is ITSELF a fresh gen_random_uuid()
+--     on every delete-then-insert rebuild -- this FK value is guaranteed
+--     to differ across rebuilds even with byte-identical semantic
+--     content. Redundant anyway: the semantic content it points to
+--     (offset_minutes, candidate_birth_utc) is already duplicated as
+--     plain columns directly on phala_rectification_best and IS included
+--     below.
+--   phala_rectification_best.scored_at           -- DEFAULT now()
+--   phala_rectification_best.native_adopted,
+--   phala_rectification_best.adopted_at           -- NOT set by this
+--     writer's own INSERT column list at all (confirmed by reading the
+--     INSERT statement in full) -- these are mutated post-build by a
+--     human review action (D43: the writer only ever stages
+--     auto_action='stage_for_review', never auto-adopts). A rebuild's
+--     DELETE-then-INSERT resets them to DEFAULT (false/NULL) regardless
+--     of any prior human adoption -- not writer-owned content, excluded
+--     on the same "never restate a value this writer doesn't own"
+--     principle as CLAUDE.md SS N.5, not merely for being non-deterministic.
+--
+-- Natural keys ARE the tables' own live UNIQUE constraints:
+--   phala_rectification:      (chart_id, offset_minutes, ayanamsha_id)
+--     -- phala_rectification_chart_offset_ayan. Table-wide live check:
+--     0 NULLs across all 3 key columns, 0 duplicate-key groups.
+--   phala_rectification_best: (chart_id) -- phala_rectification_best_chart_id_key
+--     (1 row per chart by construction). Table-wide live check: 0 NULLs
+--     on chart_id.
+-- Canonical chart: 185 phala_rectification rows (37 offsets * 5
+-- ayanamshas, matches the writer's own docstring), 1 phala_rectification_best
+-- row, 0 NULLs across all key columns on both.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                  # == the literal below
+--   print(_validate_spec('ph_rectification', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_rectification') -> got back a clean 65-hex digest
+-- (f8de3599b40a2313728c2b874bc21ae7cfa46770935c7367551dc21f15bbd8ff, no
+-- exception, key-preflight passed over all 185+1 live rows for the
+-- canonical chart) -> conn.rollback() -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and
+-- confirmed 0 rows for ph_rectification, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_rectification' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_rectification',
+  '9c941e9cf8366840cfe506134fa39915e88b22cb127e32e17b51053d2743a2eb',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_rectification","relation":"phala_rectification","key_columns":["chart_id","offset_minutes","ayanamsha_id"],"value_columns":["chart_id","candidate_birth_utc","offset_minutes","ayanamsha_id","lagna_sign","lagna_longitude_deg","lagna_degree_in_sign","lel_fit_score","lel_events_matched","lel_events_tested","lagna_stable"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"phala_rectification_best","relation":"phala_rectification_best","key_columns":["chart_id"],"value_columns":["chart_id","candidate_birth_utc","offset_minutes","best_lagna_sign","best_lagna_longitude","best_lel_fit_score","confidence_low","confidence_high","confidence_label","win_margin","competing_candidates","lel_training_events","lel_training_matched","leakage_firewall_note","judgment_flags","auto_action"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
