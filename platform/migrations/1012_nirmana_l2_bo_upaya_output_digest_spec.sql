@@ -1,0 +1,135 @@
+-- 1012_nirmana_l2_bo_upaya_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- bo_upaya (BoUpayaWriter, @register('bo_upaya')) writes SIX tables:
+-- bodha_rm_resonances, bodha_rm_remedy_prescriptions,
+-- bodha_rm_dasha_windowed_prescriptions, bodha_rm_chart_summary,
+-- bodha_rm_dosha_remedy_bundles, bodha_rm_pattern_remedies. This was blocked
+-- on the asset's own non-determinism (#2529, aa26d83bb, "L2: fix bo_upaya
+-- non-determinism") until the fix landed AND a rebuild ran against it --
+-- both now confirmed live: asset_throughput.state='lit',
+-- last_built_at=2026-09-09 21:24:26.8497+00 (past the fix-landing baseline),
+-- and bodha_rm_resonances.computed_at for the canonical chart advanced to the
+-- identical timestamp, i.e. this is a genuine post-fix rebuild, not a stale
+-- row surviving a green deploy.
+--
+-- Sole-writer confirmation (tree-wide grep, platform/, excluding tests):
+-- bodha_rm_resonances is also referenced by bo_pramana_mapa.py (read-only
+-- COUNT/formula-version lookups) and bo_samvada.py (read-only SELECT of
+-- rank-1 graha/priority_class); bodha_rm_remedy_prescriptions is also
+-- referenced by ph_pratikara.py / services/ph_pratikara/engine.py
+-- (read-only, engine.py's own header states "CONSUMES ... never authors
+-- remedy text"). No INSERT/UPDATE/DELETE against any of the six tables
+-- exists outside bo_upaya's own call into the shared
+-- bodha_writers/_idempotency.py replace_prior_rm_* helpers, which delete
+-- per (chart_id, ayanamsha_id) before each ayanamsha's insert (CLAUDE.md
+-- §N.3). Live-verified zero (chart_id, ayanamsha_id) groups with more than
+-- one distinct build_id across all six tables -- exactly one build_id
+-- generation per chart x ayanamsha at any time, confirming build_id is safe
+-- to exclude from every declared key.
+--
+-- Natural keys -- three tables carry a real DB UNIQUE constraint (key
+-- declared as that constraint's columns minus chart_id/build_id; a
+-- fleet-wide-null column inside the constraint, sub_tradition on
+-- bodha_rm_remedy_prescriptions -- 405/405 NULL fleet-wide -- is dropped
+-- from the declared key since it adds no discriminating power and a
+-- narrower fleet-wide dup check without it still returns zero collisions):
+--   bodha_rm_resonances               UNIQUE (chart_id, ayanamsha_id,
+--     build_id, snapshot_type, graha)
+--   bodha_rm_remedy_prescriptions      UNIQUE (chart_id, ayanamsha_id,
+--     build_id, snapshot_type, target_graha, tradition, sub_tradition,
+--     remedy_category, remedy_id_g27) -- sub_tradition dropped, see above
+--   bodha_rm_chart_summary             UNIQUE (chart_id, ayanamsha_id,
+--     build_id, snapshot_type)
+--   bodha_rm_dosha_remedy_bundles      UNIQUE (chart_id, ayanamsha_id,
+--     build_id, dosha_class)
+--
+-- Two tables carry NO unique constraint beyond their surrogate PK --
+-- DEP-ASSERT precedent (880 et seq.) applies: key declared from the
+-- writer's own row-construction logic and live-verified duplicate-free
+-- fleet-wide (all 3 charts):
+--   bodha_rm_dasha_windowed_prescriptions: one row per top wealth-leverage
+--     graha per ayanamsha (B-4 _build_remedy_leverage_windows, capped at
+--     _MAX_LEVERAGE_TARGETS=3 distinct grahas) -> key (ayanamsha_id,
+--     dasha_lord). Zero duplicate (chart_id, ayanamsha_id, dasha_lord)
+--     groups fleet-wide (20 live rows).
+--   bodha_rm_pattern_remedies: one row per resonance that has >=1
+--     prescription (_build_pattern_remedies, source_id=resonance_id,
+--     source_kind constant 'resonance') -> key (ayanamsha_id, source_kind,
+--     source_id). Zero duplicate (chart_id, ayanamsha_id, source_kind,
+--     source_id) groups fleet-wide (135 live rows); source_kind currently
+--     the sole literal 'resonance' but included per the column's declared
+--     purpose (a future source_kind would still need co-declaring here).
+--
+-- Value columns -- every live column per table EXCLUDING the surrogate PK,
+-- build_id, computed_at (standard exclusion class throughout this
+-- campaign), and any column confirmed 100%-NULL fleet-wide (all charts, not
+-- just canonical) via live COUNT(*) FILTER queries:
+--   bodha_rm_resonances: excluded is_chara_karaka_role (135/135 NULL),
+--     associated_motifs_array (135/135 NULL). Kept despite partial-NULL
+--     (bo_pratijna/944 precedent for a genuinely partially-populated value
+--     column): contradiction_factor (0/135 NULL -- fully populated),
+--     domain_burden (24/45 NULL on canonical chart), motif_burden (10/45),
+--     associated_doshas_array (40/45), associated_cdlm_cells_array (10/45).
+--   bodha_rm_remedy_prescriptions: excluded 22 columns confirmed 100/100%
+--     NULL fleet-wide (405/405 rows each) -- sub_tradition,
+--     classical_source_text_jsonb, targets_motif_id, targets_cell_id,
+--     incompatible_with_prescription_ids_array,
+--     prerequisite_prescription_ids_array, estimated_time_minutes_daily,
+--     acharya_review_reason_array,
+--     cross_tradition_corroborating_traditions_array, phase_sequence_class,
+--     phase_duration_days, count_prescription_jsonb,
+--     substitute_options_jsonb, yantra_geometry_jsonb,
+--     pranapratishtha_required_flag, pilgrimage_site_jsonb,
+--     pilgrimage_priority_rank, recommended_hora_lord_array,
+--     recommended_choghadiya_window_array,
+--     initiation_lunar_phase_recommendation_array,
+--     recommended_facing_direction, outcome_tracking_placeholder_jsonb,
+--     prescription_embedding_vec (pgvector, also 100% NULL fleet-wide --
+--     unlike bo_samskara's populated pgvector column, this one carries no
+--     content to digest).
+--   bodha_rm_chart_summary: excluded recommended_remedy_phase_sequence_jsonb
+--     and chart_remedy_embedding_vec (pgvector), both 15/15 NULL
+--     fleet-wide.
+--   bodha_rm_dosha_remedy_bundles: excluded active_dasha_windows_jsonb
+--     (10/10 NULL fleet-wide).
+--   bodha_rm_dasha_windowed_prescriptions, bodha_rm_pattern_remedies: all
+--     columns fully populated (0 NULL fleet-wide on every column checked)
+--     -- no exclusions beyond the standard PK/build_id/computed_at class.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                          # == the literal below
+--   print(_validate_spec('bo_upaya', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERT this exact spec row ->
+-- call the REAL `compute_output_digest(cur, asset_id='bo_upaya')` -> got
+-- back a clean digest hex
+-- (fdc471c8e4d726ebcf4401c930f3364ac622e3734ce285f863707d03beaf8da0) paired
+-- with the matching spec_sha256, no exception (the NULL-reviewed-key
+-- preflight passed for all six components, confirming every declared key
+-- column is non-null on every live row) -> conn.rollback() -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for `bo_upaya`, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_upaya' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_upaya',
+  'ac4e04a2fd349df5ece501338e03ecfb9c1d5845fda27a3cd65e3d623524de45',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_rm_resonances","relation":"bodha_rm_resonances","key_columns":["ayanamsha_id","snapshot_type","graha"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","graha","resonance_score","resonance_score_formula_version","weakness_score","contradiction_factor","domain_burden","motif_burden","is_yoga_karaka_flag","weakest_rank_in_chart","remedy_priority_class","associated_doshas_array","associated_cdlm_cells_array","ephemeris_audit_jsonb","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_rm_remedy_prescriptions","relation":"bodha_rm_remedy_prescriptions","key_columns":["ayanamsha_id","snapshot_type","target_graha","tradition","remedy_category","remedy_id_g27"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","target_graha","target_resonance_id","tradition","remedy_category","remedy_id_g27","remedy_label_human","prescription_detail_jsonb","classical_strength_rating","classical_sources_jsonb","targets_dosha_class","resonance_match_score","match_score_formula_version","counter_indications_array","feasibility_score","estimated_cost_inr_range_jsonb","ritual_complexity_class","requires_acharya_review_flag","cross_tradition_corroboration_count","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_rm_dasha_windowed_prescriptions","relation":"bodha_rm_dasha_windowed_prescriptions","key_columns":["ayanamsha_id","dasha_lord"],"value_columns":["chart_id","ayanamsha_id","base_prescription_id","dasha_system","dasha_level","dasha_lord","window_start_iso","window_end_iso","window_intensity_multiplier","schedule_jsonb","phase_within_window","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_rm_chart_summary","relation":"bodha_rm_chart_summary","key_columns":["ayanamsha_id","snapshot_type"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","top_3_resonance_targets_jsonb","top_10_priority_prescriptions_jsonb","recommended_intensity_class","total_active_dosha_count","primary_dosha_class","cross_tradition_convergence_jsonb","remedy_chart_typology","acharya_review_required_count","feasibility_assessment_jsonb","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_rm_dosha_remedy_bundles","relation":"bodha_rm_dosha_remedy_bundles","key_columns":["ayanamsha_id","dosha_class"],"value_columns":["chart_id","ayanamsha_id","dosha_class","active_flag","intensity_score","cancellation_count","prescription_ids_in_bundle_array","bundle_summary_jsonb","classical_sources_jsonb","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}},{"name":"bodha_rm_pattern_remedies","relation":"bodha_rm_pattern_remedies","key_columns":["ayanamsha_id","source_kind","source_id"],"value_columns":["chart_id","ayanamsha_id","source_kind","source_id","remedy_theme","prescription_ids_array","theme_strength","cross_tradition_unanimity_score","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
