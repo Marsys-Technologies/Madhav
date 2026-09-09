@@ -1,0 +1,136 @@
+-- 1007_nirmana_l5_mi_sankalpa_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v6 priority 2 (grant/contract pre-flight
+-- sweep, output_digest_spec dimension). `mi_sankalpa`
+-- (pipeline/orchestrator/writers/mi_sankalpa.py, LIGHT writer, single
+-- table `mimamsa_intervention_ledger`) is the smallest by file size (12KB)
+-- of the 14 real-gap candidates remaining after the prior cycle's
+-- ka_taranga audit (which surfaced a real bug instead of a spec, #2519).
+--
+-- Co-writer check (tree-wide grep for INSERT/UPDATE/DELETE against
+-- mimamsa_intervention_ledger across pipeline/orchestrator/writers/*.py,
+-- services/, and every TS file referencing the table name):
+--   * services/mi_sankalpa/db.py -- this writer's OWN module (delete_
+--     unresolved / reinsert_rows / upsert_acted_without_election /
+--     update_study_arm). Sole registered orchestrator writer.
+--   * platform/src/lib/mcp/intervention_ledger_writer.ts -- the sanctioned
+--     LIVE, serve-time HTTP filing action (`fileInterventionFalsifier`),
+--     `INSERT ... ON CONFLICT ON CONSTRAINT
+--     mimamsa_intervention_ledger_natural_key DO NOTHING`. This is BY
+--     DESIGN per the writer's own docstring (ruling S-1: rows are FILED
+--     live, never inserted at build time) -- not an undocumented
+--     collision. The natural-key ON CONFLICT DO NOTHING shape matches
+--     `upsert_acted_without_election`'s own idempotency contract exactly,
+--     so a row's identity is stable regardless of which path created it.
+--
+-- Non-determinism check (full source read of mi_sankalpa.py +
+-- services/mi_sankalpa/db.py + services/mi_sankalpa/arms.py, applying the
+-- ka_taranga-cycle lesson that "smallest file" is not "automatically
+-- clean" -- audited in full, not assumed):
+--   * Phase 1 (falsifier resolution): iterates `db.fetch_lel_events`
+--     (`ORDER BY event_date, id` -- deterministic) against
+--     `db.fetch_unresolved_rows` (`ORDER BY intervention_id` --
+--     deterministic). `services/mi_bhara/living_lel.py::
+--     score_predictions_against_event` is a pure filter/map over its
+--     input sequence IN THE SAME ORDER IT WAS PASSED -- no top-N cut, no
+--     internal re-sort. "First hit wins" (`outcome_links.setdefault`) is
+--     therefore deterministic given the two already-deterministic input
+--     orderings.
+--   * Phase 2 (loss-free round trip): `reinsert_rows` writes back every
+--     column of every row read verbatim (including `intervention_id`,
+--     the gen_random_uuid() surrogate PK -- reused, never regenerated),
+--     with `outcome_event_id`/`outcome_linked_at` populated only from
+--     phase 1's already-deterministic result.
+--   * Phase 3 (study-arm reclassification): `arms.classify_study_arm` is
+--     a pure function of already-stored, writer-untouched fields
+--     (`performed`/`performed_at`/window bounds) -- no clock, no
+--     ordering dependency; a None return leaves the row unchanged rather
+--     than inventing a disposition.
+--   * Phase 4 (arm-4 origination): `find_unelected_lel_events` iterates
+--     the same deterministically-ordered `lel_events`; each event maps to
+--     an independent natural key (`rite_or_activity_class =
+--     f"lel_derived::{event_class}"`, one-day `elected_window` from the
+--     event's own date) with `ON CONFLICT DO NOTHING` -- content is a
+--     pure function of the (deterministic) event that wins any natural-
+--     key collision, and the winner is always the same event given the
+--     same deterministic `lel_events` ordering.
+--   No tie-prone ORDER BY/LIMIT cutoff, no wall-clock read back into
+--   persisted business content (`outcome_linked_at`/`created_at` are
+--   write-time bookkeeping only -- excluded from value_columns below,
+--   same exclusion class as every prior spec this campaign), no
+--   cross-ayanamsha or cross-chart leakage (every read is chart_id-scoped).
+--
+-- Natural key: mimamsa_intervention_ledger (chart_id, intervention_class,
+-- rite_or_activity_class, elected_window) -- matches the table's own live
+-- UNIQUE CONSTRAINT `mimamsa_intervention_ledger_natural_key` exactly
+-- (confirmed via \d against prod). `intervention_id` (the gen_random_uuid()
+-- surrogate PK) is deliberately excluded from key_columns AND
+-- value_columns, same "surrogate PK is identity bookkeeping, not reviewed
+-- content" convention as every prior spec this campaign.
+--
+-- Excluded from value_columns (surrogate/non-owned/per-run columns, same
+-- exclusion class as every prior spec this campaign):
+--   * created_at        -- plain wall-clock DEFAULT now() write-time stamp.
+--   * outcome_linked_at -- wall-clock now() set once at first linking;
+--                          stable thereafter but still write-time
+--                          bookkeeping, not asserted content (the content
+--                          IS outcome_event_id, which is included).
+--   * build_id           -- the orchestrator run's own UUID -- provenance
+--                          pointer to which run touched a row, not
+--                          reviewed business content (mirrors every prior
+--                          spec's omission of build_id).
+-- `engine_version` IS included (mirrors mi_pramana's
+-- `scoring_formula_version`/`calibration_formula_ver` precedent: a formula-
+-- version string is reviewed content, not a wall-clock bookkeeping field).
+--
+-- Live checks against prod (both empty-set and non-empty-set concerns
+-- addressed): `mimamsa_intervention_ledger` currently has 0 rows across
+-- ALL charts (0 total, 0 distinct chart_id) -- mi_sankalpa has never had
+-- live content to operate on yet. This does not block a spec: 0 matching
+-- rows is a trivially stable/deterministic digest (hash of the empty set
+-- + row_count 0), same as any other chart-scoped component before its
+-- first row is filed. Dup-natural-key and NULL-key checks both ran clean
+-- (0 rows either way, vacuously true) against the live table.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                   # == literal below
+--   print(_validate_spec('mi_sankalpa', spec, sha).asset_id)         # passes server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_sankalpa')` -- got back a
+-- clean 64-hex digest
+-- (db245345c9312f376762c19f7a2d893e9d53b3f11d314cfdee3feec6f244d5f5, no
+-- exception, key-preflight passed, 0 rows over the empty component) ->
+-- rolled back -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for mi_sankalpa, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Numbering note: highest applied-tracked in `_migrations_applied` at
+-- cycle start was 1004; local `platform/migrations/` highest was 1006
+-- (ad-hoc-applied live GRANT, PR #2518 still queue-pending). Open PR
+-- branches (#2516 migration 1005, #2518 migration 1006) confirmed via
+-- `git ls-tree` to claim no number above 1006. 1007 confirmed free
+-- against the DB, local dir, and every open PR branch as of this cycle.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_sankalpa' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_sankalpa',
+  '3b841eb59ffe9b76266b3ec890e26be6e72634fba0c2f9f72e791df6a481f42f',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_intervention_ledger","relation":"mimamsa_intervention_ledger","key_columns":["chart_id","intervention_class","rite_or_activity_class","elected_window"],"value_columns":["chart_id","intent","intervention_class","rite_or_activity_class","event_class","elected_window","precision_regime","precision_basis","adjudication_record","score_vector","efficacy_tier","source_citation","paddhati_version","predicted_differential","prediction_id","study_arm","performed","performed_at","performed_attested_by","outcome_event_id","authority_basis","filed_by","adoption_basis","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
