@@ -1,0 +1,115 @@
+-- 960_nirmana_l4_ph_sankrama_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Fourth L4 pick this cycle after ph_sodhana (954/955),
+-- ph_suddha_sodhana (956/957), ph_pramana (958/959, PR #2486, still in
+-- checks). Picked per STATE_l1.md's own next-cycle list (item 4b):
+-- shortest remaining unread ph_* writer, ph_sankrama.py (275 lines), read
+-- in full alongside services/ph_sankrama/engine.py.
+--
+-- PhSankramaWriter (pipeline/orchestrator/writers/ph_sankrama.py,
+-- @register("ph_sankrama")) is the SOLE writer of phala_sankrama --
+-- confirmed via grep across all .py files for the table name:
+-- ph_sankrama.py itself does DELETE+INSERT; ph_phaladesa.py's only
+-- reference is a read-only SELECT ... FROM phala_sankrama (LEFT JOIN
+-- pattern, same class as every prior ph_* pick's cross-reference).
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_sankrama WHERE chart_id = %s` immediately before the
+-- INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3). The
+-- writer's own INSERT already carries `ON CONFLICT ON CONSTRAINT
+-- phala_sankrama_natural_key DO NOTHING`.
+--
+-- Natural key: (chart_id, source_anchor_id, cdlm_cell_id, target_domain,
+-- relationship_type) -- this IS the table's own live UNIQUE constraint
+-- `phala_sankrama_natural_key` (confirmed via psql \d phala_sankrama;
+-- migration 367 added cdlm_cell_id to the original 335-era index
+-- specifically because two distinct CDLM cells linking the same anchor to
+-- the same target domain via distinct bridge paths must NOT collapse to
+-- one row -- reusing the live constraint verbatim is correct here, not a
+-- narrower derivation). None of the five key columns is a random uuid4:
+-- chart_id/source_anchor_id/cdlm_cell_id are all foreign references
+-- (chart, phala_anchors, bodha_cdlm_cells respectively -- cdlm_cell_id has
+-- no cross-layer FK by design, carried via the derivation ledger per the
+-- table's own column comment), and target_domain/relationship_type are
+-- deterministic classification strings from derive_spillover().
+--
+-- `mitigation_ref`: NEVER set by this writer -- the INSERT statement does
+-- not list the column at all, so it is always NULL at build time (the
+-- engine's own SankramaRecord dataclass comment says "set post-facto by
+-- writer" but no code path currently does so; grepped the whole
+-- python-sidecar tree for "mitigation_ref" -- the only other hit is that
+-- same engine.py comment, no writer anywhere assigns it). Kept IN
+-- value_columns as deterministically-NULL content, same "D43 safety-rail"
+-- class as ph_suddha_sodhana's revision_approved_by/revision_applied_at
+-- (956/957) -- not excluded, since a future writer actually setting it
+-- would then correctly show up as a digest change rather than being
+-- silently invisible.
+--
+-- `_ANCHOR_TO_CDLM_DOMAIN` / `window_status`-class time-varying content
+-- note: N/A here -- ph_sankrama's engine is fully DB-free
+-- (services/ph_sankrama/engine.py) with no date.today()/uuid4/random
+-- calls anywhere (grepped); `trajectory` is derived from
+-- evolution_gradient_score which the engine carries as an honest `None`
+-- when the upstream L2 column is NULL (SS N.7 item 6 fix, already live),
+-- not a wall-clock artifact.
+--
+-- `computed_at` excluded -- DEFAULT now(), a wall-clock write-time
+-- timestamp, same exclusion class as every prior spec's build_id/
+-- computed_at/scored_at/updated_at columns in this series. `sankrama_id`
+-- excluded -- surrogate PK, gen_random_uuid() default, same exclusion
+-- class as every prior spec's own surrogate PK.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the writer + engine for
+-- `node_id`/`cgm_node`/`uuid4` -- zero hits. `cell_id`/`cdlm_cell` DO
+-- appear throughout, but this is EXPECTED and DOCUMENTED, not
+-- contamination -- ph_sankrama's entire purpose is to consume
+-- bodha_cdlm_cells (read-only) as its cross-domain linkage source and
+-- carry cdlm_cell_id forward as a ledger-only cross-layer reference (no
+-- FK, per the table's own 337-era column comment); this is a legitimate,
+-- intentional L2-read/L4-write pattern, distinct from the do-not-attempt
+-- list's writers which mutate/derive FROM contaminated L2 state.
+--
+-- value_columns = every live column on phala_sankrama EXCEPT sankrama_id
+-- and computed_at (2 excluded). Live schema re-verified via psql \d
+-- phala_sankrama immediately before authoring this migration: 26 columns
+-- total, 24 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                             # == the literal below
+--   print(_validate_spec('ph_sankrama', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_sankrama') -> got back a clean digest hex
+-- (cbd1c37a56c86f1018eb28744fad35aac017ff3692e7c6a135b0d1ef811995ca, no
+-- exception, key-preflight passed over 155 live rows for the canonical
+-- chart, zero NULLs in any of the five key columns) -> conn.rollback() ->
+-- re-queried asset_output_digest_specs from a FRESH connection afterward
+-- and confirmed 0 rows for ph_sankrama, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_sankrama' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_sankrama',
+  '6f75dab4f383c297e61310332e76019b05ae016d0834b4c42d232242338a88f6',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_sankrama","relation":"phala_sankrama","key_columns":["chart_id","source_anchor_id","cdlm_cell_id","target_domain","relationship_type"],"value_columns":["chart_id","source_anchor_id","cdlm_cell_id","source_domain","target_domain","relationship_type","linkage_strength","asymmetry_score","bridge_path_jsonb","mechanism_text","source_window_start","source_window_end","projected_window_start","projected_window_end","projected_peak_date","cascade_chain_jsonb","cascade_depth","trajectory","mitigation_ref","spillover_confidence","confidence_basis","falsifier","derivation_ledger_jsonb","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
