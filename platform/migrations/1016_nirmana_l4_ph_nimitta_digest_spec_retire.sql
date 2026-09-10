@@ -1,0 +1,74 @@
+-- 1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- RETRACTION of migration 1014 (`ph_nimitta` output_digest_spec, applied
+-- 2026-09-10T00:04Z, PR #2539 merged 2026-09-10T00:28:40Z).
+--
+-- Self-contradiction discovered this cycle: issue #2533 -- filed by this
+-- SAME lane's own output_digest_spec pre-flight sweep at
+-- 2026-09-09T17:35:02Z, i.e. ~6.5 HOURS BEFORE migration 1014 was
+-- authored -- already documented two live, verified non-determinism
+-- defects in `ph_nimitta` (`platform/python-sidecar/pipeline/orchestrator/
+-- writers/ph_nimitta.py`) and its own explicit disposition states:
+-- "ph_nimitta is EXCLUDED from the digest-spec candidate list until both
+-- are fixed". Migration 1014 was authored and merged anyway (a fresh-
+-- context cycle re-derived ph_nimitta as a candidate without surfacing
+-- #2533 first) -- this migration corrects that regression.
+--
+-- Bug 1 (`_load_posterior_meta`, lines 452-458): an ORDER-BY-less SELECT
+-- against `brahma_event_ontology` collapses multiple event_class_id rows
+-- per domain via `setdefault` -- whichever row Postgres returns first
+-- arbitrarily wins. 8/13 domains are multi-class (career has 5, each with
+-- materially different `base_rate_by_age` and `pratijna_grade`/`status`).
+-- This directly feeds two columns that ARE tracked by migration 1014's
+-- spec: `posterior` (`ph_nimitta.py` line 232/273, `a.posterior`) and
+-- `lift_vector_jsonb` (same lines, `a.lift_vector`) -- live-confirmed by
+-- grep against the writer.
+--
+-- Bug 2 (`_load_discoveries`, line 395): `ORDER BY composite_discovery_rank
+-- DESC NULLS LAST LIMIT 100` has no tiebreak. Live-verified on all 3 built
+-- charts: 40-61 rows tied at the exact boundary rank value straddling the
+-- LIMIT-100 cutoff -- which discoveries become `phala_anchors` rows AT ALL
+-- (not just their column values) is genuinely Postgres-tie-order-dependent.
+-- This means the digest's very ROW SET, not only its column content, is
+-- unstable across rebuilds with zero underlying data change.
+--
+-- Net effect: a digest computed from migration 1014's spec would show
+-- spurious drift on every rebuild even absent any real change -- exactly
+-- the failure mode `output_digest_spec` exists to prevent, and the reason
+-- #2533 pre-emptively excluded this asset. Retiring restores the correct,
+-- pre-regression state.
+--
+-- ── verification before writing this migration ──────────────────────────
+-- `select count(*) from asset_provenance_receipts where asset_id =
+-- 'ph_nimitta';` => 0 (confirmed live) -- no build has run against the bad
+-- spec since it went live ~1h ago, so retiring now has zero receipt-
+-- integrity fallout; nothing downstream has consumed the bad spec yet.
+-- `pipeline/orchestrator/output_digest.py`'s `load_output_digest_spec()`
+-- queries `WHERE asset_id = %s AND retired_at IS NULL` and returns `None`
+-- on a miss -- identical, safe fallback behavior to the asset's state
+-- before migration 1014 (no digest-spec candidate), confirmed by reading
+-- the function directly, not assumed.
+--
+-- ── idempotency ──────────────────────────────────────────────────────────
+-- Plain UPDATE guarded by `retired_at IS NULL` -- re-running this
+-- migration after it has already applied affects 0 rows (nothing left
+-- to retire), a safe no-op. Does not violate the table's
+-- `retired_at >= reviewed_at` check constraint (`now()` is always after
+-- the `reviewed_at` this row got when migration 1014 inserted it).
+-- Does not touch `asset_registry.natural_key_partition` (migration 1015)
+-- -- that column documents the writer's real natural key independent of
+-- digest-spec candidacy and remains correct; only the digest-spec row
+-- itself is retired.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- UPDATE 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_nimitta' AND retired_at IS NULL  -- expect 0 rows
+
+UPDATE asset_output_digest_specs
+   SET retired_at = now()
+ WHERE asset_id = 'ph_nimitta'
+   AND retired_at IS NULL;
