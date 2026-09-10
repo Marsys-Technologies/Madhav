@@ -212,19 +212,29 @@ BEGIN
   -- target's own native PK index directly. `v` is always the sampled candidate
   -- value's alias in the subqueries below, so these fragments reference it by that
   -- fixed name rather than via another %I substitution.
-  -- Candidate columns are uuid/text/varchar-typed (per the filter below), so a
-  -- uuid-typed candidate's value has no direct `~`/`~*` regex operator -- always
-  -- cast v to text before pattern-matching it, regardless of pk_type.
+  --
+  -- Two distinct traps, both hit live against `kala_field` (bigint PK) with a
+  -- uuid-typed candidate (`audit_log.id`) during verification:
+  -- (1) `v::bigint` is a PARSE-TIME error when v is uuid-typed -- there is no cast
+  --     path from uuid to bigint at all, direct or via assignment, so this fails
+  --     before any WHERE guard ever runs, regardless of evaluation order. Always
+  --     cast v to text FIRST (`v::text::pk_type`), since every candidate type
+  --     (uuid/text/varchar) has a valid cast to text, and text has a valid cast to
+  --     any of these pk_types.
+  -- (2) Even with a syntactically-valid two-step cast, PostgreSQL explicitly does
+  --     NOT guarantee `WHERE guard AND unsafe_cast` evaluates guard first (the docs'
+  --     own caveat on this exact pattern) -- a non-numeric string reaching
+  --     `v::text::bigint` at runtime raises, guard or no guard. `CASE WHEN` IS
+  --     documented to short-circuit; the two call sites below wrap the EXISTS probe
+  --     in one, they do not rely on AND ordering.
   IF pk_type IN ('bigint', 'integer', 'smallint') THEN
     guard_expr := 'v::text ~ ''^-?[0-9]+$''';
-    cast_expr  := 'v::' || pk_type;
   ELSIF pk_type = 'uuid' THEN
     guard_expr := 'v::text ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''';
-    cast_expr  := 'v::uuid';
   ELSE
     guard_expr := 'true';
-    cast_expr  := 'v::' || pk_type;
   END IF;
+  cast_expr := 'v::text::' || pk_type;
 
   FOR cand IN
     EXECUTE format(
@@ -244,8 +254,8 @@ BEGIN
       'public', '__ssv_', target_table, 'uuid', 'text', 'character varying', 'f', target_table)
   LOOP
     EXECUTE format(
-      'SELECT count(*), count(*) FILTER (WHERE %s AND EXISTS (
-           SELECT 1 FROM %I WHERE %I = %s))
+      'SELECT count(*), count(*) FILTER (WHERE CASE WHEN %s
+           THEN EXISTS (SELECT 1 FROM %I WHERE %I = %s) ELSE false END)
          FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL LIMIT 500) s',
       guard_expr, target_table, pk_col, cast_expr,
       cand.column_name, cand.table_name, cand.column_name)
@@ -255,7 +265,8 @@ BEGIN
 
     EXECUTE format(
       'SELECT count(*) FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL) s
-        WHERE %s AND EXISTS (SELECT 1 FROM %I WHERE %I = %s)',
+        WHERE CASE WHEN %s
+          THEN EXISTS (SELECT 1 FROM %I WHERE %I = %s) ELSE false END',
       cand.column_name, cand.table_name, cand.column_name,
       guard_expr, target_table, pk_col, cast_expr)
       INTO n_full;
