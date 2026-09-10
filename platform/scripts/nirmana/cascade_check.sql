@@ -212,11 +212,14 @@ BEGIN
   -- target's own native PK index directly. `v` is always the sampled candidate
   -- value's alias in the subqueries below, so these fragments reference it by that
   -- fixed name rather than via another %I substitution.
+  -- Candidate columns are uuid/text/varchar-typed (per the filter below), so a
+  -- uuid-typed candidate's value has no direct `~`/`~*` regex operator -- always
+  -- cast v to text before pattern-matching it, regardless of pk_type.
   IF pk_type IN ('bigint', 'integer', 'smallint') THEN
-    guard_expr := 'v ~ ''^-?[0-9]+$''';
+    guard_expr := 'v::text ~ ''^-?[0-9]+$''';
     cast_expr  := 'v::' || pk_type;
   ELSIF pk_type = 'uuid' THEN
-    guard_expr := 'v ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''';
+    guard_expr := 'v::text ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''';
     cast_expr  := 'v::uuid';
   ELSE
     guard_expr := 'true';
