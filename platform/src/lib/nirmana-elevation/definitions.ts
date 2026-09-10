@@ -959,10 +959,17 @@ export interface MidCampaignSupersedeNirmanaElevationDefinitionInput {
   expected_current_revision: string
   expected_current_manifest_sha256: string
   new_definition_revision: string
-  native_authorization: 'D-NATIVE-13'
+  native_authorization: 'D-NATIVE-13' | 'D-NATIVE-14'
   created_by: string
   mode: 'dry_run' | 'execute'
 }
+
+/** Every native ruling this path currently honours. D-NATIVE-14 (t1->t2)
+ * stands on D-NATIVE-13's precedent (t0->t1): the same class of defect
+ * (a ruled depends_on/contract migration staling the frozen manifest) gets
+ * the same fix under a standing authorization, so a future flip needs a new
+ * literal added here, not fresh native sign-off. */
+const MID_CAMPAIGN_SUPERSESSION_AUTHORIZATIONS = ['D-NATIVE-13', 'D-NATIVE-14'] as const
 
 export interface MidCampaignSupersessionReport {
   outcome: 'superseded' | 'idempotent' | 'dry_run_ok'
@@ -979,12 +986,14 @@ export interface MidCampaignSupersessionReport {
 
 /**
  * Explicit mid-campaign definition supersession under native ruling
- * D-NATIVE-13. Unlike supersedeNirmanaElevationDefinition above (which only
+ * D-NATIVE-13 (t0->t1) or its standing successor D-NATIVE-14 (t1->t2 and
+ * beyond). Unlike supersedeNirmanaElevationDefinition above (which only
  * replaces an UNUSED frozen definition), this path supersedes the current
  * frozen definition while its historical campaign events and build runs stay
  * bound to it as the immutable record. In exchange it demands:
- * - the literal `native_authorization: 'D-NATIVE-13'` reference, recorded in
- *   the new definition's provenance receipt;
+ * - one of `MID_CAMPAIGN_SUPERSESSION_AUTHORIZATIONS`' recognised
+ *   `native_authorization` literals, recorded in the new definition's
+ *   provenance receipt verbatim;
  * - ZERO in-flight build runs (planned/running/paused) anywhere at flip time;
  * - the replacement manifest snapshotted from the LIVE asset_registry inside
  *   the same serializable transaction; and
@@ -999,14 +1008,14 @@ export interface MidCampaignSupersessionReport {
 export async function supersedeNirmanaElevationDefinitionMidCampaign(
   input: MidCampaignSupersedeNirmanaElevationDefinitionInput,
 ): Promise<MidCampaignSupersessionReport> {
-  if (input.native_authorization !== 'D-NATIVE-13'
+  if (!MID_CAMPAIGN_SUPERSESSION_AUTHORIZATIONS.includes(input.native_authorization)
     || input.campaign_id !== 'nirmana-elevation'
     || input.expected_current_revision === input.new_definition_revision
     || !/^[A-Za-z0-9._-]{1,128}$/.test(input.expected_current_revision)
     || !/^[A-Za-z0-9._-]{1,128}$/.test(input.new_definition_revision)
     || !/^[a-f0-9]{64}$/.test(input.expected_current_manifest_sha256)
     || (input.mode !== 'dry_run' && input.mode !== 'execute')) {
-    throw new NirmanaElevationDefinitionConflictError('Mid-campaign supersession requires the explicit D-NATIVE-13 native authorization and valid distinct revisions.')
+    throw new NirmanaElevationDefinitionConflictError('Mid-campaign supersession requires an explicit, recognised native authorization and valid distinct revisions.')
   }
   const receiptIdempotencyKey = `mid-campaign-supersession:${input.expected_current_revision}->${input.new_definition_revision}`
   const client = await (await getNirmanaCampaignControlWriterPool()).connect()
@@ -1036,8 +1045,8 @@ export async function supersedeNirmanaElevationDefinitionMidCampaign(
         [input.campaign_id, input.new_definition_revision, receiptIdempotencyKey],
       )
       const payload = receipt.rows[0]?.evidence_payload
-      if (payload?.native_authorization !== 'D-NATIVE-13') {
-        throw new NirmanaElevationDefinitionConflictError('Mid-campaign supersession retry does not match the recorded D-NATIVE-13 provenance receipt.')
+      if (payload?.native_authorization !== input.native_authorization) {
+        throw new NirmanaElevationDefinitionConflictError('Mid-campaign supersession retry does not match the recorded provenance receipt\'s native authorization.')
       }
       await client.query('COMMIT')
       return {
@@ -1122,7 +1131,7 @@ export async function supersedeNirmanaElevationDefinitionMidCampaign(
     }) !== 'created') throw new NirmanaElevationDefinitionConflictError('Mid-campaign supersession label catalogue conflicts with existing evidence.')
 
     const receiptPayload = {
-      native_authorization: 'D-NATIVE-13',
+      native_authorization: input.native_authorization,
       superseded_revision: input.expected_current_revision,
       superseded_manifest_sha256: input.expected_current_manifest_sha256,
       new_manifest_sha256: candidate.manifest_sha256,

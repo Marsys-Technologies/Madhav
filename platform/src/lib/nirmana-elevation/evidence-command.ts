@@ -238,13 +238,15 @@ const supersede = z.object({
   expected_candidate_catalogue_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   new_definition_revision: revision,
 }).strict()
-// D-NATIVE-13 mid-campaign supersession (t0 -> t1). Unlike `supersede` above
-// (unused-definition replacement), this command flips the CURRENT frozen
-// definition while its historical events/build runs stay bound to it. The
-// literal `native_authorization` is part of the schema, so a call without the
-// exact ruling reference is refused before dispatch ever runs; every other
-// precondition (zero in-flight runs, live-registry snapshot, identical
-// asset-id denominator, t0 immutability) is enforced inside
+// D-NATIVE-13 mid-campaign supersession (t0 -> t1), extended by D-NATIVE-14
+// as a standing authorization for the same defect class (t1 -> t2 and any
+// later flip). Unlike `supersede` above (unused-definition replacement),
+// this command flips the CURRENT frozen definition while its historical
+// events/build runs stay bound to it. `native_authorization` is restricted
+// to a recognised set of literals, so a call without an exact ruling
+// reference is refused before dispatch ever runs; every other precondition
+// (zero in-flight runs, live-registry snapshot, identical asset-id
+// denominator, prior-revision immutability) is enforced inside
 // supersedeNirmanaElevationDefinitionMidCampaign itself.
 const midCampaignSupersede = z.object({
   command: z.literal('supersede_definition_mid_campaign'),
@@ -252,7 +254,7 @@ const midCampaignSupersede = z.object({
   expected_current_revision: revision,
   expected_current_manifest_sha256: z.string().regex(/^[a-f0-9]{64}$/),
   new_definition_revision: revision,
-  native_authorization: z.literal('D-NATIVE-13'),
+  native_authorization: z.enum(['D-NATIVE-13', 'D-NATIVE-14']),
   mode: z.enum(['dry_run', 'execute']),
 }).strict()
 const labelCatalogue = NirmanaLabelCatalogueInputSchema

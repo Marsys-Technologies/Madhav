@@ -365,7 +365,10 @@ describe('supersede_definition_mid_campaign command seam', () => {
     const { nirmanaEvidenceCommand } = await import('../evidence-command')
     expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand()).success).toBe(true)
     expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ mode: 'execute' })).success).toBe(true)
-    // The literal D-NATIVE-13 reference is REQUIRED — absent, null, or any
+    // D-NATIVE-14 is the standing successor authorization (t1->t2 and
+    // beyond) and must be admitted identically to D-NATIVE-13.
+    expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ native_authorization: 'D-NATIVE-14' })).success).toBe(true)
+    // Only the recognised literals are REQUIRED — absent, null, or any
     // other string must be refused at the schema boundary, before dispatch.
     expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ native_authorization: undefined })).success).toBe(false)
     expect(nirmanaEvidenceCommand.safeParse(midCampaignSupersedeCommand({ native_authorization: 'D-NATIVE-12' })).success).toBe(false)
