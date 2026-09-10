@@ -83,10 +83,22 @@ def _count_one(conn: Any, sql: str, params: list) -> int:
 
 
 def _formula_version(conn: Any, chart_id: str, col: str, table: str) -> str | None:
-    """Fetch the first non-null formula version string from a bodha table."""
+    """Fetch the most-recently-computed non-null formula version string from a
+    bodha table.
+
+    Issue #1770 class: the prior `LIMIT 1` here carried no ORDER BY, so on a
+    table with more than one distinct formula version for the chart (real for
+    bodha_msr_signals.salience_formula_version on the canonical chart — a
+    formula version bump mid-corpus leaves both old and new rows present) the
+    row Postgres returns is plan-dependent, not deterministic. Order by
+    `computed_at DESC` (every source table carries it) so the scorecard always
+    reports the version actually in effect for the most recent computation;
+    `col DESC` breaks an exact-timestamp tie deterministically.
+    """
     try:
         row = conn.execute(
-            f"SELECT {col} FROM {table} WHERE chart_id = %s LIMIT 1",
+            f"SELECT {col} FROM {table} WHERE chart_id = %s "
+            f"ORDER BY computed_at DESC, {col} DESC LIMIT 1",
             [chart_id],
         ).fetchone()
         if row:
