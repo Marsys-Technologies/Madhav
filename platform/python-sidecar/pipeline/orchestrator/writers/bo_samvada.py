@@ -84,10 +84,14 @@ SELECT
       jsonb_build_object('domain', cv2.domain, 'score', cv2.convergence_score, 'n', cv2.convergence_count)
       ORDER BY cv2.convergence_score DESC
     )
-    FROM bodha_convergence cv2
-    WHERE cv2.chart_id = m.chart_id AND cv2.ayanamsha_id = m.ayanamsha_id
-      AND cv2.snapshot_type = 'static_natal'
-    LIMIT 5
+    FROM (
+      SELECT cv2.domain, cv2.convergence_score, cv2.convergence_count
+      FROM bodha_convergence cv2
+      WHERE cv2.chart_id = m.chart_id AND cv2.ayanamsha_id = m.ayanamsha_id
+        AND cv2.snapshot_type = 'static_natal'
+      ORDER BY cv2.convergence_score DESC
+      LIMIT 5
+    ) cv2
   )                                                                AS top_convergence_domains,
   (
     SELECT sc.trap1_authority_inversion_count
