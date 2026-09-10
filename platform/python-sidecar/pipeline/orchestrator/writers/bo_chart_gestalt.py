@@ -184,12 +184,18 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     center_of_gravity_ids = [str(n["node_id"]) for n in top_nodes]
 
     # Final dispositor nodes from cgm_paths
+    # §N.8 (issue #1770 class): `DISTINCT to_node_id` with no ORDER BY has no
+    # guaranteed row order. These ids are appended onto `center_of_gravity_ids`
+    # below and that list is both stored whole and sliced `[:3]` into
+    # `cgm_hub_node_ids` — an unordered fetch feeding a stored/top-K structure.
+    # Fix: pin a deterministic order on the node id itself.
     final_disp_nodes = _fetch_dict(
         conn,
         """SELECT DISTINCT to_node_id
            FROM bodha_cgm_paths
            WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s
-             AND is_final_dispositor = true""",
+             AND is_final_dispositor = true
+           ORDER BY to_node_id ASC""",
         [chart_id, aya, SNAPSHOT_TYPE],
     )
     for r in final_disp_nodes:
