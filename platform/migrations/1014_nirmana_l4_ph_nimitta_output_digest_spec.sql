@@ -1,0 +1,98 @@
+-- 1014_nirmana_l4_ph_nimitta_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- ph_nimitta (PhNimittaWriter, @register('ph_nimitta')) writes exactly ONE
+-- table: phala_anchors (delete-then-insert per chart_id -- CLAUDE.md §N.3).
+--
+-- Non-determinism history: the old D-CND-04 finding ("anchor_id defaults to
+-- gen_random_uuid()") is STALE/FALSE as of this migration -- live-verified
+-- `information_schema.columns` shows anchor_id has NO column default and is
+-- NOT NULL. anchor_id is instead computed DETERMINISTICALLY by the
+-- `phala_anchor_identity()` SQL function (migration 680, IMMUTABLE, uuid_v5
+-- over the grade-free event tuple: chart_id, anchor_source, event_type,
+-- direction, domain, horizon_tier, window_start, peak_date, window_end,
+-- falsifier), called inline by the writer's own INSERT (ph_nimitta.py L243).
+-- anchor_id is also the table's PRIMARY KEY, so it is both the strongest
+-- possible natural key (DB-enforced unique + not-null) and the writer's own
+-- declared content identity.
+--
+-- Sole-writer confirmation (tree-wide grep, platform/, excluding tests, for
+-- INSERT/UPDATE/DELETE against phala_anchors): exactly two hits --
+-- ph_nimitta.py's own DELETE-then-INSERT (chart-scoped), and
+-- run_ka_sangam_prod.py's `DELETE FROM phala_anchors WHERE chart_id = %s AND
+-- anchor_source = 'convergence'`. The latter is a standalone operator
+-- utility ("Bypasses the full orchestrator UI to run [ka_sangam] writer
+-- standalone") that pre-deletes convergence-sourced anchors solely to avoid
+-- an FK-cascade/unique-index conflict when kala_convergence rows are
+-- rebuilt out-of-band -- it never INSERTs into phala_anchors. It is not a
+-- competing production writer: any orchestrator-driven build always ends
+-- with ph_nimitta's own full chart-scoped delete-then-insert, which
+-- supersedes this pre-delete's effect. All other files referencing
+-- phala_anchors (mi_adhilepa.py, mi_bhavisya.py, ph_pratikara.py,
+-- ph_phaladesa.py, ph_sodhana.py, ph_muhurta.py, ph_pramana.py,
+-- ph_suddha_sodhana.py, mi_kula.py, ph_sankrama.py, mi_pariksha.py,
+-- services/*.py) are read-only. brahmagyan/phala/anchors.py carries a
+-- deprecated seed_native_anchors() wrapper around an INSERT-capable SQL
+-- function, but it is provably dead: zero call sites (enforced by
+-- tests/test_seed_native_anchors_severed.py) and it would raise
+-- UndefinedColumn against the live schema if ever invoked -- not a live
+-- second writer.
+--
+-- Natural key: anchor_id (the table's own PRIMARY KEY) -- stronger than the
+-- table's secondary `phala_anchors_natural_key` UNIQUE constraint (which
+-- omits event_type/horizon_tier/window_start/peak_date/window_end/falsifier
+-- and exists for a different purpose, ON CONFLICT-safety against upstream
+-- FK churn). Declaring the PK directly needs no fleet-wide duplicate check
+-- (structurally impossible) and no chart_id co-declaration for uniqueness
+-- (already globally unique by construction), though chart_id is retained in
+-- where_equals for canonical-chart scoping and in value_columns per the
+-- established convention (bo_upaya, mi_bhara, ...).
+--
+-- Value columns -- every live column EXCLUDING the surrogate identity
+-- itself (n/a here -- anchor_id is both PK and the meaningful key),
+-- computed_at (standard exclusion, `now()` at insert time), and three
+-- columns confirmed 100%-NULL fleet-wide (60/60 rows, all charts) via a
+-- live COUNT(*) FILTER query: karmic_frame, karmic_note, subsystem_source.
+-- Kept despite partial-NULL (bo_pratijna/944 precedent for a genuinely
+-- partially-populated value column): convergence_id (7/60 NULL),
+-- discovery_id (53/60), bhavishya_id (54/60), signal_id (7/60), peak_date
+-- (7/60) -- each is populated exactly when its anchor_source implies it and
+-- NULL otherwise (a discovery-sourced anchor has no convergence_id, etc.),
+-- a real partial-population pattern, not dead weight.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('ph_nimitta', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERT this exact spec row ->
+-- call the REAL `compute_output_digest(cur, asset_id='ph_nimitta')` -> got
+-- back a clean digest hex
+-- (96a6260cf7994d974a2963a78035cbe1ec9fc3907677353772adb3952768e3e5) paired
+-- with the matching spec_sha256, no exception (the NULL-reviewed-key
+-- preflight passed -- anchor_id is NOT NULL on every live row, guaranteed by
+-- the column's own NOT NULL constraint) -> conn.rollback() -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for `ph_nimitta`, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_nimitta' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_nimitta',
+  'a39e520a36f9f5fd26180aaa8e66ae7fdbdc06544f56f2d1cbc995a0e245bd46',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_anchors","relation":"phala_anchors","key_columns":["anchor_id"],"value_columns":["anchor_id","chart_id","anchor_source","convergence_id","discovery_id","bhavishya_id","signal_id","event_type","direction","domain","horizon_tier","window_start","peak_date","window_end","magnitude","magnitude_basis","confidence_low","confidence_high","confidence_basis","malleability","counterfactual_jsonb","contradiction_jsonb","causal_chain_jsonb","precedent_refs_jsonb","dasha_consensus_count","school_consensus_jsonb","ayanamsha_robustness","falsifier","derivation_ledger_jsonb","source_citation","posterior","lift_vector_jsonb","structured_falsifier_jsonb"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
