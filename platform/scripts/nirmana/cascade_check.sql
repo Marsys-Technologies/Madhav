@@ -55,6 +55,19 @@
 -- `phala_muhurta.fructification_anchor` is a text column that looks like a candidate
 -- and holds the literal label 'tara+candra-bala', not an id, so a candidate is only
 -- reported once a live sample of its values actually resolves into the parent's PK.
+--
+-- D-CND-19 (2026-09-10, #2564): the orphan-resolution check used to run
+-- `v::text IN (SELECT pk_col::text FROM target_table)` as an UNCORRELATED subquery,
+-- re-planned and re-executed fresh on every dynamic EXECUTE for every surviving
+-- candidate column (~2,500 schema-wide). Against a normal-sized target this is cheap;
+-- against `kala_field` (11,012,657 rows / 5.0 GB) run repeatedly across the whole
+-- candidate loop, it crashed a live Postgres backend (OOM-consistent signature; no
+-- data loss -- Postgres self-healed, confirmed via a fresh `count(*)` matching the
+-- registry's documented row count). Fixed by hashing the target's PK column into a
+-- session-local TEMP TABLE ONCE, up front, then having every candidate iteration
+-- probe that small already-built table instead of re-scanning the 11M-row target
+-- per candidate. Same DROPPED-ON-CONNECTION-CLOSE lifetime as the other scratch
+-- tables in this script; still writes nothing durable.
 
 \if :{?table} \else \echo 'ERROR: pass -v table=<your table>' \quit \endif
 
@@ -181,6 +194,16 @@ BEGIN
       WHERE i.indrelid = %L::regclass AND i.indisprimary LIMIT 1', target_table)
     INTO pk_col;
 
+  -- D-CND-19 (#2564): build the target's PK set ONCE (a single full scan of the
+  -- target table, however large) instead of letting every one of the ~2,500
+  -- candidate iterations below re-scan it via an uncorrelated subquery.
+  CREATE TEMP TABLE IF NOT EXISTS _cascade_check_pk_set (pk text);
+  DELETE FROM _cascade_check_pk_set;
+  EXECUTE format('INSERT INTO _cascade_check_pk_set SELECT %I::text FROM %I',
+    pk_col, target_table);
+  CREATE INDEX IF NOT EXISTS _cascade_check_pk_set_idx ON _cascade_check_pk_set (pk);
+  ANALYZE _cascade_check_pk_set;
+
   FOR cand IN
     EXECUTE format(
       'SELECT c.table_name, c.column_name
@@ -199,16 +222,16 @@ BEGIN
       'public', '__ssv_', target_table, 'uuid', 'text', 'character varying', 'f', target_table)
   LOOP
     EXECUTE format(
-      'SELECT count(*), count(*) FILTER (WHERE v::text IN (SELECT %I::text FROM %I))
+      'SELECT count(*), count(*) FILTER (WHERE v::text IN (SELECT pk FROM _cascade_check_pk_set))
          FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL LIMIT 500) s',
-      pk_col, target_table, cand.column_name, cand.table_name, cand.column_name)
+      cand.column_name, cand.table_name, cand.column_name)
       INTO n_sample, n_resolved;
 
     CONTINUE WHEN n_sample = 0 OR n_resolved::numeric / n_sample < 0.95;
 
     EXECUTE format(
-      'SELECT count(*) FROM %I WHERE %I::text IN (SELECT %I::text FROM %I)',
-      cand.table_name, cand.column_name, pk_col, target_table)
+      'SELECT count(*) FROM %I WHERE %I::text IN (SELECT pk FROM _cascade_check_pk_set)',
+      cand.table_name, cand.column_name)
       INTO n_full;
 
     INSERT INTO _cascade_check_orphans
