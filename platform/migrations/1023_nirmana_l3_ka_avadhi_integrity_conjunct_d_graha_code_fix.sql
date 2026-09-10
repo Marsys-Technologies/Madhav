@@ -1,4 +1,4 @@
--- 1021_nirmana_l3_ka_avadhi_integrity_conjunct_d_graha_code_fix.sql
+-- 1023_nirmana_l3_ka_avadhi_integrity_conjunct_d_graha_code_fix.sql
 --
 -- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
@@ -75,6 +75,19 @@
 -- platform/migrations/` immediately before this rename that 1021 is free on main (tip is 1020,
 -- claimed by bo_anveshana). Content of this migration is otherwise unchanged from its original
 -- 1020-numbered authoring -- this is a pure rename + header update, not a re-derivation.
+--
+-- Renumbered 1021 -> 1023 (next cycle, before merge, 2026-09-10): the PR sat in the GitHub merge
+-- queue (native merge-queue mode, not classic auto-merge) and was silently added/removed 8 times
+-- (16:52:21Z .. 17:01:09Z) with all PR-branch-only CI green (`mergeStateStatus: CLEAN`), because the
+-- merge-queue's speculative merge-with-current-main re-runs `MIG-1` and TWO unrelated migrations had
+-- landed on main since this PR's last rebase and independently claimed 1021: this lane's own
+-- `1022_nirmana_l3_ka_yojaka_integrity_check_scope_ab.sql` (#2552/#2557, merged) and
+-- `1021_nirmana_l3_ka_taranga_ka_jivana_parva_output_digest_specs.sql` (unrelated L3-lane PR,
+-- merged). Confirmed via `git ls-tree origin/main -- platform/migrations/` immediately before this
+-- rename: main's migrations tip is 1022, both 1021 and 1022 claimed, 1023 is the next free number
+-- (matches the CI guard's own reported "next allocatable number: 1023"). No live migration ledger
+-- row exists under any prior numbering of this file (never merged/deployed) -- pure rename + header
+-- update again, content otherwise unchanged.
 
 UPDATE asset_registry SET integrity_check_sql = $ck$
 SELECT
