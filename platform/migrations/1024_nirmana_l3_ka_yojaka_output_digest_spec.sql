@@ -1,0 +1,84 @@
+-- 1024_nirmana_l3_ka_yojaka_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- `ka_yojaka` was blocked at `accepted_rebuild_observed` because it has never
+-- had an `asset_output_digest_specs` row. Followed the migration-1018
+-- (`ka_gochara`) recipe:
+--
+--   * Read the writer's own INSERT_SQL (`pipeline/orchestrator/writers/
+--     ka_yojaka.py` `_INSERT_SQL`, ~L358): 8 columns -- `chart_id,
+--     ayanamsha_id, signal_id, signature_class,
+--     dasha_eligibility_rule_jsonb, transit_trigger_jsonb,
+--     strength_affliction_hook_jsonb, derivation_ledger_jsonb`. The writer
+--     never sets `template_version` or `bound_at` (both carry DB-level
+--     defaults, 'v1.0' and now() respectively) -- excluded from
+--     value_columns, same convention as excluding `id`/`computed_at`
+--     elsewhere.
+--   * Natural key confirmed live: `idx_kap_chart_signal_ayan` is a genuine
+--     UNIQUE btree index on `(chart_id, signal_id, ayanamsha_id)`
+--     (`pg_indexes` query, live). Matches this migration's key_columns.
+--   * Shared-table wrinkle checked and cleared: grepped every writer under
+--     `pipeline/orchestrator/writers/*.py` for `kala_activation_predicates`
+--     -- only READERS (`ka_jivana_parva`, `ka_kalasutra`, `ka_sangam`,
+--     `ka_vighnakara`, `ph_nimitta`); `ka_sangam.py`'s own docstring says
+--     "written by ka_yojaka" in so many words. `ka_yojaka` is the SOLE
+--     writer -- no `where_equals` scoping is needed to exclude a sibling
+--     writer's rows (unlike ka_gochara's `generation` wrinkle).
+--   * Chart scoping: table holds THREE charts' rows live (canonical
+--     `482012f1` 50,678 / Abhinandan `1c826d5a` 50,171 / `cb73cd3d` 49,875,
+--     live `GROUP BY chart_id`). Campaign dispatch can only ever rebuild
+--     canonical (same restriction migrations 1019/1022 document), so
+--     `where_equals: {"chart_id": "482012f1-..."}` pins the spec to what
+--     this campaign can actually certify.
+--   * Row count reflects the POST-rebuild state: `asset_throughput.
+--     last_built_at` for `(ka_yojaka, 482012f1)` = 2026-09-10T17:17:03.734Z,
+--     `state='lit'` -- matches build `a085a8b7-...`'s completion, and
+--     canonical's row count (50,678) matches migration 1022's own
+--     live-verified conjunct-(b) violation count.
+--
+-- Grant pre-flight (live-verified this cycle):
+-- `has_table_privilege('nirmana_evidence_ingress_writer',
+-- 'public.kala_activation_predicates', 'SELECT')` = true.
+-- `asset_registry.integrity_check_sql` for `ka_yojaka` is non-null. No
+-- grant gap, no migration needed on either dimension.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions (`canonical_digest`, `_validate_spec`), never hand-
+-- reimplemented -- validated OK against the server's own validator.
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERTed this exact spec row ->
+-- called the REAL `compute_output_digest(cur, asset_id='ka_yojaka')` -> got
+-- back a clean 64-hex digest
+-- (3fd3b490ecc1dcb62bd9a58d4205b9eee3bb9410f993b4274d3efe8b7a58e6c5, no
+-- exception on the key preflight) -> rolled back -> re-queried
+-- `asset_output_digest_specs` from a fresh connection afterward and
+-- confirmed 0 rows for `ka_yojaka`, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Applied DIRECTLY to production ahead of this migration's deploy, per this
+-- lane's established apply-then-PR precedent (ka_gochara #migration-1018
+-- among others, Conductor DB-fast-path ratification #2514): the exact
+-- INSERT below was committed live, re-queried from a fresh connection to
+-- confirm 1 non-retired row for `ka_yojaka`, then `compute_output_digest`
+-- called again against that live row (fresh transaction, rolled back) and
+-- returned the SAME digest as the rehearsal
+-- (3fd3b490ecc1dcb62bd9a58d4205b9eee3bb9410f993b4274d3efe8b7a58e6c5) --
+-- confirming the applied spec matches what was rehearsed, not a
+-- re-derivation. This migration file is the durable, reviewable record;
+-- re-applying it via the deploy-time `migrate.ts` runner is an idempotent
+-- no-op (`ON CONFLICT (asset_id, spec_sha256) DO NOTHING`).
+--
+-- Post-apply verification (§N.8 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_yojaka' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_yojaka',
+  '9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_activation_predicates","relation":"kala_activation_predicates","key_columns":["chart_id","signal_id","ayanamsha_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["chart_id","ayanamsha_id","signal_id","signature_class","dasha_eligibility_rule_jsonb","transit_trigger_jsonb","strength_affliction_hook_jsonb","derivation_ledger_jsonb"]}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
