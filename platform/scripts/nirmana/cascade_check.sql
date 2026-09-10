@@ -61,13 +61,23 @@
 -- re-planned and re-executed fresh on every dynamic EXECUTE for every surviving
 -- candidate column (~2,500 schema-wide). Against a normal-sized target this is cheap;
 -- against `kala_field` (11,012,657 rows / 5.0 GB) run repeatedly across the whole
--- candidate loop, it crashed a live Postgres backend (OOM-consistent signature; no
--- data loss -- Postgres self-healed, confirmed via a fresh `count(*)` matching the
--- registry's documented row count). Fixed by hashing the target's PK column into a
--- session-local TEMP TABLE ONCE, up front, then having every candidate iteration
--- probe that small already-built table instead of re-scanning the 11M-row target
--- per candidate. Same DROPPED-ON-CONNECTION-CLOSE lifetime as the other scratch
--- tables in this script; still writes nothing durable.
+-- candidate loop, it crashed a live Postgres backend. D-CND-19's own first fix
+-- (hash the target's PK into a session-local TEMP TABLE once, then probe that) was
+-- ITSELF killed by Cloud SQL's memory guardian on the next real run (confirmed via
+-- the server log, not a hypothesis: `Cloud SQL cancelled this query owing to its
+-- excessive memory usage` on the one-time COPY+INDEX of 11M rows -- too much even
+-- once, on a `db-g1-small` instance).
+--
+-- D-CND-20 (2026-09-10, #2564, second ruling): stop materializing the target's PK
+-- set at all -- probe the target's OWN already-existing native PK index directly,
+-- per candidate row, via `EXISTS (SELECT 1 FROM target WHERE pk_col = v::pk_type)`.
+-- Zero copy, zero session-local index build. Casting direction matters: casting the
+-- indexed side (`pk_col`) to text (the original D-CND-19 bug) defeats its own index;
+-- this always casts the candidate VALUE toward the target's native PK type instead,
+-- guarded by a syntactic pre-check (numeric-string for bigint/integer, UUID-shaped
+-- for uuid) so a non-castable candidate value short-circuits to "no match" rather
+-- than raising a cast error mid-scan. Generalized across PK types (not hardcoded to
+-- `kala_field`'s bigint PK) since this script runs against every campaign table.
 
 \if :{?table} \else \echo 'ERROR: pass -v table=<your table>' \quit \endif
 
@@ -173,6 +183,9 @@ DO $cascade_check_orphan_scan$
 DECLARE
   target_table text;
   pk_col       text;
+  pk_type      text;
+  guard_expr   text;
+  cast_expr    text;
   cand         RECORD;
   n_sample     bigint;
   n_resolved   bigint;
@@ -189,20 +202,39 @@ BEGIN
   DELETE FROM _cascade_check_orphans;
 
   EXECUTE format(
-    'SELECT a.attname FROM pg_index i
+    'SELECT a.attname, format_type(a.atttypid, a.atttypmod)
+       FROM pg_index i
        JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
       WHERE i.indrelid = %L::regclass AND i.indisprimary LIMIT 1', target_table)
-    INTO pk_col;
+    INTO pk_col, pk_type;
 
-  -- D-CND-19 (#2564): build the target's PK set ONCE (a single full scan of the
-  -- target table, however large) instead of letting every one of the ~2,500
-  -- candidate iterations below re-scan it via an uncorrelated subquery.
-  CREATE TEMP TABLE IF NOT EXISTS _cascade_check_pk_set (pk text);
-  DELETE FROM _cascade_check_pk_set;
-  EXECUTE format('INSERT INTO _cascade_check_pk_set SELECT %I::text FROM %I',
-    pk_col, target_table);
-  CREATE INDEX IF NOT EXISTS _cascade_check_pk_set_idx ON _cascade_check_pk_set (pk);
-  ANALYZE _cascade_check_pk_set;
+  -- D-CND-20 (#2564, second ruling): no PK-set materialization at all -- probe the
+  -- target's own native PK index directly. `v` is always the sampled candidate
+  -- value's alias in the subqueries below, so these fragments reference it by that
+  -- fixed name rather than via another %I substitution.
+  --
+  -- Two distinct traps, both hit live against `kala_field` (bigint PK) with a
+  -- uuid-typed candidate (`audit_log.id`) during verification:
+  -- (1) `v::bigint` is a PARSE-TIME error when v is uuid-typed -- there is no cast
+  --     path from uuid to bigint at all, direct or via assignment, so this fails
+  --     before any WHERE guard ever runs, regardless of evaluation order. Always
+  --     cast v to text FIRST (`v::text::pk_type`), since every candidate type
+  --     (uuid/text/varchar) has a valid cast to text, and text has a valid cast to
+  --     any of these pk_types.
+  -- (2) Even with a syntactically-valid two-step cast, PostgreSQL explicitly does
+  --     NOT guarantee `WHERE guard AND unsafe_cast` evaluates guard first (the docs'
+  --     own caveat on this exact pattern) -- a non-numeric string reaching
+  --     `v::text::bigint` at runtime raises, guard or no guard. `CASE WHEN` IS
+  --     documented to short-circuit; the two call sites below wrap the EXISTS probe
+  --     in one, they do not rely on AND ordering.
+  IF pk_type IN ('bigint', 'integer', 'smallint') THEN
+    guard_expr := 'v::text ~ ''^-?[0-9]+$''';
+  ELSIF pk_type = 'uuid' THEN
+    guard_expr := 'v::text ~* ''^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$''';
+  ELSE
+    guard_expr := 'true';
+  END IF;
+  cast_expr := 'v::text::' || pk_type;
 
   FOR cand IN
     EXECUTE format(
@@ -222,16 +254,21 @@ BEGIN
       'public', '__ssv_', target_table, 'uuid', 'text', 'character varying', 'f', target_table)
   LOOP
     EXECUTE format(
-      'SELECT count(*), count(*) FILTER (WHERE v::text IN (SELECT pk FROM _cascade_check_pk_set))
+      'SELECT count(*), count(*) FILTER (WHERE CASE WHEN %s
+           THEN EXISTS (SELECT 1 FROM %I WHERE %I = %s) ELSE false END)
          FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL LIMIT 500) s',
+      guard_expr, target_table, pk_col, cast_expr,
       cand.column_name, cand.table_name, cand.column_name)
       INTO n_sample, n_resolved;
 
     CONTINUE WHEN n_sample = 0 OR n_resolved::numeric / n_sample < 0.95;
 
     EXECUTE format(
-      'SELECT count(*) FROM %I WHERE %I::text IN (SELECT pk FROM _cascade_check_pk_set)',
-      cand.table_name, cand.column_name)
+      'SELECT count(*) FROM (SELECT %I AS v FROM %I WHERE %I IS NOT NULL) s
+        WHERE CASE WHEN %s
+          THEN EXISTS (SELECT 1 FROM %I WHERE %I = %s) ELSE false END',
+      cand.column_name, cand.table_name, cand.column_name,
+      guard_expr, target_table, pk_col, cast_expr)
       INTO n_full;
 
     INSERT INTO _cascade_check_orphans
