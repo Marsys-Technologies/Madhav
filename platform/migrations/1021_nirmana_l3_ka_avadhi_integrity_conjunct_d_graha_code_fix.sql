@@ -1,4 +1,4 @@
--- 1020_nirmana_l3_ka_avadhi_integrity_conjunct_d_graha_code_fix.sql
+-- 1021_nirmana_l3_ka_avadhi_integrity_conjunct_d_graha_code_fix.sql
 --
 -- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
 -- platform/scripts/migrate.ts.
@@ -64,15 +64,17 @@
 -- (conjunct (c) still red, as expected -- this migration does not and
 -- cannot flip the overall result until a rebuild lands).
 --
--- Numbered 1020, not 1019: authored and applied to live production against this worktree's
--- migrations/ tip (1018), but origin/main had independently landed 1019
--- (nirmana_l3_ka_yojaka_integrity_check_scope.sql, PR #2552) by the time this migration was
--- written up -- a sibling fix for ka_yojaka's own conjunct (c), same "scope the fix to exactly
--- the one broken conjunct" discipline this migration follows for ka_avadhi's conjunct (d).
--- Renumbered to the next free slot after re-fetching origin/main; verified via
--- `git diff --name-only HEAD origin/main -- platform/migrations/` that 1019 was the ONLY new
--- migration file on main since this worktree's branch point, and that it does not touch
--- ka_avadhi or asset_registry's ka_avadhi row.
+-- Renumbered 1020 -> 1021 (this cycle, before merge): while this PR sat queued, an unrelated L2
+-- PR (#2555, `1020_nirmana_l2_bo_anveshana_output_digest_spec.sql`) merged to main and
+-- independently claimed number 1020 first (merged 2026-09-10T07:22:33Z). Both files' git paths
+-- differ so there was no merge conflict, but the CI `MIG-1` duplicate-migration-number guard
+-- (`platform/scripts/ci/migration_number_guard.ts`) would have failed this PR once the merge
+-- queue re-tested it against current main. Nothing had been deployed under the old `1020_...`
+-- ka_avadhi filename yet (PR was still unmerged), so renaming here is safe -- no live migration
+-- ledger row to reconcile. Verified via `git ls-tree -r origin/main --name-only --
+-- platform/migrations/` immediately before this rename that 1021 is free on main (tip is 1020,
+-- claimed by bo_anveshana). Content of this migration is otherwise unchanged from its original
+-- 1020-numbered authoring -- this is a pure rename + header update, not a re-derivation.
 
 UPDATE asset_registry SET integrity_check_sql = $ck$
 SELECT
