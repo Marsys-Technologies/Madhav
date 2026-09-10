@@ -28,12 +28,12 @@
     },
     "L3": {
       "asset_prefix": "ka_",
-      "convergence_commit": "cc10515e86f8fb151d345bdaf200468aad603692",
+      "convergence_commit": "7ddaeaa55768732189135cfc97b7bf12e55a8386",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "writer_inventory_sha256": "6b6293671d4ac4e4b91bf96389b6095cb1e526bed8374959e248c86100ec0426"
+      "writer_inventory_sha256": "3cfdd5df83f47b7969db8e98bc5305f50841a7ef3ebacbf0d80e9d5aae94396c"
     },
     "L4": {
       "asset_prefix": "ph_",
