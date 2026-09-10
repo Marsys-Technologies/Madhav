@@ -31,6 +31,7 @@ from typing import Any
 from . import WriterBase, ContextSpec, WriterResult, register
 from bodha_writers.sudarshana_emitter import (
     GRAHAS,
+    SIGNAL_TYPE_CLASS,
     sign_index,
     compute_tri_frame,
     build_signal_row,
@@ -168,7 +169,7 @@ class BoSudarshanaWriter(WriterBase):
     asset_id = "bo_sudarshana"
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        from bodha_writers._idempotency import replace_prior_msr_signals
+        from bodha_writers._idempotency import replace_prior_msr_for_chart
 
         chart_id = ctx.config["chart_id"]
         build_id = ctx.build_id
@@ -231,14 +232,25 @@ class BoSudarshanaWriter(WriterBase):
                 row["signature_tier"] = _signature_tier(row["computed_salience"])
                 rows.append(row)
 
+            # Delete the FULL (chart_id, ayanamsha_id, SIGNAL_TYPE_CLASS) scope this
+            # writer owns — unconditionally, even when `rows` came back short a graha
+            # (missing sign fact) or empty entirely. The previous `replace_prior_msr_signals`
+            # call derived its delete scope from the CURRENT batch's own signal_type_id
+            # set (`sudarshana_agreement:{graha}`, one per graha): any graha absent from
+            # this run's `rows` left its prior row un-deleted, orphaning it under a stale
+            # build_id — the exact §N.3 accretion defect Conductor ruling #2566 traced to
+            # one of the 8 bodha_msr_signals writers. `replace_prior_msr_for_chart` scopes
+            # by the writer's fixed `signal_type_class` instead of what happens to be in
+            # `rows`, so a shrinking or empty batch still wipes everything this writer
+            # could have left behind for this (chart, ayanamsha) before it inserts.
+            deleted = replace_prior_msr_for_chart(conn, chart_id, aya, [SIGNAL_TYPE_CLASS])
+            logger.info("[bo_sudarshana] %s — deleted %d prior, inserting %d signals",
+                        aya, deleted, len(rows))
+
             if not rows:
                 continue
 
             assign_deterministic_signal_ids(conn, rows)
-
-            deleted = replace_prior_msr_signals(conn, rows)
-            logger.info("[bo_sudarshana] %s — deleted %d prior, inserting %d signals",
-                        aya, deleted, len(rows))
 
             for row in rows:
                 conn.execute(_INSERT_SQL, row)
