@@ -3096,6 +3096,34 @@ function lifecycleEvidenceGeneration(payload: unknown): string {
   return 'legacy-unbound'
 }
 
+/**
+ * Adjudication #2568 (ruled 2026-09-10, Option B): an optimization_verdict_accepted
+ * receipt is otherwise permanently locked to its (registry_fingerprint_sha256,
+ * analysis_digest) generation once accepted -- #1770's fix keyed a *superseding*
+ * verdict on a fresh decision_digest, but an unchanged decision has no new
+ * decision_digest to key on, so any deploy landing between acceptance and dispatch
+ * left it an unrecoverable dead end (findExistingLifecycleReceipt matches purely on
+ * the generation key, and every legitimate source_ref value for a resubmission was
+ * independently foreclosed -- see #2568's own analysis). This mirrors #2317's own
+ * split for this same event type: source_ref currency is a decision-currency
+ * property (not a content-correctness one) and must still hold, but content that is
+ * genuinely unchanged is not a new decision requiring a new generation lock. A
+ * refresh is permitted ONLY when the resubmitted decision content is byte-identical
+ * to the currently-accepted verdict; a changed payload still hits the ordinary
+ * generation-conflict path below. assertNirmanaGitCommitMatchesDeployment (called
+ * unconditionally for this event type immediately after) still requires the
+ * refresh's own source_ref to equal the CURRENT deployment -- this helper does not
+ * relax that.
+ */
+function isOptimizationVerdictRefresh(
+  existing: RecordNirmanaElevationEvidenceInput,
+  input: RecordNirmanaElevationEvidenceInput,
+): boolean {
+  return existing.event_type === 'optimization_verdict_accepted'
+    && input.event_type === 'optimization_verdict_accepted'
+    && stableJson(existing.evidence_payload) === stableJson(input.evidence_payload)
+}
+
 function isExactEvidenceReceipt(
   receipt: RecordNirmanaElevationEvidenceInput | undefined,
   input: RecordNirmanaElevationEvidenceInput,
@@ -3179,7 +3207,7 @@ export async function recordNirmanaElevationEvidence(input: RecordNirmanaElevati
     await requireCurrentFrozenDefinition(client, input)
     const normalizedInput = await normalizeDetectorEvidence(client, input)
     const semanticExisting = await findExistingLifecycleReceipt(client, normalizedInput)
-    if (semanticExisting) {
+    if (semanticExisting && !isOptimizationVerdictRefresh(semanticExisting, normalizedInput)) {
       throw new NirmanaElevationEvidenceConflictError('A conflicting lifecycle receipt already exists for this registry/analysis generation; retry it with its original idempotency key.')
     }
     if (normalizedInput.event_type === 'foundation_lane_accepted') {
