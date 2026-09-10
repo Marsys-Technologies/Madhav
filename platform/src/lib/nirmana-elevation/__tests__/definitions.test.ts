@@ -1536,13 +1536,40 @@ it('atomically supersedes the exact current frozen definition with the server-de
       expect(transactionReleaseMock).toHaveBeenCalledOnce()
     })
 
-    it('refuses supersession without the exact D-NATIVE-13 native authorization before touching the database', async () => {
+    it('refuses supersession without a recognised native authorization before touching the database', async () => {
       mockMidCampaignTransaction()
 
       await expect(supersedeNirmanaElevationDefinitionMidCampaign(
         midCampaignInput({ native_authorization: 'D-NATIVE-99' })))
-        .rejects.toThrow(/D-NATIVE-13/)
+        .rejects.toThrow(/recognised native authorization/)
       expect(transactionQueryMock).not.toHaveBeenCalled()
+    })
+
+    it('flips t1 to t2 under the standing D-NATIVE-14 authorization, recording it verbatim in the receipt', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-14' })))
+        .resolves.toMatchObject({ outcome: 'superseded', superseded_revision: 'v1', new_definition_revision: 'v2' })
+
+      const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).includes("'definition_superseded_mid_campaign'"))
+      const receiptPayload = JSON.parse(String((receiptCall?.[1] as unknown[])?.[3]))
+      expect(receiptPayload.native_authorization).toBe('D-NATIVE-14')
+    })
+
+    it('refuses a mid-campaign retry whose input authorization does not match the recorded receipt', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [
+          { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: t0Candidate.manifest_sha256, manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: '2026-09-08T00:00:00.000Z' },
+          { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: t1Candidate.manifest_sha256, manifest: t1Candidate.manifest, created_by: 'conductor-1', superseded_at: null },
+        ],
+        retryReceipt: { evidence_payload: { native_authorization: 'D-NATIVE-13' } },
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-14' })))
+        .rejects.toThrow(/does not match the recorded/)
     })
 
     it('refuses supersession while any build run is in flight', async () => {
