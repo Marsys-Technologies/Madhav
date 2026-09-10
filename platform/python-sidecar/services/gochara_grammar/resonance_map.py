@@ -54,6 +54,7 @@ def fetch_resonance_targets(
     if event_class is not None:
         sql += " AND event_class = %s"
         params.append(event_class)
+    sql += " ORDER BY target_type, target_ref"
 
     try:
         cur = conn.execute(sql, params)
