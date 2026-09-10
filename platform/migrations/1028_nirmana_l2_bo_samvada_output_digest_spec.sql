@@ -1,0 +1,91 @@
+-- 1028_nirmana_l2_bo_samvada_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Closes the gap surfaced by this lane's cycle #358 bo_samvada dispatch:
+-- the build completed cleanly (state='completed', no last_error) but its
+-- asset_provenance_receipts row landed with receipt_state='unknown' and
+-- output_digest/output_digest_spec_sha256 both NULL, because
+-- asset_output_digest_specs had ZERO rows for bo_samvada -- the asset was
+-- never onboarded to output-digest-spec coverage. Same defect CLASS as
+-- the still-open #2540 (bo_upaya), a different asset instance.
+--
+-- bo_samvada (pipeline/orchestrator/writers/bo_samvada.py,
+-- @register("bo_samvada")) is a DDL-only writer: it DROPs and
+-- CREATE-OR-REPLACEs the `vw_chart_digest` VIEW over bodha_msr_signals
+-- (+ bodha_contradictions / bodha_rm_resonances / bodha_convergence /
+-- synthesis_quality_scorecard via correlated subqueries), GROUP BY
+-- (chart_id, ayanamsha_id). It is the SOLE definer of this view --
+-- confirmed via grep across all .py files for `vw_chart_digest`: only
+-- bo_samvada.py contains the CREATE OR REPLACE VIEW statement; no other
+-- writer emits DML/DDL against it.
+--
+-- output_digest.py's compute_output_digest queries `FROM public.<relation>`,
+-- which resolves identically for a VIEW as for a table (verified live in
+-- the rehearsal below -- no special-casing required in the spec model).
+--
+-- Natural key: (chart_id, ayanamsha_id) -- the view's own GROUP BY. 5 rows
+-- for the canonical chart (one per ayanamsha), confirmed live via
+-- `SELECT count(*) FROM vw_chart_digest WHERE chart_id = '<canonical>'`.
+-- Same two-column-key shape as the ka_yojaka / ga_dashas precedents in
+-- this series (chart_id + ayanamsha_id doubling as a key even though
+-- chart_id is also pinned via where_equals -- where_equals only narrows
+-- to the one chart in scope; ayanamsha_id still varies across the 5 rows
+-- and must stay in key_columns to distinguish them).
+--
+-- `digest_at` is excluded from value_columns: per the view's own
+-- docstring it is `NOW() at view-query time, not build time (a VIEW, not
+-- a snapshot)` -- it changes on every SELECT regardless of underlying
+-- content, the same class of exclusion as every prior spec's wall-clock
+-- write-time column, but stricter here since it isn't even pinned to a
+-- single build.
+--
+-- Contamination check: every value column is a COUNT(*)-derived integer,
+-- a rounded numeric average/max, a graha/priority-class label string, or
+-- a JSONB array of (domain, score, n) aggregate objects -- no raw
+-- node_id/cell_id/signal_id or other table's primary key is projected
+-- (verified by reading the full `_CREATE_VIEW_CLEAN` SQL in
+-- bo_samvada.py, lines 58-101).
+--
+-- value_columns = every live vw_chart_digest column EXCEPT chart_id,
+-- ayanamsha_id (both already covered as key_columns) and digest_at
+-- (excluded per above): msr_signal_count, yoga_count, dosha_count,
+-- avg_salience, max_salience, contradiction_count, weakest_graha,
+-- top_priority_class, top_convergence_domains, trap1_count (10 columns).
+-- Live view schema re-verified via psql \d vw_chart_digest immediately
+-- before authoring this migration: 13 columns total (chart_id,
+-- ayanamsha_id, digest_at excluded -> 10 in the spec, matching).
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('bo_samvada', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERT this exact spec row ->
+-- call the REAL compute_output_digest(cur, asset_id='bo_samvada') -> got
+-- back a clean digest hex
+-- (9087c49950cb77476019bec3f24431ff47ff5992b666f54ba432df356b45d6cf, no
+-- exception, key-preflight passed over all 5 canonical-chart rows) ->
+-- conn.rollback() -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for bo_samvada, i.e. genuinely
+-- rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_samvada' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_samvada',
+  '759bf9ff3ce18fccf5cf5c44e7728286414ab565295b4820d286707014d95b38',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"vw_chart_digest","relation":"vw_chart_digest","key_columns":["chart_id","ayanamsha_id"],"value_columns":["msr_signal_count","yoga_count","dosha_count","avg_salience","max_salience","contradiction_count","weakest_graha","top_priority_class","top_convergence_domains","trap1_count"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;
