@@ -2,7 +2,8 @@
  * query_life_events (lel_query) — WP-1.3(d) / F-L10-021
  * ======================================================
  * The `lel_query` MCP primitive must serve the native's user-authored life events
- * from the chart-scoped `life_events` table (57 rows for the canonical chart), NOT
+ * from the chart-scoped `life_events` table (a live, growing count — deliberately not
+ * pinned here; NIRMĀṆA L5 W3-3), NOT
  * the Bodha MSR signals surface it was mis-pointed at (lel_origin filter → 0 rows).
  *
  * DB is mocked — no live connection required.

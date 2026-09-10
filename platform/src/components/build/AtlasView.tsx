@@ -11,7 +11,7 @@ type AssetStat = {
   error: string | null
   // Mirrors AssetState in src/app/api/cockpit/stats/deriveState.ts — keep in step.
   // 'incomplete': migration 474 / SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24).
-  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
+  state: 'dormant' | 'building' | 'lit' | 'stale' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
   last_built_at: string | null
   // Badge-honesty (pre-D-4b readiness pass): real progress from the substep-resumption
   // ledger, populated when state === 'partial' or 'incomplete'. `total` is honestly null
@@ -53,6 +53,7 @@ function stateBadgeClass(state: AssetStat['state'] | undefined, loading: boolean
     case 'dormant':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200'
     case 'error':
+    case 'service_down':
       return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200'
     // Distinct from 'error': a resumable, in-progress materialization (real committed
     // substeps exist), not a broken writer. Amber-adjacent (blue) so it never reads as
@@ -88,6 +89,7 @@ function stateBadgeLabel(
     case 'stale':
       return 'stale'
     case 'error':
+    case 'service_down':
       return 'error'
     case 'partial':
       if (!substepProgress) return 'in progress'
@@ -118,6 +120,7 @@ function reconciliationDot(state: AssetStat['state'] | undefined, loading: boole
     case 'stale':
       return 'bg-amber-500'
     case 'error':
+    case 'service_down':
       return 'bg-red-500'
     case 'partial':
     case 'incomplete':
@@ -466,7 +469,7 @@ export function AtlasView({
       // the summary bar is the one number an operator reads at a glance.
       if (s.state === 'lit' || s.state === 'service_ok') lit++
       else if (s.state === 'dormant' || s.state === 'stale' || s.state === 'building' || s.state === 'partial' || s.state === 'incomplete') amber++
-      else if (s.state === 'error') red++
+      else if (s.state === 'error' || s.state === 'service_down') red++
       else grey++
     }
     return { lit, amber, red, grey }

@@ -175,13 +175,18 @@ export const getVicharaCapability: CapabilityDescriptor = {
     if (subjectRaw)   { filters.push(`UPPER(subject) = UPPER($${p++})`); params.push(subjectRaw) }
     const where = filters.join(' AND ')
 
+    // F-D11 (L1_W1_ANALYSIS_BATCH_D.md, NOW, §N.7 pt.2): was `vichara_family, domain NULLS
+    // FIRST, subject` alone — a non-total order. Confirmed live: 1,595 valence_pass rows/
+    // ayanamsha share this exact sort key per subject (e.g. SAT/MAR/JUP each 1,595-way
+    // tied), so LIMIT/OFFSET pagination across them was undefined/unstable order. Adding
+    // ayanamsha_id, varga_id, id (the table's own PK) makes this a genuine total order.
     const rowsSql = `
       SELECT id, chart_id, ayanamsha_id, build_id, vichara_family, subject, domain, varga_id,
              value_num, value_text, value_jsonb, constituent_fact_ids, formula_version,
              source_citation, computed_at
       FROM chart_vichara
       WHERE ${where}
-      ORDER BY vichara_family, domain NULLS FIRST, subject
+      ORDER BY vichara_family, domain NULLS FIRST, subject, ayanamsha_id, varga_id NULLS FIRST, id
       LIMIT $${p} OFFSET $${p + 1}`
     const countSql = `SELECT COUNT(*)::text AS total FROM chart_vichara WHERE ${where}`
     const familyCountSql = `

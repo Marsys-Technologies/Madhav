@@ -1,0 +1,6 @@
+interface:
+  display_name: "Autonomous Asset Elevation"
+  short_description: "Run autonomous asset elevation campaigns"
+  default_prompt: "Use $autonomous-asset-elevation to plan or execute this asset or layer campaign autonomously."
+policy:
+  allow_implicit_invocation: true

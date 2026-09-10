@@ -44,6 +44,14 @@ export interface ToolExecutionOutcome {
   readonly status: 'done' | 'error'
   /** Rows returned when status==='done' (0 = ran-but-empty). */
   readonly ok_count: number
+  /**
+   * V3-E-034: which failure class produced status==='error' — a registry-lookup miss (the tool
+   * name was authorized but `getToolByName` could not resolve it; nothing was ever dispatched)
+   * vs a dispatch throw (the tool resolved but the call itself threw). Lets the receipt below
+   * report a distinct, honest empty_reason instead of collapsing both into the generic
+   * `route_error` bucket.
+   */
+  readonly error_kind?: 'registry_unresolvable' | 'dispatch_error'
 }
 
 /** The web-channel completeness receipt: the faithful V-0-shaped receipt plus a channel note. */
@@ -61,6 +69,13 @@ export interface WebCompletenessReceipt extends CompletenessReceipt {
 }
 
 const WEB_NAMESPACE_GAP_PREFIX = 'web_namespace_gap'
+/**
+ * V3-E-034: the distinct empty_reason for "this tool was authorized and its dispatch was
+ * attempted, but the registry bridge (`getToolByName`) could not resolve it" — NOT the same as
+ * `route_not_invoked` (genuinely never authorized/executed) and NOT the same as bare
+ * `route_error` (resolved fine, but the dispatched call itself threw).
+ */
+const REGISTRY_UNRESOLVABLE_PREFIX = 'registry_unresolvable'
 
 /**
  * Build a truthful completeness receipt for a resolved plan on the WEB channel.
@@ -129,7 +144,11 @@ export function buildWebCompletenessReceipt(
       continue
     }
     if (outcome.status === 'error') {
-      observations.push({ floor_item_id: item.primitive_id, status: 'empty', empty_reason: 'route_error' })
+      const emptyReason =
+        outcome.error_kind === 'registry_unresolvable'
+          ? `${REGISTRY_UNRESOLVABLE_PREFIX}: retrieval tool "${retrievalName}" was authorized and dispatch was attempted, but it could not be resolved in the registry bridge`
+          : 'route_error'
+      observations.push({ floor_item_id: item.primitive_id, status: 'empty', empty_reason: emptyReason })
     } else if (outcome.ok_count > 0) {
       observations.push({ floor_item_id: item.primitive_id, status: 'served', source: retrievalName })
     } else {

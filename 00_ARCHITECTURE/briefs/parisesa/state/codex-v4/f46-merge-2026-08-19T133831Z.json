@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:38:31Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-46",
+  "pr": 1342,
+  "candidate_head": "3f4193ca1e0408b469c9e21567dc6a12e245dfa7",
+  "base_before_merge": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "merge_commit": "a7136b467af204767a6f9b403785b84967136a84",
+  "merge_method": "normal protected Ganga squash merge",
+  "synthetic_head": "a7136b467af204767a6f9b403785b84967136a84",
+  "merge_group_workflow": {
+    "run": 32258364020,
+    "name": "CI — Ganga Quality Gate",
+    "result": "SUCCESS",
+    "completed_at": "2026-08-19T13:38:00Z"
+  },
+  "post_merge_status": "code merged; affected MCP deployment and direct service proof remain pending",
+  "next_action": "rebase F47 from obsolete bc739092 base directly onto a7136b467, then regenerate PR evidence before admission."
+}

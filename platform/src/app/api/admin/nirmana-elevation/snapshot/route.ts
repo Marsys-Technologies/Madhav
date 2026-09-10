@@ -1,0 +1,35 @@
+import { NextResponse } from 'next/server'
+import { requireSuperAdmin } from '@/lib/auth/access-control'
+import { loadNirmanaElevationRawSources, NirmanaElevationSourceError, projectNirmanaElevationSnapshot, unavailableNirmanaElevationSnapshot } from '@/lib/nirmana-elevation/snapshot'
+import { loadNirmanaReleaseStatus } from '@/lib/nirmana-elevation/release'
+
+export const dynamic = 'force-dynamic'
+export const maxDuration = 15
+
+function snapshotResponse(body: Awaited<ReturnType<typeof projectNirmanaElevationSnapshot>>, status = 200) {
+  return NextResponse.json(body, {
+    status,
+    headers: { 'Cache-Control': 'no-store', ETag: `"${body.generation}"` },
+  })
+}
+
+export async function GET() {
+  const auth = await requireSuperAdmin()
+  if (auth instanceof NextResponse) {
+    auth.headers.set('Cache-Control', 'no-store')
+    return auth
+  }
+
+  try {
+    const [raw, releaseStatus] = await Promise.all([loadNirmanaElevationRawSources(), loadNirmanaReleaseStatus()])
+    return snapshotResponse(projectNirmanaElevationSnapshot(raw, { releaseStatus }))
+  } catch (caught) {
+    if (caught instanceof NirmanaElevationSourceError) {
+      return snapshotResponse(unavailableNirmanaElevationSnapshot(caught), 503)
+    }
+    console.error('[api/admin/nirmana-elevation/snapshot] unexpected failure', {
+      error_code: 'NIRMANA_SNAPSHOT_UNEXPECTED',
+    })
+    return snapshotResponse(unavailableNirmanaElevationSnapshot(new NirmanaElevationSourceError('asset_registry')), 503)
+  }
+}

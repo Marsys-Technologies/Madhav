@@ -1,0 +1,128 @@
+=== stash@{1} ===
+stash@{1}: On parishkara/mr-41-42-suppression: RESTORED: unrelated G14b AHEAD auto-file changes accidentally popped by another worktree's shared stash list (pk-mr4142 MR-41/42 session, do not drop)
+
+--- stat ---
+ platform-mcp/src/tools/kala_views/ahead.ts | 24 ++++++++++++++++++++++++
+ platform-mcp/src/tools/kala_views/now.ts   | 18 ++++++++++++++++++
+ platform-mcp/src/tools/kala_views/story.ts | 21 +++++++++++++++++++++
+ 3 files changed, 63 insertions(+)
+
+--- full diff ---
+diff --git a/platform-mcp/src/tools/kala_views/ahead.ts b/platform-mcp/src/tools/kala_views/ahead.ts
+index 37ad1ef68..fe1a9273f 100644
+--- a/platform-mcp/src/tools/kala_views/ahead.ts
++++ b/platform-mcp/src/tools/kala_views/ahead.ts
+@@ -93,6 +93,7 @@
+ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+ import { z } from 'zod'
+ import type { Principal } from '../../types.js'
++import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
+ import {
+   makeKalaEnvelope,
+   noLelCalibrationMaturity,
+@@ -1618,6 +1619,11 @@ export interface KalaAheadResult {
+   // never served as a prediction. One entry per active chain level (Mahadasha, Antardasha).
+   period_echo: PeriodEchoEntry[]
+   drill_pointers: DrillPointerLike[]
++  // G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b): summary of prospective entries filed
++  // into brahma_prospective_ledger for this serving call. Best-effort — null when the
++  // auto-file hook was not invoked (e.g. the result object was constructed without it),
++  // an AheadAutofileResult when it ran (even if filed_count = 0).
++  predictions_logged: AheadAutofileResult | null
+   provenance_envelope: {
+     source: string
+     assets: string[]
+@@ -1978,6 +1984,23 @@ export async function computeKalaAhead(
+     calibrationMaturity: noLelCalibrationMaturity(),
+   })
+ 
++  // ── G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b) ────────────────────────────────
++  //
++  // Every served prediction becomes a dated claim against the native's future
++  // (brahma_prospective_ledger). This is a BEST-EFFORT side effect: the filing result
++  // is captured and surfaced in the response, but a filing failure MUST NOT fail this
++  // serving call. `autofileAheadWindows` never throws (see its own module doc).
++  //
++  // Only `windowFamilies` are auto-filed here — see `ahead_autofile.ts` module doc for
++  // why projections are intentionally excluded (they lack an event_class).
++  let predictionsLogged: AheadAutofileResult | null = null
++  try {
++    predictionsLogged = await autofileAheadWindows(chartId, windowFamilies, principal)
++  } catch {
++    // Should never happen (autofileAheadWindows guarantees no throw), but defence in depth.
++    predictionsLogged = null
++  }
++
+   return {
+     tool: 'kala_ahead_get',
+     chart_id: chartId,
+@@ -1994,6 +2017,7 @@ export async function computeKalaAhead(
+     digest_90d: digest90d,
+     period_echo: periodEcho,
+     drill_pointers: drillPointers,
++    predictions_logged: predictionsLogged,
+     provenance_envelope: {
+       source: 'kala_ahead_get',
+       assets: [
+diff --git a/platform-mcp/src/tools/kala_views/now.ts b/platform-mcp/src/tools/kala_views/now.ts
+index bd2c0d616..3c64bf492 100644
+--- a/platform-mcp/src/tools/kala_views/now.ts
++++ b/platform-mcp/src/tools/kala_views/now.ts
+@@ -1765,6 +1765,24 @@ export async function computeKalaNow(
+             : `ka_tithi_pravesha has not built this chart, or ${asOfDate} falls outside the `
+               + 'built 120-year praveśa-year horizon — honest empty, not fabricated.',
+         ),
++    // E6 per-view elevation for NOW (KALA_SUPREME_ELEVATION_v1_0.md §6):
++    //   "NOW → `state_delta`: what changed since the last significant configuration
++    //   ('Mercury cleared combustion yesterday — the three-week fog lifts'). NOW becomes
++    //   news. Computed as a field diff against the previous inflection point."
++    // The field diff requires ka_kshetra field data (the previous inflection-point row
++    // in kala_field_windows / kala_field_provenance), which is not available until G1
++    // wiring completes for this chart. Until then: honest_empty, not not_in_corpus —
++    // the substrate design exists (KALA_SUPREME_ELEVATION_v1_0.md is ratified), but the
++    // serving path does not yet compute it. SAMPURTI G12 (2026-08-10).
++    honestEmptyCoverage(
++      'state_delta',
++      'E6 per-view elevation for NOW (KALA_SUPREME_ELEVATION_v1_0.md §6): the field diff ' +
++      'against the previous inflection point (what changed since the last significant ' +
++      'configuration) is not yet computed. Requires ka_kshetra field provenance rows ' +
++      '(kala_field_windows / kala_field_provenance) for this chart — G1 wiring must ' +
++      'complete first. SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); ' +
++      'the state_delta sub-elevation is the W3 depth portion, not yet built.',
++    ),
+   ]
+ 
+   const drillPointers: DrillPointerLike[] = [
+diff --git a/platform-mcp/src/tools/kala_views/story.ts b/platform-mcp/src/tools/kala_views/story.ts
+index 1b6489a1b..97ed46220 100644
+--- a/platform-mcp/src/tools/kala_views/story.ts
++++ b/platform-mcp/src/tools/kala_views/story.ts
+@@ -661,6 +661,27 @@ function buildCoverage(
+     'punctuation_events',
+     'sky-event calendar (returns, eclipses-on-natal, item 3/4) not yet built; punctuation marks are not interleaved into chapters.',
+   ))
++  // E6 per-view elevation for STORY (KALA_SUPREME_ELEVATION_v1_0.md §6):
++  //   "STORY → developmental thesis per chapter: what this period asks *given what the
++  //   previous chapters built* — from lord-relationship + house-progression + LEL verdicts
++  //   of prior same-lord chapters. A bildungsroman with citations."
++  // The developmental thesis requires lord-relationship chains and house-progression across
++  // chapters, both computable from existing L1 data, PLUS LEL verdicts of prior same-lord
++  // chapters (requires the retrodiction fit in item 10). Item 10's per-chapter LEL pinning
++  // is now wired above; the synthesis across chapters into a developmental thesis is the
++  // remaining E6 depth. Marked honest_empty (the substrate for it exists; this facade does
++  // not yet compute the cross-chapter synthesis). SAMPURTI G12 (2026-08-10).
++  coverage.push(honestEmptyCoverage(
++    'developmental_thesis',
++    'E6 per-view elevation for STORY (KALA_SUPREME_ELEVATION_v1_0.md §6): the developmental ' +
++    'thesis per chapter — what this period asks given what previous chapters built, from ' +
++    'lord-relationship + house-progression + LEL verdicts of prior same-lord chapters — ' +
++    'is not yet computed. Per-chapter LEL pinning (item 10) is wired and provides the ' +
++    'biographical pin points; the cross-chapter synthesis into a bildungsroman-with-citations ' +
++    'is the W3+ depth portion of this E6 sub-elevation. SHAD_DARSHANA_CLOSE_v1_0.md §2 ' +
++    'E6 disposition: VERIFIED-FIXED (lite); the developmental_thesis sub-elevation is ' +
++    'the full-depth remainder.',
++  ))
+   return coverage
+ }
+ 
+

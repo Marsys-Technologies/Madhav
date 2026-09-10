@@ -17,6 +17,7 @@ import { useUserRole } from '@/hooks/useUserRole'
 import { BuildBlockedModal } from '@/components/cockpit/BuildBlockedModal'
 import { BuildConfirmModal } from '@/components/cockpit/BuildConfirmModal'
 import type { BlockerEntry } from '@/lib/build/plan'
+import { isCockpitDispatchableServiceProbe } from '@/lib/cockpit/serviceProbeContract'
 
 interface Props {
   asset: AssetRowType
@@ -38,7 +39,8 @@ function derivePrimaryLabel(dormant: boolean): string {
 }
 
 // Service-health pill — replaces progress bar for asset_type='service' rows.
-// state='lit' ⟹ GREEN probe passed; 'error' ⟹ probe failed; 'building' ⟹ probe running.
+// state='lit' ⟹ GREEN probe passed; 'error'/'service_down' ⟹ probe failed;
+// 'building' ⟹ probe running.
 function ServiceHealthPill({
   state,
   hasError,
@@ -54,7 +56,7 @@ function ServiceHealthPill({
 
   const isGreen = state === 'lit' || state === 'service_ok'
   const isRunning = state === 'building'
-  const isError = hasError || state === 'error'
+  const isError = hasError || state === 'error' || state === 'service_down'
 
   // Same block geometry as AssetProgressBar (full-width 28px track + right-edge
   // state pill), so a service row reads consistently with the data rows.
@@ -125,7 +127,7 @@ function ServiceHealthPill({
 
 // Per-asset status dot — collapses the repeated "CURRENT" text chip into a
 // single colored circle. green = healthy/lit regardless of catalog status;
-// amber = building/stale/dormant; red = error / not_migrated / DRAFT·unhealthy.
+// amber = building/stale/dormant; red = error / service_down / not_migrated / DRAFT·unhealthy.
 function StatusDot({
   catalogStatus,
   state,
@@ -137,7 +139,7 @@ function StatusDot({
   const isHealthy = state === 'lit' || state === 'service_ok'
   const isAmber = state === 'building' || state === 'stale' || state === 'dormant' || state === 'reconnecting'
   // DRAFT only forces red when the asset is NOT healthy — a running DRAFT asset is green.
-  const isRed = state === 'error' || state === 'not_migrated' || (isDraft && !isHealthy)
+  const isRed = state === 'error' || state === 'service_down' || state === 'not_migrated' || (isDraft && !isHealthy)
 
   const color = isRed
     ? 'rgba(220,80,80,0.95)'
@@ -171,19 +173,41 @@ interface ConfirmPending {
   estimatedSeconds: number | null
 }
 
+// The dispatcher treats the frozen L0 health probes as deliberately narrow
+// exceptions: they are global services without a WriterBase implementation and
+// may only run as singleton asset_sets. Keep the client on that same contract
+// rather than sending an ordinary asset-scoped request that the dispatcher
+// must reject.
+export function rebuildScopeForAsset(asset: AssetRowType): 'asset' | 'asset_set' {
+  return isCockpitDispatchableServiceProbe(asset)
+    ? 'asset_set'
+    : 'asset'
+}
+
+function rebuildActionForAsset(asset: AssetRowType, state: string): 'build' | 'rebuild' {
+  // A probe is an invocation, not a row-population build. Its UI health can be
+  // dormant while the global throughput sentinel still records an older lit
+  // probe; `build` would then resolve to an empty plan. Always re-invoke the
+  // singleton probe without changing the user-facing Build/Rebuild label.
+  return isCockpitDispatchableServiceProbe(asset)
+    ? 'rebuild'
+    : state === 'dormant' ? 'build' : 'rebuild'
+}
+
 export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, isActiveAsset, highlighted, allAssets, substep, onRunStarted }: Props) {
   const [pendingCascade, setPendingCascade] = useState<ConfirmPending | null>(null)
   const [pendingBlock, setPendingBlock] = useState<BlockerEntry[] | null>(null)
   const { isSuperAdmin } = useUserRole()
 
   async function handleRebuildClick() {
-    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const action = rebuildActionForAsset(asset, derivedState)
+    const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/plan', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chart_id: chartId, scope: 'asset', scope_target: asset.asset_id, action }),
+        body: JSON.stringify({ chart_id: chartId, scope, scope_target: asset.asset_id, action }),
       })
       const body = await r.json().catch(() => null)
       if (!r.ok || !body?.data) {
@@ -211,7 +235,8 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
 
   async function handleCascadeConfirm() {
     if (!pendingCascade) return
-    const action = derivedState === 'dormant' ? 'build' : 'rebuild'
+    const action = rebuildActionForAsset(asset, derivedState)
+    const scope = rebuildScopeForAsset(asset)
     try {
       const r = await fetch('/api/cockpit/runs', {
         method: 'POST',
@@ -219,7 +244,7 @@ export function AssetRow({ asset, stat, chartId, activeRunId, activeRunPaused, i
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chart_id: chartId,
-          scope: 'asset',
+          scope,
           scope_target: asset.asset_id,
           action,
         }),

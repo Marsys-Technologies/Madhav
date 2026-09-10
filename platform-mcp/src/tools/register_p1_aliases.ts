@@ -25,9 +25,22 @@ import type { Principal } from '../types.js'
 import {
   describeProxyFailure, resolveChartFactsAyanamsha,
   READING_DEPTH_ZOD, guardDeepDiveNotLossy, DeepDiveLossyFormError, type ReadingDepth,
+  fetchOrientationContext,
 } from './registry_bridge.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget, type TrimmableSection } from '../lib/response_budget.js'
+import { unwrapFailureReason, unwrapPrimitiveResult } from '../lib/primitive_unwrap.js'
 import { classifyScope } from './intent_scope_classifier.js'
+// F-176 (PARISESA-V4): `kala_windows_get` and `kala_projections_get` are the raw L3
+// primitives `kala_ahead_get` (F-110) already wraps and gates against `pact_query` — but
+// `grep -n "promise\|pact"` over both underlying capability files returns zero hits, so an
+// LLM caller reaching these two tools directly (rather than kala_ahead_get) never sees a
+// classical promise-chain denial that contradicts a served tier_1_high row. See
+// `./kala_views/promise_gate.js`'s header for the full verification transcript and design.
+import {
+  computePromiseGate,
+  type PromiseGate,
+  type PromiseGateProjection,
+} from './kala_views/promise_gate.js'
 
 // ── Infrastructure helpers ────────────────────────────────────────────────────
 
@@ -36,11 +49,6 @@ const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 const PYTHON_SIDECAR_URL = (process.env['PYTHON_SIDECAR_URL'] ?? 'http://localhost:8001').replace(/\/$/, '')
 const SIDECAR_API_KEY = process.env['PYTHON_SIDECAR_API_KEY'] ?? ''
 
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function na(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
 
 async function callRegistryCap(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
@@ -65,6 +73,26 @@ async function callRegistryCap(uri: string, args: Record<string, unknown>, princ
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[alias] capability error: ${data.error ?? 'unknown'}`)
   return data.content
+}
+
+/**
+ * F-176: adapts this file's own `callRegistryCap` (throws on any failure) to the
+ * `{content, ok}` never-throws shape `computePromiseGate` (promise_gate.ts) requires. A
+ * PACT outage must report `state:'unreachable'` on the gate, not take down the whole
+ * kala_windows_get/kala_projections_get response (§N.8 — unreachable is a value, not a crash).
+ */
+async function callCapabilityForGate(
+  uri: string, args: Record<string, unknown>, principal: Principal,
+): Promise<{ content: Record<string, unknown> | null; ok: boolean }> {
+  try {
+    const content = await callRegistryCap(uri, args, principal)
+    return {
+      content: content && typeof content === 'object' && !Array.isArray(content) ? (content as Record<string, unknown>) : null,
+      ok: true,
+    }
+  } catch {
+    return { content: null, ok: false }
+  }
 }
 
 // R5 W2 corpus lane fix (P7 — corpus search 401, still failing after the W0a
@@ -92,7 +120,7 @@ export function describePrimFailure(tool: string, status: number, bodyText: stri
       const chartId = parsed.denial?.chart_id ?? 'unknown'
       const required = parsed.denial?.permission_required ?? 'view'
       return `[alias] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
-        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+        `(distinct from an empty result — this denial does not determine whether the chart exists). ${parsed.error?.message ?? ''}`.trim()
     }
   } catch {
     // Not JSON / not the denial shape — fall through.
@@ -124,6 +152,11 @@ async function callPlatformPrim(
   return res.json()
 }
 
+function sidecarFailure(method: 'GET' | 'POST', path: string, status: number): Error {
+  console.error(`[alias] sidecar ${method} failure: path=${path} status=${status}`)
+  return new Error('[alias] sidecar service unavailable')
+}
+
 async function callSidecarPath(path: string, body: Record<string, unknown>): Promise<unknown> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (SIDECAR_API_KEY) headers['X-API-Key'] = SIDECAR_API_KEY
@@ -132,8 +165,7 @@ async function callSidecarPath(path: string, body: Record<string, unknown>): Pro
     signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) {
-    const txt = await res.text().catch(() => '')
-    throw new Error(`[alias] sidecar ${path} failed (${res.status}): ${txt.slice(0, 200)}`)
+    throw sidecarFailure('POST', path, res.status)
   }
   return res.json()
 }
@@ -154,8 +186,7 @@ async function callSidecarGet(path: string): Promise<unknown> {
     method: 'GET', headers, signal: AbortSignal.timeout(30_000),
   })
   if (!res.ok) {
-    const txt = await res.text().catch(() => '')
-    throw new Error(`[alias] sidecar GET ${path} failed (${res.status}): ${txt.slice(0, 200)}`)
+    throw sidecarFailure('GET', path, res.status)
   }
   return res.json()
 }
@@ -185,13 +216,7 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 // already use) adds its last-resort bounded-depth long-string truncation fallback, which DOES
 // reach that shape — this is a strict superset of the prior behavior (array trimming still runs
 // first; string truncation only engages if arrays alone can't close the gap).
-function dualOutput(data: unknown, toolName = 'unknown_tool') {
-  let finalData: unknown = data
-  if (data && typeof data === 'object' && !Array.isArray(data)) {
-    const obj = data as Record<string, unknown>
-    const sections = autoDetectTrimmableSections(obj, toolName)
-    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
-  }
+function formatDualOutput(finalData: unknown) {
   const structuredContent = { type: 'object' as const, object: finalData }
   const json = JSON.stringify(finalData)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {
@@ -199,8 +224,82 @@ function dualOutput(data: unknown, toolName = 'unknown_tool') {
   }
   return { structuredContent, content: [{ type: 'text' as const, text: json }] }
 }
+
+function dualOutput(data: unknown, toolName: string) {
+  let finalData = data
+  if (data && typeof data === 'object' && !Array.isArray(data)) {
+    const obj = data as Record<string, unknown>
+    const sections = autoDetectTrimmableSections(obj, toolName)
+    finalData = finalizeMcpBudget(obj, { maxKb: 40, sections })
+  }
+  return formatDualOutput(finalData)
+}
+
+function calibrationContent(envelope: Record<string, unknown>): Record<string, unknown> | undefined {
+  const bundle = envelope['result']
+  if (!bundle || typeof bundle !== 'object' || Array.isArray(bundle)) return undefined
+  const results = (bundle as Record<string, unknown>)['results']
+  if (!Array.isArray(results)) return undefined
+  const first = results[0]
+  if (!first || typeof first !== 'object' || Array.isArray(first)) return undefined
+  const content = (first as Record<string, unknown>)['content']
+  return content && typeof content === 'object' && !Array.isArray(content)
+    ? content as Record<string, unknown>
+    : undefined
+}
+
+function prepareCalibrationEnvelope(data: unknown): Record<string, unknown> {
+  const outer = data && typeof data === 'object' && !Array.isArray(data)
+    ? data as Record<string, unknown>
+    : {}
+  const bundle = outer['result']
+  const unwrapped = unwrapPrimitiveResult(bundle)
+  if (unwrapped.failure || !unwrapped.payload) {
+    throw new Error(unwrapFailureReason('query_calibration', unwrapped.failure ?? 'payload_not_object'))
+  }
+
+  const bundleObject = bundle as Record<string, unknown>
+  const results = bundleObject['results'] as unknown[]
+  const first = results[0] as Record<string, unknown>
+  return {
+    ...outer,
+    result: {
+      ...bundleObject,
+      results: [{ ...first, content: unwrapped.payload }, ...results.slice(1)],
+    },
+  }
+}
+
+const CALIBRATION_QA_SECTION: TrimmableSection<Record<string, unknown>> = {
+  path: 'result.results[0].content.qa_results',
+  getArray: (envelope) => {
+    const qaResults = calibrationContent(envelope)?.['qa_results']
+    return Array.isArray(qaResults) ? qaResults : undefined
+  },
+  setArray: (envelope, kept) => {
+    const content = calibrationContent(envelope)
+    if (content) content['qa_results'] = kept
+  },
+  minKeep: 10,
+  hardFloor: true,
+  recover: {
+    instrument: 'mimamsa_calibration_get',
+    hint: 'Retry with budget_kb: 200 to recover the complete qa_results scorecard.',
+  },
+  label: 'calibration QA results',
+}
+
+function calibrationDualOutput(data: unknown, maxKb: number, budgetKbRequested?: number) {
+  const envelope = prepareCalibrationEnvelope(data)
+  const finalData = finalizeMcpBudget(envelope, {
+    maxKb,
+    sections: [CALIBRATION_QA_SECTION],
+    budgetKbRequested,
+  })
+  return formatDualOutput(finalData)
+}
 function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
-  return { ...dualOutput({ ok: false, error: msg, tool, ...extra }), isError: true as const }
+  return { ...dualOutput({ ok: false, error: msg, tool, ...extra }, tool), isError: true as const }
 }
 
 // ── EL-41 / B-1: per-requested-category receipt ─────────────────────────────────
@@ -317,6 +416,30 @@ function signalsSection(): TrimmableSection<Record<string, unknown>> {
   }
 }
 
+/**
+ * `verdict_summary` describes the signal rows on this response, not the upstream query's
+ * pre-budget candidate set. Keep it derived from the current array so an explicit trim
+ * cannot leave a stale served_count, tier census, or subject frequency alongside the rows.
+ */
+function rebuildSignalsVerdictSummary(inner: Record<string, unknown>): void {
+  const rows = Array.isArray(inner['signals']) ? inner['signals'] as Record<string, unknown>[] : []
+  const tierCounts: Record<string, number> = {}
+  const subjectCounts: Record<string, number> = {}
+  for (const row of rows) {
+    const tier = typeof row['signature_tier'] === 'string' ? row['signature_tier'] : 'unknown'
+    tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
+    const facts = Array.isArray(row['constituent_facts_array']) ? row['constituent_facts_array'] as string[] : []
+    for (const fact of facts.slice(0, 1)) subjectCounts[fact] = (subjectCounts[fact] ?? 0) + 1
+  }
+  const topSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([fact]) => fact)
+  inner['verdict_summary'] = {
+    served_count: rows.length,
+    tier_distribution: tierCounts,
+    top_subjects_by_frequency: topSubjects,
+    note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
+  }
+}
+
 // ── Common Zod schemas ────────────────────────────────────────────────────────
 
 const ChartBase = {
@@ -360,7 +483,11 @@ function regAlias(
   uri: string,
   extraSchema: Record<string, z.ZodTypeAny> = {},
   principal: Principal,
-  opts?: { paramAliases?: Record<string, string> },
+  // F-125: `requiresOrientation` closes the B.11 orientation gate for the interpretive
+  // members of this alias family (bodha_domain_reading_get, bodha_remedies_get,
+  // bodha_remedies_search, bodha_quality_get — spec §2c/§4). The remaining regAlias
+  // registrations are RS-4-exempt factual lookups and leave this flag absent/false.
+  opts?: { paramAliases?: Record<string, string>; requiresOrientation?: boolean },
 ) {
   server.tool(
     name, `[Phase-1 alias] ${desc}. Delegates to the same handler as the legacy tool name.`,
@@ -379,10 +506,20 @@ function regAlias(
           }
         }
         const data = await callRegistryCap(uri, {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...resolvedRest,
         }, principal)
-        return dualOutput(data, name)
+        let finalData = data
+        if (opts?.requiresOrientation) {
+          const { orientation_context, orientation_ok } = await fetchOrientationContext(
+            chart_id as string, ayanamsha_id as string | undefined, principal,
+          )
+          finalData =
+            data && typeof data === 'object' && !Array.isArray(data)
+              ? { ...(data as Record<string, unknown>), orientation_context, orientation_ok }
+              : { data, orientation_context, orientation_ok }
+        }
+        return dualOutput(finalData, name)
       } catch (err) { return errOut(name, String(err), { chart_id }) }
     }
   )
@@ -417,13 +554,14 @@ function globalAlias(
 // system_id (F-0354) and requested windows (F-0471/0485) are honored uniformly — instead
 // of a divergent, vimshottari-only, windowless PyJHora sidecar surface for some names.
 const DASHA_FACET_SCHEMA: Record<string, z.ZodTypeAny> = {
-  // ayanamsha_id override: no server-side default (chart_dashas carries all 5) — omitting it
-  // returns one row PER ayanamsha. Pass "lahiri_chitrapaksha" for the single-row gate shape.
+  // F-93: ayanamsha_id now defaults server-side to lahiri_chitrapaksha (chart_dashas carries
+  // all 5) — omitting it returns exactly one row. Pass it explicitly only for a non-canonical
+  // ayanamsha.
   ayanamsha_id: z.string().optional().describe(
-    'Ayanamsha filter. NO server-side default — omitting it returns ALL 5 ayanamshas ' +
-    '(one row per ayanamsha). Pass "lahiri_chitrapaksha" explicitly for the standard ' +
-    'single-row current-dasha gate shape.'),
-  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter.'),
+    'Ayanamsha filter. Defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
+    'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. ' +
+    'Pass this explicitly only to request a different, non-canonical ayanamsha.'),
+  as_of_date:    z.string().optional().describe('ISO date — the dasha running on this date ("what dasha as of X"). Echoed in facets_applied.date_filter; a date before the chart birth date carries the structured as_of_date_precedes_chart_birth warning.'),
   date_contains: z.string().optional().describe('ISO date — alias of as_of_date.'),
   date_from:     z.string().optional().describe('ISO date — exclude periods ending before this date. Echoed in facets_applied.date_filter.'),
   system:        z.string().optional().describe('Dasha system facet (default: vimshottari; "all" for every system).'),
@@ -491,7 +629,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // touches `mode` at all.
         const response_format = rd === 'deep_dive' ? 'full' : (mode as string | undefined ?? 'summary')
         const data = await callRegistryCap('marsys://tool/L2/query_ucd', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
           ...rest, response_format,
           ...(rd === 'deep_dive' ? { top_k_signals: 100 } : {}),
@@ -523,7 +661,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           '(default 25, max 100). The stored lens holds hundreds–thousands of rows; serving it ' +
           'unbounded blew this response past 900KB. See per-lens ranked_signals_total for the ' +
           'true family size; response_format=full raises the cap to 200/lens.'),
-    }, principal)
+    }, principal, { requiresOrientation: true })
 
   // get_signals → bodha_signals_get
   // R5.2 A3 (battery X-3 finding): top_k=200 (the max this schema allows) measured 234,278
@@ -569,7 +707,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // before forwarding; an explicit `min_salience` in the caller's own params (if ever
         // added) still wins since it would already be a rest key.
         const data = await callRegistryCap('marsys://tool/L2/query_signals', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0,
           ...(min_weight != null && rest['min_salience'] == null ? { min_salience: min_weight } : {}),
           ...rest,
@@ -578,33 +716,72 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         if (inner) {
           // Lane 5 (§N.6 (iii) layered envelope): a small verdict ahead of the (budgeted,
           // potentially large) row list — tier distribution + top subjects, computed from
-          // signals ALREADY fetched in this same response (zero new query, B.10). Built
-          // BEFORE the trimmer runs so the verdict reflects the untrimmed served set.
-          const rows = Array.isArray(inner['signals']) ? inner['signals'] as Record<string, unknown>[] : []
-          const tierCounts: Record<string, number> = {}
-          const subjectCounts: Record<string, number> = {}
-          for (const r of rows) {
-            const tier = typeof r['signature_tier'] === 'string' ? r['signature_tier'] as string : 'unknown'
-            tierCounts[tier] = (tierCounts[tier] ?? 0) + 1
-            const facts = Array.isArray(r['constituent_facts_array']) ? r['constituent_facts_array'] as string[] : []
-            for (const f of facts.slice(0, 1)) { subjectCounts[f] = (subjectCounts[f] ?? 0) + 1 }
-          }
-          const topSubjects = Object.entries(subjectCounts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k)
-          inner['verdict_summary'] = {
-            served_count: rows.length,
-            tier_distribution: tierCounts,
-            top_subjects_by_frequency: topSubjects,
-            note: 'Small verdict over THIS response\'s own served rows (§N.6 (iii)) — not a re-query.',
-          }
+          // signals ALREADY fetched in this same response (zero new query, B.10). Build
+          // it before trimming so its fixed overhead is budgeted, then rebuild it from the
+          // surviving rows immediately after the trim.
+          rebuildSignalsVerdictSummary(inner)
           // W3-L5 (budget unification, W-8): migrated off bare applyResponseBudget onto the
           // self-verifying finalizeMcpBudget entry point (this file's own dualOutput below
           // applies a second, file-wide auto-detect pass at 40KB as a backstop — the two are
           // not redundant: this narrower 25KB pre-trim on `inner` alone leaves headroom for
           // verdict_summary computed just above).
           finalizeMcpBudget(inner, { maxKb: 25, sections: [signalsSection()] })
+          rebuildSignalsVerdictSummary(inner)
         }
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_signals_get')
       } catch (err) { return errOut('bodha_signals_get', String(err), { chart_id }) }
+    }
+  )
+
+  // query_pratijna → bodha_pratijna_get
+  // F-67: the capability is fully descriptor'd (mcp_surface_profiles.generated.ts) and
+  // bridge-aliased (tool_name_bridge.ts: both `query_pratijna` and its `bodha_pratijna_get`
+  // alias map to marsys://tool/L2/query_pratijna) but no server.tool() registration for
+  // either name existed anywhere in platform-mcp/src — a pure omission (exhaustive grep,
+  // zero hits). This block is the missing registration, modeled on the bodha_signals_get
+  // block immediately above (same chart-scoped callRegistryCap pattern). Param names
+  // (chart_id, ayanamsha_id, status, event_class_id, limit, offset) match the handler at
+  // platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts verbatim.
+  // GA-5 review finding on #1391: the description below previously copied a STALE v3
+  // string verbatim from generated/mcp_surface_profiles.generated.ts (which has no CI
+  // --check/diff gate, so it drifted silently), not the live capability's own description
+  // at query_pratijna.ts. That reintroduced a claim a prior lane (PRATIJÑĀ v4 Lane B4,
+  // 2026-08-09) deliberately removed -- supporting_signal_ids/contradicting_signal_ids are
+  // ALWAYS NULL under the v4 engine (it never reads bodha_msr_signals) -- and omitted the
+  // real 'no_evidence' status value entirely. Sourced from queryPratijnaCapability's own
+  // description text instead of the stale generated copy.
+  server.tool(
+    'bodha_pratijna_get',
+    'Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated ' +
+    'row per event_class: status (promised | denied | conditional | no_evidence), grade, ' +
+    'varga_confirmation, and a derivation (bo_pratijna v4.1: a factor ledger of classical ' +
+    'significators, weights, and denial checks — the row\'s real evidence). Filters: ' +
+    'ayanamsha_id, status, event_class_id. Bounded (LIMIT <=50) with a disclosed total + offset ' +
+    'pagination. supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 ' +
+    'engine (it does not use MSR-signal matching); no_evidence rows mean "no karyatva registry ' +
+    'entry for this event class" -- their grade is NULL (not scored), served honestly, not ' +
+    'gated or fabricated.',
+    {
+      ...ChartBase,
+      status: z.string().optional().describe("Filter to one status: 'promised' | 'denied' | 'conditional' | 'no_evidence'."),
+      event_class_id: z.string().optional().describe('Filter to one event_class_id.'),
+      limit: z.number().int().min(1).max(50).optional(),
+      offset: z.number().int().min(0).optional(),
+    },
+    async (params) => {
+      const { chart_id, ayanamsha_id, status, event_class_id, limit, offset } = params as Record<string, unknown>
+      if (!chart_id) return errOut('bodha_pratijna_get', 'chart_id is required')
+      try {
+        const data = await callRegistryCap('marsys://tool/L2/query_pratijna', {
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
+          status, event_class_id,
+          limit: (limit as number) ?? 50, offset: (offset as number) ?? 0,
+        }, principal) as Record<string, unknown>
+        // CL-11 guard: pass the real tool name explicitly — do NOT call bare dualOutput(data),
+        // which defaults toolName to the 'unknown_tool' placeholder. A brand-new registration
+        // must not reintroduce that class of bug.
+        return dualOutput(data, 'bodha_pratijna_get')
+      } catch (err) { return errOut('bodha_pratijna_get', String(err), { chart_id }) }
     }
   )
 
@@ -647,14 +824,14 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
         const resolvedEdgeTypes = (edge_types as string[] | undefined) ?? (relation ? [relation as string] : undefined)
         const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
           ...(max_depth != null ? { depth: max_depth } : {}),
           ...(resolvedEdgeTypes ? { edge_types: resolvedEdgeTypes } : {}),
           ...(limit != null ? { top_k_hubs: limit } : {}),
           ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_graph_traverse_get')
       } catch (err) { return errOut('bodha_graph_traverse_get', String(err), { chart_id }) }
     }
   )
@@ -699,7 +876,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const requestedCategories = rest['categories'] as string[] | undefined
         const data = await callRegistryCap('marsys://tool/L1/get_positions', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           limit: (limit as number) ?? 25000, offset: (offset as number) ?? 0, ...rest,
         }, principal)
         const payload = unwrapCapabilityPayload(data)
@@ -883,10 +1060,16 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
   regAlias(server, 'ganita_dashas_get',
     'L1 dasha periods, faceted by system/level/window (same as get_dashas). ' +
     'Defaults: system=vimshottari, level<=3 (Maha/Antar/Pratyantar), window=now±5y. ' +
-    'ayanamsha_id has NO default here (unlike system/level/window) — omitting it returns ' +
-    'one row PER AYANAMSHA (5 rows, ~3.2KB), busting the <=1KB current-dasha gate. ' +
+    // GA-5 review finding on #1393: this description still asserted the pre-F-93 contract
+    // ("NO default... ALWAYS pass explicitly") after DASHA_FACET_SCHEMA's own ayanamsha_id
+    // describe() (this same file) was updated to say the opposite -- a direct self-
+    // contradiction on the surface an LLM caller reads first. Corrected to match.
+    'ayanamsha_id defaults server-side to "lahiri_chitrapaksha" (the project canonical ' +
+    'ayanamsha) when omitted — a bare call returns exactly one row, not one row per ' +
+    'ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha. ' +
     'Gate target (current dasha, <=1KB, ONE call): system=vimshottari, level=1, ' +
-    'as_of_date=<today>, ayanamsha_id="lahiri_chitrapaksha" — ALWAYS pass ayanamsha_id explicitly.',
+    'as_of_date=<today> — ayanamsha_id may be omitted; it already resolves to the gate\'s ' +
+    'canonical single-row shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
@@ -916,8 +1099,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       void _offset // this primitive has no offset concept
       if (!chart_id) return errOut('kala_windows_get', 'chart_id is required')
       try {
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const data = await callRegistryCap('marsys://tool/L3/query_temporal_activation', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolvedAyanamsha,
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
           ...(as_of ? { as_of } : {}),
@@ -930,6 +1114,25 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         // the tool 'unknown_tool' instead of 'kala_windows_get' — a caller
         // trying to page through a trimmed result had no honest instrument
         // name to call back with.
+        //
+        // F-176 (PARISESA-V4): the primitive's `forward_windows` fallback (fired only when
+        // the primary `kala_activation` query returns zero rows — query_temporal_activation.ts
+        // :296-357) reads UNGATED `kala_bhavishya` rows, the SAME table kala_projections_get
+        // and kala_ahead_get read. Gate ONLY when that fallback actually served rows — the
+        // common case (dated activations covering the range) has nothing to gate, and
+        // pact_query is expensive (runs judgment_query's full checklist), so this tool — a
+        // broad-purpose primitive called far more often than it hits the empty-activation
+        // fallback — does not pay that cost on every call the way kala_projections_get does.
+        const contentPayload = (data as Record<string, unknown> | null)?.['content'] as Record<string, unknown> | undefined
+        const forwardWindows = (contentPayload?.['forward_windows'] as PromiseGateProjection[] | undefined) ?? []
+        if (forwardWindows.length > 0) {
+          const asOfDate = (as_of as string | undefined) ?? new Date().toISOString().slice(0, 10)
+          const promiseGate: PromiseGate = await computePromiseGate(
+            chart_id as string, resolvedAyanamsha, asOfDate, domain as string | undefined,
+            forwardWindows, principal, callCapabilityForGate,
+          )
+          return dualOutput({ ...(data as Record<string, unknown>), promise_gate: promiseGate }, 'kala_windows_get')
+        }
         return dualOutput(data, 'kala_windows_get')
       } catch (err) { return errOut('kala_windows_get', String(err), { chart_id }) }
     }
@@ -966,8 +1169,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         params as Record<string, unknown>
       if (!chart_id) return errOut('kala_projections_get', 'chart_id is required')
       try {
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const data = await callRegistryCap('marsys://tool/L3/query_projections', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolvedAyanamsha,
           ...(domain ? { domain } : {}),
           horizon_years: (horizon_years as number | undefined) ?? 5,
         }, principal)
@@ -975,11 +1179,33 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const projections = (projData['projections'] as unknown[]) ?? []
         const cap = (max_projections as number | undefined) ?? 20
         const boundedProjections = projections.slice(0, cap)
+        // F-176 (PARISESA-V4): this tool serves `kala_bhavishya.probability_tier` rows
+        // (verbatim, never re-graded — §N.5/§N.7) WITHOUT ever consulting `pact_query` —
+        // confirmed live: `kala_projections_get(domain:'relationship')` on the canonical
+        // chart serves 2 tier_1_high rows with no promise_gate, while `pact_query` on the
+        // SAME chart/domain independently returns `denied_at_promise`. Gate against the
+        // SAME `projection_families` this alias already reads (from `content`, not the
+        // top-level `projections` field this handler builds above — that top-level field
+        // is a pre-existing, separate defect unrelated to F-176: it reads
+        // `projData['projections']` where the primitive nests the real array under
+        // `projData['content']['projections']`, so it is always empty; left untouched here
+        // as out of this fix's scope). Computed unconditionally (matching kala_ahead_get's
+        // own F-110 precedent for this same "raw projections" semantic) — `domain` absent
+        // and no projection carries one ⇒ computePromiseGate's own `not_applicable` short
+        // circuit, no extra call.
+        const contentPayload = projData['content'] as Record<string, unknown> | undefined
+        const projectionFamilies = (contentPayload?.['projection_families'] as PromiseGateProjection[] | undefined) ?? []
+        const asOfDate = new Date().toISOString().slice(0, 10)
+        const promiseGate: PromiseGate = await computePromiseGate(
+          chart_id as string, resolvedAyanamsha, asOfDate, domain as string | undefined,
+          projectionFamilies, principal, callCapabilityForGate,
+        )
         return dualOutput({
           ...projData,
           projections: boundedProjections,
           projections_total: projections.length,
           projections_returned: boundedProjections.length,
+          promise_gate: promiseGate,
         }, 'kala_projections_get')
       } catch (err) { return errOut('kala_projections_get', String(err), { chart_id }) }
     }
@@ -1027,7 +1253,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       tradition: z.string().optional(),
       fields: z.enum(['compact', 'all']).optional().describe(
         "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
-    }, principal, { paramAliases: { planet: 'graha' } })
+    }, principal, { paramAliases: { planet: 'graha' }, requiresOrientation: true })
 
   // Also: bodha_remedies_search as secondary alias
   regAlias(server, 'bodha_remedies_search',
@@ -1041,12 +1267,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       tradition: z.string().optional(),
       fields: z.enum(['compact', 'all']).optional().describe(
         "'compact' (default) narrates + drops always-null/redundant columns; 'all' returns full raw rows."),
-    }, principal, { paramAliases: { planet: 'graha' } })
+    }, principal, { paramAliases: { planet: 'graha' }, requiresOrientation: true })
 
   // get_chart_quality → bodha_quality_get
   regAlias(server, 'bodha_quality_get',
     'L2 chart quality scorecard (same as get_chart_quality)',
-    'marsys://tool/L2/query_quality_scorecard', {}, principal)
+    'marsys://tool/L2/query_quality_scorecard', {}, principal, { requiresOrientation: true })
 
   // R5.2 A2 (punch #5, orphaned C2 item 4): query_predictive_anchors's capability URI had
   // no public MCP tool wired to it — phala_anchors_get is a same-named but functionally
@@ -1089,7 +1315,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const data = await callRegistryCap('marsys://tool/L4/query_predictive_anchors', {
           chart_id: chartId,
-          ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+          ayanamsha_id: resolveChartFactsAyanamsha(p['ayanamsha_id'] as string | undefined),
           domain: p['domain'], event_type: p['event_type'], direction: p['direction'],
           horizon_tier: p['horizon_tier'], top_k: p['top_k'],
         }, principal)
@@ -1152,7 +1378,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           layer, asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_list')
       } catch (err) { return errOut('catalog_assets_list', String(err)) }
     }
   )
@@ -1196,7 +1422,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('kala_yoga_activation_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L-TIMING/yoga_activation_by_dasha', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(start_date ? { date_from: start_date } : {}),
           ...(end_date ? { date_to: end_date } : {}),
           ...(domain ? { domain } : {}),
@@ -1204,7 +1430,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(min_salience != null ? { min_salience } : {}),
           ...(limit != null ? { top_k: limit } : {}),
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'kala_yoga_activation_get')
       } catch (err) { return errOut('kala_yoga_activation_get', String(err), { chart_id }) }
     }
   )
@@ -1241,12 +1467,12 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       try {
         const resolvedSeedIds = (seed_node_ids as string[] | undefined) ?? (start_node ? [start_node as string] : undefined)
         const data = await callRegistryCap('marsys://tool/L2/traverse_chart_graph', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(resolvedSeedIds ? { seed_node_ids: resolvedSeedIds } : {}),
           ...(limit != null ? { top_k_hubs: limit } : {}),
           ...rest,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'bodha_graph_subgraph_get')
       } catch (err) { return errOut('bodha_graph_subgraph_get', String(err), { chart_id }) }
     }
   )
@@ -1287,7 +1513,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       if (!chart_id) return errOut('bodha_mechanisms_get', 'chart_id is required')
       try {
         const data = await callRegistryCap('marsys://tool/L2/query_mechanisms', {
-          chart_id, ayanamsha_id: na(ayanamsha_id as string | undefined),
+          chart_id, ayanamsha_id: resolveChartFactsAyanamsha(ayanamsha_id as string | undefined),
           ...(mechanism_class ? { mechanism_class } : {}),
           ...(valence ? { valence } : {}),
           ...(chain_circuit_only != null ? { chain_circuit_only } : {}),
@@ -1365,7 +1591,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ query, chart_id, top_k, filter_layer }) => {
       try {
         const data = await callPlatformPrim('vector_search', { query, chart_id, top_k, filter_layer }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_vector_search')
       } catch (err) { return errOut('ref_vector_search', String(err)) }
     }
   )
@@ -1496,7 +1722,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           layer, asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 200, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_all')
       } catch (err) { return errOut('catalog_assets_all', String(err)) }
     }
   )
@@ -1519,7 +1745,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           asset_type, catalog_status, scope, is_active, has_writer,
           limit: limit ?? 100, offset: offset ?? 0,
         }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'catalog_assets_l0')
       } catch (err) { return errOut('catalog_assets_l0', String(err)) }
     }
   )
@@ -1555,19 +1781,47 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_remedies', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_get')
       } catch (err) { return errOut('ref_remedies_get', String(err)) }
     }
   )
 
+  // F-06 (PARIŚEṢA-V4) scope honesty: this alias is NOT chart-scoped. It is a
+  // global keyword lookup against the L0 `brahma_remedy_corpus` reference table,
+  // which has no chart_id column and therefore cannot be filtered per-chart. The
+  // underlying capability (marsys://tool/L0/query_remedies_for_chart) accepts an
+  // optional chart_id but uses it for provenance echo only — never in the SQL
+  // WHERE clause. The description previously promised "Chart-specific remedy
+  // suggestions", which no code path could deliver. It now states what it does and
+  // points at `bodha_remedies_get` (marsys://tool/L2/query_remedies), the genuinely
+  // chart-scoped remedy surface. `chart_id` is exposed here so the MCP schema
+  // mirrors the capability's real contract rather than hiding the parameter.
   server.tool(
     'ref_remedies_chart_get',
-    '[Phase-1 alias] Chart-specific remedy suggestions (same as query_remedies_for_chart).',
-    { affliction: z.string().describe('Planet name or domain keyword'), top_k: z.number().int().optional() },
-    async ({ affliction, top_k }) => {
+    '[Phase-1 alias] Returns L0 corpus remedies matching an affliction keyword ' +
+      '(ILIKE against the planet and domain columns of brahma_remedy_corpus). ' +
+      'NOT chart-scoped: no chart data is read and no chart-scoped SQL runs. ' +
+      'chart_id is optional and is echoed back for provenance only — it does not filter results, ' +
+      'so two different charts with the same affliction keyword get identical rows. ' +
+      'When to prefer: use this for classical corpus lookup by planet/domain keyword. ' +
+      'For remedies actually derived from a specific chart, call bodha_remedies_get instead.',
+    {
+      affliction: z.string().describe('Planet name or domain keyword'),
+      top_k: z.number().int().optional(),
+      chart_id: z
+        .string()
+        .uuid()
+        .optional()
+        .describe('Chart UUID — provenance echo only; does NOT filter results. Use bodha_remedies_get for chart-scoped remedies.'),
+    },
+    async ({ affliction, top_k, chart_id }) => {
       try {
-        const data = await callPlatformPrim('query_remedies_for_chart', { affliction, top_k }, principal)
-        return dualOutput(data)
+        const data = await callPlatformPrim(
+          'query_remedies_for_chart',
+          { affliction, top_k, ...(chart_id ? { chart_id } : {}) },
+          principal,
+        )
+        return dualOutput(data, 'ref_remedies_chart_get')
       } catch (err) { return errOut('ref_remedies_chart_get', String(err)) }
     }
   )
@@ -1579,7 +1833,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ category, limit, offset }) => {
       try {
         const data = await callPlatformPrim('list_remedies_by_category', { category, limit, offset }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_by_category_list')
       } catch (err) { return errOut('ref_remedies_by_category_list', String(err)) }
     }
   )
@@ -1591,7 +1845,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ remedy_id }) => {
       try {
         const data = await callPlatformPrim('read_remedy', { remedy_id }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedy_get')
       } catch (err) { return errOut('ref_remedy_get', String(err)) }
     }
   )
@@ -1603,7 +1857,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_tantric_remedies', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_tantric_remedies_get')
       } catch (err) { return errOut('ref_tantric_remedies_get', String(err)) }
     }
   )
@@ -1615,7 +1869,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async ({ planet, limit, offset }) => {
       try {
         const data = await callPlatformPrim('query_remedies_by_planet', { planet, limit, offset }, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_remedies_by_planet_get')
       } catch (err) { return errOut('ref_remedies_by_planet_get', String(err), { planet }) }
     }
   )
@@ -1627,7 +1881,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('query_mantras', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'ref_mantras_get')
       } catch (err) { return errOut('ref_mantras_get', String(err)) }
     }
   )
@@ -1667,7 +1921,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           // No keyword requested — planet/category are genuinely honored natively by the
           // primitive; behave exactly as before, just mapping limit -> top_k honestly.
           const data = await callPlatformPrim('query_remedies', { ...rest, top_k: desiredLimit }, principal)
-          return dualOutput(data)
+          return dualOutput(data, 'ref_remedies_search')
         }
 
         const POOL_SIZE = Math.min(Math.max(desiredLimit * 10, 100), 500)
@@ -1701,7 +1955,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
               'planet/category to shrink the pool the keyword search actually covers, or raise ' +
               '`limit` to widen it (pool = limit × 10, capped at 500).',
           },
-        })
+        }, 'ref_remedies_search')
       } catch (err) { return errOut('ref_remedies_search', String(err)) }
     }
   )
@@ -1778,7 +2032,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           action_type,
           date_range: { start, end },
         })
-        return dualOutput(data)
+        return dualOutput(data, 'kala_muhurta_get')
       } catch (err) { return errOut('kala_muhurta_get', String(err), { chart_id }) }
     }
   )
@@ -1796,11 +2050,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
         const data = await callSidecarPath('/api/compute/phala/outlook', {
           chart_id, horizon_months: horizon_months ?? 12,
         })
-        // RC-04 drill-crawl (2026-07-23): dualOutput(data) with no toolName arg was
-        // defaulting recover_via.instrument to the literal placeholder 'unknown_tool' in
+        // RC-04 drill-crawl (2026-07-23): a prior one-argument helper call
+        // defaulted recover_via.instrument to a literal placeholder in
         // this tool's trim_report/drill_pointers whenever a section was auto-trimmed
         // (live-reproduced: mitigations 100→10, auspicious_windows 30→15, both pointing
-        // callers at 'unknown_tool'). Passing the real tool name here matches the sibling
+        // callers at that placeholder. Passing the real tool name here matches the sibling
         // call sites in this file (e.g. mimamsa_lel_query below) that already do this.
         return dualOutput(data, 'phala_outlook_get')
       } catch (err) { return errOut('phala_outlook_get', String(err), { chart_id }) }
@@ -1841,23 +2095,39 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callPlatformPrim('record_outcome', params as Record<string, unknown>, principal)
-        return dualOutput(data)
+        return dualOutput(data, 'mimamsa_outcome_record')
       } catch (err) { return errOut('mimamsa_outcome_record', String(err)) }
     }
   )
 
   server.tool(
     'mimamsa_calibration_get',
-    '[Phase-1 alias] Query calibration stats for a chart (same as query_calibration).',
+    '[Phase-1 alias] Query calibration stats for a chart (same as query_calibration). ' +
+    'The default 40KB presentation budget keeps the structured scorecard valid and trims ' +
+    'only qa_results when necessary; request budget_kb up to 200 for the complete QA detail.',
     {
       chart_id: z.string().uuid().describe('Chart UUID'),
-      domain:   z.string().optional(),
-      ...GlobalBase,
+      // F-27 (PARIŚEṢA V4): `domain` is a real, derived filter — the capability joins
+      // mimamsa_calibration.prediction_id -> mimamsa_predictions.domain (text NOT NULL)
+      // over idx_mimamsa_calibration_prediction. `include_held_out`/`promoted_only` are
+      // genuine capability filters that were previously unreachable from ANY tool name.
+      domain: z.string().min(1).optional()
+        .describe('Optional life-domain filter (e.g. "career", "relationship", "transition"). Narrows verdict_distribution to matches whose prediction carries this domain; sections with no domain dimension are returned unfiltered and named in filters.domain_unfiltered_sections.'),
+      include_held_out: z.boolean().optional()
+        .describe('Include held-out partition matches (default: false).'),
+      promoted_only: z.boolean().optional()
+        .describe('Return only promoted (gate_passed=true) multipliers (default: false).'),
+      budget_kb: z.number().int().min(1).max(200).optional()
+        .describe('Presentation-only response budget in KB (default 40, max 200); never forwarded to query_calibration.'),
     },
-    async ({ chart_id, domain, limit, offset }) => {
+    async ({ chart_id, domain, include_held_out, promoted_only, budget_kb }) => {
       try {
-        const data = await callPlatformPrim('query_calibration', { chart_id, domain, limit, offset }, principal)
-        return dualOutput(data)
+        const data = await callPlatformPrim(
+          'query_calibration',
+          { chart_id, domain, include_held_out, promoted_only },
+          principal,
+        )
+        return calibrationDualOutput(data, budget_kb ?? 40, budget_kb)
       } catch (err) { return errOut('mimamsa_calibration_get', String(err), { chart_id }) }
     }
   )
@@ -1871,7 +2141,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     async (params) => {
       try {
         const data = await callSidecarPath('/api/pyhora/compute', params as Record<string, unknown>)
-        return dualOutput(data)
+        return dualOutput(data, 'ganita_natal_positions_compute')
       } catch (err) { return errOut('ganita_natal_positions_compute', String(err)) }
     }
   )
@@ -1886,8 +2156,10 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L1 dasha periods, faceted by system/level/window (same as get_dashas / ganita_dashas_get). ' +
     'Honors system_id (all 8 systems: vimshottari, vimshottari_kp, yogini, ashtottari, ' +
     'chara_karaka, kalachakra, mudda, naisargika) and requested date windows. ' +
-    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id has NO default — ' +
-    'pass "lahiri_chitrapaksha" for the single-row current-dasha gate shape.',
+    // GA-5 review finding on #1393: matched to DASHA_FACET_SCHEMA's own updated
+    // ayanamsha_id describe() (same self-contradiction fix as ganita_dashas_get above).
+    'Defaults: system=vimshottari, level<=3, window=now±5y. ayanamsha_id defaults server-side ' +
+    'to "lahiri_chitrapaksha" when omitted — a bare call already returns the single-row shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
@@ -1895,8 +2167,8 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'L1 dasha periods, faceted by system/level/window (DB-backed, chart_id required). ' +
     'Honors system_id (all 8 systems) and requested date windows (as_of_date / window_start / ' +
     'window_end), echoing the applied filter back in facets_applied. Defaults: system=vimshottari, ' +
-    'level<=3, window=now±5y. ayanamsha_id has NO default — pass "lahiri_chitrapaksha" for the ' +
-    'single-row current-dasha gate shape.',
+    'level<=3, window=now±5y. ayanamsha_id defaults server-side to "lahiri_chitrapaksha" when ' +
+    'omitted — a bare call already returns the single-row current-dasha gate shape.',
     'marsys://tool/L1/get_dashas',
     DASHA_FACET_SCHEMA, principal)
 
@@ -1951,7 +2223,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           )]
           const data = await callRegistryCap('marsys://tool/L1/get_sensitive_points', {
             chart_id: chartId,
-            ayanamsha_id: na(p['ayanamsha_id'] as string | undefined),
+            ayanamsha_id: resolveChartFactsAyanamsha(p['ayanamsha_id'] as string | undefined),
             categories: realCategories,
             limit: (p['limit'] as number) ?? 25000,
             offset: (p['offset'] as number) ?? 0,
@@ -1968,7 +2240,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
             'Provide either chart_id (stored facts, preferred) or birth data (datetime_iso/latitude_deg/longitude_deg).')
         }
         const data = await callSidecarPath('/api/pyhora/compute', p)
-        return dualOutput(data)
+        return dualOutput(data, 'ganita_special_lagnas_get')
       } catch (err) { return errOut('ganita_special_lagnas_get', String(err), chartId ? { chart_id: chartId } : undefined) }
     }
   )

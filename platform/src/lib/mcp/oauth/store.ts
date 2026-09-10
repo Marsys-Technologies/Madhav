@@ -87,11 +87,20 @@ export async function validateClient(
   const row = rows[0]
   if (!row) return null
 
-  // If a secret is provided, verify it; for auth-code flow without secret (PKCE), skip.
-  if (clientSecret !== undefined) {
-    const incoming = sha256(clientSecret)
-    if (incoming !== row.client_secret_hash) return null
-  }
+  // SF-002 fix: this function has exactly one caller chain (the client_credentials
+  // grant handler, via /api/mcp/oauth/clients/validate) -- the authorization_code+PKCE
+  // flow never calls validateClient at all (it goes through consumeAuthCode + its own
+  // PKCE verification instead, see platform-mcp/src/oauth/token.ts's
+  // authorization_code branch). The prior "skip if no secret, for PKCE" comment
+  // described a justification that does not apply to this function's actual (only)
+  // caller. client_credentials grant REQUIRES client authentication per RFC 6749 §4.4 --
+  // omitting a secret must never validate. Previously: JSON.stringify() dropping an
+  // `undefined` client_secret key meant a request with NO secret at all skipped
+  // verification entirely and returned the client record as valid, letting anyone who
+  // knew a client_id (not secret-equivalent -- it appears in authorize/redirect URLs)
+  // obtain real access+refresh tokens for that client's owner_uid.
+  const incoming = sha256(clientSecret ?? '')
+  if (clientSecret === undefined || incoming !== row.client_secret_hash) return null
 
   return {
     client_id: row.client_id,
@@ -100,6 +109,33 @@ export async function validateClient(
     scopes: row.scopes,
     created_at: row.created_at,
   }
+}
+
+/**
+ * SF-004 (PARIŚEṢA-V4): lookup-only client metadata for the /authorize
+ * redirect_uri allowlist check. `/authorize` runs before any client secret is
+ * available (it's a browser redirect, not a service-to-service call), so it
+ * cannot go through `validateClient` — which correctly (SF-002) rejects
+ * `clientSecret === undefined`. This function is the secretless sibling used
+ * ONLY to fetch the registered allowlist.
+ *
+ * The SQL projection itself never selects `owner_uid` or `client_secret_hash`
+ * — the omission is enforced here, not only by response shaping one layer up,
+ * so a careless edit to the caller cannot leak either field. See
+ * `SF004_OAUTH_BINDING_CONTRACT_v1_0.md` §4.
+ */
+export async function getClientMetadata(
+  clientId: string
+): Promise<{ redirect_uris: string[]; scopes: string[] } | null> {
+  const { rows } = await query<{ redirect_uris: string[]; scopes: string[] }>(
+    `SELECT redirect_uris, scopes
+     FROM mcp_oauth_clients
+     WHERE client_id = $1`,
+    [clientId]
+  )
+  const row = rows[0]
+  if (!row) return null
+  return { redirect_uris: row.redirect_uris, scopes: row.scopes }
 }
 
 // ── Auth code operations ──────────────────────────────────────────────────────

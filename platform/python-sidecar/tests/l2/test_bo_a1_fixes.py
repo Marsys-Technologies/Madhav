@@ -110,6 +110,9 @@ _spec.loader.exec_module(_mod)
 _build_strength_lookup    = _mod._build_strength_lookup
 _build_dignity_lookup     = _mod._build_dignity_lookup
 _build_av_lookup          = _mod._build_av_lookup
+# NIRMĀṆA L2-W3: the AV tests now assert the multiplier discriminates, not just
+# that the lookup parsed — so they need the bucket function the lookup feeds.
+from bodha_writers.formulas import _av_multiplier
 _compute_salience         = _mod._compute_salience
 _graha_key_from_subject   = _mod._graha_key_from_subject
 _infer_graha_for_yoga_dosha = _mod._infer_graha_for_yoga_dosha
@@ -220,32 +223,86 @@ class TestB2DignityLookup(unittest.TestCase):
 
 
 class TestB2AvLookup(unittest.TestCase):
-    """_build_av_lookup must use ashtakavarga_bindu SARVA-HOUSE_N rows."""
+    """_build_av_lookup must read BHINNA bindus keyed (graha, varga, house).
+
+    History, because this test has been wrong twice and the second time was subtle:
+
+      * the original lookup read ashtakavarga_pinda_sarva with fact_key='total'
+        (graha totals, no house dimension), failed to parse a house, and gave every
+        signal the same multiplier;
+      * the B2 fix switched to fact_subject='SARVA-HOUSE_N', which restored the
+        house dimension — and this test class pinned that. But SARVA is the
+        seven-graha SUM (measured 23-33 per house on the canonical chart) while
+        formulas._av_multiplier's buckets are BHINNA scale (0..8), so every value
+        still landed in the top >=7 bucket. The multiplier was 1.15 on 149,375 of
+        150,150 production rows.
+
+    The old fixture is the proof: its values were 23, 25, 26, 29, 32, 33 — and the
+    test asserted the lookup returned them faithfully, which it did. It never
+    asserted that the number it returned could produce more than one multiplier.
+    That is the gap these tests now close (NIRMĀṆA L2-W3, M-01).
+    """
 
     def _make_av_rows(self):
+        # bhinna: '<GRAHA>-HOUSE_<n>' x fact_key=<varga>, fact_value_num 0..8
         return [
-            {"fact_subject": "SARVA-HOUSE_1",  "fact_value_num": 29},
-            {"fact_subject": "SARVA-HOUSE_4",  "fact_value_num": 32},
-            {"fact_subject": "SARVA-HOUSE_7",  "fact_value_num": 33},
-            {"fact_subject": "SARVA-HOUSE_8",  "fact_value_num": 33},
-            {"fact_subject": "SARVA-HOUSE_9",  "fact_value_num": 25},
-            {"fact_subject": "SARVA-HOUSE_10", "fact_value_num": 26},
-            {"fact_subject": "SARVA-HOUSE_11", "fact_value_num": 23},
-            {"fact_subject": "SARVA-HOUSE_12", "fact_value_num": 23},
+            {"fact_subject": "SAT-HOUSE_7",  "fact_key": "D1", "fact_value_num": 8},
+            {"fact_subject": "SAT-HOUSE_9",  "fact_key": "D1", "fact_value_num": 5},
+            {"fact_subject": "JUP-HOUSE_9",  "fact_key": "D1", "fact_value_num": 4},
+            {"fact_subject": "MOON-HOUSE_11", "fact_key": "D1", "fact_value_num": 2},
+            {"fact_subject": "SUN-HOUSE_10", "fact_key": "D1", "fact_value_num": 0},
+            {"fact_subject": "SAT-HOUSE_7",  "fact_key": "D9", "fact_value_num": 3},
         ]
 
-    def test_av_lookup_keys_are_house_numbers(self):
+    def test_av_lookup_is_keyed_by_graha_varga_and_house(self):
         conn = _make_conn([self._make_av_rows()])
         result = _build_av_lookup(conn, "chart-1", "lahiri_chitrapaksha")
-        self.assertIn(1, result)
-        self.assertIn(7, result)
-        self.assertIn(10, result)
+        self.assertEqual(result[("SAT", "D1", 7)], 8)
+        self.assertEqual(result[("JUP", "D1", 9)], 4)
+        # the graha dimension is real: two grahas in the same house differ
+        self.assertNotEqual(result[("SAT", "D1", 9)], result[("JUP", "D1", 9)])
+        # and so is the varga dimension: the same graha+house differs across vargas
+        self.assertNotEqual(result[("SAT", "D1", 7)], result[("SAT", "D9", 7)])
 
-    def test_av_lookup_values_correct(self):
+    def test_av_lookup_values_are_on_the_bhinna_scale(self):
+        """Every value must be a bhinna bindu count (0..8), never a sarva total."""
         conn = _make_conn([self._make_av_rows()])
         result = _build_av_lookup(conn, "chart-1", "lahiri_chitrapaksha")
-        self.assertEqual(result[7], 33)
-        self.assertEqual(result[9], 25)
+        self.assertTrue(result)
+        for key, bindus in result.items():
+            self.assertGreaterEqual(bindus, 0, key)
+            self.assertLessEqual(bindus, 8, key)
+
+    def test_lookup_feeds_a_multiplier_that_actually_discriminates(self):
+        """The check the old tests lacked: distinct houses -> distinct multipliers.
+
+        This is the assertion that can fail on the real defect. Fed sarva values,
+        every one of these would collapse to 1.15.
+        """
+        conn = _make_conn([self._make_av_rows()])
+        result = _build_av_lookup(conn, "chart-1", "lahiri_chitrapaksha")
+        multipliers = {_av_multiplier(b) for b in result.values()}
+        self.assertGreater(
+            len(multipliers), 1,
+            "AV support multiplier is constant across the chart — the bindu scale "
+            "fed to _av_multiplier is wrong (see M-01)",
+        )
+        self.assertEqual(_av_multiplier(result[("SAT", "D1", 7)]), 1.15)
+        self.assertEqual(_av_multiplier(result[("SUN", "D1", 10)]), 0.70)
+
+    def test_unresolved_bindus_do_not_become_a_favourable_default(self):
+        """A missing (graha, varga, house) must be absent, not silently generous.
+
+        The prior form was `int(fact_value_num or 28)`, and 28 is >= 7 — the most
+        favourable bucket in the table (CLAUDE.md §N.7 item 6).
+        """
+        rows = self._make_av_rows() + [
+            {"fact_subject": "VEN-HOUSE_3", "fact_key": "D1", "fact_value_num": None},
+        ]
+        conn = _make_conn([rows])
+        result = _build_av_lookup(conn, "chart-1", "lahiri_chitrapaksha")
+        self.assertNotIn(("VEN", "D1", 3), result)
+        self.assertIsNone(_av_multiplier(result.get(("KET_MEAN", "D1", 1))))
 
     def test_av_lookup_not_empty(self):
         conn = _make_conn([self._make_av_rows()])
@@ -270,8 +327,15 @@ class TestB2SalienceStratification(unittest.TestCase):
             "MER": "neutral", "JUP": "own",      "VEN": "neutral",
             "SAT": "exalted",
         }
-        av = {1: 29, 2: 29, 3: 28, 4: 32, 5: 30,
-              6: 25, 7: 33, 8: 33, 9: 25, 10: 26, 11: 23, 12: 23}
+        # bhinna bindus keyed (graha, varga, house) — the shape _build_av_lookup
+        # now returns. The old fixture here was {house: sarva_total}, whose values
+        # (23-33) all mapped to the same 1.15 bucket.
+        av = {
+            ("SUN", "D1", 1): 3, ("MOON", "D1", 2): 5, ("MAR", "D1", 3): 2,
+            ("MER", "D1", 4): 6, ("JUP", "D1", 5): 7, ("VEN", "D1", 6): 1,
+            ("SAT", "D1", 7): 8, ("SUN", "D1", 8): 4, ("MOON", "D1", 9): 0,
+            ("MAR", "D1", 10): 5, ("MER", "D1", 11): 3, ("JUP", "D1", 12): 6,
+        }
         return strength, dignity, av
 
     def _make_fact(self, fact_subject, fact_cat, house, vpass="documented_approximation"):

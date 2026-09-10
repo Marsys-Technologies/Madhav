@@ -1,0 +1,436 @@
+{
+  "report_schema_version": 1,
+  "corpus_fixture_set_version": 2,
+  "scoring_harness_version": 1,
+  "generated_at": "2026-08-28T20:11:16.598Z",
+  "target": {
+    "kind": "web_route",
+    "description": "https://amjis-web-938361928218.asia-south1.run.app/api/pariprashna (live deployed default model, probe/ask.ts)"
+  },
+  "fixture_results": [
+    {
+      "fixture_id": "disagreement-002-venus-exaltation",
+      "fixture_version": 1,
+      "query_class": "disagreement",
+      "ran": true,
+      "skipped_reason": null,
+      "dimension_results": [
+        {
+          "dimension": "derivation_integrity",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "b11_coverage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_precision",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_recall",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "fixture 'disagreement-002-venus-exaltation' carries no expectedSignalRefs ground truth for recall scoring",
+          "findings": []
+        },
+        {
+          "dimension": "calibration_language_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "safety_compliance",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "register_leakage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no TurnMetricsSnapshot was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "honest_gaps_disclosure",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "voice_enforcement",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "voice_enforcement scoring is scoped to remedial-class fixtures per G3-D (PPR-04)",
+          "findings": []
+        },
+        {
+          "dimension": "cross_domain_contradiction_surfaced",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "scoring is scoped to cross_domain_contradiction-class fixtures",
+          "findings": []
+        },
+        {
+          "dimension": "falsifier_quality",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-B (interpretation_sets with a falsifier field per significant judgment) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "typed_confidence_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-C (typed five-type confidence enum on every claim, empirically_calibrated gate) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "reader_comprehension",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires an LLM-judge call or human rating pipeline — no deterministic detector exists for reader comprehension",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "fixture_id": "disagreement-003-jupiter-neecha-bhanga",
+      "fixture_version": 1,
+      "query_class": "disagreement",
+      "ran": true,
+      "skipped_reason": null,
+      "dimension_results": [
+        {
+          "dimension": "derivation_integrity",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "b11_coverage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_precision",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_recall",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "fixture 'disagreement-003-jupiter-neecha-bhanga' carries no expectedSignalRefs ground truth for recall scoring",
+          "findings": []
+        },
+        {
+          "dimension": "calibration_language_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "safety_compliance",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "register_leakage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no TurnMetricsSnapshot was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "honest_gaps_disclosure",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "voice_enforcement",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "voice_enforcement scoring is scoped to remedial-class fixtures per G3-D (PPR-04)",
+          "findings": []
+        },
+        {
+          "dimension": "cross_domain_contradiction_surfaced",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "scoring is scoped to cross_domain_contradiction-class fixtures",
+          "findings": []
+        },
+        {
+          "dimension": "falsifier_quality",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-B (interpretation_sets with a falsifier field per significant judgment) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "typed_confidence_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-C (typed five-type confidence enum on every claim, empirically_calibrated gate) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "reader_comprehension",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires an LLM-judge call or human rating pipeline — no deterministic detector exists for reader comprehension",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "fixture_id": "disagreement-004-saturn-tenth-lord",
+      "fixture_version": 1,
+      "query_class": "disagreement",
+      "ran": true,
+      "skipped_reason": null,
+      "dimension_results": [
+        {
+          "dimension": "derivation_integrity",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "b11_coverage",
+          "status": "scored",
+          "score": 0.16666666666666666,
+          "reason": null,
+          "findings": [
+            "cross_domain.status is 'unavailable' (plan.domains was not populated by the planner for this turn)"
+          ]
+        },
+        {
+          "dimension": "citation_precision",
+          "status": "scored",
+          "score": 0,
+          "reason": null,
+          "findings": [
+            "6 citation(s) never resolved to a trustworthy source (grade 'unverified')"
+          ]
+        },
+        {
+          "dimension": "citation_recall",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "fixture 'disagreement-004-saturn-tenth-lord' carries no expectedSignalRefs ground truth for recall scoring",
+          "findings": []
+        },
+        {
+          "dimension": "calibration_language_honesty",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "safety_compliance",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "register_leakage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no TurnMetricsSnapshot was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "honest_gaps_disclosure",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "voice_enforcement",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "voice_enforcement scoring is scoped to remedial-class fixtures per G3-D (PPR-04)",
+          "findings": []
+        },
+        {
+          "dimension": "cross_domain_contradiction_surfaced",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "scoring is scoped to cross_domain_contradiction-class fixtures",
+          "findings": []
+        },
+        {
+          "dimension": "falsifier_quality",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-B (interpretation_sets with a falsifier field per significant judgment) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "typed_confidence_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-C (typed five-type confidence enum on every claim, empirically_calibrated gate) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "reader_comprehension",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires an LLM-judge call or human rating pipeline — no deterministic detector exists for reader comprehension",
+          "findings": []
+        }
+      ]
+    },
+    {
+      "fixture_id": "disagreement-005-mercury-combustion",
+      "fixture_version": 1,
+      "query_class": "disagreement",
+      "ran": true,
+      "skipped_reason": null,
+      "dimension_results": [
+        {
+          "dimension": "derivation_integrity",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "b11_coverage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_precision",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "citation_recall",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "fixture 'disagreement-005-mercury-combustion' carries no expectedSignalRefs ground truth for recall scoring",
+          "findings": []
+        },
+        {
+          "dimension": "calibration_language_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "safety_compliance",
+          "status": "scored",
+          "score": 1,
+          "reason": null,
+          "findings": []
+        },
+        {
+          "dimension": "register_leakage",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no TurnMetricsSnapshot was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "honest_gaps_disclosure",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "no AcharyaReadingReceipt was supplied for this observation",
+          "findings": []
+        },
+        {
+          "dimension": "voice_enforcement",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "voice_enforcement scoring is scoped to remedial-class fixtures per G3-D (PPR-04)",
+          "findings": []
+        },
+        {
+          "dimension": "cross_domain_contradiction_surfaced",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "scoring is scoped to cross_domain_contradiction-class fixtures",
+          "findings": []
+        },
+        {
+          "dimension": "falsifier_quality",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-B (interpretation_sets with a falsifier field per significant judgment) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "typed_confidence_honesty",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires G3-C (typed five-type confidence enum on every claim, empirically_calibrated gate) — not yet merged into this lane's base",
+          "findings": []
+        },
+        {
+          "dimension": "reader_comprehension",
+          "status": "not_yet_measurable",
+          "score": null,
+          "reason": "requires an LLM-judge call or human rating pipeline — no deterministic detector exists for reader comprehension",
+          "findings": []
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "fixtures_total": 4,
+    "fixtures_run": 4,
+    "fixtures_skipped": 0,
+    "mean_score_by_dimension": {
+      "derivation_integrity": 1,
+      "b11_coverage": 0.16666666666666666,
+      "citation_precision": 0,
+      "citation_recall": null,
+      "calibration_language_honesty": 1,
+      "safety_compliance": 1,
+      "register_leakage": null,
+      "honest_gaps_disclosure": 1,
+      "voice_enforcement": null,
+      "cross_domain_contradiction_surfaced": null,
+      "falsifier_quality": null,
+      "typed_confidence_honesty": null,
+      "reader_comprehension": null
+    }
+  }
+}

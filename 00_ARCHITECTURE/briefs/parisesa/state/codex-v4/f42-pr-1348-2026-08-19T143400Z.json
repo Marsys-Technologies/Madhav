@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:34:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "continuation_owner": "/root",
+  "state": "waiting_external",
+  "finding_id": "F-42",
+  "operation": {
+    "kind": "normal protected pull request",
+    "pr": 1348,
+    "url": "https://github.com/Marsys-Technologies/Madhav/pull/1348",
+    "head": "c1b97b2cf",
+    "base": "45f0ddf56793a23bf5881701ee6c184f6868f20a",
+    "auto_merge": false
+  },
+  "parallel_operation": "F50 PR #1347 is separate and disjoint; each requires independent live PR and merge-group success",
+  "next_check": "inspect required contexts and exact active steps before any Ganga admission"
+}

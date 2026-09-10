@@ -23,54 +23,17 @@
 
 import { query } from '@/lib/db/client'
 import type { McpErrorEnvelope } from '@/lib/mcp/types'
+import { checkRpm, RPM_LIMIT } from '@/lib/mcp/rate_limiter_core'
 
 // ── Configuration ─────────────────────────────────────────────────────────────
-
-/** Maximum requests per 60-second rolling window. */
-const RPM_LIMIT = parseInt(process.env.MCP_RPM_LIMIT ?? '60', 10)
+//
+// RPM_LIMIT and the rolling-window counter now live in `rate_limiter_core.ts` so
+// the request proxy (`src/proxy.ts`, Paripraśna lane G1-D / NCD-8) can reuse the
+// SAME counter without importing this module's pg client. Same algorithm, same
+// Map, one implementation — see that file's header for why it was split out.
 
 /** Maximum daily token budget per key. */
 const DAILY_TOKEN_BUDGET = parseInt(process.env.MCP_DAILY_TOKEN_BUDGET ?? '500000', 10)
-
-/** Window size in milliseconds (60 seconds). */
-const WINDOW_MS = 60_000
-
-// ── In-process RPM tracking ───────────────────────────────────────────────────
-
-interface RpmEntry {
-  count: number
-  window_start_ms: number
-}
-
-// Module-level map — persists across requests within the same process.
-// On Cloud Run with multiple instances, each instance has its own counter.
-// Each key_id maps to its current rolling-window state.
-const rpmCounters = new Map<string, RpmEntry>()
-
-/**
- * Check and update the RPM counter for a key_id.
- * Returns true if the request is within limit; false if exceeded.
- */
-function checkRpm(key_id: string): { allowed: boolean; retry_after_seconds?: number } {
-  const now = Date.now()
-  const existing = rpmCounters.get(key_id)
-
-  if (!existing || now - existing.window_start_ms >= WINDOW_MS) {
-    // New window (first call ever, or window expired)
-    rpmCounters.set(key_id, { count: 1, window_start_ms: now })
-    return { allowed: true }
-  }
-
-  if (existing.count >= RPM_LIMIT) {
-    // Window still active, limit exceeded
-    const retry_after_seconds = Math.ceil((WINDOW_MS - (now - existing.window_start_ms)) / 1000)
-    return { allowed: false, retry_after_seconds }
-  }
-
-  // Within window, under limit
-  existing.count += 1
-  return { allowed: true }
-}
 
 // ── Daily token budget check ──────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@ class PrashnaRulesWriter(WriterBase):
 
     L0 (Brahmagyan) writer — chart-agnostic static reference only.
     No PyJHora calls, no per-chart computation.
-    Idempotency: ON CONFLICT DO NOTHING (L0 standard).
+    Idempotency: convergent ON CONFLICT DO UPDATE (L0 standard).
     """
 
     asset_id = "bg_prashna_rules"

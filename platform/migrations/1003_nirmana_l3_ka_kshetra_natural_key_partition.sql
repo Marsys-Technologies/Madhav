@@ -1,0 +1,81 @@
+-- 1003_nirmana_l3_ka_kshetra_natural_key_partition.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Sibling migration to 1002 (ka_kshetra output_digest_spec) -- see that
+-- migration's header for the full verified account of all 15 tables this
+-- writer touches (13 SAFE/specced there, 2 EXCLUDED here). Declared per
+-- the DEP-ASSERT precedent (880/908/909/910/927/930/939-940/.../990-991/
+-- 994-995/998-999): natural_key_partition being NULL reads as
+-- freshness_state='unknown' (reason 'partition_undeclared') regardless of
+-- writer exclusivity or build success. Like the prior 4 PARTIAL specs
+-- this campaign (bo_cdlm_summary, mi_adhilepa, mi_bhavisya, mi_pariksha),
+-- this partition declaration covers 13 of 15 tables -- 2 are excluded
+-- for a live-confirmed non-determinism defect each, full account below.
+--
+-- EXCLUDED -- kala_field_routes: `path_edge_ids bigint[]` (stage2_promise.
+-- py, INSERT ~line 572, resolved ~lines 690-697 from RETURNING id on
+-- kala_field_promise_edges) stores the SURROGATE bigserial id of the
+-- edges table, not a derived value. REPLACE_PRIOR_SQL deletes by
+-- chart_id (not TRUNCATE), so the backing sequence
+-- (kala_field_promise_edges_id_seq) is never reset -- every rebuild of
+-- the same chart with byte-identical input assigns brand-new, higher id
+-- values to the re-inserted edges, so path_edge_ids is NOT reproducible
+-- across rebuilds even with unchanged upstream data. Live-verified:
+-- sequence last_value=6108 while kala_field_promise_edges has only 220
+-- live rows total across both charts -- direct evidence of churn from
+-- repeated rebuilds. Independently, the edge-id lookup feeding
+-- path_edge_ids picks the first `edge_ids` dict entry matching
+-- (from_node,to_node) regardless of edge_kind, sourced from the same
+-- unordered _fetch_cgm_edges as the (safe) kala_field_promise_edges table
+-- -- a second, independent non-determinism path if two edges of
+-- different edge_kind but tied conductance ever connect the same node
+-- pair (route structure/route_gain unaffected either way; only
+-- path_edge_ids' specific values would vary). Needs the writer to derive
+-- a chart-content-stable edge identifier (e.g. hash of
+-- (from_node,to_node,edge_kind)) before this table can be specced --
+-- writer-fix, out of this campaign's screening scope, flagged not fixed.
+--
+-- EXCLUDED -- kala_field_boundaries: every `chart_dashas` query in
+-- stage3_clocks.py EXCEPT kp_window_redundancy
+-- (_chart_dashas_level1_rows, compute_boundaries_for_system's main
+-- SELECT, _chart_dashas_row_count, _chart_dashas_covers_instant,
+-- lord_stack_at) omits an `ayanamsha_id` filter, unlike this same
+-- module's own DEFAULT_AYANAMSHA_ID-scoped chart_facts reads.
+-- chart_dashas holds a full independent ladder per pinned ayanamsha
+-- (live-confirmed 5 copies for chart 482012f1: lahiri_chitrapaksha,
+-- krishnamurti, raman, true_chitra, surya_siddhanta_classical). Two
+-- live-confirmed consequences: (1) `_system_sigma_t`'s `rows[0]` pick
+-- (after `ORDER BY start_iso ASC`, no ayanamsha tiebreak) determines
+-- sigma_t_days/interval_lo/interval_hi/precision_state for an ENTIRE
+-- system's boundary rows from whichever ayanamsha-copy's row Postgres's
+-- current tie order happens to return -- live, the 5 copies of
+-- vimshottari's earliest MD row disagree (Moon 187-229d vs Mars 1488-
+-- 2152d), same for kalachakra; (2) the (level_n, start_iso) boundary
+-- dedup collapses genuinely-DIFFERING tied rows (not identical-content
+-- collapses like kala_field_primitives' sandhi_band case) in confirmed
+-- ambiguous groups per system: chara_karaka 18, kalachakra 4, mudda 38,
+-- naisargika 513, vimshottari 4, vimshottari_kp 2, yogini 1434 -- the
+-- surviving lord/parent_lords/source_pk for these rows is not guaranteed
+-- reproducible across rebuilds. No live duplicate-key violation is
+-- observed today only because the writer's delete-then-insert +
+-- in-process dedup collapses each tie to one physical row before insert
+-- -- that collapse is the mechanism MASKING the non-determinism, not
+-- evidence against it. Needs the writer to add `ayanamsha_id = %s`
+-- (scoped to DEFAULT_AYANAMSHA_ID) to every listed chart_dashas query,
+-- and either a deterministic tiebreak or reliance on the now-unique-per-
+-- ayanamsha row set, before this table can be specced -- writer-fix, out
+-- of this campaign's screening scope, flagged not fixed. (lord_stack_at
+-- has the identical missing-filter pattern but only affects the
+-- serve-time clock_activation() path, not a persisted column here.)
+--
+-- Live duplicate/NULL-key check on all 13 covered tables, both populated
+-- charts (482012f1, 1c826d5a): 0 duplicate groups, 0 NULL keys, in every
+-- table -- see migration 1002 for the exact live row counts and full
+-- per-table co-writer + non-determinism trace.
+
+UPDATE asset_registry
+   SET natural_key_partition = 'kala_field_kinematics (chart_id, event_kind, body, t_days) + kala_field_primitives (chart_id, primitive_kind, subject, t_start) + kala_field_promise_nodes (chart_id, node_id) + kala_field_promise_edges (chart_id, from_node, to_node, edge_kind) + kala_field_clocks (chart_id, system_id) + kala_field (chart_id, event_class, segment_index) + kala_field_null (chart_id, event_class, bucket_days, field_snapshot_id) + kala_field_windows (chart_id, window_id) + kala_field_provenance (chart_id, field_snapshot_id, target_kind, target_id, term_key) + kala_field_salience (chart_id, window_id) + kala_insights (chart_id, insight_id) WHERE lel_derived=false + kala_timeline_spec (chart_id, generated_for, field_snapshot_id) + kala_field_snapshots (chart_id, field_snapshot_id) -- KaKshetraWriter (@register(''ka_kshetra'')) confirmed sole live BUILD-TIME writer of all 13 (co-writer grepped tree-wide across pipeline/orchestrator/writers/*.py, brahmagyan/, services/, and all TS consumers; kala_insights is the one genuine co-writer, independently re-verified against the prior #2502 characterization: mi_bhara (@register(''mi_bhara''), L5) writes DISJOINT lel_derived=TRUE rows under a content-hash id keyed by a distinct insight_type set enforced by NON_LEL_INSIGHT_TYPES, live-confirmed 0 lel_derived=TRUE rows exist anywhere in the DB today). EXCLUDED from this declaration: kala_field_routes (path_edge_ids embeds a surrogate bigserial id from kala_field_promise_edges that is reassigned -- not reproduced -- on every chart rebuild, live-confirmed via sequence/row-count mismatch) and kala_field_boundaries (every chart_dashas query in stage3_clocks.py except kp_window_redundancy omits ayanamsha_id, live-confirmed cross-ayanamsha value disagreement on vimshottari''s earliest MD row plus up to 1434 ambiguous (level_n,start_iso) dedup groups per chart in the naisargika/yogini systems) -- both are genuine live-verified non-determinism defects requiring a writer fix before either can be specced; full account in this migration''s header and migration 1002''s header. Both keys of every covered table match its own live PRIMARY-KEY-backing UNIQUE index exactly, with two exceptions declared narrower than the live index on purpose: kala_field_kinematics and kala_field_primitives'' live unique indexes wrap a nullable column in COALESCE (target_ref / object_ref respectively) -- the digest framework''s own key-preflight rejects any NULL key column tree-wide, so this declaration and migration 1002''s key_columns omit that nullable column, verified live that the reduced key is independently unique on both populated charts (0 duplicate groups). Live-verified 0 duplicate-key groups and 0 NULL keys across all 13 tables, both populated charts.'
+ WHERE asset_id = 'ka_kshetra'
+   AND natural_key_partition IS NULL;

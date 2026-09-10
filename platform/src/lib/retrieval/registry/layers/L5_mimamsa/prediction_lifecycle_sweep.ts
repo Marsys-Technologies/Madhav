@@ -225,6 +225,18 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // NOT paginated: a sweep must consider EVERY lapsed row to be a correct sweep — a page
+  // window would silently change what "swept" means. Row growth is bounded instead by
+  // MAX_LAPSED_ROWS on each half. empty_reason is earned by the no-lapsed-rows report
+  // below: "nothing to sweep" is a real, useful answer and is stated, not implied by an
+  // empty rows array.
+  density_contract: {
+    paginated: false,
+    facets: ['table', 'dry_run'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -441,12 +453,28 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
         }
       }
 
+      // §N.6 item 3: "nothing lapsed" is an honest, informative result — say so rather
+      // than leave the caller to infer it from two empty rows arrays.
+      const sweptSections = Object.entries(results) as Array<[string, Record<string, unknown>]>
+      const totalConsidered = sweptSections.reduce(
+        (sum, [, v]) => sum + Number(v['lapsed_pending_count'] ?? v['lapsed_open_count'] ?? 0), 0)
+
       return {
         content: {
           chart_id,
           dry_run: dryRun,
           today,
           ...results,
+          ...(totalConsidered === 0
+            ? {
+                empty_reason:
+                  `No lapsed predictions to sweep for chart ${chart_id} as of ${today} in ` +
+                  `${sweptSections.length > 0 ? sweptSections.map(([k]) => k).join(' + ') : 'the selected table(s)'}` +
+                  `${tableFilter ? ` (table filter: ${tableFilter})` : ''}. Every prediction is either ` +
+                  'still inside its observation window or already in a terminal lifecycle state — ' +
+                  'a clean sweep, not a failed query.',
+              }
+            : {}),
           governance: 'life_events is a calibration corpus only — read here strictly to CLOSE existing predictions against observed reality, never to generate one. A candidate match is never auto-adjudicated to confirmed/denied/falsified — that remains a human/native call.',
         },
         is_error: false,

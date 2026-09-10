@@ -1,0 +1,50 @@
+[
+  {
+    "finding_id": "F-02",
+    "outcome": "RECOVERED_TERMINAL",
+    "terminal_status": "HISTORICAL_STALE_CLOSED",
+    "real_commit_or_evidence": "dd583eb1ca253fae90aacdafc45f3a793f6548ee + 33dfb2ba1a2a900ef641d82755f8cc14426c2104 (PR #1294, \"ekv(a-02): F-02/F-07 — whitelist 4 classical-text tools + begin TOOL_NAME_TO_URI retirement\", merged to origin/main 2026-08-15)",
+    "evidence_summary": "Claim is CL-01 (registered-but-unreachable capability / dispatch wiring gap), corpus_evidence_file whitelist_sweep_report.json. Commit message and diff literally name F-02 and F-07 and content-match the claim exactly: read_chapter, list_classical_texts, find_verses_about, search_classical_texts were absent from SURGICAL_TOOLS/MCP_TO_RETRIEVAL_TOOL so isAllowedSurgicalTool()=false rejected calls even though their URIs existed in TOOL_NAME_TO_URI. Verified merge-base ancestor of origin/main; current tool_name_bridge.ts on main carries all 4 tools with an inline comment at the search_classical_texts entry reading '// F-02/F-07: was missing from MCP whitelist'. Live falsifiable proof: called mcp__marsys-jis-direct__search_classical_texts and read_chapter directly — both returned clean, well-formed results (no rejection/error), confirming the whitelist gap is closed in the live service.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-03",
+    "outcome": "RECOVERED_TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "real_commit_or_evidence": "693a7bdc20edaf4da928cc768ee1024998f96f24 (PR #1323, \"fix(parisesa): page remedies by category\", merged to origin/main 2026-08-17)",
+    "evidence_summary": "Claim is CL-03 (parameter accepted but never applied / no-op), corpus_evidence_file ref_remedies_by_category_list__mantra.json. The citation-audit note flagged this commit as wrong for F-16/F-128 (its content is remedy pagination, not envelope/wrap) but did NOT check whether that same content independently supports F-03 — it does: the diff adds limit/offset input_schema fields AND actually applies LIMIT $n OFFSET $m to listRemediesByCategoryCapability, queryTantricRemediesCapability, queryRemediesByPlanetCapability, and queryMantrasCapability, exactly the 'parameter accepted but never applied' defect class. Verified ancestor of origin/main; source on main shows limit/offset read, clamped, and applied to SQL with a pagination object in the response. Live falsifiable proof: called mcp__marsys-jis-direct__ref_remedies_by_category_list(category='mantras') — response returned returned_count=10 with pagination={limit:10, offset:0, total:67, more_available:true, next_offset:10}, proving the parameter is genuinely applied server-side, not a no-op.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-07",
+    "outcome": "RECOVERED_TERMINAL",
+    "terminal_status": "HISTORICAL_STALE_CLOSED",
+    "real_commit_or_evidence": "dd583eb1ca253fae90aacdafc45f3a793f6548ee + 33dfb2ba1a2a900ef641d82755f8cc14426c2104 (PR #1294, same commit pair as F-02 — both findings were fixed together)",
+    "evidence_summary": "Same defect family and same real fix as F-02 (CL-01, dispatch/registration wiring gap; corpus_evidence_file search_classical_texts__saturn_seventh.json). The mis-cited commit for both F-02 and F-07 was c3124c2bea9 (actually scoped to F-117). The real, independently content-matched fix is PR #1294, which the commit messages explicitly title 'F-02/F-07 — whitelist 4 classical-text tools'. Live falsifiable proof: called mcp__marsys-jis-direct__search_classical_texts(query='Saturn seventh house aspect') — returned clean hybrid vector/keyword results with no whitelist rejection, confirming the tool (previously unreachable per the claim) is live and functioning.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-15",
+    "outcome": "RECOVERED_LANDED",
+    "terminal_status": null,
+    "real_commit_or_evidence": "ba1b445de4c527a8b2359a8b0d34f0626f8b5712 (branch par/night-F-15/F-14, ratified COMPLETE but unmerged) superseded/reconciled by 5156cac680456775c2673d77f0f1a9431e020b28 (branch parisesa/repair-F14-F124-domain-depth, open PR #1382 as of investigation time)",
+    "evidence_summary": "Claim is CL-14 (uneven cross-cutting wiring across a tool family): assess_marriage never returns the W7 reading digest/domain_completeness because (1) DOMAIN_READING_FAMILIES and its companion maps in registry_bridge.ts carry no 'relationship' key, (2) the assess_marriage/assess_health handlers never call attachDomainCompleteness/attachDomainReading, (3) buildAssessResponse reads the wrong key (response['completeness'] instead of response['domain_completeness']). Ingested spec/reviewer/ratifier artifacts (F-15.spec_writer.json, F-15.ratifier.json, F-15.reviewer.json) content-match this exactly and independently of the mis-cited cfb6444c8. A real fix was built (ba1b445de, ratified COMPLETE) and later reconciled with an overlapping F-124 fix into open PR #1382 (5156cac68, dated 2026-08-20, this session). Checked directly: origin/main's registry_bridge.ts DOMAIN_READING_FAMILIES STILL only contains {wealth, career} — no 'relationship' key — confirming the defect is still live/unfixed on main as of this investigation. This is genuine, content-matched evidence of the real defect and a real in-flight fix, but the fix has not landed on main, so TERMINAL promotion is not warranted yet.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-32",
+    "outcome": "RECOVERED_TERMINAL",
+    "terminal_status": "CONTROL_CLOSED",
+    "real_commit_or_evidence": "Direct live MCP canary (this session) against mcp__marsys-jis-direct__judgment_query(domain='health', chart_id=482012f1-710e-4a25-994a-93821f5871aa) on the canonical chart — no commit citation needed/used.",
+    "evidence_summary": "F-32 is a CONTROL row (CL-00 Verified-PASS / positive control, kind=CONTROL not DEFECT, mechanism_bundle empty), corpus_evidence_file judgment_query__native_health_domain.json. Its own record explicitly stated the required direct-MCP canary had never been run (next_executable_action='approved_nonsecret_direct_MCP_canary', direct_mcp_status='handoff_required') — the demotion was purely because it rested on ancestry-only proof of the mis-cited cfb6444c8, not because the underlying positive-control claim was ever shown false. Ran the exact canary this session: judgment_query for the health domain on the canonical chart returned a fully-formed, internally consistent v3 envelope — correct bhava/bhavesha/karaka resolution, honest judgment_flags (no fabricated defaults), grounded fact_id references, and no errors. This is the falsifiable direct-MCP proof the finding was waiting on, and it passed cleanly, independent of any prior citation.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-55",
+    "outcome": "RECOVERED_TERMINAL",
+    "terminal_status": "HISTORICAL_STALE_CLOSED",
+    "real_commit_or_evidence": "9b09835033e5cdb4ddf7d68eed529a9f1efa0be9 (PR #1304, \"fix(a-07): SHASTRA_MAP +4 canonical domains + unknown-domain early reject (F-55/F-41)\", merged, ancestor of origin/main)",
+    "evidence_summary": "Claim is CL-04 (unreconciled domain/enum vocabularies causing false honest-zero), corpus_evidence_file judgment_query__family.json. The audit's demotion note itself flagged that this second cited commit (9b0983503) 'may independently support the claim but was not isolated and content-matched this round' — isolating it now shows it is a precise, literal match: the commit message explicitly names F-55, adds family/general/transition/travel to SHASTRA_MAP in register_d9_judgment.ts, reconciling all 13 CANONICAL_DOMAINS with the handler's resolver 1:1 (family: bhava 2, Jupiter+Moon, D12; etc.). Verified merge-base ancestor of origin/main and the exact bhava/karaka/varga mapping present in the live source. Live falsifiable proof: called mcp__marsys-jis-direct__judgment_query(domain='family', chart_id=482012f1-710e-4a25-994a-93821f5871aa) — resolved cleanly to bhava=2, domain_label='Family / Kutumba', operative_varga='D12', karakas=[Jupiter, Moon], exactly matching the commit's stated mapping, with a full verdict computed (no unknown-domain rejection).",
+    "confidence": "HIGH"
+  }
+]

@@ -1,11 +1,11 @@
 """
 Vimarshaka checks for bg_texts writer (CLAUDECODE_BRIEF_BG_TEXTS_v1_0.md §6–§7).
 
-Runs against live DB via DATABASE_URL.  APPROVE criteria:
+Runs only against an explicitly named local disposable database. APPROVE criteria:
   - ≥9,100 chunks total (or ≥8,000 with CONDITIONAL for Hindi OCR-gated texts)
   - Zero NULL source_citation; every source_citation has [HIGH|MEDIUM|LOW] prefix
   - Zero NULL embedding on ingested texts
-  - 13 rows in classical_texts
+  - 15 canonical rows in classical_texts (plus the retained legacy alias)
   - No jaimini_sutram chunks (all under bphs_jaimini)
   - No lal_kitab row in classical_texts
   - bphs chunks tagged source_volume=1 AND source_volume=2 (multi-volume)
@@ -14,6 +14,7 @@ Runs against live DB via DATABASE_URL.  APPROVE criteria:
 """
 import os
 import uuid
+from urllib.parse import urlparse
 
 import pytest
 import psycopg
@@ -27,13 +28,15 @@ from pipeline.orchestrator.writers import ContextSpec
 
 @pytest.fixture(scope="module")
 def db_conn():
-    url = (
-        os.environ.get("DATABASE_URL")
-        or os.environ.get("PROD_DB_URL")
-        or os.environ.get("DIRECT_DATABASE_URL")
-    )
+    url = os.environ.get("NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL")
     if not url:
-        pytest.skip("DATABASE_URL not set")
+        pytest.skip("NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL not set")
+    parsed = urlparse(url)
+    if parsed.hostname not in {"localhost", "127.0.0.1"} or parsed.path != "/nirmana_bg_texts_writer_test":
+        raise RuntimeError(
+            "NIRMANA_BG_TEXTS_MUTATION_TEST_DATABASE_URL must point to the exact "
+            "local nirmana_bg_texts_writer_test database"
+        )
     conn = psycopg.connect(url, row_factory=psycopg.rows.dict_row)
     yield conn
     conn.rollback()
@@ -50,7 +53,6 @@ def after_run(db_conn):
         db_conn=db_conn,
     )
     result = writer.run(ctx)
-    db_conn.commit()
     return result
 
 
@@ -127,10 +129,10 @@ def test_no_null_embedding(db_conn, after_run):
     assert cur.fetchone()["n"] == 0, "NULL embedding rows found on ingested chunks"
 
 
-# ── §6.4 / §7: 13 rows in classical_texts ────────────────────────────────────
+# ── §6.4 / §7: 15 canonical rows in classical_texts ──────────────────────────
 
 def test_classical_texts_count(db_conn, after_run):
-    """All 13 corpus texts must be present in classical_texts.
+    """All 15 canonical corpus texts must be present in classical_texts.
     jaimini_sutram legacy row is intentionally retained (FK safety); not counted.
     """
     cur = db_conn.cursor()
@@ -140,6 +142,7 @@ def test_classical_texts_count(db_conn, after_run):
         "bphs", "phaladeepika", "jataka_parijata", "uttara_kalamrita", "bphs_jaimini",
         "saravali", "brihat_jataka", "hora_sara", "sarvartha_chintamani",
         "brihat_samhita", "yavana_jataka", "muhurta_chintamani", "tajaka_neelakanthi",
+        "bhrigu_nandi_nadi", "nadi_navamsa_patel",
     }
     actual = set(rows)
     missing = expected - actual
@@ -251,7 +254,6 @@ def test_idempotency_second_run(db_conn, after_run):
         db_conn=db_conn,
     )
     result2 = writer.run(ctx2)
-    db_conn.commit()
 
     cur.execute("SELECT count(*) AS n FROM classical_text_chunks")
     count_after = cur.fetchone()["n"]

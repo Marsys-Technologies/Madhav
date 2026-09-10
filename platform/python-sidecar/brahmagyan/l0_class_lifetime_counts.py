@@ -727,6 +727,8 @@ def seed_class_lifetime_counts(
                 ON CONFLICT (prior_version, signal_type_class, fact_kind,
                              source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior = EXCLUDED.class_prior,
+                              varga_weights = EXCLUDED.varga_weights,
+                              contested   = EXCLUDED.contested,
                               prior_basis = EXCLUDED.prior_basis,
                               source_ref  = EXCLUDED.source_ref,
                               citation    = EXCLUDED.citation,

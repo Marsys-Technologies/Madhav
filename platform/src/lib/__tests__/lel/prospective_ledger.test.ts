@@ -536,3 +536,37 @@ describe('assertDr16AdverseDisclosure (direct unit coverage)', () => {
     expect(() => assertDr16AdverseDisclosure('A falsifier.', null)).toThrow(Dr16DisclosureError)
   })
 })
+
+// ── PARIPŪRṆA audit fix (2026-08-15) — Postgres EMPTY daterange literal ──────────
+// LIVE DEFECT: standing_predictions_read returned
+//   "Error: parseDaterange: could not parse daterange literal 'empty'"
+// for the canonical chart — a total tool failure on the DEFAULT (status=open) call,
+// because 6 brahma_prospective_ledger rows carry observation_window='empty' with
+// claim_shape='interval' and lifecycle_status='open'. `empty` is a LEGAL Postgres
+// daterange literal; the parser simply never handled it. Semantics: empty window ==
+// no window (null derived dates, matches nothing) — never an exception.
+describe('deriveWindowFields — Postgres EMPTY daterange (PARIPŪRṆA Tier-1 crash fix)', () => {
+  it('does not throw on the empty literal', () => {
+    expect(() =>
+      deriveWindowFields({ claim_shape: 'interval', observation_window: 'empty' })
+    ).not.toThrow()
+  })
+
+  it('treats an empty window exactly like a missing window (all null)', () => {
+    expect(
+      deriveWindowFields({ claim_shape: 'interval', observation_window: 'empty' })
+    ).toEqual({ point_date: null, window_start: null, window_end: null })
+  })
+
+  it('still parses a normal interval literal (no regression)', () => {
+    expect(
+      deriveWindowFields({ claim_shape: 'interval', observation_window: '[2027-04-09,2027-08-19)' })
+    ).toEqual({ point_date: null, window_start: '2027-04-09', window_end: '2027-08-18' })
+  })
+
+  it('still parses a normal point literal (no regression)', () => {
+    expect(
+      deriveWindowFields({ claim_shape: 'point', observation_window: '[2027-05-01,2027-05-02)' })
+    ).toEqual({ point_date: '2027-05-01', window_start: null, window_end: null })
+  })
+})

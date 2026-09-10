@@ -387,6 +387,53 @@ export const DOMAIN_BHAVA_AFFINITY: Record<string, Record<number, number>> = {
 }
 
 /**
+ * F-114 (PARIŚEṢA / CL-10) — the domain's ANCHOR actors, derived from this file's own two
+ * affinity tables rather than re-listed anywhere else.
+ *
+ * A ranker can only re-rank what it is given. On the canonical chart the marriage lens's
+ * stored family is 3,698 rows ordered by a domain-agnostic salience whose head is a 13-way
+ * exact tie; the FIRST Venus-bearing row sits at stored rank 902 and the first 7th-house row
+ * at 1,041. Any bounded candidate window taken from the head of that order therefore cannot
+ * see the kalatra-kāraka or the kalatra-bhāva at all — the ranker would faithfully rank a
+ * candidate set that never contained the domain's own significators.
+ *
+ * `domainAnchorActors` names those significators so a caller can widen its candidate set to
+ * include them: every graha this file already rates ABOVE neutral for the domain
+ * (relationship → venus 1.50, moon 1.10, jupiter 1.10) and every bhāva it already rates above
+ * neutral (relationship → 7 kalatra 2.20, 12 śayana-sukha 1.60, 8 māṅgalya 1.50, 4 sukha 1.20).
+ * Nothing new is asserted here — this is a projection of DOMAIN_BHAVA_AFFINITY and
+ * GRAHA_DOMAIN_AFFINITY, so the anchor set can never drift from the weights that score it.
+ *
+ * `graha_aliases` returns the lowercase spellings the DB actually stores in
+ * configuration_jsonb (VEN / VENUS / venus / VE …) so a SQL predicate can match without a
+ * second hand-maintained alias list.
+ */
+export function domainAnchorActors(domain: string | null | undefined): {
+  grahas: string[]
+  graha_aliases: string[]
+  houses: number[]
+} {
+  const empty = { grahas: [], graha_aliases: [], houses: [] }
+  if (!domain) return empty
+  const grahas = Object.entries(GRAHA_DOMAIN_AFFINITY)
+    .filter(([, row]) => (row[domain as Domain] ?? 1.0) > 1.0)
+    .map(([g]) => g)
+  const grahaSet = new Set(grahas)
+  const graha_aliases = Object.entries(GRAHA_ALIASES)
+    .filter(([, canonical]) => grahaSet.has(canonical))
+    .map(([alias]) => alias.toLowerCase())
+  const bhavaRow = DOMAIN_BHAVA_AFFINITY[domain]
+  const houses = bhavaRow
+    ? Object.entries(bhavaRow).filter(([, w]) => w > 1.0).map(([h]) => Number(h))
+    : []
+  return {
+    grahas,
+    graha_aliases: [...new Set([...graha_aliases, ...grahas])].sort(),
+    houses: houses.sort((a, b) => a - b),
+  }
+}
+
+/**
  * Look up bhāva×domain affinity for the signal's bhāva. Neutral (1.0) when either the bhāva
  * or the domain is unknown, so signals with no resolvable house are unaffected by this axis
  * and rank on graha/class/varga alone. A house NOT in the domain's classical set is mildly

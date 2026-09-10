@@ -29,10 +29,10 @@ do not invent new values; a change requires a new DR-n.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any
 
 from bodha_writers.formulas import (
+    VERSION_SALIENCE_FORMULA_V2,
     salience_formula_v2,
     SalienceInputsV2,
 )
@@ -290,7 +290,11 @@ def build_signal_row(
     )
 
     return {
-        "signal_id": str(uuid.uuid4()),
+        # #1770/#1804: never a random id here. assign_deterministic_signal_ids()
+        # in bo_sudarshana.py (the writer, not this emitter) overwrites this with
+        # the DB-derived bodha_signal_identity() before any row reaches the INSERT.
+        # Placeholder only -- never persisted as-is.
+        "signal_id": None,
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,
@@ -342,7 +346,12 @@ def build_signal_row(
         "cancellation_modifier": inputs.cancellation_modifier,
         "computed_salience": computed_salience,
         "salience_pctl_in_class": None,  # assigned by the writer's percentile pass
-        "salience_formula_version": "v2",
+        # NIRMĀṆA L2-W3 (L1 handoff #1750 item 3). This was the bare literal "v2",
+        # which had drifted from formulas.VERSION_SALIENCE_FORMULA_V2 = "v2.0" — the
+        # constant for the very formula these rows are computed by. Same formula, two
+        # spellings, 444 rows carrying the odd one. A version label read as provenance
+        # must come from the version constant, not from a string re-typed beside it.
+        "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_confidence_interval_jsonb": None,
         "domains_affected_array": ["character", "career"],
         "domain_salience_jsonb": json.dumps({"character": computed_salience, "career": computed_salience}),

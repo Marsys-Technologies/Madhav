@@ -99,6 +99,23 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   return data.content
 }
 
+/**
+ * Unwraps the ToolResult shape that callRegistryCapability returns.
+ * callRegistryCapability returns `data.content` from the HTTP response,
+ * where the capability handler's own return value is `{ content: T, is_error: boolean }`.
+ * So the raw result from callRegistryCapability IS that ToolResult — callers must
+ * unwrap `.content` to get the actual payload. This helper does that unwrap typed.
+ * Falls back to the raw value if `.content` is absent (defensive).
+ */
+function unwrapCapabilityResult(raw: unknown): Record<string, unknown> {
+  const wrapper = raw as Record<string, unknown>
+  const inner = wrapper['content']
+  if (inner !== null && typeof inner === 'object' && !Array.isArray(inner)) {
+    return inner as Record<string, unknown>
+  }
+  return wrapper
+}
+
 // R5 W0a punch-list (P6): the route now exists at /api/mcp/db/query (whitelisted,
 // two-layer auth — see platform/src/app/api/mcp/db/query/route.ts). Callers MUST
 // pass the resolved principal so Layer 2 (X-MCP-User/X-MCP-Key-Id) is satisfied —
@@ -341,6 +358,12 @@ function hedgeForGrade(evidenceGrade: unknown): string | null {
   if (g === 'prior_only' || g === 'documented_approximation') {
     return 'provisional — thin evidential base'
   }
+  // F-143: 'assignment_only' means a row has enough ASSIGNMENTS to look well-supported but
+  // fewer than 5 outcome-adjudicated matches behind it. Left unhedged it would read exactly
+  // like a calibrated row to a caller who only sees the theme text.
+  if (g === 'assignment_only') {
+    return 'provisional — assignments only, no scored outcomes behind it'
+  }
   return null
 }
 
@@ -364,11 +387,18 @@ function citeEvidence(pc: ProvenanceChain | null): string | null {
 function buildRankedThemes(
   verdicts: Record<string, unknown>[],
   audience: 'native' | 'third_party',
-): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[] } {
+): { strengths: string[]; weaknesses: string[]; open_questions: string[]; verdict_quality_flags: string[]; weaknesses_empty_reason: string | null } {
   const strengths: string[] = []
   const weaknesses: string[] = []
-  const openQuestions: string[] = []
+  const openQuestionsRaw: Array<{sentence: string; grade: number | null}> = []
   const verdictQualityFlags: string[] = []
+  let conditionalCount = 0
+  let minConditionalGrade: number | null = null
+  // GA-5 review finding on #1385: weaknesses_empty_reason must be derived from what was
+  // ACTUALLY observed per-row, not a hardcoded claim about a grade threshold nothing here
+  // evaluates. Track the real causes a 'denied' row can be excluded from weaknesses.
+  let deniedSuppressedByZeroSupportCount = 0
+  let noEvidenceCount = 0
 
   for (const row of verdicts) {
     const pc = getProvenanceChain(row)
@@ -400,9 +430,10 @@ function buildRankedThemes(
     // grade/status sentence construction — they have no grade to display, and the
     // zero-support masking path would replace their already-honest label.
     if (status === 'no_evidence') {
+      noEvidenceCount++
       let sentence = `${name}: no evidence available for this event class — cannot assess.`
       if (citation) sentence += ` (${citation})`
-      openQuestions.push(sentence)
+      openQuestionsRaw.push({ sentence, grade: null })
       continue
     }
 
@@ -411,6 +442,10 @@ function buildRankedThemes(
     // a ✓ mark) — never present n_support=0 grades with unqualified confidence.
     const nSupport = typeof row['n_support'] === 'number' ? row['n_support'] as number : null
     const zeroSupport = nSupport === 0
+    // GA-5 review finding on #1385: capture status BEFORE it gets overwritten below, so
+    // weaknesses_empty_reason can honestly report a denied-but-suppressed row instead of
+    // silently losing it (it never reaches the 'denied' bucket once status is overwritten).
+    if (zeroSupport && status === 'denied') deniedSuppressedByZeroSupportCount++
     if (zeroSupport && status !== 'no_evidence') {
       verdictQualityFlags.push(
         `${name}: grade ${gradeStr} carries n_support=0 (zero backing evidence rows) — ` +
@@ -446,11 +481,54 @@ function buildRankedThemes(
     } else if (status === 'denied' && !zeroSupport) {
       weaknesses.push(sentence)
     } else {
-      openQuestions.push(sentence)
+      if (status === 'conditional') {
+        conditionalCount++
+        if (grade != null && (minConditionalGrade == null || grade < minConditionalGrade)) {
+          minConditionalGrade = grade
+        }
+      }
+      openQuestionsRaw.push({ sentence, grade: grade ?? null })
     }
   }
 
-  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags }
+  openQuestionsRaw.sort((a, b) => {
+    if (a.grade == null && b.grade == null) return 0
+    if (a.grade == null) return 1
+    if (b.grade == null) return -1
+    return a.grade - b.grade
+  })
+  const openQuestions = openQuestionsRaw.map(x => x.sentence)
+
+  // GA-5 review finding on #1385: the prior version of this reason hardcoded a claim
+  // ('no event class scored below the denied ceiling, grade < 2.0/10') that nothing in
+  // this function evaluates -- weakness membership is a STATUS test ('denied'), not a
+  // grade-threshold test, and a real observed row (denied, grade 5.0/10, n_support=0) can
+  // falsify that exact sentence. Reason is now built ONLY from causes actually observed
+  // this call, per §N.7 item 6 (an honest null/per-cause statement, never a plausible-
+  // sounding invented one).
+  let weaknesses_empty_reason: string | null = null
+  if (weaknesses.length === 0) {
+    const reasonParts: string[] = []
+    if (deniedSuppressedByZeroSupportCount > 0) {
+      reasonParts.push(
+        `${deniedSuppressedByZeroSupportCount} event class(es) carry a 'denied' verdict but with ` +
+        `zero supporting evidence rows (n_support=0) — excluded from weaknesses as unverified, ` +
+        `not absent (see verdict_quality_flags for the individual class names)`
+      )
+    }
+    if (conditionalCount > 0) {
+      const minStr = minConditionalGrade != null ? minConditionalGrade.toFixed(1) : 'ungraded'
+      reasonParts.push(`${conditionalCount} class(es) sit in the conditional band (lowest: ${minStr}/10)`)
+    }
+    if (noEvidenceCount > 0) {
+      reasonParts.push(`${noEvidenceCount} class(es) have no evidence available (listed in open_questions instead)`)
+    }
+    weaknesses_empty_reason = reasonParts.length > 0
+      ? `no event class for this chart currently carries an unsuppressed 'denied' verdict: ${reasonParts.join('; ')}.`
+      : `no event class for this chart carries a 'denied' verdict.`
+  }
+
+  return { strengths, weaknesses, open_questions: openQuestions, verdict_quality_flags: verdictQualityFlags, weaknesses_empty_reason }
 }
 
 // MC-010 (P0-safety, ŚODHANA T1): verdict_summary[].statement is the RAW L5
@@ -521,6 +599,9 @@ function trimInsightRow(row: Record<string, unknown>): Record<string, unknown> {
   }
 }
 
+// F-135: exported for unit testing only — not part of the public API.
+export { buildRankedThemes as _buildRankedThemesForTest }
+
 export function registerP1SynthesisTools(server: McpServer, principal: Principal): void {
 
   // ── 1. mimamsa_insight_get ────────────────────────────────────────────────
@@ -556,11 +637,12 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           top_k: top_k ?? 30,
           include_negative_knowledge: include_negative_knowledge !== false,
         }, principal)
+        const inner = unwrapCapabilityResult(data)
         const wrapped = {
           calibration_status: 'prior_only',
           mode: 'STRUCTURAL',
           note: 'L5 Mīmāṃsā is SEALED in STRUCTURAL mode. Empirical calibration accrues as outcome data is recorded.',
-          ...(typeof data === 'object' && data ? data : { content: data }),
+          ...inner,
         }
         return dualOutput(envelope(wrapped, 'mimamsa_insight_get', 'synthesis_calibration'))
       } catch (err) {
@@ -614,7 +696,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           limit: limit ?? 30,
           offset: offset ?? 0,
         }, principal)
-        const content = data as Record<string, unknown>
+        const content = unwrapCapabilityResult(data)
         const allRows = (content['rows'] as Record<string, unknown>[] | undefined) ?? []
         const rows = (min_salience != null && min_salience > 0)
           ? allRows.filter(r => Number(r['non_obviousness_score'] ?? 0) >= min_salience)
@@ -653,16 +735,19 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
     'Returns the kala_jivana_parva view: the life divided into named biographical periods ' +
     '(Parvas) based on Vimshottari mahadasha + dasha-sequence logic. Each Parva covers ' +
     'a named life stage with its dominant dasha lord, expected thematic domain, ' +
-    'start/end years (age-based), and cross-links to LEL events that fell within that Parva. ' +
+    'start/end years (age-based). ' +
+    'Note: LEL-event join is not yet implemented for this tool (lel_capable: false at the ' +
+    'capability layer). ' +
     'Use as the temporal backbone for reading the native\'s life story.',
     {
+      // (F-26) the LEL-event opt-in param was intentionally removed — the underlying
+      // capability declares lel_capable:false; re-adding it requires an actual LEL
+      // join in query_life_arc.ts first.
       chart_id: z.string().uuid().describe('Chart UUID. Required.'),
-      include_lel_events: z.boolean().optional()
-        .describe('Include Life Event Log matches for each Parva (default: true).'),
       limit:   z.number().int().min(1).max(100).optional().describe('Max Parvas (default: 50).'),
       offset:  z.number().int().min(0).optional().describe('Pagination offset (default: 0).'),
     },
-    async ({ chart_id, include_lel_events, limit, offset }) => {
+    async ({ chart_id, limit, offset }) => {
       if (!chart_id) return errorOutput('kala_life_arc_get', 'chart_id is required')
       try {
         // T-9 fix (R6 0d-clips): the underlying capability (query_life_arc.ts) reads
@@ -671,11 +756,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
         // advertised `limit` param). Map limit -> top_k so the cap is actually honored.
         const data = await callRegistryCapability('marsys://tool/L3/query_life_arc', {
           chart_id,
-          include_lel_events: include_lel_events !== false,
           top_k: limit ?? 50,
           offset: offset ?? 0,
         }, principal)
-        return dualOutput(envelope(data, 'kala_life_arc_get', 'temporal_life_arc'))
+        return dualOutput(envelope(unwrapCapabilityResult(data), 'kala_life_arc_get', 'temporal_life_arc'))
       } catch (err) {
         return errorOutput('kala_life_arc_get', String(err), { chart_id })
       }
@@ -795,7 +879,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
 
         const discLimit = depth === 'complete' ? 20 : 5
         const discResult = await platformQuery(`
-          SELECT discovery_id, affected_domains_array AS domains, surface_reading AS statement,
+          SELECT discovery_id, discovery_class, discovery_subsystem,
+                 affected_domains_array AS domains,
+                 hypothesis_text, depth_reading, why_an_acharya_misses_it,
+                 surface_reading,
                  composite_discovery_rank AS salience_score
           FROM bodha_discoveries
           WHERE chart_id = $1
@@ -833,7 +920,14 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           chart_id,
           depth,
           audience,
-          formula_version: 'mi_darshana_v1.0',
+          // F-143 / §N.7 item 3: this was the hardcoded literal 'mi_darshana_v1.0' — a
+          // wrapper-local constant shadowing a value the query above already selects
+          // (surface_formula_version). It could not track a writer version bump, so it
+          // would have started mislabelling every brief the moment mi_darshana bumped.
+          // Report what the rows actually carry; disclose a mixed set rather than picking one.
+          formula_version:
+            [...new Set(rows.map(r => r['surface_formula_version']).filter(Boolean))].join(', ') ||
+            'none — no insight units for this chart',
           calibration_mode: 'STRUCTURAL',
           calibration_note: 'L5 SEALED — empirical scores accrue as outcome data is recorded.',
           topics_covered: rows.length,
@@ -876,6 +970,27 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
       if (!(await remoteAuthorize(principal, chart_id, 'view'))) {
         return errorOutput('prashna_undertaking_get', 'AUTHZ_DENIED', { chart_id, domain })
       }
+
+      // The undertaking's election rows and activity-ontology rules use related but
+      // distinct authorities. `phala_muhurta.action_class` is the writer's concrete
+      // election vocabulary (for example `medical`); the activity ontology uses its
+      // own class IDs (for example `medical_procedure`). Keep the two mappings
+      // explicit rather than selecting all election windows and merely labelling the
+      // result with an inferred action class.
+      const _DOMAIN_TO_MUHURTA_ACTION: Record<string, string> = {
+        career:       'start_business',
+        financial:    'contract_signing',
+        wealth:       'contract_signing',
+        health:       'medical',
+        relationship: 'marriage',
+        spiritual:    'spiritual_initiation',
+        spirituality: 'spiritual_initiation',
+        transition:   'travel',
+      }
+      const muhurtaActionClass = _DOMAIN_TO_MUHURTA_ACTION[domain]
+      if (!muhurtaActionClass) {
+        return errorOutput('prashna_undertaking_get', 'INVALID_DOMAIN', { chart_id, domain })
+      }
       try {
         // 1. Prashna judgment (from ga_prashna_judgment)
         // R6 0b-deadtools (R-12): gj.verdict/gj.verdict_strength/gj.significator_positions/
@@ -899,7 +1014,7 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           LIMIT 5
         `, [chart_id], principal)
 
-        // 2. Election windows (phala_muhurta for domain → action class mapping)
+        // 2. Election windows (phala_muhurta for the requested domain's action class)
         const muhurtaResult = await platformQuery(`
           SELECT pm.action_class, pm.window_start, pm.window_end,
                  pm.composite_quality, pm.window_quality_verdict,
@@ -908,9 +1023,10 @@ export function registerP1SynthesisTools(server: McpServer, principal: Principal
           FROM phala_muhurta pm
           WHERE pm.chart_id = $1
             AND pm.composite_quality IS NOT NULL
+            AND pm.action_class = $2
           ORDER BY pm.composite_quality DESC NULLS LAST
-          LIMIT $2
-        `, [chart_id, top_windows], principal)
+          LIMIT $3
+        `, [chart_id, muhurtaActionClass, top_windows], principal)
 
         // 3. Fructification timing from phala_anchors (domain-filtered)
         const anchorResult = await platformQuery(`

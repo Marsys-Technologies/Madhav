@@ -1,0 +1,44 @@
+{
+  "lane": "F-06",
+  "tool": "ref_remedies_chart_get",
+  "date": "2026-08-16",
+  "call_1": {
+    "args": { "affliction": "Saturn", "top_k": 5 },
+    "note": "MCP client-side JSONSchema for the tool (fetched via ToolSearch) accepts only {affliction, top_k}; additionalProperties: false.",
+    "response": {
+      "type": "object",
+      "object": {
+        "ok": true,
+        "trace_id": "b72d1068-e2e5-48d3-b627-268c52ede7b1",
+        "epistemics": { "surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null },
+        "result": {
+          "tool_bundle_id": "6e32c0a7-d677-4035-b7e4-a7f42d961252",
+          "tool_name": "query_remedies_for_chart",
+          "tool_version": "1.0",
+          "invocation_params": { "affliction": "Saturn", "top_k": 5 },
+          "results": [
+            { "content": "{\"affliction\":\"Saturn\",\"remedies\":[ ... 5 rows, global brahma_remedy_corpus matches on planet/domain ILIKE ...],\"returned_count\":5,\"provenance\":{\"table\":\"brahma_remedy_corpus\",\"note\":\"No audience_tier gating — serve-time only.\"}}" }
+          ],
+          "served_from_cache": false,
+          "latency_ms": 10,
+          "result_hash": "sha256:b9320ecd15eeaf1508ff64ac3a8f69ca8bf8ef487aa700bf4b7a9547d6b0663f",
+          "schema_version": "1.0"
+        },
+        "citations": [],
+        "plan": null,
+        "predictions_logged": [],
+        "synthesis_audit": null,
+        "suggested_followups": [],
+        "warnings": []
+      }
+    },
+    "observation": "No chart_id anywhere in invocation_params, result, or provenance. provenance.note explicitly says 'No audience_tier gating — serve-time only', consistent with a global (non-chart-scoped) corpus lookup."
+  },
+  "call_2_chart_id_probe": {
+    "args": { "affliction": "Saturn", "top_k": 5, "chart_id": "482012f1-710e-4a25-994a-93821f5871aa" },
+    "response_type": "error",
+    "response": "MCP error -32602: Input validation error: Invalid arguments for tool ref_remedies_chart_get: [{\"code\":\"unrecognized_keys\",\"keys\":[\"chart_id\"],\"path\":[],\"message\":\"Unrecognized key: \\\"chart_id\\\"\"}]",
+    "observation": "chart_id is REJECTED outright by the MCP tool's Zod schema (additionalProperties:false / unrecognized_keys), not silently dropped. Confirms the alias layer (register_p1_aliases.ts:1563-1573) truly has no chart_id parameter — a caller cannot even attempt to pass one, they get a hard client-side validation error before the request reaches the server handler."
+  },
+  "verdict": "CONFIRMED-LIVE — not already fixed. Both the MCP-facing schema gap and the underlying primitive's provenance-only chart_id are unchanged from the audit corpus's description."
+}

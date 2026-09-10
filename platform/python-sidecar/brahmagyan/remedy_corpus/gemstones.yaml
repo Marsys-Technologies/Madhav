@@ -3,6 +3,14 @@
 # Encoding: hand-curated from classical public-domain translations
 # ZERO LLM — deterministic authoring only
 
+# ── PARIŚEṢA-V4 F-182 / owner ruling R-2 (OWNER_RULINGS_20260821.md) ─────────
+# Rows below may pair a BPHS-attributed remedy with a `mantra_transliteration`
+# carrying a navagraha bīja of the `praam preem praum sah` class. That bīja class
+# is NOT BPHS material — it belongs to the tantric/āgamic layer transmitted via
+# Mantra Mahodadhi (Mahīdhara, 16th c.) and the Navagraha stotra literature.
+# Each row's `source_text` / `source_chapter` attributes the REMEDY (gemstone,
+# yantra, vrata, dāna), which BPHS does supply; it must never be read as
+# attributing the attached bīja mantra text to BPHS.
 - remedy_id: "gem_ruby_sun_001"
   planet: "Sun"
   domain: "career"
@@ -78,7 +86,7 @@
   deity: "Brihaspati"
   remedy_text: "Wear a Yellow Sapphire (Pukhraj) of at least 4 carats, set in gold, on the index finger of the right hand. The stone must be natural, unheated, with rich yellow color. Energize on Thursday morning during Shukla Paksha."
   mantra_sanskrit: "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः"
-  mantra_transliteration: "Om Graam Greem Graum Sah Guruve Namah"
+  mantra_transliteration: "Om Graam Greem Graum Sah Gurave Namah"
   ingredients_jsonb: {"setting_metal": "gold", "finger": "index finger", "hand": "right", "minimum_carats": 4, "quality_notes": "natural unheated; bright yellow; avoid green or pale-yellow specimens"}
   timing_rules_jsonb: {"day": "Thursday", "time": "morning (brahma muhurta preferred)", "paksha": "Shukla", "lunar_nakshatra_prefer": ["Punarvasu", "Vishakha", "Purva Bhadrapada"]}
   cost_tier: "elaborate"
@@ -129,7 +137,7 @@
   deity: "Rahu"
   remedy_text: "Wear a Hessonite Garnet (Gomed) of at least 5 carats, set in silver, panchdhatu, or ashtadhatu (eight-metal alloy), on the middle finger of the right hand. The stone should be honey-colored, transparent. Wear on Saturday during Rahu Hora."
   mantra_sanskrit: "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः"
-  mantra_transliteration: "Om Bhram Bhreem Bhroum Sah Rahave Namah"
+  mantra_transliteration: "Om Bhraam Bhreem Bhraum Sah Rahave Namah"
   ingredients_jsonb: {"setting_metal": "silver or panchdhatu", "finger": "middle finger", "hand": "right", "minimum_carats": 5, "quality_notes": "honey-brown, transparent; avoid heavily included stones"}
   timing_rules_jsonb: {"day": "Saturday", "time": "Rahu Kalam (1.5 hr window)", "paksha": "any", "test_period_days": 3}
   cost_tier: "moderate"
@@ -146,7 +154,7 @@
   deity: "Ketu"
   remedy_text: "Wear a Cat's Eye (Lehsunia/Vaidurya) of at least 5 carats, set in silver, on the middle finger of the right hand. The cat's eye effect (chatoyancy) should be distinct. Wear on Tuesday or Thursday during Ketu Hora."
   mantra_sanskrit: "ॐ स्रां स्रीं स्रौं सः केतवे नमः"
-  mantra_transliteration: "Om Sram Sreem Sraum Sah Ketave Namah"
+  mantra_transliteration: "Om Sraam Sreem Sraum Sah Ketave Namah"
   ingredients_jsonb: {"setting_metal": "silver or panchdhatu", "finger": "middle finger", "hand": "right", "minimum_carats": 5, "quality_notes": "clear chatoyancy (cat's eye band); honey-green preferred; avoid dull specimens"}
   timing_rules_jsonb: {"day": "Tuesday or Thursday", "time": "morning", "paksha": "any", "test_period_days": 3}
   cost_tier: "moderate"

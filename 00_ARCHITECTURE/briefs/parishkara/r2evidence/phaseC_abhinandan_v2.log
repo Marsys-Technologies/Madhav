@@ -1,0 +1,23 @@
+[abhinandan] PLAN: 270 substeps
+[abhinandan] asset_throughput -> building (cockpit-visible)
+[abhinandan] 1/270 ok key=achievement_recognition::g3_1984_1994 ins=1 skipped=0 elapsed=0.2m
+[abhinandan] 20/270 ok key=bereavement::g3_2074_2084 ins=20 skipped=0 elapsed=5.5m
+[abhinandan] 40/270 ok key=business_launch::g3_2074_2084 ins=60 skipped=0 elapsed=10.3m
+[abhinandan] 41/270 SKIP (already done, resume) key=career_advancement::g3_1984_1994
+[abhinandan] 42/270 SKIP (already done, resume) key=career_advancement::g3_1994_2004
+[abhinandan] 43/270 SKIP (already done, resume) key=career_advancement::g3_2004_2014
+[abhinandan] 56/270 conn-lost on career_change::g3_2034_2044 attempt 1: consuming input failed: server closed the connection unexpectedly
+	This probably
+[abhinandan] 60/270 ok key=career_change::g3_2074_2084 ins=90 skipped=10 elapsed=13.5m
+[abhinandan] 80/270 ok key=career_setback::g3_2074_2084 ins=170 skipped=10 elapsed=20.3m
+[abhinandan] 120/270 ok key=exam_outcome::g3_2074_2084 ins=230 skipped=20 elapsed=29.1m
+[abhinandan] 140/270 ok key=foreign_settlement::g3_2074_2084 ins=330 skipped=20 elapsed=35.7m
+[abhinandan] 150/270 SKIP (already done, resume) key=illness_acute::g3_2074_2084
+[abhinandan] 200/270 ok key=property_acquisition::g3_2074_2084 ins=480 skipped=50 elapsed=46.2m
+[abhinandan] 220/270 ok key=relocation::g3_2074_2084 ins=618 skipped=50 elapsed=53.9m
+[abhinandan] 240/270 ok key=separation::g3_2074_2084 ins=658 skipped=50 elapsed=59.9m
+[abhinandan] 260/270 SKIP (already done, resume) key=surgery::g3_2074_2084
+[abhinandan] promotion attempt 1 raised KeyError: 0 -- retrying
+[abhinandan] promotion attempt 2 raised KeyError: 0 -- retrying
+[abhinandan] promotion attempt 3 raised KeyError: 0 -- retrying
+[abhinandan] PROMOTION FAILED after 3 verified attempts -- corpus data is complete (270/270) but asset_throughput.state could NOT be confirmed updated. Manual verification required before trusting the cockpit for this asset.

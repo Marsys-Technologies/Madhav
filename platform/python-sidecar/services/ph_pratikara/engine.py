@@ -58,6 +58,7 @@ class RemedyPrescription:
     recommended_choghadiya:     Optional[str] = None
     pranapratishtha:            bool = False
     classical_citation:         str = ''
+    source_id:                  str = ''
 
 
 def topo_sort_prescriptions(prescriptions: list[RemedyPrescription]) -> list[str]:
@@ -195,7 +196,8 @@ class MitigationRecord:
     window_end:                 Optional[date]
     re_evaluation_date:         date
     outcome_hook_jsonb:         dict
-    classical_citation:         str
+    classical_citation:         Optional[str]
+    source_id:                  Optional[str]
     cross_tradition_corroboration: int
     derivation_ledger_jsonb:    dict
     source_citation:            str
@@ -251,10 +253,29 @@ def derive_mitigation_record(ctx: MitigationContext) -> MitigationRecord:
         'total_scheduled': len(scheduled_ids),
     }
 
-    # classical citation: pick from first prescription or generic
+    # F-3 (L4_W1_ANALYSIS_BATCH_C.md §3.5): hard-floor violation. classical_citation was
+    # NOT NULL with no honest null available, so this fell back to an INVENTED generic
+    # citation whenever no prescription carried a real one -- measured live, 100% of
+    # 1,277 rows on the fabricated string. classical_citation is now nullable
+    # (migration 685): an honest None when nothing prescribed a real classical source,
+    # never a plausible-sounding stand-in. The serving layer already keys efficacy_tier
+    # off `citation !== null` (kala_upaya_diagnosis.ts's assignEfficacyTier) and
+    # phala_mitigation_map's all_cited off classical_citation alone (F-5, fixed
+    # alongside this) -- both were only ever wrong because this value was never
+    # genuinely null before.
     citation = next(
         (p.classical_citation for p in prescriptions if p.classical_citation),
-        'Brihat Parashara Hora Shastra — Upaya chapter'
+        None,
+    )
+
+    # F-6 (L4_W1_ANALYSIS_BATCH_C.md §3.5): classical_sources_jsonb.source_id
+    # (e.g. 'BPHS') is populated on 135/135 bo_upaya rows -- the same JSON the
+    # citation string above already reads -- but was never propagated. Honest
+    # None (not a picked default) when no prescription carries one, mirroring
+    # how classical_citation itself is handled.
+    source_id = next(
+        (p.source_id for p in prescriptions if p.source_id),
+        None,
     )
 
     derivation = {
@@ -283,6 +304,7 @@ def derive_mitigation_record(ctx: MitigationContext) -> MitigationRecord:
         re_evaluation_date=re_eval,
         outcome_hook_jsonb=outcome_hook,
         classical_citation=citation,
+        source_id=source_id,
         cross_tradition_corroboration=ctc,
         derivation_ledger_jsonb=derivation,
         source_citation=f"ph_pratikara/{ctx.obstruction_id or 'anchor'}/{ctx.linked_anchor_id or 'none'}",

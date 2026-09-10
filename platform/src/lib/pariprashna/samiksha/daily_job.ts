@@ -21,6 +21,11 @@
  *     window (they are already `window_closed`), so it performs zero further transitions;
  *   - the digest is gated by the journal — a second run for the same `asOf` sees `hasSent` true
  *     and dispatches nothing.
+ *
+ * JOURNAL (P4-I, DD-21): the default journal is `DbDigestJournal` (migration 588,
+ * `pariprashna_samiksha_digest_journal`) — a real DB row per dispatched digest, carrying the
+ * full rendered content and structured payload, not just a per-day marker. `FileDigestJournal`
+ * remains available (inject via `opts.journal`) as an offline/no-DB dev fallback.
  */
 
 import { query as sharedQuery } from '@/lib/db/client'
@@ -34,7 +39,7 @@ import {
   type DigestPayload,
   type DigestTransport,
 } from './digest'
-import { FileDigestJournal, type DigestJournal, type DigestSentRecord } from './digest_journal'
+import { DbDigestJournal, type DigestJournal, type DigestSentRecord } from './digest_journal'
 
 const defaultExecutor: LedgerExecutor = <T,>(sql: string, params?: unknown[]) =>
   sharedQuery(sql, params as unknown[]).then((r) => ({ rows: r.rows as T[], rowCount: r.rowCount }))
@@ -60,7 +65,8 @@ export interface DailyJobOptions {
   closingSoonDays?: number
   /** Injectable DB executor (tests point this at a real throwaway Postgres). */
   exec?: LedgerExecutor
-  /** Per-day digest idempotency store. Default: FileDigestJournal. */
+  /** Per-day digest idempotency store + durable content record. Default: DbDigestJournal
+   *  (migration 588, `pariprashna_samiksha_digest_journal`) — see digest_journal.ts. */
   journal?: DigestJournal
   /** Digest transport. Default: LogOnlyTransport (W-5 stub). */
   transport?: DigestTransport
@@ -162,7 +168,7 @@ export async function runDailyJob(opts: DailyJobOptions): Promise<DailyJobResult
     throw new Error(`runDailyJob: closingSoonDays must be a non-negative integer, got ${closingSoonDays}`)
   }
   const exec = opts.exec ?? defaultExecutor
-  const journal = opts.journal ?? new FileDigestJournal()
+  const journal = opts.journal ?? new DbDigestJournal(exec, opts.chartId)
   const transport = opts.transport ?? new LogOnlyTransport()
 
   // ── (a) close windows via the legal-transition DAL (never raw UPDATE) ──
@@ -226,6 +232,9 @@ export async function runDailyJob(opts: DailyJobOptions): Promise<DailyJobResult
       closing_soon_count: payload.closing_soon.length,
       transport_mode: tr.mode,
       real_delivery: tr.realDelivery,
+      subject: rendered.subject,
+      body_text: rendered.text,
+      payload,
     }
     await journal.markSent(asOf, record)
   }

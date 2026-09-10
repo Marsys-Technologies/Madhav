@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-22T06:50:04.573Z",
+  "generated_at": "2026-08-25T00:00:00Z",
   "generator_version": "1.0",
-  "entry_count": 115,
-  "fingerprint": "651139efdb098680fda9f3fa12129d9672d92a10e30cb58eccceb459e5b6a030",
+  "entry_count": 130,
+  "fingerprint": "4ae7534d3b0faf48e7b028f48cc856846c7d84b5523ae350a2b2dccac929339c",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1624,6 +1624,22 @@
       "native_id": "abhisek"
     },
     {
+      "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+      "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+      "native_id": "project",
+      "last_verified_session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
+      "last_verified_on": "2026-08-21"
+    },
+    {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",
       "status": "CURRENT",
       "layer": "L1",
@@ -1634,6 +1650,213 @@
       "interface_version": "1.0",
       "fingerprint": "af5368cc9a708101aef051c717ec60a4652a7ceb7ed3768f9470edf04636a748",
       "native_id": "abhisek"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ARCHITECTURE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md",
+      "version": "1.3",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b30bc39e3135de3a3e7d5d4cd3a3a5843c0a485972a0af95295bf87a661a4e84",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
+      "path": "00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md",
+      "version": "1.0",
+      "status": "LIVING",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF_V1",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md",
+      "version": "1.0",
+      "status": "SUPERSEDED",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad",
+      "native_id": "project",
+      "supplements_parent": "PARIPRASHNA_SWARM_KICKOFF"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "d7b0c0da03f27c0da0337de1cd4a2801655125e22fc43d77e4ff32635ffddf14",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_IMPLEMENTATION_ROADMAP",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "f1c45daffe402bdb196324c0963dcc1186be3ecd07548cf0bb431f3dafcbd0d8",
+      "last_verified_session": "PARIPRASHNA-CLOSEOUT-2026-08-19",
+      "last_verified_on": "2026-08-19",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "PROPOSAL",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "bd8f590c3b01a6ca769cbe28871676a15cf435a3d388fff92962efcd4fb9ff59",
+      "native_id": "project",
+      "last_verified_session": "PARIPRASHNA-P3-PREFLIGHT-2026-08-21",
+      "last_verified_on": "2026-08-21"
+    },
+    {
+      "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md",
+      "version": "1.1",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "fb9b47dcc5d1267b63700d271dab980e02b743da3f3c4a04eb8ff740f0b4cd31",
+      "last_verified_session": "PARIPRASHNA-V3-CLOSEOUT-FOLLOWUPS-2026-08-30",
+      "last_verified_on": "2026-08-30",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
+      "path": "00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md",
+      "version": "1.0",
+      "status": "READY",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69",
+      "native_id": "project"
+    },
+    {
+      "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
+      "path": "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md",
+      "version": "1.0",
+      "status": "CURRENT-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": [
+        "file"
+      ],
+      "interface_version": "1.0",
+      "fingerprint": "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344",
+      "native_id": "project",
+      "adopted_by_session": "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_PLAN",
+      "path": "00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v6_0.md",
+      "version": "6.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
+    },
+    {
+      "canonical_id": "NIRMANA_ELEVATION_AUTONOMY_CHARTER",
+      "path": "00_ARCHITECTURE/autonomy/CHARTER_v2_0.md",
+      "version": "2.0",
+      "status": "CURRENT-FROZEN-FOR-EXECUTION",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab",
+      "native_id": "project",
+      "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
+      "last_verified_on": "2026-08-25"
     }
   ]
 }

@@ -49,6 +49,7 @@ Contract adherence (FROZEN orchestrator contract, ORCHESTRATOR_CONVERGENCE_CLOSE
 from __future__ import annotations
 
 import logging
+import re as _re
 from typing import Any, Iterable
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -140,9 +141,8 @@ COVERAGE_QUALITY_NOTES: dict[str, str] = {
         "rich_model: houses 4,9 + lords 4L,9L + karakas Moon,Sun; BPHS ch.4,9 cited",
     "bereavement":
         "rich_model: houses 8,12,2 + lords 8L + maraka lords (2L/7L) + karakas Saturn,Ketu; "
-        "BPHS ch.8,2 cited. Note: 'maraka lords (2L/7L)' is a compound gloss — "
-        "_build_lord_rows emits '8L' and 'maraka lords (2L/7L)' as-is (non-empty strings); "
-        "the latter is a descriptive token, not a clean lord ref",
+        "BPHS ch.8,2 cited. Note: 'maraka lords (2L/7L)' is tokenized by _build_lord_rows "
+        "using _LORD_TOKEN_RE — emits 8L, 2L, 7L as separate rows (B4 fix)",
     "major_loss":
         "rich_model: houses 2,11,12 + lords 2L/11L afflicted + 12L + karakas Saturn,Rahu; "
         "BPHS ch.12 cited. Note: compound lord tokens ('2L/11L afflicted') passed through as-is",
@@ -202,6 +202,11 @@ _KARAKA_FACT_SUBJECT: dict[str, str] = {
 
 _SENSITIVE_DEGREE_KEYS = ("mrityu_bhaga", "gandanta", "kartari", "pushkara")
 
+# B4: lord tokenizer — extracts clean NL refs (e.g. '10L') from compound
+# or qualified strings (e.g. '10L afflicted', 'maraka lords (2L/7L)').
+# See effect commit for _build_lord_rows usage.
+_LORD_TOKEN_RE: "_re.Pattern[str]" = _re.compile(r'\d+L')
+
 
 # ── Pure row-building helpers (DB-free, unit-testable) ───────────────────────
 
@@ -242,10 +247,17 @@ def _build_lord_rows(event_class: str, lords: Iterable[Any], citation: str | Non
     rows = []
     for l in lords or []:
         ref = str(l).strip()
-        if not ref or ref in seen:
+        if not ref:
             continue
-        seen.add(ref)
-        rows.append(_base_row(event_class, "lord", ref, 1.0, citation, False))
+        tokens = _LORD_TOKEN_RE.findall(ref)
+        if not tokens:
+            # No clean lord refs found (pure descriptive text) — skip
+            continue
+        for token in tokens:
+            if token in seen:
+                continue
+            seen.add(token)
+            rows.append(_base_row(event_class, "lord", token, 1.0, citation, False))
     return rows
 
 

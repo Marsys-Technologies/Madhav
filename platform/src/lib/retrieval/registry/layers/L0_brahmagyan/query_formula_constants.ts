@@ -2,9 +2,10 @@
  * query_formula_constants — L0 Brahmagyan formula-constants registry
  * =======================================================================
  * W2b dark-set wiring, Batch 2 (TABLE_CONCEPT_DISPOSITIONS_v2_0.md borderline
- * SERVE-gap set, `brahma_formula_constants`, 18 rows). Serves the mixed
- * CLASSICAL/NATIVE_JUDGMENT/ENGINEERING/CONFLATION_BUG constants registry
- * (389_brahma_formula_constants.sql). Only one confirmed live internal
+ * SERVE-gap set, `brahma_formula_constants`, 17 governed rows). Serves the
+ * CLASSICAL/NATIVE_JUDGMENT/ENGINEERING constants registry. The schema retains
+ * the CONFLATION_BUG class for documentation, but migration 603 retires the one
+ * resolved sentinel that migration 389 incorrectly seeded. Only one confirmed live internal
  * reader exists (recalibrationEnqueue.ts, an unrelated scheduling-timing
  * lookup) — the CLASSICAL-tagged rows themselves have no serving route.
  * Judgment-call table per the disposition doc; wired per the ruling's
@@ -22,7 +23,7 @@ export const queryFormulaConstantsCapability: CapabilityDescriptor = {
   name:  'query_formula_constants',
 
   description: [
-    'Query the formula-constants registry (brahma_formula_constants, 18 rows). Each row:',
+    'Query the formula-constants registry (brahma_formula_constants, 17 governed rows). Each row:',
     'constant_id, value_jsonb, class (classical|native_judgment|engineering|',
     'conflation_bug), consumer_assets[] (which layer assets read this constant),',
     'citation_or_ratification, calibratable flag, bounds, version. Filter by constant_id',

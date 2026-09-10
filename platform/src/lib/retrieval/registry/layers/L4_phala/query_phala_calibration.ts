@@ -14,6 +14,13 @@
  * Chart-agnostic: no native chart_id defaults (principle #14).
  */
 
+import {
+  ANOMALY_SEVERITY_ORDER,
+  CLEANLINESS_ATTENTION_ORDER,
+  OBSTRUCTION_SEVERITY_ORDER,
+  WINDOW_STATUS_ACTIONABILITY_ORDER,
+  salienceRank,
+} from './salience_order'
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 
@@ -50,7 +57,9 @@ export const queryAuspiciousWindowsCapability: CapabilityDescriptor = {
   traversal_level: 'L-SIGNAL',
   tool_role: 'leaf',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: no fact identifier is selected, so no drill to L1 is possible from a served
+  // row. An unearned signal (§N.8).
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
@@ -131,7 +140,9 @@ export const querySpilloverCascadesCapability: CapabilityDescriptor = {
   traversal_level: 'L-DOMAIN',
   tool_role: 'leaf',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: no fact identifier is selected, so no drill to L1 is possible from a served
+  // row. An unearned signal (§N.8).
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
@@ -209,7 +220,9 @@ export const queryFalsifiersCapability: CapabilityDescriptor = {
   traversal_level: 'L-SIGNAL',
   tool_role: 'quality',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: no fact identifier is selected, so no drill to L1 is possible from a served
+  // row. An unearned signal (§N.8).
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
@@ -231,7 +244,7 @@ export const queryFalsifiersCapability: CapabilityDescriptor = {
                lel_entry_id, linked_sodhana_id, source_citation
         FROM phala_pramana
         WHERE chart_id = $1
-        ORDER BY window_status
+        ORDER BY ${salienceRank('window_status', WINDOW_STATUS_ACTIONABILITY_ORDER)}, pramana_id
       `
 
       const result = await query(sql, [chart_id])
@@ -309,7 +322,7 @@ export const queryAnomalyFlagsCapability: CapabilityDescriptor = {
                leakage_class, recommendation_text, auto_action
         FROM phala_sodhana
         WHERE ${conds.join(' AND ')}
-        ORDER BY anomaly_severity DESC
+        ORDER BY ${salienceRank('anomaly_severity', ANOMALY_SEVERITY_ORDER)}, anomaly_type
       `
 
       const result = await query(sql, params)
@@ -349,7 +362,9 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
   traversal_level: 'L-DOMAIN',
   tool_role: 'leaf',
   emits_references: true,
-  grounds_to: { l1_fact_ids: true },
+  // Corrected: no fact identifier is selected, so no drill to L1 is possible from a served
+  // row. An unearned signal (§N.8).
+  grounds_to: { l1_fact_ids: false },
   lel_capable: false,
 
   required_inputs: ['chart_id'],
@@ -359,6 +374,10 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
     intensity_tier: {
       type: 'string',
       description: 'Filter by intensity_tier (free-text tier label as stored on phala_mitigation).',
+    },
+    domain: {
+      type: 'string',
+      description: 'Filter remedies by the domain of their linked phala_anchors row.',
     },
     limit:  { type: 'number', description: `Max rows (default ${MITIGATION_MAX_LIMIT}, max ${MITIGATION_MAX_LIMIT}).` },
     offset: { type: 'number', description: 'Pagination offset (default 0).' },
@@ -371,6 +390,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
     if (!chart_id) return { content: { error: 'chart_id is required' }, is_error: true }
 
     const intensity_tier = args['intensity_tier'] as string | undefined
+    const domain = args['domain'] as string | undefined
     // WP-1.3j budget discipline (F-L10-024): phala_mitigation is NOT sparse — it holds
     // 600+ rows/chart. The prior handler returned the FULL unbounded set; now bounded.
     const limit  = Math.min(Math.max(Number(args['limit'] ?? MITIGATION_MAX_LIMIT), 1), MITIGATION_MAX_LIMIT)
@@ -382,6 +402,16 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
       let p = 2
 
       if (intensity_tier) { conds.push(`intensity_tier = $${p++}`); params.push(intensity_tier) }
+      if (domain) {
+        conds.push(`EXISTS (
+          SELECT 1
+          FROM phala_anchors a
+          WHERE a.chart_id = phala_mitigation.chart_id
+            AND a.anchor_id = phala_mitigation.linked_anchor_id
+            AND a.domain = $${p++}
+        )`)
+        params.push(domain)
+      }
       const where = conds.join(' AND ')
 
       const sql = `
@@ -396,7 +426,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
                classical_citation
         FROM phala_mitigation
         WHERE ${where}
-        ORDER BY obstruction_severity DESC NULLS LAST, intensity_tier
+        ORDER BY ${salienceRank('obstruction_severity', OBSTRUCTION_SEVERITY_ORDER)}, intensity_tier, mitigation_id
         LIMIT $${p} OFFSET $${p + 1}
       `
 
@@ -416,7 +446,7 @@ export const queryRemedyProgramCapability: CapabilityDescriptor = {
           total_matching,
           more_available: offset + result.rows.length < total_matching,
           anchor_id_refs: anchorRefs,
-          filters: { intensity_tier, limit, offset },
+          filters: { intensity_tier, domain, limit, offset },
         },
         is_error: false,
       }
@@ -483,7 +513,7 @@ export const queryCleasedAnchorsCapability: CapabilityDescriptor = {
                confidence_delta_if_applied, magnitude_delta_if_applied
         FROM phala_suddha_sodhana
         WHERE ${conds.join(' AND ')}
-        ORDER BY cleanliness_status, critical_flag_count DESC
+        ORDER BY ${salienceRank('cleanliness_status', CLEANLINESS_ATTENTION_ORDER)}, critical_flag_count DESC, anchor_id
       `
 
       const result = await query(sql, params)
@@ -582,7 +612,7 @@ export const queryRectificationCapability: CapabilityDescriptor = {
                lagna_stable, to_char(scored_at, 'YYYY-MM-DD') AS scored_date
         FROM phala_rectification
         WHERE ${rectWhere}
-        ORDER BY lel_fit_score DESC NULLS LAST
+        ORDER BY lel_fit_score DESC NULLS LAST, offset_minutes, ayanamsha_id
         LIMIT $${cp} OFFSET $${cp + 1}
       `
 

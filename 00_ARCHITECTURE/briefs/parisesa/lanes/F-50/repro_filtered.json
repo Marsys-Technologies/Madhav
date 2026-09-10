@@ -1,0 +1,47 @@
+{
+  "call": "bodha_remedies_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa', graha='Saturn')",
+  "captured_at": "2026-08-16 (Stage-D DIAGNOSE lane, F-50)",
+  "response": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "narration": {
+      "lead": "Your Bodha remedy layer flags Saturn as your #1 remedy-priority target — resonance_score 0.094032, priority class low.",
+      "resonance_ranked": [
+        {
+          "rank": 1,
+          "graha": "Saturn",
+          "resonance_score": 0.094032,
+          "weakness_score": 0.090415,
+          "contradiction_factor": 0,
+          "remedy_priority_class": "low",
+          "is_yoga_karaka_flag": false,
+          "weakest_rank_in_chart": 8,
+          "named_affliction_mapping": "Saturn weakness (rank 8 in the chart, non-yogakaraka)",
+          "citation": "Resonance: Saturn | sha=1.57 dosha_count=0"
+        }
+      ],
+      "data_gap_note": "bo_upaya data-population gap (writer-level, not dropped here): associated_doshas_array and estimated_cost_inr_range_jsonb remain NULL for every chart built so far. Named-affliction mapping derived from graha + remedy_priority_class + weakest_rank_in_chart + is_yoga_karaka_flag."
+    },
+    "resonances": [
+      {
+        "resonance_id": "28380eca-6c00-489b-b3be-f853a941edc4",
+        "graha": "Saturn",
+        "resonance_score": 0.094032,
+        "weakness_score": 0.090415,
+        "contradiction_factor": 0,
+        "domain_burden": 0,
+        "motif_burden": 0.4,
+        "remedy_priority_class": "low",
+        "is_yoga_karaka_flag": false,
+        "weakest_rank_in_chart": 8,
+        "associated_cdlm_cell_count": 10,
+        "named_affliction_mapping": "Saturn weakness (rank 8 in the chart, non-yogakaraka)",
+        "computed_at": "2026-08-10 01:52:11.356374+00"
+      }
+    ],
+    "resonance_count": 1,
+    "prescription_count": 3,
+    "filters": {"graha": "Saturn", "fields": "compact", "domain": null, "keyword": null, "limit": 200, "leverage_ranked": false}
+  },
+  "note": "Full raw response also includes 3 Saturn prescriptions (japa/mantra) — omitted here for brevity, not relevant to the narration-wording finding."
+}

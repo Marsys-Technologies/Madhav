@@ -1,0 +1,40 @@
+{
+  "record_type": "PARISESA_V4_VELOCITY_RESET_ADOPTION",
+  "recorded_at": "2026-08-19T13:07:00Z",
+  "continuation_owner": "/root",
+  "continuation_epoch": 1,
+  "directive": "PARISESA V4 Velocity Reset Execution Directive",
+  "adoption_boundary": "F90 normal merge fully reconciled as bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "live_reconciliation": {
+    "origin_main": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+    "campaign_coordination": "e94483e31aa468657b15240f752db4708ff4dd1d",
+    "pr_1342": {
+      "state": "OPEN/CLEAN",
+      "head": "ff2c1567ab22772ca5d3a1757e6d3b81ffa08988",
+      "base": "b328e4aaff82427276fc28a214a21f23965ee7d3",
+      "disposition": "stale base; requalification required"
+    },
+    "pr_1343": {
+      "state": "OPEN/CLEAN",
+      "head": "cb125455d1d69ef57b8ec9f1df4cbc55df2ae9e9",
+      "base": "b328e4aaff82427276fc28a214a21f23965ee7d3",
+      "disposition": "stale base; requalification required"
+    },
+    "inflight": "F90 affected deployment and read-only direct-MCP proof remain pending"
+  },
+  "operating_model": {
+    "root": "state fallback writer, integration/release controller, coordination",
+    "next_release_train": "requalify F46/PR #1342 and F47/PR #1343 against current main before any queue action",
+    "proof_packet": "batch F89/F90 deployed MCP safety canaries by revision; retain F92 revision-pinned proof"
+  },
+  "state_efficiency": {
+    "baseline_capsule": "not yet materialized; existing exact receipts remain evidence only",
+    "materializer": "not started; timeboxed discovery next, without blocking release or proof work"
+  },
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "exact_error": "guardian approval NotSubmitted { reason: NotIdle }",
+    "fallback": "root-owned worktree ledger plus campaign-coordination row, authorized by operator"
+  },
+  "next_durable_checkpoint": "2026-08-19T13:30:00Z"
+}

@@ -1,0 +1,614 @@
+{
+  "turn_id": "1f17536c-42dd-45f6-96d0-ea8462b9b647",
+  "question": "In this chart, which zodiac sign is the Sun placed in, and what is the Lagna (ascendant) sign?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "chart_id_explicit": false,
+  "conversation_id": "95b84ea2-6f8d-4b3c-be1f-eaec14df2fb7",
+  "assistant_message_id": "36e1855b-84ef-4b5a-b5d5-178dfbfdfd5a",
+  "partial": false,
+  "terminal_status": "ok",
+  "error": null,
+  "harness_tag": {
+    "tagged": true
+  },
+  "total_ms": 62579,
+  "event_count": 30,
+  "blocks": [
+    {
+      "blockId": "blk-1-1",
+      "kind": "paragraph",
+      "role": "verdict"
+    }
+  ],
+  "prose": "In this chart, the Sun is placed in Capricorn [1], and the Lagna (Ascendant) is Aries [2].",
+  "events": [
+    {
+      "type": "turn.open",
+      "raw": {
+        "type": "turn.open",
+        "seq": 0,
+        "t": 1787927274633,
+        "turn_id": "7f9c1c8b-8d54-468c-bd2b-4cac825f1b3f",
+        "conversation_id": "95b84ea2-6f8d-4b3c-be1f-eaec14df2fb7",
+        "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+        "model_id": "gemini-3.1-pro-preview",
+        "reading_depth": "auto",
+        "length_tier": "standard",
+        "protocol_version": 2
+      },
+      "receivedAtMs": 596
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 1,
+        "t": 1787927274633,
+        "phase": "plan",
+        "status": "start"
+      },
+      "receivedAtMs": 596
+    },
+    {
+      "type": "flag",
+      "raw": {
+        "type": "flag",
+        "seq": 2,
+        "t": 1787927274681,
+        "code": "safety_decision:proceed",
+        "level": "info",
+        "detail": "no safety class detected"
+      },
+      "receivedAtMs": 635
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 3,
+        "t": 1787927303882,
+        "phase": "plan",
+        "status": "end",
+        "ms": 29073
+      },
+      "receivedAtMs": 29834
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 4,
+        "t": 1787927303882,
+        "subject": "query_class",
+        "grade": "factual",
+        "detail": "1 planned tools"
+      },
+      "receivedAtMs": 29834
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 5,
+        "t": 1787927303882,
+        "subject": "reading_depth_received",
+        "grade": "standard",
+        "detail": "scope_tuple: intent=chart_overview width=standard depth=standard"
+      },
+      "receivedAtMs": 29834
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 6,
+        "t": 1787927303883,
+        "phase": "retrieve",
+        "status": "start",
+        "pass_id": 1
+      },
+      "receivedAtMs": 29834
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 7,
+        "t": 1787927303892,
+        "key": "retrieve:msr_sql",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 29860
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 8,
+        "t": 1787927303893,
+        "key": "retrieve:marsys://tool/L1/get_positions",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 29860
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 9,
+        "t": 1787927303893,
+        "key": "retrieve:marsys://tool/L1/get_strength",
+        "label_key": "Consulting the chart — Strengths & dignities",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 29860
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 10,
+        "t": 1787927303893,
+        "key": "retrieve:marsys://tool/L1/chart_facts_query",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "running"
+      },
+      "receivedAtMs": 29860
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 11,
+        "t": 1787927304084,
+        "key": "retrieve:marsys://tool/L1/get_positions",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 191
+      },
+      "receivedAtMs": 30023
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 12,
+        "t": 1787927304107,
+        "key": "retrieve:marsys://tool/L1/get_strength",
+        "label_key": "Consulting the chart — Strengths & dignities",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 214
+      },
+      "receivedAtMs": 30061
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 13,
+        "t": 1787927304128,
+        "key": "retrieve:marsys://tool/L1/chart_facts_query",
+        "label_key": "Retrieved — chart data",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 235
+      },
+      "receivedAtMs": 30077
+    },
+    {
+      "type": "activity.upsert",
+      "raw": {
+        "type": "activity.upsert",
+        "seq": 14,
+        "t": 1787927304149,
+        "key": "retrieve:msr_sql",
+        "label_key": "Reading the whole chart",
+        "pass_id": 1,
+        "status": "done",
+        "count": 1,
+        "ms": 256
+      },
+      "receivedAtMs": 30090
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 15,
+        "t": 1787927304150,
+        "phase": "retrieve",
+        "status": "end",
+        "pass_id": 1,
+        "ms": 258
+      },
+      "receivedAtMs": 30090
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 16,
+        "t": 1787927304161,
+        "phase": "synthesize",
+        "status": "start",
+        "pass_id": 1
+      },
+      "receivedAtMs": 30115
+    },
+    {
+      "type": "block.open",
+      "raw": {
+        "type": "block.open",
+        "seq": 17,
+        "t": 1787927321676,
+        "block_id": "blk-1-1",
+        "pass_id": 1,
+        "role": "prose"
+      },
+      "receivedAtMs": 47635
+    },
+    {
+      "type": "citation.define",
+      "raw": {
+        "type": "citation.define",
+        "seq": 18,
+        "t": 1787927321682,
+        "index": 1,
+        "signal_id": "PLN.SUN",
+        "layer": "L2.5",
+        "snippet": "[unverified citation 1]",
+        "reader_label": "[unverified citation 1]",
+        "grade": "unverified"
+      },
+      "receivedAtMs": 47635
+    },
+    {
+      "type": "citation.define",
+      "raw": {
+        "type": "citation.define",
+        "seq": 19,
+        "t": 1787927321695,
+        "index": 2,
+        "signal_id": "HSE.1",
+        "layer": "L2.5",
+        "snippet": "[unverified citation 2]",
+        "reader_label": "[unverified citation 2]",
+        "grade": "unverified"
+      },
+      "receivedAtMs": 47639
+    },
+    {
+      "type": "block.delta",
+      "raw": {
+        "type": "block.delta",
+        "seq": 20,
+        "t": 1787927321712,
+        "block_id": "blk-1-1",
+        "delta": "In this chart, the Sun is placed in Capricorn [1], and the Lagna (Ascendant) is Aries [2]."
+      },
+      "receivedAtMs": 47664
+    },
+    {
+      "type": "block.commit",
+      "raw": {
+        "type": "block.commit",
+        "seq": 21,
+        "t": 1787927321712,
+        "block_id": "blk-1-1",
+        "text": "In this chart, the Sun is placed in Capricorn [1], and the Lagna (Ascendant) is Aries [2].",
+        "kind": "paragraph",
+        "role": "verdict"
+      },
+      "receivedAtMs": 47664
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 22,
+        "t": 1787927321713,
+        "phase": "synthesize",
+        "status": "end",
+        "pass_id": 1,
+        "ms": 17552
+      },
+      "receivedAtMs": 47664
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 23,
+        "t": 1787927321717,
+        "subject": "citation_gate",
+        "grade": "PASS",
+        "detail": "informational query (factual); citations not required"
+      },
+      "receivedAtMs": 47664
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 24,
+        "t": 1787927321717,
+        "phase": "finalize",
+        "status": "start"
+      },
+      "receivedAtMs": 47664
+    },
+    {
+      "type": "receipt.define",
+      "raw": {
+        "type": "receipt.define",
+        "seq": 25,
+        "t": 1787927335069,
+        "turn_id": "7f9c1c8b-8d54-468c-bd2b-4cac825f1b3f",
+        "receipt": {
+          "receipt_schema_version": 1,
+          "turn_id": "7f9c1c8b-8d54-468c-bd2b-4cac825f1b3f",
+          "conversation_id": "95b84ea2-6f8d-4b3c-be1f-eaec14df2fb7",
+          "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+          "generated_at": "2026-08-28T14:28:55.068Z",
+          "coverage": {
+            "status": "measured",
+            "served": 2,
+            "empty": 4,
+            "dark": 0,
+            "floor_item_total": 6,
+            "channel": "web",
+            "channel_note": "4 of 6 floor items have NO web-executable retrieval tool (MCP↔web namespace gap); 2 served, 4 empty, 0 dark. A small served count reflects the namespace gap, not a fully-honored floor.",
+            "unavailable_reason": null
+          },
+          "facts_consumed": [
+            {
+              "ref": "PLN.SUN",
+              "layer": "L2.5",
+              "index": 1
+            },
+            {
+              "ref": "HSE.1",
+              "layer": "L2.5",
+              "index": 2
+            }
+          ],
+          "derivation_chains": [
+            {
+              "block_id": "blk-1-1",
+              "pass_id": 1,
+              "role": "prose",
+              "fact_refs": [
+                "PLN.SUN",
+                "HSE.1"
+              ]
+            }
+          ],
+          "cross_domain": {
+            "status": "unavailable",
+            "domains": null,
+            "unavailable_reason": "plan.domains was not populated by the planner for this turn"
+          },
+          "evidence_grades": {
+            "status": "measured",
+            "grade_counts": {
+              "primary": 0,
+              "supporting": 0,
+              "contextual": 0,
+              "unverified": 2,
+              "prior_reading": 0
+            },
+            "hallucination_count": 2,
+            "unavailable_reason": null
+          },
+          "honest_gaps": {
+            "status": "measured",
+            "gaps": [
+              {
+                "floor_item_id": "positions_snapshot",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_positions_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "dignity_scan",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_condition_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "chalit_cusp_read",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              },
+              {
+                "floor_item_id": "cross_ayanamsha_variation",
+                "kind": "empty",
+                "reason": "web_namespace_gap: live_tool \"ganita_chart_facts_get\" has no web retrieval-registry equivalent (MCP-native only)"
+              }
+            ],
+            "unavailable_reason": null
+          },
+          "safety_decision": {
+            "status": "measured",
+            "decision_id": "063bc008-5b98-4f7e-8031-70081f0442fe",
+            "enforced": true,
+            "severity": "none",
+            "action": "proceed",
+            "classes_detected": [],
+            "review_id": null,
+            "audit_written": true,
+            "unavailable_reason": null
+          },
+          "calibration_disclosure": {
+            "consulted": false,
+            "consulted_tool_names": [],
+            "disclosure_note": "No L5 Mīmāṃsā calibration capability was consulted this turn. L5 is sealed in STRUCTURAL mode (CLAUDE.md §E): empirical calibration values fill in as prediction→outcome data accrues. Predictive claims in this reading are not yet empirically calibrated."
+          },
+          "prose_binding": {
+            "blocks": [
+              {
+                "block_id": "blk-1-1",
+                "role": "prose",
+                "char_count": 90,
+                "semantic_kind": "paragraph",
+                "semantic_role": "verdict"
+              }
+            ],
+            "accumulated_text_sha256": "2c6946d98a6a69a3fcd0f7e64ebed2efdb401028d0cee9b3886175c330ef838e",
+            "accumulated_char_count": 90
+          },
+          "provenance": {
+            "build_id": "80886c05-dd95-474f-aada-40a314027915",
+            "priors_version": "1.2",
+            "formula_versions": {
+              "salience_formula_ver": null
+            },
+            "ranking_config": {
+              "mode": "composite_v1"
+            },
+            "now_context_date": "2026-08-28",
+            "computed_at": "2026-08-28T14:28:41.725Z"
+          },
+          "interpretation_sets": {
+            "status": "measured",
+            "interpretation_sets_schema_version": 2,
+            "detected_count": 1,
+            "covered_count": 1,
+            "truncated_count": 0,
+            "waived_count": 0,
+            "sets": [
+              {
+                "judgment_id": "sig-domain_verdict-1",
+                "category": "domain_verdict",
+                "status": "generated",
+                "detection_basis": "G2-A block role='verdict' (first prose block of its pass)",
+                "candidates": [
+                  {
+                    "reading": "The native will have a prominent career involving leadership, politics, or education, as the 5th lord of creativity and intellect gains directional strength (Digbala) in the 10th house of profession, despite some workplace friction indicated by the enemy sign of Capricorn.",
+                    "rationale": "Focuses on the professional and authoritative implications of the Sun gaining Digbala in the 10th house while ruling the 5th."
+                  },
+                  {
+                    "reading": "The native's children will achieve high social status or the native will adopt a highly disciplined, structured approach to parenting, as the 5th lord of progeny is placed in the karma-oriented, Saturn-ruled 10th house.",
+                    "rationale": "Focuses on the 5th house's primary living signification (children) and how its lord's placement in the 10th house of status shapes that domain."
+                  },
+                  {
+                    "reading": "The native possesses a highly pragmatic and ambitious intellect, applying their creative intelligence (5th house) strictly toward organizational and structural achievements (Capricorn) rather than abstract or purely artistic pursuits.",
+                    "rationale": "Focuses on the psychological and intellectual (Buddhi) dimension of the 5th house lord being grounded in the earthy, practical sign of Capricorn."
+                  }
+                ],
+                "selected_index": 0,
+                "selected_rationale": "The Sun's Digbala (directional strength) in the 10th house is one of the most powerful positional strengths in Jyotish, making the career and authority impacts the most dominant and reliable manifestation of this placement.",
+                "falsifier": "The native works in a low-profile, subordinate role with no leadership responsibilities, and their career has no connection to education, creativity, or authority.",
+                "waiver_reason": null
+              }
+            ],
+            "unavailable_reason": null
+          },
+          "confidence_typing": {
+            "status": "measured",
+            "entries": [
+              {
+                "ref": "PLN.SUN",
+                "layer": "L2.5",
+                "confidence_type": "structural_prior",
+                "basis": "l2_5_structural_signal"
+              },
+              {
+                "ref": "HSE.1",
+                "layer": "L2.5",
+                "confidence_type": "structural_prior",
+                "basis": "l2_5_structural_signal"
+              }
+            ],
+            "activation_gate": {
+              "gate_open": false,
+              "sample_size": null,
+              "min_sample_size_required": 30,
+              "threshold_is_placeholder": true,
+              "gate_note": "Gate CLOSED: no real calibration sample size was available this turn, or L5 Mīmāṃsā is still in STRUCTURAL mode (CLAUDE.md §E) with too few prediction→outcome matches to clear the minimum sample size. empirically_calibrated language is not earned."
+            },
+            "precision_flags": [],
+            "unavailable_reason": null
+          },
+          "receipt_hash": "fa0509b11162d18be76b4e97af2df6bdcc58eb362f1be7d9a5b6dd43b7ac7fc1"
+        }
+      },
+      "receivedAtMs": 61015
+    },
+    {
+      "type": "turn.commit",
+      "raw": {
+        "type": "turn.commit",
+        "seq": 26,
+        "t": 1787927335136,
+        "turn_id": "7f9c1c8b-8d54-468c-bd2b-4cac825f1b3f",
+        "conversation_id": "95b84ea2-6f8d-4b3c-be1f-eaec14df2fb7",
+        "message_id": "36e1855b-84ef-4b5a-b5d5-178dfbfdfd5a",
+        "status": "ok",
+        "assistant_chars": 90,
+        "grounding_summary": {
+          "citation_count": 2,
+          "hallucination_count": 2,
+          "grade_counts": {
+            "primary": 0,
+            "supporting": 0,
+            "contextual": 0,
+            "unverified": 2,
+            "prior_reading": 0
+          },
+          "completeness": {
+            "served": 2,
+            "floor_item_total": 6
+          },
+          "completeness_line": "2/6 floor items served"
+        }
+      },
+      "receivedAtMs": 61079
+    },
+    {
+      "type": "grade",
+      "raw": {
+        "type": "grade",
+        "seq": 27,
+        "t": 1787927335139,
+        "subject": "completeness",
+        "grade": "2/6",
+        "detail": "4 of 6 floor items have NO web-executable retrieval tool (MCP↔web namespace gap); 2 served, 4 empty, 0 dark. A small served count reflects the namespace gap, not a fully-honored floor."
+      },
+      "receivedAtMs": 61079
+    },
+    {
+      "type": "phase",
+      "raw": {
+        "type": "phase",
+        "seq": 28,
+        "t": 1787927335139,
+        "phase": "finalize",
+        "status": "end"
+      },
+      "receivedAtMs": 61079
+    },
+    {
+      "type": "turn.close",
+      "raw": {
+        "type": "turn.close",
+        "seq": 29,
+        "t": 1787927335139,
+        "turn_id": "7f9c1c8b-8d54-468c-bd2b-4cac825f1b3f",
+        "status": "ok",
+        "ms": 60820
+      },
+      "receivedAtMs": 61079
+    }
+  ],
+  "written_at": "2026-08-28T14:28:56.583Z"
+}

@@ -95,6 +95,23 @@ describe('queryMuhurtaLatticeCapability', () => {
     expect(mockQuery).not.toHaveBeenCalled()
   })
 
+  it('L0-W2 MUST fix: accepts all nine migration-530 factor families, not just the original four', async () => {
+    for (const family of ['agnivasa', 'combination_yoga', 'kalam', 'ghati_muhurta',
+      'hora', 'vara', 'nakshatra', 'tithi', 'lagna']) {
+      mockQuery.mockResolvedValueOnce({ rows: [] })
+      const result = await queryMuhurtaLatticeCapability.handler(
+        { start_utc: START, end_utc: END, factor_family: family }, undefined,
+      )
+      expect(result.is_error).toBe(false)
+    }
+    expect(mockQuery).toHaveBeenCalledTimes(9)
+  })
+
+  it('description names nine families, not four, and does not claim a stale count', () => {
+    expect(String(queryMuhurtaLatticeCapability.description)).toContain('Nine chart-independent')
+    expect(String(queryMuhurtaLatticeCapability.description)).not.toContain('Four chart-independent')
+  })
+
   it('caps limit and reports truncation honestly', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [row(), row({ factor_key: 'abhijit' })] })
     const result = await queryMuhurtaLatticeCapability.handler(

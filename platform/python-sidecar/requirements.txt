@@ -35,6 +35,6 @@ pgvector>=0.3.0
 ragas>=0.2.0
 pytest>=8.0
 jsonschema>=4.22.0
+jcs==0.2.1
 rank-bm25>=0.2.2
 sentence-transformers>=3.0.0
-

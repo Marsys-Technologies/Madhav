@@ -19,6 +19,8 @@
     "pipeline:msr-sql-test": "tsx src/scripts/test/msr_sql_smoke.ts",
     "audit:replay": "tsx scripts/audit/replay.ts",
     "audit:smoke": "tsx scripts/audit/smoke.ts",
+    "codegen:signal-glossary": "tsx scripts/generate_signal_glossary_mirror.ts",
+    "codegen:signal-glossary:check": "tsx scripts/generate_signal_glossary_mirror.ts --check",
     "codegen:vidhi": "tsx scripts/generate_vidhi_registry_mirror.ts",
     "codegen:vidhi:check": "tsx scripts/generate_vidhi_registry_mirror.ts --check",
     "codegen:projections": "tsx --conditions=react-server scripts/manifest/generate_projections.ts",
@@ -60,6 +62,7 @@
     "pariprashna:gates": "playwright test --config=tests/pariprashna/playwright.config.ts",
     "pariprashna:gates:mobile": "playwright test --config=tests/pariprashna/playwright.config.ts --project=mobile-390x844",
     "pariprashna:selftest": "tsx scripts/replay/selftest.ts",
+    "pariprashna:dd1-battery": "tsx scripts/pariprashna/dd1_battery/index.ts",
     "pariprashna:verify-captured": "tsx --conditions=react-server --env-file-if-exists=.env.local scripts/pariprashna/verify_captured_turn.ts"
   },
   "dependencies": {

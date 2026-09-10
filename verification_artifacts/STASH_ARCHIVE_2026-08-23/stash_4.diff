@@ -1,0 +1,35 @@
+=== stash@{4} ===
+stash@{4}: WIP on pratijna-satya/integration: 5c86caa46 spec(pratijna-v3): Promise Engine v3 — classical per-class significator routing
+
+--- stat ---
+ 00_ARCHITECTURE/briefs/pratijna_satya/PRATIJNA_SATYA_STATE.md | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+--- full diff ---
+diff --git a/00_ARCHITECTURE/briefs/pratijna_satya/PRATIJNA_SATYA_STATE.md b/00_ARCHITECTURE/briefs/pratijna_satya/PRATIJNA_SATYA_STATE.md
+index 9d13a779d..c8e6eb918 100644
+--- a/00_ARCHITECTURE/briefs/pratijna_satya/PRATIJNA_SATYA_STATE.md
++++ b/00_ARCHITECTURE/briefs/pratijna_satya/PRATIJNA_SATYA_STATE.md
+@@ -66,8 +66,8 @@
+ 
+ | Field | Value |
+ |---|---|
+-| Status | PENDING (parallel with A) |
+-| Spec | PRATIJNA_ENGINE_V3_SPEC_v1_0.md (to be written) |
++| Status | SPEC WRITTEN (parallel with A; build pending PARĪKṢAKA) |
++| Spec | PRATIJNA_ENGINE_V3_SPEC_v1_0.md (v1.0 — karyatva maps, R12 two-judgment, R13 audit points) |
+ 
+ ---
+ 
+@@ -75,7 +75,9 @@
+ 
+ | Field | Value |
+ |---|---|
+-| Status | BLOCKED on Phase A merge+deploy |
++| Status | UNBLOCKED — Phase A merged (PR #1098, 86ecdd5ac), deploy in progress |
++| Rebuild scope | 4 global error assets + 28 per-chart (482012f1) + 13 (1c826d5a) + 14 (cb73cd3d) |
++| Sequence | Global L0 first → per-chart sequential (not parallel — connection budget) |
+ 
+ ---
+ 
+

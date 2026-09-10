@@ -264,7 +264,16 @@ export const querySignalsCapability: CapabilityDescriptor = {
     },
     domain: {
       type: 'string',
-      description: "Filter signals by domain (career, wealth, relationship, health, character, spirituality, other).",
+      // F-57 (PARIŚEṢA-V4): the old list advertised 6 domains + a non-existent 'other'.
+      // The filter is `$n = ANY(domains_affected_array)`, whose values are the canonical
+      // 13-domain vocabulary (@/lib/domain_vocabulary); 'other' is not a member and matches
+      // ZERO rows, and 7 real domains (progeny/education/residence/family/travel/transition/
+      // general) were never advertised at all. Listed exhaustively so a caller cannot be
+      // steered into a silently-empty filter.
+      description:
+        'Filter signals by canonical domain — one of: career, character, education, family, ' +
+        'general, health, progeny, relationship, residence, spirituality, transition, travel, ' +
+        "wealth. A value outside this vocabulary (e.g. the legacy 'other') matches no rows.",
     },
     source_subsystem: {
       type: 'string',
@@ -619,7 +628,8 @@ export const querySignalsCapability: CapabilityDescriptor = {
       let frameContext: Record<string, unknown> | undefined
       if (frame !== 'lagna') {
         try {
-          const { sign: referenceSign } = await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id })
+          const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+            await resolveFrameReferenceSign(chart_id, frame, { ayanamsha_id })
           const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
           const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
             `SELECT fact_subject, fact_value_text FROM chart_facts
@@ -639,6 +649,9 @@ export const querySignalsCapability: CapabilityDescriptor = {
             note: `Each graha's actual house counted from ${frame} (${referenceSign}). Signal rows ` +
               `and computed_salience are unaffected by frame (frozen build-time formula output) — ` +
               `use this to judge a returned signal's bhava relevance under ${frame} in this same call.`,
+            // F-159: frame="chandra" only — disclosure (never a correctness ruling) of whether
+            // the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.
+            ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
           }
         } catch (e) {
           frameContext = { frame, error: `could not resolve frame "${frame}": ${String(e)}` }

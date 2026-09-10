@@ -1,0 +1,51 @@
+-- 874_nirmana_l1_ga_sensitive_natural_key_partition.sql
+--
+-- NIRMANA v2.1 -- L1 (Ganita) W4 EXECUTE. Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Seventh and final natural_key_partition backfill authorized by the
+-- Conductor's ruling on adjudication #2180 (2026-09-07). Prior six:
+-- ga_positions (868, merged), ga_ayurdaya (869, merged),
+-- ga_sensitive_degree (870), ga_sade_sati (871), ga_nakshatra (872),
+-- ga_panchanga (873).
+--
+-- ga_sensitive_writer.py (3187 lines, 31 _build_* row-construction
+-- functions) emits via two shared helpers, _make_row / _long_rows, both
+-- taking `category` as their first positional parameter. A naive grep for
+-- literal-string call-site arguments alone found 34 categories -- but the
+-- exact same undercount pattern already caught once this segment (ga_
+-- panchanga, migration 873: a naive literal grep found 16 against a true
+-- 34) recurs here: _build_brahma_vishnu_shiva_rows (line 1069) constructs
+-- its category via a for-loop over a literal tuple list (`for cat, subj,
+-- long_val, prov in [("esoteric_point_brahma", ...), ("esoteric_point_
+-- vishnu", ...), ("esoteric_point_shiva", ...)]`), so the call site
+-- itself passes a bare variable and is invisible to a literal-string-only
+-- grep. Full-file checks ruled out any other dynamic-construction path:
+-- no f-string category construction exists anywhere in the file; the only
+-- other variable-based _make_row/_long_rows call sites (lines 473-502)
+-- are internal to _long_rows's own body, reusing its own `category`
+-- parameter, not a second source; and the two direct dict-literal fallback
+-- rows in _build_kp_cuspal_rows (lines 1839-1865, 1916-1940, used for
+-- honest EXTERNAL_COMPUTATION_REQUIRED / parse-error skip-rows) both
+-- hardcode "kp_cuspal_significators", already counted. True total: 37
+-- (34 literal-call-site + 3 brahma/vishnu/shiva).
+--
+-- Verified against the canonical chart's live chart_facts: 34 of 37
+-- present; the 3 absent (esoteric_point_trisphuta, esoteric_point_
+-- chatushphuta, esoteric_point_panchasphuta) are an honest B.10-compliant
+-- gap, not a bug -- _build_trisphuta_family_rows requires sunrise_jd +
+-- birth_jd (Swiss Ephemeris values) that its sole call site (line 2762)
+-- does not supply, so the function logs [EXTERNAL_COMPUTATION_REQUIRED]
+-- and returns zero rows every build, matching ga_panchanga's own
+-- amrit_kaal precedent (declared scope, currently-unreachable value).
+--
+-- Confirmed no overlap: grepped all six already-migrated sibling writers
+-- (ga_positions, ga_ayurdaya, ga_sensitive_degree, ga_sade_sati,
+-- ga_nakshatra_emitters + ga_kp_significators, ga_panchanga) for all 37
+-- category strings, zero hits. ga_kp_significators.py's own
+-- "kp_cuspal_house" is a distinct, non-colliding category name.
+
+UPDATE asset_registry
+   SET natural_key_partition = 'chart_facts.fact_category IN (aprakasha_position, arudha_pada, bhava_arudha, bhrigu_nadi_point, esoteric_point_avayogi, esoteric_point_bhrigu_bindu, esoteric_point_brahma, esoteric_point_chatushphuta, esoteric_point_mrityu, esoteric_point_panchasphuta, esoteric_point_pranapada_sphuta, esoteric_point_shiva, esoteric_point_sphuta_fertility, esoteric_point_sri_yantra_position, esoteric_point_trikona_dasha_sphuta, esoteric_point_trisphuta, esoteric_point_vishnu, esoteric_point_yogi, esoteric_point_yogi_system, karaka_chara_position, karakamsa_position, kp_cuspal_significators, kp_ruling_planets_natal, lal_kitab_special_point, maharsi_specific_point, midpoint, nakshatra_pada_sensitive, saham_position, saturn_derived_point, sensitive_point_gulika_mandi, special_lagna, sun_derived_upagraha, swamsa_position, tajik_hadda_lord, tajik_triraashipathi, tajik_vargottama_specific, upagraha_position)'
+ WHERE asset_id = 'ga_sensitive'
+   AND natural_key_partition IS NULL;

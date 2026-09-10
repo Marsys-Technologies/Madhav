@@ -1,7 +1,7 @@
 """
 brahmagyan.l0_class_priors — bg_class_priors L0 global seed.
 
-Populates brahma_class_priors with 165 rows across 5 prior axes:
+Populates brahma_class_priors with 171 rows across 5 prior axes:
   · 17 signal_type_class rows
   · 12 source_subsystem rows
   · 6 signal_tradition rows
@@ -286,7 +286,7 @@ def seed_class_priors(
     autocommit: bool = True,
 ) -> dict[str, int]:
     """
-    Upsert all 165 rows into brahma_class_priors across 5 prior axes.
+    Upsert all 171 rows into brahma_class_priors across 5 prior axes.
 
     Returns {"brahma_class_priors": <total_upserted>}.
 
@@ -323,8 +323,12 @@ def seed_class_priors(
                 VALUES (%s, %s, '*', '*', '*', %s, %s, 'W1_SEED_PACKAGE_v1_0')
                 ON CONFLICT (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior = EXCLUDED.class_prior,
+                              varga_weights = EXCLUDED.varga_weights,
+                              contested   = EXCLUDED.contested,
                               citation    = EXCLUDED.citation,
-                              ratified_by = EXCLUDED.ratified_by
+                              ratified_by = EXCLUDED.ratified_by,
+                              prior_basis = EXCLUDED.prior_basis,
+                              source_ref  = EXCLUDED.source_ref
                 """,
                 (PRIOR_VERSION, stc, prior, cit),
             )
@@ -340,8 +344,12 @@ def seed_class_priors(
                 VALUES (%s, '*', '*', %s, '*', %s, %s, 'W1_SEED_PACKAGE_v1_0')
                 ON CONFLICT (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior = EXCLUDED.class_prior,
+                              varga_weights = EXCLUDED.varga_weights,
+                              contested   = EXCLUDED.contested,
                               citation    = EXCLUDED.citation,
-                              ratified_by = EXCLUDED.ratified_by
+                              ratified_by = EXCLUDED.ratified_by,
+                              prior_basis = EXCLUDED.prior_basis,
+                              source_ref  = EXCLUDED.source_ref
                 """,
                 (PRIOR_VERSION, ss, prior, cit),
             )
@@ -357,8 +365,12 @@ def seed_class_priors(
                 VALUES (%s, '*', '*', '*', %s, %s, %s, 'W1_SEED_PACKAGE_v1_0')
                 ON CONFLICT (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior = EXCLUDED.class_prior,
+                              varga_weights = EXCLUDED.varga_weights,
+                              contested   = EXCLUDED.contested,
                               citation    = EXCLUDED.citation,
-                              ratified_by = EXCLUDED.ratified_by
+                              ratified_by = EXCLUDED.ratified_by,
+                              prior_basis = EXCLUDED.prior_basis,
+                              source_ref  = EXCLUDED.source_ref
                 """,
                 (PRIOR_VERSION, trad, prior, cit),
             )
@@ -375,8 +387,11 @@ def seed_class_priors(
                 ON CONFLICT (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior   = EXCLUDED.class_prior,
                               varga_weights = EXCLUDED.varga_weights,
+                              contested     = EXCLUDED.contested,
                               citation      = EXCLUDED.citation,
-                              ratified_by   = EXCLUDED.ratified_by
+                              ratified_by   = EXCLUDED.ratified_by,
+                              prior_basis   = EXCLUDED.prior_basis,
+                              source_ref    = EXCLUDED.source_ref
                 """,
                 (
                     PRIOR_VERSION, varga, base,
@@ -396,8 +411,12 @@ def seed_class_priors(
                 VALUES (%s, 'graha_domain', %s, %s, '*', %s, %s, 'W1_SEED_PACKAGE_v1_0')
                 ON CONFLICT (prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition)
                 DO UPDATE SET class_prior = EXCLUDED.class_prior,
+                              varga_weights = EXCLUDED.varga_weights,
+                              contested   = EXCLUDED.contested,
                               citation    = EXCLUDED.citation,
-                              ratified_by = EXCLUDED.ratified_by
+                              ratified_by = EXCLUDED.ratified_by,
+                              prior_basis = EXCLUDED.prior_basis,
+                              source_ref  = EXCLUDED.source_ref
                 """,
                 (PRIOR_VERSION, graha, domain, affinity, cit),
             )

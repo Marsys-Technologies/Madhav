@@ -14,6 +14,7 @@ import {
   FIELD_NOT_YET_BUILT,
   FIELD_SNAPSHOT_UNREACHABLE,
   pointerTo,
+  explainPointerTo,
   noLeverPointer,
   isNoLever,
   computedCoverage,
@@ -155,6 +156,43 @@ describe('tri-plane pointer helpers', () => {
     expect(isNoLever(pointerTo('kala_windows_get', 'x'))).toBe(false)
     expect(isNoLever(null)).toBe(false)
     expect(isNoLever(undefined)).toBe(false)
+  })
+
+  // F-123 (CL-11 dead pointer): DrillPointerLike gained an optional `args` field so a pointer
+  // can carry the required-argument payload its target needs to actually resolve.
+  it('pointerTo carries an optional args payload when supplied', () => {
+    expect(pointerTo('kala_explain_get', 'why', { domain: 'career' })).toEqual({
+      instrument: 'kala_explain_get',
+      hint: 'why',
+      args: { domain: 'career' },
+    })
+  })
+
+  it('pointerTo omits args (not just empty) when not supplied — unchanged 2-arg shape', () => {
+    expect(pointerTo('kala_bundle_get', 'see the forward window')).toEqual({
+      instrument: 'kala_bundle_get',
+      hint: 'see the forward window',
+    })
+    expect(Object.hasOwn(pointerTo('kala_bundle_get', 'x'), 'args')).toBe(false)
+  })
+
+  describe('explainPointerTo — typed kala_explain_get pointer constructor', () => {
+    it('with a domain arg, carries it', () => {
+      const p = explainPointerTo('why', { domain: 'career' })
+      expect(p).toEqual({ instrument: 'kala_explain_get', hint: 'why', args: { domain: 'career' } })
+    })
+
+    it('with a bhava arg, carries it', () => {
+      const p = explainPointerTo('why', { bhava: 7 })
+      expect(p).toEqual({ instrument: 'kala_explain_get', hint: 'why', args: { bhava: 7 } })
+    })
+
+    it('with null args, degrades honestly instead of fabricating a domain', () => {
+      const p = explainPointerTo('why', null)
+      expect(p.instrument).toBe('kala_explain_get')
+      expect(p.args).toBeUndefined()
+      expect(p.hint).toBe('why — pass domain or bhava when calling.')
+    })
   })
 })
 

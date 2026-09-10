@@ -7,6 +7,7 @@ from routers import panchang as panchang_router
 from routers import pyhora as pyhora_router
 from routers import prashna as prashna_router
 from routers import brahmagyan_almanac as almanac_router
+from routers import nirmana_probe as nirmana_probe_router
 load_dotenv()
 
 app = FastAPI(title="MARSYS-JIS Compute Sidecar", version="1.0.0")
@@ -126,6 +127,11 @@ app.include_router(permission_curve_router.router, prefix="/api/compute", depend
 import importlib as _importlib
 _bodha_bundle = _importlib.import_module("brahmagyan.bodha.bo_2-8")
 app.include_router(_bodha_bundle.router, prefix="/api/compute/brahma", dependencies=[Depends(verify_api_key)])
+
+# Nirmana lifecycle evidence — deployed, authenticated typed service-probe runner.
+# This router owns a stricter fail-closed key check than the legacy sidecar routes:
+# an absent server credential is unavailable, never anonymous access.
+app.include_router(nirmana_probe_router.router, prefix="/internal/nirmana")
 
 
 @app.get("/health")

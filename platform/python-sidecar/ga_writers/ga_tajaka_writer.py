@@ -68,10 +68,11 @@ BIRTH_YEAR = 1984
 BIRTH_MONTH = 2
 BIRTH_DAY = 5
 
-# Hybrid-storage window (A7 Q4): past + current + next 5 years. A 2026 build →
-# current varsha = 2026 - 1984 + 1 = 43, so the materialised window is varsha
-# 1..48. Parameterised via `reference_year` (default 2026) for reproducibility.
-DEFAULT_REFERENCE_YEAR = 2026
+# Hybrid-storage window (A7 Q4): past + current + next 5 years. A build in
+# year Y → current varsha = Y - 1984 + 1, so a 2026 build materialises varsha
+# 1..48. `reference_year` defaults to the real build clock (F-E16: a frozen
+# literal here silently degraded the window's coverage every year nobody
+# edited it); pass it explicitly only to reproduce a specific past build.
 
 SIGNS: list[str] = [
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -448,14 +449,32 @@ def _tajik_yogas(grahas_by_name: dict[str, dict], varsha_lagna_long: float
 # ── GA5 read (Tri-Rāśi-pati candidate) ───────────────────────────────────────
 
 def _read_trirashipathi(conn: Any, chart_id: str, canonical_aya: str) -> str | None:
+    # F-E19 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 2): LIMIT 1 with no ORDER BY pins
+    # fact_category + fact_key (so the CI fact-category-pin lint passes) but the ordering
+    # half of the D1 defect class was absent -- reproducible today only because every
+    # (chart, ayanamsha) currently has exactly 1 row/1 build (verified: 15/15 rows,
+    # count=1/builds=1/distinct_vals=1), not because the query itself is deterministic.
+    # fact_id (the table's PK) makes this a genuine total order.
     try:
         cur = conn.execute(
             "SELECT fact_value_text FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s "
-            "AND fact_category = 'tajik_triraashipathi' AND fact_key = 'lord' LIMIT 1",
+            "AND fact_category = 'tajik_triraashipathi' AND fact_key = 'lord' "
+            "ORDER BY fact_id LIMIT 1",
             [chart_id, canonical_aya],
         )
         row = cur.fetchone()
-        return row["fact_value_text"] if row else None
+        if row is None:
+            # Was silently swallowed to None -- no exception, just an absent row, and
+            # nothing logged either way, degrading candidate_lord_jsonb scoring with no
+            # trace. Log so a genuine future gap (unlike today's universal 1-row case) is
+            # visible rather than indistinguishable from "legitimately no candidate".
+            logger.warning(
+                "[ga_tajaka_writer] no tajik_triraashipathi/lord row found for "
+                "chart_id=%s ayanamsha=%s -- candidate_lord_jsonb scoring will lack this input",
+                chart_id, canonical_aya,
+            )
+            return None
+        return row["fact_value_text"]
     except Exception as exc:  # noqa: BLE001
         logger.warning("[ga_tajaka_writer] trirashipathi read failed (%s): %s",
                        canonical_aya, exc)
@@ -699,11 +718,23 @@ def compute_varsha(chart_id: str,
 
 # ── Build (precompute window) ─────────────────────────────────────────────────
 
+def _effective_reference_year(reference_year: int | None) -> int:
+    """Resolve the hybrid-window reference year (F-E16).
+
+    The orchestrator never passes `reference_year`, so production always
+    took whatever literal sat in this file as a default -- correct only by
+    coincidence, and silently wrong every year nobody edited it (§N.8: no
+    code path could ever make it read false). An explicit value always wins,
+    for tests and backfills that must reproduce a specific past build.
+    """
+    return reference_year if reference_year is not None else datetime.now(timezone.utc).year
+
+
 def build_ga_tajaka(chart_id: str,
                     build_id: str | None = None,
                     *, conn: Any = None,
                     birth_params: dict[str, Any] | None = None,
-                    reference_year: int = DEFAULT_REFERENCE_YEAR,
+                    reference_year: int | None = None,
                     min_varsha: int = 1,
                     max_varsha: int | None = None,
                     ayanamshas: list[str] | None = None) -> dict[str, Any]:
@@ -717,16 +748,23 @@ def build_ga_tajaka(chart_id: str,
       is the sole build-state writer). The caller's SAVEPOINT owns atomicity.
     - conn None (legacy CLI path via build_runner): opens its own connection,
       commits, closes, and writes asset_throughput via _telemetry.
+
+    `reference_year` (F-E16): the orchestrator never passes this, so
+    production always took the frozen `DEFAULT_REFERENCE_YEAR` literal --
+    a window that silently degrades every year nobody edits it. Default is
+    now the real build clock; pass an explicit year only to reproduce a
+    specific past build (tests, backfills).
     """
     from contextlib import nullcontext
     if build_id is None:
         build_id = str(uuid.uuid4())
     owns_conn = conn is None
+    effective_reference_year = _effective_reference_year(reference_year)
     # Every chart (native included) must have real birth_params from public.charts.
     # resolve_birth_params raises for any chart with falsy params.
     bp = resolve_birth_params(chart_id, birth_params)
     birth_year = int(str(bp["datetime_iso"])[:4])
-    current_varsha = reference_year - birth_year + 1
+    current_varsha = effective_reference_year - birth_year + 1
     if max_varsha is None:
         max_varsha = current_varsha + 5
     aya_ids = ayanamshas or list(CANONICAL_AYANAMSHAS.keys())
@@ -803,7 +841,7 @@ def build_ga_tajaka(chart_id: str,
         "chart_id": chart_id,
         "build_id": build_id,
         "window": {"min_varsha": min_varsha, "max_varsha": max_varsha,
-                   "reference_year": reference_year,
+                   "reference_year": effective_reference_year,
                    "calendar_span": [birth_year + min_varsha - 1,
                                      birth_year + max_varsha - 1]},
         "ayanamshas": list(aya_ids),
@@ -814,7 +852,10 @@ def build_ga_tajaka(chart_id: str,
         "forensic_checks": forensic_checks,
         "two_pass_verified": len(divergent) == 0,
         "divergent_flagged": len(divergent),
-        "storage_strategy": "hybrid (precomputed window; rest on-demand via compute_varsha)",
+        # F-E17 (cycle 106): compute_varsha() exists but has zero callers -- correcting this
+        # claim rather than repeating it. Only the precomputed window (varsha 1..48) is stored;
+        # get_tajik.ts's own empty_reason honestly discloses the rest as genuinely not computed.
+        "storage_strategy": "windowed (varsha 1..48 precomputed; outside the window is not stored, not computed on-demand)",
     }
     logger.info("[ga_tajaka_writer] PASS rows=%d forensic=%s two_pass=%s",
                 inserted, forensic_pass, summary["two_pass_verified"])
@@ -828,7 +869,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="ga_tajaka Vārṣaphal writer")
     parser.add_argument("--chart_id", default=CANONICAL_CHART_ID)
     parser.add_argument("--build_id", default=None)
-    parser.add_argument("--reference_year", type=int, default=DEFAULT_REFERENCE_YEAR)
+    parser.add_argument("--reference_year", type=int, default=None)
     parser.add_argument("--min_varsha", type=int, default=1)
     parser.add_argument("--max_varsha", type=int, default=None)
     parser.add_argument("--json", dest="output_json", action="store_true")

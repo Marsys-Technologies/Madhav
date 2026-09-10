@@ -1,0 +1,102 @@
+-- 948_nirmana_l2_bo_pramana_mapa_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. This cycle picked bo_pramana_mapa off the NEXT CYCLE
+-- candidate list (STATE_l1.md w371, item 4b: "not screened yet this
+-- campaign").
+--
+-- BoPramanaMapa (pipeline/orchestrator/writers/bo_pramana_mapa.py,
+-- @register("bo_pramana_mapa") line 489) is the SOLE writer of
+-- synthesis_quality_scorecard -- confirmed via grep across all .py files
+-- for INSERT/UPDATE against this table (bo_samvada.py also references the
+-- table name, but only as a read inside a CREATE VIEW definition -- no
+-- INSERT/UPDATE there).
+--
+-- This is a chart-scoped, single-row-per-chart asset ("LIGHT writer.
+-- Single INSERT; no ayanamsha loop" per the writer's own module
+-- docstring). The writer's idempotency helper
+-- (replace_prior_scorecard, bodha_writers/_idempotency.py:484) deletes
+-- ALL prior rows for chart_id (not scoped to build_id) before inserting
+-- exactly one new row -- "Scoping to chart_id only ensures N rebuilds
+-- leave exactly 1 scorecard row" per the helper's own docstring. Live-
+-- verified: exactly 1 row for the canonical chart_id
+-- (482012f1-710e-4a25-994a-93821f5871aa) out of 3 fleet-wide.
+--
+-- Natural key: chart_id (the only content-identifying column once the
+-- table is known to hold exactly one row per chart). key_columns is
+-- ["chart_id"] even though chart_id is already pinned via where_equals --
+-- same precedent as every prior spec in this series where the key column
+-- doubles as the where_equals column when a single-row shape leaves no
+-- other candidate; output_digest.py's spec model does not forbid this
+-- (key_columns drives ORDER BY + a NULL preflight only, both trivial and
+-- harmless over one NOT-NULL row).
+--
+-- `scorecard_id` is a bare `uuid.uuid4()` (writer line 652) -- excluded
+-- per the established random-PK-exclusion rule. `build_id` is the
+-- orchestrator's per-run identifier (fresh every rebuild regardless of
+-- content, confirmed not part of any unique constraint on this table --
+-- only PK is scorecard_id, only other index is (chart_id, scored_at
+-- DESC)) -- excluded per the same per-run-identifier rule established in
+-- 946/947 (bo_grounding). `scored_at` is a wall-clock write-time
+-- timestamp (changes every rebuild even with byte-identical content) --
+-- excluded as the same class as the standard build_id/computed_at
+-- exclusion set used by every prior spec in this series.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): every value column is a
+-- COUNT(*), a percentage, a formula-version string, a boolean gate, an
+-- array of L1 asset NAME strings (source_l1_asset values -- not row IDs),
+-- or a `notes` JSONB blob containing only the same counts/percentages
+-- already covered above (verified by reading the writer's full `scorecard
+-- = {...}` construction, lines 651-739 -- no raw `node_id`/`cell_id`/any
+-- other table's primary-key value is embedded anywhere in the row). Read
+-- dependencies span bodha_msr_signals, bodha_cdlm_cells, bodha_cgm_nodes,
+-- bodha_cgm_edges, bodha_rm_resonances, bodha_rm_remedy_prescriptions,
+-- bodha_signal_embeddings, bodha_convergence, bodha_contradictions,
+-- chart_facts -- every read is a COUNT(*)/aggregate, never a raw ID
+-- projection, so the known-contaminated shared-table columns
+-- (bodha_cgm_nodes.node_id, bodha_cdlm_cells.cell_id) never surface in
+-- this asset's own output content even though the writer counts rows in
+-- both tables.
+--
+-- value_columns = every live column on synthesis_quality_scorecard EXCEPT
+-- scorecard_id, build_id, scored_at (3 excluded, per above). Live schema
+-- re-verified via psql \d synthesis_quality_scorecard immediately before
+-- authoring this migration: 34 columns total, 31 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                # == the literal below
+--   print(_validate_spec('bo_pramana_mapa', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='bo_pramana_mapa') -> got back a clean digest hex
+-- (ab509f4c8409e89a3db4843fb9c3b7ca0eac8e30a25d765a732bb8867624eda2, no
+-- exception, key-preflight passed trivially over the 1 canonical row) ->
+-- conn.rollback() -> re-queried asset_output_digest_specs from a FRESH
+-- connection afterward and confirmed 0 rows for bo_pramana_mapa, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_pramana_mapa' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_pramana_mapa',
+  '072dccefabbf1f71e1e60dee8e71a92a7b174aea433f8b1333a21c4e2d65ec36',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"synthesis_quality_scorecard","relation":"synthesis_quality_scorecard","key_columns":["chart_id"],"value_columns":["chart_id","msr_signal_count","cdlm_cell_count","cgm_node_count","cgm_edge_count","rm_resonance_count","rm_prescription_count","embedding_count","convergence_count","contradiction_count","divergent_flagged_count","two_pass_verified_pct","documented_approximation_pct","msr_no_threshold_drop_flag","msr_citation_ref_coverage_pct","salience_formula_version","linkage_formula_version","resonance_formula_version","convergence_formula_version","centrality_formula_version","trap1_authority_inversion_count","trap2_narration_leak_count","unresolved_constituent_facts_count","l1_assets_projected_count","l1_assets_projected_array","lel_zero_leak_pass","no_pre_answer_pass","pillars_meet_reachability_pass","ledger_independence_pass","discovery_not_fabricated_pass","notes"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

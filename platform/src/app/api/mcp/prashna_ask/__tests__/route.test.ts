@@ -23,14 +23,31 @@
  * are unchanged — still a single JSON response, asserted via `res.json()`.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn().mockResolvedValue('fake-model') }))
-vi.mock('@/lib/models/registry', () => ({ DEFAULT_STACK_ID: 'anthropic' }))
+// NCD-8 (G1-D): the route's pre-dispatch spend gate resolves the turn's synthesis
+// model through the registry, so this mock now has to carry the pieces the gate
+// reads. `MODELS` holds one deliberately EXPENSIVE model so a ceiling breach can
+// be provoked, and `getModelMeta` mirrors it.
+vi.mock('@/lib/models/registry', () => {
+  const EXPENSIVE = {
+    id: 'expensive-model',
+    maxInputTokens: 200_000,
+    maxOutputTokens: 64_000,
+    costPer1MInput: 15,
+    costPer1MOutput: 75,
+  }
+  return {
+    DEFAULT_STACK_ID: 'anthropic',
+    MODELS: [EXPENSIVE],
+    getModelMeta: (id: string) => (id === EXPENSIVE.id ? EXPENSIVE : undefined),
+  }
+})
 
 const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
@@ -39,7 +56,7 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
-  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false })),
+  compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false, llm_extension_note: '' })),
   ensureB11WholeChartReadFloor: vi.fn(() => false),
   ensureDashaContextFloor: vi.fn(() => false),
 }))
@@ -58,10 +75,41 @@ const { mockSynthesizeReading, mockFetchChartHeaderResolution } = vi.hoisted(() 
 vi.mock('@/lib/pipeline/prashna_ask_synthesis', () => ({ synthesizeReading: mockSynthesizeReading }))
 vi.mock('@/lib/retrieval/chart_header', () => ({ fetchChartHeaderResolution: mockFetchChartHeaderResolution }))
 
+/**
+ * G1-A: the safety gate's one flag-read site, mocked with a mutable state box.
+ *
+ * `configService.setFlag` does NOT work for the safety module from this file:
+ * under this test's mock graph the dynamically-imported
+ * `@/lib/pariprashna/safety/*` chain resolves its own instance of
+ * `@/lib/config/index`, so the singleton the test mutates is not the singleton
+ * the gate reads. Verified directly while writing these tests —
+ * `configService.getFlag(...)` returned `true` in the test body while
+ * `isSafetyGateEnabled()` returned `false` inside the same `it`.
+ *
+ * Mocking the single flag-read site instead is the pattern the safety module's
+ * own unit tests already use (`safety/__tests__/gate.test.ts` does
+ * `vi.mock('../flag', …)`), and it is why `flag.ts` exists as a one-function
+ * module in the first place.
+ */
+const { safetyFlagState } = vi.hoisted(() => ({ safetyFlagState: { on: false } }))
+vi.mock('@/lib/pariprashna/safety/flag', () => ({
+  SAFETY_GATE_FLAG: 'PARIPRASHNA_SAFETY_GATE_ENABLED',
+  isSafetyGateEnabled: () => safetyFlagState.on,
+}))
+
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
+import { query as dbQuery } from '@/lib/db/client'
+import { getEffectiveModel } from '@/lib/models/runtime_config'
+import { configService } from '@/lib/config/index'
+import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
+import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
 import { POST } from '../route'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+// Synthetic test chart — used by the new V3-E-024 tests below only (never the
+// native's real chart), per the repo's test-data law. Auth/DB are fully mocked
+// in this file regardless, so this distinction is belt-and-suspenders.
+const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
 
 function makeReq(body: object, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/mcp/prashna_ask', {
@@ -178,6 +226,98 @@ describe('POST /api/mcp/prashna_ask — auth', () => {
     const body = await res.json()
     expect(body.error.class).toBe('entitlement_denied')
     expect(body.denial.chart_id).toBe(CHART)
+  })
+})
+
+/**
+ * P2-B-004 / E-119 (Paripraśna Experience Assurance): the MCP door assembles a
+ * full reading envelope (`reading`, `judgment_flags`, `completeness`) and
+ * streams it as the `final` NDJSON event, but nothing durable is ever written
+ * for it — `platform-mcp`'s `JobRegistry` is in-memory only (15-min TTL, gone
+ * on process restart) and the one durable row per turn
+ * (`pariprashna_safety_decisions`) is pre-dispatch classification only, with no
+ * `reading`/`judgment_flags`/`completeness` column. This asserts the envelope
+ * honestly discloses that gap via a `persistence` field, per the finding's own
+ * "or an explicit bounded limitation" acceptance path (CLAUDE.md §N.7 item 6 —
+ * an honest null beats a silent, invented completeness claim).
+ */
+describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004 / E-119)', () => {
+  it('discloses persistence:none on the final reading envelope — this door writes no durable record of the turn', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.event).toBe('final')
+    expect(body.persistence).toBeDefined()
+    expect((body.persistence as { status: string }).status).toBe('none')
+  })
+
+  it('discloses persistence:none on the HS-2 hard-stop safety_withheld envelope too', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.persistence).toBeDefined()
+    expect(body.persistence.status).toBe('none')
+
+    safetyFlagState.on = false
+  })
+})
+
+/**
+ * S6-V3-E-003 / S4's V3-E-043 (Paripraśna Assurance Programme v3, S6 Performance
+ * stream): the Portal door (`/api/pariprashna/route.ts`) times `callPlanStage`
+ * and persists `planning_latency_ms` per turn; this MCP door called
+ * `callPipelinePlanner` with zero timing anywhere (grep-confirmed before this
+ * fix), so the planner-stage tail S6 measured on the Portal door (avg ~6-7s,
+ * max 99.3s) had no equivalent observation surface here at all. This does NOT
+ * attempt the larger V3-E-043 convergence (unifying the three disjoint
+ * telemetry surfaces into one persisted, joinable trace) — that is a much
+ * larger, explicitly-deferred architecture item. This closes the narrower,
+ * additive gap: the MCP door now measures and DISCLOSES its own planning
+ * latency on the wire, on every outcome branch, exactly like `persistence`
+ * already discloses the P2-B-004/E-119 gap. No new DB write, no new
+ * dependency — timing only, surfaced on the existing envelope.
+ */
+describe('POST /api/mcp/prashna_ask — planning-stage latency disclosure (S6-V3-E-003)', () => {
+  it('reports a non-negative planning_latency_ms on the final reading envelope', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+
+    expect(body.event).toBe('final')
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
+  })
+
+  it('reports planning_latency_ms on the clarification_needed early return too', async () => {
+    mockCallPipelinePlanner.mockResolvedValue({
+      outcome: 'clarification_needed',
+      question: 'Which chart do you mean?',
+      missing_scope_dims: ['chart_id'],
+      suggested_options: [],
+    })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'ambiguous' }))
+    const body = await res.json()
+
+    expect(body.outcome).toBe('clarification_needed')
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
+  })
+
+  it('reports planning_latency_ms on the planner-fault error envelope too', async () => {
+    mockCallPipelinePlanner.mockResolvedValue({ outcome: 'fault', reason: 'boom', retryable: true })
+    const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
+    const body = await res.json()
+
+    expect(res.status).toBe(422)
+    expect(typeof body.planning_latency_ms).toBe('number')
+    expect(body.planning_latency_ms as number).toBeGreaterThanOrEqual(0)
   })
 })
 
@@ -415,6 +555,56 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.capTripped).toBeNull()
   })
 
+  /**
+   * V3-E-024 (extends PR #1621's plan_stage.ts fix to this door). PR #1621
+   * fixed the Vidhi compiler's E-7 `llm_extension_note` reaching nowhere at
+   * ONE of three production `compileFloorForPlan` call sites. This asserts
+   * the fix at THIS site (route.ts ~line 456): the note is folded into
+   * `plan.synthesis_guidance`, and — since this door's synthesis
+   * (`synthesizeReading`) has no other path for planner/compiler guidance to
+   * reach it, unlike consult's `buildConsultSystemContent` — threaded through
+   * explicitly as the new `synthesisGuidance` param.
+   */
+  it('V3-E-024: folds compileFloorForPlan().llm_extension_note into plan.synthesis_guidance and passes it to synthesizeReading as synthesisGuidance', async () => {
+    const outcome = {
+      outcome: 'plan' as const,
+      plan: {
+        ...planOutcome(['chart_facts_query']).plan,
+        scope_tuple: { intent: 'domain_assessment', domains: ['career'], width: 'standard', depth: 'deep' },
+        synthesis_guidance: 'Lead with the dominant career yoga.',
+      },
+    }
+    mockCallPipelinePlanner.mockResolvedValue(outcome)
+    ;(compileFloorForPlan as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      compilerIntent: 'career_deepdive',
+      toolCalls: [],
+      mappedPrimitives: [],
+      unmappedPrimitives: [],
+      compileFailed: false,
+      llm_extension_note:
+        'INSIGHT MANDATE (E-7): go beyond acharya-grade pattern recognition. ' +
+        'Band 3 (question-specific extension) is LLM-owned: pursue beyond-floor context.',
+    })
+
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'Give me a deep dive on my career.' }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading).toHaveBeenCalledTimes(1)
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toContain('Lead with the dominant career yoga.')
+    expect(call.synthesisGuidance).toContain('INSIGHT MANDATE (E-7)')
+    expect(call.synthesisGuidance).toContain('Band 3 (question-specific extension) is LLM-owned')
+  })
+
+  it('V3-E-024: passes synthesisGuidance: null (never undefined) to synthesizeReading when the plan carries no synthesis_guidance and the compiled floor has no note', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: SYNTH_CHART, question: 'What is my ascendant?' }))
+    await readNdjson(res)
+
+    const call = mockSynthesizeReading.mock.calls[0][0]
+    expect(call.synthesisGuidance).toBeNull()
+  })
+
   it('W6.3: threads chart_header.current_maha_antar and today\'s date into the synthesis call as the temporal anchor', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my current dasha?' }))
@@ -561,5 +751,301 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(body.ok).toBe(true)
     expect(body.chart_header).toBeNull()
     expect(body.judgment_flags).toContain('chart_header_unresolved')
+  })
+})
+
+/**
+ * NCD-8 pre-dispatch spend ceilings — the MCP door (lane G1-D).
+ *
+ * PARIPRASHNA_DECISION_REGISTER_v1_0.md NCD-8: "Spend caps $2/turn · $40/day,
+ * pre-dispatch, both doors" (RULED 2026-08-18). This is the second door; the web
+ * door's gate is asserted in `src/lib/limits/__tests__/both_doors_refusal.test.ts`.
+ *
+ * Two things are proven here that a unit test of the gate alone cannot:
+ *   • the refusal happens BEFORE `callPipelinePlanner` — this route's first LLM
+ *     call — so the ceiling really is pre-dispatch and not a post-hoc audit;
+ *   • the refusal is HTTP 429 with a `rate_limit` error class, not a 500 and not
+ *     an NDJSON stream the caller must read to discover it was refused.
+ */
+describe('NCD-8 pre-dispatch spend ceilings (MCP door)', () => {
+  beforeEach(() => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+    __resetRpmCountersForTest()
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '0' }] })
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('expensive-model')
+    mockFetchChartHeaderResolution.mockResolvedValue({ header: null, flags: [] })
+  })
+
+  afterEach(() => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+  })
+
+  it('flag OFF (the shipped default): the turn runs untouched', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(200)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+  })
+
+  it('refuses with 429 BEFORE the planner runs when the per-turn ceiling would be breached', async () => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', true)
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    // expensive-model: 128_000/1e6*15 + 64_000/1e6*75 = $6.72 > $2/turn.
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(429)
+    expect(res.status).not.toBe(500)
+
+    const body = await res.json()
+    expect(body.ok).toBe(false)
+    expect(body.error.class).toBe('rate_limit')
+    expect(body.error.message).toContain('$2.00')
+    expect(body.error.remediation).toBeTruthy()
+
+    // PRE-DISPATCH: the expensive call never happened.
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('refuses with 429 when the $40 daily ceiling would be breached', async () => {
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', true)
+    // An unpriced model cannot trip the per-turn ceiling, so this isolates the
+    // daily one: $40.01 already spent is past $40 on its own.
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('unpriced-model')
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '40.01' }] })
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'test?' }))
+
+    expect(res.status).toBe(429)
+    const body = await res.json()
+    expect(body.error.class).toBe('rate_limit')
+    expect(body.error.message).toContain('$40.00')
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * ── PPR-12 SAFETY GATE — THE MCP DOOR (lane G1-A hardening round, C-3) ───────
+ *
+ * The finding: `runSafetyPolicyGate` was wired into `/api/pariprashna` and
+ * NOWHERE ELSE. This route — a real production door running the same planner,
+ * the same tools and the same `synthesizeReading` — had no safety
+ * classification at all, while G1-D's limits gate directly above covers "both
+ * doors" by explicit ruling (NCD-8).
+ *
+ * Two things are proven here that a unit test of the gate alone cannot:
+ *   • the hard stop happens BEFORE `callPipelinePlanner` — this route's first
+ *     LLM call — so PPR-12's "a blocked class must never build a retrieval
+ *     plan" is really enforced, not audited afterwards;
+ *   • the withholding is a composed ANSWER (200, `outcome: 'safety_withheld'`,
+ *     the fixed prose in `reading`), not a 500 and not an error envelope the
+ *     caller has to interpret.
+ */
+describe('PPR-12 safety gate (MCP door)', () => {
+  beforeEach(() => {
+    safetyFlagState.on = false
+    configService.setFlag('PARIPRASHNA_LIMITS_ENABLED', false)
+    __resetRpmCountersForTest()
+    ;(dbQuery as ReturnType<typeof vi.fn>).mockResolvedValue({ rows: [{ total: '0' }] })
+    ;(getEffectiveModel as ReturnType<typeof vi.fn>).mockResolvedValue('fake-model')
+  })
+
+  afterEach(() => {
+    safetyFlagState.on = false
+  })
+
+  it('flag OFF (the shipped default): a crisis question runs untouched', async () => {
+    // The lane ships dark. With the flag off the gate must not change this
+    // route's behaviour at all — asserted on the most severe input there is.
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+    expect(res.status).toBe(200)
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+  })
+
+  it('HS-2 hard stop: refused BEFORE the planner, with the fixed prose', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'I want to kill myself.' }))
+
+    expect(res.status).toBe(200)
+    expect(res.status).not.toBe(500)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.completeness.status).toBe('withheld')
+    expect(body.judgment_flags).toContain('safety_decision:hard_stop')
+    expect(body.judgment_flags).toContain('safety_reading_withheld')
+    // The fixed, non-generated response — served verbatim, never a model call.
+    expect(body.reading).toContain('not able to take this question into a chart reading')
+
+    // PRE-DISPATCH: nothing was planned and nothing was retrieved, so there is
+    // nothing this response could have been steered into revealing.
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('the C-1 electional-muhurta phrasing is caught on this door too', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: CHART, question: 'Which day is best for jal samadhi?' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(mockCallPipelinePlanner).not.toHaveBeenCalled()
+  })
+
+  it('HS-4 seals: no reading leaves this call, and synthesis never runs', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'When will I die?' }))
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_decision:seal_pending_signoff')
+    expect(body.reading).toContain('does not go out unreviewed')
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('a BENIGN question is completely unaffected with the flag ON', async () => {
+    // The floor. A safety gate that refuses ordinary work is not a safe gate.
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: CHART, question: 'What does my chart say about my career?' }),
+    )
+
+    expect(res.status).toBe(200)
+    const lines = await readNdjson(res)
+    const final = lines[lines.length - 1]
+    expect(final.event).toBe('final')
+    expect(final.outcome).toBe('plan')
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+    expect(mockSynthesizeReading).toHaveBeenCalled()
+  })
+
+  it('PLAN-TIME: a longevity capability the wording hid escalates and seals', async () => {
+    // PPR-12's second enforcement point on this door. The QUESTION is clean;
+    // the PLAN reveals `ganita_ayurdaya_get`, which escalates the turn.
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['ganita_ayurdaya_get', 'chart_facts_query']))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'Tell me about my constitution.' }))
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_escalated_at_plan_time')
+    // The planner DID run — the escalation is only visible after it — but no
+    // tool dispatched and no reading was synthesized.
+    expect(mockCallPipelinePlanner).toHaveBeenCalled()
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  /**
+   * ── V3-E-049 ───────────────────────────────────────────────────────────────
+   * The full `SafetyDecision` object (`classifyTurnSafety` / `reclassifyAfterPlan`)
+   * was already computed and used to gate dispatch on this door, but only lossy
+   * derived strings (`safety_decision:<action>`, counts) ever reached the wire —
+   * `decision_id`/`review_id`/`audit_written`, the FK fields an auditor needs to
+   * correlate a turn back to `pariprashna_safety_decisions` (and
+   * `pariprashna_safety_reviews` when a review was opened), were silently
+   * dropped. These tests prove the envelope NOW carries them, and that the
+   * values are the REAL decision's — not a stub — by asserting the differential
+   * behaviour a stub could not reproduce: `review_id` is null when no review was
+   * required (hard stop) and a real id when one was opened (seal).
+   *
+   * Uses the synthetic test chart, never the native's real chart — this suite's
+   * pre-existing `CHART` constant predates this fix and is left untouched.
+   */
+  const SYNTHETIC_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  it('V3-E-049: HS-2 hard stop carries decision_id (real uuid) and a null review_id (no review needed)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'I want to kill myself.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    // Before this fix, `safety_decision` was entirely absent from the envelope
+    // — only the lossy `safety_decision:<action>` string flag existed.
+    expect(body.safety_decision).toBeDefined()
+    expect(typeof body.safety_decision.decision_id).toBe('string')
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Hard stop does not open a review — a stubbed/hardcoded field could not
+    // tell this case apart from the seal case below.
+    expect(body.safety_decision.review_id).toBeNull()
+    expect(typeof body.safety_decision.audit_written).toBe('boolean')
+  })
+
+  it('V3-E-049: HS-4 seal carries a real, non-null review_id matching the opened review', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'When will I die?' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_decision:seal_pending_signoff')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // The seal path DOES open a review — this is the differential proof that
+    // `review_id` on the wire is the live decision's own value, not a constant.
+    expect(typeof body.safety_decision.review_id).toBe('string')
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+    expect(body.safety_decision.review_id).not.toBe(body.safety_decision.decision_id)
+  })
+
+  it('V3-E-049: PLAN-TIME escalation to seal also carries the FK fields (postPlanSafety, not the pre-plan decision)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['ganita_ayurdaya_get', 'chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'Tell me about my constitution.' }),
+    )
+
+    const body = await res.json()
+    expect(body.outcome).toBe('safety_withheld')
+    expect(body.judgment_flags).toContain('safety_escalated_at_plan_time')
+    expect(body.safety_decision).toBeDefined()
+    expect(body.safety_decision.decision_id).toMatch(UUID_RE)
+    // Escalated at plan time → this action also requires a review.
+    expect(body.safety_decision.review_id).toMatch(UUID_RE)
+  })
+
+  it('V3-E-049: the successful "plan" envelope also carries safety_decision (proceed action, no review)', async () => {
+    safetyFlagState.on = true
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+
+    const res = await POST(
+      makeReq({ chart_id: SYNTHETIC_CHART, question: 'What does my chart say about my career?' }),
+    )
+
+    expect(res.status).toBe(200)
+    const lines = await readNdjson(res)
+    const final = lines[lines.length - 1] as Record<string, unknown>
+    expect(final.event).toBe('final')
+    expect(final.outcome).toBe('plan')
+    // Before this fix, the successful envelope carried NO safety_decision field
+    // at all (not even a lossy string flag) — the gap this finding names.
+    const safetyDecision = final.safety_decision as { decision_id: string; review_id: string | null; audit_written: boolean }
+    expect(safetyDecision).toBeDefined()
+    expect(safetyDecision.decision_id).toMatch(UUID_RE)
+    expect(safetyDecision.review_id).toBeNull()
+    expect(typeof safetyDecision.audit_written).toBe('boolean')
   })
 })

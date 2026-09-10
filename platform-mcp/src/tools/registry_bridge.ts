@@ -60,7 +60,19 @@ import {
 // three instruments whose full-detail payload (up to ~86KB) is unusable over a real MCP
 // channel — judgment_query, graha_portrait, pact_query. See response_budget.ts's header
 // for why this is structure-aware (shrinks named arrays) rather than a byte-truncation.
-import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection } from '../lib/response_budget.js'
+import { finalizeMcpBudget, autoDetectTrimmableSections, type TrimmableSection, assembleSaraContent, type SaraKernel, type DrillPointerLike } from '../lib/response_budget.js'
+// F-175 (PARIŚEṢA-V4, residual F-110-b): the assess_* PACT promise gate. assess_marriage
+// certified `no_contradictions_in_domain` for the exact chart/domain pact_query independently
+// denies at PROMISE on 63 cited L1 facts. See assess_promise_gate.ts's header for the full
+// account; INV-1 in promise_spine.ts already declared that certification illegal.
+import {
+  PACT_CAPABILITY_URI,
+  buildAssessPromiseGate,
+  applyPromiseGateToVerdict,
+  annotateContradictionsWithPromiseGate,
+  promiseGateFlags,
+  type AssessPromiseGate,
+} from '../lib/assess_promise_gate.js'
 // Elevation Campaign v2.1 · Stream α (SATYA) — flagship completeness wiring.
 // γ built `dossier` (the Ω5 gather-then-compose engine) but a naive uninstructed agent asking
 // "how is my wealth?" reaches for the obviously-named `assess_wealth`, gets the shallow default
@@ -80,6 +92,8 @@ import { runDossier, type DossierPage } from './dossier.js'
 // registration per tool, asserted by test" guarantee (brief §2) is unchanged — each tool's
 // server.tool() call is still reached from exactly one place, now inside register_all.ts.
 import { registerAllKalaViews } from './kala_views/register_all.js'
+import { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
+export { resolveChartFactsAyanamsha } from '../lib/ayanamsha.js'
 
 // ── Platform URL (for proxy calls to the platform API) ───────────────────────
 
@@ -91,55 +105,11 @@ const PLATFORM_URL = (
 // Required by /api/retrieval/capability (F1 gate, M0.5).
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-// ── Ayanamsha normalization (F-006/F-011/F-031) ───────────────────────────────
-// Signals are stored under 'lahiri_chitrapaksha'. Tools historically defaulted
-// to 'LAHIRI' causing a join mismatch → 0 rows. This map aliases all known
-// spellings to the canonical stored id so default + explicit calls both work.
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:               'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:  'lahiri_chitrapaksha',
-  lahiri_chitra:        'lahiri_chitrapaksha',
-  true_chitra:          'lahiri_chitrapaksha',
-  true_citra:           'lahiri_chitrapaksha',
-  LAHIRI:               'lahiri_chitrapaksha',
-  Lahiri:               'lahiri_chitrapaksha',
-}
-const DEFAULT_AYANAMSHA = 'lahiri_chitrapaksha'
-
 function normalizeAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return AYANAMSHA_ALIAS[id] ?? id
+  return resolveChartFactsAyanamsha(id)
 }
 
-// WP-1.3(f) / LCA-3 (ayanamsha reachability). chart_facts stores SIX distinct ayanamsha_id
-// values — five sidereal (lahiri_chitrapaksha, krishnamurti, raman, surya_siddhanta_classical,
-// true_chitra) plus INVARIANT (ayanamsha-independent facts). The shared `normalizeAyanamsha`
-// above COLLAPSES `true_chitra`/`true_citra` -> `lahiri_chitrapaksha` (AYANAMSHA_ALIAS), which
-// made true_chitra's own 27,112-row dataset UNREACHABLE via query_chart_facts (the tool
-// effectively served ≤5 of 6 ayanamshas, and the two Chitra-family names both bound to lahiri).
-// This resolver is SCOPED to query_chart_facts (it must not change the shared normalizer used
-// by the dasha/signals tools, which are a parallel lane): it maps convenience aliases to the
-// canonical id WITHOUT collapsing any two distinct stored ayanamshas together, so every one of
-// the 6 is reachable. Unknown ids pass through unchanged (the handler then returns an honest
-// empty result rather than silently querying lahiri).
-const CHART_FACTS_AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri:                    'lahiri_chitrapaksha',
-  lahiri_chitra:             'lahiri_chitrapaksha',
-  lahiri_chitrapaksha:       'lahiri_chitrapaksha',
-  kp:                        'krishnamurti',
-  krishnamurti:              'krishnamurti',
-  raman:                     'raman',
-  surya_siddhanta:           'surya_siddhanta_classical',
-  surya_siddhanta_classical: 'surya_siddhanta_classical',
-  true_chitra:               'true_chitra',
-  true_citra:                'true_chitra',
-  chitra:                    'true_chitra',
-  invariant:                 'INVARIANT',
-}
-export function resolveChartFactsAyanamsha(id?: string): string {
-  if (!id) return DEFAULT_AYANAMSHA
-  return CHART_FACTS_AYANAMSHA_ALIAS[id] ?? CHART_FACTS_AYANAMSHA_ALIAS[id.toLowerCase()] ?? id
-}
+// This shared resolver preserves every stored school, including true_chitra.
 
 // ── Platform primitive caller ─────────────────────────────────────────────────
 
@@ -169,7 +139,7 @@ export function describeProxyFailure(tool: string, status: number, bodyText: str
       const chartId = parsed.denial?.chart_id ?? 'unknown'
       const required = parsed.denial?.permission_required ?? 'view'
       return `[registry_bridge] ENTITLEMENT_DENIED: '${tool}' — caller lacks ${required} access to chart ${chartId} ` +
-        `(distinct from an empty result — this chart exists but you are not granted). ${parsed.error?.message ?? ''}`.trim()
+        `(distinct from an empty result — this denial does not determine whether the chart exists). ${parsed.error?.message ?? ''}`.trim()
     }
   } catch {
     // Not JSON / not the denial shape — fall through to the generic message below.
@@ -408,7 +378,12 @@ const VERBOSITY_ZOD = z.enum(['concise', 'detailed', 'exhaustive']).optional().d
   "Response-size knob (W3 + SAMAPANA Track B): 'concise' tightens this call's response-" +
   "budget ceiling (response_budget.ts) to roughly half its normal size — trimmable/catalog-" +
   "style sections shrink first; confirmed-finding sections marked hardFloor (e.g. judgment_" +
-  "query's bearing_yogas) never drop below their declared floor, concise or not. 'detailed' " +
+  "query's bearing_yogas) never drop below their declared floor, concise or not. A fixed C8 " +
+  "§4 set of immune honesty fields is never trimmed at all — stronger than hardFloor, not " +
+  "just floored (see IMMUNE_HONESTY_FIELDS in response_budget.ts): on assess_career/assess_" +
+  "wealth this includes domain_completeness and reading, so on a call whose bulk sits in " +
+  "those irreducible sections, the actual served bytes can shrink far less than 'roughly " +
+  "half' even under 'concise' — the ceiling drops, the immune content does not. 'detailed' " +
   "(default if omitted) keeps the normal, wider ceiling. 'exhaustive' keeps that SAME ceiling " +
   "(never narrower than 'detailed') AND additionally forces this call's mandatory B.11 " +
   "orientation pre-fetch to its full form (response_format:'full', not the default 10-signal " +
@@ -567,6 +542,65 @@ function orientationEntityProfilesSection(): TrimmableSection<Record<string, unk
 }
 
 /**
+ * NIRMĀṆA L2-W3 — the constitutional tail section (D-SALIENCE).
+ *
+ * The doctrine: "every umbrella envelope reserves a hard-floored `tail_watch` section
+ * (top consequence-bearers below the salience fold + rare-class leaders via
+ * percentile-in-class + `low_salience_high_consequence` anomalies) that no budget trim
+ * may zero."
+ *
+ * Declared HERE, once, rather than per-capability, for the same reason
+ * orientationEntityProfilesSection is: every bridged response passes through
+ * applyMcpBudget or applyMcpBudgetAuto, so one declaration covers the whole surface and
+ * cannot be forgotten by the next capability author. Populating `content.tail_watch` is
+ * each capability's job; protecting it is this function's.
+ *
+ * Three details that are easy to get wrong, and each of which would silently defeat the
+ * doctrine:
+ *
+ *   1. `hardFloor: true` buys two things — the section is cut only after EVERY
+ *      non-hardFloor section has already been reduced to its own floor (tier ordering),
+ *      and it is exempt from the hard-cap fallback pass that overrides every other
+ *      section's minKeep to zero.
+ *   2. `minKeep` must be >= 1. hardFloor imposes no floor of its own; it makes PASS 2
+ *      RESPECT the declared minKeep. `hardFloor: true` with `minKeep: 0` is still
+ *      zeroable, which reads as protection and is not.
+ *   3. Neither of the above reaches autoDetectTrimmableSections or the last-resort
+ *      string truncator. That is what 'tail_watch' in IMMUNE_HONESTY_FIELDS covers —
+ *      see the comment there. The two mechanisms are complements, not alternatives.
+ *
+ * `recover.instrument` names a REAL exposed MCP tool. The SC-18 regression note at the
+ * drill-pointer merge site records what happens otherwise: a section shipped
+ * 'query_signals', which is a capability id and not a tool anyone can call, so its
+ * recovery pointer pointed nowhere.
+ */
+const TAIL_WATCH_MIN_KEEP = 3
+
+function tailWatchSection<T extends Record<string, unknown>>(): TrimmableSection<T> {
+  const locate = (root: Record<string, unknown>): { holder: Record<string, unknown>; arr: unknown[] } | undefined => {
+    if (Array.isArray(root['tail_watch'])) return { holder: root, arr: root['tail_watch'] as unknown[] }
+    const content = root['content'] as Record<string, unknown> | undefined
+    if (content && Array.isArray(content['tail_watch'])) return { holder: content, arr: content['tail_watch'] as unknown[] }
+    return undefined
+  }
+  return {
+    path: 'tail_watch',
+    label: 'tail_watch (constitutional tail — D-SALIENCE; trimmed last, never zeroed)',
+    getArray: (root) => locate(root as Record<string, unknown>)?.arr,
+    setArray: (root, kept) => {
+      const found = locate(root as Record<string, unknown>)
+      if (found) found.holder['tail_watch'] = kept
+    },
+    minKeep: TAIL_WATCH_MIN_KEEP,
+    hardFloor: true,
+    recover: {
+      instrument: 'bodha_signals_get',
+      hint: 'the full tail: consequence-bearers below the salience fold, rare-class leaders by percentile-in-class, and low_salience_high_consequence anomalies. This response kept only the top rows of it under a byte budget — nothing here was dropped as noise.',
+    },
+  }
+}
+
+/**
  * Apply the shared response-budget trimmer to a fully-assembled MCP response object
  * (`{ orientation_context, orientation_ok, ...envelope-fields }`). Thin wrapper over
  * `finalizeMcpBudget` (response_budget.ts) — the self-verifying entry point that measures
@@ -582,7 +616,11 @@ function applyMcpBudget<T extends Record<string, unknown>>(
   sections: TrimmableSection<T>[],
   budgetKbRequested?: number,
 ): T {
-  const allSections = [...sections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  const allSections = [
+    ...sections,
+    orientationEntityProfilesSection() as unknown as TrimmableSection<T>,
+    tailWatchSection<T>(),
+  ]
   return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
@@ -614,7 +652,11 @@ function applyMcpBudgetAuto<T extends Record<string, unknown>>(
   budgetKbRequested?: number,
 ): T {
   const autoSections = autoDetectTrimmableSections(response, toolName)
-  const allSections = [...autoSections, orientationEntityProfilesSection() as unknown as TrimmableSection<T>]
+  const allSections = [
+    ...autoSections,
+    orientationEntityProfilesSection() as unknown as TrimmableSection<T>,
+    tailWatchSection<T>(),
+  ]
   return finalizeMcpBudget(response, { maxKb, sections: allSections, budgetKbRequested })
 }
 
@@ -830,11 +872,72 @@ export function assembleDomainCompleteness(domain: string, chart_id: string): Re
   }
 }
 
+/** F-174: bound + sanitize an interpolated error message before it lands in
+ *  `domain_completeness_empty_reason`, which is in `IMMUNE_HONESTY_FIELDS`
+ *  (response_budget.ts:86) — never string-truncated, never auto-declared trimmable by the
+ *  budget trimmer. An unbounded raw error string interpolated there is therefore protected
+ *  right alongside the field itself once mirrored into `protected_flags`
+ *  (registry_bridge.ts's disclosureFlags / assembleSaraContent), which lets an arbitrarily
+ *  long error evict every drill pointer + unprotected flag before the kernel trim gives up
+ *  (assembleSaraContent's `pointers.length === 0 && eligibleFlagCount === 0` break). Strips
+ *  newlines/control chars and collapses whitespace first — a multi-line or JSON-shaped error
+ *  message would otherwise corrupt the `code:detail` flag-string shape `flagCodeOf`
+ *  (response_budget.ts:929) parses via `split(':')[0]` — then clamps to the same 200-char
+ *  bound as the existing precedent (`kala_views/explain.ts:359`; do not invent a new
+ *  constant), appending an explicit truncation marker when the clamp actually fires (a
+ *  silently-cut error message is itself a small honesty defect). */
+function clampErrorForDisclosure(msg: string): string {
+  const sanitized = msg.replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s+/g, ' ').trim()
+  return sanitized.length > 200 ? `${sanitized.slice(0, 200)}…[truncated]` : sanitized
+}
+
 /** Attach the dossier completeness block + an un-missable steer onto an assess_* response,
  *  mutating it in place. No-op when no slice is precompiled for (domain, chart). */
 export function attachDomainCompleteness(response: Record<string, unknown>, domain: string, chart_id: string): void {
   const completeness = assembleDomainCompleteness(domain, chart_id)
-  if (!completeness) return
+  if (!completeness) {
+    // F-14: honest disclosure, not a silent no-op (B.10 / §N.7 item 6 — an honest null beats
+    // a silently absent field). No precompiled concept-slice bundle exists yet for this domain
+    // — say so explicitly rather than leaving the caller unable to distinguish "nothing to
+    // report" from "this domain was never wired."
+    //
+    // GA-5 review finding on #1382: the old message asserted a specific cause ("a data-
+    // infrastructure gap ... not a query failure") unconditionally, even though
+    // assembleDomainCompleteness's null return conflates THREE distinct causes -- a thrown
+    // exception, a real query failure (gate_reason='bad_cursor'), and a genuine missing-slice
+    // gap (gate_reason='slice_not_precomputed') -- and the caught-exception path IS a real
+    // query failure by definition, directly contradicting the claim. runDossier is re-called
+    // here (same call assembleDomainCompleteness already made, cheap/pure) solely to recover
+    // its own real gate_reason/error instead of discarding it for a hand-written guess.
+    // Default/common case: preserve the exact original phrasing verbatim (existing tests
+    // pin this substring) -- it IS accurate for the genuine-gap case, which is the common one.
+    let emptyReasonMsg =
+      `No precompiled ${domain} concept-slice bundle exists yet — domain_completeness/` +
+      `completeness_directive are honestly omitted rather than fabricated (B.10). This is a data-` +
+      `infrastructure gap (bundle generation), not a query failure; tracked separately from this fix.`
+    try {
+      const diag = runDossier({ domain, chart_id, budget_kb: 64 })
+      if (!diag.ok && diag.gate_reason !== 'slice_not_precomputed') {
+        // A REAL query failure, not the common genuine-gap case -- the old message's blanket
+        // "not a query failure" claim was false here; report runDossier's own gate_reason/
+        // error instead of a hand-written guess.
+        emptyReasonMsg =
+          `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
+          `honestly omitted rather than fabricated (B.10). This IS a query failure: ` +
+          `gate_reason=${JSON.stringify(diag.gate_reason)}` +
+          (diag.error ? `, error=${diag.error.class}: ${clampErrorForDisclosure(diag.error.message)}` : '') + '.'
+      }
+    } catch (e) {
+      // assembleDomainCompleteness's own try/catch already told us runDossier threw; recover
+      // the actual message instead of asserting "not a query failure" over a real one.
+      emptyReasonMsg =
+        `No domain_completeness/completeness_directive block was assembled for domain='${domain}' — ` +
+        `honestly omitted rather than fabricated (B.10). This IS a query failure: the dossier query ` +
+        `threw: ${clampErrorForDisclosure(String(e instanceof Error ? e.message : e))}.`
+    }
+    response['domain_completeness_empty_reason'] = emptyReasonMsg
+    return
+  }
   response['domain_completeness'] = completeness
   const pct = (completeness['pct'] as number | undefined) ?? 0
   const sliceSize = (completeness['slice_size'] as number | undefined) ?? 0
@@ -1031,16 +1134,62 @@ const CAREER_READING_FAMILIES = [
   'timing_windows', 'remedies', 'contradictions_with_adjudication',
 ] as const
 
-const DOMAIN_READING_FAMILIES: Record<string, readonly string[]> = {
+const RELATIONSHIP_READING_FAMILIES = [
+  'per_varga_ashtakavarga', 'divisional_D9', 'argala_house_7',
+  'full_dispositor_closure', 'all_chart_mechanisms_and_chains', 'special_lagnas',
+  'cross_ayanamsha_agreement', 'timing_windows', 'remedies', 'contradictions_with_adjudication',
+] as const
+
+const HEALTH_READING_FAMILIES = [
+  'per_varga_ashtakavarga', 'divisional_D6', 'argala_house_1', 'argala_house_6', 'argala_house_8',
+  'full_dispositor_closure', 'all_chart_mechanisms_and_chains', 'special_lagnas',
+  'cross_ayanamsha_agreement', 'timing_windows', 'remedies', 'contradictions_with_adjudication',
+] as const
+
+// F-14/F-124 (reconciled, PARISESA-V4 REBASE): assess_marriage/assess_health parity with
+// assess_wealth/assess_career. Compile-time exhaustiveness guard: adding a new key to
+// AssessedDomain without adding the corresponding entry to DOMAIN_READING_FAMILIES will cause
+// tsc --noEmit to error. Update both in lockstep when a new assess_* domain is introduced.
+// Exported (with DOMAIN_READING_VARGAS below) so the reconciled unit-level exit test can assert
+// directly against the wiring rather than only through an MCP round-trip.
+export type AssessedDomain = 'wealth' | 'career' | 'health' | 'relationship'
+export const DOMAIN_READING_FAMILIES: Record<AssessedDomain, readonly string[]> = {
   wealth: WEALTH_READING_FAMILIES,
   career: CAREER_READING_FAMILIES,
+  relationship: RELATIONSHIP_READING_FAMILIES,
+  health: HEALTH_READING_FAMILIES,
 }
-// The domain's classical-wealth/career vargas — same pairing register_d8_assess_domain.ts's
+// The domain's classical vargas — same pairing register_d8_assess_domain.ts's
 // DOMAIN_DIRECT_VARGAS uses, read back here from `data.varga_analysis` (already fetched).
-const DOMAIN_READING_VARGAS: Record<string, [string, string]> = { wealth: ['D2', 'D11'], career: ['D10', 'D9'] }
-const DOMAIN_READING_HOUSES: Record<string, number[]> = { wealth: [2, 11], career: [10] }
-const DOMAIN_READING_KARAKA_CODE: Record<string, string> = { wealth: 'JUP', career: 'SAT' }
-const DOMAIN_READING_KARAKA_LABEL: Record<string, string> = { wealth: 'Jupiter', career: 'Saturn' }
+// Type widened from the original [string, string] 2-tuple to readonly string[] so single-varga
+// domains (health: D6, relationship: D9) are structurally valid without a fabricated second
+// entry — buildDomainReading below loops the FULL array rather than a fixed [0]/[1] index.
+//
+// F-164 (PARIŚEṢA-V4, GA-5 follow-up on #1419): this was a hand-copied literal that had
+// drifted from the live source (brahma_vichara_constants.operative_vargas,
+// platform/migrations/435_ga_vichara.sql — minus D1, the reference which never votes) —
+// wealth was missing D9, health was missing D9, relationship was missing D7. It ALSO
+// disagreed with the platform-side sibling registry (register_d8_assess_domain.ts's
+// DOMAIN_DIRECT_VARGAS, itself fixed the same way this pass — see reading_checklist.ts)
+// on career, a live GA.1-class registry disagreement (CLAUDE.md §B.8).
+//
+// platform-mcp is a separate Node package from platform (calls its HTTP API, holds no
+// direct DB connection of its own — see `platformQuery` below) and this constant is read
+// synchronously by a pure formatting function (buildDomainReading), not behind a request
+// that already awaits a DB round-trip the way register_d9_judgment.ts's checklist does — so
+// this is corrected to the true value as a maintained literal (mirrored, not re-derived) and
+// pinned against the real migration content by
+// `registry_bridge.domain_reading_varga_parity.test.ts` rather than converted to a live
+// per-request platformQuery() read (a schema-audited, deterministic fixed source of truth —
+// the DB row does not change without a new migration — makes a network round-trip on every
+// assess_* call disproportionate here; see that test file's header for the full reasoning).
+export const DOMAIN_READING_VARGAS: Record<string, readonly string[]> = {
+  wealth: ['D2', 'D9', 'D11'], career: ['D10', 'D9'],
+  relationship: ['D9', 'D7'], health: ['D6', 'D9'],
+}
+const DOMAIN_READING_HOUSES: Record<string, number[]> = { wealth: [2, 11], career: [10], relationship: [7], health: [1, 6, 8] }
+const DOMAIN_READING_KARAKA_CODE: Record<string, string> = { wealth: 'JUP', career: 'SAT', relationship: 'VEN', health: 'SUN' }
+const DOMAIN_READING_KARAKA_LABEL: Record<string, string> = { wealth: 'Jupiter', career: 'Saturn', relationship: 'Venus', health: 'Sun' }
 
 function titleCaseUnderscored(s: string): string {
   return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
@@ -1206,7 +1355,7 @@ function readVargaFamily(vargaAnalysis: Record<string, unknown> | undefined, var
   }
 }
 
-function readAshtakavargaFamily(vargaAnalysis: Record<string, unknown> | undefined, vargas: [string, string]): ReadingFamilyEntry {
+function readAshtakavargaFamily(vargaAnalysis: Record<string, unknown> | undefined, vargas: readonly string[]): ReadingFamilyEntry {
   const perVarga = vargaAnalysis?.['per_varga'] as Record<string, unknown> | undefined
   const sentences: string[] = []
   const factIds: string[] = []
@@ -1458,7 +1607,7 @@ function readRemediesFamily(remediesPayload: unknown): ReadingFamilyEntry {
   return { family: 'remedies', label: 'Remedy priority (bo_upaya)', status: 'served', sentences, fact_ids: [] }
 }
 
-function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | undefined): ReadingFamilyEntry {
+export function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | undefined): ReadingFamilyEntry {
   const activations = Array.isArray(activatingDasha?.['activations']) ? activatingDasha!['activations'] as Record<string, unknown>[] : []
   if (activations.length === 0) {
     return { family: 'timing_windows', label: 'Activating dasha timing windows', status: 'empty_for_this_chart', sentences: [String(activatingDasha?.['partial_failure'] ?? 'No activating dasha windows returned for this call\'s date range.')], fact_ids: [] }
@@ -1466,12 +1615,12 @@ function readTimingWindowsFamily(activatingDasha: Record<string, unknown> | unde
   const first = activations[0]!
   return {
     family: 'timing_windows', label: 'Activating dasha timing windows', status: 'served',
-    sentences: [`${activations.length} activation window(s) in range; nearest: ${JSON.stringify(first).slice(0, 220)}.`],
+    sentences: [`${activations.length} activation window(s) in range; nearest: ${String(first['signature_class'] ?? 'window')} from ${String(first['activation_start'] ?? '?')} to ${String(first['activation_end'] ?? '?')}${first['activation_peak_date'] ? `, peak ${String(first['activation_peak_date'])}` : ''}.`],
     fact_ids: [],
   }
 }
 
-function readContradictionsFamily(contradictions: Record<string, unknown> | undefined): ReadingFamilyEntry {
+export function readContradictionsFamily(contradictions: Record<string, unknown> | undefined): ReadingFamilyEntry {
   const items = Array.isArray(contradictions?.['items']) ? contradictions!['items'] as Record<string, unknown>[] : []
   const totalCount = Number(contradictions?.['total_count'] ?? items.length)
   if (items.length === 0) {
@@ -1491,7 +1640,7 @@ function readContradictionsFamily(contradictions: Record<string, unknown> | unde
   const adjudication = first['adjudication'] ?? first['resolution_hint'] ?? first['adjudication_note']
   return {
     family: 'contradictions_with_adjudication', label: 'Domain contradictions + adjudication', status: 'served',
-    sentences: [`${totalCount} contradiction(s) tag this domain. Leading tension: ${String(first['tension_label'] ?? first['label'] ?? first['description'] ?? JSON.stringify(first).slice(0, 160))}${adjudication ? ` — adjudication: ${String(adjudication)}` : ' — no automated adjudication hint; needs acharya-level resolution.'}`],
+    sentences: [`${totalCount} contradiction(s) tag this domain. Leading tension: ${String(first['tension_label'] ?? first['label'] ?? first['description'] ?? `unresolved tension (id: ${String(first['contradiction_id'] ?? first['id'] ?? 'unknown')})`)}${adjudication ? ` — adjudication: ${String(adjudication)}` : ' — no automated adjudication hint; needs acharya-level resolution.'}`],
     fact_ids: [],
   }
 }
@@ -1502,7 +1651,7 @@ function readContradictionsFamily(contradictions: Record<string, unknown> | unde
 export async function buildDomainReading(
   domain: string, chart_id: string, ayanamsha_id: string, data: Record<string, unknown>, principal: Principal,
 ): Promise<{ reading: ReadingFamilyEntry[]; families_served: number; families_total: number }> {
-  const families = DOMAIN_READING_FAMILIES[domain]
+  const families = (DOMAIN_READING_FAMILIES as Record<string, readonly string[] | undefined>)[domain]
   if (!families) return { reading: [], families_served: 0, families_total: 0 }
 
   // Bug fix (PŪRṆA-VIRĀMA close-out, live-probe-discovered): the L-DOMAIN/assess_wealth and
@@ -1519,7 +1668,7 @@ export async function buildDomainReading(
   // back to `data` itself keeps those flat-fixture unit tests valid while fixing the real shape.
   const sourceData = (data['content'] as Record<string, unknown> | undefined) ?? data
   const vargaAnalysis = sourceData['varga_analysis'] as Record<string, unknown> | undefined
-  const vargas = DOMAIN_READING_VARGAS[domain] ?? ['D1', 'D1']
+  const vargas = DOMAIN_READING_VARGAS[domain] ?? ['D1']
   const houses = DOMAIN_READING_HOUSES[domain] ?? []
 
   const supplements = await fetchReadingSupplements(domain, chart_id, ayanamsha_id, principal)
@@ -1527,9 +1676,30 @@ export async function buildDomainReading(
   const byFamily = new Map<string, ReadingFamilyEntry>()
   const add = (entry: ReadingFamilyEntry): void => { byFamily.set(entry.family, entry) }
 
-  add(readAshtakavargaFamily(vargaAnalysis, vargas))
-  add(readVargaFamily(vargaAnalysis, vargas[0], domain === 'wealth' ? 'Horā — liquid wealth' : 'Dasamsa — career/status'))
-  add(readVargaFamily(vargaAnalysis, vargas[1], domain === 'wealth' ? 'Rudrāṃśa — gains/income' : 'Navamsa — dharma/marriage cross-check'))
+  // F-164: DOMAIN_READING_VARGAS now carries every domain's FULL corrected varga set (up to
+  // 3 for wealth: D2+D9+D11), not a fixed 2-slot pair — loop it rather than hardcoding
+  // vargas[0]/vargas[1], so a 3rd (or Nth) varga is never silently dropped the way F-124's
+  // fixed-index version would have (that fix widened the MAP but kept a 2-slot consumer;
+  // this pass widens the consumer to match).
+  add(readAshtakavargaFamily(vargaAnalysis, vargas.length > 0 ? vargas : ['D1']))
+  const [primaryVarga, ...secondaryVargas] = vargas.length > 0 ? vargas : ['D1']
+  add(readVargaFamily(vargaAnalysis, primaryVarga!,
+    domain === 'wealth'         ? 'Horā — liquid wealth'
+    : domain === 'health'       ? 'Ṣaṣṭhāṃśa — health/vitality'
+    : domain === 'relationship' ? 'Navāṃśa — relationship/dharma'
+    : 'Daśāṃśa — career/status'))
+  // F-164: the OLD ternary here was hardcoded to a single "second varga" case
+  // (wealth->Rudrāṃśa, everything else->"dharma/marriage cross-check" regardless of domain —
+  // already a latent mislabel for career's pre-existing D9 corroborating varga, now also
+  // reachable for health/relationship as their newly-added D9/D7 legs). Labelled by the
+  // secondary varga's own classical identity instead of a domain guess.
+  for (const v of secondaryVargas) {
+    add(readVargaFamily(vargaAnalysis, v,
+      v === 'D11' ? 'Rudrāṃśa — gains/income'
+      : v === 'D9' ? 'Navāṃśa — rāśi-promise cross-check'
+      : v === 'D7' ? 'Saptāṃśa — children/marital continuity'
+      : `${v} — corroborating varga`))
+  }
   if (domain === 'wealth') add(readInduLagnaFamily(vargaAnalysis))
   if (domain === 'career') add(readKarakamshaFamily(supplements.karakamsa))
   for (const h of houses) add(readArgalaFamily(domain, supplements.argala, h))
@@ -1591,6 +1761,36 @@ export async function attachDomainReading(
     `${domain} concept families as grounded sentences (fact_id-cited) — read it directly, it IS the ` +
     `opening reading, not a pointer to one. For the full ${String(completeness?.['slice_size'] ?? '')}-concept ` +
     `territory (every unit, not just the flagship families), call dossier(domain="${domain}", chart_id="${chart_id}").`
+}
+
+/**
+ * F-175: consult the PACT promise chain for an assess_* call's own domain.
+ *
+ * Calls the SAME `pact_query` capability `kala_explain_get` / `kala_ahead_get` consume — no
+ * second chain implementation, no new astrological computation (§N.5 / B.10) — and interprets
+ * it through the shared `interpretPactJoin` helper, whose `denied_at_* → stance:'contradicts'`
+ * mapping has no override path (INV-1).
+ *
+ * NEVER throws: the assess_* bundle must not become unavailable because the gate could not be
+ * evaluated. A failure returns `state:'unreachable'` with a null join, which is disclosed as
+ * `promise_chain_unchecked` — unchecked, never smoothed into clean (F-110 A7 / §N.8).
+ *
+ * Call-site note: this runs INSIDE the existing `Promise.all` alongside `fetchOrientationContext`
+ * and the domain capability, so it adds no serialized latency. `pact_query` runs judgment_query's
+ * full checklist and is expensive — exactly ONE call per response, scoped to this tool's own
+ * fixed domain (design contract §5.3).
+ */
+export async function fetchAssessPromiseGate(
+  domain: string, chart_id: string, ayanamsha_id: string, principal: Principal,
+): Promise<AssessPromiseGate> {
+  try {
+    const content = await callRegistryCapability(
+      PACT_CAPABILITY_URI, { chart_id, ayanamsha_id, domain }, chart_id, principal,
+    )
+    return buildAssessPromiseGate(domain, content)
+  } catch (err) {
+    return buildAssessPromiseGate(domain, null, String(err))
+  }
 }
 
 /**
@@ -2058,12 +2258,20 @@ export function assessOrientationPayload(payload: unknown, chart_id: string): Or
   return { ok: true, reason: null }
 }
 
-async function fetchOrientationContext(
+// F-125: the B.11 orientation gate this function implements was structurally unreachable
+// from outside this file (`fetchOrientationContext` was module-private) — every per_chart
+// domain tool THIS file registers called it directly, but `kala_upaya_get` (kala_views/
+// upaya.ts) and the interpretive `bodha_*` regAlias family (register_p1_aliases.ts) live in
+// other files and had no way to reach it at all. Exported so those tools can wire the same
+// B.11 gate. See F-125.spec_writer.json §2a; ratified diagnosis at F-125.ratifier.json.
+export type OrientationEnvelope = { orientation_context: unknown; orientation_ok: boolean }
+
+export async function fetchOrientationContext(
   chart_id: string,
   ayanamsha_id: string | undefined,
   principal: Principal,
   verbosity?: Verbosity,
-): Promise<{ orientation_context: unknown; orientation_ok: boolean }> {
+): Promise<OrientationEnvelope> {
   try {
     const { top_k_signals, response_format } = resolveOrientationFetchParams(verbosity)
     const ucdData = await callRegistryCapability(
@@ -2877,6 +3085,279 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     }
   )
 
+  /**
+   * A-09 (F-56/F-111): Sāra composition for assess_* tools. Replaces the object-blind
+   * applyMcpBudgetAuto path. verdict_skeleton (~43KB) and activating_dasha (~62KB) are
+   * OBJECTS invisible to autoDetectTrimmableSections — they now land in the evidence layer
+   * and are cleanly excluded when budget is tight rather than silently surviving trim passes.
+   */
+  type AssessmentKernel = SaraKernel & {
+    /** Additive, tool-specific status: preserves the frozen string verdict contract. */
+    verdict_status: 'available' | 'unknown'
+    /** Present only when no deterministic upstream verdict was supplied. */
+    unknown_reason?: 'upstream_assessment_composition_absent' | 'upstream_assessment_error'
+  }
+
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === 'object' && !Array.isArray(value)
+
+  /**
+   * `callRegistryCapability` intentionally returns the capability handler's ToolResult
+   * wrapper (`{ content, is_error }`) after removing the HTTP envelope.  The assess_*
+   * call sites historically spread that wrapper into `response`, while this composer
+   * reads fields from `response` itself.  Normalize that one known wrapper exactly once
+   * here, at the shared composition boundary, retaining outer orientation fields and
+   * preserving direct/legacy payloads unchanged.
+   */
+  function normalizeAssessmentPayload(response: Record<string, unknown>): Record<string, unknown> {
+    if (response['is_error'] === false && isRecord(response['content'])) {
+      return { ...response, ...response['content'] }
+    }
+    return response
+  }
+
+  /** VerdictLayer is structured deterministic prose, not the string kernel stores. */
+  function assessmentVerdictText(value: unknown): string | null {
+    if (typeof value === 'string' && value.trim().length > 0) return value
+    if (!isRecord(value) || !Array.isArray(value['clauses'])) return null
+    const clauses = value['clauses']
+      .filter(isRecord)
+      .map(clause => clause['text'])
+      .filter((text): text is string => typeof text === 'string' && text.trim().length > 0)
+    return clauses.length > 0 ? clauses.join(' ') : null
+  }
+
+  function definedFields(fields: Record<string, unknown>): Record<string, unknown> {
+    return Object.fromEntries(Object.entries(fields).filter(([, value]) => value !== undefined))
+  }
+
+  /**
+   * F-156: `varga_analysis` lives only in `evidence`, which `assembleSaraContent` drops
+   * ALL-OR-NOTHING under budget pressure (response_budget.ts) — one oversized sibling
+   * (`activating_dasha`, `verdict_skeleton`) took it down even when it would have fit alone.
+   * The kernel's `varga_grounding` clause cites the L1 divisional confirmation directly by
+   * fact_ids now (register_d8_assess_domain.ts), not by section name, so the claim itself is
+   * always true regardless of what ships. This slim projection additionally moves the grounding
+   * evidence for that claim — consumed_vargas + a per-varga dignity summary, no full
+   * Ashtakavarga arrays — into `grounding` (§N.6 item 2: grounding evidence for a served verdict
+   * belongs in the layer that is greedily included, not the layer dropped as a unit). The full
+   * `varga_analysis` object (with complete per-varga Ashtakavarga rows) still ships in `evidence`
+   * when budget allows.
+   */
+  function slimVargaAnalysis(vargaAnalysis: unknown): Record<string, unknown> | undefined {
+    if (!isRecord(vargaAnalysis) || vargaAnalysis['direct_consumption'] !== true) return undefined
+    const consumedVargas = Array.isArray(vargaAnalysis['consumed_vargas'])
+      ? vargaAnalysis['consumed_vargas'] as string[] : []
+    const perVarga = isRecord(vargaAnalysis['per_varga']) ? vargaAnalysis['per_varga'] : {}
+    const perVargaSummary: Record<string, unknown> = {}
+    for (const varga of consumedVargas) {
+      const entry = isRecord(perVarga[varga]) ? perVarga[varga] : undefined
+      if (!entry) continue
+      const dignityRows = Array.isArray(entry['graha_dignity']) ? entry['graha_dignity'] as Array<Record<string, unknown>> : []
+      perVargaSummary[varga] = {
+        varga_display: entry['varga_display'],
+        graha_dignity_summary: dignityRows.map(r => ({ graha: r['graha'], dignity: r['dignity'] })),
+        ashtakavarga_available: entry['ashtakavarga_available'] ?? false,
+      }
+    }
+    return {
+      direct_consumption: true,
+      consumed_vargas: consumedVargas,
+      per_varga_summary: perVargaSummary,
+      note: 'Slim grounding projection (§N.6 item 2) — full per-varga Ashtakavarga detail is in ' +
+        'evidence.varga_analysis when the response budget allows, or via the chart_facts_query drill.',
+    }
+  }
+
+  function buildAssessResponse(
+    response: Record<string, unknown>,
+    toolName: keyof typeof MCP_RESPONSE_BUDGET_KB,
+    budget_kb: number | undefined,
+    effectiveVerbosity: Verbosity | undefined,
+  ) {
+    const effectiveBudgetKb = resolveMaxKb(toolName, budget_kb, effectiveVerbosity)
+    const normalized = normalizeAssessmentPayload(response)
+    // F-175: the PACT gate is applied to the verdict BEFORE the clause array is flattened to
+    // the kernel's frozen string contract. Targeting is by `clause_id`, never by matching the
+    // prose. A gate that does not contradict returns the verdict byte-identical.
+    const promiseGate = (normalized['promise_gate'] ?? null) as AssessPromiseGate | null
+    const verdict = assessmentVerdictText(applyPromiseGateToVerdict(normalized['verdict'], promiseGate))
+    const upstreamErrored = normalized['is_error'] === true
+    const flags = Array.isArray(normalized['judgment_flags'])
+      ? [...normalized['judgment_flags'] as JudgmentFlagEntry[]]
+      : []
+    // Kernel-layer disclosure. `grounding` (where the structured promise_gate lands) is dropped
+    // ALL-OR-NOTHING under budget pressure — live-confirmed on assess_marriage at its own 40KB
+    // default — so the denial must ALSO exist at a seam a trim cannot delete.
+    flags.push(...promiseGateFlags(promiseGate))
+
+    // F-31: health and relationship have no precompiled D6/D9 dossier slice yet.
+    // They must say so at the same judgment-flag seam that carries other material
+    // response caveats. This is deliberately a disclosure only: it does not invent
+    // a reading, completeness accounting, or directive that the product has not built.
+    const missingSliceDomain = toolName === 'assess_health'
+      ? 'health'
+      : toolName === 'assess_marriage'
+        ? 'relationship'
+        : null
+    const hasAttachedReading = normalized['reading'] !== undefined && normalized['reading'] !== null &&
+      (!Array.isArray(normalized['reading']) || normalized['reading'].length > 0)
+    // F-177: every domain-completeness DISCLOSURE flag pushed below is nominated to
+    // assembleSaraContent's protected set, so the ≤2KB kernel trim cuts it only after every
+    // ordinary flag and every drill pointer is already gone. Collected by value (these flags
+    // are raw strings carrying no closed-vocabulary code).
+    const disclosureFlags: string[] = []
+    if (missingSliceDomain && !hasAttachedReading && normalized['domain_completeness'] === undefined) {
+      disclosureFlags.push(
+        `domain_slice_not_configured: no precomputed ${missingSliceDomain} dossier slice is attached; ` +
+        'this assessment is not a complete domain reading.',
+      )
+    }
+
+    // GA-5 review finding on #1382: domain_completeness_empty_reason previously landed only
+    // in `grounding`, which response_budget.ts's assembleSaraContent drops ALL-OR-NOTHING
+    // under budget pressure (live-confirmed: assess_health at verbosity:'concise' already
+    // omits grounding entirely today, with zero attached reading families). Once this PR
+    // always attaches a `reading`, the missingSliceDomain flag above becomes permanently
+    // unreachable too (gated on !hasAttachedReading) -- so a low-budget caller could receive
+    // NEITHER disclosure. Mirror the same text into `flags` (kernel-layer, budget-protected)
+    // whenever the empty_reason exists, independent of hasAttachedReading.
+    //
+    // F-177 (this PR): "kernel-layer" was NOT by itself "budget-protected". assembleSaraContent's
+    // ≤2KB kernel trim drops flags from the TAIL, and this mirror is pushed last — so on any
+    // chart dense enough to reach the cap it was the FIRST entry deleted, reproducing the
+    // very "neither disclosure" outcome the paragraph above set out to prevent (live-confirmed
+    // on chart 482012f1: assess_health/assess_marriage returned 2 of 3 declared pointers —
+    // proof the trim ran — and no empty_reason flag). Nominating it via `protected_flags`
+    // makes the protection explicit and position-independent, so a future flag pushed after
+    // this one cannot silently re-break it.
+    if (typeof normalized['domain_completeness_empty_reason'] === 'string') {
+      disclosureFlags.push(normalized['domain_completeness_empty_reason'] as string)
+    }
+    flags.push(...disclosureFlags)
+
+    if (!verdict) {
+      flags.push(judgmentFlag(
+        'hollow_envelope_no_data_rows',
+        upstreamErrored
+          ? 'assessment capability returned an error wrapper; no deterministic verdict, promise, or evidence was invented.'
+          : 'assessment capability omitted deterministic composition data; no verdict, promise, or evidence was invented.',
+      ))
+    }
+
+    const kernel: AssessmentKernel = {
+      verdict: verdict ?? '',
+      verdict_status: verdict ? 'available' : 'unknown',
+      ...(verdict ? {} : {
+        unknown_reason: upstreamErrored ? 'upstream_assessment_error' as const : 'upstream_assessment_composition_absent' as const,
+      }),
+      flags,
+      // F-175: `SaraKernel.promise` has existed since A-08 and was null on EVERY assess_*
+      // response ever served, because nothing populated it. The PACT join populates it now.
+      // §N.8: null when the chain was not actually consulted — never a fabricated join.
+      promise: isRecord(normalized['promise'])
+        ? normalized['promise'] as unknown as SaraKernel['promise']
+        : (promiseGate?.join ?? null),
+      pointers: [
+        { instrument: 'bodha_domain_reading_get', hint: 'marsys://tool/L2/query_domain_reading' } as DrillPointerLike,
+        { instrument: 'kala_windows_get', hint: 'marsys://tool/L3/query_temporal_activation' } as DrillPointerLike,
+        { instrument: 'bodha_graph_traverse_get', hint: 'mode:"contradictions" — marsys://tool/L2/traverse_chart_graph' } as DrillPointerLike,
+      ],
+    }
+
+    // Grounding: essential structured context with bounded arrays.
+    // Excludes verdict_skeleton and activating_dasha — the two large objects (F-56/F-111)
+    // that were invisible to the auto-trimmer.
+    const grounding: Record<string, unknown> = {
+      orientation_context: normalized['orientation_context'],
+      orientation_ok: normalized['orientation_ok'],
+      domain: normalized['domain'],
+      chart_id: normalized['chart_id'],
+      ayanamsha_id: normalized['ayanamsha_id'],
+      reading_checklist: normalized['reading_checklist'],
+      // F-113: the D1 significator condition's structured detail. Its HEADLINE already rides
+      // in kernel.verdict (budget-immune); this is the drillable full set. Grounding is
+      // dropped all-or-nothing under budget pressure, which is precisely why the fact is not
+      // served from here alone.
+      significator_condition: normalized['significator_condition'],
+      step_results: normalized['step_results'],
+      gochara_sweep: normalized['gochara_sweep'],
+      // F-175: the L2 contradiction surface, annotated in place when the PACT chain disputes
+      // this domain. The L2 `status` value itself is NOT rewritten — `no_contradictions_in_domain`
+      // remains a true statement about `bodha_contradictions`, and this layer is not the
+      // authority over it (§N.5). What is added is the adjacent field that makes it impossible
+      // for a structured consumer to read that status as a domain all-clear (§N.6 item 1: a
+      // narrower instrument's finding is served flagged and separated, never flattened into the
+      // confirmed layer).
+      contradictions: annotateContradictionsWithPromiseGate(normalized['contradictions'], promiseGate),
+      promise_gate: promiseGate ?? undefined,
+      house_analysis: normalized['house_analysis'],
+      citations: normalized['citations'],
+      provenance: normalized['provenance'],
+      yoga_fact_ids: normalized['yoga_fact_ids'],
+    }
+    // assess_career/wealth/marriage/health: reading injected by attachDomainReading
+    if (normalized['reading'] !== undefined) grounding['reading'] = normalized['reading']
+    // F-14/F-124 (reconciled, PARISESA-V4 REBASE): key-mismatch fix — attachDomainCompleteness
+    // writes response['domain_completeness'] / response['completeness_directive'] (or, when no
+    // precompiled slice exists, response['domain_completeness_empty_reason']); the prior
+    // allow-list checked response['completeness'], a key nothing ever set, silently dropping
+    // all three fields from the Sāra envelope for every assess_* tool including wealth/career.
+    if (normalized['domain_completeness'] !== undefined) grounding['domain_completeness'] = normalized['domain_completeness']
+    if (normalized['completeness_directive'] !== undefined) grounding['completeness_directive'] = normalized['completeness_directive']
+    if (normalized['domain_completeness_empty_reason'] !== undefined) grounding['domain_completeness_empty_reason'] = normalized['domain_completeness_empty_reason']
+    // assess_wealth: leverage_index injected by attachLeverageIndex
+    if (normalized['leverage_index'] !== undefined) grounding['leverage_index'] = normalized['leverage_index']
+    // F-156: slimmed grounding evidence for the kernel's varga_grounding clause (§N.6 item 2) —
+    // full varga_analysis (with complete per-varga Ashtakavarga) still ships in evidence below.
+    const vargaAnalysisSummary = slimVargaAnalysis(normalized['varga_analysis'])
+    if (vargaAnalysisSummary !== undefined) grounding['varga_analysis_summary'] = vargaAnalysisSummary
+
+    // Evidence: the two large objects (F-56/F-111) + remaining heavy data.
+    // Excluded at the 40KB configured budget; available for deep_dive/exhaustive.
+    const evidence = definedFields({
+      ...(isRecord(normalized['evidence']) ? normalized['evidence'] : {}),
+      verdict_skeleton: normalized['verdict_skeleton'],
+      activating_dasha: normalized['activating_dasha'],
+      karaka_analysis: normalized['karaka_analysis'],
+      varga_analysis: normalized['varga_analysis'],
+      sensitive_degree_firings: normalized['sensitive_degree_firings'],
+      kp_cusp_chain: normalized['kp_cusp_chain'],
+      ranking_basis: normalized['ranking_basis'],
+    })
+
+    const counts: Record<string, number> = {
+      contradictions: Array.isArray(normalized['contradictions'])
+        ? (normalized['contradictions'] as unknown[]).length : 0,
+      yoga_fact_ids: Array.isArray(normalized['yoga_fact_ids'])
+        ? (normalized['yoga_fact_ids'] as unknown[]).length : 0,
+      reading_families: Array.isArray(normalized['reading'])
+        ? (normalized['reading'] as unknown[]).length : 0,
+    }
+
+    const assembly = {
+      kernel,
+      grounding,
+      evidence: Object.keys(evidence).length > 0 ? evidence : undefined,
+      budget_kb: effectiveBudgetKb,
+      counts,
+      // F-177: honesty disclosures survive the kernel trim ahead of ordinary flags/pointers.
+      protected_flags: disclosureFlags,
+    }
+    const assembled = assembleSaraContent(assembly)
+    // A caller may request a budget below the immutable <=2KB kernel ceiling. Do not
+    // silently pretend that such an irreducible response fit: keep the deterministic
+    // kernel intact and disclose the overage with the shared closed-vocabulary flag.
+    if (Buffer.byteLength(JSON.stringify(assembled), 'utf8') > effectiveBudgetKb * 1024) {
+      kernel.flags.push(judgmentFlag(
+        'budget_exceeded_after_trim',
+        'the irreducible assessment kernel exceeds the requested response budget; no deterministic verdict or provenance was removed to make it appear to fit.',
+      ))
+      return assembleSaraContent(assembly)
+    }
+    return assembled
+  }
+
   // ── D8 APEX TOOLS ─────────────────────────────────────────────────────────
   // assess_marriage / assess_career / assess_health / assess_wealth
   // yoga_activation_by_dasha
@@ -2889,8 +3370,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -2903,7 +3384,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_marriage',
@@ -2912,9 +3395,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('relationship', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_marriage', budget_kb, effectiveVerbosity), 'assess_marriage', budget_kb))
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
+        // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
+        // assess_career/assess_wealth — assess_marriage never called either attach function.
+        attachDomainCompleteness(response, 'relationship', chart_id)
+        await attachDomainReading(response, 'relationship', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_marriage', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_marriage', String(err), { chart_id })
       }
@@ -2928,8 +3416,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -2942,7 +3430,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_career',
@@ -2951,13 +3441,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('career', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
         attachDomainCompleteness(response, 'career', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
         await attachDomainReading(response, 'career', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_career', budget_kb, effectiveVerbosity), 'assess_career', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_career', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_career', String(err), { chart_id })
       }
@@ -2971,8 +3462,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -2985,7 +3476,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_health',
@@ -2994,9 +3487,14 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('health', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_health', budget_kb, effectiveVerbosity), 'assess_health', budget_kb))
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
+        // F-14/F-124 (reconciled, PARISESA-V4 REBASE): domain reading parity with
+        // assess_career/assess_wealth — assess_health never called either attach function.
+        attachDomainCompleteness(response, 'health', chart_id)
+        await attachDomainReading(response, 'health', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_health', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_health', String(err), { chart_id })
       }
@@ -3010,8 +3508,8 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     {
       chart_id: z.string().uuid().describe('UUID of the chart. Required.'),
       ayanamsha_id: z.string().optional().describe("Ayanamsha (default: 'LAHIRI')"),
-      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via get_domain_reading for full lists.'),
-      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via query_contradictions.'),
+      max_signals_per_lens: z.number().int().min(1).max(50).optional().describe('Max ranked signals per question lens (default 10, max 50). Drill via bodha_domain_reading_get for full lists.'),
+      max_contradictions: z.number().int().min(1).max(100).optional().describe('Max contradictions in the bundle (default 15, max 100). Remainder via bodha_graph_traverse_get with mode:"contradictions".'),
       verbosity: VERBOSITY_ZOD,
       reading_depth: READING_DEPTH_ZOD,
       budget_kb: BUDGET_KB_ZOD,
@@ -3024,7 +3522,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // also present on this call.
         const effectiveVerbosity = resolveEffectiveVerbosity(verbosity, reading_depth)
         // S1 fix: orientation + domain assessment parallelized (independent HTTP calls)
-        const [{ orientation_context, orientation_ok }, data] = await Promise.all([
+        // F-175: the PACT promise gate runs IN this Promise.all — a third independent HTTP
+        // call, not a serialized one, so consulting the chain costs no added latency.
+        const [{ orientation_context, orientation_ok }, data, promise_gate] = await Promise.all([
           fetchOrientationContext(chart_id, normalizeAyanamsha(ayanamsha_id), principal, effectiveVerbosity),
           callRegistryCapability(
             'marsys://tool/L-DOMAIN/assess_wealth',
@@ -3033,8 +3533,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               ...(max_contradictions != null ? { max_contradictions } : {}) },
             chart_id, principal
           ),
+          fetchAssessPromiseGate('wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal),
         ])
-        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown> }
+        const response = { orientation_context, orientation_ok, ...data as Record<string, unknown>, promise_gate }
         // Elevation α: back the naive-caller entrypoint with dossier's 100%-accounted territory.
         attachDomainCompleteness(response, 'wealth', chart_id)
         // SATYA-ŚEṢA W7: serve the reading itself, inline, not just a pointer to one.
@@ -3042,7 +3543,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
         // PARIŚODHANA R-10: join the already-computed L1 ga_vichara leverage_index family in —
         // it was fully computed (7 rows/chart) but completely absent from this response shape.
         await attachLeverageIndex(response, 'wealth', chart_id, normalizeAyanamsha(ayanamsha_id), principal)
-        return dualOutputBudgeted(applyMcpBudgetAuto(response, resolveMaxKb('assess_wealth', budget_kb, effectiveVerbosity), 'assess_wealth', budget_kb))
+        return dualOutputBudgeted(buildAssessResponse(response, 'assess_wealth', budget_kb, effectiveVerbosity))
       } catch (err) {
         return errorOutput('assess_wealth', String(err), { chart_id })
       }
@@ -3342,7 +3843,9 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
     'a bare `bhava` (1-12). Returns the COMPLETE classical checklist in ONE call: bhava condition ' +
     '(sign + occupants + aspecting grahas) · bhāveśa (lord) condition + placement + dignity + ' +
     'strength · kāraka condition (e.g. Venus for marriage) · judged from BOTH lagna AND chandra ' +
-    '(Sudarshana discipline) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
+    '(Sudarshana discipline; the chandra leg carries `ayanamsha_frame_sensitivity` — F-159\'s ' +
+    'disclosure, never a ruling, of whether the Moon\'s own sign agrees across the 5 real ' +
+    'ayanamshas) · operative-varga confirmation (e.g. D9 for marriage) · bearing yogas/' +
     'doshas · timing hooks (current + upcoming dasha windows for the lord/karaka) · a deterministic ' +
     'promise-register verdict (never an LLM judgment or a probability) · a classical-units ' +
     'completeness RECEIPT (design §28.6): {bhava, bhavesha, karaka, from_moon, varga_confirmed, ' +
@@ -3520,6 +4023,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               if (timing) timing['current'] = kept
             },
             minKeep: 3,
+            hardFloor: true, // F-51: answer-bearing timing — PASS 2 must not zero this while catalog rows survive
             recover: { instrument: 'ganita_dashas_get', hint: 'full current-period rows across all dasha levels (this call kept a lean slice).' },
             label: 'checklist.timing_hooks.current',
           },
@@ -3550,6 +4054,7 @@ export function registerRegistryBridgeTools(server: McpServer, principal: Princi
               timing['mahadasha_windows_by_graha'] = regrouped
             },
             minKeep: 4,
+            hardFloor: true, // F-51: answer-bearing timing — PASS 2 must not zero this while catalog rows survive
             recover: { instrument: 'ganita_dashas_get', hint: 'full multi-level dasha timeline for the bhāveśa/kāraka(s) (this call kept a lean slice of mahadasha windows only).' },
             label: 'checklist.timing_hooks.mahadasha_windows_by_graha',
           },

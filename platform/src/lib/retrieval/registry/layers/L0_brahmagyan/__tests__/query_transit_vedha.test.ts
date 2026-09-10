@@ -35,6 +35,47 @@ describe('queryTransitVedhaCapability', () => {
     expect(String(content['governance_note'])).toContain('no CREATE TABLE migration')
   })
 
+  // PK-R-9 IR-3: bg_transit_vedha is RETIRED-IN-PLACE / non-authoritative --
+  // bg_transit_rules is the authoritative vedha-pair corpus. This serving
+  // surface stays LIVE (not retired/unwired); the governance_note must name
+  // the authority, the 4 Venus disagreements, and the 8 missing rows as an
+  // open L0 reconciliation item.
+  it('governance_note names bg_transit_rules as authoritative, the 4 Venus disagreements, and the 8 missing rows', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    const result = await queryTransitVedhaCapability.handler({}, undefined)
+    const note = String((result.content as Record<string, unknown>)['governance_note'])
+
+    expect(note).toContain('RETIRED-IN-PLACE')
+    expect(note).toContain('non-authoritative')
+    expect(note).toContain('bg_transit_rules')
+    expect(note.toLowerCase()).toContain('authoritative')
+
+    // 4 Venus disagreements: 4->3v10, 5->11v9, 8->9v1, 9->5v2
+    expect(note).toContain('4')
+    expect(note).toContain('10')
+    expect(note).toContain('9')
+    expect(note).toContain('11')
+    expect(note).toContain('1')
+    expect(note).toContain('5')
+    expect(note).toContain('2')
+    expect(note.toLowerCase()).toContain('venus')
+
+    // 8 missing rows: Rahu 3/6/11, Ketu 3/6/11, Venus 11/12
+    expect(note.toLowerCase()).toContain('rahu')
+    expect(note.toLowerCase()).toContain('ketu')
+    expect(note).toContain('12')
+    expect(note.toLowerCase()).toContain('missing')
+
+    // Open reconciliation, serving surface stays live (not retired/unwired)
+    expect(note.toLowerCase()).toContain('reconciliation')
+    expect(note.toLowerCase()).toContain('live')
+  })
+
+  it('capability itself is still registered/callable (serving surface not retired)', () => {
+    expect(typeof queryTransitVedhaCapability.handler).toBe('function')
+    expect(queryTransitVedhaCapability.uri).toBe('marsys://tool/L0/query_transit_vedha')
+  })
+
   it('DB error surfaces as is_error, not thrown', async () => {
     mockQuery.mockRejectedValueOnce(new Error('timeout'))
     const result = await queryTransitVedhaCapability.handler({}, undefined)

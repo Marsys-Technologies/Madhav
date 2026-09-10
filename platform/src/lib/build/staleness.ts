@@ -1,50 +1,26 @@
-export interface StalenessAsset {
-  asset_id: string
-  last_built_at: Date | null
-  built_against_upstream_hash: string | null
-  built_against_writer_hash: string | null
-}
-
-export interface StalenessUpstream {
-  asset_id: string
-  last_built_at: Date | null
-  content_hash: string | null
-}
-
-export interface StalenessCodeRef {
-  asset_id: string
-  current_writer_hash: string | null
-}
-
 /**
- * Returns true if the asset should be considered stale:
- *   - data invalidation: any upstream was rebuilt after this asset, or upstream
- *     content hash changed
- *   - code invalidation: the writer source hash changed since this was built
+ * Read-only freshness projection consumed by build planning.
+ *
+ * Python owns digest calculation and reconciliation. This module deliberately
+ * does not compare source, output, or upstream hashes: a Next.js process cannot
+ * authoritatively observe the sidecar's deployed Python closure.
  */
-export function isStale(
-  asset: StalenessAsset,
-  upstreams: StalenessUpstream[],
-  codeRef: StalenessCodeRef
-): boolean {
-  if (asset.last_built_at == null) return false // dormant, not stale
+export type FreshnessState = 'fresh' | 'stale' | 'unknown'
 
-  // Data invalidation
-  for (const up of upstreams) {
-    if (up.last_built_at != null && up.last_built_at > asset.last_built_at) return true
-    if (
-      up.content_hash != null &&
-      asset.built_against_upstream_hash != null &&
-      up.content_hash !== asset.built_against_upstream_hash
-    ) return true
-  }
+export interface FreshnessProjection {
+  asset_id: string
+  state: FreshnessState
+  reasons: string[]
+  observed_at: Date | null
+}
 
-  // Code invalidation
-  if (
-    codeRef.current_writer_hash != null &&
-    asset.built_against_writer_hash != null &&
-    codeRef.current_writer_hash !== asset.built_against_writer_hash
-  ) return true
+export function freshnessForAsset(
+  projection: ReadonlyMap<string, FreshnessProjection> | undefined,
+  assetId: string,
+): FreshnessProjection | undefined {
+  return projection?.get(assetId)
+}
 
-  return false
+export function isFresh(projection: FreshnessProjection | undefined): boolean {
+  return projection?.state === 'fresh'
 }

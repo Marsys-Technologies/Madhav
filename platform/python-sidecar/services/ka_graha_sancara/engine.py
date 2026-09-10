@@ -193,8 +193,26 @@ def _read_from_bg_ephemeris(
         # pyswisseph not available for ayanamsha derivation even for stored rows
         return None
 
+    # NIRMĀṆA L3-W3 finding M3 (§N.8) — defect 1 of 2.
+    #
+    # This block used to open a bare `db_conn.cursor()` and then index the rows POSITIONALLY
+    # (`row[0]`…`row[3]`). The orchestrator's connection is created with
+    # `row_factory=dict_row` (`pipeline/orchestrator/db.py:57`), so every row arrived as a dict
+    # and `row[0]` raised `KeyError: 0` — which is literally what `asset_registry.selftest_detail`
+    # recorded for this asset: "ephemeris computation failed: 0", i.e. `str(KeyError(0))`.
+    #
+    # The same trap is documented elsewhere in this repo from the other side:
+    # `brahmagyan/phala/muhurta.py` opens a DELIBERATE tuple-row connection because its helper
+    # indexes positionally and "dict_row would break it" — a previous author hit this and worked
+    # around it rather than fixing it.
+    #
+    # Fixed by pinning the row factory AT THE CURSOR and reading by column name, so this function
+    # no longer depends on the caller's connection default in either direction. That coupling was
+    # the actual defect; positional indexing was only how it showed.
     try:
-        with db_conn.cursor() as cur:
+        import psycopg.rows
+
+        with db_conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
                 SELECT body, tropical_longitude, speed_dps, is_retrograde
@@ -216,7 +234,10 @@ def _read_from_bg_ephemeris(
     # Build a body→row map
     body_map: dict[str, tuple[float, float, bool]] = {}
     for row in rows:
-        body, trop_lon, speed, is_retro = row[0], float(row[1]), float(row[2]), bool(row[3])
+        body = row["body"]
+        trop_lon = float(row["tropical_longitude"])
+        speed = float(row["speed_dps"])
+        is_retro = bool(row["is_retrograde"])
         body_map[body] = (trop_lon, speed, is_retro)
 
     grahas: dict[str, GrahaState] = {}

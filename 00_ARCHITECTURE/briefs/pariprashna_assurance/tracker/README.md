@@ -1,0 +1,179 @@
+# Paripraśna Assurance Control Plane (CG-0)
+
+This is the new event-sourced control plane for the v3.0 assurance programme. It does not
+reuse the retired tracker-v2 runtime or any historical assurance heartbeat. SQLite is the
+append-only source of campaign state; the dashboard is always a derived projection.
+
+## Components
+
+- `control.py`: versioned schema, transactional event ingestion, role/stream authorization,
+  deterministic projector, replay/hash reconciliation, presence overlay, and snapshots.
+- `server.py`: loopback JSON/SSE service and responsive dashboard delivery.
+- `cli.py`: bootstrap, event emission, projection, replay and immutable snapshots.
+- `demo.py`: disposable seeded demonstration covering every lifecycle state.
+- `EVENT_SCHEMA_v1_0.json`: API request contract.
+
+## Local operation
+
+### One-command disposable demonstration
+
+From this directory, run:
+
+```sh
+python3 server.py --demo --runtime "$(mktemp -d /private/tmp/pariprashna-assurance-demo-XXXXXX)"
+```
+
+It refuses a non-empty runtime directory, so fixture data cannot be mixed with campaign state.
+The served dashboard is labelled `SYNTHETIC DEMO` and warns that fixture data is not campaign
+evidence. Open `http://127.0.0.1:8787`; never open `dashboard.html` directly.
+
+### Controlled local runtime
+
+```sh
+TRACKER_RUNTIME=/private/tmp/pariprashna-assurance-demo
+python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/demo.py --runtime "$TRACKER_RUNTIME"
+python3 00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/server.py --runtime "$TRACKER_RUNTIME"
+```
+
+Open `http://127.0.0.1:8787`. The demo is intentionally non-authoritative. Generated runtime
+state belongs outside this repository and must not be manually edited.
+
+For an Option-B P0B runtime, use `--p0b-only` for every `cli.py` command; it provisions only
+`lead-p0b`, `surrogate-p0b`, `verifier-p0b`, and `integrator-p0b`, each scoped only to P0.
+After CG-0 is closed, the sole downstream exception is an evidence-bearing
+`dependency_resolved` event from P0 to P1 recorded by `integrator-p0b` as the runtime-backed
+onboarding receipt. Every other P1 event remains forbidden, so the receipt does not start P1.
+For a non-demo local runtime, first run `cli.py --runtime "$TRACKER_RUNTIME"
+provision-credentials`. It creates a random, mode-0600 credential file for that runtime.
+`init` and `emit` require the matching actor token; there are no default bearer tokens.
+The local-proof runtime includes separately scoped `lead-p0` through `lead-p7` identities and
+one lead for each P3 stream; a production runtime must enroll corresponding approved identities
+through its A3-governed issuer.
+
+## Acceptance evidence
+
+`tests/pariprashna_assurance_tracker/test_control.py` exercises replay, idempotency,
+sequence conflict/retry, role and stream authorization, self-verification rejection,
+surrogate/native separation, stale and paused behavior, stale-green prevention, projector
+recovery/corruption detection, weighted evidence-only progress, scope-change reduction,
+ledger-linked work-item verification, phase/gate prerequisites, append-only corrections,
+snapshot reconciliation, external adapter degradation, lifecycle fixtures, end-to-end SSE
+delivery and latency, dashboard accessibility source contracts, numeric-slot scenario
+deduplication, single-writer-per-stream scenario leasing (including stale-lease takeover),
+and distinct-slot projection counting under a historically-corrupted duplicate ledger.
+
+For a P3 stream, its first `work_started` event must include a positive
+`planned_scenarios` integer. Scenario execution is separately recorded by unique
+`scenario_id`; it earns no progress itself, but all chartered and scope-approved scenarios
+must be present before regression credit can be accepted. Closure credit is earned only by
+an accepted result packet, never a direct work-item event. The dashboard exposes the frozen
+denominator, execution-session ownership/configuration, evidence timestamps, scope-change
+reduction explanations, and retained rejection records.
+
+Every `scenario_executed` event must also carry a `writer_instance_id`: a stable id for the
+submitting writer process (mint one nonce per process/session and reuse it for every
+scenario-execution write that process makes; `cli.py emit --writer-instance-id ...`).
+`DUPLICATE_SCENARIO` keys on the scenario's numeric slot (`S{N}-SC-{NN}`, extracted from the
+`scenario_id`), not the full slug, so a relabelled retry of an already-executed slot is still
+rejected. A stream's scenario-execution writes are further leased to one writer instance at a
+time: a second, different instance is rejected with `CONCURRENT_WRITER_LEASE_CONFLICT` while
+the incumbent's lease is fresh (`SCENARIO_WRITER_LEASE_TTL_SECONDS`), preventing two unaware
+concurrent sessions from both recording executions against the same stream. A stale lease
+(no scenario write from its holder within the TTL) may be taken over, so a genuinely dead
+writer never permanently blocks the stream. The projected `scenarios.executed` count is the
+distinct-slot count, never the raw event count; `scenarios.recorded_scenario_events` exposes
+the raw count separately for audit.
+
+**Where the lease is enforced, and what it does and does not cover.** Both the lease and the
+numeric-slot dedup guard live in the shared `EventStore` (`control.py`), backed by the
+`stream_scenario_write_leases` SQLite table — *not* in the HTTP request handler. Every caller
+therefore inherits them: `POST /api/events`, `cli.py emit`, `demo.py`, and any future writer.
+`cli.py` instantiates `EventStore` directly and never touches the server process, so this
+placement is what stops it being a single-writer bypass; `tests/pariprashna_assurance_tracker/
+test_cli_writer_lease.py` proves it cross-process (a separate `cli.py` OS process is rejected
+while an HTTP writer holds the lease — impossible unless enforcement is DB-backed) and fails
+red if the check is ever relocated into `server.py`. Honest scope limit: the lease covers
+`scenario_executed` writes only. A stream's other `STREAM_LEAD` events (`finding_discovered`,
+`paused`, `blocked`, `verification_started`, …) are *not* leased — a second, unaware writer
+instance can still record those against a stream whose scenario lease another instance holds.
+`expected_stream_seq` prevents lost updates there, but not two concurrent sessions both
+recording work. Broadening the lease is a live-control-plane design decision (it must not
+break the verifier, surrogate, and integrator writing to the same stream concurrently by
+design) and is deliberately left open rather than changed unreviewed.
+
+After all discovered findings in a stream are triaged, the surrogate emits one
+`remediation_approved` event containing its `remediation_plan` (an explicit empty list is
+valid when no remediation is required). Each entry maps one triaged finding to one remediation.
+Only those entries may be implemented, each must be independently verified, and the remediation
+work item cannot earn credit until the complete frozen plan is verified.
+
+Once that plan is frozen, a genuinely new finding is `FINDING_FREEZE`-rejected. The one governed
+way past it is `finding_freeze_exception_granted`, and **only a `NATIVE_SURROGATE` may emit it**
+(`ROLE_FORBIDDEN` for every other role, re-asserted inside the transition validator so a widened
+`ROLE_EVENTS` row alone cannot open it). The exception is deliberately narrow: it names exactly
+one `finding_id` on one stream, requires a non-empty `reason` and primary `evidence`, is refused
+before a plan is actually frozen (`FINDING_FREEZE_EXCEPTION_UNNECESSARY` — no blanket pre-grants),
+may be granted once per identifier (`FINDING_FREEZE_EXCEPTION_CONFLICT`), and cannot re-open an
+already-discovered id (`FINDING_ID_CONFLICT`). Every other post-freeze finding stays rejected. The
+lead then records the finding through the ordinary `finding_discovered` path.
+
+An optional `added_remediations` array revises the frozen plan for that finding — each entry needs
+a plan-unique `id` and must name the exception's own `finding_id`, so nothing else can be smuggled
+in. Amended entries join the contract the downstream gates read, which *tightens* them: the added
+remediation must itself be implemented and independently verified before the remediation stage can
+earn credit. The projection exposes `finding_freeze_exceptions` (who authorized, why, what
+finding, evidence, and whether the finding was subsequently recorded), stamps the granting event
+onto the finding's `freeze_exception` field, and lists the grant among the surrogate `decisions`.
+Authority is read from the granting ledger row's own stored `actor_role`, never from a client
+claim — an event of this type written under any other role grants nothing.
+
+An integrator records a defined phase prerequisite through evidence-bearing
+`dependency_resolved` with `from` and `to`. The dependency panel preserves its resolved status
+and evidence. An active downstream phase with a pending predecessor is an explicit campaign
+attention condition, not a green dashboard state.
+
+Run it with:
+
+```sh
+python3 -m unittest -v tests/pariprashna_assurance_tracker/test_control.py
+python3 -m unittest -v tests/pariprashna_assurance_tracker/test_cli_writer_lease.py
+tests/pariprashna_assurance_tracker/browser_smoke.sh
+```
+
+`test_cli_writer_lease.py` runs `cli.py` as a real subprocess against an isolated temporary
+runtime; it is the cross-process proof that the single-writer lease is DB-backed rather than
+HTTP-handler-local.
+
+The browser/SSE integration test binds a loopback socket. In a sandboxed environment it may
+require local socket permission; it never opens a non-loopback listener. The Chrome smoke
+test requires a local Chrome binary (`CHROME_BIN` may override its macOS default), makes no
+network request, and checks desktop landmarks plus a 390 px mobile render. Dynamic data
+delivery and latency are separately asserted by the HTTP-to-SSE integration test.
+
+The service rejects non-loopback binds and non-local peers. Authentication and authorization
+for a networked or multi-user deployment are intentionally an A3 prerequisite; do not expose
+this CG-0 local proof service beyond its host.
+
+## Approved Option B installation (only after protected merge)
+
+Install only from a release directory exported from the merged immutable SHA; never invoke the
+service from a scratch worktree. First create the manifest/tree attestation from that export; it
+hashes the exact tracker tree, records the merge SHA, and makes the release directory read-only.
+The attestor requires the canonical `Marsys-Technologies/Madhav` GitHub origin, a freshly
+authenticated and fetched `origin/main` tip from a new configuration-isolated bare repository,
+with Git URL rewrites, proxy/TLS overrides, and non-HTTPS transports rejected, and an exported
+tree byte-identical to that merged commit. The installer rejects symlinks, mutable files, a
+missing/different manifest, a different runtime path, an unconfirmed FileVault host, an existing
+launchd label/plist, or an occupied loopback port; it never replaces another service.
+
+```sh
+python3 service.py --attest-release --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA" --source-repo "$SOURCE_REPO"
+python3 service.py --install --release-dir "$RELEASE_DIR" --source-sha "$MERGE_SHA"
+```
+
+This creates the collision-checked user service
+`com.marsys.pariprashna-assurance-control`, bound to `127.0.0.1:8787`, using the approved
+`/Users/Dev/.pariprashna-assurance-control` runtime. The runtime and its SQLite files are
+enforced at 0700 and 0600 respectively. Create snapshots with `cli.py snapshot`, and restore
+only into a distinct empty recovery runtime with `cli.py restore`; neither operation accepts
+historical tracker-v2 data.

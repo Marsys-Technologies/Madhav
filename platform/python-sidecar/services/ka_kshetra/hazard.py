@@ -58,7 +58,13 @@ import math
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Optional, Sequence
 
-from services.ka_kshetra.contracts import ClockApplicability, PromisePrior, ProvenanceEdge, Route
+from services.ka_kshetra.contracts import (
+    ClockApplicability,
+    PromisePrior,
+    ProvenanceEdge,
+    Route,
+    SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT,
+)
 
 # ── Structural constants (v0-versioned; part of config_pin, §7.4) ────────────
 
@@ -130,8 +136,8 @@ IDENTITY_TERM_ROLES: frozenset[str] = frozenset({'route', 'gate'})
 
 # ── C-1 — baseline λ⁰_e ──────────────────────────────────────────────────────
 
-def baseline_rate(lifetime_count: float) -> float:
-    """λ⁰_e = N_e / 36525, in events per day.
+def baseline_rate(lifetime_count: float, *, shape_only: bool = False) -> tuple[float, bool]:
+    """λ⁰_e = N_e / 36525, in events per day. Returns (rate, baseline_is_synthetic).
 
     `lifetime_count` (N_e) is the class's classical lifetime expectation over a
     100-year horizon, read from `bg_class_priors`. It is NEVER invented: §5.1
@@ -140,14 +146,28 @@ def baseline_rate(lifetime_count: float) -> float:
     baseline." This function therefore REJECTS a non-positive count rather than
     flooring it: a silent clamp to some tiny ε would manufacture a hazard for a
     class nobody has a prior for, which is the exact fabrication B.10 forbids.
+
+    P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1, SM-R-10): when `shape_only=True` is
+    explicitly passed (the writer is in shape_only mode for this class and the
+    caller has already confirmed no calibrated baseline exists), returns
+    (SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT / DAYS_PER_CENTURY, True) instead of
+    raising.  The `True` tag is the §N.8 earned-signal fix — a queryable field
+    on every downstream row, never an inferred flag.
+
+    CALLER CONTRACT: `shape_only=True` must only be passed when the writer has
+    already verified this class has no `bg_class_priors` row. Passing it when a
+    real prior exists would silently replace calibrated data with synthetic data —
+    the exact fabrication B.10 forbids, one level up.
     """
+    if shape_only:
+        return SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT / DAYS_PER_CENTURY, True
     if not math.isfinite(lifetime_count) or lifetime_count <= 0.0:
         raise ValueError(
             f'baseline lifetime_count must be finite and > 0, got {lifetime_count!r}. '
             'A class with no usable bg_class_priors row is SKIPPED (not_computed), '
             'never given a fabricated baseline (§5.1 C-1 / B.10).'
         )
-    return lifetime_count / DAYS_PER_CENTURY
+    return lifetime_count / DAYS_PER_CENTURY, False
 
 
 # ── C-2 — promise P̃_e and the Law-3 graded gate ─────────────────────────────
@@ -385,6 +405,14 @@ class HazardTerms:
     pass. §5.4's invariant is asserted again at write time (the writer halts with
     `provenance_reconciliation_failed`) — belt and braces, because the invariant
     is what makes the provenance earned rather than decorative.
+
+    `baseline_is_synthetic` (P3-a, DHARA_ENGINE_SPEC_v1_0.md §4.1): True when
+    the baseline λ⁰_e was constructed from SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
+    rather than from a calibrated `bg_class_priors` row. This is the §N.8
+    earned-signal tag — a real queryable field on the dataclass, not an inferred
+    flag or a wrapper attribute. The writer threads it onto every row it produces
+    for shape_only classes so downstream consumers can SUPPRESS or RELABEL
+    absolute-count fields (P3-b census).
     """
     ln_lambda: float
     baseline: float
@@ -394,6 +422,7 @@ class HazardTerms:
     suppression_term: float
     signed_obstruction: float
     edges: tuple[ProvenanceEdge, ...]
+    baseline_is_synthetic: bool = False   # P3-a; default False = calibrated path
 
     @property
     def lambda_value(self) -> float:
@@ -446,6 +475,7 @@ def evaluate(
     obstructions: Mapping[str, float],
     weights: Mapping[str, float],
     baseline_source: Optional[tuple[str, str, str]] = None,
+    shape_only: bool = False,
 ) -> HazardTerms:
     """Evaluate §5.1 at ONE instant and return every factor plus its edges.
 
@@ -456,6 +486,12 @@ def evaluate(
     `weights` is the PINNED weights version's `weight_id → weight_value` map.
     `baseline_source` optionally carries (source_table, source_pk, source_fact_id)
     for the baseline edge, so the classical prior is CITED rather than asserted.
+
+    P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1): `shape_only=True` is passed by the
+    writer when this event class has no calibrated `bg_class_priors` row but has
+    been classified as a shape_only tier in the tier-basis table. The returned
+    `HazardTerms.baseline_is_synthetic` will be True, and every row the writer
+    produces must carry that tag (P3-e).
 
     The covariate x3 (`dual_reference_agreement`) is DERIVED here rather than
     trusted from the caller, so the "min of the two legs" definition lives in
@@ -470,7 +506,7 @@ def evaluate(
     edges: list[ProvenanceEdge] = []
 
     # ── baseline ─────────────────────────────────────────────────────────────
-    lam0 = baseline_rate(lifetime_count)
+    lam0, _baseline_is_synthetic = baseline_rate(lifetime_count, shape_only=shape_only)
     src_table, src_pk, src_fact = baseline_source or (None, None, None)
     edges.append(ProvenanceEdge(
         term_role='baseline', term_key='baseline',
@@ -553,6 +589,7 @@ def evaluate(
         suppression_term=S,
         signed_obstruction=signed_obstruction(S),
         edges=tuple(edges),
+        baseline_is_synthetic=_baseline_is_synthetic,
     )
 
 

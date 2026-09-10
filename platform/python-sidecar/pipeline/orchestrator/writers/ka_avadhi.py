@@ -24,6 +24,7 @@ from datetime import date
 
 import psycopg.rows
 
+from brahmagyan.graha_vocabulary import norm_graha
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
@@ -108,13 +109,37 @@ WHERE bp.chart_id = %s
 ORDER BY bp.grade DESC
 """
 
+# NIRMĀṆA L3-W3 finding M4 (§N.5, §N.7 items 2 and 6).
+#
+# THE DEFECT. This query returned ZERO rows for EVERY lord on EVERY chart, so
+# `lord_condition_fact_refs` was `[]` on 100.00% of rows — served as an empty array with no flag,
+# which reads as "this lord has no notable condition" rather than "this query never matched".
+# Three independent mismatches against L1, all measured live before the fix:
+#   1. SUBJECT VOCABULARY. `chart_dashas.lord_graha` is Title-case ('Jupiter'); `chart_facts`
+#      stores the canonical 3-letter subject code ('JUP', and 'RAH_MEAN'/'KET_MEAN' for the
+#      nodes). Neither 'Jupiter' nor 'JUPITER' matched anything.
+#   2. NO CATEGORY PIN. Graha condition facts live under `fact_category='graha_position'`.
+#      Selecting on `fact_key` alone is the §N.7 item-2 defect class even when it happens to work.
+#   3. FIVE OF SEVEN KEYS DO NOT EXIST. Measured against `fact_category='graha_position'`, the
+#      real key vocabulary is {sign, nakshatra, nakshatra_lord, sign_lord, house_d1, pada,
+#      longitude_sidereal, combustion_state, retrograde_flag}. 'dispositor', 'D9_sign',
+#      'karaka_role', 'longitude' and 'dignity_score' are not among them. The keys below are the
+#      subset of real ones that answer this writer's stated question (the lord's condition);
+#      'pada' is omitted as positional detail rather than condition.
+#
+# The subject is normalised through `brahmagyan.graha_vocabulary.norm_graha`, the L0 SSoT, rather
+# than a wrapper-local map (§N.7 item 3). ORDER BY is total so the LIMIT is deterministic
+# (§N.7 item 2).
 _FETCH_FACT_REFS_SQL = """
 SELECT fact_id, fact_subject, fact_key, fact_value_text, fact_value_num
 FROM chart_facts
 WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+  AND fact_category = 'graha_position'
   AND fact_subject = %s
-  AND fact_key IN ('sign', 'nakshatra', 'dispositor', 'D9_sign', 'karaka_role',
-                   'longitude', 'dignity_score')
+  AND fact_key IN ('sign', 'nakshatra', 'sign_lord', 'nakshatra_lord',
+                   'house_d1', 'combustion_state', 'retrograde_flag',
+                   'longitude_sidereal')
+ORDER BY fact_key, fact_id
 LIMIT 10
 """
 
@@ -210,7 +235,9 @@ class KaAvdhiWriter(WriterBase):
                 _sp.execute(f"SAVEPOINT sp_avadhi_facts_{graha[:6]}")
             try:
                 with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                    cur.execute(_FETCH_FACT_REFS_SQL, (chart_id, graha))
+                    # M4: normalise Title-case dasha lords to the canonical chart_facts
+                    # subject code via the L0 SSoT before matching.
+                    cur.execute(_FETCH_FACT_REFS_SQL, (chart_id, norm_graha(graha)))
                     rows = cur.fetchall()
                 fact_refs_by_graha[graha] = [
                     {

@@ -128,26 +128,75 @@ function computeCacheKey(params: {
 
 // ── Primitive caller ───────────────────────────────────────────────────────────
 
+/**
+ * Result from a single callPrimitive invocation.
+ *
+ * F-30/F-74: `upstream_status` is always present so bundle consumers can
+ * distinguish auth failures (401/403) from validation errors (400) from
+ * infra failures (500) from success (200).  `error_body` carries the parsed
+ * upstream JSON error when the call is non-2xx.
+ *
+ * F-127: params are wrapped under { params: <toolParams> } so the primitives
+ * route's `body.params ?? {}` deserialization receives them correctly.  The
+ * flat-body bug caused `chart_id` to be silently dropped, making every
+ * per_chart sub-cap hit the CHART_REQUIRED 400 gate on the loopback.
+ */
+interface PrimitiveResult {
+  ok: boolean
+  upstream_status: number
+  data?: unknown
+  error_body?: unknown
+}
+
 async function callPrimitive(
   toolName: string,
   params: Record<string, unknown>,
   principal: { user_uid: string; audience_tier: string; key_id: string }
-): Promise<unknown> {
+): Promise<PrimitiveResult> {
   const url = `${PLATFORM_URL}/api/mcp/primitives/${toolName}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
-      'X-MCP-User': principal.user_uid,
-      'X-MCP-Audience-Tier': principal.audience_tier,
-      'X-MCP-Key-Id': principal.key_id,
-    },
-    body: JSON.stringify(params),
-    signal: AbortSignal.timeout(SUB_TOOL_TIMEOUT_MS),
-  })
-  if (!response.ok) throw new Error(`HTTP ${response.status}`)
-  return response.json()
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-MCP-Internal-Token': MCP_INTERNAL_TOKEN,
+        'X-MCP-User': principal.user_uid,
+        'X-MCP-Audience-Tier': principal.audience_tier,
+        'X-MCP-Key-Id': principal.key_id,
+      },
+      // F-127: primitives route reads body.params (not the flat body).
+      // Wrapping ensures chart_id and all other sub-tool params survive the
+      // loopback deserialization — without this every per_chart sub-cap
+      // resolves toolParams={} and hits the CHART_REQUIRED 400 gate.
+      body: JSON.stringify({ params }),
+      signal: AbortSignal.timeout(SUB_TOOL_TIMEOUT_MS),
+    })
+  } catch (fetchErr) {
+    // Network-level failure (ECONNREFUSED, timeout AbortError, etc.)
+    const isTimeout = fetchErr instanceof Error && fetchErr.name === 'TimeoutError'
+    return {
+      ok: false,
+      upstream_status: isTimeout ? 408 : 0,
+      error_body: { class: isTimeout ? 'timeout' : 'network_error', message: String(fetchErr) },
+    }
+  }
+
+  if (!response.ok) {
+    // F-30/F-74: surface the real upstream status + parsed error body so
+    // runSubTool can propagate auth failures (401/403) vs infra errors (500)
+    // instead of collapsing everything into the opaque 'tool_error' class.
+    let error_body: unknown
+    try {
+      error_body = await response.json()
+    } catch {
+      error_body = { class: 'non_json_error', message: `HTTP ${response.status}` }
+    }
+    return { ok: false, upstream_status: response.status, error_body }
+  }
+
+  const data = await response.json()
+  return { ok: true, upstream_status: response.status, data }
 }
 
 // ── Sub-tool runner ────────────────────────────────────────────────────────────
@@ -155,6 +204,11 @@ async function callPrimitive(
 interface BundleEntry {
   sub_tool: string
   errored: boolean
+  /** Always present (F-30/F-74): HTTP status from the upstream primitives call.
+   *  200 on success; real status (400/401/403/408/500/…) on failure so callers
+   *  can distinguish auth failures from infra errors from validation errors.
+   *  0 = network-level failure (no HTTP response received). */
+  upstream_status: number
   error_class?: string
   attempted_params?: Record<string, unknown>
   data?: unknown
@@ -166,7 +220,7 @@ interface BundleEntry {
 type BundleEventType =
   | { type: 'bundle.sub_tool.started'; sub_tool: string; started_at: string }
   | { type: 'bundle.sub_tool.completed'; sub_tool: string; ok: true; rows_returned?: number; signal_ids?: string[] }
-  | { type: 'bundle.sub_tool.error'; sub_tool: string; ok: false; error_class: string }
+  | { type: 'bundle.sub_tool.error'; sub_tool: string; ok: false; error_class: string; upstream_status: number }
   | { type: 'bundle.completed'; envelope: unknown }
 
 function extractRowCount(data: unknown): number | undefined {
@@ -209,19 +263,43 @@ async function runSubTool(
   onEvent?.({ type: 'bundle.sub_tool.started', sub_tool: label, started_at })
 
   const t0 = Date.now()
-  try {
-    const data = await callPrimitive(toolName, params, principal)
-    const latency_ms = Date.now() - t0
-    const signal_ids = extractSignalIds(data)
-    const rows_returned = extractRowCount(data)
+  // callPrimitive no longer throws — it always resolves with a PrimitiveResult.
+  const result = await callPrimitive(toolName, params, principal)
+  const latency_ms = Date.now() - t0
 
+  if (result.ok) {
+    const signal_ids = extractSignalIds(result.data)
+    const rows_returned = extractRowCount(result.data)
     onEvent?.({ type: 'bundle.sub_tool.completed', sub_tool: label, ok: true, rows_returned, signal_ids })
-    return { sub_tool: label, errored: false, data, rows_returned, signal_ids_available: signal_ids, latency_ms }
-  } catch (err) {
-    const latency_ms = Date.now() - t0
-    const error_class = err instanceof Error ? (err.name === 'TimeoutError' ? 'timeout' : 'tool_error') : 'unknown'
-    onEvent?.({ type: 'bundle.sub_tool.error', sub_tool: label, ok: false, error_class })
-    return { sub_tool: label, errored: true, error_class, attempted_params: params, latency_ms }
+    return {
+      sub_tool: label,
+      errored: false,
+      upstream_status: result.upstream_status,
+      data: result.data,
+      rows_returned,
+      signal_ids_available: signal_ids,
+      latency_ms,
+    }
+  }
+
+  // F-30/F-74: derive a meaningful error_class from the real upstream status
+  // so consumers know WHY the sub-cap failed (auth vs validation vs infra).
+  const s = result.upstream_status
+  const error_class =
+    s === 401 || s === 403 ? 'auth_denied' :
+    s === 400             ? 'validation_error' :
+    s === 408 || s === 0  ? 'timeout' :
+    s >= 500              ? 'upstream_error' :
+                            'tool_error'
+
+  onEvent?.({ type: 'bundle.sub_tool.error', sub_tool: label, ok: false, error_class, upstream_status: s })
+  return {
+    sub_tool: label,
+    errored: true,
+    upstream_status: s,
+    error_class,
+    attempted_params: params,
+    latency_ms,
   }
 }
 
@@ -379,7 +457,7 @@ export async function executeHolisticBundle(
   const bundle_entries: BundleEntry[] = results.map((r, i) =>
     r.status === 'fulfilled'
       ? r.value
-      : { sub_tool: activeTools[i]!, errored: true, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
+      : { sub_tool: activeTools[i]!, errored: true, upstream_status: 0, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
   )
 
   const allSignalIds: string[] = []
@@ -493,7 +571,7 @@ export async function executeMultiSchoolBundle(
       const spec = buildSchoolSpec(school)
       return spec
         ? runSubTool(`${school}_evidence`, spec.toolName, spec.params, principal, onEvent)
-        : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
+        : Promise.resolve<BundleEntry>({ sub_tool: `${school}_evidence`, errored: true, upstream_status: 0, error_class: 'no_spec', attempted_params: {}, latency_ms: 0 })
     }),
   ]
 
@@ -501,7 +579,7 @@ export async function executeMultiSchoolBundle(
   const entries: BundleEntry[] = results.map((r, i) =>
     r.status === 'fulfilled'
       ? r.value
-      : { sub_tool: i === 0 ? 'cross_school_lookup' : `school_${i}`, errored: true, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
+      : { sub_tool: i === 0 ? 'cross_school_lookup' : `school_${i}`, errored: true, upstream_status: 0, error_class: 'promise_rejection', attempted_params: {}, latency_ms: 0 }
   )
 
   const sub_tools_fired: string[] = []

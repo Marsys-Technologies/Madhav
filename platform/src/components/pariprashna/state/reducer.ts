@@ -42,11 +42,54 @@ export function makeInitialTurnState(id: string, userText: string): TurnState {
     activeSeam: null,
     citations: {},
     grounding: null,
+    readingDepthReceived: null,
+    interruptedReason: null,
     error: null,
+    pendingPredictionCandidates: [],
     lastEventId: null,
     seenEventIds: new Set<string>(),
     reconnectHollowCaret: false,
+    persistence: 'unknown',
+    receipt: null,
+    interpretationSets: null,
   }
+}
+
+/**
+ * P2-D (PPR-10, FD-9) — SETTLED_VISUAL: the reader sees a finished answer.
+ * Deliberately a pure function of `status`, not a stored field — it is
+ * fully derivable and a second source of truth would risk drifting from the
+ * status transitions the reducer already owns.
+ */
+export function isSettledVisual(turn: Pick<TurnState, 'status'>): boolean {
+  return turn.status === 'settled'
+}
+
+/**
+ * P2-D (PPR-10, FD-9) — DURABLY_PERSISTED: the assistant turn is confirmed
+ * safely stored. See `PersistenceStatus`'s doc comment (state/types.ts) for
+ * the full back-compat contract.
+ */
+export function isDurablyPersisted(turn: Pick<TurnState, 'persistence'>): boolean {
+  return turn.persistence === 'durable'
+}
+
+/**
+ * P2-D — true exactly when the UI owes the reader a visible incomplete-turn
+ * notice: the answer LOOKS done but is confirmed NOT (yet, or ever) durable.
+ * Never true while still streaming/thinking — an in-flight turn's
+ * incompleteness is already communicated by the working band, not this.
+ *
+ * `persistence === 'unknown'` is deliberately EXCLUDED (not treated as
+ * incomplete) — it means no signal has arrived at all, which today is
+ * exactly what a pre-P2-D fixture/stream produces (nothing ever emits
+ * `turn.persisted`, and `turn.commit` carried no `persistStatus`). Reporting
+ * "incomplete" on silence would be an invented judgment (§N.7 item 6) and
+ * would surface a false banner on every demo/legacy reading — the honest
+ * response to "no signal" is no claim either way, not an alarm.
+ */
+export function isIncompleteTurn(turn: Pick<TurnState, 'status' | 'persistence'>): boolean {
+  return isSettledVisual(turn) && turn.persistence !== 'unknown' && !isDurablyPersisted(turn)
 }
 
 /** Client-only action: submit a new user turn (optimistic, §5.3 `submitted`). */
@@ -119,7 +162,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks }
       })
     }
 
@@ -218,6 +261,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           role: action.role,
           html: action.html ?? (t.tail && t.tail.blockId === action.blockId ? t.tail.text : ''),
           table: action.table,
+          tableSpans: action.tableSpans,
           gapText: action.gapText,
           prediction: action.prediction,
         }
@@ -252,17 +296,76 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
       return updateTurn(state, action.turnId, (t) => ({ ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }))
     }
 
+    case 'reading_depth.received': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return { ...t, readingDepthReceived: action.depth, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+      })
+    }
+
+    case 'receipt.define': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return {
+          ...t,
+          receipt: action.receipt,
+          // G3-E's existing consumer (InterpretationSetsSection.tsx) reads
+          // this projection specifically — see this field's own doc comment
+          // in types.ts for why both fields are set from the same object.
+          // `?? null`: the receipt schema's own field is `.optional()`
+          // (undefined-shaped), TurnState's is `| null` — an honest absence
+          // either way, just two different schemas' own conventions for it.
+          interpretationSets: action.receipt.interpretation_sets ?? null,
+          lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
+        }
+      })
+    }
+
     case 'turn.commit': {
       return updateTurn(state, action.turnId, (t) => {
         if (isDuplicateEvent(t, action.eventId)) return t
-        return { ...t, status: 'settling', grounding: action.grounding, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        // P2-D back-compat seed (see PersistenceStatus's doc comment): only
+        // seeds from 'unknown' — never regresses a value a real
+        // turn.persisted event already refined, which matters if a
+        // reconnect/replay ever re-delivers turn.commit after turn.persisted
+        // (defensive; today's ordering never does this).
+        const persistence: TurnState['persistence'] =
+          t.persistence !== 'unknown' ? t.persistence : action.persistStatus === 'error' ? 'failed' : action.persistStatus === 'ok' ? 'durable' : 'unknown'
+        return { ...t, status: 'settling', grounding: action.grounding, persistence, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+      })
+    }
+
+    case 'turn.persisted': {
+      // P2-D (PPR-10, FD-9). Latest-wins, not append-only — a turn may
+      // legitimately go pending -> durable, or pending -> failed -> (retried)
+      // -> durable, and each new signal is the most current truth. Not gated
+      // by the seen-event dedup alone: a SECOND turn.persisted for the same
+      // turn is a real state transition, not a duplicate, so only an EXACT
+      // eventId repeat (a genuine redelivery) is dropped.
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return { ...t, persistence: action.status, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
     case 'turn.close': {
+      // V3-E-024: `turn.close` is the server's authoritative "this turn is
+      // fully done" signal — it must settle the turn REGARDLESS of whether
+      // `turn.commit` preceded it. A clarification-only turn's server
+      // stream never emits `turn.commit` at all (confirmed live: `block.commit`
+      // -> `phase:plan end` -> `turn.close` directly, no grounding to report),
+      // so gating settlement on `status === 'settling'` — a status set by
+      // `turn.commit` and by `snapshot.apply`'s closed-gap path, but by
+      // NOTHING in a clarification turn's own stream — left such a turn
+      // stuck forever in its pre-close status, composer locked, even though
+      // the server had already closed it. Settle from any NON-terminal
+      // status; a turn already `'settled'`/`'errored'`/`'interrupted'` is
+      // never resurrected by a (possibly late/duplicate) turn.close.
+      const TERMINAL_STATUSES: ReadonlySet<TurnState['status']> = new Set(['settled', 'errored', 'interrupted'])
       return updateTurn(state, action.turnId, (t) => {
-        if (t.status === 'settling') return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
-        return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        if (TERMINAL_STATUSES.has(t.status)) return { ...t, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'settled', lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -283,7 +386,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const blocks = t.tail
           ? [...t.blocks, { id: t.tail.blockId, kind: t.tail.kind, role: t.tail.role, html: t.tail.text }]
           : t.blocks
-        return { ...t, status: 'interrupted', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
+        return { ...t, status: 'interrupted', interruptedReason: 'user_stop', tail: null, blocks, lastEventId: action.eventId, seenEventIds: addSeen(t, action.eventId) }
       })
     }
 
@@ -302,11 +405,30 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         return {
           ...t,
           status,
+          // A stale-timeout snapshot (ring_buffer.ts's finalizeInterruptedIfStale,
+          // forwarded by resume/route.ts) is a real connection/server-died
+          // condition — never the user pressing Stop (V3-E-023).
+          interruptedReason: status === 'interrupted' ? 'connection_lost' : null,
           tail: null,
           activeSeam: null,
           blocks: action.text ? [{ id: `snapshot-${action.turnId}`, kind: 'paragraph' as const, html: action.text }] : t.blocks,
           citations,
           reconnectHollowCaret: false,
+          lastEventId: action.eventId,
+          seenEventIds: addSeen(t, action.eventId),
+        }
+      })
+    }
+
+    case 'prediction_card': {
+      return updateTurn(state, action.turnId, (t) => {
+        if (isDuplicateEvent(t, action.eventId)) return t
+        return {
+          ...t,
+          pendingPredictionCandidates: [
+            ...t.pendingPredictionCandidates,
+            { partId: action.partId, conversationId: action.conversationId, candidate: action.candidate },
+          ],
           lastEventId: action.eventId,
           seenEventIds: addSeen(t, action.eventId),
         }

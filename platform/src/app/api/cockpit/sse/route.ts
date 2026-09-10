@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +19,15 @@ export async function GET(req: NextRequest) {
 
   const chartId = req.nextUrl.searchParams.get('chart_id')
   if (!chartId) return new Response('chart_id required', { status: 400 })
+
+  // V3-E-011: chart-level authz gate before opening any stream — the route
+  // used to check only "is anyone logged in", letting any authenticated user
+  // open a live SSE stream on an arbitrary chart_id and receive real-time
+  // run.state_change / asset.progress events (including rows_written)
+  // indefinitely. Placed before the pubsub/polling branch so neither stream
+  // implementation can open without it.
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  if (denied) return denied
 
   const encoder = new TextEncoder()
 

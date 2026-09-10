@@ -206,6 +206,24 @@ def test_fetch_active_doshas_traces_graha_via_constituent_facts(bo_upaya):
     assert out.get("Mars") == ["Mangal Dosha"]
 
 
+def test_fetch_active_doshas_maps_l1_mars_code(bo_upaya):
+    """L1 stores Mars as MAR, which must map to the writer's Mars key."""
+    conn = MagicMock()
+
+    dosha_result = MagicMock()
+    dosha_result.fetchall.return_value = [
+        ("manglik", "Mangal Dosha", {"fires": "true", "constituent_facts_array": ["f1"]}),
+    ]
+    constituent_result = MagicMock()
+    constituent_result.fetchall.return_value = [("MAR",), ("HOUSE_7",)]
+
+    conn.execute.side_effect = [dosha_result, constituent_result]
+
+    out = bo_upaya._fetch_active_doshas_by_graha(conn, "chart-1", "lahiri_chitrapaksha")
+
+    assert out == {"Mars": ["Mangal Dosha"]}
+
+
 def test_fetch_active_doshas_no_constituents_no_crash(bo_upaya):
     conn = MagicMock()
     dosha_result = MagicMock()

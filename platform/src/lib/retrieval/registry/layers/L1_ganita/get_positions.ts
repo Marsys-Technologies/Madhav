@@ -1,6 +1,7 @@
 /**
  * L1 retrieval: graha positions
- * Covers: graha_position, upagraha_position, aprakasha_position
+ * Covers: graha_position, upagraha_position, aprakasha_position, sun_derived_upagraha,
+ *         sandhi_flag, nakshatra_cross_ayanamsha
  * Tool: marsys://tool/L1/get_positions
  *
  * FRAME FACET (R5 W2, design §27.3): all rows are written lagna-relative (`house_d1` is
@@ -28,6 +29,22 @@
  *     (per-graha 5-ayanamsha nakshatra-stability check) with zero prior serving route. Added to
  *     the `categories` enum below (NOT the unconditional default, to preserve CR-50's default-
  *     page discipline) — reachable via categories:["nakshatra_cross_ayanamsha"].
+ *
+ * F-B32 (L1_W6_CLOSE_REPORT_v1_0.md §5, cycle 184): `sun_derived_upagraha` (KALA_SUN,
+ * MRITYU_SUN, YAMAGHANTAKA, ARTHA_PRAHARA — 4 Sun-derived shadow points, `ga_sensitive_
+ * writer.py`-owned, 20 rows/ayanamsha) and `sandhi_flag` (bhava-junction flag per graha,
+ * `ga_positions_writer.py`-owned via `_build_chalit_rows`, already correctly declared in this
+ * asset's own `natural_key_partition` since migration 876) had zero serving path anywhere —
+ * this closed the same class of gap SC-5 closed for nakshatra_cross_ayanamsha. Deliberately
+ * deferred across cycles 181-183 pending a careful pass on THIS specific file (frame-rebasing
+ * math, CR-50 discipline, heavily exercised — a materially higher blast radius than the other
+ * F-B32 slices) rather than a rushed addition. `sun_derived_upagraha` genuinely HAS `house_d1`
+ * rows (confirmed live) so the `frame` facet applies to it exactly like `upagraha_position` —
+ * joined the `include_upagrahas` bundle rather than left opt-in-only, since it IS an upagraha
+ * conceptually and a caller asking for "all the upagrahas" should get it without a second
+ * category name to remember. `sandhi_flag` has no `house_d1` rows (flag/reasons text only, not
+ * a position) — added to the `categories` enum only, alongside nakshatra_cross_ayanamsha,
+ * never bundled into `include_upagrahas` (it is not an upagraha).
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
@@ -53,21 +70,27 @@ export const getPositionsCapability: CapabilityDescriptor = {
     'retrograde status, and combust status. ' +
     'CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/' +
     'Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/' +
-    'NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, etc.) and aprakasha (dark/shadow) bodies are NOT ' +
-    'interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` ' +
-    'list containing "upagraha_position"/"aprakasha_position") to fetch those behind this facet — ' +
-    'when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. ' +
+    'NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, Sun-derived shadow points, etc.) and aprakasha ' +
+    '(dark/shadow) bodies are NOT interleaved into the default page. Pass ' +
+    '`include_upagrahas: true` (or an explicit `categories` list containing ' +
+    '"upagraha_position"/"sun_derived_upagraha"/"aprakasha_position") to fetch those behind this ' +
+    'facet — when present, upagraha/aprakasha rows are still served AFTER the grahas, never ' +
+    'interleaved. ' +
     'Each row carries fact_id for Bodha constituent_facts_array back-reference. ' +
-    'Covers fact_categories: graha_position, upagraha_position, aprakasha_position. ' +
+    'Covers fact_categories: graha_position, upagraha_position, sun_derived_upagraha, ' +
+    'aprakasha_position. ' +
     'Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each ' +
     'row\'s house count onto that reference frame in-response (design §27.3) — e.g. frame:"chandra" ' +
-    'answers "what house is X in, from Moon" in one call, without a second lookup. ' +
+    'answers "what house is X in, from Moon" in one call, without a second lookup; applies to ' +
+    'sun_derived_upagraha rows too (they carry house_d1), not just graha/upagraha_position. ' +
     'graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde ' +
     'and combustion state (already on the default page) — numeric speed (degrees/day) for the ' +
     'chart\'s birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). ' +
-    'A further real category, nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-' +
-    'stability check), is available on request via categories:["nakshatra_cross_ayanamsha"] — ' +
-    'not on the default page.',
+    'Two further real categories are available on request, not on the default page or the ' +
+    'include_upagrahas bundle: nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-' +
+    'stability check) via categories:["nakshatra_cross_ayanamsha"], and sandhi_flag ' +
+    '(bhava-junction flag per graha — not an upagraha, no house_d1) via ' +
+    'categories:["sandhi_flag"].',
   input_schema: {
     chart_id: {
       type: 'string',
@@ -82,18 +105,20 @@ export const getPositionsCapability: CapabilityDescriptor = {
       type: 'array',
       description: 'Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default ' +
         '(graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 ' +
-        'opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check, ' +
-        'not on the default page).',
+        'opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check) ' +
+        'and the F-B32 opt-in category sandhi_flag (bhava-junction flag per graha) — neither is on ' +
+        'the default page or the include_upagrahas bundle.',
       items: {
         type: 'string',
-        enum: ['graha_position', 'upagraha_position', 'aprakasha_position', 'nakshatra_cross_ayanamsha'],
+        enum: ['graha_position', 'upagraha_position', 'sun_derived_upagraha', 'aprakasha_position',
+          'nakshatra_cross_ayanamsha', 'sandhi_flag'],
       },
     },
     include_upagrahas: {
       type: 'boolean',
-      description: 'CR-50: when true (and `categories` is omitted), also includes upagraha_position ' +
-        'and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, ' +
-        'never interleaved into the default page. Default false.',
+      description: 'CR-50: when true (and `categories` is omitted), also includes upagraha_position, ' +
+        'sun_derived_upagraha, and aprakasha_position rows behind this explicit facet — served AFTER ' +
+        'the 9 grahas + Lagna, never interleaved into the default page. Default false.',
       default: false,
     },
     planet: {
@@ -108,7 +133,10 @@ export const getPositionsCapability: CapabilityDescriptor = {
       description: 'Reference frame to re-base house counts onto (default: lagna). ' +
         'chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. ' +
         'When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the ' +
-        'stored lagna-relative `house_d1` (fact_key) value.',
+        'stored lagna-relative `house_d1` (fact_key) value. F-159: frame="chandra" additionally ' +
+        'carries `ayanamsha_frame_sensitivity` — a disclosure (never a correctness ruling) of ' +
+        'whether the Moon\'s own sign, the frame-determining fact, agrees across the 5 real ' +
+        'ayanamshas.',
       enum: FRAME_VALUES,
       default: 'lagna',
     },
@@ -134,11 +162,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
       const offset  = (args.offset as number) ?? 0
       // CR-50: an EXPLICIT `categories` list always wins (back-compat + power-user override).
       // Otherwise, the default page is graha_position ONLY (9 grahas + Lagna) — upagraha_position/
-      // aprakasha_position are opt-in via `include_upagrahas`, never interleaved by default.
+      // sun_derived_upagraha/aprakasha_position are opt-in via `include_upagrahas`, never
+      // interleaved by default. sun_derived_upagraha joins this bundle (F-B32, cycle 184) since
+      // it IS an upagraha conceptually, unlike sandhi_flag (categories-only, see below).
       const includeUpagrahas = (args.include_upagrahas as boolean) === true
       const categories = (args.categories as string[] | undefined)
         ?? (includeUpagrahas
-          ? ['graha_position', 'upagraha_position', 'aprakasha_position']
+          ? ['graha_position', 'upagraha_position', 'sun_derived_upagraha', 'aprakasha_position']
           : ['graha_position'])
       const frame = ((args.frame as string) ?? 'lagna') as ReferenceFrame
       if (!FRAME_VALUES.includes(frame)) {
@@ -201,9 +231,13 @@ export const getPositionsCapability: CapabilityDescriptor = {
       let rows = result.rows ?? []
 
       let frameNote: string | undefined
+      // F-159: populated only for frame:'chandra' — see resolveFrameReferenceSign's own doc.
+      let ayanamshaFrameSensitivity: unknown
       if (frame !== 'lagna' && rows.length > 0) {
         try {
-          const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+          const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+            await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+          ayanamshaFrameSensitivity = ayanamsha_frame_sensitivity
 
           const houseRows = rows.filter(r => r.fact_key === 'house_d1')
           if (houseRows.length === 0) {
@@ -265,6 +299,9 @@ export const getPositionsCapability: CapabilityDescriptor = {
           chart_id: chartId, categories, frame, planet: planet ?? null, rows, total: rows.length,
           include_upagrahas: includeUpagrahas,
           ...(frameNote ? { frame_note: frameNote } : {}),
+          // F-159: disclosure-only — the chandra frame's OWN Moon-sign agreement across the 5
+          // real ayanamshas, never a ruling on which ayanamsha is correct.
+          ...(ayanamshaFrameSensitivity ? { ayanamsha_frame_sensitivity: ayanamshaFrameSensitivity } : {}),
         },
         is_error: false,
       }

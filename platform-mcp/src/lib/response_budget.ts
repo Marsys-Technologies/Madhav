@@ -38,7 +38,7 @@ export interface TrimReportEntry {
   original_count: number
   kept_count: number
   reason: string
-  recover_via: { instrument: string; hint: string }
+  recover_via: { instrument: string | null; hint: string }
 }
 
 /**
@@ -80,7 +80,33 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   'reading',
   'domain_completeness',
   'completeness_directive',
+  // F-14/F-124 (reconciled): the honest-disclosure counterpart to domain_completeness above —
+  // set instead of it when no precompiled concept-slice bundle exists yet for a domain
+  // (currently health/relationship). Must never be silently trimmed away either.
+  'domain_completeness_empty_reason',
   'coverage_map',
+  // NIRMĀṆA L2-W3 (D-SALIENCE tail clause): "every umbrella envelope reserves a
+  // hard-floored `tail_watch` section ... that no budget trim may zero."
+  //
+  // Membership here is NOT a substitute for the explicit hardFloor declaration in
+  // registry_bridge.ts's tailWatchSection() — the two protect against different
+  // things and the doctrine needs both. This set is consulted in exactly two
+  // places: autoDetectTrimmableSections (so `tail_watch` is never picked up as a
+  // generic biggest-section-first casualty) and truncateLongStringsInPlace (so the
+  // prose inside a surviving tail row is never mangled mid-sentence by the
+  // last-resort walk). Neither of those respects minKeep, and hardFloor does not
+  // reach either of them — which is why hardFloor ALONE does not satisfy "no trim
+  // may zero it", and why the explicit declaration alone does not satisfy it
+  // either. The declaration governs the controlled shed down to minKeep; this
+  // entry governs everything that would bypass the declaration.
+  'tail_watch',
+  // F-179 (audit): the same "_empty_reason" honesty-disclosure convention as
+  // domain_completeness_empty_reason above, for register_p1_synthesis.ts's ranked-themes
+  // `weaknesses` array — a real, per-call-derived narrative (never a fixed template) that
+  // routinely exceeds MAX_STRING_CHARS (120) and would otherwise be mangled mid-sentence by
+  // truncateLongStringsInPlace's last-resort walk, which is exactly the "mangling an honesty
+  // field" failure mode this set exists to prevent.
+  'weaknesses_empty_reason',
   // — ŚODHANA T3 (MC-005/MC-023 regression check): the deterministic VERDICT layer —
   // assess_*'s `verdict.clauses[].text` (EL-44 grounded prose sentences) and
   // judgment_query's top-level `verdict` (verdictBlock + receipt + note, design §28.6) —
@@ -99,6 +125,39 @@ export const IMMUNE_HONESTY_FIELDS: ReadonlySet<string> = new Set<string>([
   // live in sibling `verdict_skeleton`/`checklist` keys, which remain fully trimmable).
   'verdict',
 ])
+
+// F-179 (audit) — non-flag disclosure fields AUDITED and DELIBERATELY LEFT OUT of the set
+// above (recorded so a future pass does not re-litigate from scratch):
+//   - `catalog_only_count` (register_p1_aliases.ts CategoryReceipt rows): always a NUMBER,
+//     never a string — `truncateLongStringsInPlace`'s only lever (string truncation) cannot
+//     act on it regardless of membership here. Its one containing array (`category_receipts`)
+//     is permanently capped at 3-4 elements by the tool's own zod enum, far under
+//     `autoDetectTrimmableSections`'s >10-length auto-detect threshold, so the array itself
+//     is never at real risk either. Adding the key here would protect nothing.
+//   - `gate_reason` (dossier.ts / kala_views): every observed value is a short, closed-
+//     vocabulary-like literal (e.g. 'slice_not_precomputed', 'bad_cursor') — never close to
+//     MAX_STRING_CHARS (120).
+//   - `resolution_disclosure` / `plateau_disclosure` (gochara sweep window rows): the real
+//     risk vector is the whole ROW being dropped when their containing array is sliced —
+//     key-name immunity cannot prevent array-element removal (only a `hardFloor`
+//     TrimmableSection on the containing array can, a heavier mechanism out of this audit's
+//     scope). Their own leaf string values are short closed-vocabulary tokens regardless.
+//   - `promise_gate` (assess_* grounding): DELIBERATELY droppable by F-175's own design —
+//     `grounding` is meant to fall all-or-nothing under budget pressure, with
+//     `promiseGateFlags` mirrored into the immune `kernel.flags` (via KERNEL_FLOOR_FLAG_CODES
+//     below) as the seam that survives instead. Immunizing the raw object here would fight
+//     the documented design rather than complete it.
+//   - `leverage_index_empty_reason` (registry_bridge.ts's attachLeverageIndex): currently NEVER
+//     reaches a served assess_wealth response at all — buildAssessResponse's `grounding`
+//     assembly reads `normalized['leverage_index']`, never `leverage_index_by_graha` or
+//     `leverage_index_empty_reason`. Protecting a field the response never carries is inert;
+//     this is a pre-existing key-mismatch wiring gap (same class as the F-14/F-124 fix
+//     elsewhere in this file), out of scope for F-179/F-181 and left as a follow-up note.
+//   - `unavailable_reason` / `withheld_reason`: `withheld_reason`'s live occurrences are in
+//     `pariprashna/safety` (a distinct subsystem never served through response_budget.ts).
+//     `unavailable_reason`'s occurrences in kala_views carry `String(err)`, whose UNBOUNDED
+//     length is F-174's own remit (sanitizing/clamping the source string), a separate
+//     question from this file's trim-eligibility audit — not fixed here.
 
 /** A single trimmable section of a tool's response content. */
 export interface TrimmableSection<T> {
@@ -289,7 +348,7 @@ export function applyResponseBudget<T>(
       original_count: before,
       kept_count: afterSections,
       reason: `still ${afterSections}B after flooring every section to 0 (ceiling ${maxBytes}B) — base content exceeds budget`,
-      recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+      recover_via: { instrument: null, hint: 'no smaller recovery instrument available at this budget — retry with a larger budget_kb if the calling tool accepts one, or omit budget_kb for the default ceiling' },
     })
   }
 
@@ -306,7 +365,7 @@ export function applyResponseBudget<T>(
 
 // ── finalizeMcpBudget — the whole-response, self-verifying entry point ────────
 
-export type DrillPointerLike = { instrument: string; hint: string; [k: string]: unknown }
+export type DrillPointerLike = { instrument: string | null; hint: string; [k: string]: unknown }
 
 export interface FinalizeMcpBudgetOptions<T> {
   maxKb: number
@@ -380,13 +439,20 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
   mutable['budget_kb_applied'] = opts.maxKb
   if (opts.budgetKbRequested !== undefined) mutable['budget_kb_requested'] = opts.budgetKbRequested
   const existingPointers = (mutable[drillPointersField] as DrillPointerLike[] | undefined) ?? []
-  mutable['trim_report'] = result.trim_report
-  mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, result.trim_report)
+  // A proxy envelope may already carry a truthful upstream trim report. Keep it when the
+  // outer finalizer records a further trim; otherwise the public receipt would erase the
+  // earlier, still-relevant loss.
+  const existingTrimReport = Array.isArray(mutable['trim_report'])
+    ? mutable['trim_report'] as TrimReportEntry[]
+    : []
+  const combinedTrimReport = [...existingTrimReport, ...(result.trim_report ?? [])]
+  mutable['trim_report'] = combinedTrimReport
+  mutable[drillPointersField] = mergeTrimPointersIntoPointers(existingPointers, combinedTrimReport)
 
   // Re-measure the WHOLE object now that trim_report + merged pointers are attached —
   // the step the original mechanism skipped.
   if (estimateBytes(content) > maxBytes) {
-    let report = [...(result.trim_report ?? [])]
+    let report = [...combinedTrimReport]
     // Drop the single largest-by-bytes entry at a time until under budget or only one
     // entry remains (never go to a fully-empty array here — see the null fallback below).
     while (report.length > 1 && estimateBytes(content) > maxBytes) {
@@ -403,10 +469,10 @@ export function finalizeMcpBudget<T extends Record<string, unknown>>(
       // Even a 1-entry trim_report doesn't fit — collapse to a minimal summary.
       mutable['trim_report'] = [{
         path: '(trim_report)',
-        original_count: result.trim_report?.length ?? 0,
+        original_count: combinedTrimReport.length,
         kept_count: 1,
         reason: 'full trim_report omitted to fit budget',
-        recover_via: { instrument: 'response_format:legacy', hint: 'full untrimmed response' },
+        recover_via: { instrument: null, hint: 'no smaller recovery instrument available at this budget — retry with a larger budget_kb if the calling tool accepts one, or omit budget_kb for the default ceiling' },
       }]
     }
     if (estimateBytes(content) > maxBytes) {
@@ -524,7 +590,7 @@ export function autoDetectTrimmableSections<T extends Record<string, unknown>>(
       setArray: setter,
       recover: {
         instrument: toolName,
-        hint: `call ${toolName} again with a narrower filter/date_range, or a smaller top_k/limit, to reach the rest of "${path}"`,
+        hint: `call ${toolName} again with a narrower scope of its own declared parameters, to reach the rest of "${path}"`,
       },
     })
   }
@@ -590,11 +656,26 @@ export function applyAutoBudgetToEnvelope(
   if (!content || typeof content !== 'object' || Array.isArray(content)) return
   const sections = autoDetectTrimmableSections(content as Record<string, unknown>, toolName)
   if (sections.length === 0) return
-  const result = applyResponseBudget(content as Record<string, unknown>, maxKb, sections)
-  if (result.trim_report) {
-    const existing = Array.isArray(envelopeObj['trim_report']) ? (envelopeObj['trim_report'] as TrimReportEntry[]) : []
-    envelopeObj['trim_report'] = [...existing, ...result.trim_report]
-  }
+  // The public contract lives on the outer envelope, not its `content` payload. Adapt the
+  // content-relative auto sections to that outer shape so finalization measures the actual
+  // served object and attaches its receipt/recovery pointers where callers consume them.
+  const outerSections: TrimmableSection<Record<string, unknown>>[] = sections.map((section) => ({
+    ...section,
+    path: `content.${section.path}`,
+    getArray: (envelope) => {
+      const nested = envelope['content']
+      return nested && typeof nested === 'object' && !Array.isArray(nested)
+        ? section.getArray(nested as Record<string, unknown>)
+        : undefined
+    },
+    setArray: (envelope, kept) => {
+      const nested = envelope['content']
+      if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+        section.setArray(nested as Record<string, unknown>, kept)
+      }
+    },
+  }))
+  finalizeMcpBudget(envelopeObj, { maxKb, sections: outerSections })
 }
 
 /**
@@ -637,6 +718,346 @@ export const KALA_TEMPORAL_FAMILY_BUDGET_KB = {
   kala_windows_get: 40,
   kala_bundle_get: 40,
 } as const
+
+// ── EKAVĀKYATĀ A-09 — SĀRA COMPOSITION KERNEL API (FROZEN) ────────────────────
+//
+// EKV-KERNEL-API-FROZEN: these interfaces are stable from this commit.
+// Consumers: A-14 (register/gloss in kernel+grounding), A-16 (natal D1 7th-house
+// join), B-08 (ranker integration). Changes after freeze require LEAD ruling.
+//
+// ROOT CAUSE (F-56/F-111): autoDetectTrimmableSections sees only top-level arrays.
+// assess_*'s dominant sections (activating_dasha ~62KB, verdict_skeleton ~43KB) are
+// OBJECTS — invisible to PASS 1/2. The ships-anyway path (:280-300) silently ships
+// over-budget responses. SOLUTION: composition replaces subtraction. Always assemble
+// a ≤2KB kernel; add grounding/evidence as budget allows. The load-bearing layers
+// never pass through an object-blind trimmer.
+
+/**
+ * The sāra (essence) kernel — always ≤2 KB, always present in a composed response.
+ *
+ * - `verdict`:  single deterministic sentence (deterministic aggregation of L1/L2
+ *               data, never LLM-generated; max ~200 chars; immune per C8 §4).
+ * - `flags`:    sparse JudgmentFlagEntry list — honesty gaps, data-plane caveats,
+ *               empty-reason codes. Zero-length when nothing to flag.
+ * - `promise`:  PACT spine join (A-08 one-voice spine). null when chart has no
+ *               standing filed prediction in brahma_prospective_ledger for the
+ *               queried domain, or when pact_query is unavailable for this tool.
+ * - `pointers`: drill-down instrument hints. Same DrillPointerLike shape as the
+ *               existing drill_pointers field — merged at serve time.
+ */
+export interface SaraKernel {
+  verdict: string
+  flags: JudgmentFlagEntry[]
+  promise: SaraPromiseJoin | null
+  pointers: DrillPointerLike[]
+}
+
+/**
+ * Promise join from the PACT spine (A-08 one-voice spine).
+ * Produced by reading pact_query for (chart_id, domain) at serve time.
+ *
+ * - `projection`:      how the current domain-forecast aligns with the standing promise.
+ * - `promise_verdict`: pact chain status (mirrors register_d10_pact.ts vocabulary:
+ *                      'chain_complete' | 'chain_pending_activation' |
+ *                      'chain_incomplete_infra' | 'denied_at_promise' |
+ *                      'denied_at_confirmation' | 'denied_at_activation').
+ * - `shared_fact_ids`: fact_ids appearing in both forecast and promise register.
+ * - `stance`:          summary alignment token.
+ */
+export interface SaraPromiseJoin {
+  projection: 'supported' | 'contradicted' | 'neutral' | 'absent'
+  promise_verdict: string
+  shared_fact_ids: string[]
+  stance: 'consistent' | 'contradicts' | 'pending'
+}
+
+/**
+ * Assembly metadata — always included in a SaraLayeredContent response.
+ * Replaces the opaque ships-anyway path and silent flag_emit.
+ *
+ * - `budget_kb`:        ceiling applied to this composition pass.
+ * - `kernel_bytes`:     actual serialized kernel size (invariant: ≤2048).
+ * - `included_layers`:  which layers are present in this response object.
+ * - `counts`:           item counts AT ASSEMBLY — honest even when a layer is
+ *                       absent due to budget (closes the "trim zeroes count but
+ *                       count field still shows original" defect class, F-112).
+ * - `omitted_sections`: layer names omitted due to budget pressure.
+ */
+export interface CompositionReport {
+  budget_kb: number
+  kernel_bytes: number
+  included_layers: ReadonlyArray<'kernel' | 'grounding' | 'evidence'>
+  counts: Record<string, number>
+  omitted_sections: string[]
+}
+
+/**
+ * The sāra layered response shape — the stable assembly contract for A-09 tools.
+ *
+ * - `kernel`:             always present (≤2KB). verdict + flags + promise + pointers.
+ * - `grounding`:          tool-specific supporting sections (bhava conditions,
+ *                         timing_hooks, gochara_sweep, etc.) — present when budget
+ *                         allows beyond kernel.
+ * - `evidence`:           full-density data (yoga firings, signal arrays, full
+ *                         checklist) — present when budget is generous (≥40KB).
+ * - `composition_report`: always present. Honest metadata: sizes, counts, omitted.
+ *
+ * Type parameters allow each tool to type its own grounding/evidence shapes:
+ *   K — kernel shape (extends SaraKernel; tool-specific kernels may add fields)
+ *   G — grounding shape (tool-specific)
+ *   E — evidence shape (tool-specific)
+ */
+export interface SaraLayeredContent<
+  K extends SaraKernel = SaraKernel,
+  G extends Record<string, unknown> = Record<string, unknown>,
+  E extends Record<string, unknown> = Record<string, unknown>,
+> {
+  kernel: K
+  grounding?: G
+  evidence?: E
+  composition_report: CompositionReport
+}
+
+/**
+ * Kernel-flag analogue of `hardFloor` (array sections) and `IMMUNE_HONESTY_FIELDS`
+ * (scalar fields) — F-177.
+ *
+ * `assembleSaraContent`'s ≤2KB kernel trim drops `kernel.flags` entries from the TAIL of
+ * the array. That is position-based, not priority-based: the LAST flag pushed is the FIRST
+ * one deleted. F-177 (live-confirmed on chart 482012f1) is exactly that failure mode —
+ * PR #1382 mirrors `domain_completeness_empty_reason` into `kernel.flags` specifically so a
+ * caller still learns when a domain's grounding was dropped all-or-nothing, but pushes it
+ * LAST, so on any real built chart dense enough to reach the cap it was deleted before the
+ * wire. Because #1382 also made the older `domain_slice_not_configured` flag permanently
+ * unreachable (it is gated on `!hasAttachedReading`, and a `reading` is now always
+ * attached), callers received NEITHER disclosure — the exact outcome #1382's own GA-5
+ * review comment claimed to prevent.
+ *
+ * A flag nominated as protected is trimmed only after every UNPROTECTED flag and every
+ * pointer is already gone; if only protected flags remain, the trim STOPS and the kernel is
+ * allowed to exceed the 2KB ceiling rather than silently delete an honesty disclosure. That
+ * is the same ranking `IMMUNE_HONESTY_FIELDS` gives scalar honesty fields and `hardFloor`
+ * gives dense array sections (CLAUDE.md §N.6.2): a trimmer that can delete the very field
+ * disclosing that something was omitted defeats transparent trimming. `verdict` and
+ * `promise` are already unconditionally immune here; this extends comparable treatment to
+ * caller-nominated flags rather than inventing a parallel mechanism.
+ *
+ * Matching is by exact string equality for string flags, or by `code` for object flags — so
+ * a caller may protect either the literal flag value it pushed (the #1382 empty_reason text,
+ * which carries no code) or a closed-vocabulary `code`.
+ */
+export function isProtectedKernelFlag(flag: unknown, protectedFlags: ReadonlySet<string>): boolean {
+  // Static floor set (F-175) applies to EVERY caller, with no per-call nomination.
+  const code = flagCodeOf(flag)
+  if (code !== '' && KERNEL_FLOOR_FLAG_CODES.has(code)) return true
+  if (protectedFlags.size === 0) return false
+  // Per-call nomination (F-177): exact string value, or closed-vocabulary code.
+  if (typeof flag === 'string' && protectedFlags.has(flag)) return true
+  return code !== '' && protectedFlags.has(code)
+}
+
+/**
+ * Assemble a SaraLayeredContent from kernel + optional grounding/evidence.
+ *
+ * This is the SINGLE construction point — callers never manually set
+ * `included_layers`, `omitted_sections`, or `kernel_bytes`. The ≤2KB kernel
+ * invariant is enforced here by trimming pointers/flags (never verdict or promise).
+ * Counts are accepted from the caller at assembly time (computed BEFORE any layer
+ * is omitted, so the composition_report is honest even when evidence is absent).
+ *
+ * `protected_flags` (F-177) nominates flag values/codes the kernel trim must preserve ahead
+ * of every unprotected flag and every pointer — see `isProtectedKernelFlag`.
+ */
+export function assembleSaraContent<
+  K extends SaraKernel,
+  G extends Record<string, unknown>,
+  E extends Record<string, unknown>,
+>(opts: {
+  kernel: K
+  grounding?: G
+  evidence?: E
+  budget_kb: number
+  counts: Record<string, number>
+  protected_flags?: ReadonlyArray<string>
+}): SaraLayeredContent<K, G, E> {
+  const { kernel, grounding, evidence, budget_kb, counts } = opts
+  const maxBytes = budget_kb * 1024
+  const KERNEL_MAX_BYTES = 2048
+  const protectedFlags: ReadonlySet<string> = new Set(opts.protected_flags ?? [])
+
+  // Enforce ≤2KB kernel invariant.
+  // verdict + promise are immune (irreducible honesty core). Trim pointers then
+  // flags until under ceiling, alternating by whichever is larger.
+  //
+  // F-175: flag trimming is positional (`slice(0, -1)`, from the end), which means the LAST
+  // flag pushed is the FIRST discarded — regardless of what it says. Live-caught by this
+  // finding's own wiring test: on assess_career/assess_wealth the kernel crossed 2048 bytes
+  // and the trimmer dropped `promise_chain_contradicts_domain` (this server independently
+  // DENIES the domain being assessed) while keeping `complete_domain_accounting_attached`
+  // (a "full slice is available" convenience note). That is precisely the §N.6 item 2
+  // regression class — a generic trim zeroing the densest, most-actionable content while a
+  // lower-density section survives — one layer below where §N.6 previously legislated it.
+  // KERNEL_FLOOR_FLAG_CODES gives those flags a real hardFloor: they are trimmed only after
+  // every non-floor flag is gone, and never merely because they were appended last.
+  // F-177: flag trimming is PRIORITY-ordered, not purely positional. Only UNPROTECTED
+  // flags are eligible, and the alternation balances pointers against the count of
+  // ELIGIBLE flags — otherwise protected flags would inflate `flags.length` and cause the
+  // pointer list to be over-trimmed to compensate for entries that are never coming out.
+  const mutableKernel = kernel as unknown as Record<string, unknown>
+  while (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
+    const pointers = mutableKernel['pointers'] as unknown[]
+    const flags = mutableKernel['flags'] as unknown[]
+    // Tail-most trimmable flag: preserves the existing last-in-first-out cut order among
+    // the flags that ARE eligible, while stepping over protected ones wherever they sit.
+    let trimIdx = -1
+    let eligibleFlagCount = 0
+    for (let i = 0; i < flags.length; i++) {
+      if (!isProtectedKernelFlag(flags[i], protectedFlags)) {
+        eligibleFlagCount++
+        trimIdx = i
+      }
+    }
+    if (pointers.length === 0 && eligibleFlagCount === 0) break // can't trim further
+    if (pointers.length >= eligibleFlagCount && pointers.length > 0) {
+      mutableKernel['pointers'] = pointers.slice(0, -1)
+    } else if (trimIdx >= 0) {
+      mutableKernel['flags'] = flags.filter((_, i) => i !== trimIdx)
+    } else {
+      break
+    }
+  }
+
+  // F-181: the loop above can exit with the kernel STILL over KERNEL_MAX_BYTES — every
+  // eligible (unprotected) pointer and flag is already gone, and what remains (verdict,
+  // promise, and every floor-protected flag) is, by design, never deleted to force a fit
+  // (the whole point of KERNEL_FLOOR_FLAG_CODES). That is a real, distinct invariant breach
+  // from the whole-envelope `budget_exceeded_after_trim` signal — the Sāra kernel has its
+  // OWN ≤2KB contract, checked and disclosed here regardless of whether the outer envelope
+  // ever hits its own ceiling. Disclose it explicitly rather than silently shipping an
+  // oversized kernel with no signal that its own invariant was breached (§N.8: a signal must
+  // exist for a condition this codebase already treats as load-bearing). This flag code is
+  // itself listed in KERNEL_FLOOR_FLAG_CODES so it can never be the casualty of a subsequent
+  // trim pass.
+  if (estimateBytes(kernel) > KERNEL_MAX_BYTES) {
+    mutableKernel['flags'] = [
+      ...(mutableKernel['flags'] as unknown[]),
+      judgmentFlag(
+        'kernel_ceiling_exceeded_for_disclosure',
+        `the Sāra kernel's own ${KERNEL_MAX_BYTES}B ceiling is still exceeded after trimming ` +
+        'every eligible pointer and flag — the surviving floor-protected disclosures (verdict, ' +
+        'promise, and/or floor-protected flags) were not deleted to force an artificial fit.',
+      ),
+    ]
+  }
+
+  // Greedily include grounding if it fits within budget.
+  const includedLayers: Array<'kernel' | 'grounding' | 'evidence'> = ['kernel']
+  const omittedSections: string[] = []
+
+  if (grounding) {
+    if (estimateBytes({ kernel, grounding }) <= maxBytes) {
+      includedLayers.push('grounding')
+    } else {
+      omittedSections.push('grounding')
+    }
+  }
+
+  // Include evidence only if grounding was included AND evidence still fits.
+  if (evidence) {
+    if (includedLayers.includes('grounding') && estimateBytes({ kernel, grounding, evidence }) <= maxBytes) {
+      includedLayers.push('evidence')
+    } else {
+      omittedSections.push('evidence')
+    }
+  }
+
+  const composition_report: CompositionReport = {
+    budget_kb,
+    kernel_bytes: estimateBytes(kernel),
+    included_layers: includedLayers,
+    counts,
+    omitted_sections: omittedSections,
+  }
+
+  const assembled: SaraLayeredContent<K, G, E> = { kernel, composition_report }
+  if (includedLayers.includes('grounding') && grounding) assembled.grounding = grounding
+  if (includedLayers.includes('evidence') && evidence) assembled.evidence = evidence
+  return assembled
+}
+
+/**
+ * F-175 (§N.6 item 2, applied to the Sāra kernel's flag array): flag codes that carry a
+ * hardFloor. A flag in this set states that this server holds a finding which CONTRADICTS
+ * or LIMITS what the response's own verdict says — it is the densest, most-actionable line
+ * in the kernel, and a byte-pressure trim must reach it last, never first-because-appended-
+ * last. Deliberately narrow: membership is for "the reading you are about to trust is
+ * disputed / was never checked", not for every caveat.
+ */
+export const KERNEL_FLOOR_FLAG_CODES: ReadonlySet<string> = new Set<string>([
+  // F-175 — the PACT promise chain denies the very domain being assessed, or could not be
+  // consulted at all (unchecked ≠ clean; F-110 A7).
+  'promise_chain_contradicts_domain',
+  'promise_chain_unchecked',
+  // The response could not be made to fit without loss — dropping THIS one would make the
+  // overage itself invisible.
+  'budget_exceeded_after_trim',
+  // F-179 (audit): the D1 significator-condition leg — the foundational dignity/ṣaḍbala
+  // read the kernel's own verdict headline cites — could not be assembled this call. "Was
+  // never checked" is exactly the membership bar above; without this flag surviving, a
+  // trimmed kernel's verdict text can read as fully grounded when this leg was silently
+  // absent (register_d8_assess_domain.ts's significator_condition_unavailable).
+  'significator_condition_unavailable',
+  // F-179 (audit): the assembled verdict itself is empty (no deterministic composition data
+  // was available to compose one) — the single most severe instance of "the reading you are
+  // about to trust is disputed": there is no reading. Losing this flag under trim pressure
+  // would leave a hollow kernel with nothing disclosing why (registry_bridge.ts's
+  // buildAssessResponse, hollow_envelope_no_data_rows).
+  'hollow_envelope_no_data_rows',
+  // F-181: this flag reports that the kernel itself could not be brought under its own 2KB
+  // ceiling without deleting a floor-protected disclosure. Dropping THIS one under further
+  // pressure would make that specific overage invisible — the kernel-scoped analogue of
+  // `budget_exceeded_after_trim` above, and it must never itself be trimmable.
+  'kernel_ceiling_exceeded_for_disclosure',
+  // F-179 (audit) — codes AUDITED and DELIBERATELY LEFT OUT of this floor (recorded so a
+  // future pass does not re-litigate from scratch; full classification table + reachability
+  // analysis in PR #<pending>/F-179 audit note):
+  //   - `catalog_only_rows_present` (F-174 item 2, ruled in-scope): doctrinally load-bearing
+  //     (§N.6 item 1 — a catalog-only label match must never be silently read as confirmed)
+  //     and emitted UNCONDITIONALLY on every assess_* call, but F-177's own shipped tests
+  //     (f177_kernel_flag_disclosure_protection.test.ts) deliberately pin it as a NORMAL,
+  //     per-call-nominable flag rather than a static floor member — `isProtectedKernelFlag`
+  //     is asserted `false` for it there absent an explicit per-call `protected_flags`
+  //     nomination. Statically flooring it would (a) silently overturn that intentional prior
+  //     decision and (b) unconditionally raise the floor's minimum footprint on every single
+  //     assess_* call (since it always fires), which is exactly the over-protection this
+  //     audit was warned against recreating (F-181's overflow as the normal case). The
+  //     existing per-call `protected_flags` mechanism (buildAssessResponse's
+  //     `disclosureFlags`) remains the correct lever for a caller that needs this specific
+  //     flag protected on a specific response.
+  //   - `domain_inference_requires_acharya_validation`: emitted UNCONDITIONALLY on every
+  //     assess_* call as a standing methodology disclaimer, not a per-call "disputed/never
+  //     checked" finding — exactly the "every caveat" case this set's own doctrine excludes.
+  //   - `bearing_yogas_empty` / `bearing_yogas_no_domain_match` / `gochara_top_window_
+  //     already_peaked`: real 'info'-severity coverage/context disclosures, but they do not
+  //     contradict or limit the verdict — a genuine coverage gap, left trimmable by design.
+  //   - `timing_anchored_forced_false`, `varga_confirmed_forced_false`, `pact_halted_at_*`,
+  //     `confirmation_graha_unrecognized`, `pact_trigger_infra_incomplete`,
+  //     `chart_header_unresolved`, `cursor_filter_mismatch`, `as_of_date_precedes_chart_
+  //     birth`, `hollow_envelope_shape_not_evaluated`: verified NOT reachable inside
+  //     `SaraKernel.flags` — each is emitted only by judgment_query/pact_query/get_dashas/
+  //     register_p1_synthesis.ts's own top-level `judgment_flags` field, which is already
+  //     wholesale-immune via `IMMUNE_HONESTY_FIELDS`'s key-name match on `'judgment_flags'`
+  //     (a stronger, field-level protection) and never flows into `assembleSaraContent`'s
+  //     kernel at all. Adding them here would be inert — a protection with no attack surface.
+])
+
+function flagCodeOf(flag: unknown): string {
+  if (typeof flag === 'string') return flag.split(':')[0]!.trim()
+  if (flag && typeof flag === 'object' && typeof (flag as { code?: unknown }).code === 'string') {
+    return (flag as { code: string }).code
+  }
+  return ''
+}
 
 function mergeTrimPointersIntoPointers(
   pointers: DrillPointerLike[],

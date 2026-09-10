@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:21:15Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-47",
+  "merge_commit": "bb5c5278b5adeb1e3e9761bc1655986a0a04e177",
+  "deployment": {
+    "workflow_run": 32263050773,
+    "affected_job": "Build & Deploy Sidecar",
+    "affected_job_steps": {
+      "build_and_push_sidecar_image": "SUCCESS",
+      "deploy_sidecar_to_cloud_run": "SUCCESS"
+    },
+    "service": "amjis-sidecar",
+    "revision": "amjis-sidecar-01066-bzx",
+    "traffic_percent": 100,
+    "commit_label": "bb5c5278b5adeb1e3e9761bc1655986a0a04e177"
+  },
+  "direct_mcp_service_proof": {
+    "safety": "two read-only kala_muhurta_get calls; no session selection, build, adoption, job, database, or credential action",
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "range": {"start": "2026-08-20", "end": "2026-08-26"},
+    "business": {
+      "ok": true,
+      "top_window": "2026-08-20T00:00:00+00:00/2026-08-22T00:00:00+00:00",
+      "score": 0.568,
+      "dasha_quality": 0.6,
+      "md_lord": "Mercury",
+      "ad_lord": "Saturn"
+    },
+    "marriage": {
+      "ok": true,
+      "top_window": "2026-08-20T00:00:00+00:00/2026-08-22T00:00:00+00:00",
+      "score": 0.499,
+      "dasha_quality": 0.45,
+      "md_lord": "Mercury",
+      "ad_lord": "Saturn"
+    },
+    "result": "same-horizon action-sensitive scores and dasha factors differ while each response truthfully carries the requested action_type and live chart_dashas provenance"
+  },
+  "disposition": "F47_CODE_AND_SERVICE_VERIFIED; eligible for closure reconciliation when the normal V4 state writer is restored",
+  "remaining_external_observation": "the aggregate deployment workflow still has unrelated web/pipeline jobs; they do not affect the deployed sidecar revision or this F47 service proof",
+  "next_safe_action": "reconcile the remaining workflow terminal state, then rebase the separately scoped F50 and F42 candidates onto current main before any PR action"
+}

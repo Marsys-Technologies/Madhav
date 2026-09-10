@@ -15,6 +15,9 @@ import { getDispositorsCapability }      from './get_dispositors'
 import { getSadeSatiCapability }         from './get_sade_sati'
 import { getPanchangaCapability }        from './get_panchanga'
 import { getSensitivePointsCapability }  from './get_sensitive_points'
+// F-B18/F-B19: ga_nakshatra had no dedicated serving face at all (ganita_nakshatra_get
+// never existed) — closes the gap.
+import { getNakshatraCapability }        from './get_nakshatra'
 import { getKarakasCapability }          from './get_karakas'
 import { getDignityCapability }          from './get_dignity'
 import { getAvasthsCapability }          from './get_avasthas'
@@ -49,6 +52,10 @@ import { getPrashnaLagnaCapability }        from './get_prashna_lagna'
 // SARVA-SIDDHI W-4 lane D-4 (CR-30): dedicated first-class KP (Krishnamurti Paddhati)
 // cusp/sub-lord serving face over the already-stored KP fact categories (no new computation).
 import { getKpCuspsCapability }             from './get_kp_cusps'
+// F-B32 (L1_W6_CLOSE_REPORT_v1_0.md §5): ga_structural's residual 15 fact_categories with
+// zero serving path anywhere (ganita_structural_get was a canonical-face name with no
+// backing capability at all) — closes that gap.
+import { getStructuralSignalsCapability }   from './get_structural_signals'
 // Elevation Campaign v2.1, STREAM α Lane-H, Task 1: discovery substrate (C3 SchemaMap) +
 // concept-alias resolver.
 import { getDatabaseSchemaCapability }      from './get_database_schema'
@@ -69,6 +76,7 @@ registerCapability(getDispositorsCapability)
 registerCapability(getSadeSatiCapability)
 registerCapability(getPanchangaCapability)
 registerCapability(getSensitivePointsCapability)
+registerCapability(getNakshatraCapability)
 registerCapability(getKarakasCapability)
 registerCapability(getDignityCapability)
 registerCapability(getAvasthsCapability)
@@ -92,6 +100,7 @@ registerCapability(getAvTransitGatingCapability)
 registerCapability(getConditionCompositeCapability)
 registerCapability(getPrashnaLagnaCapability)
 registerCapability(getKpCuspsCapability)
+registerCapability(getStructuralSignalsCapability)
 registerCapability(getDatabaseSchemaCapability)
 registerCapability(conceptLocateCapability)
 registerCapability(queryPlanetCapability)

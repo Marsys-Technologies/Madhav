@@ -380,19 +380,26 @@ def test_existing_md_ad_rows_unchanged_when_pd_present():
 
     rows_arg = inserted.executemany.call_args[0][1]
 
+    # F-PARVA-1 (migration 679): parva_level now sits at index 2, shifting dasha_planet
+    # from index 4 to index 5 (chart_id, parva_index, parva_level, start_year, end_year,
+    # dasha_planet, ...).
+
     # First row is MD
     md_out = rows_arg[0]
-    assert md_out[4] == 'Jupiter', f"Expected Jupiter as dasha_planet in row 0, got {md_out[4]}"
+    assert md_out[2] == 1, f"Expected parva_level=1 (MD) in row 0, got {md_out[2]}"
+    assert md_out[5] == 'Jupiter', f"Expected Jupiter as dasha_planet in row 0, got {md_out[5]}"
     assert md_out[-1] == 'ka_jivana_parva:v2.0:MD=Jupiter'
 
     # Second row is AD
     ad_out = rows_arg[1]
-    assert ad_out[4] == 'Venus', f"Expected Venus as dasha_planet in row 1, got {ad_out[4]}"
+    assert ad_out[2] == 2, f"Expected parva_level=2 (AD) in row 1, got {ad_out[2]}"
+    assert ad_out[5] == 'Venus', f"Expected Venus as dasha_planet in row 1, got {ad_out[5]}"
     assert ad_out[-1] == 'ka_jivana_parva:v2.0:MD=Jupiter:AD=Venus'
 
     # Third row is PD
     pd_out = rows_arg[2]
-    assert pd_out[4] == 'Sun', f"Expected Sun as dasha_planet in row 2, got {pd_out[4]}"
+    assert pd_out[2] == 3, f"Expected parva_level=3 (PD) in row 2, got {pd_out[2]}"
+    assert pd_out[5] == 'Sun', f"Expected Sun as dasha_planet in row 2, got {pd_out[5]}"
     assert pd_out[-1] == 'ka_jivana_parva:v2.0:PD=Sun'
 
 

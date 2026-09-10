@@ -1,0 +1,29 @@
+{
+  "record_type": "PARISESA_V4_FALLBACK_PROGRESS",
+  "recorded_at": "2026-08-19T11:55:13Z",
+  "base_revision": "3fd40b61baade41862c7eecb871775d8917072f3",
+  "normal_state_writer": "still unavailable; prior fallback record documents the exact guardian refusal",
+  "F89": {
+    "status": "CODE_VERIFIED_PR_OPEN",
+    "candidate_commit": "9b238ee0340f758591d1b333956f00974ce3615f",
+    "branch": "codex/v4-f89-reference-error",
+    "pull_request": 1344,
+    "scope": [
+      "platform-mcp/src/tools/register_p1_reference.ts",
+      "platform-mcp/src/__tests__/f89_reference_inband_error_sanitization.test.ts"
+    ],
+    "verification": {
+      "focused_reference_suites": "12/12 passed",
+      "platform_mcp_typecheck": "passed",
+      "independent_review": "passed",
+      "envelope_codegen": "passed",
+      "registry_shims_codegen": "unchanged baseline halt at unrelated get-strength descriptor static-evaluation"
+    },
+    "rollback": "git revert 9b238ee0340f758591d1b333956f00974ce3615f",
+    "next": "wait for normal required PR and merge-group contexts; no bypass or merge action"
+  },
+  "F92": {
+    "status": "DIRECT_MCP_BEHAVIOR_VERIFIED_PENDING_DEPLOYMENT_REVISION_JOIN",
+    "next": "retain service proof; do not claim final closure until deployment revision evidence is joined"
+  }
+}

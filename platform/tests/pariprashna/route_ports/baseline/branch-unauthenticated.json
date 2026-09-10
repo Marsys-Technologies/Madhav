@@ -1,0 +1,22 @@
+{
+  "scenario": "branch-unauthenticated",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 401,
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "events": [
+    {
+      "non_stream_body": {
+        "error": {
+          "code": "AUTH_UNAUTHENTICATED",
+          "message": "Authentication required.",
+          "retry": false
+        }
+      }
+    }
+  ],
+  "side_effects": []
+}

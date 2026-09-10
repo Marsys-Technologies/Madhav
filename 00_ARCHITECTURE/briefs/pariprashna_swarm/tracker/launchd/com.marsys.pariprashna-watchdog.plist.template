@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>__LABEL__</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>__PYTHON3__</string>
+    <string>__TRACKER_DIR__/watchdog.py</string>
+  </array>
+  <key>StartInterval</key><integer>60</integer>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>__PATH_ENV__</string>
+    <key>TRACKER_GIT_REPO</key><string>__TRACKER_GIT_REPO__</string>
+  </dict>
+  <key>StandardOutPath</key><string>__RUNTIME_DIR__/logs/watchdog.out.log</string>
+  <key>StandardErrorPath</key><string>__RUNTIME_DIR__/logs/watchdog.err.log</string>
+  <key>WorkingDirectory</key><string>__TRACKER_DIR__</string>
+</dict>
+</plist>

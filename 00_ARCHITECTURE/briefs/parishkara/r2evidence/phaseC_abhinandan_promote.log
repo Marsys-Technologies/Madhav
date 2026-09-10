@@ -1,0 +1,16 @@
+[abhinandan] PLAN: 270 substeps
+[abhinandan] asset_throughput -> building (cockpit-visible)
+[abhinandan] 1/270 SKIP (already done, resume) key=achievement_recognition::g3_1984_1994
+[abhinandan] 2/270 SKIP (already done, resume) key=achievement_recognition::g3_1994_2004
+[abhinandan] 3/270 SKIP (already done, resume) key=achievement_recognition::g3_2004_2014
+[abhinandan] 30/270 SKIP (already done, resume) key=birth_anchor::g3_2074_2084
+[abhinandan] 60/270 SKIP (already done, resume) key=career_change::g3_2074_2084
+[abhinandan] 90/270 SKIP (already done, resume) key=childbirth::g3_2074_2084
+[abhinandan] 120/270 SKIP (already done, resume) key=exam_outcome::g3_2074_2084
+[abhinandan] 150/270 SKIP (already done, resume) key=illness_acute::g3_2074_2084
+[abhinandan] 180/270 SKIP (already done, resume) key=marriage::g3_2074_2084
+[abhinandan] 210/270 SKIP (already done, resume) key=psychological_arc::g3_2074_2084
+[abhinandan] 240/270 SKIP (already done, resume) key=separation::g3_2074_2084
+[abhinandan] 270/270 SKIP (already done, resume) key=travel_event::g3_2074_2084
+[abhinandan] PROMOTED to lit (VERIFIED via re-read): 270/270 substeps (270 resumed, 0 run this pass), 0 rows
+[abhinandan] DONE committed=270/270 (resumed=270) ins=0 upd=0 wall=7.2m

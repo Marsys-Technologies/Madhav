@@ -41,6 +41,25 @@ def main():
 
     conn = psycopg.connect(DB_URL, prepare_threshold=None)
     conn.autocommit = False
+    # PARIṢKĀRA MR-39 + S7-LOCK: session-scoped SETs (never ALTER DATABASE/ROLE)
+    # so this build session cannot be killed by the server-side idle-in-transaction
+    # timeout while ka_sangam's substeps compute with no DB traffic in between;
+    # and lock_timeout='300s' bounds lock-wait hangs (S7-LOCK hardening).
+    with conn.cursor() as _mr39_cur:
+        _mr39_cur.execute("SET idle_in_transaction_session_timeout = 1800000")
+        _mr39_cur.execute("SET lock_timeout = '300s'")
+        # GUC smoke-log: read current_setting() for ground-truth evidence in job logs.
+        _mr39_cur.execute(
+            "SELECT current_setting('idle_in_transaction_session_timeout')"
+            ", current_setting('statement_timeout')"
+            ", current_setting('lock_timeout')"
+        )
+        idle_in_txn, stmt_timeout, lock_timeout = _mr39_cur.fetchone()
+        logger.info(
+            "[GUC smoke-log] idle_in_txn=%s statement_timeout=%s lock_timeout=%s",
+            idle_in_txn, stmt_timeout, lock_timeout,
+        )
+    conn.commit()
 
     # Pre-delete phala_anchors rows that reference kala_convergence to avoid
     # FK cascade + unique-index conflict when kala_convergence rows are deleted.

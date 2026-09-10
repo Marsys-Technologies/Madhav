@@ -1051,6 +1051,76 @@ that silently persists across unrelated deploys until someone checks it directly
 
 ---
 
+## §P — CROSS-TOOL ORIENTATION, DECISION, AND LEASE CONVENTION
+
+### P.1 — One governed orientation path
+
+Claude Code and Codex are equal consumers of the governed repository, not of one
+another's transient conversation. At session open, each tool first reads
+`00_ARCHITECTURE/CURRENT_STATE_v1_0.md` and then
+`00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md`, before selecting further
+documents from the mandatory-reading sequence. `CURRENT_STATE` is the live
+you-are-here pointer; the CCD register is the append-only record of tool-neutral,
+cross-cutting decisions. Stale auxiliary state (`.conductor-state.json`,
+`.gemini/project_state.md`, and a `CLAUDECODE_BRIEF.md` marked COMPLETE) is not an
+orientation authority.
+
+### P.2 — Decision and work-order authority
+
+The native project owner remains the only authority for scope, production actions,
+and decisions that change project policy. Each CCD entry records its decision ID,
+authority, affected surfaces, evidence, and any supersession. A session records its
+selected work order in the session-open handshake and its result in the session-close
+record; the work order is a task record, not a second decision register. A tool must
+append a CCD entry when it makes or receives a new cross-cutting decision, and must
+cite the precise CCD ID when it consumes one.
+
+### P.3 — Leased worktree discipline
+
+Before work begins, a tool verifies a live lease on the campaign-coordination branch
+and records the lease ID, remote verification time, and absolute worktree path in its
+session-open handshake. The lease limits the holder to its stated scope and does not
+grant production, migration, deployment, or unrelated-edit authority. At close, the
+holder records the work-order outcome, updates the governed state it changed, and
+releases the lease through the established coordination procedure. Separate tools use
+separate task worktrees for concurrent work; a sequential acceptance hand-off may use
+one leased worktree only while its lease remains live.
+
+### P.4 — Codex local profiles and scope of this convention
+
+Codex uses the checked-in orientation loader plus the local `madhav-safe` and
+`madhav-parity` profiles. Both disable automatic project-document fallback so that the
+loader can require the full canonical `CLAUDE.md`, rather than inheriting a truncated
+32 KiB fallback. Both expose only the project `marsys-jis` MCP, authenticated through
+`MARSYS_MCP_KEY`; the safe profile is reviewable and the parity profile is for explicit
+owner-authorized work. This session's native authority permits Codex to acquire and
+release only its campaign-coordination lease rows, and to commit and push only those
+lease-row changes. All other changes stay uncommitted for owner review. This is the
+standing convention for both Claude Code and Codex unless a later CCD entry supersedes
+it.
+
+The profiles live at `~/.codex/madhav-safe.config.toml` and
+`~/.codex/madhav-parity.config.toml` and launch with `codex -p madhav-safe` and
+`codex -p madhav-parity`, respectively. Both use the server's live MCP endpoint
+`https://amjis-mcp-938361928218.asia-south1.run.app/mcp`: the unchanged repository
+`.mcp.json` root URL returns HTTP 404 to a streamable-HTTP `initialize`, while `/mcp`
+returns the server's initialization response. This is a Codex transport normalization,
+not a second server or credential surface; the repo configuration remains untouched.
+**Warning:** keep the `/mcp` endpoint in both Codex profiles; do not change it back to the
+repository root endpoint, which returns HTTP 404 to streamable-HTTP initialization.
+
+### P.5 — Mechanical enforcement and evidence
+
+`SESSION_OPEN_TEMPLATE_v1_0.md`, `SESSION_CLOSE_TEMPLATE_v1_0.md`, and
+`platform/scripts/governance/schema_validator.py` require tool identity, profile,
+worktree, lease verification, CCD consumption, and close synchronization for newly
+created session records. The acceptance suite must use fresh tool sessions, check the
+effective MCP surface, discover project skills, and prove a full `CLAUDE.md` read by
+citing content beyond byte 32,768. A loader that cannot produce that proof fails the
+acceptance test.
+
+---
+
 **END OF GOVERNANCE & INTEGRITY PROTOCOL v1.0.**
 
 *This specification is the Step 6 deliverable of the Step 0 → Step 15 governance rebuild. Status DRAFT_PENDING_REDTEAM until Step 8 closes. Step 7 implements per §M. ND.1 Mirror Discipline addressed at design level per §J + §K + §N.2; global ND.1 status flip to `addressed` fires at Step 7 close per the directive's consumption-matrix close condition.*

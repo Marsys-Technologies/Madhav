@@ -93,12 +93,14 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Principal } from '../../types.js'
+import { autofileAheadWindows, type AheadAutofileResult } from '../../lib/ahead_autofile.js'
 import {
   makeKalaEnvelope,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
+  explainPointerTo,
   noLeverPointer,
   isNoLever,
   computedCoverage,
@@ -106,15 +108,28 @@ import {
   notInCorpusCoverage,
   type ArgumentReading,
   type ArgumentEvidence,
+  type ArgumentDissent,
   type ArgumentVerdict,
   type ArgumentFalsifier,
   type QuestionFrame,
   type TriPlanePointers,
   type DrillPointerLike,
+  type CalibrationMaturityResolution,
   type KalaCoverageEntry,
   type FieldSnapshotState,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
+// F-110 (CL-15): the promise-join helper's FIRST production caller. See the PromiseGate
+// block below and 00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md.
+// F-176 (PARISESA-V4): `computePromiseGate` + its types were extracted verbatim into
+// `promise_gate.ts` so `kala_windows_get`/`kala_projections_get` can share the SAME gate —
+// see that module's header for the full account. This file's behavior is byte-identical
+// pre/post extraction (kala_ahead_get_f110_promise_gate.test.ts mocks at the `fetch` layer,
+// so it exercises this exact code path unmodified).
+import {
+  computePromiseGate,
+  type PromiseGate,
+} from './promise_gate.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 // ṢAḌ-DARŚANA W4 (Lane R, Elevation §6 D4): Mode-1 ritual-opportunity rows join the
 // 90-day digest. `fetchLatticeSubstrate` is the FROZEN engine's own fetcher and
@@ -122,6 +137,7 @@ import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/respon
 // through this path too; nothing here re-implements adjudication or grading.
 import { fetchLatticeSubstrate } from '../../lib/kala_lattice_query.js'
 import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
 
 // ── Infrastructure (self-contained proxy helper — see now.ts's identical header note on
 // why this is duplicated rather than shared: avoids coupling this lane's facade to files
@@ -129,14 +145,6 @@ import { scoreMode1Opportunities } from '../../lib/kala_ritual_resonance.js'
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha'
-}
 
 async function callRegistryCapability(
   uri: string,
@@ -1129,6 +1137,45 @@ interface ProjectionFamily {
   [key: string]: unknown
 }
 
+// ── F-110 (CL-15, TIER1-CORRECTNESS): PACT promise gate ─────────────────────────────
+//
+// THE DEFECT. For the identical chart/domain/date this tool served a `tier_1_high`
+// relationship projection narrated "High probability (>=70% convergence, clear
+// activation)" with `dissent: []`, while `pact_query`/`kala_upaya_get` on the SAME server
+// held `pact_status: 'denied_at_promise'` on 63 cited L1 facts — "the rāśi checklist does
+// not promise this matter". Which verdict a real person received was decided entirely by
+// which tool the consuming LLM happened to pick, and the natural tool for "when will I
+// marry" was the one that omitted the denial.
+//
+// WHAT IS AND IS NOT TOUCHED (§N.5 / §N.7 — the load-bearing distinction):
+//   - `probability_tier`, `narrative`, `max_effective_score` are L3-computed
+//     (ka_bhavishya_lekha) and pass through BYTE-IDENTICAL. This facade does not and must
+//     not re-grade them (this file's own header contract; MSR_COMPUTED_VALUE_DRIFT trap).
+//   - `reading.thesis` / `reading.verdict.statement` / `reading.dissent` /
+//     `evidence[].strength` are THIS FILE's own compositions (`buildAheadReading`,
+//     `TIER_TO_STRENGTH`). §N.7 governs them, and this file may not author the word
+//     "strong" — nor the empty array `dissent: []`, which asserts that no dissent exists —
+//     while the server holds a contradicting classical verdict. Correcting the narration
+//     is NOT re-grading the tier.
+//
+// STAGE SCOPE (§4.2 of the design contract) — a naive wiring would apply any `denied_at_*`
+// to every forward window, which would be a second correctness defect:
+//   - denied_at_promise / denied_at_confirmation rest on natal + varga facts. Timeless →
+//     they validly gate the WHOLE forward horizon.
+//   - denied_at_activation is evaluated AS OF ONE DATE. It says nothing about a window in
+//     2030 and MUST NOT gate it.
+//   - chain_pending_activation / chain_incomplete_infra are not denials at all (R-22).
+//
+// Full investigation, rejected alternatives (tier downgrade / suppression), and the three
+// items escalated for a native ruling:
+// `00_ARCHITECTURE/briefs/parisesa/F110_PACT_GATING_DESIGN_CONTRACT_v1_0.md`.
+//
+// F-176 (PARISESA-V4): `computePromiseGate` + `PromiseGate` (and its scope/state types) now
+// live in `./promise_gate.js`, shared with `kala_windows_get`/`kala_projections_get`
+// (register_p1_aliases.ts) — see that module's header. This file calls it with its own local
+// `callRegistryCapability`, so the call below is byte-identical in behavior to the pre-
+// extraction inline version.
+
 const TIER_TO_STRENGTH: Record<string, ArgumentEvidence['strength']> = {
   tier_1_high: 'strong',
   tier_2_moderate: 'moderate',
@@ -1222,13 +1269,49 @@ export interface RecurrenceLadderEntry {
 }
 
 /**
+ * F-KALA-1 (L3_W1_ANALYSIS_BATCH_E.md, ka_kalasutra finding 1): ranks a raw activation
+ * row's representative strength for the per-signal collapse below, and for breaking
+ * same-date ties in the final sort. `orb_strength` is 99.6% NULL (measured) — `ka_sangam`
+ * only produces windows for ≤260 of ~50,104 activation predicates — so the OLD comparison
+ * (`(existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)`) was true for EVERY
+ * comparison once both sides were NULL, meaning the loop's "first row wins" was the actual
+ * (undocumented) rule for 99.6% of signals, not a real ranking.
+ *
+ * Mirrors `compareKalaActivationRank`'s semantics (`register_d9_judgment.ts`, same
+ * finding's first fixed call site) — kept as a LOCAL, parallel implementation rather than
+ * a cross-package import (this file is `platform-mcp`; that comparator lives in the
+ * `platform` package, and a shared-lib extraction across packages is its own, separate
+ * design decision, not folded into this fix): primary
+ * `dasha_activation_proximity_score` (0% NULL measured, [0,1], higher = stronger),
+ * `orb_strength` as a secondary tiebreak (real signal for the small fraction of rows
+ * `ka_sangam` does cover), `id` as the final total-order tiebreak (§N.7 item 2).
+ */
+type ActivationRank = readonly [number, number, string]
+
+function activationRepresentativeRank(row: RawActivationRow): ActivationRank {
+  const proximity = typeof row['dasha_activation_proximity_score'] === 'number'
+    ? (row['dasha_activation_proximity_score'] as number) : null
+  const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
+  const id = typeof row['id'] === 'string' ? (row['id'] as string) : ''
+  return [proximity ?? -Infinity, orb ?? -Infinity, id] as const
+}
+
+/** Descending rank comparator: positive when `a` outranks `b`. */
+function compareActivationRank(a: ActivationRank, b: ActivationRank): number {
+  if (a[0] !== b[0]) return a[0] - b[0]
+  if (a[1] !== b[1]) return a[1] - b[1]
+  return a[2].localeCompare(b[2])
+}
+
+/**
  * Item 2: collapses the raw per-predicate `activations` rows into one recurrence-ladder
  * entry per `signal_id` (several predicate rows can share byte-identical ladders for the
  * same signal — a predicate-count artifact, not a real distinction — so this keeps only the
- * highest-`orb_strength` row per signal, exactly the same "collapse duplicated rows into
- * one family" pattern `query_temporal_activation.ts`'s own `window_families` already uses,
- * applied here to a different grouping key). Drops signals whose ladder is entirely in the
- * past relative to `todayISO` (nothing forward to serve) — never fabricates a future point.
+ * highest-ranked row per signal per `activationRepresentativeRank` above, exactly the same
+ * "collapse duplicated rows into one family" pattern `query_temporal_activation.ts`'s own
+ * `window_families` already uses, applied here to a different grouping key). Drops signals
+ * whose ladder is entirely in the past relative to `todayISO` (nothing forward to serve) —
+ * never fabricates a future point.
  */
 function computeRecurrenceLadder(
   rawActivations: RawActivationRow[],
@@ -1236,6 +1319,7 @@ function computeRecurrenceLadder(
   maxItems: number,
 ): { entries: RecurrenceLadderEntry[]; anyLadderPresent: boolean } {
   const bySignal = new Map<string, RecurrenceLadderEntry>()
+  const bestRankBySignal = new Map<string, ActivationRank>()
   let anyLadderPresent = false
 
   for (const row of rawActivations) {
@@ -1244,10 +1328,12 @@ function computeRecurrenceLadder(
     if (!signalId || !Array.isArray(rawDates) || rawDates.length === 0) continue
     anyLadderPresent = true
 
-    const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
-    const existing = bySignal.get(signalId)
-    if (existing && (existing.max_orb_strength ?? -Infinity) >= (orb ?? -Infinity)) continue
+    const rank = activationRepresentativeRank(row)
+    const existingRank = bestRankBySignal.get(signalId)
+    if (existingRank && compareActivationRank(existingRank, rank) >= 0) continue
+    bestRankBySignal.set(signalId, rank)
 
+    const orb = typeof row['orb_strength'] === 'number' ? (row['orb_strength'] as number) : null
     const points: RecurrenceLadderPoint[] = (rawDates as RecurrenceLadderPointRaw[])
       .filter((p): p is RecurrenceLadderPointRaw & { date: string } => typeof p?.date === 'string')
       .map((p) => ({
@@ -1276,7 +1362,11 @@ function computeRecurrenceLadder(
     .sort((a, b) => {
       const aNext = a.future_points[0]?.date ?? '9999-99-99'
       const bNext = b.future_points[0]?.date ?? '9999-99-99'
-      return aNext.localeCompare(bNext) || (b.max_orb_strength ?? 0) - (a.max_orb_strength ?? 0)
+      if (aNext !== bNext) return aNext.localeCompare(bNext)
+      const aRank = bestRankBySignal.get(a.signal_id)
+      const bRank = bestRankBySignal.get(b.signal_id)
+      if (aRank && bRank) return compareActivationRank(bRank, aRank)
+      return (b.max_orb_strength ?? 0) - (a.max_orb_strength ?? 0)
     })
     .slice(0, maxItems)
 
@@ -1510,9 +1600,14 @@ function buildAheadReading(params: {
   projectionFamilies: ProjectionFamily[]
   windowsOk: boolean
   projectionsOk: boolean
+  /** F-110: the PACT promise gate for this response. Never null — an unchecked gate is an
+   *  explicit `not_applicable`/`unreachable` state, not an absent field. */
+  promiseGate: PromiseGate
 }): ArgumentReading {
-  const { horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk } = params
+  const { horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk, promiseGate } = params
   const topProjection = projectionFamilies[0]
+  const gateContradicts = promiseGate.contradicts_served_projections
+  const gatedDomain = promiseGate.domain
 
   const thesisParts: string[] = []
   if (!projectionsOk && !windowsOk) {
@@ -1534,13 +1629,36 @@ function buildAheadReading(params: {
     }
   }
 
-  const evidence: ArgumentEvidence[] = projectionFamilies.slice(0, 4).map((p) => ({
-    claim:
-      `${p.domain ?? 'unlabeled domain'} projection, window ${p.window_start ?? '?'}..${p.window_end ?? '?'}` +
-      (p.probability_tier ? ` (${TIER_LABEL[p.probability_tier]})` : ''),
-    fact_ids: [...(p.member_signal_ids ?? []), ...(p.member_ids ?? [])],
-    strength: p.probability_tier ? TIER_TO_STRENGTH[p.probability_tier] : undefined,
-  }))
+  // F-110: the thesis is THIS FILE's own sentence (§N.7). It may not narrate "leading:
+  // relationship (high probability …)" while the same server holds a horizon-invariant
+  // classical denial for that domain. The L3 tier itself is untouched and still reads
+  // `tier_1_high` on the projection row two fields away — this states the dispute, it does
+  // not resolve it, and it never re-grades.
+  if (gateContradicts) {
+    thesisParts.push(
+      `CONTRADICTED AT PROMISE: this server's own classical promise chain (pact_query) returns ` +
+        `${promiseGate.pact_status} for '${gatedDomain}' — the rāśi/varga stage denies what the ` +
+        'projection(s) above date. The probability_tier is served verbatim from L3 and measures ' +
+        'temporal signal convergence, NOT classical promise; do not read it as a vetted probability ' +
+        'of the event. See promise_gate and drill via kala_explain_get.',
+    )
+  }
+
+  const evidence: ArgumentEvidence[] = projectionFamilies.slice(0, 4).map((p) => {
+    // F-110 / §N.7 item 6 (an honest null beats an invented judgment): for a projection in
+    // a domain this server classically denies, this file will not author the word 'strong'.
+    // `undefined` is NOT an invented lower grade — it is this file's OWN established value
+    // for ungraded evidence (the `probability_tier == null` branch of this very expression).
+    const contradicted = gateContradicts && p.domain === gatedDomain
+    return {
+      claim:
+        `${p.domain ?? 'unlabeled domain'} projection, window ${p.window_start ?? '?'}..${p.window_end ?? '?'}` +
+        (p.probability_tier ? ` (${TIER_LABEL[p.probability_tier]})` : '') +
+        (contradicted ? ' — CONTRADICTED by the PACT promise chain; see promise_gate' : ''),
+      fact_ids: [...(p.member_signal_ids ?? []), ...(p.member_ids ?? [])],
+      strength: contradicted ? undefined : p.probability_tier ? TIER_TO_STRENGTH[p.probability_tier] : undefined,
+    }
+  })
 
   const tierCounts = projectionFamilies.reduce(
     (acc, p) => {
@@ -1552,10 +1670,25 @@ function buildAheadReading(params: {
     { tier1: 0, tier2: 0, tier3: 0 },
   )
 
+  // F-110: the tier COUNT sentence is this file's own, and "1 high" read alone is the
+  // launder in its most compact form. The count stays true to L3; the disputed share is
+  // stated alongside it rather than folded into it (§N.6 — never flatten differing
+  // densities into one undifferentiated claim).
+  const contradictedCount = gateContradicts
+    ? projectionFamilies.filter((p) => p.domain === gatedDomain).length
+    : 0
+
   const verdict: ArgumentVerdict = {
     statement:
       projectionFamilies.length > 0
-        ? `${tierCounts.tier1} high, ${tierCounts.tier2} moderate, ${tierCounts.tier3} speculative forward window(s) identified over the next ${horizonLabel}.`
+        ? `${tierCounts.tier1} high, ${tierCounts.tier2} moderate, ${tierCounts.tier3} speculative forward window(s) identified over the next ${horizonLabel}.` +
+          (contradictedCount > 0
+            ? ` ${contradictedCount} of these fall in '${gatedDomain}', which this server's own PACT promise chain ` +
+              `returns ${promiseGate.pact_status} for — the tier and the promise chain disagree and are BOTH served; ` +
+              'this verdict reconciles neither.'
+            : promiseGate.state !== 'checked'
+              ? ' NOT CHECKED against the classical promise chain this call (see promise_gate) — unchecked is not the same as clear.'
+              : '')
         : windowFamilies.length > 0
           ? `${windowFamilies.length} forward-dated temporal window(s) identified; no graded probabilistic projection available.`
           : 'No forward temporal window or projection is currently identified.',
@@ -1569,10 +1702,24 @@ function buildAheadReading(params: {
       }
     : null
 
+  // F-110: `dissent: []` was hardcoded — an assertion that NO system on this server
+  // disagrees, emitted while pact_query held a denial on 63 cited L1 facts. The dissent
+  // array is this file's own composition and is now populated from the real gate.
+  const dissent: ArgumentDissent[] = gateContradicts
+    ? [{
+        source: 'PACT promise chain (pact_query, PROMISE→CONFIRMATION→ACTIVATION→TRIGGER)',
+        claim:
+          `${promiseGate.join?.promise_verdict ?? 'PACT chain denied.'} The classical chain denies for ` +
+          `'${gatedDomain}' what the projection(s) above date and grade. This is a horizon-invariant denial ` +
+          '(natal/varga facts, not date-dependent), so it bears on every forward window served here for that domain.',
+        fact_ids: promiseGate.join?.shared_fact_ids ?? [],
+      }]
+    : []
+
   return {
     thesis: thesisParts.join(' ') || `No forward temporal state could be assembled for the next ${horizonLabel}.`,
     evidence,
-    dissent: [],
+    dissent,
     verdict,
     falsifier,
   }
@@ -1593,11 +1740,17 @@ export interface KalaAheadResult {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
-  calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
+  calibration_maturity: CalibrationMaturityResolution
   windows: WindowFamily[]
   projections: ProjectionFamily[]
   gulika_kalam_ahead: GulikaKalamAheadWindow[]
   gulika_kalam_ahead_horizon_days: number
+  /** F-110 (CL-15): the classical PACT promise chain's verdict for this response's domain,
+   *  served ADJACENT to the L3-verbatim projections rather than folded into them. Never
+   *  absent: an unchecked gate is an explicit `not_applicable`/`unreachable` state so a
+   *  caller can distinguish "checked and clear" from "never checked" (they were
+   *  byte-identical before this field existed). */
+  promise_gate: PromiseGate
   // Item 28 (wave W1): currently-running Vimśottarī MD/AD lord's transit condition
   // projected to this call's horizon boundary (date_to) — the forward half of now.ts's
   // dasha_lord_transit_condition (same lord identity, later snapshot date).
@@ -1618,6 +1771,11 @@ export interface KalaAheadResult {
   // never served as a prediction. One entry per active chain level (Mahadasha, Antardasha).
   period_echo: PeriodEchoEntry[]
   drill_pointers: DrillPointerLike[]
+  // G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b): summary of prospective entries filed
+  // into brahma_prospective_ledger for this serving call. Best-effort — null when the
+  // auto-file hook was not invoked (e.g. the result object was constructed without it),
+  // an AheadAutofileResult when it ran (even if filed_count = 0).
+  predictions_logged: AheadAutofileResult | null
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1642,6 +1800,7 @@ export interface KalaAheadResult {
     // Item 31: whether ≥1 period-echo entry actually served a hypothesis (not merely that the
     // active-chain dispatch returned 200) — §N.8 earned-signal discipline.
     period_echo_reachable: boolean
+    promise_gate_reachable: boolean
   }
 }
 
@@ -1661,7 +1820,7 @@ export async function computeKalaAhead(
   },
   principal: Principal,
 ): Promise<KalaAheadResult> {
-  const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
+  const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const horizonYears = args.horizon_years ?? 5
   const maxItems = args.max_items ?? 20
   const today = new Date()
@@ -1715,6 +1874,14 @@ export async function computeKalaAhead(
   const projectionsOk = projectionsResp.ok
   const projectionFamilies =
     (projectionsResp.content?.['projection_families'] as ProjectionFamily[] | undefined) ?? []
+
+  // F-110 (CL-15): consult the classical promise chain for the domain this response is
+  // about. Kicked off HERE — the moment `projectionFamilies` (its domain fallback input)
+  // is available — and awaited just before the reading is composed, so it overlaps every
+  // subsequent join instead of adding a serial leg to the call.
+  const promiseGatePromise = computePromiseGate(
+    chartId, ayanamshaId, dateFrom, args.domain, projectionFamilies, principal, callRegistryCapability,
+  )
 
   // item 32 join: extract the already-computed gulika_kalam Timing per day from the
   // range-mode panchāṅga response — never re-derived (§N.5).
@@ -1822,13 +1989,20 @@ export async function computeKalaAhead(
     ritualOpportunities,
   })
 
-  const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk })
+  // F-110: awaited here — the reading's own sentences depend on the gate verdict.
+  const promiseGate = await promiseGatePromise
+
+  const reading = buildAheadReading({ horizonLabel, windowFamilies, projectionFamilies, windowsOk, projectionsOk, promiseGate })
   const composed = composeArgument(reading)
 
   const triPlane: TriPlanePointers = {
-    interpretation_ref: pointerTo(
-      'kala_explain_get',
+    // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without domain/bhava. args.domain
+    // is the same optional filter kala_ahead_get itself accepts — when the caller scoped this
+    // AHEAD call to a domain, the pointer carries it forward; otherwise it degrades honestly
+    // (explainPointerTo's null branch) rather than fabricating one.
+    interpretation_ref: explainPointerTo(
       'Why these forward windows fire — drivers and classical grounds behind each projection',
+      args.domain ? { domain: args.domain } : null,
     ),
     // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30): was a bare `null`. AHEAD genuinely IS
     // the prediction plane, so there is no sibling surface to point at — but "this object is
@@ -1854,10 +2028,18 @@ export async function computeKalaAhead(
     projectionsOk
       ? computedCoverage('probabilistic_projections')
       : honestEmptyCoverage('probabilistic_projections', 'L3 Kāla registry unreachable this call.'),
-    notInCorpusCoverage(
-      'promise_gated_forecasting',
-      'Law-3 PACT gating ("pressure without delivery") is not yet applied to these raw windows — SHAD_DARSHANA_BRIEF_v2_0.md §2.2 (wave W2/W3).',
-    ),
+    // F-110 (CL-15) — this row used to be an UNCONDITIONAL `not_in_corpus` string: a
+    // status with no code path that could ever produce a different value, i.e. exactly the
+    // §N.8 Earned-Signal defect ("what would have to run, and fail, for this signal to
+    // correctly read false?" — nothing could). It now varies with a real detector: the
+    // PACT chain is actually consulted (`computePromiseGate`) and this entry reports what
+    // that consultation found. `not_in_corpus` survives ONLY for the genuinely-unbuilt
+    // case — no domain to consult at all.
+    promiseGate.state === 'checked'
+      ? computedCoverage('promise_gated_forecasting')
+      : promiseGate.state === 'unreachable'
+        ? honestEmptyCoverage('promise_gated_forecasting', promiseGate.reason)
+        : notInCorpusCoverage('promise_gated_forecasting', promiseGate.reason),
     // Earned-signal detector (CLAUDE.md §N.8), item 28 forward half: `computed` requires at
     // least one served row to actually CARRY a transit sign — not merely that the capability
     // dispatch returned HTTP 200 with an empty body. See now.ts for the full root-cause note.
@@ -1975,8 +2157,25 @@ export async function computeKalaAhead(
     triPlane,
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(chartId, principal),
   })
+
+  // ── G14b AHEAD auto-file (MASTER_PLAN_v1_0.md G14b) ────────────────────────────────
+  //
+  // Every served prediction becomes a dated claim against the native's future
+  // (brahma_prospective_ledger). This is a BEST-EFFORT side effect: the filing result
+  // is captured and surfaced in the response, but a filing failure MUST NOT fail this
+  // serving call. `autofileAheadWindows` never throws (see its own module doc).
+  //
+  // Only `windowFamilies` are auto-filed here — see `ahead_autofile.ts` module doc for
+  // why projections are intentionally excluded (they lack an event_class).
+  let predictionsLogged: AheadAutofileResult | null = null
+  try {
+    predictionsLogged = await autofileAheadWindows(chartId, windowFamilies, principal)
+  } catch {
+    // Should never happen (autofileAheadWindows guarantees no throw), but defence in depth.
+    predictionsLogged = null
+  }
 
   return {
     tool: 'kala_ahead_get',
@@ -1988,12 +2187,14 @@ export async function computeKalaAhead(
     projections: projectionFamilies,
     gulika_kalam_ahead: gulikaKalamAhead,
     gulika_kalam_ahead_horizon_days: GULIKA_AHEAD_MAX_DAYS,
+    promise_gate: promiseGate,
     dasha_lord_transit_condition_forward: dashaLordForward.rows,
     mudda_dasha_varsha: muddaDashaVarsha.result,
     recurrence_ladder: recurrenceLadder,
     digest_90d: digest90d,
     period_echo: periodEcho,
     drill_pointers: drillPointers,
+    predictions_logged: predictionsLogged,
     provenance_envelope: {
       source: 'kala_ahead_get',
       assets: [
@@ -2006,6 +2207,7 @@ export async function computeKalaAhead(
         'get_dashas (L1, chart_dashas, lord_graha+level facets — item 31 period-echo)',
         'query_life_arc (L3, kala_jivana_parva — item 31 birth-year floor)',
         'lel_query (L5, life_events — item 31 LEL corroboration, native-only)',
+        'pact_query (L-PACT, the SAME chained-investigation capability kala_explain_get consumes — F-110 promise gate)',
       ],
       chart_id: chartId,
       horizon_years: horizonYears,
@@ -2024,6 +2226,9 @@ export async function computeKalaAhead(
       muntha_varsha_position_reachable: muddaDashaVarsha.result?.muntha_sign != null,
       recurrence_ladder_reachable: windowsOk,
       period_echo_reachable: periodEcho.some((e) => e.status === 'hypothesis_served'),
+      // §N.8: asserts what it NAMES — that a PACT chain was actually evaluated and
+      // interpreted — not merely that a dispatch returned 200.
+      promise_gate_reachable: promiseGate.state === 'checked',
     },
   }
 }

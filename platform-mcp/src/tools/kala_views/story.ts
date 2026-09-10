@@ -95,6 +95,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
+  fetchCalibrationMaturity,
   resolveFieldSnapshot,
   pointerTo,
   noLeverPointer,
@@ -102,7 +103,6 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
   kalaEvidenceTrimmableSection,
   type ArgumentReading,
   type ArgumentEvidence,
@@ -661,6 +661,22 @@ function buildCoverage(
     'punctuation_events',
     'sky-event calendar (returns, eclipses-on-natal, item 3/4) not yet built; punctuation marks are not interleaved into chapters.',
   ))
+  // E6 per-view elevation for STORY: developmental_thesis — what this period asks given what
+  // previous chapters built. KALA_SUPREME_ELEVATION_v1_0.md §6: STORY elevation =
+  // "developmental_thesis: what this period asks of the native given what previous chapters
+  // built (from lord-relationship + house-progression + LEL verdicts of prior same-lord chapters)."
+  // SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); the developmental_thesis
+  // sub-elevation is the W3 depth portion — requires cross-chapter lord-relationship analysis not
+  // yet wired at the serving facade. G12 R26.
+  coverage.push(honestEmptyCoverage(
+    'developmental_thesis',
+    'E6 per-view elevation for STORY (KALA_SUPREME_ELEVATION_v1_0.md §6): the developmental ' +
+    'thesis per chapter — what this period asks given what previous chapters built, from ' +
+    'lord-relationship + house-progression + LEL verdicts of prior same-lord chapters — ' +
+    'is not yet computed at this facade. Requires cross-chapter lord-relationship analysis ' +
+    'wired into story composition. SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: ' +
+    'VERIFIED-FIXED (lite); developmental_thesis is the W3 depth remainder, not yet built.',
+  ))
   return coverage
 }
 
@@ -737,7 +753,7 @@ export async function handleKalaStoryGet(
     },
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(input.chart_id, principal),
   })
 
   const response: KalaStoryResponse = {
@@ -767,6 +783,8 @@ export async function handleKalaStoryGet(
     sections: sections as unknown as TrimmableSection<Record<string, unknown>>[],
     budgetKbRequested: input.budget_kb,
   }) as unknown as KalaStoryResponse
+
+  budgeted.chapter_count = budgeted.chapters?.length ?? 0
 
   return { response: budgeted }
 }

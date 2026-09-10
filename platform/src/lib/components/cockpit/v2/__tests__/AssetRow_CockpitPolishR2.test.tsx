@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { AssetRow } from '../AssetRow'
 import { LayerPanel } from '../LayerPanel'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
@@ -106,6 +107,10 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   it('mounts a service row green with no missing_table / degraded text (issue 1)', () => {
     render(
       <AssetRow
@@ -120,6 +125,22 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     expect(screen.getByTitle('CURRENT · healthy')).toBeTruthy()
     expect(screen.queryByText(/missing_table/)).toBeNull()
     expect(screen.queryByText(/degraded/)).toBeNull()
+  })
+
+  it('renders service_down as an explicit failed service, not a dormant row', () => {
+    render(
+      <AssetRow
+        asset={SERVICE_ASSET}
+        stat={statOf({ asset_id: 'bg_panchanga', state: 'service_down', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+    expect(screen.getByText('Service failed')).toBeTruthy()
+    expect(screen.getByText('FAILED')).toBeTruthy()
+    expect(screen.getByTitle('CURRENT · service_down')).toBeTruthy()
   })
 
   it('renders a status dot instead of a literal CURRENT text chip (issue 5)', () => {
@@ -153,6 +174,111 @@ describe('Cockpit Polish R2 — AssetRow', () => {
     const name = screen.getByText('Graha-sphuṭa')
     expect(name.className).toContain('text-[18px]')
     expect(name.className).toContain('font-medium')
+  })
+
+  it.each([
+    ['bg_ephemeris_engine', 'ephemeris_engine'],
+    ['bg_panchanga', 'panchanga_engine'],
+  ])('uses the singleton asset_set contract for the frozen L0 %s service probe', async (assetId, probeType) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          data: {
+            status: 'ok',
+            plan_waves: [[assetId]],
+            blockers: [],
+            estimated_seconds: null,
+          },
+        }),
+      })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: { plan: [assetId] } }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AssetRow
+        asset={{
+          ...SERVICE_ASSET,
+          asset_id: assetId,
+          asset_kind: 'service' as const,
+          health_probe: { probe_type: probeType },
+        }}
+        stat={statOf({ asset_id: assetId, state: 'service_down', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+
+    await user.click(screen.getByTitle('Rebuild'))
+    await user.click(await screen.findByRole('button', { name: 'Build' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
+        scope: 'asset_set',
+        scope_target: assetId,
+      })
+    }
+  })
+
+  it.each(['click', 'keyboard'] as const)('keeps a dormant panchanga control responsive via %s when its global throughput sentinel is already lit', async (activation) => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const request = JSON.parse(init?.body as string) as { action: string }
+      const url = String(input)
+      if (url === '/api/cockpit/plan') {
+        return {
+          ok: true,
+          json: async () => ({
+            data: {
+              status: 'ok',
+              plan_waves: request.action === 'rebuild' ? [['bg_panchanga']] : [],
+              blockers: [],
+              estimated_seconds: null,
+            },
+          }),
+        }
+      }
+      return { ok: true, json: async () => ({ data: { plan: ['bg_panchanga'] } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(
+      <AssetRow
+        asset={{
+          ...SERVICE_ASSET,
+          asset_kind: 'service' as const,
+          health_probe: { probe_type: 'panchanga_engine' },
+        }}
+        stat={statOf({ asset_id: 'bg_panchanga', state: 'dormant', error: null })}
+        chartId="chart-1"
+        activeRunId={null}
+        activeRunPaused={false}
+        onRunStarted={() => {}}
+      />
+    )
+
+    const buildControl = screen.getByTitle('Build')
+    if (activation === 'click') {
+      await user.click(buildControl)
+    } else {
+      buildControl.focus()
+      await user.keyboard('{Enter}')
+    }
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: 'Build' }))
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
+    for (const [, options] of fetchMock.mock.calls) {
+      expect(JSON.parse((options as RequestInit).body as string)).toMatchObject({
+        action: 'rebuild',
+        scope: 'asset_set',
+        scope_target: 'bg_panchanga',
+      })
+    }
   })
 })
 
@@ -334,7 +460,7 @@ describe('CF.L3.8 — StatusDot: DRAFT catalog_status does not override healthy 
 
 // ── Seed governance: Kāla layer count after hard-removal of ka_transit_almanac ──
 describe('Asset seed governance — Kāla layer', () => {
-  it('has exactly 24 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1); ka_gochara_v3_century_materialize added (GOCHARA-UTKARSA W3.4))', () => {
+  it('has exactly 23 kala assets in the seed (ka_transit_almanac removed; ka_avadhi + ka_taranga + ka_kshetra registered; ka_kota_chakra + ka_sudarshana_varsha + ka_moorti_nirnaya + ka_vedha_gochara + ka_tithi_pravesha added (SHAD-DARSHANA W3 items 16/17/4/5/13); ka_gochara_sweep + ka_gochara_resonance + ka_gochara_v2_materialize added (GOCHARA-UTKARSA W0.1); ka_gochara_v3_century_materialize added (GOCHARA-UTKARSA W3.4); MR-06 deleted ka_gochara_v2_materialize — renamed to ka_gochara (24 -> 23))', () => {
     const { readFileSync } = require('fs')
     const { resolve } = require('path')
     const seedContent: string = readFileSync(resolve(process.cwd(), 'scripts/seed/asset_registry_seed.ts'), 'utf8')
@@ -378,7 +504,12 @@ describe('Asset seed governance — Kāla layer', () => {
     // GOCHARA-UTKARSA W3.4 (2026-08-10): century-horizon heavy writer
     // `ka_gochara_v3_century_materialize` (migration 560, 60-substep plan,
     // decade slices 1984-2084). 23 → 24.
-    expect(kalaMatches).toHaveLength(24)
+    //
+    // PARIṢKĀRA MR-06 (2026-08-10): `ka_gochara_v2_materialize` seed entry
+    // deleted — the asset was RENAMED to `ka_gochara` by migration 563
+    // (W6.4 UTK-R2). The `ka_gochara` entry now carries the post-cutover
+    // identity (per-chart materializer, not the old global service). 24 → 23.
+    expect(kalaMatches).toHaveLength(23)
   })
 
   it('contains no ka_transit_almanac entry in the seed', () => {

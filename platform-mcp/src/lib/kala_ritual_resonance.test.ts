@@ -115,11 +115,20 @@ describe('composeScoreVector — the renormalisation rule (gate G5)', () => {
 })
 
 describe('the honest-absent factors name their reason (never a bare null)', () => {
-  it('temporal_intensity names the N_e blocker and the renormalisation consequence', () => {
+  it('temporal_intensity names the real blocker and the renormalisation consequence', () => {
     const f = scoreTemporalIntensity()
     expect(f.state).toBe('not_computed')
     expect(f.value).toBeNull()
-    expect(f.reason).toMatch(/ka_kshetra/)
+    // NIRMĀṆA L3-W3 M8: this assertion used to be `toMatch(/ka_kshetra/)`, which pinned the
+    // reason string's claim that "ka_kshetra has written no rows". That claim was false —
+    // measured live, kala_field_windows holds 31,350 rows for the canonical chart — so the test
+    // was holding a false statement in place. The assertion is retargeted, NOT weakened: the
+    // reason must still name a specific, checkable blocker (now the true one: no registry
+    // capability exists over any kala_field* table, so λ is unreachable from the serving plane)
+    // and must still carry the renormalisation consequence. The dedicated guard against the
+    // false claim returning lives in kala_ritual_resonance.m8_no_false_emptiness.test.ts.
+    expect(f.reason).toMatch(/no registry capability exists/)
+    expect(f.reason).toMatch(/kala_field\*/)
     expect(f.reason).toMatch(/never zero-filled/)
   })
 

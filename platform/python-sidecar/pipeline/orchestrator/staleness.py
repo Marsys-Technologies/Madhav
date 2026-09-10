@@ -1,8 +1,14 @@
 """
-Downstream staleness propagation.
+Downstream staleness propagation -- delta-directional (O-wave WP-1).
 
 After an asset transitions to 'lit', all transitive downstream assets that are
-NOT in the current run's plan should be marked 'stale' in asset_throughput.
+NOT in the current run's plan are marked 'stale' in asset_throughput, but ONLY
+when the completed asset's own output actually changed this run (compared
+against its prior complete provenance receipt). A no-delta completion (e.g. an
+idempotent rebuild that reproduces identical rows) emits `refreshed_no_delta`
+instead -- phantom staleness on mere re-execution is exactly the defect this
+replaces. See NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1.
+
 Dormant assets are excluded — they have no data to be stale. Building state is
 excluded — leave in-flight assets alone.
 """
@@ -50,10 +56,22 @@ def propagate_downstream_staleness(
     run_id: str,
 ) -> None:
     """
-    Mark transitive downstream of completed_asset_id as 'stale', then emit
-    asset.state_change SSE events for each row actually updated.
+    Delta-directional: mark transitive downstream of completed_asset_id as
+    'stale' ONLY when completed_asset_id's own output actually changed this
+    run (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1, O-wave WP-1). On a
+    no-delta completion, emit `asset.refreshed_no_delta` instead of touching
+    any downstream row -- visible, not silent.
 
-    Excludes:
+    The delta signal is `build_run_assets.output_changed`, written by
+    asset_runner.py's data-writer receipt capture in the SAME transaction as
+    the write it describes (migration 640). This function reads it fresh:
+    TRUE → propagate as before; FALSE → refreshed_no_delta only; NULL (no
+    signal recorded -- a probe/service asset, or a row predating the column)
+    → fail-open, propagate exactly as the pre-WP-1 code always did. Missing
+    evidence must never be read as "no delta"; that would be silent
+    corruption in the other direction (CLAUDE.md §N.8).
+
+    Excludes (once propagation proceeds):
       - Assets in plan_set (they will be rebuilt in this run)
       - Assets with state 'dormant' (no data to be stale about)
       - Assets with state 'building' (leave in-flight workers alone)
@@ -71,6 +89,34 @@ def propagate_downstream_staleness(
     Commits on conn — caller must provide a dedicated connection (not the main
     advisory-lock connection) and must close it after.
     """
+    cur.execute(
+        "SELECT output_changed FROM build_run_assets WHERE run_id = %s AND asset_id = %s",
+        (run_id, completed_asset_id),
+    )
+    row = cur.fetchone()
+    if row is not None:
+        output_changed = row[0] if isinstance(row, (tuple, list)) else row.get("output_changed")
+    else:
+        output_changed = None
+    if output_changed is False:
+        try:
+            emit_fn({
+                "type": "asset.refreshed_no_delta",
+                "chart_id": chart_id,
+                "asset_id": completed_asset_id,
+                "run_id": run_id,
+            })
+        except Exception as emit_err:
+            logger.warning(
+                "[staleness] refreshed_no_delta emit failed for %s: %s",
+                completed_asset_id, emit_err,
+            )
+        logger.info(
+            "[staleness] %s completed with no output delta — no downstream propagation",
+            completed_asset_id,
+        )
+        return
+
     downstream = compute_downstream_ids(completed_asset_id, registry)
     targets = list(downstream - plan_set)
     if not targets:

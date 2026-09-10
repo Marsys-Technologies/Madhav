@@ -473,8 +473,8 @@
       "archetype": "flat_fact",
       "traversal_level": "L-SOURCE",
       "tool_role": "leaf",
-      "description_len": 546,
-      "description_preview": "Query the formula-constants registry (brahma_formula_constants, 18 rows). Each row: constant_id, value_jsonb, class (classical|native_judgment|engineering| conf",
+      "description_len": 555,
+      "description_preview": "Query the formula-constants registry (brahma_formula_constants, 17 governed rows). Each row: constant_id, value_jsonb, class (classical|native_judgment|engineer",
       "table_hint": [
         "brahma_formula_constants"
       ],

@@ -155,7 +155,7 @@ def _patch_common(monkeypatch, writer_cls):
     monkeypatch.setattr(ar, "get_writer", lambda aid: writer_cls)
     monkeypatch.setattr(ar, "fetch_birth_params", lambda conn, cid: {"chart_id": cid})
     monkeypatch.setattr(ar, "compute_upstream_hash", lambda cur, aid, cid: "hash-upstream")
-    monkeypatch.setattr(ar, "get_writer_git_hash", lambda aid: "hash-writer")
+    monkeypatch.setattr(ar, "get_writer_source_hash", lambda aid: "hash-writer")
     monkeypatch.setattr(ar, "compute_downstream_closure", lambda cur, aid: [])
     # Keep Pub/Sub out of the unit path; the stdout branch is the pre-existing default.
     monkeypatch.delenv("PUBSUB_TOPIC", raising=False)

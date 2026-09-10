@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "$comment": "Allowlist for check_asset_registry_catalog_status.py (D-CND-13; NIRMANA issues #1753/#1807). Entries are APPLIED migrations that predate the rule; they cannot be edited. A NEW migration omitting catalog_status must be FIXED, not added here.",
+  "entry_count": 15,
+  "entries": [
+    {
+      "file": "240_ga_yoga.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "262_bg_prashna_rules_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "266_bg_transit_tables.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "291_ga_prashna_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "292_ga_nakshatra_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "358_bodha_orphaned_writer_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "435_ga_vichara.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "438_bo_sudarshana_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "440_vidhi_registry_schema.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "445_bodha_mechanisms.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "446_bo_laksana_rerank_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "450_bo_nakshatra_semantic_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "451_bo_arudha_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "452_bo_special_lagna_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    },
+    {
+      "file": "453_bo_vargottama_dhana_asset_registry.sql",
+      "justification": "Pre-rule migration: predates D-CND-13 (2026-09-05). It is APPLIED and must never be edited (\u00a7N.4 surgical-migrations discipline). Its data was swept by migration 294 and re-swept by this campaign's per-layer DRAFT->CURRENT migrations, and PR #1813 now keeps CURRENT durable through a re-seed. Allowlisted so the guard blocks NEW omissions immediately rather than waiting on a rewrite that is forbidden."
+    }
+  ]
+}

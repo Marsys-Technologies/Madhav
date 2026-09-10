@@ -513,6 +513,18 @@ export interface PaddhatiConventionRow {
    *  than a chat transcript. Optional on the wire — a primitive predating 534
    *  may not serve the column. */
   confirmation_provenance?: string | null
+  /** Migration 675 (N1, Temporal Concordance Contract): this convention's role
+   *  when a `composeConcordanceVerdict`-style arbiter reads this profile —
+   *  'primary' is the reference point other engines are measured against,
+   *  'corroborating' a vote, 'gate' a future veto role, 'informational'/
+   *  'declared_silent' neither. NULL on every row seeded before migration 675
+   *  (agnivasa's own rows). Optional on the wire — a primitive predating 675
+   *  may not serve the column. */
+  arbitration_role?: 'gate' | 'primary' | 'corroborating' | 'informational' | 'declared_silent' | null
+  /** Migration 675: tie-break ordering between same-role conventions within a
+   *  factor_family. NULL where no ranking has been established yet (every row
+   *  seeded so far, per migration 677's own O-10 seed comments). */
+  precedence?: number | null
 }
 
 export interface PaddhatiResolution {

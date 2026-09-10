@@ -22,8 +22,20 @@ export interface McpToolCall {
 export interface EpistemicsBlock {
   /** True for surgical primitive calls (primitives, bundles, reads); false for legacy full-pipeline calls. */
   surgical: boolean
-  /** Calibrated confidence band for the answer. */
-  confidence_band: 'high' | 'medium' | 'low'
+  /**
+   * Calibrated confidence band for the answer.
+   *
+   * 'none' (F-126) = the served result set is EMPTY, so there is no finding for a
+   * band to grade. Not a weak finding — the absence of one. Mirrors
+   * platform/src/lib/mcp/types.ts, which is where the value is produced.
+   */
+  confidence_band: 'high' | 'medium' | 'low' | 'none'
+  /**
+   * Evidence state of the served result (F-126), when the producing surface
+   * measured it: 'present' | 'empty' | 'indeterminate'. Absent where nothing
+   * measured it — never defaulted.
+   */
+  evidence_state?: 'present' | 'empty' | 'indeterminate'
   /**
    * Horizon in days for predictive answers; null for non-predictive.
    * Example: 90 = "applies within the next ~3 months".

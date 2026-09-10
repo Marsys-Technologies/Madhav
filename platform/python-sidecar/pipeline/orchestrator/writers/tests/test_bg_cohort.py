@@ -19,10 +19,12 @@ test_bg_ontology.py):
 from __future__ import annotations
 
 import os
+import inspect
 import uuid
 
 import pytest
 import psycopg
+import pipeline.orchestrator.writers.bg_cohort as cohort_module
 
 from pipeline.orchestrator.writers.bg_cohort import (
     BgCohortWriter,
@@ -95,6 +97,69 @@ def test_writer_dry_run_no_db_needed():
     assert result.asset_id == 'bg_cohort'
     assert result.rows_inserted == 0
     assert result.notes == 'dry_run'
+
+
+def test_writer_rebuild_repairs_stale_rows_and_never_reports_partial_success():
+    run_source = inspect.getsource(BgCohortWriter.run)
+    cohort_flush = inspect.getsource(BgCohortWriter._flush_batch)
+    md_flush = inspect.getsource(BgCohortWriter._flush_md_batch)
+    assert "skipped: swisseph unavailable" not in run_source
+    assert "partial:" not in run_source
+    assert "DO UPDATE" in cohort_flush
+    assert "DO UPDATE" in md_flush
+    assert "DO NOTHING" not in cohort_flush
+    assert "DO NOTHING" not in md_flush
+
+
+def test_pinned_ephemeris_runtime_rejects_missing_corpus():
+    with pytest.raises(RuntimeError, match="pinned Swiss Ephemeris"):
+        cohort_module._require_pinned_ephemeris_runtime(object(), None)
+
+
+def test_writer_rejects_platform_with_non_reproducible_rounding(monkeypatch):
+    import platform
+
+    monkeypatch.setattr(platform, "system", lambda: "Darwin")
+    monkeypatch.setattr(platform, "machine", lambda: "arm64")
+    with pytest.raises(RuntimeError, match=r"Linux/x86_64"):
+        cohort_module._require_reproducible_write_runtime()
+
+
+def test_pinned_ephemeris_runtime_checks_hashes_and_file_backend(monkeypatch, tmp_path):
+    import hashlib
+
+    expected = {}
+    for filename in cohort_module.EPHEMERIS_FILE_SHA256:
+        payload = f"pinned-{filename}".encode()
+        (tmp_path / filename).write_bytes(payload)
+        expected[filename] = hashlib.sha256(payload).hexdigest()
+    monkeypatch.setattr(cohort_module, "EPHEMERIS_FILE_SHA256", expected)
+
+    class FileBackedSwe:
+        SUN = 0
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SPEED = 256
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2451544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 0.0, 1.0, 0.0, 0.0), FileBackedSwe.FLG_SWIEPH)
+
+    assert cohort_module._require_pinned_ephemeris_runtime(
+        FileBackedSwe, str(tmp_path),
+    ) == str(tmp_path)
+
+    (tmp_path / "sepl_18.se1").write_bytes(b"drift")
+    with pytest.raises(RuntimeError, match="digest mismatch"):
+        cohort_module._require_pinned_ephemeris_runtime(FileBackedSwe, str(tmp_path))
 
 
 # ── Offline tests: compute_md_lord_chain() — pure, no DB/swisseph ────────────
@@ -356,7 +421,7 @@ def test_bg_cohort_no_null_citations(db_conn):
 
 
 def test_bg_cohort_writer_idempotent(db_conn):
-    """Running the writer twice leaves bg_synthetic_cohort row count identical."""
+    """A replay converges every owned cohort row without changing cardinality."""
     cur = db_conn.cursor()
     cur.execute("SELECT count(*) AS n FROM bg_synthetic_cohort")
     count_before = cur.fetchone()['n']
@@ -370,8 +435,7 @@ def test_bg_cohort_writer_idempotent(db_conn):
     count_after = cur.fetchone()['n']
 
     assert count_before == count_after, f'Idempotency broken: {count_before} → {count_after}'
-    if count_before > 0:
-        assert result.rows_inserted == 0, f'Expected 0 rows_inserted on re-run, got {result.rows_inserted}'
+    assert result.rows_inserted == COHORT_SIZE
 
 
 # ── Live tests: bg_synthetic_cohort_md (§6.3 second-pass table) ──────────────
@@ -498,7 +562,7 @@ def test_bg_synthetic_cohort_md_chain_version(db_conn):
 
 
 def test_bg_synthetic_cohort_md_writer_idempotent(db_conn):
-    """Re-running the writer must insert zero new bg_synthetic_cohort_md rows."""
+    """Re-running the writer must converge the full MD projection."""
     cur = db_conn.cursor()
     cur.execute("SELECT count(*) AS n FROM bg_synthetic_cohort_md")
     count_before = cur.fetchone()['n']
@@ -512,5 +576,4 @@ def test_bg_synthetic_cohort_md_writer_idempotent(db_conn):
     count_after = cur.fetchone()['n']
 
     assert count_before == count_after, f'MD-chain idempotency broken: {count_before} → {count_after}'
-    if count_before > 0:
-        assert 'md_rows_inserted=0' in result.notes, result.notes
+    assert f'md_rows_inserted={10 * COHORT_SIZE}' in result.notes, result.notes

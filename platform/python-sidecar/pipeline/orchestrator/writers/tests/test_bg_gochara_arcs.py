@@ -63,6 +63,9 @@ class _FakeCursor:
     def fetchall(self):
         return self._owner.rows_for_next
 
+    def fetchone(self):
+        return self._owner.rows_for_next[0]
+
 
 class _FakeConn:
     """Records every statement; explodes on any transaction-lifecycle call.
@@ -113,6 +116,9 @@ def _ephemeris_rows(n_days: int = 400, deg_per_day: float = 1.0):
 def _responder(sql, params=None):
     if "FROM ephemeris_daily" in sql:
         return _ephemeris_rows()
+    if "AS row_count" in sql and "FROM bg_gochara_arcs" in sql:
+        return [{"row_count": 2, "min_index": 0, "max_index": 1,
+                 "fingerprint_count": 1}]
     return []
 
 
@@ -191,6 +197,18 @@ def test_substep_deletes_before_inserting_scoped_to_version_and_body():
     assert params == [SUBSTRATE_VERSION, "Saturn"]
 
 
+def test_full_rebuild_first_substep_removes_obsolete_versions_and_unknown_bodies():
+    ctx = _ctx()
+    GocharaArcsWriter().run_substep(ctx, GocharaArcsWriter().plan_substeps(ctx)[0])
+
+    deletes = [(s, p) for s, p in ctx.db_conn.statements if s.strip().upper().startswith("DELETE")]
+    assert len(deletes) == 2
+    global_sql, global_params = deletes[0]
+    assert "substrate_version <> %s" in global_sql
+    assert "body <> ALL(%s)" in global_sql
+    assert global_params == [SUBSTRATE_VERSION, list(BODIES)]
+
+
 def test_delete_precedes_every_insert():
     ctx = _ctx(bodies=["Saturn"])
     GocharaArcsWriter().run_substep(ctx, GocharaArcsWriter().plan_substeps(ctx)[0])
@@ -223,6 +241,26 @@ def test_inserted_rows_carry_the_fingerprint_and_engine_version():
     assert len(fingerprints) == 1, "one fingerprint per body's arc set"
     assert all(r["engine_version"] for r in rows)
     assert all(r["build_id"] == ctx.build_id for r in rows)
+
+
+def test_substep_checks_exact_inserted_partition_after_write():
+    def responder(sql, params=None):
+        if "FROM ephemeris_daily" in sql:
+            return _ephemeris_rows()
+        if "AS row_count" in sql and "FROM bg_gochara_arcs" in sql:
+            return [{"row_count": 2, "min_index": 0, "max_index": 1,
+                     "fingerprint_count": 1}]
+        return []
+
+    ctx = ContextSpec(
+        asset_id="bg_gochara_arcs", build_id="b",
+        db_conn=_FakeConn(responder), config={"bodies": ["Saturn"]},
+    )
+    GocharaArcsWriter().run_substep(ctx, GocharaArcsWriter().plan_substeps(ctx)[0])
+    assert any(
+        "AS fingerprint_count" in sql and "FROM bg_gochara_arcs" in sql
+        for sql, _ in ctx.db_conn.statements
+    )
 
 
 def test_inserted_rows_satisfy_the_sub_revolution_check_constraint():

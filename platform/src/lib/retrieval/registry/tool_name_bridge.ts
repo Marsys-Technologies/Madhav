@@ -88,7 +88,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_varshaphala: 'marsys://tool/L1/get_tajik',
   divisional_query: 'marsys://tool/L1/get_divisionals',
   // WP-1.3(d) / F-L10-021: lel_query serves the user-authored Life Event Log
-  // (life_events table, 57 rows for the native), NOT the Bodha MSR signals surface.
+  // (the chart-scoped life_events table), NOT the Bodha MSR signals surface. (Row count
+  // deliberately not pinned here — it is a live, growing quantity; NIRMĀṆA L5 W3-3.)
   // The old mapping pointed at L2/query_signals whose lel_enabled filter selects
   // lel_origin=true signals — of which there are ZERO — so lel_query returned nothing.
   lel_query: 'marsys://tool/L5/lel_query',
@@ -134,6 +135,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   // L3 Kāla — live compute service wrappers
   call_transit_search:    'marsys://tool/L3/call_transit_search',
   call_dasha_eligibility: 'marsys://tool/L3/call_dasha_eligibility',
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati convention profile (per-chart config, migrations 533/534/537)
+  query_kala_paddhati_profile: 'marsys://tool/L3/query_kala_paddhati_profile',
 
   // L4 Phala
   query_remedy_program: 'marsys://tool/L4/query_remedy_program',
@@ -497,6 +500,12 @@ export const SURGICAL_TOOLS = [
   // ṢAḌ-DARŚANA W3 items 36/41: muhūrta election substrate readers (L0, global).
   'query_muhurta_lattice',
   'query_parihara_graph',
+  // F-02/F-07: four classical-text tools missing from MCP whitelist
+  'read_chapter',
+  'list_classical_texts',
+  'find_verses_about',
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati convention profile (L3 Kāla, per-chart)
+  'query_kala_paddhati_profile',
 ] as const
 
 export type SurgicalToolName = (typeof SURGICAL_TOOLS)[number]
@@ -523,6 +532,10 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   // Follow-up F-WP17-1: re-bridge by registering a registry capability wrapping
   // lib/tools/multi_school_signal_lookup.ts if the surgical primitive is wanted locally.
   read_classical_text: 'classical_text_search',
+  read_chapter: 'read_chapter',
+  list_classical_texts: 'list_classical_texts',
+  find_verses_about: 'find_verses_about',
+  search_classical_texts: 'classical_text_search',   // F-02/F-07: was missing from MCP whitelist
   // TR Wave additions (PR #159 — Class A: existing retrieval engines)
   query_varshphal: 'query_varshaphala',
   query_divisional_chart: 'divisional_query',
@@ -592,6 +605,8 @@ export const MCP_TO_RETRIEVAL_TOOL: Record<string, SurgicalToolName> = {
   // behind kala_elect_get); global scope, so no chart authorization applies.
   query_muhurta_lattice:       'query_muhurta_lattice',     // item 36 lattice rows
   query_parihara_graph:        'query_parihara_graph',      // items 36/41 parihāra + census
+  // F-11: ṢAḌ-DARŚANA W3 item 37 — paddhati profile (kala_sky_pattern.ts fetchPaddhatiProfile)
+  query_kala_paddhati_profile: 'query_kala_paddhati_profile',
 }
 
 /**

@@ -72,11 +72,20 @@ from .tiers import eager_bodies
 
 logger = logging.getLogger(__name__)
 
-# The v1 grammar/scoring engine this module calls unchanged. Bumped only if
-# gochara_grammar/gochara_intensity's OWN logic changes -- which, per design
-# §5, is out of this wave's scope in the first place. Feeds
-# `services.w2g.fingerprint.class_fingerprint`'s `grammar_version` input.
-GRAMMAR_VERSION = "v1_frozen_2026_08"
+# The v1 grammar/scoring engine this module calls. Bumped whenever
+# gochara_grammar/gochara_intensity's OWN logic changes underneath this
+# module's unchanged call sites -- which it just did (PK-R-9, IR-10,
+# 2026-08-11): MR-41(a) corrected `_fetch_vedha_rules`'s predicate
+# (gochara_grammar/primitives.py, `gochara_vedha_pair`) and MR-41(b) added
+# `target_nakshatra_id` resolution to `enrich_targets`
+# (gochara_intensity/enrichment.py, imported directly at the top of this
+# module) -- both consumed by this module's reuse of v1's `compute_lambda_e`/
+# `enrich_targets` unchanged at the CALL SITE, but the callee's own behavior
+# moved. Feeds `services.w2g.fingerprint.class_fingerprint`'s
+# `grammar_version` input, so this bump invalidates any stored fingerprint
+# computed under the pre-MR-41 behavior rather than silently treating it as
+# unchanged.
+GRAMMAR_VERSION = "v1_mr41_2026_08"
 
 # Widest orb any v1 primitive discloses (primitives.py's eclipse-proximity
 # check, 8.0 deg) -- used ONLY to cast a net for "is this date worth asking

@@ -86,8 +86,12 @@ class TestPlan:
         # emitting the stages in dependency order is what makes stage 5 able to
         # read stage 4's committed rows. Each substep ALSO checks its upstream
         # independently (see TestUpstreamGuard) so the ordering is belt, not braces.
-        assert kinds.index('stage4') < kinds.index('stage5')
-        assert kinds.index('stage5') < kinds.index('stage5finalize')
+        #
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default), stage5dhara
+        # replaces stage5:*/stage5finalize:*. Test the stage that is actually
+        # present in the analytic plan.
+        assert kinds.index('stage4') < kinds.index('stage5dhara')
+        assert kinds.index('stage5dhara') < kinds.index('stage6')
         assert kinds[-1] == 'snapshot'
 
     def test_ten_decade_slices_per_event_class(self):
@@ -97,7 +101,12 @@ class TestPlan:
         assert len(s4) == W.DECADES
         assert {s.key.rsplit(':', 1)[1] for s in s4} == {str(d) for d in range(W.DECADES)}
 
-    def test_replicate_blocks_cover_every_replicate_exactly_once(self):
+    def test_replicate_blocks_cover_every_replicate_exactly_once(self, monkeypatch):
+        # OPT-N1: force the SAMPLED path so the legacy replicate-block scheme is
+        # exercised. The analytic path (now the default) emits one stage5dhara:{ec}
+        # substep per class instead of N block substeps + a finalize. Pinning to
+        # 'sampled' here keeps regression coverage for the sampled plan shape.
+        monkeypatch.setattr(W, '_engine_version', lambda: 'sampled')
         conn = FakeConn(F.build_tables())
         steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
         blocks = [s for s in steps if s.key.startswith('stage5:')]
@@ -237,6 +246,66 @@ class TestBuildOutput:
         assert 'kala_field' in snap['hashed_tables']
 
 
+# ── F-149: the content hash reads its tables lazily ─────────────────────────
+
+class TestContentHashStreams:
+    """F-149. The writer used to accumulate every stage-0–8 row for the chart
+    into ONE list before hashing anything; on the native chart (~10.5M rows,
+    8.6M of them in `kala_field`) that OOM'd, which is why the F-141 rebuild was
+    deterministically impossible rather than merely slow.
+
+    The digest is unchanged (asserted against a reference implementation of the
+    old algorithm in test_stage4_field.py). What is asserted HERE is the writer
+    half: the rows are produced lazily, one table at a time.
+    """
+
+    @staticmethod
+    def _hash_selects(conn) -> list[str]:
+        want = {t for t, _, _ in W._CONTENT_HASH_QUERIES}
+        out = []
+        for stmt in conn.executed:
+            s = ' '.join(stmt.split())
+            for table in want:
+                if f'FROM {table} WHERE chart_id' in s or f'FROM {table} WHERE' in s:
+                    out.append(table)
+        return out
+
+    def test_the_row_source_is_a_generator_not_a_materialized_list(self):
+        writer, conn = _run_full_build(F.build_tables())
+        rows = writer._iter_content_hash_rows(conn)
+        assert not isinstance(rows, (list, tuple))
+        assert hasattr(rows, '__next__')
+
+    def test_no_table_is_queried_until_its_rows_are_pulled(self):
+        # The direct detector for "it streams": if this were still a list build,
+        # constructing the source would have issued all seven SELECTs up front.
+        writer, conn = _run_full_build(F.build_tables())
+        before = len(conn.executed)
+        rows = writer._iter_content_hash_rows(conn)
+        assert len(conn.executed) == before, 'queries issued before any row was pulled'
+        next(rows, None)
+        issued = len(conn.executed) - before
+        assert 1 <= issued <= 2, (
+            f'pulling one row issued {issued} statements — the writer is not '
+            'walking the hashed tables one at a time'
+        )
+        rows.close()
+
+    def test_every_hashed_table_is_still_covered(self):
+        # The streaming rewrite must not have quietly dropped a table: the
+        # snapshot advertises `hashed_tables`, and a hash that covered fewer
+        # tables than it advertises is a false clean.
+        writer, conn = _run_full_build(F.build_tables())
+        conn.executed.clear()
+        writer._compute_content_hash(conn)
+        covered = {t for t, _, _ in W._CONTENT_HASH_QUERIES
+                   if any(f'FROM {t}' in ' '.join(s.split()) for s in conn.executed)}
+        assert covered == set(W._HASHED_TABLES)
+
+    def test_query_table_list_and_hashed_tables_cannot_drift(self):
+        assert tuple(t for t, _, _ in W._CONTENT_HASH_QUERIES) == W._HASHED_TABLES
+
+
 # ── the legacy non-regression rail ───────────────────────────────────────────
 
 class TestLegacyUntouched:
@@ -327,15 +396,22 @@ class TestReconciliationAtWriteTime:
 
 class TestUpstreamGuard:
     def test_stage5_refuses_to_run_on_an_absent_field(self):
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default) the stage5
+        # upstream-guard fires on the stage5dhara:{ec} substep, not stage5:{ec}:{b}.
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
         steps = writer.plan_substeps(ctx)
-        block = next(s for s in steps if s.key.startswith('stage5:'))
+        block = next(s for s in steps if s.key.startswith('stage5dhara:'))
         with pytest.raises(S4.UpstreamStageIncomplete):
             writer.run_substep(ctx, block)     # no stage-4 substep has run
 
-    def test_finalize_refuses_a_partial_replicate_set(self):
+    def test_finalize_refuses_a_partial_replicate_set(self, monkeypatch):
+        # OPT-N1: stage5finalize:{ec} only exists in the SAMPLED plan. Force that
+        # path so the legacy guard is still regression-tested. Under analytic
+        # (the new default) there is no finalize substep — the dhara path handles
+        # null+windows in one atomic stage5dhara:{ec} substep.
+        monkeypatch.setattr(W, '_engine_version', lambda: 'sampled')
         conn = FakeConn(F.build_tables())
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()
@@ -420,7 +496,10 @@ class TestStage6Salience:
         kinds = [k.split(':', 1)[0] for k in keys]
         # §2's pipeline order. The snapshot is last because the content hash is
         # a digest OF every stage-0..8 row, so anything hashed must commit first.
-        assert kinds.index('stage5finalize') < kinds.index('stage6')
+        # OPT-N1: under ENGINE_VERSION='analytic' (now the default) stage5dhara
+        # replaces stage5finalize as the last stage-5 substep type. Assert that
+        # whatever the final stage-5 substep kind is, it precedes stage6.
+        assert kinds.index('stage5dhara') < kinds.index('stage6')
         assert kinds.index('stage6') < kinds.index('stage65')
         assert kinds.index('stage65') < kinds.index('stage8')
         assert kinds[-1] == 'snapshot'
@@ -633,3 +712,91 @@ class TestHashCoverage:
         before = writer._compute_content_hash(conn)
         conn.tables['kala_timeline_spec'][0]['n_intervals'] = 99
         assert writer._compute_content_hash(conn) != before
+
+
+class TestA1GochaCorpusPin:
+    """A1 pin (SAMPŪRTI P3): gochara corpus fields are baked into config_pin and
+    therefore into field_snapshot_id — so a corpus change invalidates the snapshot.
+
+    These are the §N.8 detectors: each asserts something would actually fail if the
+    pin were removed or if the corpus were unchanged.
+    """
+
+    def _corpus_pin(self, gochara_rows=(), authority_rows=(), windows_rows=()):
+        """Build a minimal FakeConn with the given gochara tables and call
+        _gochara_corpus_pin directly."""
+        tables = {
+            'gochara_resonance_map': list(gochara_rows),
+            'kala_gochara_authority': list(authority_rows),
+            'kala_gochara_windows': list(windows_rows),
+        }
+        conn = FakeConn(tables)
+        return W.KaKshetraWriter._gochara_corpus_pin(conn, F.CHART_ID)
+
+    def test_returns_all_three_fields(self):
+        result = self._corpus_pin()
+        assert set(result) == {'gochara_generation', 'gochara_calibration_state',
+                               'gochara_corpus_digest'}
+
+    def test_generation_defaults_to_v1_when_authority_table_empty(self):
+        result = self._corpus_pin()
+        assert result['gochara_generation'] == 'v1'
+
+    def test_generation_uses_authority_row_when_present(self):
+        result = self._corpus_pin(authority_rows=[
+            {'chart_id': F.CHART_ID, 'authoritative_generation': '2.0'},
+        ])
+        assert result['gochara_generation'] == '2.0'
+
+    def test_calibration_state_is_no_windows_when_table_empty(self):
+        result = self._corpus_pin()
+        assert result['gochara_calibration_state'] == 'no_windows'
+
+    def test_calibration_state_reflects_dominant_tier(self):
+        windows = [
+            {'chart_id': F.CHART_ID, 'generation': 'v1',
+             'calibration_state': 'structural_prior'},
+            {'chart_id': F.CHART_ID, 'generation': 'v1',
+             'calibration_state': 'structural_prior'},
+            {'chart_id': F.CHART_ID, 'generation': 'v1',
+             'calibration_state': 'empirically_calibrated'},
+        ]
+        result = self._corpus_pin(windows_rows=windows)
+        assert result['gochara_calibration_state'] == 'structural_prior'
+
+    def test_corpus_digest_differs_when_resonance_map_changes(self):
+        # THE DETECTOR (§N.8): if adding a resonance row left the digest
+        # unchanged, the "corpus change invalidates snapshot" claim would have
+        # no mechanism behind it.
+        before = self._corpus_pin(gochara_rows=[
+            {'id': 1, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-01'},
+        ])
+        after = self._corpus_pin(gochara_rows=[
+            {'id': 1, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-01'},
+            {'id': 2, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-12'},
+        ])
+        assert before['gochara_corpus_digest'] != after['gochara_corpus_digest']
+
+    def test_snapshot_id_differs_when_gochara_corpus_changes(self):
+        # THE INTEGRATION DETECTOR: config_pin includes the corpus fields, so
+        # field_snapshot_id must differ for two builds with different corpora.
+        tables_before = {
+            **F.build_tables(),
+            'gochara_resonance_map': [
+                {'id': 1, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-01'},
+            ],
+        }
+        tables_after = {
+            **F.build_tables(),
+            'gochara_resonance_map': [
+                {'id': 1, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-01'},
+                {'id': 2, 'chart_id': F.CHART_ID, 'computed_at': '2026-08-12'},
+            ],
+        }
+        conn_before = FakeConn(tables_before)
+        conn_after = FakeConn(tables_after)
+        writer_before = W.KaKshetraWriter()
+        writer_after = W.KaKshetraWriter()
+        writer_before.plan_substeps(FakeCtx(conn_before, F.CHART_ID))
+        writer_after.plan_substeps(FakeCtx(conn_after, F.CHART_ID))
+        assert writer_before._snapshot_id != writer_after._snapshot_id

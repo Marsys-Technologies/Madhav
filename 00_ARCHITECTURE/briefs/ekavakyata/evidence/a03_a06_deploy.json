@@ -1,0 +1,23 @@
+{
+  "_note": "Post-deploy probe evidence for A-03+A-06 batch deploy (run 31906422500, headSha=cfc37fc38). C-01 also merged to 20266702a during this window; C-01 deploy is next (CI on 20266702a in_progress 20:29Z).",
+  "probe_time_utc": "2026-08-15T20:31:14Z",
+  "deployed_main_sha_at_probe": "20266702ada941565569dac8fc76b0b89b5ae88d",
+  "deploy_run_id": "31906422500",
+  "deploy_head_sha": "cfc37fc381661fd2671b299978d28cb5a9f13aad",
+  "deploy_conclusion": "success",
+  "deploy_jobs": {
+    "deploy-web": "success",
+    "deploy-mcp": "skipped",
+    "deploy-sidecar": "skipped",
+    "deploy-pipeline-job": "skipped"
+  },
+  "mcp_server_info": {
+    "catalog_version": "catalog-1+t152+r653c2a1a98c8",
+    "tool_count": 125,
+    "tools_changed_at": "2026-08-13T11:40:22.000Z",
+    "stale": false
+  },
+  "note_catalog_unchanged": "A-03 (unwrapCapabilityResult) + A-06 (withResolutionDisclosure) touch platform/ not platform-mcp/; no tool additions/removals; catalog_version unchanged expected.",
+  "lanes_in_batch": ["A-03 (12cbf5e14)", "A-06 (cfc37fc38)"],
+  "c01_status": "MERGED (20266702a) DURING this deploy window; C-01 deploy will be NEXT after CI on 20266702a succeeds"
+}

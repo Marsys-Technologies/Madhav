@@ -119,6 +119,9 @@ def _build_writer_class():
         Side effect: updates asset_registry.service_health.
         """
         asset_id = "ka_dasha_kala"
+        # The service writer delegates to service.py, eligibility.py, and
+        # tree_walk.py; hash the package rather than only this registration shim.
+        source_paths = ["platform/python-sidecar/services/ka_dasha_kala/"]
 
         def run(self, ctx: ContextSpec) -> WriterResult:
             conn = ctx.db_conn
@@ -144,13 +147,22 @@ def _build_writer_class():
 
             if not ok:
                 logger.error("[ka_dasha_kala writer] self-test FAILED: %s", detail)
-            else:
-                logger.info("[ka_dasha_kala writer] self-test PASSED")
+                # NIRMĀṆA L3-W3 M11 (§N.8): a returned WriterResult is treated as SUCCESS by
+                # the orchestrator regardless of its notes, so a degraded self-test used to leave
+                # the asset promoted to 'lit' while asset_registry.service_health said otherwise —
+                # a green build signal with no detector behind it. Raising is the only path that
+                # reaches mark_asset_error. This mirrors ka_muhurta_seva, which already did it
+                # correctly and documents why.
+                raise RuntimeError(
+                    f"ka_dasha_kala self-test failed (service_health=degraded): {detail[:400]}"
+                )
+
+            logger.info("[ka_dasha_kala writer] self-test PASSED")
 
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
-                notes=f"service_health={'healthy' if ok else 'degraded'}; {detail[:200]}",
+                notes=f"service_health=healthy; {detail[:200]}",
             )
 
     return KaDashaKalaWriter

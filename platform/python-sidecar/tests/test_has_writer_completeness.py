@@ -110,6 +110,8 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ga_ayurdaya",
     # ── L1 Gaṇita — migration 435 (Doctrine Campaign Night-1, Lane 2) ────────
     "ga_vichara",
+    # ── L2 Bodha — migration 899 (D-NATIVE-11 supporting writer, #2258) ──────
+    "bo_grounding",
     # ── L2 Bodha — migration 342 ─────────────────────────────────────────────
     "bo_anveshana",
     "bo_bimba",
@@ -189,12 +191,12 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     # writer -- joins bg_gochara_arcs against a chart's natal
     # gochara_resonance_map targets, scores via v1's frozen gochara_intensity
     # grammar, writes generation='2.0' rows to kala_gochara_windows_v2, its
-    # OWN table -- NEVER to the protected kala_gochara_windows. Renamed from
-    # the superseded ka_gochara_sweep_v2 (PR #1081, PARKED-HONEST). has_writer
-    # =true and has_substeps=true set by migration 542's asset_registry seed;
-    # migration 541's stale asset_registry row for the old name is DELETEd by
-    # migration 542) ───────────────────────────────────────────────────────
-    "ka_gochara_v2_materialize",
+    # OWN table -- NEVER to the protected kala_gochara_windows. Originally named
+    # ka_gochara_v2_materialize; renamed to ka_gochara at W6.4 cutover (UTK-R2,
+    # migration 563). The former zero-row global-scope self-test asset deleted.
+    # has_writer=true and has_substeps=true retained on the renamed row.) ──
+    # NOTE: the asset_id "ka_gochara" is already listed above (migration 342);
+    # that entry covers this writer post-rename — no duplicate entry here.
     # ── GOCHARA-UTKARSA W3.4 — migration 560 ─────────────────────────────────
     # century-horizon heavy writer: plan_substeps (60 substeps = 6 classes ×
     # 10 decade slices) + run_substep. Writes generation='g3_utkarsha' rows
@@ -357,6 +359,7 @@ def collect_migration_insert_ids() -> frozenset[str]:
     RETIRED_MIGRATION_IDS = frozenset({
         "ga_pyjhora_engine",    # migration 179 placeholder, never activated in prod
         "ka_gochara_sweep_v2",  # migration 541 row DELETED by migration 542
+        "ka_gochara_v2_materialize",  # migration 542 INSERT; RENAMED to ka_gochara by migration 563 (W6.4 UTK-R2, MR-06)
     })
 
     ids: set[str] = set()
@@ -476,6 +479,7 @@ _SEED_ONLY_ALLOWED = frozenset({
     # ── No writer (has_writer=false in DB) ────────────────────────────────────
     "lel_events",              # user-authored source data; has_writer=false
     "bg_sarvatobhadra_grid",   # deliberately empty; has_writer=false (ADJUDICATION-11)
+    "bg_gochara_citation_resolution",  # migration-565-owned static reference data; has_writer=false
     # ── Migration INSERT format not detected by line extractor ────────────────
     # These all have genuine migration INSERTs but use multi-row VALUES format
     # or complex SQL not caught by the single-line pattern.

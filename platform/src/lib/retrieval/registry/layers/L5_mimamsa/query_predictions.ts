@@ -1,8 +1,15 @@
 /**
  * query_predictions — Prediction Log (L5 Mīmāṃsā)
  * ==================================================
- * Queries mimamsa_predictions (mi_bhavisya) — 50 rows per chart (sparse, by design).
- * Returns logged predictions with confidence, falsifiers, and outcome status.
+ * Queries mimamsa_predictions (mi_bhavisya). Returns logged predictions with confidence,
+ * falsifiers, and outcome status.
+ *
+ * NIRMĀṆA L5 W3-3: the header and description used to pin "50 rows per chart". That number
+ * was a wrapper-local constant shadowing a live value (§N.7 item 3) and had already drifted —
+ * live 2026-09-05 is 139 rows for the canonical chart and 56 for Abhinandan. The population
+ * GROWS with every calibration cycle, so any pinned count is wrong by construction. The prose
+ * now describes the SHAPE (sparse, growing, per-chart) and the response reports the real
+ * `total_matching` it measured.
  *
  * emits_references: true (prediction_id → ph_pramana L4 falsifier refs).
  * Chart-agnostic: no native chart_id defaults (principle #14).
@@ -10,6 +17,11 @@
 
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+
+/** Bounded serving cap (mirrors query_journal / query_load_bearing). Chosen ABOVE the
+ *  current live maximum (139 rows, canonical chart, 2026-09-05) so this bound discloses
+ *  the ceiling without truncating any chart's population today. */
+const MAX_LIMIT = 200
 
 export const queryPredictionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_predictions',
@@ -19,11 +31,14 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
 
   description: [
     'Returns logged predictions for a chart from mimamsa_predictions (mi_bhavisya).',
-    'Source: mimamsa_predictions (50 rows per chart — sparse, early-stage L5 population).',
+    'Source: mimamsa_predictions — a sparse, early-stage L5 population that GROWS with each',
+    'calibration cycle; the served response reports the real total_matching it measured for',
+    'this chart rather than a pinned count.',
     'Each prediction carries: outcome_claim, confidence band, falsifier_jsonb, lifecycle_status',
     '(pending|confirmed|denied|expired), and domain.',
     'emits_references: prediction_id references link to ph_pramana (L4 via source_pramana_id).',
     'Filter by lifecycle_status to review confirmed/denied predictions.',
+    `Bounded to ${MAX_LIMIT} rows with a disclosed total_matching + more_available.`,
   ].join(' '),
 
   scope: 'per_chart',
@@ -55,11 +70,24 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       type: 'string',
       description: 'Filter by domain (career, wealth, relationship, health, character, spirituality, other).',
     },
+    limit: {
+      type: 'number',
+      description: `Max predictions to return (default ${MAX_LIMIT}, max ${MAX_LIMIT}).`,
+    },
   },
 
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 12 },
+  },
+
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). paginated: bounded LIMIT with a
+  // disclosed total_matching + more_available (no offset cursor — the population is
+  // small enough that a raised limit, not a page walk, is the honest control).
+  density_contract: {
+    paginated: true,
+    facets: ['lifecycle_status', 'domain', 'prediction_id'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -71,6 +99,7 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
     const prediction_id    = args['prediction_id'] as string | undefined
     const lifecycle_status = args['lifecycle_status'] as string | undefined
     const domain           = args['domain'] as string | undefined
+    const limit            = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
 
     try {
       const conds: string[] = ['chart_id = $1']
@@ -81,17 +110,28 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
       if (lifecycle_status) { conds.push(`lifecycle_status = $${p++}`); params.push(lifecycle_status) }
       if (domain)           { conds.push(`domain = $${p++}`);          params.push(domain) }
 
+      const where = conds.join(' AND ')
       const sql = `
         SELECT prediction_id, source_pramana_id, domain, outcome_claim,
                confidence_band, magnitude_expected, lifecycle_status,
                observation_window, eval_date, falsifier_jsonb, base_rate,
                driving_signals, emitted_at, created_at
         FROM mimamsa_predictions
-        WHERE ${conds.join(' AND ')}
+        WHERE ${where}
         ORDER BY confidence_band DESC NULLS LAST, created_at DESC
+        LIMIT $${p}
       `
 
-      const result = await query(sql, params)
+      // Family size BEFORE the LIMIT, same filters as the page — so `more_available`
+      // is measured, not inferred from whether the page happened to fill.
+      const [result, countResult] = await Promise.all([
+        query(sql, [...params, limit]),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM mimamsa_predictions WHERE ${where}`,
+          params,
+        ),
+      ])
+      const total_matching = Number(countResult.rows[0]?.total ?? 0)
       const predictionRefs = (result.rows as Array<{ prediction_id?: string }>)
         .map(r => r.prediction_id).filter(Boolean) as string[]
 
@@ -124,10 +164,31 @@ export const queryPredictionsCapability: CapabilityDescriptor = {
           chart_id,
           predictions:      predictionsWithProvenance,
           prediction_count: result.rows.length,
+          total_matching,
+          more_available:   total_matching > result.rows.length,
           prediction_id_refs: [...new Set(predictionRefs)],
-          sparse_note:      'mimamsa_predictions: 50 rows — sparse early L5 population. Population grows with calibration cycles.',
-          filters: { prediction_id, lifecycle_status, domain },
-          provenance: { tables: ['mimamsa_predictions'] },
+          // Shape, not a pinned count (§N.7 item 3) — the count lives in total_matching,
+          // measured on this call.
+          sparse_note:
+            'mimamsa_predictions is a sparse early-stage L5 population that grows with each ' +
+            'calibration cycle; total_matching above is this chart\'s real measured count under ' +
+            'the applied filters, not a fixed per-chart figure.',
+          ...(result.rows.length === 0
+            ? {
+                empty_reason:
+                  `No predictions matched for chart ${chart_id} ` +
+                  `(prediction_id=${prediction_id ?? 'any'}, lifecycle_status=${lifecycle_status ?? 'any'}, ` +
+                  `domain=${domain ?? 'any'}). ` +
+                  (total_matching === 0
+                    ? 'mimamsa_predictions holds no row matching these filters for this chart.'
+                    : 'Filters excluded every row.'),
+              }
+            : {}),
+          filters: { prediction_id, lifecycle_status, domain, limit },
+          provenance: {
+            tables: ['mimamsa_predictions'],
+            source: 'L5 Mīmāṃsā prediction log (mi_bhavisya); served chart-scoped.',
+          },
         },
         is_error: false,
       }

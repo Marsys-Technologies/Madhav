@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:45:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-42",
+  "pr": 1348,
+  "head": "c1b97b2cf0e4860fff040f8d41a3362e24dff381",
+  "queue": {
+    "entry_id": "MQE_lQDOSFaWQs8AAAABAS2rOM4AA6cUzgKUEJM",
+    "position": 2,
+    "state": "QUEUED",
+    "ahead_of_it": "F50 PR #1347"
+  },
+  "classification": "normal external Ganga wait; no composition or bypass",
+  "next_check": "first reconcile F50's synthetic merge-group result; then revalidate F42 queue admission against the new main base"
+}

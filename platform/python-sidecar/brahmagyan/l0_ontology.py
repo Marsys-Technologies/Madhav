@@ -1060,6 +1060,14 @@ VARGA_DATA = [
 for n, name_en, name_sa, extra_synonyms, description, citation in VARGA_DATA:
     ENTITIES.append(_e_varga(n, name_en, name_sa, extra_synonyms, description, citation))
 
+# These partitions are materialized by later, dedicated L0 writers. This module
+# carries a small bootstrap subset of dasha systems for resolver availability,
+# but it never owns cleanup authority over any of these three classes.
+CO_WRITER_ENTITY_CLASSES = frozenset({"yoga", "dosha", "dasha_system"})
+ONTOLOGY_OWNED_ENTITY_CLASSES = frozenset(
+    {entity["entity_class"] for entity in ENTITIES} - CO_WRITER_ENTITY_CLASSES
+)
+
 # ── Resolve function ───────────────────────────────────────────────────────────
 
 def resolve(term: str) -> dict | None:
@@ -1101,17 +1109,43 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
                 "by_class": by_class}
 
     now = datetime.now(timezone.utc)
-    inserted = 0
+    changed = 0
     skipped = 0
 
     with conn.cursor() as cur:
         for e in ENTITIES:
-            cur.execute("""
+            if e["entity_class"] in CO_WRITER_ENTITY_CLASSES:
+                conflict_clause = """
+                ON CONFLICT (entity_class, canonical_id) DO NOTHING
+                """
+            else:
+                conflict_clause = """
+                ON CONFLICT (entity_class, canonical_id) DO UPDATE SET
+                  canonical_name_en = EXCLUDED.canonical_name_en,
+                  canonical_name_sa = EXCLUDED.canonical_name_sa,
+                  synonyms = EXCLUDED.synonyms,
+                  description = EXCLUDED.description,
+                  source_citation = EXCLUDED.source_citation
+                WHERE ROW(
+                  brahma_ontology.canonical_name_en,
+                  brahma_ontology.canonical_name_sa,
+                  brahma_ontology.synonyms,
+                  brahma_ontology.description,
+                  brahma_ontology.source_citation
+                ) IS DISTINCT FROM ROW(
+                  EXCLUDED.canonical_name_en,
+                  EXCLUDED.canonical_name_sa,
+                  EXCLUDED.synonyms,
+                  EXCLUDED.description,
+                  EXCLUDED.source_citation
+                )
+                """
+            cur.execute(f"""
                 INSERT INTO brahma_ontology
                   (entity_class, canonical_id, canonical_name_en, canonical_name_sa,
                    synonyms, description, source_citation, created_at)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (entity_class, canonical_id) DO NOTHING
+                {conflict_clause}
             """, (
                 e["entity_class"], e["canonical_id"],
                 e["canonical_name_en"], e.get("canonical_name_sa"),
@@ -1119,9 +1153,24 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
                 e["source_citation"], now,
             ))
             if cur.rowcount > 0:
-                inserted += 1
+                changed += 1
             else:
                 skipped += 1
+
+        owned_canonical_keys = [
+            f"{e['entity_class']}\x1f{e['canonical_id']}"
+            for e in ENTITIES
+            if e["entity_class"] in ONTOLOGY_OWNED_ENTITY_CLASSES
+        ]
+        cur.execute(
+            """
+            DELETE FROM brahma_ontology
+            WHERE entity_class = ANY(%s)
+              AND NOT ((entity_class || E'\\x1f' || canonical_id) = ANY(%s))
+            """,
+            (sorted(ONTOLOGY_OWNED_ENTITY_CLASSES), owned_canonical_keys),
+        )
+        deleted = cur.rowcount
 
     if autocommit:
         conn.commit()
@@ -1130,9 +1179,19 @@ def seed_ontology(conn, build_id: str | None = None, dry_run: bool = False,
     for e in ENTITIES:
         by_class[e["entity_class"]] = by_class.get(e["entity_class"], 0) + 1
 
-    logger.info("[L0/ontology] brahma_ontology: %d inserted, %d skipped", inserted, skipped)
-    return {"total": inserted + skipped, "inserted": inserted, "skipped": skipped,
-            "by_class": by_class}
+    logger.info(
+        "[L0/ontology] brahma_ontology: %d changed, %d deleted, %d unchanged",
+        changed,
+        deleted,
+        skipped,
+    )
+    return {
+        "total": len(ENTITIES),
+        "inserted": changed + deleted,
+        "skipped": skipped,
+        "deleted": deleted,
+        "by_class": by_class,
+    }
 
 
 def check_volume(conn) -> dict:

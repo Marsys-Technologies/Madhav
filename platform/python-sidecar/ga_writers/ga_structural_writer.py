@@ -100,6 +100,8 @@ import psycopg.rows
 from pyjhora_adapter.compute import compute_chart
 from pyjhora_adapter.version import ENGINE_VERSION
 from brahmagyan.verification_vocab import DIVERGENT_FLAGGED, UNVERIFIED_DEFAULT, assert_legal
+from brahmagyan.dignity_oracle import classify_dignity
+from brahmagyan.aspects import get_graha_aspects
 from ga_writers._idempotency import replace_prior_chart_facts
 from ga_writers._telemetry import update_asset_throughput
 from pipeline.orchestrator.birth_params import resolve_birth_params
@@ -134,6 +136,28 @@ logger = logging.getLogger(__name__)
 
 CLASSICAL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 ALL_GRAHAS = CLASSICAL_GRAHAS + ["Rahu", "Ketu"]
+
+# The classical Sapta-varga group, as varga ids, in classical order. Mirrors
+# ga_vargas_writer.SAPTAVARGA_SET and this project's own L0 authority
+# (brahmagyan/l0_reference.py: strength_reference.saptavargaja_bala.formula_text
+# == "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"; varga-group table
+# "saptavarga"). Kept as a module-local copy — no cross-import between L1
+# writers, matching the DEEPTAMSA precedent above. Used only to report honest
+# coverage of the F-61 aggregate; it never fabricates a missing varga.
+SAPTAVARGA_EXPECTED_VARGAS = ("D1", "D2", "D3", "D7", "D9", "D12", "D30")
+
+# The 16-member Shodasavarga group used by the Vimsopaka ("twenty-point")
+# scheme, in classical (ascending-divisor) order. Mirrors
+# ga_vargas_writer.VIMSOPAKA_SHODA_WEIGHTS's key set and this project's own
+# L0 authority (brahmagyan/l0_reference.py: _VIMSHOPAKA["shodashavarga"] —
+# D1..D60, 16 members summing to 20; BPHS Ch.7). Kept as a module-local copy
+# — no cross-import between L1 writers, matching the SAPTAVARGA_EXPECTED_VARGAS
+# precedent above. Used only to report honest coverage of the F-167
+# aggregate; it never fabricates a missing varga.
+SHODASAVARGA_EXPECTED_VARGAS = (
+    "D1", "D2", "D3", "D4", "D7", "D9", "D10", "D12",
+    "D16", "D20", "D24", "D27", "D30", "D40", "D45", "D60",
+)
 
 # M-12: Deeptamsa (orb of light/influence) per graha, degrees — Tajika
 # Nilakanthi; mirrors PyJHora's jhora.const.deeptaamsa_of_planets (Sun,Moon,
@@ -539,30 +563,6 @@ MAHAPURUSHA_STRENGTH_BONUS: dict[str, float] = {
     "SASA_MAHAPURUSHA": 0.20,
 }
 
-# Parashari aspect strengths per BPHS Ch.7
-# format: {source_house_offset: aspect_strength}
-PARASHARI_ASPECTS: dict[str, dict[int, float]] = {
-    # All grahas: 7th house full aspect
-    "all": {7: 1.0},
-    # Saturn: 3rd + 10th are FULL special aspects, same as 7th (BPHS Ch.7;
-    # V-5 fix — the special drishtis of Mars/Jupiter/Saturn are all
-    # full-strength overrides of the generic fractional drishti-bala table,
-    # not fractional themselves. The previous 0.25/0.75 values were an
-    # uncited partial-strength invention inconsistent with Mars (4th/8th=1.0
-    # below) and Jupiter (5th/9th=1.0 below), which this table already got
-    # right.
-    "Saturn": {3: 1.0, 7: 1.0, 10: 1.0},
-    # Jupiter: 5th (full) + 9th (full) in addition to 7th
-    "Jupiter": {5: 1.0, 7: 1.0, 9: 1.0},
-    # Mars: 4th (full) + 8th (full) in addition to 7th
-    "Mars": {4: 1.0, 7: 1.0, 8: 1.0},
-}
-
-# Node special aspects: 5th/7th/9th — full strength (many Parashari authorities)
-# Rahu and Ketu: retrograde, so aspects flow "backward" in some schools;
-# here we follow the majority rule: same offsets as stated (5th/7th/9th from sign).
-NODE_PARASHARI_ASPECTS: dict[int, float] = {5: 1.0, 7: 1.0, 9: 1.0}
-
 # effective_dignity v2 (design §10c): functional-class buckets over whatever
 # string `_get_functional_class_dynamic` returns — do not invent a new
 # classifier (B.10). Natural sets below are ONLY the documented fallback for
@@ -575,30 +575,23 @@ _NATURAL_MALEFICS = {"Saturn", "Mars", "Sun", "Rahu", "Ketu"}
 
 def _graha_aspects_house(aspector: str, source_h: int, target_h: int) -> float:
     """Return Parashari aspect strength from aspector in source_h onto target_h.
-    Returns 0.0 if no aspect. Uses canonical PARASHARI_ASPECTS (1-indexed offsets).
+    Returns 0.0 if no aspect. Uses the canonical oracle (1-indexed offsets).
     This is the ONE aspect-offset source in this file — all builders must call this.
 
-    PARASHARI_ASPECTS keys are INCLUSIVE house counts per classical convention
+    Canonical aspect-profile keys are INCLUSIVE house counts per classical convention
     (the source house counts as "1"; the opposition/7th-house aspect is the
     house you reach by counting 7 houses inclusively — i.e. 6 houses away by
     raw difference). A7 fix (CR-87 follow-up, Lane A-gamma / D-1.5a): the
     offset must be the inclusive count (raw_diff + 1), not the raw difference.
     The prior `% 12 or 12` formula returned the raw difference (e.g. house 1
-    -> house 7 gave offset=6), which doesn't match any PARASHARI_ASPECTS key
+    -> house 7 gave offset=6), which doesn't match any canonical profile key
     (all opposition entries are keyed "7"), so every 7th-house/opposition
     aspect silently returned 0.0 instead of 1.0. Example: Sun in H1 aspecting
-    H7 (opposition) — before: offset=6 -> PARASHARI_ASPECTS["all"].get(6) ->
-    0.0 (bug). After: offset=7 -> PARASHARI_ASPECTS["all"].get(7) -> 1.0.
+    H7 (opposition) — before: offset=6 -> universal profile .get(6) ->
+    0.0 (bug). After: offset=7 -> canonical universal profile .get(7) -> 1.0.
     """
     offset = ((target_h - source_h) % 12) + 1  # inclusive count, 1..12
-    if aspector in ("Rahu", "Ketu"):
-        return NODE_PARASHARI_ASPECTS.get(offset, 0.0)
-    table = PARASHARI_ASPECTS.get(aspector, {})
-    strength = table.get(offset, 0.0)
-    if strength == 0.0:
-        # All planets also cast 7th aspect; check "all" for special-aspect planets
-        strength = PARASHARI_ASPECTS["all"].get(offset, 0.0)
-    return strength
+    return get_graha_aspects(aspector).get(offset, 0.0)
 
 # Jaimini Rasi drishti rules (fixed sign aspects)
 # Fixed signs: Taurus, Leo, Scorpio, Aquarius → aspect all but adjacent movable signs
@@ -1130,13 +1123,7 @@ def _build_aspect_rows(
         g_house = g_data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        # Determine aspect offsets for this graha
-        if g_name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif g_name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[g_name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(g_name)
 
         for offset, strength in asp_offsets.items():
             # offset is 1-based; target = ((source - 1) + (offset - 1)) % 12 + 1
@@ -1380,8 +1367,17 @@ def _build_shadbala_extension_rows(
     """
     rows: list[dict[str, Any]] = []
 
-    # Vargottama: planet in same sign in D1 and D9
-    # Amplification factor per BPHS (traditionally ~1.25× effective strength)
+    # Vargottama: planet in same sign in D1 and D9.
+    # Amplification factor per BPHS (traditionally ~1.25× effective strength).
+    #
+    # F-A15 fix: this used to re-derive vargottama itself, via an inline navamsha-
+    # degree formula (a hardcoded navamsha_starts sign-cycling table + float
+    # arithmetic) that is INDEPENDENT of ga_vargas' own D9 computation. That
+    # disagreed with ga_vargas' authoritative chart_divisionals.varga_vargottama_flag
+    # on 4/105 live rows (2 non-canonical charts, surya_siddhanta_classical/raman
+    # ayanamshas) — a §N.5 violation (an L1 asset re-deriving instead of citing
+    # another L1 asset's own authority; ga_vargas is already a declared depends_on
+    # for ga_structural). Now READS ga_vargas' own D9 determination directly.
     for g_name in CLASSICAL_GRAHAS:
         g_data = None
         for g in chart_output.get("grahas", []):
@@ -1391,58 +1387,140 @@ def _build_shadbala_extension_rows(
         if g_data is None:
             continue
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        # Check vargottama from divisional data if available
-        # Simplified: derive from position (longitude within same sign in navamsha)
-        long_deg = float(g_data.get("longitude", 0.0))
-        sign_num = int(g_data.get("sign_id", 1))
-        degree_in_sign = long_deg % 30.0
-        # Navamsha: each 30° sign divided into 9 parts of 3°20' each (3.333°)
-        navamsha_pada = int(degree_in_sign / 3.333333)
-        # Navamsha sign: each of 12 signs contributes 9 navamshas cycling through Aries→Pisces
-        # Starting navamsha lord depends on sign type (fire=Aries, earth=Capricorn, air=Libra, water=Cancer)
-        navamsha_starts = {
-            1: 1, 2: 10, 3: 7, 4: 4, 5: 1, 6: 10,
-            7: 7, 8: 4, 9: 1, 10: 10, 11: 7, 12: 4
-        }
-        nav_sign_num = ((navamsha_starts.get(sign_num, 1) - 1 + navamsha_pada) % 12) + 1
-        is_vargottama = (nav_sign_num == sign_num)
-        # Amplification factor: 1.25 if vargottama, 1.0 otherwise
-        amp_factor = 1.25 if is_vargottama else 1.0
+
+        is_vargottama, constituent_id = (
+            _get_varga_vargottama_flag(conn, chart_id, ayanamsha_id, "D9", g_name)
+            if conn is not None else (None, None)
+        )
+
+        if is_vargottama is None:
+            # ga_vargas' own D9 vargottama_flag row is not yet reachable for this
+            # (chart, ayanamsha, graha) — honest floor, never guessed (§N.8/B.10).
+            amp_factor = None
+            status_text = "unavailable"
+            citation_human = (
+                f"{g_name} vargottama amplification factor: unavailable — "
+                f"ga_vargas' D9 varga_vargottama_flag row not yet built for "
+                f"({ayanamsha_id})."
+            )
+        else:
+            amp_factor = 1.25 if is_vargottama else 1.0
+            status_text = "vargottama" if is_vargottama else "non-vargottama"
+            citation_human = (
+                f"{g_name} vargottama amplification factor: {amp_factor:.2f} "
+                f"({status_text}, per ga_vargas' D9 chart_divisionals.varga_vargottama_flag, "
+                f"§N.5) ({ayanamsha_id})."
+            )
 
         rows.append(_base_row(
             "graha_vargottama_amplification_factor", subject, "amplification_factor",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
             value_num=amp_factor,
+            value_text=status_text,
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.vargottama/{eng_ver}",
-            citation_human=(
-                f"{g_name} vargottama amplification factor: {amp_factor:.2f} "
-                f"({'vargottama' if is_vargottama else 'non-vargottama'}) ({ayanamsha_id})."
-            ),
+            source=f"chart_divisionals.varga_vargottama_flag/{eng_ver}",
+            value_jsonb={
+                "source_table": "chart_divisionals",
+                "source_category": "varga_vargottama_flag",
+                "constituent_fact_id": constituent_id,
+            } if constituent_id else None,
+            citation_human=citation_human,
         ))
 
-    # graha_saptavargaja_bala_component (V): resolvable reference to GA6 chart_divisionals rows
+    # graha_saptavargaja_bala_component (V): AGGREGATED score from GA6.
+    #
+    # F-61 fix (PARIŚEṢA-V4). This row is keyed `saptavargaja_score` but used
+    # to be emitted with value_num=None and value_text=None on every graha of
+    # every chart — the only payload was a JSONB pointer to the GA6
+    # chart_divisionals rows, so a caller asking for "the score" got a
+    # to-do list instead of a number. The aggregate was never computed
+    # anywhere; §N.8's question ("what code path would make this signal
+    # correctly read false?") had no answer because no code path produced a
+    # value at all.
+    #
+    # The aggregation is a plain SUM of the per-varga virupa scores, which is
+    # not a judgement call — this project's own L0 canonical reference states
+    # it verbatim:
+    #   brahmagyan/l0_reference.py, strength_reference row `saptavargaja_bala`:
+    #     formula_text = "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"
+    #     units        = "virupa"   source_citation = "BPHS Ch.27"
+    #     interpretation: Moolatrikona 45, own 30, great-friend 22.5,
+    #                     friend 15, neutral 7.5, enemy 3.75, great-enemy 1.875
+    # PyJHora agrees structurally (`_sapthavargaja_bala1` ->
+    # `svb_sum = list(map(sum, zip(*svb)))` over
+    # `const.sapthavargaja_factors == [1,2,3,7,9,12,30]`), and GA6's
+    # per-varga ladder already emits exactly those virupa values.
+    #
+    # HONEST COVERAGE (§N.7 item 6 / §N.8): the sum is only as complete as the
+    # GA6 rows behind it. We never invent a missing varga's contribution and
+    # never let a partial sum masquerade as a whole one:
+    #   - zero constituent vargas  -> value_num stays NULL (honest null, NOT 0.0,
+    #     which would read as a real "no strength" verdict);
+    #   - partial coverage         -> value_num carries the partial sum but
+    #     fact_value_text reads "partial_N_of_7" and the JSONB carries
+    #     coverage_complete=false plus the explicit vargas_missing list;
+    #   - full coverage            -> "complete_7_of_7", coverage_complete=true.
+    # A caller must never be able to read the number without the coverage
+    # flag being available alongside it (§N.6 item 1).
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        constituent_ids = (
-            _get_divisional_constituent_ids(conn, chart_id, ayanamsha_id, "varga_saptavargaja_bala_component", subject)
+        components = (
+            _get_saptavargaja_components(conn, chart_id, ayanamsha_id, subject)
             if conn is not None else []
         )
+        constituent_ids = [c["divisional_id"] for c in components]
+        vargas_present = [c["varga"] for c in components]
+        vargas_missing = [v for v in SAPTAVARGA_EXPECTED_VARGAS if v not in vargas_present]
+        coverage_complete = not vargas_missing
+
+        if components:
+            total_virupa = round(sum(c["score"] for c in components), 4)
+            coverage_text = (
+                "complete_7_of_7" if coverage_complete
+                else f"partial_{len(vargas_present)}_of_{len(SAPTAVARGA_EXPECTED_VARGAS)}"
+            )
+        else:
+            # No GA6 saptavargaja rows reachable for this graha. Emit an honest
+            # null rather than a plausible-looking 0.0.
+            total_virupa = None
+            coverage_text = "unavailable_0_of_7"
+
         rows.append(_base_row(
             "graha_saptavargaja_bala_component", subject, "saptavargaja_score",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_num=None,
+            value_num=total_virupa,
+            value_text=coverage_text,
+            unit="virupa" if total_virupa is not None else None,
             value_jsonb={
                 "source_table": "chart_divisionals",
                 "source_category": "varga_saptavargaja_bala_component",
                 "constituent_fact_ids": constituent_ids,
+                "formula": "sum(per-varga virupa score across the saptavarga group)",
+                "formula_source": (
+                    "l0_reference.strength_reference.saptavargaja_bala.formula_text "
+                    "('Sum of dignity points across D1,D2,D3,D7,D9,D12,D30'); BPHS Ch.27"
+                ),
+                "unit": "virupa",
+                "vargas_expected": list(SAPTAVARGA_EXPECTED_VARGAS),
+                "vargas_present": vargas_present,
+                "vargas_missing": vargas_missing,
+                "coverage_complete": coverage_complete,
+                "per_varga": [
+                    {"varga": c["varga"], "score": c["score"], "relation": c["relation"]}
+                    for c in components
+                ],
                 "note": f"chart_divisionals rows for {subject} across saptavarga set ({ayanamsha_id})",
             },
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.ga6_reference/{eng_ver}",
+            source=f"ga_structural.saptavargaja_aggregate/{eng_ver}",
             citation_human=(
-                f"{g_name} saptavargaja bala component: see chart_divisionals "
-                f"varga_saptavargaja_bala_component ({ayanamsha_id})."
+                f"{g_name} Saptavargaja Bala: "
+                + (f"{total_virupa} virupa" if total_virupa is not None
+                   else "unavailable (no GA6 constituent rows)")
+                + f" = sum over {coverage_text} of the saptavarga group "
+                f"(D1,D2,D3,D7,D9,D12,D30); BPHS Ch.27 ({ayanamsha_id})."
+                + (f" INCOMPLETE — missing {', '.join(vargas_missing)}."
+                   if vargas_missing else "")
             ),
         ))
 
@@ -1639,6 +1717,40 @@ def _build_anubindu_rows(
 
 # ── Group E: Vimsopaka bala (from GA6) ───────────────────────────────────────
 
+# vimsopaka_bala_per_graha (E): AGGREGATED score from GA6.
+#
+# F-167 fix (PARIŚEṢA-V4). This row was keyed `vimsopaka_total` but used to
+# be emitted with value_num=None on every graha of every chart — the only
+# payload was a JSONB pointer to the GA6 chart_divisionals rows, so a caller
+# asking for "the total" got a to-do list instead of a number. Same defect
+# shape as F-61's graha_saptavargaja_bala_component fix above; this copies
+# that playbook exactly.
+#
+# F-168 precondition (fixed in this same PR, in ga_vargas_writer.py's
+# VIMSOPAKA_SHODA_WEIGHTS): D40 and D45 were both wrongly 1.0, making the
+# 16-varga weight table that feeds varga_vimsopaka_contribution sum to 21.0
+# rather than the required 20 (Vimsopaka == "twenty-point", BPHS Ch.7).
+# Summing over the wrong weights before that fix would have manufactured a
+# confident wrong number — strictly worse than the honest NULL it replaces.
+# The weight fix ships first; this aggregate is only correct because of it.
+#
+# The aggregation is a plain SUM of the per-varga contributions GA6 already
+# writes, which is not a judgement call — this project's own L0 canonical
+# reference states the scheme verbatim:
+#   brahmagyan/l0_reference.py, _VIMSHOPAKA["shodashavarga"]:
+#     {"D1":3.5,"D2":1,"D3":1,"D4":0.5,"D7":0.5,"D9":3,"D10":0.5,"D12":0.5,
+#      "D16":2,"D20":0.5,"D24":0.5,"D27":0.5,"D30":1,"D40":0.5,"D45":0.5,"D60":4}
+#     unit="point", category="vimshopaka", source_citation="BPHS Ch.7"
+# (mirrored by ga_vargas_writer.VIMSOPAKA_SHODA_WEIGHTS, post-F-168 fix).
+#
+# HONEST COVERAGE (§N.7 item 6 / §N.8), the same three-way discipline as
+# F-61: zero constituent vargas -> value_num stays NULL (honest null, NOT
+# 0.0); partial coverage -> value_num carries the partial sum but
+# fact_value_text reads "partial_N_of_16" and the JSONB carries
+# coverage_complete=false plus the explicit vargas_missing list; full
+# coverage -> "complete_16_of_16", coverage_complete=true. A caller must
+# never be able to read the number without the coverage flag alongside it
+# (§N.6 item 1).
 def _build_vimsopaka_ext_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -1650,28 +1762,73 @@ def _build_vimsopaka_ext_rows(
     GA3 already wrote graha_vimsopaka_shadvarga/saptavarga/dasavarga/shodasavarga.
     GA8 writes vimsopaka_bala_per_graha as the aggregated summary from GA6.
     constituent_fact_ids are resolvable chart_divisionals.id UUIDs (§N.5 L1-authority).
+
+    F-167: the aggregate is a plain sum of the per-varga
+    varga_vimsopaka_contribution rows across the 16-member shodasavarga
+    group (SHODASAVARGA_EXPECTED_VARGAS) — see _get_shodasavarga_components
+    for the honest-NULL / partial-coverage reader this mirrors from F-61.
     """
     rows: list[dict[str, Any]] = []
     for g_name in CLASSICAL_GRAHAS:
         subject = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        constituent_ids = _get_divisional_constituent_ids(
-            conn, chart_id, ayanamsha_id, "varga_vimsopaka_contribution", subject
+        components = (
+            _get_shodasavarga_components(conn, chart_id, ayanamsha_id, subject)
+            if conn is not None else []
         )
+        constituent_ids = [c["divisional_id"] for c in components]
+        vargas_present = [c["varga"] for c in components]
+        vargas_missing = [v for v in SHODASAVARGA_EXPECTED_VARGAS if v not in vargas_present]
+        coverage_complete = not vargas_missing
+
+        if components:
+            total_points = round(sum(c["score"] for c in components), 4)
+            coverage_text = (
+                "complete_16_of_16" if coverage_complete
+                else f"partial_{len(vargas_present)}_of_{len(SHODASAVARGA_EXPECTED_VARGAS)}"
+            )
+        else:
+            # No GA6 vimsopaka-contribution rows reachable for this graha.
+            # Emit an honest null rather than a plausible-looking 0.0.
+            total_points = None
+            coverage_text = "unavailable_0_of_16"
+
         rows.append(_base_row(
             "vimsopaka_bala_per_graha", subject, "vimsopaka_total",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_num=None,
+            value_num=total_points,
+            value_text=coverage_text,
+            unit="point" if total_points is not None else None,
             value_jsonb={
                 "source_table": "chart_divisionals",
                 "source_category": "varga_vimsopaka_contribution",
                 "constituent_fact_ids": constituent_ids,
+                "formula": "sum(per-varga vimsopaka contribution across the shodasavarga group)",
+                "formula_source": (
+                    "l0_reference._VIMSHOPAKA['shodashavarga'] "
+                    "(D1..D60, 16 members summing to 20); BPHS Ch.7"
+                ),
+                "unit": "point",
+                "vargas_expected": list(SHODASAVARGA_EXPECTED_VARGAS),
+                "vargas_present": vargas_present,
+                "vargas_missing": vargas_missing,
+                "coverage_complete": coverage_complete,
+                "per_varga": [
+                    {"varga": c["varga"], "score": c["score"]}
+                    for c in components
+                ],
                 "note": f"chart_divisionals rows for {subject} across shodasavarga set ({ayanamsha_id})",
             },
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.ga6_vimsopaka_ref/{eng_ver}",
+            source=f"ga_structural.vimsopaka_aggregate/{eng_ver}",
             citation_human=(
-                f"{g_name} vimsopaka bala (shodasavarga): see chart_divisionals "
-                f"varga_vimsopaka_contribution ({ayanamsha_id})."
+                f"{g_name} Vimsopaka Bala (shodasavarga): "
+                + (f"{total_points} points" if total_points is not None
+                   else "unavailable (no GA6 constituent rows)")
+                + f" = sum over {coverage_text} of the shodasavarga group "
+                "(D1,D2,D3,D4,D7,D9,D10,D12,D16,D20,D24,D27,D30,D40,D45,D60); "
+                f"BPHS Ch.7 ({ayanamsha_id})."
+                + (f" INCOMPLETE — missing {', '.join(vargas_missing)}."
+                   if vargas_missing else "")
             ),
         ))
     return rows
@@ -1691,18 +1848,225 @@ def _get_divisional_constituent_ids(
     fact_subject in chart_divisionals uses the format '{VARGA}.{GRAHA}' (e.g. 'D1.SUN').
     This collects IDs across all vargas for a single graha — the resolvable L1-authority
     references for cross-table constituent_fact_ids (§N.5).
+
+    F-170: asserts a single build_id_uuid across the returned rows rather than
+    silently mixing rows across builds. Migration 218's unique index
+    deliberately excludes build_id on the stated invariant that "the data
+    plane holds one canonical build per chart" — this is the read-side
+    DETECTOR for that invariant breaking (§N.8), not a filter that would mask
+    it.
     """
     import psycopg.rows as _rows
     with conn.cursor(row_factory=_rows.tuple_row) as cur:
         cur.execute(
-            """SELECT id::text FROM chart_divisionals
+            """SELECT id::text, build_id_uuid FROM chart_divisionals
                WHERE chart_id = %s AND ayanamsha_id = %s
                  AND fact_category = %s
                  AND split_part(fact_subject, '.', 2) = %s
                ORDER BY fact_subject""",
             (chart_id, ayanamsha_id, fact_category, graha_suffix),
         )
-        return [row[0] for row in cur.fetchall()]
+        fetched = cur.fetchall()
+
+    builds = {row[1] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_divisional_constituent_ids: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, category={fact_category}, "
+            f"graha={graha_suffix}) — the migration-218 one-canonical-build "
+            f"invariant is violated"
+        )
+    return [row[0] for row in fetched]
+
+
+def _get_saptavargaja_components(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    graha_suffix: str,
+) -> list[dict[str, Any]]:
+    """Return this graha's per-varga Saptavargaja contributions from GA6.
+
+    F-61: the GA8 `graha_saptavargaja_bala_component.<graha>.saptavargaja_score`
+    row needs the actual per-varga virupa VALUES to sum, not just the row ids
+    that `_get_divisional_constituent_ids` returns. Each element is
+    {divisional_id, varga, score, relation}.
+
+    Restricted to the classical saptavarga group (SAPTAVARGA_EXPECTED_VARGAS)
+    at read time as well as at write time: if a stale pre-F-61 build left
+    D60 rows in chart_divisionals (the old ga_vargas SAPTAVARGA_SET wrongly
+    contained D60 and omitted D7), they must NOT be summed into a score whose
+    stated formula is over D1,D2,D3,D7,D9,D12,D30. Filtering here means the
+    aggregate is correct-by-construction even before the GA6 rebuild lands.
+
+    Rows with a NULL score are skipped rather than coerced to 0.0 — a missing
+    contribution is reported as missing coverage, never as "no strength".
+
+    F-170: asserts a single build_id_uuid across the returned rows rather
+    than silently summing rows across builds — see
+    _get_divisional_constituent_ids's docstring for the full invariant
+    rationale (migration 218).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text,
+                      split_part(fact_subject, '.', 1) AS varga,
+                      fact_value_num,
+                      fact_value_text,
+                      build_id_uuid
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_saptavargaja_bala_component'
+                 AND split_part(fact_subject, '.', 2) = %s
+                 AND split_part(fact_subject, '.', 1) = ANY(%s)
+               ORDER BY fact_subject""",
+            (chart_id, ayanamsha_id, graha_suffix, list(SAPTAVARGA_EXPECTED_VARGAS)),
+        )
+        fetched = cur.fetchall()
+
+    builds = {row[4] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_saptavargaja_components: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, graha={graha_suffix}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    out: list[dict[str, Any]] = []
+    for row_id, varga, value_num, value_text, _build in fetched:
+        if value_num is None:
+            continue
+        out.append({
+            "divisional_id": row_id,
+            "varga": varga,
+            "score": float(value_num),
+            "relation": value_text,
+        })
+    return out
+
+
+def _get_varga_vargottama_flag(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    varga: str,
+    graha: str,
+) -> tuple[bool | None, str | None]:
+    """Read this graha's vargottama determination for the given varga from ga_vargas' own
+    authoritative chart_divisionals row (fact_category='varga_vargottama_flag') — never
+    re-derived here (§N.5; ga_vargas is already a declared depends_on for ga_structural).
+
+    F-A15 (originally D9-only, graha_vargottama_amplification_factor): re-derived vargottama
+    via an inline navamsha-degree formula, independent of ga_vargas' own D9 computation —
+    disagreeing on 4/105 live rows. This function replaced that re-derivation with a direct
+    read of the authority.
+
+    F-A17 (generalized to every varga): vargottama_per_varga's own re-derivation (comparing
+    ga_structural's in-memory chart_output D1 sign against ga_vargas' per-varga sign) disagreed
+    with ga_vargas' own precomputed varga_vargottama_flag on 13/3780 rows — root-caused to two
+    independent D1 sign computations (ga_structural's chart_output vs ga_vargas' own internal
+    _compute_varga_positions) disagreeing near sign boundaries. The fix is the same as F-A15:
+    stop re-deriving the boolean at all, read ga_vargas' own answer for the varga in question.
+
+    graha_special_state_rollup.is_vargottama (Group M special states) used its own SEPARATE
+    hardcoded navamsha-degree formula (nav_starts sign-cycling table), the exact same bug class
+    as F-A15's original instance, just never fixed there — also switched to this helper
+    (varga='D9', matching that category's own "same sign in D1 and D9" docstring).
+
+    Returns (vargottama, constituent_fact_id) — vargottama is None when ga_vargas' row for this
+    (chart, ayanamsha, varga, graha) is not yet reachable, an honest floor (never guessed
+    True/False, B.10/§N.8), not (False, None).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text, vargottama, build_id
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_vargottama_flag' AND varga = %s
+                 AND graha = %s""",
+            (chart_id, ayanamsha_id, varga, graha),
+        )
+        fetched = cur.fetchall()
+
+    if not fetched:
+        return None, None
+
+    builds = {row[2] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_varga_vargottama_flag: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, varga={varga}, graha={graha}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    row_id, vargottama, _build = fetched[0]
+    return bool(vargottama), row_id
+
+
+def _get_shodasavarga_components(
+    conn: Any,
+    chart_id: str,
+    ayanamsha_id: str,
+    graha_suffix: str,
+) -> list[dict[str, Any]]:
+    """Return this graha's per-varga Vimsopaka (shodasavarga) contributions from GA6.
+
+    F-167: the GA8 `vimsopaka_bala_per_graha.<graha>.vimsopaka_total` row
+    needs the actual per-varga contribution VALUES to sum, not just the row
+    ids that `_get_divisional_constituent_ids` returns. Each element is
+    {divisional_id, varga, score}. Mirrors _get_saptavargaja_components
+    exactly (F-61's reader), one layer over the shodasavarga group instead
+    of the saptavarga group.
+
+    Restricted to the classical shodasavarga group
+    (SHODASAVARGA_EXPECTED_VARGAS) at read time — so the aggregate stays
+    correct-by-construction even if chart_divisionals ever holds a stray
+    varga outside the 16-member set.
+
+    Rows with a NULL score are skipped rather than coerced to 0.0 — a missing
+    contribution is reported as missing coverage, never as "no strength".
+
+    F-170: asserts a single build_id_uuid across the returned rows rather
+    than silently summing rows across builds (migration 218's invariant —
+    see _get_divisional_constituent_ids's docstring).
+    """
+    import psycopg.rows as _rows
+    with conn.cursor(row_factory=_rows.tuple_row) as cur:
+        cur.execute(
+            """SELECT id::text,
+                      split_part(fact_subject, '.', 1) AS varga,
+                      fact_value_num,
+                      build_id_uuid
+               FROM chart_divisionals
+               WHERE chart_id = %s AND ayanamsha_id = %s
+                 AND fact_category = 'varga_vimsopaka_contribution'
+                 AND split_part(fact_subject, '.', 2) = %s
+                 AND split_part(fact_subject, '.', 1) = ANY(%s)
+               ORDER BY fact_subject""",
+            (chart_id, ayanamsha_id, graha_suffix, list(SHODASAVARGA_EXPECTED_VARGAS)),
+        )
+        fetched = cur.fetchall()
+
+    builds = {row[3] for row in fetched}
+    if len(builds) > 1:
+        raise RuntimeError(
+            f"_get_shodasavarga_components: {len(builds)} distinct builds for "
+            f"(chart={chart_id}, ayanamsha={ayanamsha_id}, graha={graha_suffix}) — "
+            f"the migration-218 one-canonical-build invariant is violated"
+        )
+
+    out: list[dict[str, Any]] = []
+    for row_id, varga, value_num, _build in fetched:
+        if value_num is None:
+            continue
+        out.append({
+            "divisional_id": row_id,
+            "varga": varga,
+            "score": float(value_num),
+        })
+    return out
 
 
 def _real_fact_id_ref(conn: Any, chart_id: str, ayanamsha_id: str,
@@ -2046,9 +2410,10 @@ def _build_yoga_rows(
                 # Y-7 fix: this is a single catalog-rule evaluation against L1 facts,
                 # not the redundant two-pass cross-check the rest of this writer's
                 # categories perform — it must not claim the top verification tier.
-                # "single_pass" is a real, already-wired distinct tier (formulas.py
-                # VERIFICATION_RESCALE = 0.85, vs 1.00 for two_pass_verified), so this
-                # correctly demotes catalog label rows in bo_laksana's salience_formula_v2
+                # "single_pass" is verification_vocab.py's declared spelling alias of
+                # "single" (both resolve to formulas.py VERIFICATION_RESCALE = 0.85,
+                # vs 1.00 for two_pass_verified — #1729/D-CND-05), so this correctly
+                # demotes catalog label rows in bo_laksana's salience_formula_v2
                 # rather than inventing a new fabricated status string.
                 verif="single_pass",
                 source=f"brahma_yoga_catalog.label_pass/{eng_ver}",
@@ -4062,6 +4427,7 @@ def _build_special_state_rows(
     chart_output: dict[str, Any],
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     grahas_data = chart_output.get("grahas", [])
@@ -4087,12 +4453,17 @@ def _build_special_state_rows(
         is_debil = (dignity == "debilitated")
         is_exalt = (dignity == "exalted")
 
-        # Vargottama (same sign in D1 and D9)
-        degree_in_sign = long_deg % 30.0
-        nav_para = int(degree_in_sign / 3.333333)
-        nav_starts = {1: 1, 2: 10, 3: 7, 4: 4, 5: 1, 6: 10, 7: 7, 8: 4, 9: 1, 10: 10, 11: 7, 12: 4}
-        nav_sign = ((nav_starts.get(sign_num, 1) - 1 + nav_para) % 12) + 1
-        is_vargottama = (nav_sign == sign_num)
+        # Vargottama (same sign in D1 and D9).
+        # F-A17 fix: this used to re-derive vargottama itself via an inline navamsha-degree
+        # formula (a hardcoded nav_starts sign-cycling table + float arithmetic) — the exact
+        # same bug class as F-A15's original graha_vargottama_amplification_factor instance,
+        # never fixed here. Now READS ga_vargas' own D9 determination directly (§N.5), same as
+        # graha_vargottama_amplification_factor and vargottama_per_varga.
+        vargottama_flag, _constituent_id = (
+            _get_varga_vargottama_flag(conn, chart_id, ayanamsha_id, "D9", g_name)
+            if conn is not None else (None, None)
+        )
+        is_vargottama = vargottama_flag
 
         # Special state rollup
         rows.append(_base_row(
@@ -4114,10 +4485,23 @@ def _build_special_state_rows(
         rows.append(_base_row(
             "graha_special_state_rollup", subject, "is_vargottama",
             chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
-            value_text="true" if is_vargottama else "false",
+            value_text=(
+                "unavailable" if is_vargottama is None
+                else "true" if is_vargottama else "false"
+            ),
             verif=UNVERIFIED_DEFAULT,
-            source=f"pyjhora_adapter.special_states/{eng_ver}",
-            citation_human=f"{g_name} vargottama: {'yes' if is_vargottama else 'no'} ({ayanamsha_id}).",
+            source=(
+                f"ga_structural.graha_special_state_rollup/{eng_ver}"
+                if is_vargottama is None else
+                f"chart_divisionals.varga_vargottama_flag/{eng_ver}"
+            ),
+            citation_human=(
+                f"{g_name} vargottama: unavailable — ga_vargas' own varga_vargottama_flag "
+                f"row not yet built for D9 ({ayanamsha_id})."
+                if is_vargottama is None else
+                f"{g_name} vargottama: {'yes' if is_vargottama else 'no'} "
+                f"(per ga_vargas' own varga_vargottama_flag, §N.5) ({ayanamsha_id})."
+            ),
         ))
         rows.append(_base_row(
             "graha_special_state_rollup", subject, "is_debilitated",
@@ -4139,7 +4523,7 @@ def _build_special_state_rows(
         # Effective dignity modified by aspects (Y) — v2 (design §10c)
         # v2 replaces the 15° longitude-orb proximity test + fixed natural
         # benefic/malefic sets with the file's OWN Parashari aspect model
-        # (PARASHARI_ASPECTS / _graha_aspects_house, used by _build_aspect_rows)
+        # (canonical aspect oracle / _graha_aspects_house, used by _build_aspect_rows)
         # and the file's OWN dynamic functional-class calculator
         # (_get_functional_class_dynamic, used by _build_functional_class_rows).
         # Total replacement, not a blend — see LANE1 brief §1.2.
@@ -4648,12 +5032,7 @@ def _build_special_point_relationship_rows(
                 ))
 
             # ── Parashari aspect received ────────────────────────────────────
-            if g_name in ("Rahu", "Ketu"):
-                asp_offsets = NODE_PARASHARI_ASPECTS
-            elif g_name in PARASHARI_ASPECTS:
-                asp_offsets = PARASHARI_ASPECTS[g_name]
-            else:
-                asp_offsets = PARASHARI_ASPECTS["all"]
+            asp_offsets = get_graha_aspects(g_name)
 
             for offset, strength in asp_offsets.items():
                 target_house = ((g_house - 1 + offset - 1) % 12) + 1
@@ -4768,13 +5147,7 @@ def _build_house_lord_matrix_rows(
         house_a = lord_house_in_varga.get(lord_a, 0)
         if not house_a:
             continue
-        # Determine aspect offsets for lord_a
-        if lord_a in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif lord_a in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[lord_a]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(lord_a)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house_a - 1 + offset - 1) % 12) + 1
@@ -4824,6 +5197,7 @@ def _build_varga_relationship_rows(
     chart_output: dict[str, Any],  # D1 chart for lagna reference
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
+    conn: Any = None,
 ) -> list[dict[str, Any]]:
     """Enumerate all structural relationships for one varga.
 
@@ -4869,14 +5243,8 @@ def _build_varga_relationship_rows(
         house = get_house(g_name)
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if EXALTATION_SIGNS.get(g_name) == sign:
-            dignity = "exalted"
-        elif DEBILITATION_SIGNS.get(g_name) == sign:
-            dignity = "debilitated"
-        elif sign in OWN_SIGNS.get(g_name, []):
-            dignity = "own"
-        else:
-            dignity = "neutral"
+        degree = get_degree(g_name)
+        dignity = classify_dignity(g_name, sign, degree)
 
         rows.append(_base_row(
             "graha_dignity_per_varga", f"{varga_prefix}{subj}", "dignity_state",
@@ -4909,12 +5277,7 @@ def _build_varga_relationship_rows(
             continue
         subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
 
-        if g_name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif g_name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[g_name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(g_name)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house - 1 + offset - 1) % 12) + 1
@@ -5011,6 +5374,14 @@ def _build_varga_relationship_rows(
         lord1 = SIGN_LORDS.get(sign1)
         if not lord1 or lord1 not in CLASSICAL_GRAHAS:
             continue
+        # F-157: a graha in its own sign has lord1 == g1, which makes the
+        # OWN_SIGNS test below trivially true against itself (e.g. Jupiter in
+        # Sagittarius would emit a self-paired "JUPITER_JUPITER" row).
+        # Classically this is svakshetra (own-sign placement), not
+        # parivartana — an exchange requires two DIFFERENT grahas each
+        # sitting in the other's sign. Guard before the OWN_SIGNS test.
+        if lord1 == g1:
+            continue
         sign_lord1 = get_sign(lord1)
         if not sign_lord1:
             continue
@@ -5080,15 +5451,50 @@ def _build_varga_relationship_rows(
         ))
 
     # ── Vargottama (same sign in D1 and this varga) ────────────────────────────
+    # F-A17 fix: this used to re-derive vargottama itself, comparing ga_structural's own
+    # in-memory chart_output D1 sign against this varga's sign (_load_varga_positions,
+    # ga_vargas' own data) — but ga_vargas' OWN internal D1 computation
+    # (_compute_varga_positions' own "D1" entry, used for ga_vargas' own varga_vargottama_flag)
+    # is a SEPARATE PyJHora invocation from the chart_output passed into ga_structural, and the
+    # two can disagree near sign boundaries. Disagreed with ga_vargas' authoritative
+    # varga_vargottama_flag (chart_divisionals, §N.5) on 13/3780 live rows across 9 different
+    # vargas. Now READS ga_vargas' own determination directly instead of re-deriving it from a
+    # second, independently-computed D1 sign.
     if varga != "D1":
-        d1_state = _extract_chart_state(chart_output)
         for g_name in ALL_GRAHAS:
-            d1_sign = d1_state.get(g_name, {}).get("sign", "")
             varga_sign = get_sign(g_name)
-            if not d1_sign or not varga_sign:
+            if not varga_sign:
                 continue
-            is_vargottama = (d1_sign == varga_sign)
             subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
+
+            is_vargottama, constituent_id = (
+                _get_varga_vargottama_flag(conn, chart_id, ayanamsha_id, varga, g_name)
+                if conn is not None else (None, None)
+            )
+
+            if is_vargottama is None:
+                # ga_vargas' own varga_vargottama_flag row for this varga is not yet reachable
+                # — honest floor, never guessed (§N.8/B.10).
+                rows.append(_base_row(
+                    "vargottama_per_varga", f"{varga_prefix}{subj}", "is_vargottama",
+                    chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
+                    value_num=None,
+                    value_text="unavailable",
+                    value_jsonb={
+                        "varga": varga,
+                        "varga_sign": varga_sign,
+                        "ayanamsha_id": ayanamsha_id,
+                        "uncatalogued": False,
+                    },
+                    verif=UNVERIFIED_DEFAULT,
+                    source=f"ga_structural.vargottama_per_varga/{eng_ver}",
+                    citation_human=(
+                        f"{g_name} vargottama in {varga}: unavailable — ga_vargas' own "
+                        f"varga_vargottama_flag row not yet built for ({ayanamsha_id})."
+                    ),
+                ))
+                continue
+
             rows.append(_base_row(
                 "vargottama_per_varga", f"{varga_prefix}{subj}", "is_vargottama",
                 chart_id, ayanamsha_id, build_id, computed_at, eng_ver,
@@ -5096,16 +5502,16 @@ def _build_varga_relationship_rows(
                 value_text="vargottama" if is_vargottama else "not_vargottama",
                 value_jsonb={
                     "varga": varga,
-                    "d1_sign": d1_sign,
                     "varga_sign": varga_sign,
                     "ayanamsha_id": ayanamsha_id,
+                    "constituent_fact_id": constituent_id,
                     "uncatalogued": False,
                 },
                 verif=UNVERIFIED_DEFAULT,
-                source=f"ga_structural.vargottama_per_varga/{eng_ver}",
+                source=f"chart_divisionals.varga_vargottama_flag/{eng_ver}",
                 citation_human=(
-                    f"{g_name} {'IS' if is_vargottama else 'NOT'} vargottama in {varga}: "
-                    f"D1={d1_sign}, {varga}={varga_sign} ({ayanamsha_id})."
+                    f"{g_name} {'IS' if is_vargottama else 'NOT'} vargottama in {varga} "
+                    f"(per ga_vargas' own varga_vargottama_flag, §N.5) ({ayanamsha_id})."
                 ),
             ))
 
@@ -5264,13 +5670,8 @@ def _build_karaka_web_rows(
             if sign_a and sign_a == sign_b:
                 relationship = "conjunction"
             else:
-                # Check Parashari aspect from A to B
-                if p_a in PARASHARI_ASPECTS:
-                    asp_offsets = PARASHARI_ASPECTS[p_a]
-                elif p_a in ("Rahu", "Ketu"):
-                    asp_offsets = NODE_PARASHARI_ASPECTS
-                else:
-                    asp_offsets = PARASHARI_ASPECTS["all"]
+                # Check Parashari aspect from A to B.
+                asp_offsets = get_graha_aspects(p_a)
                 for offset in asp_offsets:
                     target_house = ((house_a - 1 + offset - 1) % 12) + 1
                     if target_house == house_b:
@@ -5711,6 +6112,7 @@ def _build_convergence_count_per_varga_rows(
 
 def _build_karaka_bhava_concordance_per_varga_rows(
     varga_state: dict[str, Any],
+    lagna_sign_num: int,
     varga: str,
     chart_id: str, build_id: str, ayanamsha_id: str,
     computed_at: str, eng_ver: str,
@@ -5718,16 +6120,15 @@ def _build_karaka_bhava_concordance_per_varga_rows(
     """Compare natural karaka vs bhava lord for each significance in this varga.
 
     For each significance in KARAKATVA_SIGNIFICANCES: look up the classical bhava
-    number, find that bhava's sign (whole-sign from varga lagna), find the sign lord,
-    compare to the natural karaka via the Parashari friendship table.
+    number, find that bhava's sign (whole-sign from D1 lagna, varga-independent per
+    §N.4 — F-A24 fix: `lagna_sign_num` is now threaded in from the caller's own
+    `chart_output`-derived value, the same source `_build_lord_relationship_rows`
+    (migration 811) already uses correctly, rather than read from `varga_state`
+    (which only ever carries a Lagna entry for D1)), find the sign lord, compare to
+    the natural karaka via the Parashari friendship table.
     """
     rows: list[dict[str, Any]] = []
     varga_prefix = f"{varga}_"
-
-    lagna_data = varga_state.get("Lagna") or varga_state.get("LAGNA")
-    lagna_sign_num = int(lagna_data.get("sign_num", 1)) if lagna_data else 1
-    if lagna_sign_num == 0:
-        lagna_sign_num = 1
 
     for signif in KARAKATVA_SIGNIFICANCES:
         bhava_num = SIGNIFICANCE_TO_BHAVA.get(signif, 1)
@@ -5764,6 +6165,23 @@ def _build_karaka_bhava_concordance_per_varga_rows(
     return rows
 
 
+def _build_varga_sign_occupants(varga_state: dict[str, Any]) -> dict[str, list[str]]:
+    """Bucket a varga_state's real grahas by occupied sign, for argala/virodha occupancy.
+
+    F-A26: varga_state carries a "LAGNA" (D1: _extract_chart_state) or "Lagna" (non-D1:
+    _load_varga_positions) pseudo-entry for lagna-sign-number consumers -- it is not a graha
+    and must never count as an argala/virodha occupant. Excluded here, not left to callers.
+    """
+    sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
+    for graha_name, gdata in varga_state.items():
+        if graha_name in ("LAGNA", "Lagna"):
+            continue
+        g_sign = gdata.get("sign", "")
+        if g_sign in sign_occupants:
+            sign_occupants[g_sign].append(graha_name)
+    return sign_occupants
+
+
 def _build_varga_aspect_rows(
     conn: Any,
     chart_output: dict[str, Any],
@@ -5779,6 +6197,13 @@ def _build_varga_aspect_rows(
     Each row carries varga + sign + ayanamsha + position — no unqualified rows.
     """
     rows: list[dict[str, Any]] = []
+    # D1's own ascendant, read directly from chart_output — the SAME source
+    # `_build_lord_relationship_rows` (migration 811) already uses correctly. This is
+    # varga-independent (§N.4 "structural approximation" for higher vargas) and must
+    # NEVER be re-derived from `varga_state`, which only carries a Lagna entry for D1
+    # (F-A24/F-A25: two prior per-varga builders tried reading it from `varga_state`
+    # instead and silently defaulted to Aries for every varga that lacked the key).
+    lagna_sign_num = int(chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM))
 
     for varga in ALL_30_VARGAS:
         if varga == "D1":
@@ -5795,7 +6220,8 @@ def _build_varga_aspect_rows(
                 continue
 
         rows.extend(_build_varga_relationship_rows(
-            varga, varga_state, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+            varga, varga_state, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver,
+            conn=conn,
         ))
 
         # Karaka inter-relationship web per varga
@@ -5805,11 +6231,7 @@ def _build_varga_aspect_rows(
         ))
 
         # Argala/virodha 144-cell matrices per varga — completeness-first (native decision 2026-06-12)
-        varga_sign_occupants: dict[str, list[str]] = {s: [] for s in SIGN_NAMES}
-        for graha_name, gdata in varga_state.items():
-            g_sign = gdata.get("sign", "")
-            if g_sign in varga_sign_occupants:
-                varga_sign_occupants[g_sign].append(graha_name)
+        varga_sign_occupants = _build_varga_sign_occupants(varga_state)
         rows.extend(_build_argala_rows(
             chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver,
             varga=varga, varga_sign_occupants=varga_sign_occupants,
@@ -5819,12 +6241,8 @@ def _build_varga_aspect_rows(
         rows.extend(_build_sambandha_per_varga_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
-        # Compute lagna_sign_num for bhava web
-        _varga_lagna_sn = int(varga_state.get("Lagna", {}).get("sign_num", 1) if hasattr(varga_state.get("Lagna", {}), "get") else 1)
-        if _varga_lagna_sn == 0:
-            _varga_lagna_sn = 1
         rows.extend(_build_bhava_web_per_varga_rows(
-            varga_state, _varga_lagna_sn, varga,
+            varga_state, lagna_sign_num, varga,
             chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
         rows.extend(_build_net_argala_per_varga_rows(
@@ -5860,7 +6278,7 @@ def _build_varga_aspect_rows(
             varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
         rows.extend(_build_karaka_bhava_concordance_per_varga_rows(
-            varga_state, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
+            varga_state, lagna_sign_num, varga, chart_id, build_id, ayanamsha_id, computed_at, eng_ver
         ))
 
     return rows
@@ -6334,7 +6752,7 @@ def build_ga_structural(
             all_rows.extend(_build_functional_class_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_karakatva_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             all_rows.extend(_build_structural_relationship_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, conn=ay_conn))
-            all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
+            all_rows.extend(_build_special_state_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver, conn=ay_conn))
             all_rows.extend(_build_esoteric_rows(chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
             # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
             all_rows.extend(_build_varga_aspect_rows(ay_conn, chart_output, chart_id, build_id, canonical_id, computed_at, eng_ver))
@@ -6606,12 +7024,7 @@ def _build_combustion_retrograde_relationship_rows(
         if not house:
             continue
         subj = PLANET_TO_SUBJECT.get(name, name.upper())
-        if name in ("Rahu", "Ketu"):
-            asp_offsets = NODE_PARASHARI_ASPECTS
-        elif name in PARASHARI_ASPECTS:
-            asp_offsets = PARASHARI_ASPECTS[name]
-        else:
-            asp_offsets = PARASHARI_ASPECTS["all"]
+        asp_offsets = get_graha_aspects(name)
 
         for offset, strength in asp_offsets.items():
             target_house = ((house - 1 + offset - 1) % 12) + 1
@@ -6942,10 +7355,7 @@ def _build_virupa_drishti_rows(
             continue
         g_house_v = data["house"]
         g_subj = PLANET_TO_SUBJECT.get(g_name, g_name.upper())
-        if g_name in ("Rahu", "Ketu"):
-            asp_table = NODE_PARASHARI_ASPECTS
-        else:
-            asp_table = {**PARASHARI_ASPECTS.get(g_name, {}), **PARASHARI_ASPECTS["all"]}
+        asp_table = get_graha_aspects(g_name)
         for offset, strength in asp_table.items():
             target_house = ((g_house_v - 1 + offset - 1) % 12) + 1
             rows.append(_base_row(
@@ -7589,7 +7999,7 @@ def build_ga_structural_substep(
         "functional_class": lambda: _build_functional_class_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "karakatva": lambda: _build_karakatva_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         "structural_relationship": lambda: _build_structural_relationship_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
-        "special_state": lambda: _build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
+        "special_state": lambda: _build_special_state_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver, conn=conn),
         "esoteric": lambda: _build_esoteric_rows(chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),
         # _build_varga_aspect_rows includes argala/virodha per varga (all 30)
         "varga_aspect": lambda: _build_varga_aspect_rows(conn, chart_output, chart_id, build_id, ayanamsha_id, computed_at, eng_ver),

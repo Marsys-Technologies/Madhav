@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "description": "Pre-existing raw internal token sites in narrative fields. Stream A (A-14) replaces each with glossed labels. Remove entries as A-14 PRs land.",
+  "entries": [
+    {
+      "file": "platform-mcp/src/tools/kala_views/now.ts",
+      "line": 1183,
+      "justification": "signature_classes.join('/') in reading.thesis — F-132 known defect; A-14 will replace with WINDOW_CLASS_GLOSS map."
+    },
+    {
+      "file": "platform-mcp/src/tools/kala_views/now.ts",
+      "line": 1200,
+      "justification": "signature_classes.join('/') in reading.thesis (2nd instance) — F-132 known defect; A-14 will replace with WINDOW_CLASS_GLOSS map."
+    }
+  ]
+}

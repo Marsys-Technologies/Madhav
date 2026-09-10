@@ -1,0 +1,31 @@
+{
+  "_capture_note": "Live capture 2026-08-16, bodha_remedies_get(chart_id=482012f1-710e-4a25-994a-93821f5871aa, limit=8, fields='compact'). Full response reproduced verbatim below for the resonance_ranked / resonances arrays that ground F-117's claim.",
+  "content": {
+    "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "narration": {
+      "lead": "Your Bodha remedy layer flags Venus as your #1 remedy-priority target — resonance_score 0.173, priority class critical — followed by Ketu, Rahu, Moon.",
+      "resonance_ranked": [
+        {"rank": 1, "graha": "Venus", "resonance_score": 0.173195, "weakness_score": 0.166534, "contradiction_factor": 0, "remedy_priority_class": "critical", "citation": "Resonance: Venus | sha=0.84 dosha_count=0"},
+        {"rank": 2, "graha": "Ketu", "resonance_score": 0.138642, "weakness_score": 0.13331, "contradiction_factor": 0, "remedy_priority_class": "high", "citation": "Resonance: Ketu | sha=1.00 dosha_count=0"},
+        {"rank": 3, "graha": "Rahu", "resonance_score": 0.1261, "weakness_score": 0.12125, "contradiction_factor": 0, "remedy_priority_class": "high", "citation": "Resonance: Rahu | sha=1.00 dosha_count=0"},
+        {"rank": 4, "graha": "Moon", "resonance_score": 0.116022, "weakness_score": 0.11156, "contradiction_factor": 0, "remedy_priority_class": "medium", "citation": "Resonance: Moon | sha=0.94 dosha_count=0"},
+        {"rank": 5, "graha": "Jupiter", "resonance_score": 0.11466, "weakness_score": 0.11025, "contradiction_factor": 0, "remedy_priority_class": "medium", "citation": "Resonance: Jupiter | sha=1.20 dosha_count=0"},
+        {"rank": 6, "graha": "Mars", "resonance_score": 0.1027, "weakness_score": 0.09875, "contradiction_factor": 0, "remedy_priority_class": "medium", "citation": "Resonance: Mars | sha=1.11 dosha_count=0"},
+        {"rank": 7, "graha": "Sun", "resonance_score": 0.097822, "weakness_score": 0.09406, "contradiction_factor": 0, "remedy_priority_class": "low", "citation": "Resonance: Sun | sha=1.69 dosha_count=0"},
+        {"rank": 8, "graha": "Saturn", "resonance_score": 0.094032, "weakness_score": 0.090415, "contradiction_factor": 0, "remedy_priority_class": "low", "citation": "Resonance: Saturn | sha=1.57 dosha_count=0"}
+      ]
+    },
+    "resonances": [
+      {"graha": "Venus", "resonance_score": 0.173195, "weakness_score": 0.166534, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "critical", "weakest_rank_in_chart": 1},
+      {"graha": "Ketu", "resonance_score": 0.138642, "weakness_score": 0.13331, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "high", "weakest_rank_in_chart": 2},
+      {"graha": "Rahu", "resonance_score": 0.1261, "weakness_score": 0.12125, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "high", "weakest_rank_in_chart": 3},
+      {"graha": "Moon", "resonance_score": 0.116022, "weakness_score": 0.11156, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "medium", "weakest_rank_in_chart": 4},
+      {"graha": "Jupiter", "resonance_score": 0.11466, "weakness_score": 0.11025, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "medium", "weakest_rank_in_chart": 5},
+      {"graha": "Mars", "resonance_score": 0.1027, "weakness_score": 0.09875, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "medium", "weakest_rank_in_chart": 6},
+      {"graha": "Sun", "resonance_score": 0.097822, "weakness_score": 0.09406, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "low", "weakest_rank_in_chart": 7},
+      {"graha": "Saturn", "resonance_score": 0.094032, "weakness_score": 0.090415, "contradiction_factor": 0, "domain_burden": 0, "motif_burden": 0.4, "remedy_priority_class": "low", "weakest_rank_in_chart": 8}
+    ],
+    "resonance_count": 8
+  }
+}

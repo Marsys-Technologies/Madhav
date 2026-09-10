@@ -15,11 +15,19 @@
  */
 
 import 'server-only'
+import { constantTimeEquals } from '@/lib/mcp/constant_time'
 
 /**
  * Validate the X-MCP-Internal-Token header against MCP_INTERNAL_TOKEN.
  * Returns false (reject) whenever the header is missing/mismatched, or
  * whenever MCP_INTERNAL_TOKEN itself is unset/empty — no exceptions.
+ *
+ * SF-005: this compares a raw shared secret on a publicly-routable route,
+ * so a plain `===` (which short-circuits at the first differing byte) is
+ * an observable timing side-channel. Comparison goes through
+ * `constantTimeEquals` (hash-then-`timingSafeEqual`) instead. `token` is
+ * checked for null before the compare so the constant-time path only ever
+ * receives strings.
  */
 export function validateServiceToken(req: Request): boolean {
   const token = req.headers.get('x-mcp-internal-token')
@@ -28,5 +36,6 @@ export function validateServiceToken(req: Request): boolean {
     console.error('[mcp:service_token] MCP_INTERNAL_TOKEN not set — rejecting all service-token requests (fail-closed)')
     return false
   }
-  return token === expected
+  if (token === null) return false
+  return constantTimeEquals(token, expected)
 }

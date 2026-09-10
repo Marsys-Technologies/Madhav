@@ -86,30 +86,101 @@ def run_health_probe(asset_id: str, probe_spec: dict | None) -> dict[str, Any]:
         return _probe_panchanga_engine(probe_spec)
     elif probe_type == "ephemeris_engine":
         return _probe_ephemeris_engine(probe_spec)
+    elif probe_type == "graha_sancara_forensic":
+        return _probe_graha_sancara(probe_spec)
+    elif probe_type == "tulana_ranking_forensic":
+        return _probe_tulana(probe_spec)
+    elif probe_type == "dasha_kala_proxy_integrity":
+        return _probe_dasha_kala(probe_spec)
+    elif probe_type == "muhurta_seva_forensic":
+        return _probe_muhurta_seva(probe_spec)
     else:
         return {"status": "down", "message": f"unknown probe_type: {probe_type}", "checks": []}
 
 
 # ── bg_panchanga probe ────────────────────────────────────────────────────────
 
-_FORENSIC_BIRTH = {
-    "instant": "1984-02-05T10:43:00",
-    "lat": 20.27,
-    "lon": 85.84,
-    "tz_offset": 330,
-    "expected": {
-        "tithi": "Shukla Tritiya",
-        "nakshatra": "Purva Bhadrapada",
-        "yoga": "Shiva",
-        "karana": "Garaja",
-        "vara": "Ravivara",
-    },
-}
+_PANCHANGA_EXPECTED_FIELDS = ("tithi", "nakshatra", "yoga", "karana", "vara")
+_PANCHANGA_EXPECTED_FIELD_SET = frozenset(_PANCHANGA_EXPECTED_FIELDS)
+
+
+def _validated_panchanga_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import datetime
+
+    required = {
+        "forensic_instant",
+        "forensic_lat",
+        "forensic_lon",
+        "forensic_tz_offset",
+        "forensic_expected",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_instant = probe_spec["forensic_instant"]
+    if not isinstance(raw_instant, str):
+        raise ValueError("forensic_instant must be an ISO-8601 string")
+    try:
+        instant = datetime.fromisoformat(raw_instant)
+    except ValueError as exc:
+        raise ValueError("forensic_instant must be valid ISO-8601") from exc
+    if instant.tzinfo is not None:
+        raise ValueError("forensic_instant must be local wall time without an embedded offset")
+
+    lat = probe_spec["forensic_lat"]
+    lon = probe_spec["forensic_lon"]
+    tz_offset = probe_spec["forensic_tz_offset"]
+    if isinstance(lat, bool) or not isinstance(lat, (int, float)) or not -90 <= lat <= 90:
+        raise ValueError("forensic_lat must be a number in [-90, 90]")
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) or not -180 <= lon <= 180:
+        raise ValueError("forensic_lon must be a number in [-180, 180]")
+    if isinstance(tz_offset, bool) or not isinstance(tz_offset, int) or not -840 <= tz_offset <= 840:
+        raise ValueError("forensic_tz_offset must be integer minutes in [-840, 840]")
+
+    expected = probe_spec["forensic_expected"]
+    if not isinstance(expected, dict):
+        raise ValueError("forensic_expected must be an object")
+    missing_expected = sorted(_PANCHANGA_EXPECTED_FIELD_SET - expected.keys())
+    if missing_expected:
+        raise ValueError(f"forensic_expected is missing: {', '.join(missing_expected)}")
+    invalid_expected = sorted(
+        field for field in _PANCHANGA_EXPECTED_FIELDS
+        if not isinstance(expected[field], str) or not expected[field].strip()
+    )
+    if invalid_expected:
+        raise ValueError(
+            "forensic_expected values must be non-empty strings: "
+            + ", ".join(invalid_expected)
+        )
+
+    return {
+        "instant": instant,
+        "lat": float(lat),
+        "lon": float(lon),
+        "tz_offset": tz_offset,
+        "expected": {field: expected[field] for field in _PANCHANGA_EXPECTED_FIELDS},
+    }
 
 
 def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_panchanga_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid panchanga health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: single canonical implementation importable
     try:
@@ -121,12 +192,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 
     # Check 2: deterministic FORENSIC smoke — panchanga_instant at birth
     try:
-        from datetime import datetime
         from panchang_engine import panchanga_instant
-        instant = datetime.fromisoformat(_FORENSIC_BIRTH["instant"])
-        result = panchanga_instant(instant, _FORENSIC_BIRTH["lat"], _FORENSIC_BIRTH["lon"],
-                                   _FORENSIC_BIRTH["tz_offset"])
-        expected = _FORENSIC_BIRTH["expected"]
+        result = panchanga_instant(
+            config["instant"], config["lat"], config["lon"], config["tz_offset"]
+        )
+        expected = config["expected"]
         mismatches = []
         for field, exp_val in expected.items():
             actual = getattr(result, field, None)
@@ -154,20 +224,20 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
     # the angas ruling at SUNRISE on the same date — a different code path through the
     # engine with a different reference instant. Karana is instant-only and is therefore
     # not asserted here.
-    _DAY_EXPECTED = {"vara": "Ravivara", "tithi": "Shukla Tritiya",
-                     "nakshatra": "Purva Bhadrapada", "yoga": "Shiva"}
+    _DAY_EXPECTED_FIELDS = ("vara", "tithi", "nakshatra", "yoga")
     try:
-        from datetime import date
         from panchang_engine import panchanga_day
-        birth_date = date(1984, 2, 5)
-        result = panchanga_day(birth_date, _FORENSIC_BIRTH["lat"],
-                               _FORENSIC_BIRTH["lon"], _FORENSIC_BIRTH["tz_offset"])
+        birth_date = config["instant"].date()
+        result = panchanga_day(
+            birth_date, config["lat"], config["lon"], config["tz_offset"]
+        )
         day_mismatches: list[str] = []
         if getattr(result, "date", None) != birth_date:
             day_mismatches.append(
                 f"date: got {getattr(result, 'date', None)!r}, expected {birth_date!r}"
             )
-        for field, exp_val in _DAY_EXPECTED.items():
+        day_expected = {field: config["expected"][field] for field in _DAY_EXPECTED_FIELDS}
+        for field, exp_val in day_expected.items():
             actual = getattr(result, field, None)
             actual_name = getattr(actual, "name", actual) if actual is not None else None
             if actual_name != exp_val:
@@ -210,15 +280,11 @@ def _probe_panchanga_engine(probe_spec: dict) -> dict[str, Any]:
 # Sign-level assertions carry ≥8° of margin to the nearest sign boundary, so they are
 # insensitive to the sub-arcsecond Swiss-file-vs-Moshier difference but WILL fail on a
 # wrong body, a wrong Julian Day, or a missing/incorrect ayanamsha — which is the point.
-_FORENSIC_POSITION = {
-    "jd": 2445735.717361111,  # 1984-02-05 10:43 IST = 05:13 UT → Julian Day (swe.julday)
-    "expected_sun_sign": 10,  # Makara (Capricorn) sidereal Lahiri
-    "expected_mean_node_rahu_sign": 2,  # Vrishabha — Rahu mean node, sidereal Lahiri
-}
-
 # Swiss Ephemeris return-flag bits (swe.FLG_*), pinned here so the backend attribution
 # below does not depend on the caller having imported swisseph.
 _EPHE_BACKENDS = ((1, "jpl_file"), (2, "swiss_ephemeris_file"), (4, "moshier_analytic_fallback"))
+_EPHE_BACKEND_NAMES = frozenset(name for _bit, name in _EPHE_BACKENDS)
+_EPHEMERIS_CORPUS_FILES = frozenset({"sepl_18.se1", "semo_18.se1", "seas_18.se1"})
 
 
 def _ephemeris_backend(retflag: int) -> str:
@@ -239,9 +305,86 @@ def _ephemeris_backend(retflag: int) -> str:
     return f"unknown (retflag={retflag})"
 
 
+def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Normalize the registry-owned ephemeris contract or fail closed."""
+    import re
+
+    required = {
+        "forensic_jd",
+        "expected_sun_sign",
+        "expected_mean_node_rahu_sign",
+        "ayanamsha",
+        "node_mode",
+        "allowed_ephemeris_backends",
+        "ephemeris_file_sha256",
+    }
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    jd = probe_spec["forensic_jd"]
+    if isinstance(jd, bool) or not isinstance(jd, (int, float)) or not 1_000_000 < jd < 4_000_000:
+        raise ValueError("forensic_jd must be a plausible numeric Julian Day")
+
+    def _sign(field: str) -> int:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 12:
+            raise ValueError(f"{field} must be an integer sign number in [1, 12]")
+        return value
+
+    if probe_spec["ayanamsha"] != "lahiri":
+        raise ValueError("ayanamsha must be 'lahiri'")
+    if probe_spec["node_mode"] != "mean":
+        raise ValueError("node_mode must be 'mean'")
+
+    allowed = probe_spec["allowed_ephemeris_backends"]
+    if not isinstance(allowed, list) or not allowed or any(not isinstance(x, str) for x in allowed):
+        raise ValueError("allowed_ephemeris_backends must be a non-empty string array")
+    unknown = sorted(set(allowed) - _EPHE_BACKEND_NAMES)
+    if unknown:
+        raise ValueError(f"unknown allowed_ephemeris_backends: {', '.join(unknown)}")
+
+    file_sha256 = probe_spec["ephemeris_file_sha256"]
+    if not isinstance(file_sha256, dict) or set(file_sha256) != _EPHEMERIS_CORPUS_FILES:
+        raise ValueError(
+            "ephemeris_file_sha256 must pin exactly sepl_18.se1, semo_18.se1, seas_18.se1"
+        )
+    invalid_digests = sorted(
+        name for name, digest in file_sha256.items()
+        if not isinstance(digest, str) or re.fullmatch(r"[a-f0-9]{64}", digest) is None
+    )
+    if invalid_digests:
+        raise ValueError(
+            "ephemeris_file_sha256 contains invalid SHA-256 values: "
+            + ", ".join(invalid_digests)
+        )
+
+    return {
+        "jd": float(jd),
+        "expected_sun_sign": _sign("expected_sun_sign"),
+        "expected_mean_node_rahu_sign": _sign("expected_mean_node_rahu_sign"),
+        "allowed_ephemeris_backends": frozenset(allowed),
+        "ephemeris_file_sha256": file_sha256,
+    }
+
+
 def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []
+
+    try:
+        config = _validated_ephemeris_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid ephemeris health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
 
     # Check 1: swisseph importable
     try:
@@ -260,26 +403,75 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     ephe_path = None
     try:
         import swisseph as swe
+        import hashlib
         import os
-        ephe_path = os.environ.get("SWISSEPH_PATH", "/app/ephe")
+        from pathlib import Path
+
+        ephe_path = (
+            os.environ.get("SWE_EPHE_PATH")
+            or os.environ.get("SWISSEPH_PATH")
+            or "/app/ephe"
+        )
+        expected_files = config["ephemeris_file_sha256"]
+        actual_files: dict[str, str] = {}
+        file_errors: list[str] = []
+        for filename, expected_digest in sorted(expected_files.items()):
+            source = Path(ephe_path) / filename
+            if not source.is_file():
+                file_errors.append(f"{filename}: missing")
+                continue
+            digest = hashlib.sha256()
+            with source.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            actual_digest = digest.hexdigest()
+            actual_files[filename] = actual_digest
+            if actual_digest != expected_digest:
+                file_errors.append(
+                    f"{filename}: SHA-256 {actual_digest}, expected {expected_digest}"
+                )
+        _add_check(
+            checks,
+            failures,
+            "ephemeris_corpus_sha256",
+            not file_errors,
+            "; ".join(file_errors),
+            files=actual_files,
+            ephe_path=ephe_path,
+        )
+
         swe.set_ephe_path(ephe_path)
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, retflag = swe.calc_ut(jd, swe.SUN, _SID)
         sun_lon = xx[0]
         sun_sign = int(sun_lon / 30) + 1
-        expected_sun_sign = _FORENSIC_POSITION["expected_sun_sign"]
+        expected_sun_sign = config["expected_sun_sign"]
+        backend = _ephemeris_backend(retflag)
+        backend_ok = backend in config["allowed_ephemeris_backends"]
+        sun_ok = sun_sign == expected_sun_sign
+        sun_failures = []
+        if not sun_ok:
+            sun_failures.append(
+                f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), "
+                f"expected sign {expected_sun_sign} at JD {jd}"
+            )
+        if not backend_ok:
+            sun_failures.append(
+                f"ephemeris backend={backend}, allowed="
+                f"{sorted(config['allowed_ephemeris_backends'])}"
+            )
         _add_check(
             checks, failures, "sidereal_sun_forensic_sign",
-            sun_sign == expected_sun_sign,
-            f"sidereal-Lahiri Sun sign={sun_sign} (lon={sun_lon:.4f}°), expected sign "
-            f"{expected_sun_sign} (Makara) for 1984-02-05 10:43 IST",
+            sun_ok and backend_ok,
+            "; ".join(sun_failures),
             sun_lon=round(sun_lon, 4),
             sun_sign=sun_sign,
             expected_sun_sign=expected_sun_sign,
             ayanamsha="Lahiri",
-            ephemeris_backend=_ephemeris_backend(retflag),
+            ephemeris_backend=backend,
+            allowed_ephemeris_backends=sorted(config["allowed_ephemeris_backends"]),
             ephe_path=ephe_path,
         )
     except Exception as exc:
@@ -295,11 +487,11 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         import swisseph as swe
         swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
         _SID = swe.FLG_SWIEPH | swe.FLG_SIDEREAL
-        jd = _FORENSIC_POSITION["jd"]
+        jd = config["jd"]
         xx, _retflag = swe.calc_ut(jd, swe.MEAN_NODE, _SID)
         node_lon = xx[0]
         rahu_sign = int(node_lon / 30) + 1
-        expected_rahu_sign = _FORENSIC_POSITION["expected_mean_node_rahu_sign"]  # 2
+        expected_rahu_sign = config["expected_mean_node_rahu_sign"]
         # Ketu is exactly opposite; swe.MEAN_NODE gives Rahu, Ketu = (Rahu + 180) % 360
         ketu_lon = (node_lon + 180.0) % 360.0
         ketu_sign = int(ketu_lon / 30) + 1
@@ -310,12 +502,12 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
         if not rahu_ok:
             node_failures.append(
                 f"Rahu sign={rahu_sign} (lon={node_lon:.4f}°), "
-                f"expected sign {expected_rahu_sign} (Vrishabha) for 1984-02-05"
+                f"expected sign {expected_rahu_sign} at JD {jd}"
             )
         if not ketu_ok:
             node_failures.append(
                 f"Ketu sign={ketu_sign} (lon={ketu_lon:.4f}°), "
-                f"expected sign {expected_ketu_sign} (Vrischika) for 1984-02-05"
+                f"expected sign {expected_ketu_sign} at JD {jd}"
             )
         _add_check(
             checks, failures, "sidereal_mean_node_rahu_invariant",
@@ -335,5 +527,652 @@ def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     except Exception as exc:
         _add_check(checks, failures, "sidereal_mean_node_rahu_invariant", False,
                    f"MEAN_NODE check failed: {exc}", error=str(exc))
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_graha_sancara probe ────────────────────────────────────────────────────
+
+# NIRMĀṆA L3-W4 — an INDEPENDENT probe, not a reuse of
+# pipeline/orchestrator/writers/ka_graha_sancara.py's own self-test (implementer
+# != certifier, same discipline as the two probes above). Both call the same
+# single canonical `services.ka_graha_sancara.engine.get_ephemeris` surface,
+# but this one is invoked fresh from the Nirmana probe route, independent of
+# whatever the writer already self-reported into `selftest_detail`.
+#
+# `force_live=True` is load-bearing: it is the ONLY path that answers a
+# birth-INSTANT question (PATH-A/`ephemeris_daily` is day-grade, computed at
+# 12:00 UT, and yields the wrong sign for this exact anchor — see L3-W3 M3 /
+# `ka_graha_sancara.py`'s own `forensic_moon_sign` check comment). It is also
+# what keeps this probe DB-free (skips PATH-A's `db_conn` read entirely), same
+# class of guarantee as the two probes above ("in-process Python library, no
+# network endpoint" — module docstring).
+_GRAHA_SANCARA_EXPECTED_GRAHAS = frozenset(
+    {"Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"}
+)
+
+
+def _validated_graha_sancara_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import datetime
+
+    required = {"forensic_birth_instant", "forensic_ayanamsha", "forensic_expected_moon_sign"}
+    missing = sorted(required - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_instant = probe_spec["forensic_birth_instant"]
+    if not isinstance(raw_instant, str):
+        raise ValueError("forensic_birth_instant must be an ISO-8601 string")
+    try:
+        instant = datetime.fromisoformat(raw_instant)
+    except ValueError as exc:
+        raise ValueError("forensic_birth_instant must be valid ISO-8601") from exc
+    if instant.tzinfo is not None:
+        raise ValueError("forensic_birth_instant must be local wall time without an embedded offset")
+
+    ayanamsha = probe_spec["forensic_ayanamsha"]
+    if ayanamsha != "lahiri":
+        raise ValueError("forensic_ayanamsha must be 'lahiri' (engine's live-compute path supports only lahiri)")
+
+    expected_moon_sign = probe_spec["forensic_expected_moon_sign"]
+    if not isinstance(expected_moon_sign, str) or not expected_moon_sign.strip():
+        raise ValueError("forensic_expected_moon_sign must be a non-empty string")
+
+    return {"instant": instant, "ayanamsha": ayanamsha, "expected_moon_sign": expected_moon_sign}
+
+
+def _probe_graha_sancara(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_graha_sancara_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid graha_sancara health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from services.ka_graha_sancara.engine import get_ephemeris  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                   f"import failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 2 + 3: birth-instant FORENSIC compute, independent of PATH-A/db_conn.
+    try:
+        from services.ka_graha_sancara.engine import get_ephemeris
+        result = get_ephemeris(
+            dt=config["instant"], ayanamsha=config["ayanamsha"], db_conn=None, force_live=True,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_moon_sign", False,
+                   f"ephemeris computation failed: {exc}", error=str(exc))
+        _add_check(checks, failures, "nine_grahas_present", False,
+                   "ephemeris computation failed, no grahas to check")
+        return _aggregate(checks, failures)
+
+    moon = result.grahas.get("Moon")
+    moon_sign = moon.sign if moon is not None else None
+    moon_ok = moon_sign == config["expected_moon_sign"]
+    _add_check(
+        checks, failures, "forensic_moon_sign", moon_ok,
+        f"Moon sign={moon_sign!r}, expected {config['expected_moon_sign']!r} "
+        f"at {config['instant'].isoformat()} ({config['ayanamsha']}, force_live)",
+        moon_sign=moon_sign, expected_moon_sign=config["expected_moon_sign"],
+        source=result.source,
+    )
+
+    # Check 3: same 9-graha/non-null-speed completeness the writer's own
+    # selftest asserts (L3-W3 M3 context) — free from the same result object,
+    # independently re-derived here rather than trusted from the writer.
+    graha_names = set(result.grahas.keys())
+    missing_grahas = sorted(_GRAHA_SANCARA_EXPECTED_GRAHAS - graha_names)
+    null_speeds = sorted(name for name, gs in result.grahas.items() if gs.speed_dps is None)
+    nine_ok = not missing_grahas and not null_speeds
+    _add_check(
+        checks, failures, "nine_grahas_present", nine_ok,
+        f"missing={missing_grahas}, null_speeds={null_speeds}" if not nine_ok else "",
+        missing_grahas=missing_grahas, null_speeds=null_speeds, graha_count=len(graha_names),
+    )
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_tulana probe ───────────────────────────────────────────────────────────
+
+# NIRMĀṆA L3-W3 (F-L3-15, third slice; correction of an earlier PR description
+# that mis-scoped this asset as DB-dependent — see #2065's own follow-up note).
+# `KaTulanaService.rank_windows()`/`.compare()` are PURE ranking logic over
+# already-computed `WindowInput` records the caller supplies — "No DB writes,
+# No commit/rollback" per the module's own docstring, no `db_conn` anywhere in
+# the class. This is DB-free by construction, the same class the other three
+# probes are built for — no architecture question, unlike `ka_dasha_kala`
+# (which genuinely does read `chart_dashas` via `db_conn` inside its own
+# `tree_walk.walk_eligible_intervals`, still out of scope).
+#
+# The check constructs two FIXED, synthetic WindowInput records (not fetched
+# from any chart) and asserts the I-11 composite formula (native-ratified
+# weights: 0.40 convergence / 0.25 rarity / 0.20 confidence / 0.15 proximity)
+# produces the exact pinned composite scores AND the exact rank order AND the
+# exact compare() decisive_factor/recommendation — a genuine re-derivation of
+# the deterministic math, not a bare "did it return something" check.
+_TULANA_REQUIRED_FIELDS = frozenset(
+    {
+        "forensic_reference_date",
+        "forensic_window_a",
+        "forensic_window_b",
+        "forensic_expected_composite_a",
+        "forensic_expected_composite_b",
+        "forensic_expected_winner_window_id",
+        "forensic_expected_decisive_factor",
+    }
+)
+_TULANA_WINDOW_FIELDS = frozenset(
+    {"window_id", "mode", "peak_date", "convergence_score", "confidence_label", "rarity_years"}
+)
+
+
+def _validated_tulana_window(spec: dict, field_name: str):
+    from datetime import date as date_cls
+    from services.ka_tulana.ranker import WindowInput
+
+    if not isinstance(spec, dict):
+        raise ValueError(f"{field_name} must be an object")
+    missing = sorted(_TULANA_WINDOW_FIELDS - spec.keys())
+    if missing:
+        raise ValueError(f"{field_name} missing fields: {', '.join(missing)}")
+    try:
+        peak_date = date_cls.fromisoformat(spec["peak_date"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field_name}.peak_date must be a valid ISO-8601 date") from exc
+    return WindowInput(
+        window_id=spec["window_id"],
+        mode=spec["mode"],
+        peak_date=peak_date,
+        convergence_score=float(spec["convergence_score"]),
+        confidence_label=spec["confidence_label"],
+        rarity_years=float(spec["rarity_years"]),
+    )
+
+
+def _validated_tulana_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import date as date_cls
+
+    missing = sorted(_TULANA_REQUIRED_FIELDS - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    try:
+        reference_date = date_cls.fromisoformat(probe_spec["forensic_reference_date"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("forensic_reference_date must be a valid ISO-8601 date") from exc
+
+    window_a = _validated_tulana_window(probe_spec["forensic_window_a"], "forensic_window_a")
+    window_b = _validated_tulana_window(probe_spec["forensic_window_b"], "forensic_window_b")
+
+    def _score(field: str) -> float:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{field} must be a number")
+        return float(value)
+
+    winner_id = probe_spec["forensic_expected_winner_window_id"]
+    if not isinstance(winner_id, str) or not winner_id.strip():
+        raise ValueError("forensic_expected_winner_window_id must be a non-empty string")
+    if winner_id not in (window_a.window_id, window_b.window_id):
+        raise ValueError(
+            "forensic_expected_winner_window_id must match forensic_window_a or forensic_window_b's window_id"
+        )
+
+    decisive_factor = probe_spec["forensic_expected_decisive_factor"]
+    if not isinstance(decisive_factor, str) or not decisive_factor.strip():
+        raise ValueError("forensic_expected_decisive_factor must be a non-empty string")
+
+    return {
+        "reference_date": reference_date,
+        "window_a": window_a,
+        "window_b": window_b,
+        "expected_composite_a": _score("forensic_expected_composite_a"),
+        "expected_composite_b": _score("forensic_expected_composite_b"),
+        "expected_winner_window_id": winner_id,
+        "expected_decisive_factor": decisive_factor,
+    }
+
+
+# Float-tolerance for composite-score comparisons — the I-11 formula's own
+# rounding is to 4 decimal places (ranker.py's `_composite()`), so anything
+# tighter than that would be fragile against the module's own precision.
+_TULANA_SCORE_EPSILON = 1e-4
+
+
+def _probe_tulana(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_tulana_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid tulana health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from services.ka_tulana.ranker import KaTulanaService  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                    f"import failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 2: rank_windows() produces the exact pinned composite scores AND
+    # rank order for two fixed, synthetic windows — a genuine re-derivation of
+    # the I-11 weighted-sum formula, not a bare "returned a list" check.
+    try:
+        from services.ka_tulana.ranker import KaTulanaService
+
+        svc = KaTulanaService()
+        ranked = svc.rank_windows(
+            [config["window_a"], config["window_b"]], reference_date=config["reference_date"]
+        )
+        by_id = {r.window.window_id: r for r in ranked}
+        composite_a = by_id[config["window_a"].window_id].factors.composite
+        composite_b = by_id[config["window_b"].window_id].factors.composite
+
+        composite_a_ok = abs(composite_a - config["expected_composite_a"]) < _TULANA_SCORE_EPSILON
+        composite_b_ok = abs(composite_b - config["expected_composite_b"]) < _TULANA_SCORE_EPSILON
+        expected_first = (
+            config["window_a"].window_id
+            if config["expected_composite_a"] >= config["expected_composite_b"]
+            else config["window_b"].window_id
+        )
+        rank_order_ok = ranked[0].window.window_id == expected_first
+        rank_failures = []
+        if not composite_a_ok:
+            rank_failures.append(
+                f"composite_a={composite_a!r}, expected {config['expected_composite_a']!r}"
+            )
+        if not composite_b_ok:
+            rank_failures.append(
+                f"composite_b={composite_b!r}, expected {config['expected_composite_b']!r}"
+            )
+        if not rank_order_ok:
+            rank_failures.append(
+                f"rank #1 was {ranked[0].window.window_id!r}, expected {expected_first!r}"
+            )
+        _add_check(
+            checks, failures, "forensic_composite_and_rank_order",
+            composite_a_ok and composite_b_ok and rank_order_ok,
+            "; ".join(rank_failures),
+            composite_a=composite_a, composite_b=composite_b,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_composite_and_rank_order", False,
+                    f"rank_windows failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 3: compare() picks the same winner via the same decisive factor —
+    # a second, independent code path over the identical two windows, proving
+    # the two entry points (rank_windows vs compare) agree with each other and
+    # with the pinned FORENSIC expectation, not just internally self-consistent.
+    try:
+        from services.ka_tulana.ranker import KaTulanaService
+
+        svc = KaTulanaService()
+        verdict = svc.compare(
+            config["window_a"], config["window_b"], reference_date=config["reference_date"]
+        )
+        winner_ok = verdict.winner.window_id == config["expected_winner_window_id"]
+        decisive_ok = verdict.decisive_factor == config["expected_decisive_factor"]
+        compare_failures = []
+        if not winner_ok:
+            compare_failures.append(
+                f"winner={verdict.winner.window_id!r}, expected {config['expected_winner_window_id']!r}"
+            )
+        if not decisive_ok:
+            compare_failures.append(
+                f"decisive_factor={verdict.decisive_factor!r}, expected {config['expected_decisive_factor']!r}"
+            )
+        _add_check(
+            checks, failures, "forensic_compare_verdict",
+            winner_ok and decisive_ok,
+            "; ".join(compare_failures),
+            winner=verdict.winner.window_id, decisive_factor=verdict.decisive_factor,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_compare_verdict", False,
+                    f"compare failed: {exc}", error=str(exc))
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_dasha_kala probe (DB-free PROXY check — D-CND-34 ruling, #2071/#2067) ─────────
+
+# F-L3-15's fourth and final slice. Unlike the other four probes, `ka_dasha_kala`
+# CANNOT get the same DB-free architecture: `KaDashaKalaService.query()` reads
+# `chart_dashas` through `db_conn` inside `tree_walk.walk_eligible_intervals`, and
+# `run_health_probe()` has no `db_conn` parameter (by design — the standalone,
+# authenticated `nirmana_probe.py` route this dispatches from has zero DB
+# infrastructure, and giving it one would expand that route's security surface,
+# a live risk-acceptance decision outside a session's own authority to make).
+#
+# Ruled (D-CND-34, #2071): Option (B) — a DB-free PROXY check. This does NOT verify
+# `chart_dashas` correctness, `walk_eligible_intervals`'s pruning logic, or anything
+# live-DB-shaped. It verifies exactly two things: (1) the single canonical
+# implementation still imports cleanly, and (2) the documented 7-system constant set
+# (service.py's own docstring: "vimshottari, yogini, ashtottari, chara_karaka,
+# naisargika, mudda, kalachakra... KP is a Vimshottari sub-level dimension — NOT a
+# standalone system") has not silently drifted (a system renamed, removed, or an
+# 8th one added would break this).
+#
+# §N.8 Earned-Signal Principle, the ruling's own required condition: this probe's
+# GREEN must never be read as "live-DB correctness confirmed" — it measures
+# conditions (1) and a narrow slice of (2) only (importability + constant-set
+# identity), not (3) FORENSIC-consistency (no live instant to check against) or any
+# DB-backed behavior. The `checks` list's own `scope` field on every check says this
+# explicitly, so a caller reading a single check in isolation still sees the
+# disclosure, not just the module docstring.
+_DASHA_KALA_SCOPE_NOTE = (
+    "PROXY check only — importability + constant-set identity, NOT chart_dashas "
+    "correctness or any live-DB behavior (D-CND-34 ruling, #2071)"
+)
+
+
+def _validated_dasha_kala_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    if "expected_systems" not in probe_spec:
+        raise ValueError("missing required field: expected_systems")
+
+    expected = probe_spec["expected_systems"]
+    if not isinstance(expected, list) or not expected:
+        raise ValueError("expected_systems must be a non-empty list")
+    invalid = [s for s in expected if not isinstance(s, str) or not s.strip()]
+    if invalid:
+        raise ValueError(f"expected_systems contains invalid entries: {invalid}")
+    if len(set(expected)) != len(expected):
+        raise ValueError("expected_systems must not contain duplicates")
+
+    return {"expected_systems": frozenset(expected)}
+
+
+def _probe_dasha_kala(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_dasha_kala_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True, scope=_DASHA_KALA_SCOPE_NOTE)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid dasha_kala health_probe contract: {exc}",
+            error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE,
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from services.ka_dasha_kala.service import KaDashaKalaService  # noqa: F401
+        from services.ka_dasha_kala.tree_walk import walk_eligible_intervals, ALL_DASHA_SYSTEMS  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True, scope=_DASHA_KALA_SCOPE_NOTE)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                    f"import failed: {exc}", error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE)
+        return _aggregate(checks, failures)
+
+    # Check 2: the 7-system constant set is exactly what the registry contract
+    # declares — not "at least these 7" or "roughly these", an exact set match, so
+    # a silent rename/removal/addition is caught rather than tolerated.
+    try:
+        from services.ka_dasha_kala.tree_walk import ALL_DASHA_SYSTEMS
+
+        actual = frozenset(ALL_DASHA_SYSTEMS)
+        expected = config["expected_systems"]
+        systems_ok = actual == expected
+        mismatch_msg = ""
+        if not systems_ok:
+            missing = sorted(expected - actual)
+            extra = sorted(actual - expected)
+            mismatch_msg = f"missing={missing}, unexpected={extra}"
+        _add_check(
+            checks, failures, "seven_system_constant_set_intact",
+            systems_ok, mismatch_msg,
+            actual_systems=sorted(actual), expected_systems=sorted(expected),
+            scope=_DASHA_KALA_SCOPE_NOTE,
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "seven_system_constant_set_intact", False,
+                    f"constant-set check failed: {exc}", error=str(exc), scope=_DASHA_KALA_SCOPE_NOTE)
+
+    return _aggregate(checks, failures)
+
+
+# ── ka_muhurta_seva probe ────────────────────────────────────────────────────
+
+# NIRMĀṆA L3-W3 (F-L3-15, next slice after ka_graha_sancara). Independent probe,
+# not a reuse of ka_muhurta_seva/writer.py's own self-test (implementer != certifier,
+# same discipline as the other three probes). KaMuhurtaSevaService.score() is
+# DB-free (composes panchang_engine.compute_panchang + muhurat.finder.score_muhurat,
+# both in-process libraries) — the same "in-process Python library, no network
+# endpoint" class this module's probes are built for; no db_conn parameter exists
+# on run_health_probe(), so a service that genuinely needed live DB rows (e.g.
+# ka_dasha_kala, which reads chart_dashas) cannot be probed through this
+# architecture without a real contract change — out of scope for this slice.
+#
+# The check asserts more than "native_chart is not None": it re-derives BOTH scores
+# (with and without the native overlay) and asserts they differ by the FORENSIC-
+# pinned amount, so a native_chart parameter silently ignored by score_muhurat
+# would fail this check exactly as CLAUDE.md §N.8 requires (a flag/behavior needs a
+# detector that could actually observe its absence, not just "did it crash").
+_MUHURTA_SEVA_REQUIRED_FIELDS = frozenset(
+    {
+        "forensic_date",
+        "forensic_lat",
+        "forensic_lon",
+        "forensic_tz_offset_minutes",
+        "forensic_event",
+        "forensic_birth_nakshatra_id",
+        "forensic_expected_tithi",
+        "forensic_expected_nakshatra",
+        "forensic_expected_score_with_native",
+        "forensic_expected_score_without_native",
+    }
+)
+
+
+def _validated_muhurta_seva_probe_config(probe_spec: dict) -> dict[str, Any]:
+    """Return normalized registry inputs or fail closed on an incomplete probe."""
+    from datetime import date as date_cls
+
+    missing = sorted(_MUHURTA_SEVA_REQUIRED_FIELDS - probe_spec.keys())
+    if missing:
+        raise ValueError(f"missing required fields: {', '.join(missing)}")
+
+    raw_date = probe_spec["forensic_date"]
+    if not isinstance(raw_date, str):
+        raise ValueError("forensic_date must be an ISO-8601 date string")
+    try:
+        forensic_date = date_cls.fromisoformat(raw_date)
+    except ValueError as exc:
+        raise ValueError("forensic_date must be a valid ISO-8601 date") from exc
+
+    lat = probe_spec["forensic_lat"]
+    lon = probe_spec["forensic_lon"]
+    tz_offset = probe_spec["forensic_tz_offset_minutes"]
+    if isinstance(lat, bool) or not isinstance(lat, (int, float)) or not -90 <= lat <= 90:
+        raise ValueError("forensic_lat must be a number in [-90, 90]")
+    if isinstance(lon, bool) or not isinstance(lon, (int, float)) or not -180 <= lon <= 180:
+        raise ValueError("forensic_lon must be a number in [-180, 180]")
+    if isinstance(tz_offset, bool) or not isinstance(tz_offset, int) or not -840 <= tz_offset <= 840:
+        raise ValueError("forensic_tz_offset_minutes must be integer minutes in [-840, 840]")
+
+    event = probe_spec["forensic_event"]
+    if not isinstance(event, str) or not event.strip():
+        raise ValueError("forensic_event must be a non-empty string")
+
+    nakshatra_id = probe_spec["forensic_birth_nakshatra_id"]
+    if isinstance(nakshatra_id, bool) or not isinstance(nakshatra_id, int) or not 1 <= nakshatra_id <= 27:
+        raise ValueError("forensic_birth_nakshatra_id must be an integer in [1, 27]")
+
+    expected_tithi = probe_spec["forensic_expected_tithi"]
+    expected_nakshatra = probe_spec["forensic_expected_nakshatra"]
+    if not isinstance(expected_tithi, str) or not expected_tithi.strip():
+        raise ValueError("forensic_expected_tithi must be a non-empty string")
+    if not isinstance(expected_nakshatra, str) or not expected_nakshatra.strip():
+        raise ValueError("forensic_expected_nakshatra must be a non-empty string")
+
+    def _score(field: str) -> float:
+        value = probe_spec[field]
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"{field} must be a number")
+        return float(value)
+
+    return {
+        "date": forensic_date,
+        "lat": float(lat),
+        "lon": float(lon),
+        "tz_offset_minutes": tz_offset,
+        "event": event,
+        "birth_nakshatra_id": nakshatra_id,
+        "expected_tithi": expected_tithi,
+        "expected_nakshatra": expected_nakshatra,
+        "expected_score_with_native": _score("forensic_expected_score_with_native"),
+        "expected_score_without_native": _score("forensic_expected_score_without_native"),
+    }
+
+
+# Float-summation tolerance for score comparisons — the ground-truth values were
+# themselves observed with trailing IEEE-754 noise (e.g. 28.000000000000004), so
+# an exact `==` would be as fragile as the artefact it is tolerating.
+_MUHURTA_SEVA_SCORE_EPSILON = 1e-6
+
+
+def _probe_muhurta_seva(probe_spec: dict) -> dict[str, Any]:
+    checks: list[dict] = []
+    failures: list[str] = []
+
+    try:
+        config = _validated_muhurta_seva_probe_config(probe_spec)
+        _add_check(checks, failures, "probe_config_valid", True)
+    except (TypeError, ValueError) as exc:
+        _add_check(
+            checks,
+            failures,
+            "probe_config_valid",
+            False,
+            f"invalid muhurta_seva health_probe contract: {exc}",
+            error=str(exc),
+        )
+        return _aggregate(checks, failures)
+
+    # Check 1: single canonical implementation importable
+    try:
+        from panchang_engine import compute_panchang  # noqa: F401
+        from panchang_engine.types import NatalChart  # noqa: F401
+        from muhurat.finder import score_muhurat, is_supported_event  # noqa: F401
+        _add_check(checks, failures, "single_engine_importable", True)
+    except ImportError as exc:
+        _add_check(checks, failures, "single_engine_importable", False,
+                    f"import failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    if not is_supported_event(config["event"]):
+        _add_check(checks, failures, "forensic_event_supported", False,
+                    f"{config['event']!r} not in EVENTS_MVP")
+        return _aggregate(checks, failures)
+    _add_check(checks, failures, "forensic_event_supported", True)
+
+    # Check 2: compute_panchang's own FORENSIC angas for the pinned date/location —
+    # a genuine re-derivation through THIS module's own import path, independent of
+    # whatever bg_panchanga's probe already asserted.
+    try:
+        from panchang_engine import compute_panchang
+        panchang = compute_panchang(
+            config["date"], config["lat"], config["lon"], config["tz_offset_minutes"]
+        )
+        tithi_ok = panchang.tithi.name == config["expected_tithi"]
+        nakshatra_ok = panchang.nakshatra.name == config["expected_nakshatra"]
+        mismatches = []
+        if not tithi_ok:
+            mismatches.append(f"tithi: got {panchang.tithi.name!r}, expected {config['expected_tithi']!r}")
+        if not nakshatra_ok:
+            mismatches.append(
+                f"nakshatra: got {panchang.nakshatra.name!r}, expected {config['expected_nakshatra']!r}"
+            )
+        _add_check(checks, failures, "forensic_panchang_smoke",
+                    tithi_ok and nakshatra_ok, "; ".join(mismatches),
+                    mismatches=mismatches)
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_panchang_smoke", False,
+                    f"panchang computation failed: {exc}", error=str(exc))
+        return _aggregate(checks, failures)
+
+    # Check 3: the native-overlay ("un-floor") contract — score WITH a supplied
+    # native_chart must differ from score WITHOUT one by the FORENSIC-pinned
+    # amount. Proves Tara Bala genuinely activates rather than being silently
+    # skipped (a native_chart param the callee ignores would make both scores
+    # equal, and this check — unlike a bare not-None check — would catch that).
+    try:
+        from panchang_engine.types import NatalChart
+        from muhurat.finder import score_muhurat
+
+        native_chart = NatalChart(
+            birth_nakshatra_id=config["birth_nakshatra_id"],
+            birth_lagna_sign_id=1,
+            moon_sign_id=1,
+            active_dasha_lord="",
+        )
+        score_with = score_muhurat(panchang, config["event"], native_chart=native_chart)
+        score_without = score_muhurat(panchang, config["event"], native_chart=None)
+
+        with_ok = abs(score_with - config["expected_score_with_native"]) < _MUHURTA_SEVA_SCORE_EPSILON
+        without_ok = abs(score_without - config["expected_score_without_native"]) < _MUHURTA_SEVA_SCORE_EPSILON
+        overlay_activated = abs(score_with - score_without) > _MUHURTA_SEVA_SCORE_EPSILON
+        score_failures = []
+        if not with_ok:
+            score_failures.append(
+                f"score_with_native={score_with!r}, expected {config['expected_score_with_native']!r}"
+            )
+        if not without_ok:
+            score_failures.append(
+                f"score_without_native={score_without!r}, expected {config['expected_score_without_native']!r}"
+            )
+        if not overlay_activated:
+            score_failures.append(
+                "native_chart overlay made no difference to the score — Tara Bala "
+                "silently skipped, not activated"
+            )
+        _add_check(
+            checks, failures, "forensic_native_overlay_activates",
+            with_ok and without_ok and overlay_activated,
+            "; ".join(score_failures),
+            score_with_native=score_with, score_without_native=score_without,
+            event=config["event"],
+        )
+    except Exception as exc:
+        _add_check(checks, failures, "forensic_native_overlay_activates", False,
+                    f"score computation failed: {exc}", error=str(exc))
 
     return _aggregate(checks, failures)

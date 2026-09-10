@@ -225,8 +225,18 @@ export function resolveLiveTool(liveTool: string): string | undefined {
   return LIVE_TOOL_TO_RETRIEVAL[liveTool] ?? resolveGeneratedToolUri(liveTool)
 }
 
-const BAND_BUDGET = { acharya_floor: 600, machine_band: 400 } as const
-const BAND_PRIORITY = { acharya_floor: 1, machine_band: 2 } as const
+/**
+ * Token budget per compiled-floor band. Exported (not module-private) so any
+ * consumer needing the same per-band budget — `plan_bridge.ts`'s
+ * `fromCompiledFloorItem` is the first — REFERENCES this value instead of
+ * copying it. A copied literal can drift from this source silently (§N.7
+ * item 3: "no wrapper-local constant may shadow an L1-computed value... a
+ * constant can drift from its source; a reference cannot" — proven true here
+ * when a M4-class edit to this value passed 1613 tests against a stale copy).
+ */
+export const BAND_BUDGET = { acharya_floor: 600, machine_band: 400 } as const
+/** Priority per compiled-floor band. Same drift-proofing rationale as BAND_BUDGET above. */
+export const BAND_PRIORITY = { acharya_floor: 1, machine_band: 2 } as const
 
 export interface CompiledFloorResult {
   /** The compiler IntentClass the plan's scope_tuple resolved to. */
@@ -239,6 +249,16 @@ export interface CompiledFloorResult {
   unmappedPrimitives: string[]
   /** True if compileContract threw and this result is an empty (safe) fallback. */
   compileFailed: boolean
+  /**
+   * V3-E-024: the compiler's E-7 insight-mandate note (`CompiledContract.llm_extension_note`,
+   * @/lib/vidhi/compiler) — depth-aware guidance for the LLM-owned band-3 extension, leading
+   * with the INSIGHT MANDATE at `depth: 'deepdive'`. Previously computed by `compileContract`
+   * on every call but silently discarded here (this interface had no field for it), so it
+   * reached nowhere on the plan_stage.ts path. Threaded through unchanged so plan_stage.ts can
+   * fold it into `plan.synthesis_guidance`. Empty string on the `compileFailed` fallback path
+   * (no contract compiled, so no note to report — an honest absence, not a fabricated one).
+   */
+  llm_extension_note: string
 }
 
 /**
@@ -261,6 +281,7 @@ export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string
       mappedPrimitives: [],
       unmappedPrimitives: [],
       compileFailed: true,
+      llm_extension_note: '',
     }
   }
 
@@ -295,6 +316,7 @@ export function compileFloorForPlan(tuple: ClassifierScopeTuple, chartId: string
     mappedPrimitives,
     unmappedPrimitives,
     compileFailed: false,
+    llm_extension_note: contract.llm_extension_note,
   }
 }
 

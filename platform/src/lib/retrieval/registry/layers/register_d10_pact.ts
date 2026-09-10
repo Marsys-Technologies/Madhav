@@ -62,11 +62,9 @@ import { grahaCodeOf } from '../../address_resolver'
 
 // ── Classical dignity weighting for the CONFIRMATION stage (design §28.1's own weighting
 // discipline — deterministic, never an LLM judgment, never a fabricated probability;
-// the same closed vocabulary judgment_query's gradeGraha() uses for D1). ──
-const DIGNITY_WEIGHT: Record<string, number> = {
-  exalted: 2, own: 1.5, moolatrikona: 1.5, great_friend: 1, friend: 0.5,
-  neutral: 0, enemy: -0.5, great_enemy: -1, debilitated: -2,
-}
+// the same closed vocabulary judgment_query's gradeGraha() uses for D1). F-153: imported
+// from register_d9_judgment.ts rather than hand-duplicated — one registry, not two. ──
+import { DIGNITY_WEIGHT } from './register_d9_judgment'
 
 interface VargaDignityRow {
   role: 'bhavesha' | 'karaka'

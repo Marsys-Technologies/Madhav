@@ -60,6 +60,15 @@ export const querySignalFamiliesCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 40 },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // Bounded LIMIT over a clamped `top_k` with a disclosed total_matching + more_available
+  // (both added this pass alongside the empty_reason the handler now emits).
+  density_contract: {
+    paginated: true,
+    facets: ['display_name', 'family_class', 'include_negative_controls'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const display_name        = args['display_name'] as string | undefined
     const family_class        = args['family_class'] as string | undefined
@@ -76,6 +85,7 @@ export const querySignalFamiliesCapability: CapabilityDescriptor = {
       if (!include_neg_ctrl) { conds.push(`family_class <> 'negative_control'`) }
 
       const where = conds.length > 0 ? `WHERE ${conds.join(' AND ')}` : ''
+      const countParams = [...params]
       params.push(top_k)
 
       const sql = `
@@ -89,14 +99,40 @@ export const querySignalFamiliesCapability: CapabilityDescriptor = {
         LIMIT $${p}
       `
 
-      const result = await query(sql, params)
+      // Family size BEFORE the LIMIT, same filters as the page (§N.6 item 4 — density
+      // signaling is data): a caller must be able to tell a complete catalog from a
+      // truncated one without re-deriving it from the row count.
+      const [result, countResult] = await Promise.all([
+        query(sql, params),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM mimamsa_signal_families ${where}`,
+          countParams,
+        ),
+      ])
+      const total_matching = Number(countResult.rows[0]?.total ?? 0)
 
       return {
         content: {
           signal_families:  result.rows,
           family_count:     result.rows.length,
+          total_matching,
+          more_available:   total_matching > result.rows.length,
+          // §N.6 item 3: an honest empty is reported, never served as a hollow envelope.
+          ...(result.rows.length === 0
+            ? {
+                empty_reason:
+                  `No signal families matched (display_name=${display_name ?? 'any'}, ` +
+                  `family_class=${family_class ?? 'any'}, ` +
+                  `include_negative_controls=${include_neg_ctrl}). mimamsa_signal_families is a ` +
+                  'GLOBAL catalog, so an empty result means the filters matched nothing in the ' +
+                  'registry — it is never a chart-scoping artefact.',
+              }
+            : {}),
           filters: { display_name, family_class, include_negative_controls: include_neg_ctrl, top_k },
-          provenance: { tables: ['mimamsa_signal_families'] },
+          provenance: {
+            tables: ['mimamsa_signal_families'],
+            source: 'L5 Mīmāṃsā signal-family registry (mi_kula); global catalog, not chart-scoped.',
+          },
         },
         is_error: false,
       }

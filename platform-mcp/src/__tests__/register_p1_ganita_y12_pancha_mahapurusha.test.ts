@@ -52,6 +52,18 @@ const SASA_ROW = {
   fact_value_text: 'Sasa Yoga',
   fact_value_jsonb: { fire_reason: 'requires_pass', classical_citations: [{ text_id: 'bphs', chapter: 75 }] },
 }
+// This deliberately has the same category and display text as SASA_ROW, but it is not a
+// catalog label. It reproduces the C.7 ambiguity: without the fact_key pin, array order lets
+// this unrelated measurement donate its citation to the Sasa verdict.
+const WRONG_KEY_SASA_DECOY = {
+  fact_id: 'sasa-decoy',
+  fact_category: 'yoga_label',
+  fact_subject: 'sasa',
+  ayanamsha_id: 'lahiri_chitrapaksha',
+  fact_key: 'display_alias',
+  fact_value_text: 'Sasa Yoga',
+  fact_value_jsonb: { classical_citations: [{ text_id: 'wrong-key-decoy', chapter: 999 }] },
+}
 const OTHER_ROW_1 = { fact_id: 'flag-1', fact_category: 'bhadra_flag', fact_subject: 'BHADRA_FLAG_BIRTH', fact_key: 'active_at_birth_flag', fact_value_text: 'false', fact_value_jsonb: null }
 const OTHER_ROW_2 = { fact_id: 'flag-2', fact_category: 'panchaka_flag', fact_subject: 'PANCHAKA_FLAG_BIRTH', fact_key: 'active_at_birth_flag', fact_value_text: 'true', fact_value_jsonb: null }
 const OTHER_ROW_3 = { fact_id: 'flag-3', fact_category: 'panchaka_flag', fact_subject: 'PANCHAKA_FLAG_BIRTH', fact_key: 'nakshatra_position', fact_value_text: 'Purva Bhadrapada', fact_value_jsonb: null }
@@ -95,7 +107,7 @@ describe('ganita_yogas_get — Y-12 pancha_mahapurusha truncation-fabrication fi
         // NOTE: stubFetch answers EVERY get_yoga_dosha call with this same payload
         // regardless of args — see the second test below for a variant that
         // distinguishes the paginated vs. unpaginated calls by argument.
-        rows: [OTHER_ROW_1, OTHER_ROW_2, OTHER_ROW_3, SASA_ROW],
+        rows: [OTHER_ROW_1, OTHER_ROW_2, OTHER_ROW_3, WRONG_KEY_SASA_DECOY, SASA_ROW],
         total: 10,
         firings_pointer: { tool: 'ganita_yoga_firings_get', table: 'ga_yoga_firings', fired_count: 13, note: 'x' },
         catalog_only_rows_in_page: 1,
@@ -115,7 +127,7 @@ describe('ganita_yogas_get — Y-12 pancha_mahapurusha truncation-fabrication fi
 
     const envelope = result.structuredContent?.object as Record<string, unknown>
     const verdict = envelope['verdict'] as Record<string, unknown>
-    const pancha = verdict['pancha_mahapurusha'] as { per_yoga: { yoga: string; status: string }[] } | undefined
+    const pancha = verdict['pancha_mahapurusha'] as { per_yoga: { yoga: string; status: string; statement: string }[] } | undefined
     expect(pancha).toBeDefined()
 
     const sasaEntry = pancha!.per_yoga.find(p => p.yoga.startsWith('Sasa'))
@@ -124,6 +136,10 @@ describe('ganita_yogas_get — Y-12 pancha_mahapurusha truncation-fabrication fi
     // unpaginated get_yoga_dosha fetch this fix wires — the verdict must read "formed",
     // never "not formed" fabricated from the caller's tiny limit=3 page.
     expect(sasaEntry!.status).toBe('formed')
+    // The canonical yoga_name row supplies the citation even though a wrong-key decoy occurs
+    // first. Before the C.7 pin this would surface the decoy's citation by array order.
+    expect(sasaEntry!.statement).toContain('bphs ch.75')
+    expect(sasaEntry!.statement).not.toContain('wrong-key-decoy')
 
     // Confirm the dedicated unpaginated call was actually made (limit=500, offset=0) —
     // proves the fix's wiring, not just a coincidentally-correct mock.
@@ -184,5 +200,93 @@ describe('ganita_yogas_get — Y-12 pancha_mahapurusha truncation-fabrication fi
     // page — that field is honestly page-scoped (see its own `note`). Only the
     // pancha_mahapurusha per-yoga verdict must NOT inherit that truncation.
     expect(verdict['yogas_fired']).toBe(0)
+  })
+
+  it('does not form Sasa from a wrong-key yoga_label decoy when no canonical yoga_name row exists', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+
+    // This is the remaining C.7 failure mode: the old formed-status set accepted every
+    // yoga_label row, so a same-category display_alias row could make Sasa look formed even
+    // though the ga_structural catalog never emitted the canonical yoga_name label.
+    stubFetch({
+      'marsys://tool/L1/get_yoga_dosha': {
+        chart_id: TEST_CHART_ID,
+        rows: [OTHER_ROW_1, OTHER_ROW_2, OTHER_ROW_3, WRONG_KEY_SASA_DECOY],
+        total: 4,
+        firings_pointer: { tool: 'ganita_yoga_firings_get', table: 'ga_yoga_firings', fired_count: 0, note: 'x' },
+        catalog_only_rows_in_page: 0,
+        dosha_label_gate: { applied: true, all: false, excluded_total: 0, note: 'x' },
+      },
+      'marsys://tool/L1/get_positions': { rows: SATURN_POSITION_ROWS },
+      'marsys://tool/L1/get_chart_header': {
+        chart_id_short: '00000000', name: 'Test', lagna_sign: 'Aries', lagna_deg: 0,
+        moon_sign: 'Aries', sun_sign: 'Aries', ayanamsha: 'lahiri_chitrapaksha', current_maha_antar: null,
+      },
+    }, captured)
+
+    const { registerP1GanitaTools } = await import('../tools/register_p1_ganita.js')
+    registerP1GanitaTools(server, PRINCIPAL)
+    const handler = handlers.get('ganita_yogas_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as Record<string, unknown>
+    const pancha = verdict['pancha_mahapurusha'] as { per_yoga: { yoga: string; status: string }[] }
+    const sasaEntry = pancha.per_yoga.find(p => p.yoga.startsWith('Sasa'))
+    expect(sasaEntry?.status).toBe('not formed')
+    expect(captured.some(c => c.uri === 'marsys://tool/L1/get_yoga_dosha' && c.args['limit'] === 500)).toBe(true)
+  })
+
+  it('uses only the dosha_name catalog row when reconciling Kala Sarpa against its D1 computation', async () => {
+    const { server, handlers } = makeCapturingServer()
+    const captured: Array<{ uri: string; args: Record<string, unknown> }> = []
+    const wrongKeyCatalogDecoy = {
+      fact_id: 'kala-sarpa-decoy',
+      fact_category: 'dosha_label',
+      fact_subject: 'kala_sarpa',
+      fact_key: 'display_alias',
+      fact_value_text: 'Kala Sarpa Dosha',
+    }
+    const canonicalCatalogRow = {
+      fact_id: 'kala-sarpa-catalog',
+      fact_category: 'dosha_label',
+      fact_subject: 'kala_sarpa',
+      fact_key: 'dosha_name',
+      fact_value_text: 'Kala Sarpa Dosha',
+    }
+    const natalComputation = {
+      fact_id: 'kala-sarpa-d1',
+      fact_category: 'kala_sarpa_per_varga',
+      fact_key: 'ks_detection',
+      fact_value_jsonb: { fires: false, rahu_house: 2, ketu_house: 8 },
+    }
+
+    stubFetch({
+      'marsys://tool/L1/get_yoga_dosha': {
+        rows: [wrongKeyCatalogDecoy, canonicalCatalogRow],
+        total: 2,
+        kala_sarpa_per_varga: { natal: [natalComputation], divisional_fired: [] },
+      },
+      'marsys://tool/L1/get_chart_header': {
+        chart_id_short: '00000000', name: 'Test', lagna_sign: 'Aries', lagna_deg: 0,
+        moon_sign: 'Aries', sun_sign: 'Aries', ayanamsha: 'lahiri_chitrapaksha', current_maha_antar: null,
+      },
+    }, captured)
+
+    const { registerP1GanitaTools } = await import('../tools/register_p1_ganita.js')
+    registerP1GanitaTools(server, PRINCIPAL)
+    const handler = handlers.get('ganita_structural_get')!
+    const result = await handler({ chart_id: TEST_CHART_ID, facet: 'dosha_fires', response_format: 'v3' })
+    expect(result.isError).toBeFalsy()
+
+    const envelope = result.structuredContent?.object as Record<string, unknown>
+    const verdict = envelope['verdict'] as { kala_sarpa_dosha: { reconciliation_note: string } }
+    // The genuine D1 calculation remains authority; this assertion specifically proves the
+    // secondary catalog-row reduction cannot be diverted by a same-category wrong-key row.
+    expect(verdict.kala_sarpa_dosha.reconciliation_note).toContain('fact_id kala-sarpa-catalog')
+    expect(verdict.kala_sarpa_dosha.reconciliation_note).not.toContain('fact_id kala-sarpa-decoy')
+    expect(captured[0]).toMatchObject({ uri: 'marsys://tool/L1/get_yoga_dosha' })
   })
 })

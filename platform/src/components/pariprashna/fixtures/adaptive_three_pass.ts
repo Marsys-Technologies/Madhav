@@ -126,6 +126,7 @@ export function buildAdaptiveThreePassFixture(turnId = 't-adaptive'): Fixture {
     elapsedLabel: `0:${String(Math.round(b.cursor() / 1000)).padStart(2, '0')}`,
     compositionNote: undefined,
     gradeSummaryLabel: 'Core claim: WELL-GROUNDED',
+    source: 'client_estimate',
   })
   b.advance(50)
   b.turnClose()

@@ -490,7 +490,8 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
     # Once all sessions migrate, Step 5 of the governance migration removes this alias.
     _STEP_FIELD_ALIASES = ("step_number_or_layer", "step_number_or_macro_phase")
     required = [
-        "session_id", "cowork_thread_name", "agent_name", "agent_version",
+        "session_id", "cowork_thread_name", "agent_name", "agent_version", "tool",
+        "tool_profile", "worktree_path", "coordination", "cross_tool_state_read",
         "predecessor_session",
         "mandatory_reading_confirmation", "canonical_artifact_fingerprint_check",
         "declared_scope", "mirror_pair_freshness_check", "native_directive_obligations",
@@ -534,6 +535,41 @@ def validate_handshake_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Investigate silent file mutation or refresh CANONICAL_ARTIFACTS",
             ))
     # mirror_pair_freshness_check retired 2026-05-27 per ND.1 close-out.
+    if so.get("tool") not in ("Claude Code", "Codex"):
+        violations.append(Violation(
+            rule="handshake_tool_invalid",
+            severity="CRITICAL",
+            path="<handshake>",
+            evidence="`tool` must be Claude Code or Codex",
+            suggested_remediation="Record the session's actual tool provenance.",
+        ))
+    coordination = so.get("coordination", {}) or {}
+    if not coordination.get("lease_id") or coordination.get("lease_status_verified") is not True:
+        violations.append(Violation(
+            rule="handshake_coordination_lease_unverified",
+            severity="CRITICAL",
+            path="<handshake>",
+            evidence="A live coordination lease is required for state-changing work",
+            suggested_remediation="Acquire and verify the lease on origin/campaign-coordination.",
+        ))
+    state_read = so.get("cross_tool_state_read", {}) or {}
+    if state_read.get("cross_cutting_decision_register") is not True:
+        violations.append(Violation(
+            rule="handshake_ccd_register_not_confirmed",
+            severity="CRITICAL",
+            path="<handshake>",
+            evidence="cross_tool_state_read.cross_cutting_decision_register must be true",
+            suggested_remediation="Read and record CROSS_CUTTING_DECISION_REGISTER_v1_0.md before work.",
+        ))
+    profile = so.get("tool_profile")
+    if so.get("tool") == "Codex" and profile not in ("madhav-safe", "madhav-parity"):
+        violations.append(Violation(
+            rule="handshake_codex_profile_invalid",
+            severity="CRITICAL",
+            path="<handshake>",
+            evidence="Codex tool_profile must be madhav-safe or madhav-parity",
+            suggested_remediation="Record the selected approved Codex profile.",
+        ))
     return violations
 
 
@@ -550,9 +586,9 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                           "Wrap the block in `session_close:`.")]
     sc = data["session_close"]
     required = [
-        "session_id", "closed_at", "files_touched", "registry_updates_made",
+        "session_id", "closed_at", "tool", "files_touched", "registry_updates_made",
         "red_team_pass", "drift_detector_run",
-        "schema_validator_run", "session_log_appended",
+        "schema_validator_run", "session_log_appended", "cross_tool_sync",
         "close_criteria_met", "unblocks", "handoff_notes",
     ]
     # mirror_updates_propagated + mirror_enforcer_run retired 2026-05-27 per ND.1 close-out.
@@ -577,6 +613,32 @@ def validate_close_checklist_yaml(raw: str) -> List[Violation]:
                 suggested_remediation="Either expand declared_scope with rationale OR revert the touch",
             ))
     # mirror_updates_propagated check retired 2026-05-27 per ND.1 close-out.
+    if sc.get("tool") not in ("Claude Code", "Codex"):
+        violations.append(Violation(
+            rule="close_tool_invalid",
+            severity="CRITICAL",
+            path="<close>",
+            evidence="`tool` must be Claude Code or Codex",
+            suggested_remediation="Record the session's actual tool provenance.",
+        ))
+    sync = sc.get("cross_tool_sync", {}) or {}
+    for key in ("work_order_outcome_recorded", "lease_release_recorded", "lease_release_verified_on_remote"):
+        if sync.get(key) is not True:
+            violations.append(Violation(
+                rule=f"close_cross_tool_sync_missing[{key}]",
+                severity="CRITICAL",
+                path="<close>",
+                evidence=f"cross_tool_sync.{key} must be true",
+            suggested_remediation="Record the outcome and release the verified coordination lease.",
+        ))
+    if not isinstance(sync.get("ccd_entries_appended"), list):
+        violations.append(Violation(
+            rule="close_cross_tool_sync_ccd_entries_invalid",
+            severity="CRITICAL",
+            path="<close>",
+            evidence="cross_tool_sync.ccd_entries_appended must be a list (empty when none were added)",
+            suggested_remediation="Record appended CCD IDs or an empty list.",
+        ))
     # Script exit codes (F.2 closure — ONGOING_HYGIENE_POLICIES §F exit-code-3 whitelist)
     # Policy: exit_code 0 passes. exit_code 3 (MEDIUM/LOW only) passes IFF the close
     # YAML carries a `known_residuals` block enumerating each MEDIUM/LOW finding with

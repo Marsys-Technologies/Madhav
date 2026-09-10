@@ -25,6 +25,7 @@ import {
   createDbAuthCode,
   stampDbAuthCodeUid,
   consumeDbAuthCode,
+  fetchOAuthClientMetadata,
   type ConsumedAuthCode,
 } from './oauth_platform_client.js'
 import crypto from 'crypto'
@@ -127,8 +128,44 @@ export async function handleAuthorize(req: Request, res: Response): Promise<void
     return
   }
 
+  // SF-004 (PARIŚEṢA-V4): validate redirect_uri against the client's
+  // registered allowlist BEFORE anything else touches it. RFC 6749 §4.1.2.1:
+  // an invalid redirect_uri must never be redirected to — every failure
+  // branch below returns an error response, not a 302. Exact string match
+  // only against the registered redirect_uris — no prefix/startsWith/
+  // wildcard/normalization; see SF004_OAUTH_BINDING_CONTRACT_v1_0.md §2.
+  const clientMetadata = await fetchOAuthClientMetadata(params.client_id)
+  if (!clientMetadata.found) {
+    res.status(400).json({ error: 'invalid_request', error_description: 'unknown client_id' })
+    return
+  }
+  if (!clientMetadata.redirect_uris.includes(params.redirect_uri)) {
+    res.status(400).json({ error: 'invalid_request', error_description: 'redirect_uri not registered for this client' })
+    return
+  }
+
   if (params.response_type !== 'code') {
     res.status(400).json({ error: 'unsupported_response_type' })
+    return
+  }
+
+  // SF-003 fold-in (PARIŚEṢA-V4): reject any code_challenge_method other than
+  // S256 at registration time, rather than accepting it and never verifying it.
+  // Before this, a client could register a code_challenge with
+  // code_challenge_method: 'plain' (or omitted, whose RFC 7636 default is
+  // 'plain') and the record would be stored — but token.ts's verifier
+  // unconditionally SHA-256s, so a 'plain' challenge could never be redeemed at
+  // all, meaning no 'plain' path was ever exercised or verified. Discovery
+  // already advertises `code_challenge_methods_supported: ['S256']` only
+  // (discovery.ts); this makes /authorize actually enforce what discovery
+  // claims, instead of silently accepting a method it does not support.
+  // Deliberately NOT implementing a 'plain' verifier — it is the downgrade
+  // primitive PKCE hardens against.
+  if (params.code_challenge && params.code_challenge_method !== 'S256') {
+    res.status(400).json({
+      error: 'invalid_request',
+      error_description: 'code_challenge_method must be S256',
+    })
     return
   }
 

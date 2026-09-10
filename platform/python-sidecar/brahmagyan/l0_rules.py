@@ -1241,7 +1241,10 @@ def _p27_extract(m: re.Match, full_text: str) -> dict | None:
     sign_num = _canon_sign(m.group(4)) if m.group(4) else None
     if not p1 or not p2 or not sign_num:
         return None
-    planets = list({p for p in (p1, p2, p3) if p})
+    # Rule identity hashes the antecedent JSON. Preserve first textual
+    # occurrence while removing duplicates; Python's randomized set iteration
+    # must never choose the planet order for a rule_id.
+    planets = list(dict.fromkeys(p for p in (p1, p2, p3) if p))
     if len(planets) < 2:
         return None
     result = _extract_result_clause(full_text, m.end())
@@ -1601,49 +1604,45 @@ def seed_rules(
                             continue
 
                         # Insert into sutravali_rules
-                        try:
-                            insert_cur.execute(
-                                """
-                                INSERT INTO sutravali_rules (
-                                    rule_id, text_id, verse_ref,
-                                    antecedent_jsonb, predicate_jsonb, prediction_jsonb,
-                                    confidence, extracted_by, extraction_pass_log,
-                                    quality_score, yoga_canonical_id, dasha_system_id,
-                                    transit_marker, created_at
-                                ) VALUES (
-                                    %s::uuid, %s, %s,
-                                    %s::jsonb, %s::jsonb, %s::jsonb,
-                                    %s, %s, %s::jsonb,
-                                    %s, %s, %s,
-                                    %s, %s
-                                )
-                                ON CONFLICT (rule_id) DO NOTHING
-                                """,
-                                (
-                                    rule_row["rule_id"],
-                                    rule_row["text_id"],
-                                    rule_row["verse_ref"],
-                                    rule_row["antecedent_jsonb"],
-                                    rule_row["predicate_jsonb"],
-                                    rule_row["prediction_jsonb"],
-                                    rule_row["confidence"],
-                                    rule_row["extracted_by"],
-                                    rule_row["extraction_pass_log"],
-                                    rule_row["quality_score"],
-                                    rule_row["yoga_canonical_id"],
-                                    rule_row["dasha_system_id"],
-                                    rule_row["transit_marker"],
-                                    now,
-                                ),
+                        insert_cur.execute(
+                            """
+                            INSERT INTO sutravali_rules (
+                                rule_id, text_id, verse_ref,
+                                antecedent_jsonb, predicate_jsonb, prediction_jsonb,
+                                confidence, extracted_by, extraction_pass_log,
+                                quality_score, yoga_canonical_id, dasha_system_id,
+                                transit_marker, created_at
+                            ) VALUES (
+                                %s::uuid, %s, %s,
+                                %s::jsonb, %s::jsonb, %s::jsonb,
+                                %s, %s, %s::jsonb,
+                                %s, %s, %s,
+                                %s, %s
                             )
-                            if insert_cur.rowcount > 0:
-                                rows_inserted += 1
-                                chunk_rule_count += 1
-                            else:
-                                rows_skipped_conflict += 1
-                        except Exception as e:
-                            logger.warning("[rules] insert error chunk %s: %s", chunk["verse_ref"], e)
-                            continue
+                            ON CONFLICT (rule_id) DO NOTHING
+                            """,
+                            (
+                                rule_row["rule_id"],
+                                rule_row["text_id"],
+                                rule_row["verse_ref"],
+                                rule_row["antecedent_jsonb"],
+                                rule_row["predicate_jsonb"],
+                                rule_row["prediction_jsonb"],
+                                rule_row["confidence"],
+                                rule_row["extracted_by"],
+                                rule_row["extraction_pass_log"],
+                                rule_row["quality_score"],
+                                rule_row["yoga_canonical_id"],
+                                rule_row["dasha_system_id"],
+                                rule_row["transit_marker"],
+                                now,
+                            ),
+                        )
+                        if insert_cur.rowcount > 0:
+                            rows_inserted += 1
+                            chunk_rule_count += 1
+                        else:
+                            rows_skipped_conflict += 1
 
                     chunks_processed += 1
                     if chunk_rule_count == 0:

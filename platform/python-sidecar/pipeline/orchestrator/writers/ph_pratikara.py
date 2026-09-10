@@ -25,6 +25,63 @@ from services.ph_pratikara.engine import (
 logger = logging.getLogger(__name__)
 
 
+def _windows_overlap(a_start, a_end, b_start, b_end) -> bool:
+    """True if [a_start, a_end] and [b_start, b_end] overlap. Missing bounds on
+    either side are treated as non-restrictive (unknown, not "excludes everything")."""
+    if a_start and b_end and a_start > b_end:
+        return False
+    if a_end and b_start and a_end < b_start:
+        return False
+    return True
+
+
+def _select_anchor(anchors_by_domain: dict, domain, obs_start, obs_end):
+    """F-3.4: pick the influenceable anchor this obstruction's own domain actually
+    names, not the first anchor found across all domains regardless of relevance.
+
+    `anchors_by_domain[domain]` is already ordered by magnitude priority (pivotal >
+    major > moderate > minor -- see _load_influenceable_anchors). Within that domain,
+    prefer an anchor whose window overlaps the obstruction's; if none overlaps (or
+    either window is unknown), fall back to the domain's highest-magnitude anchor --
+    still domain-relevant, just not window-corroborated.
+
+    No domain, or no influenceable anchor in that domain: honest (None, None).
+    linked_anchor_id is nullable with ON DELETE SET NULL specifically for this case
+    (F-3.4 point 3) -- a plausible-looking wrong anchor is worse than an honest gap.
+    """
+    if not domain:
+        return None, None
+    candidates = anchors_by_domain.get(domain) or []
+    if not candidates:
+        return None, None
+    for a in candidates:
+        if _windows_overlap(obs_start, obs_end, a.get('window_start'), a.get('window_end')):
+            return str(a['anchor_id']), a.get('magnitude', 'moderate')
+    a = candidates[0]
+    return str(a['anchor_id']), a.get('magnitude', 'moderate')
+
+
+def _safe_float(value, default: float, *, field: str, row_id) -> float:
+    """
+    Coerce a possibly-TEXT numeric column to float; never raises.
+
+    classical_strength_rating is declared TEXT on bodha_rm_remedy_prescriptions
+    (bo_upaya writes it as str(confidence) or ''), not NUMERIC. A blank or
+    non-numeric value must not crash the whole prescriptions load — fall back
+    to the documented default and warn so the row is traceable.
+    """
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        logger.warning(
+            "ph_pratikara: prescription %s has non-numeric %s=%r; using default %s",
+            row_id, field, value, default,
+        )
+        return default
+
+
 @register('ph_pratikara')
 class PhPratikaraWriter(WriterBase):
     """
@@ -67,15 +124,14 @@ class PhPratikaraWriter(WriterBase):
                 obs_start  = obs.get('window_start')
                 obs_end    = obs.get('window_end')
                 obs_type   = str(obs.get('obstruction_type') or '')
+                obs_domain = obs.get('convergence_domain')
 
-                # Find the highest-magnitude influenceable anchor in any domain
-                linked_anchor_id = None
-                anchor_magnitude = None
-                for domain_anchors in anchors_by_domain.values():
-                    for a in domain_anchors:
-                        if linked_anchor_id is None:
-                            linked_anchor_id = str(a['anchor_id'])
-                            anchor_magnitude = a.get('magnitude', 'moderate')
+                # F-3.4: domain-matched (+ window-overlap-preferred) anchor selection.
+                # An honest (None, None) when this obstruction's domain has no
+                # influenceable anchor -- not the first anchor found anywhere.
+                linked_anchor_id, anchor_magnitude = _select_anchor(
+                    anchors_by_domain, obs_domain, obs_start, obs_end,
+                )
 
                 # Prescription lookup: by graha if available; by obstruction_type if not; then jupiter generic
                 prescriptions = []
@@ -109,7 +165,7 @@ class PhPratikaraWriter(WriterBase):
                         intensity_tier, proportionality_basis,
                         initiation_muhurta_ref,
                         window_start, window_end, re_evaluation_date,
-                        outcome_hook_jsonb, classical_citation,
+                        outcome_hook_jsonb, classical_citation, source_id,
                         cross_tradition_corroboration,
                         derivation_ledger_jsonb, source_citation
                     ) VALUES (
@@ -119,7 +175,7 @@ class PhPratikaraWriter(WriterBase):
                         %s, %s,
                         %s,
                         %s, %s, %s,
-                        %s::jsonb, %s,
+                        %s::jsonb, %s, %s,
                         %s,
                         %s::jsonb, %s
                     )
@@ -134,7 +190,7 @@ class PhPratikaraWriter(WriterBase):
                         rec.intensity_tier, rec.proportionality_basis,
                         rec.initiation_muhurta_ref,
                         rec.window_start, rec.window_end, rec.re_evaluation_date,
-                        json.dumps(rec.outcome_hook_jsonb), rec.classical_citation,
+                        json.dumps(rec.outcome_hook_jsonb), rec.classical_citation, rec.source_id,
                         rec.cross_tradition_corroboration,
                         json.dumps(rec.derivation_ledger_jsonb), rec.source_citation,
                     ),
@@ -163,6 +219,7 @@ class PhPratikaraWriter(WriterBase):
                     o.obstruction_detail,
                     c.window_start,
                     c.window_end,
+                    c.domain AS convergence_domain,
                     c.constituent_factors->>'planet' AS afflicting_graha
                 FROM kala_obstruction o
                 LEFT JOIN kala_convergence c ON o.convergence_id = c.convergence_id
@@ -178,7 +235,7 @@ class PhPratikaraWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 """
-                SELECT anchor_id, domain, magnitude, malleability
+                SELECT anchor_id, domain, magnitude, malleability, window_start, window_end
                 FROM phala_anchors
                 WHERE chart_id = %s AND malleability = 'influenceable'
                 ORDER BY CASE magnitude
@@ -193,52 +250,54 @@ class PhPratikaraWriter(WriterBase):
         return result
 
     def _load_prescriptions(self, conn, chart_id: str) -> dict[str, list[RemedyPrescription]]:
-        """Load bodha_rm_remedy_prescriptions grouped by afflicting_graha."""
+        """
+        Load bodha_rm_remedy_prescriptions grouped by target_graha.
+        Fails loud on query errors — bodha_rm_remedy_prescriptions exists (bo_upaya,
+        L2 Bodha); silent suppression is the bug pattern (see _load_obstructions).
+        """
         result: dict[str, list[RemedyPrescription]] = {}
-        try:
-            with conn.cursor() as sp:
-                sp.execute("SAVEPOINT sp_pratikara_presc")
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT prescription_id, tradition, sub_tradition, remedy_category,
-                           classical_strength_rating, resonance_match_score, feasibility_score,
-                           estimated_cost_inr_range_jsonb, requires_acharya_review,
-                           prerequisite_prescription_ids_array, incompatible_with_prescription_ids_array,
-                           recommended_hora, recommended_choghadiya, pranapratishtha,
-                           classical_citation_text, graha
-                    FROM bodha_rm_remedy_prescriptions
-                    WHERE chart_id = %s
-                    ORDER BY resonance_match_score DESC NULLS LAST
-                    """,
-                    (chart_id,),
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                """
+                SELECT prescription_id, tradition, sub_tradition, remedy_category,
+                       classical_strength_rating, resonance_match_score, feasibility_score,
+                       estimated_cost_inr_range_jsonb, requires_acharya_review_flag,
+                       prerequisite_prescription_ids_array, incompatible_with_prescription_ids_array,
+                       recommended_hora_lord_array, recommended_choghadiya_window_array,
+                       pranapratishtha_required_flag, classical_sources_jsonb, target_graha
+                FROM bodha_rm_remedy_prescriptions
+                WHERE chart_id = %s
+                ORDER BY resonance_match_score DESC NULLS LAST
+                """,
+                (chart_id,),
+            )
+            for row in cur.fetchall():
+                graha_key = str(row.get('target_graha') or 'generic').lower()
+                hora_arr = row.get('recommended_hora_lord_array') or []
+                choghadiya_arr = row.get('recommended_choghadiya_window_array') or []
+                # classical_sources_jsonb shape (bo_upaya writer): {"source_id": ..., "citation": ...}
+                sources = row.get('classical_sources_jsonb')
+                if not isinstance(sources, dict):
+                    sources = {}
+                p = RemedyPrescription(
+                    prescription_id=str(row['prescription_id']),
+                    tradition=str(row.get('tradition') or 'vedic'),
+                    remedy_category=str(row.get('remedy_category') or ''),
+                    classical_strength_rating=_safe_float(
+                        row.get('classical_strength_rating'), 0.5,
+                        field='classical_strength_rating', row_id=row.get('prescription_id'),
+                    ),
+                    resonance_match_score=float(row.get('resonance_match_score') or 0.5),
+                    feasibility_score=float(row.get('feasibility_score') or 0.5),
+                    estimated_cost_inr_range=row.get('estimated_cost_inr_range_jsonb') or {},
+                    requires_acharya_review=bool(row.get('requires_acharya_review_flag')),
+                    prerequisite_ids=list(row.get('prerequisite_prescription_ids_array') or []),
+                    incompatible_ids=list(row.get('incompatible_with_prescription_ids_array') or []),
+                    recommended_hora=(hora_arr[0] if hora_arr else None),
+                    recommended_choghadiya=(choghadiya_arr[0] if choghadiya_arr else None),
+                    pranapratishtha=bool(row.get('pranapratishtha_required_flag')),
+                    classical_citation=str(sources.get('citation') or ''),
+                    source_id=str(sources.get('source_id') or ''),
                 )
-                for row in cur.fetchall():
-                    graha_key = str(row.get('graha') or 'generic').lower()
-                    p = RemedyPrescription(
-                        prescription_id=str(row['prescription_id']),
-                        tradition=str(row.get('tradition') or 'vedic'),
-                        remedy_category=str(row.get('remedy_category') or ''),
-                        classical_strength_rating=float(row.get('classical_strength_rating') or 0.5),
-                        resonance_match_score=float(row.get('resonance_match_score') or 0.5),
-                        feasibility_score=float(row.get('feasibility_score') or 0.5),
-                        estimated_cost_inr_range=row.get('estimated_cost_inr_range_jsonb') or {},
-                        requires_acharya_review=bool(row.get('requires_acharya_review')),
-                        prerequisite_ids=list(row.get('prerequisite_prescription_ids_array') or []),
-                        incompatible_ids=list(row.get('incompatible_with_prescription_ids_array') or []),
-                        recommended_hora=row.get('recommended_hora'),
-                        recommended_choghadiya=row.get('recommended_choghadiya'),
-                        pranapratishtha=bool(row.get('pranapratishtha')),
-                        classical_citation=str(row.get('classical_citation_text') or ''),
-                    )
-                    result.setdefault(graha_key, []).append(p)
-            with conn.cursor() as sp:
-                sp.execute("RELEASE SAVEPOINT sp_pratikara_presc")
-        except Exception as exc:
-            try:
-                with conn.cursor() as sp:
-                    sp.execute("ROLLBACK TO SAVEPOINT sp_pratikara_presc")
-            except Exception:
-                pass
-            logger.debug("ph_pratikara: prescriptions load skipped: %s", exc)
+                result.setdefault(graha_key, []).append(p)
         return result

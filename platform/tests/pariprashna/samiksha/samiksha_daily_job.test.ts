@@ -147,6 +147,9 @@ describe('InMemoryDigestJournal', () => {
       closing_soon_count: 0,
       transport_mode: 'log-only-stub',
       real_delivery: false,
+      subject: '[Samīkṣā] 1 window(s) closed, 0 closing soon — as of 2026-07-15',
+      body_text: 'SAMĪKṢĀ prediction digest — as of 2026-07-15',
+      payload: payload(),
     })
     expect(await j.hasSent('2026-07-15')).toBe(true)
     expect(await j.hasSent('2026-07-16')).toBe(false) // isolated per date

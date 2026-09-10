@@ -1,0 +1,101 @@
+-- 956_nirmana_l4_ph_suddha_sodhana_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit -- second L4 pick (after ph_sodhana, migrations
+-- 954/955). Per STATE_l1.md w375's own next-cycle note (item 4b): read
+-- the remaining ph_* writers in full before picking, same false-negative
+-- risk as mi_adhilepa (a `.format(table=...)` templated writer would not
+-- show up in a literal `INSERT INTO` grep). ph_suddha_sodhana.py (178
+-- lines, shortest of the 7 remaining unread ph_* writers) was read in
+-- full end to end.
+--
+-- PhSuddhaSodhanaWriter (pipeline/orchestrator/writers/ph_suddha_sodhana.py,
+-- @register("ph_suddha_sodhana")) is the SOLE writer of
+-- phala_suddha_sodhana -- confirmed via grep across all .py files for
+-- INSERT/UPDATE against this table (only ph_suddha_sodhana.py itself;
+-- ph_phaladesa.py reads it via a LEFT JOIN, never writes; the two hits
+-- under tests/ are test files, not writers).
+--
+-- LIGHT writer, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_suddha_sodhana WHERE chart_id = %s` immediately
+-- before the INSERT loop, with an `ON CONFLICT (chart_id, anchor_id) DO
+-- UPDATE` as a same-transaction safety net -- standard L1+
+-- delete-then-insert-per-chart per CLAUDE.md SS N.3.
+--
+-- Natural key: (chart_id, anchor_id) -- this is ALREADY the table's own
+-- UNIQUE constraint (confirmed via psql \d phala_suddha_sodhana:
+-- "phala_suddha_sodhana_anchor_key" UNIQUE, btree (chart_id, anchor_id)),
+-- same "already-real composite key" pattern as ph_sodhana/mi_sambandha/
+-- mi_darshana/bo_pratijna. anchor_id FKs to phala_anchors(anchor_id)
+-- ON DELETE CASCADE, this asset's own L4 sibling table -- one row per
+-- anchor per chart, never a random per-row uuid.
+--
+-- D43 SAFETY RAIL (this writer's own docstring + inline asserts, lines
+-- 10-11, 64-66): revision_approved_by and revision_applied_at are NEVER
+-- inserted -- the writer explicitly passes NULL for both literals in the
+-- INSERT and asserts the engine-derived record never set them before
+-- building the tuple. Both columns are still INCLUDED in value_columns
+-- below (not excluded) -- they are content-bearing (an operator
+-- approval/apply-timestamp gate on a staged revision), not a wall-clock
+-- write-time artifact; today they are deterministically always NULL at
+-- build time by design, which is a legitimate digest value, not a reason
+-- to exclude the column.
+--
+-- `computed_at` excluded -- DEFAULT now(), a wall-clock write-time
+-- timestamp (changes every rebuild regardless of content; the writer's
+-- own ON CONFLICT clause explicitly bumps it on every re-run), same
+-- exclusion class as every prior spec's build_id/computed_at/updated_at
+-- columns in this series. `entry_id` excluded -- surrogate PK
+-- (gen_random_uuid() default), same exclusion class as every prior
+-- spec's surrogate-PK column.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped the whole writer AND
+-- its services/ph_suddha_sodhana/engine.py for
+-- `cell_id`/`node_id`/`cgm_node`/`cdlm_cell`/`uuid4`/`bodha_` -- zero
+-- hits. The writer's only reads are phala_anchors (anchor_id enumeration)
+-- and phala_sodhana (flag rows), both this asset's own L4 siblings, per
+-- the writer's own docstring header.
+--
+-- value_columns = every live column on phala_suddha_sodhana EXCEPT
+-- entry_id, computed_at (2 excluded, per above). Live schema
+-- re-verified via psql \d phala_suddha_sodhana immediately before
+-- authoring this migration: 16 columns total, 14 in the spec.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                  # == the literal below
+--   print(_validate_spec('ph_suddha_sodhana', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_suddha_sodhana') -> got back a clean digest hex
+-- (75f1ccda1deb0de3029edf71efa102691116b20887c1eae478cad5adb665b755, no
+-- exception, key-preflight passed over 4 live rows for the canonical
+-- chart) -> conn.rollback() -> re-queried asset_output_digest_specs from
+-- a FRESH connection afterward and confirmed 0 rows for
+-- ph_suddha_sodhana, i.e. genuinely rolled back, nothing persisted by the
+-- rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_suddha_sodhana' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_suddha_sodhana',
+  '9f3958dcd69985ba5fa555c00abfb3cc95fff8e6b5443bccfe3c6b066f5ad78e',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_suddha_sodhana","relation":"phala_suddha_sodhana","key_columns":["chart_id","anchor_id"],"value_columns":["chart_id","anchor_id","cleanliness_status","critical_flag_count","major_flag_count","minor_flag_count","flag_ids_jsonb","staged_revision_jsonb","revision_approved_by","revision_applied_at","confidence_delta_if_applied","magnitude_delta_if_applied","derivation_ledger_jsonb","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

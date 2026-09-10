@@ -1,0 +1,37 @@
+{
+  "record_type": "PARISESA_V4_CANDIDATE_RECEIPT",
+  "recorded_at": "2026-08-19T12:40:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "candidate": {
+    "head": "6b6179dd2f2e88e6e2a5d286fc01fb6afd09580d",
+    "direct_parent": "cccb944ddf9ed17c85e555b773235f52efe053cb",
+    "base": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+    "range_diff": "both reviewed patches unchanged after rebase"
+  },
+  "scope": [
+    "platform-mcp/src/tools/register_p1_aliases.ts",
+    "platform-mcp/src/__tests__/f90_sidecar_error_sanitization.test.ts"
+  ],
+  "verification": {
+    "independent_review": "PASS",
+    "focused_tests": "11 passed / 0 failed",
+    "typecheck": "PASS",
+    "diff_check": "PASS",
+    "codegen_check": {
+      "candidate_exit": 1,
+      "parent_exit": 1,
+      "envelope": "PASS on both",
+      "unchanged_halt": "getStrengthCapability.input_schema.frame.description BinaryExpression",
+      "normalized_output_sha256": "6d0130cebe85e07423b5f052fd6deba514151fba4dfed336e7f557d08434c0e1",
+      "normalized_outputs_identical": true,
+      "runtime": "Node v22.16.0 / npm 11.8.0"
+    }
+  },
+  "disposition": "CODE_VERIFIED_REVIEW_PASSED_CONTROL_GUARDED_PR_READY",
+  "next_safe_action": "Push exact branch and open a normal protected PR; await all required PR and Ganga contexts before merge.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

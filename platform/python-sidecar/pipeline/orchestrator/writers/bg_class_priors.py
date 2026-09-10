@@ -1,5 +1,5 @@
 """
-bg_class_priors writer — populates brahma_class_priors (165 rows across 5 prior axes).
+bg_class_priors writer — populates brahma_class_priors (171 rows across 5 prior axes).
 
 Source data: brahmagyan.l0_class_priors — signal_type_class, source_subsystem,
 signal_tradition, varga, and graha×domain priors from W1 seed package §2–§4.
@@ -35,5 +35,5 @@ class ClassPriorsWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=total,
             duration_seconds=time.time() - t0,
-            notes=f"brahma_class_priors: {total} rows (17 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha×domain)",
+            notes=f"brahma_class_priors: {total} rows (24 classes + 12 subsystems + 6 traditions + 30 vargas + 99 graha×domain)",
         )

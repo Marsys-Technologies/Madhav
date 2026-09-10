@@ -40,6 +40,7 @@ from typing import Any, Callable
 import psycopg.rows
 
 from brahmagyan.graha_vocabulary import norm_graha, to_title
+from brahmagyan.aspects import get_graha_aspects
 
 logger = logging.getLogger(__name__)
 
@@ -641,7 +642,19 @@ def _evaluate_yoga(yoga: dict, state: ChartState) -> dict | None:
         for s in starts_to_try:
             houses = [((s - 1 + i) % 12) + 1 for i in range(7)]
             ps_in_houses = state.planets_in_houses(houses)
-            if len(placed) >= 5 and all(p in ps_in_houses for p in placed):
+            # BPHS nabhasa yoga: ALL 7 classical planets must be present,
+            # ALL 7 must fall within the 7-house window, AND the 7 planets
+            # must occupy 7 distinct houses (no co-occupancy). B-03 fix:
+            # replaces the erroneous >= 5 relaxed condition.
+            houses_occupied_by_placed = {
+                h for h, ps in state.lagna_house_planets.items()
+                if any(p in placed for p in ps) and h in set(houses)
+            }
+            if (
+                len(placed) == 7
+                and all(p in ps_in_houses for p in placed)
+                and len(houses_occupied_by_placed) == 7
+            ):
                 fired = True
                 constituent_planets = placed
                 constituent_houses = houses
@@ -1172,7 +1185,7 @@ def _is_exalted(planet: str, sign: str) -> bool:
 #     are always among the 7 classical grahas.
 #   * "Association" (sambandha) = conjunction (same whole-sign house), MUTUAL
 #     Parashari graha-drishti (each aspects the other's house; special aspects
-#     of Mars/Jupiter/Saturn included via NB_GRAHA_DRISHTI), or parivartana
+#     of Mars/Jupiter/Saturn included via the canonical aspect oracle), or parivartana
 #     (mutual sign exchange) — the classical three-fold sambandha of the BPHS
 #     Raja/Dhana yoga adhyayas.
 #   * All placements whole-sign, lagna-relative (same basis as this writer's
@@ -1494,15 +1507,6 @@ NB_DEBILITATION_SIGNS: dict[str, str] = {
 # e.g. Saturn debilitated in Aries → the graha exalted in Aries is the Sun.
 NB_EXALTED_IN_SIGN: dict[str, str] = {sign: planet for planet, sign in NB_EXALTATION_SIGNS.items()}
 
-# Parashari whole-sign graha drishti (special aspects; all grahas aspect the 7th).
-# BPHS graha-drishti adhyaya — Mars 4/8, Jupiter 5/9, Saturn 3/10, all 7th.
-NB_GRAHA_DRISHTI: dict[str, frozenset[int]] = {
-    "mars": frozenset({4, 7, 8}),
-    "jupiter": frozenset({5, 7, 9}),
-    "saturn": frozenset({3, 7, 10}),
-}
-NB_DEFAULT_DRISHTI = frozenset({7})
-
 # ── NBRY citations (citation discipline — section C of R6A.1) ──────────────────
 # Grain: source text + chapter/adhyaya, no fabricated verse numbers. BPHS Ch.39
 # is this project's ratified NBRY anchor (brahma_yoga_catalog.neecha_bhanga_raja_yoga
@@ -1588,8 +1592,7 @@ def _nb_in_kendra_from_lagna_or_moon(
 def _nb_aspects_house(aspecting_planet: str, from_house: int, target_house: int) -> bool:
     """Parashari whole-sign drishti: does `aspecting_planet` at `from_house`
     aspect `target_house`?"""
-    drishti = NB_GRAHA_DRISHTI.get(aspecting_planet, NB_DEFAULT_DRISHTI)
-    return _nb_rel_house(from_house, target_house) in drishti
+    return _nb_rel_house(from_house, target_house) in get_graha_aspects(aspecting_planet)
 
 
 # ── The 5 NBRY rules — each a distinct, separately-testable function ────────────
@@ -2742,7 +2745,11 @@ def _build_karakamsha_firings(
                 json.dumps([planet]),
                 json.dumps(constituent_houses),
                 strength,
-                derivation or STRENGTH_FORMULA_VERSION,
+                # F-A16: strength_formula_version must never claim a formula ran when `strength`
+                # itself is None (e.g. Rahu-only constituents, no classical shadbala) — falling
+                # back to STRENGTH_FORMULA_VERSION here named an unrelated code path's own
+                # constant (the Pancha Mahapurusha dignity formula). Honest NULL floor instead.
+                derivation,
                 None, False,
                 None, None, bhanga_na_reason,
                 derivation, strength_label, citation_ref, citation_human,
@@ -3023,7 +3030,10 @@ def build_ga_yoga_substep(
                     json.dumps(constituent_planets),
                     json.dumps(constituent_houses),
                     strength,
-                    derivation or STRENGTH_FORMULA_VERSION,
+                    # F-A16: same fix as the karakāṃśa insert above -- never invent an unrelated
+                    # formula-version label when the real constituent_bala_v1 derivation returned
+                    # nothing.
+                    derivation,
                     None, False,
                     verdict["bhanga_active"], verdict["bhanga_rule_fired"], verdict["bhanga_na_reason"],
                     derivation, strength_label, citation_ref, citation_human,

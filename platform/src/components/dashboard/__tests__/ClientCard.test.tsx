@@ -72,10 +72,10 @@ describe('ClientCard — Nirmāṇa affordance (Phase 2B canBuild gate)', () => 
     expect(nirmanaLink).toBeUndefined()
   })
 
-  it('canBuild=false → Vimarśa (analyze) link is still present', () => {
+  it('canBuild=false → Pariprashna (consult) link is still present', () => {
     render(<ClientCard chart={{ ...BASE_CHART, canBuild: false }} />)
-    const link = screen.getByRole('link', { name: /vimarśa \(analyze\)/i })
+    const link = screen.getByRole('link', { name: /pariprashna \(consult\)/i })
     expect(link).toBeTruthy()
-    expect((link as HTMLAnchorElement).href).toContain('/clients/chart-abc/consume')
+    expect((link as HTMLAnchorElement).href).toContain('/clients/chart-abc/pariprashna')
   })
 })

@@ -53,6 +53,11 @@ import type { QueryRequest } from '@/lib/adapters/types'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { consumeSystemPromptV2 } from '@/lib/synthesis/prompts/synthesis_prompt_v2'
+import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
+import {
+  neutralizeDelimiters,
+  INJECTION_CONTAINMENT_CLAUSE,
+} from '@/lib/pariprashna/injection/delimit'
 
 export interface SynthesisEvidenceItem {
   tool_name: string
@@ -77,6 +82,19 @@ export interface SynthesizeReadingInput {
   nowContextDate: string
   /** chart_header.current_maha_antar (e.g. "Mercury MD / Saturn AD"), or null if unresolved. */
   currentMahaAntar: string | null
+  /**
+   * V3-E-024: planner/compiler-authored synthesis framing (`plan.synthesis_guidance`,
+   * with the compiler's E-7 insight-mandate `llm_extension_note` folded in by the
+   * call site — see `platform/src/app/api/mcp/prashna_ask/route.ts`'s floor-adoption
+   * block). Deterministic, trusted text — same category as `queryIntentSummary`,
+   * not user-controlled — so no `guard()`/neutralization needed. This route has no
+   * OTHER path for this guidance to reach the model: unlike consult's agentic door
+   * (`buildConsultSystemContent`'s "SYNTHESIS GUIDANCE" section), this is a
+   * single non-agentic call with its own system-prompt assembly, so the field is
+   * threaded straight into `systemPrompt` below under the same framing, for voice
+   * parity between the two doors. `null`/absent is honest omission, not a defect —
+   * not every plan carries guidance. */
+  synthesisGuidance?: string | null
 }
 
 export interface SynthesizeReadingResult {
@@ -102,7 +120,14 @@ resolve (unresolved tool name), returned zero rows (a genuine empty result,
 not necessarily an error), or were withheld (NO-LEAKAGE policy). Do not
 fabricate content to fill these gaps — acknowledge the gap honestly in your
 reading if it is material to the question, exactly as you would disclose any
-other genuine absence of data.`
+other genuine absence of data.
+
+This project's canonical ayanāṁśa is lahiri_chitrapaksha. If <evidence> for
+any tool contains multiple rows for what is otherwise the same fact (same
+lord/level/system) tagged with different ayanamsha_id values, cite ONLY the
+lahiri_chitrapaksha row as the chart's answer. If a non-canonical-ayanāṁśa
+row is mentioned or compared at all, it must be explicitly labeled by its
+ayanāṁśa name rather than presented as the single unqualified answer.`
 
 function buildChartContext(chart: {
   id: string
@@ -239,6 +264,12 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
     return { block: '(no evidence was gathered for this request)', truncatedTools: [] }
   }
   const truncatedTools: string[] = []
+  // Lane G1-G: a tool result is untrusted content. Neutralize any delimiter it
+  // carries BEFORE it is placed inside an `<evidence>` container, or a row whose
+  // text contains `</evidence>` closes the container the payload is meant to sit
+  // in. Applied to the serialized payload only — never to the wrapper.
+  const guardPayload = (s: string): string =>
+    isInjectionContainmentEnabled() ? neutralizeDelimiters(s) : s
   const perItemBudgetChars = Math.max(
     MIN_EVIDENCE_ITEM_CHARS,
     Math.floor(TOTAL_EVIDENCE_BUDGET_CHARS / evidence.length),
@@ -248,7 +279,7 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
       const results = Array.isArray(e.bundle.results) ? e.bundle.results : []
       const fullSerialized = JSON.stringify(results, null, 2) ?? '[]'
       if (fullSerialized.length <= perItemBudgetChars) {
-        return `<evidence tool="${e.tool_name}">\n${fullSerialized}\n</evidence>`
+        return `<evidence tool="${e.tool_name}">\n${guardPayload(fullSerialized)}\n</evidence>`
       }
       truncatedTools.push(e.tool_name)
 
@@ -275,7 +306,7 @@ export function formatEvidenceBlock(evidence: SynthesisEvidenceItem[]): { block:
         : `... [TRUNCATED — this tool's highest-bearing content alone exceeds the per-item budget and was ` +
           `character-truncated — the reading should not claim exhaustive coverage of this tool]`
 
-      return `<evidence tool="${e.tool_name}" truncated="true">\n${finalSerialized}\n${disclosure}\n</evidence>`
+      return `<evidence tool="${e.tool_name}" truncated="true">\n${guardPayload(finalSerialized)}\n${disclosure}\n</evidence>`
     })
     .join('\n\n')
   return { block, truncatedTools }
@@ -349,23 +380,61 @@ export async function synthesizeReading(
   }
 
   const systemPrompt =
-    consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) + NO_LIVE_TOOLS_OVERRIDE
+    consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) +
+    NO_LIVE_TOOLS_OVERRIDE +
+    // V3-E-024: same "SYNTHESIS GUIDANCE:" framing + placement consult's
+    // `buildConsultSystemContent` uses (run_adapter_dispatch.ts) — the closest
+    // this door has to an equivalent mechanism, so voice stays aligned between
+    // the two doors per this module's own "one brain, second door" design
+    // intent (see header). Deterministic/trusted, so it sits ahead of the
+    // containment clause rather than through `guard()`.
+    (input.synthesisGuidance ? `\n\n---\n\nSYNTHESIS GUIDANCE:\n${input.synthesisGuidance}` : '') +
+    // Lane G1-G: the clause that turns this door's existing attribution tags
+    // into containment. In the SYSTEM channel deliberately — a clause carried
+    // in the user message would sit inside the same envelope as the payload it
+    // is supposed to bind.
+    (isInjectionContainmentEnabled() ? `\n\n${INJECTION_CONTAINMENT_CLAUSE}` : '')
 
   const { block: evidenceBlock, truncatedTools } = formatEvidenceBlock(input.evidence)
   if (truncatedTools.length > 0) {
     judgmentFlags.push('synthesis_evidence_truncated')
   }
 
+  // ── INJECTION CONTAINMENT (lane G1-G · PPR-13 · TA §14A.1). ───────────────
+  // This is THE door §14A.1 is about — "a foreign, possibly compromised, MCP
+  // client passes free text that our engine feeds to our planner and our
+  // agentic loop, with tool access". It already delimits its prompt, but the
+  // tags were built for ATTRIBUTION, not containment: nothing told the model
+  // the tagged content was untrusted, and nothing stopped a payload from simply
+  // closing `</user_question>` and continuing outside it.
+  //
+  // G1-G supplies both missing halves and re-uses what is here rather than
+  // re-tagging: the delimiters get neutralized inside every untrusted payload,
+  // and the clause goes in the SYSTEM prompt — the one channel the question
+  // cannot reach. Flag-OFF (default) leaves this message byte-for-byte today's.
+  const containment = isInjectionContainmentEnabled()
+  const guard = (s: string): string => (containment ? neutralizeDelimiters(s) : s)
+
   const userMessage = [
-    `<user_question>${input.question}</user_question>`,
+    `<user_question>${guard(input.question)}</user_question>`,
     `<temporal_anchor>${formatTemporalAnchor(input)}</temporal_anchor>`,
-    `Query class: ${input.queryClass}. Intent summary: ${input.queryIntentSummary}.`,
+    // `queryIntentSummary` is planner-authored prose derived from the question,
+    // so it carries the question's own untrustedness one hop further.
+    `Query class: ${input.queryClass}. Intent summary: ${guard(input.queryIntentSummary)}.`,
     '',
+    // NOT `guard(evidenceBlock)`: the block's OWN `<evidence tool="…">`
+    // wrappers are ours and must survive. The neutralization is applied one
+    // level down, to each serialized payload inside them (see
+    // `formatEvidenceBlock`), which is where the untrusted bytes actually are.
     'Gathered evidence:',
     evidenceBlock,
     '',
     '<evidence_gaps>',
-    formatGapsBlock(input),
+    // The gap block interpolates raw planner tool_name strings
+    // (`input.unresolvedTools` — by definition names that resolved to NO
+    // registered capability, i.e. the ones most likely to be model-invented),
+    // so it is untrusted content sitting inside a container like any other.
+    guard(formatGapsBlock(input)),
     '</evidence_gaps>',
   ].join('\n')
 
@@ -392,7 +461,21 @@ export async function synthesizeReading(
       judgmentFlags.push('synthesis_returned_empty')
       return { reading: null, model_id: synthesisModelId, judgment_flags: judgmentFlags }
     }
-    return { reading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
+    // EDIR E-004 (S4 pipeline-parity re-verification, S4_stage_S8_report.md):
+    // `formatEvidenceBlock` above only ASKS the model (via the inline
+    // "[TRUNCATED ...]" instruction in the evidence block) to disclose
+    // truncation in its prose — nothing verified it actually did. A model
+    // response can be fluent, confident, and completely silent about a
+    // truncated evidence set while `judgment_flags` alone carries the
+    // honest signal (demonstrated at INTEGRATION rung: a realistic mocked
+    // model response with zero truncation language passed straight
+    // through). Since the model cannot be relied on for this, the
+    // disclosure is appended deterministically, server-side, whenever the
+    // flag is set — never left to model compliance.
+    const finalReading = judgmentFlags.includes('synthesis_evidence_truncated')
+      ? `${reading}\n\n*Note: some retrieved evidence for this reading was truncated due to length; the interpretation above may not reflect the complete evidence set.*`
+      : reading
+    return { reading: finalReading, model_id: synthesisModelId, judgment_flags: judgmentFlags }
   } catch (err) {
     console.error('[prashna_ask_synthesis] synthesis call failed', err instanceof Error ? err.message : String(err))
     return { reading: null, model_id: synthesisModelId, judgment_flags: ['synthesis_call_failed'] }

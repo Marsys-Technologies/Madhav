@@ -2,8 +2,14 @@
  * query_life_events — LEL intake surface (L5 Mīmāṃsā); MCP name `lel_query`
  * ==========================================================================
  * WP-1.3(d) / F-L10-021. Serves the native's user-authored life events from the
- * chart-scoped `life_events` table (57 rows for the canonical chart), with usable
- * fields (date, description, domain, category, significance, source, outcome).
+ * chart-scoped `life_events` table, with usable fields (date, description, domain,
+ * category, significance, source, outcome).
+ *
+ * NIRMĀṆA L5 W3-3: this header used to pin "57 rows for the canonical chart". The LEL is
+ * an APPEND-AS-THE-NATIVE-LOGS corpus, so any pinned count is wrong by construction — and
+ * it had already drifted (live 2026-09-05: 64 rows for the canonical chart). The count is
+ * not restated here; the handler measures and returns `total_matching` per call
+ * (CLAUDE.md §N.7 item 3 — no wrapper-local constant shadowing a live value).
  *
  * WHY THIS EXISTS (the bug it fixes): `lel_query` was mapped (TOOL_NAME_TO_URI) to
  * `marsys://tool/L2/query_signals` — the Bodha MSR signals surface — whose
@@ -114,6 +120,14 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). Genuinely paginated: LIMIT/OFFSET over
+  // a clamped `limit`, with a measured `total_matching` + `has_more`.
+  density_contract: {
+    paginated: true,
+    facets: ['category', 'domain', 'significance', 'start_date', 'end_date', 'query'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
@@ -212,6 +226,21 @@ export const queryLifeEventsCapability: CapabilityDescriptor = {
           count,
           total_matching,
           has_more,
+          // §N.6 item 3: an honest empty is REPORTED, and distinguishes "no such events"
+          // from "you paged past the end" — a caller must never read one as the other.
+          ...(count === 0
+            ? {
+                empty_reason: total_matching > 0
+                  ? `Offset ${offset} is past the end of the ${total_matching} matching event(s) ` +
+                    `for chart ${chart_id} — rows exist, this page does not. Lower the offset.`
+                  : `No life_events rows matched for chart ${chart_id} ` +
+                    `(category=${category ?? 'any'}, domain=${domain ?? 'any'}, ` +
+                    `significance=${significance ?? 'any'}, start_date=${start_date ?? 'any'}, ` +
+                    `end_date=${end_date ?? 'any'}, query=${search_query ?? 'none'}). The LEL is ` +
+                    'user-authored and grows only as the native logs events; an empty result is a ' +
+                    'real state of the corpus, not a failed lookup.',
+              }
+            : {}),
           filters: { category, domain, significance, start_date, end_date, query: search_query, limit, offset },
           provenance: {
             tables: ['life_events'],

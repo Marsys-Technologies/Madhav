@@ -28,6 +28,7 @@ import json
 import logging
 
 from brahmagyan.graha_vocabulary import to_title
+from brahmagyan.ocr_cleanup import score_ocr_confidence, LOW_CONFIDENCE_THRESHOLD
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,40 @@ SOURCE_RATNA = "classical ratna-shastra; Phaladeepika (Mantreswara)"
 SOURCE_PHALA = "Phaladeepika (Mantreswara), trans. G.S. Kapoor, public domain"
 SOURCE_TAJAKA = "Tajaka Neelakanthi, classical tradition, public domain"
 SOURCE_CLASSICAL = "classical tradition (Jyotish)"
+
+# ── PARIŚEṢA-V4 F-23 / owner ruling R-2 (OWNER_RULINGS_20260821.md) ───────────
+# The `praam preem praum sah` navagraha bija class belongs to the tantric/agamic
+# layer transmitted through compilations such as Mantra Mahodadhi and the
+# Navagraha Stotra literature — NOT to BPHS, whose graha-santi material prescribes
+# Vedic rks, donations and propitiation procedures. The prior
+# `BPHS Ch.91-94 (Upaya-adhyaya)` attribution was ruled incorrect-as-stated.
+# BPHS is retained only as upaya context, explicitly labelled as such.
+SOURCE_BIJA = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.)"
+)
+CLASSICAL_REF_BIJA = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.); "
+    "BPHS Ch.91-94 (Upaya-adhyaya) — upāya context only, not the mantra's source"
+)
+
+# ── PARIŚEṢA-V4 F-182 / owner rulings R-1 + R-2 ───────────────────────────────
+# The same bīja class also appears on the domain-scaffold rows below, which cited
+# `BPHS Ch.88` rather than Ch.91-94. R-2 reaches them identically: BPHS is retained
+# only as upāya context, explicitly labelled. Applies to rows whose `mantra_text`
+# IS a `praam preem praum sah`-class bīja; nāma-mantra rows (e.g. "Om Gurave
+# Namah") are untouched by R-2 — BPHS Ch.88 legitimately covers those upāyas.
+CLASSICAL_REF_BIJA_CH88 = (
+    "Navagraha bīja tradition; compiled in Mantra Mahodadhi (Mahīdhara, 16th c.); "
+    "BPHS Ch.88 (Upaya-adhyaya) — upāya context only, not the mantra's source"
+)
+
+# ── PARIŚEṢA-V4 F-23 / owner ruling R-3 ───────────────────────────────────────
+# BPHS Ch.94 supplies the nakshatra DEVATA table, not the mantra text. The served
+# `Om <devata-dative> Namah` string is a constructed nama-mantra form. The citation
+# must say exactly that and no more.
+CLASSICAL_REF_NAKSHATRA_MANTRA = (
+    "BPHS Ch.94 (devatā attribution); mantra: nāma-mantra form (constructed)"
+)
 
 # ── Valid ontology vocabulary sets ────────────────────────────────────────────
 
@@ -98,6 +133,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "sun": {
         "beej": "Om Hraam Hreem Hraum Sah Suryaya Namah",
         "beej_sa": "ॐ ह्रां ह्रीं ह्रौं सः सूर्याय नमः",
+        "beej_iast": "oṃ hrāṃ hrīṃ hrauṃ saḥ sūryāya namaḥ",
         "deity": "Surya",
         "day": "Sunday",
         "color": "red/orange",
@@ -108,6 +144,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "moon": {
         "beej": "Om Shraam Shreem Shraum Sah Chandraya Namah",
         "beej_sa": "ॐ श्रां श्रीं श्रौं सः चन्द्राय नमः",
+        "beej_iast": "oṃ śrāṃ śrīṃ śrauṃ saḥ candrāya namaḥ",
         "deity": "Chandra",
         "day": "Monday",
         "color": "white",
@@ -118,6 +155,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "mars": {
         "beej": "Om Kraam Kreem Kraum Sah Bhaumaya Namah",
         "beej_sa": "ॐ क्रां क्रीं क्रौं सः भौमाय नमः",
+        "beej_iast": "oṃ krāṃ krīṃ krauṃ saḥ bhaumāya namaḥ",
         "deity": "Hanuman/Kartikeya",
         "day": "Tuesday",
         "color": "red",
@@ -128,6 +166,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "mercury": {
         "beej": "Om Braam Breem Braum Sah Budhaya Namah",
         "beej_sa": "ॐ ब्रां ब्रीं ब्रौं सः बुधाय नमः",
+        "beej_iast": "oṃ brāṃ brīṃ brauṃ saḥ budhāya namaḥ",
         "deity": "Vishnu/Budha",
         "day": "Wednesday",
         "color": "green",
@@ -138,6 +177,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "jupiter": {
         "beej": "Om Graam Greem Graum Sah Gurave Namah",
         "beej_sa": "ॐ ग्रां ग्रीं ग्रौं सः गुरवे नमः",
+        "beej_iast": "oṃ grāṃ grīṃ grauṃ saḥ gurave namaḥ",
         "deity": "Brihaspati/Vishnu",
         "day": "Thursday",
         "color": "yellow",
@@ -148,6 +188,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "venus": {
         "beej": "Om Draam Dreem Draum Sah Shukraya Namah",
         "beej_sa": "ॐ द्रां द्रीं द्रौं सः शुक्राय नमः",
+        "beej_iast": "oṃ drāṃ drīṃ drauṃ saḥ śukrāya namaḥ",
         "deity": "Lakshmi/Shukra",
         "day": "Friday",
         "color": "white/variegated",
@@ -156,8 +197,9 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
         "dana": ["sugar", "white cloth", "curd", "silver", "perfume"],
     },
     "saturn": {
-        "beej": "Om Praam Preem Praum Sah Shanaye Namah",
+        "beej": "Om Praam Preem Praum Sah Shanaischaraya Namah",
         "beej_sa": "ॐ प्रां प्रीं प्रौं सः शनैश्चराय नमः",
+        "beej_iast": "oṃ prāṃ prīṃ prauṃ saḥ śanaiścarāya namaḥ",
         "deity": "Shani/Hanuman",
         "day": "Saturday",
         "color": "black/dark blue",
@@ -168,6 +210,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "rahu": {
         "beej": "Om Bhraam Bhreem Bhraum Sah Rahave Namah",
         "beej_sa": "ॐ भ्रां भ्रीं भ्रौं सः राहवे नमः",
+        "beej_iast": "oṃ bhrāṃ bhrīṃ bhrauṃ saḥ rāhave namaḥ",
         "deity": "Durga",
         "day": "Saturday",
         "color": "smoky/grey",
@@ -178,6 +221,7 @@ PLANET_REMEDY_DATA: dict[str, dict] = {
     "ketu": {
         "beej": "Om Sraam Sreem Sraum Sah Ketave Namah",
         "beej_sa": "ॐ स्रां स्रीं स्रौं सः केतवे नमः",
+        "beej_iast": "oṃ srāṃ srīṃ srauṃ saḥ ketave namaḥ",
         "deity": "Ganesha",
         "day": "Saturday/Tuesday",
         "color": "multicolour/grey",
@@ -212,13 +256,13 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "scaffold_status": "live",
             "prescription_text": text,
             "mantra_sanskrit": d["beej_sa"],
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "deity": d["deity"],
             "day_of_week": d["day"],
             "color_associated": d["color"],
-            "source_canonical_id": "BPHS",
-            "source_citation": SOURCE_BPHS,
-            "classical_ref": "BPHS Ch.91-94 (Upaya-adhyaya)",
+            "source_canonical_id": "classical_tradition",
+            "source_citation": SOURCE_BIJA,
+            "classical_ref": CLASSICAL_REF_BIJA,
             "cost_tier": "free",
             "confidence": 0.90,
         })
@@ -327,7 +371,7 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "remedy_type": "yantra",
             "scaffold_status": "live",
             "prescription_text": text,
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "day_of_week": d["day"],
             "source_canonical_id": "BPHS",
             "source_citation": SOURCE_CLASSICAL,
@@ -390,7 +434,7 @@ def gen_planet_matrix() -> list[dict[str, Any]]:
             "remedy_type": "japa",
             "scaffold_status": "live",
             "prescription_text": text,
-            "mantra_transliteration": d["beej"],
+            "mantra_transliteration": d["beej_iast"],
             "mantra_sanskrit": d["beej_sa"],
             "day_of_week": d["day"],
             "source_canonical_id": "BPHS",
@@ -1307,9 +1351,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Sunday",
         "color_associated": "red",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "sun_health_gemstone_01",
@@ -1397,9 +1441,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Monday",
         "color_associated": "white",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "moon_wealth_gemstone_01",
@@ -1472,9 +1516,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Tuesday",
         "color_associated": "red",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "mars_health_gemstone_01",
@@ -1518,9 +1562,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.85,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "mercury_wealth_gemstone_01",
@@ -1560,13 +1604,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant Guru Ashtottara Shatanamavali 108 times on Thursdays. Jupiter (Guru) blesses with wisdom, wealth, and progeny when propitiated.",
-        "mantra_text": "Om Graam Greem Graum Sah Guruve Namah",
+        "mantra_text": "Om Graam Greem Graum Sah Gurave Namah",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "jupiter_education_gemstone_01",
@@ -1624,9 +1668,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "venus_wealth_gemstone_01",
@@ -1670,9 +1714,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Saturday",
         "color_associated": "black",
         "confidence": 0.90,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "sat_career_charity_01",
@@ -1786,13 +1830,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant the Rahu Beeja Mantra 18,000 times over 40 days for Rahu Mahadasha career difficulties. Rahu rules obsession, ambition, and unconventional paths.",
-        "mantra_text": "Om Bhram Bhreem Bhroum Sah Rahave Namah",
+        "mantra_text": "Om Bhraam Bhreem Bhraum Sah Rahave Namah",
         "day_of_week": "Saturday",
         "color_associated": "smoke grey",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "rahu_health_gemstone_01",
@@ -1847,13 +1891,13 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "mantra",
         "scaffold_status": "live",
         "prescription_text": "Chant the Ketu Beeja Mantra 17,000 times over 40 days. Ketu rules moksha, liberation, and occult wisdom. Strong Ketu brings spiritual insight.",
-        "mantra_text": "Om Sram Sreem Sraum Sah Ketave Namah",
+        "mantra_text": "Om Sraam Sreem Sraum Sah Ketave Namah",
         "day_of_week": "Tuesday",
         "color_associated": "grey",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "ketu_health_gemstone_01",
@@ -1958,9 +2002,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Wednesday",
         "color_associated": "green",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "jupiter_spirituality_puja_01",
@@ -1969,7 +2013,7 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "remedy_type": "puja",  # was ritual
         "scaffold_status": "live",
         "prescription_text": "Perform Brihaspati Puja on Thursdays with yellow flowers, gram dal, and camphor. Study sacred texts or listen to vedic recitation. Worship Vishnu or Dakshinamurthy.",
-        "mantra_text": "Om Guruve Namah",
+        "mantra_text": "Om Gurave Namah",
         "day_of_week": "Thursday",
         "color_associated": "yellow",
         "confidence": 0.85,
@@ -1988,9 +2032,9 @@ LEGACY_REMEDIES: list[dict[str, Any]] = [
         "day_of_week": "Friday",
         "color_associated": "white",
         "confidence": 0.80,
-        "source_canonical_id": "BPHS",
-        "source_citation": SOURCE_BPHS_LEGACY,
-        "classical_ref": "BPHS Ch.88",
+        "source_canonical_id": "classical_tradition",
+        "source_citation": SOURCE_BIJA,
+        "classical_ref": CLASSICAL_REF_BIJA_CH88,
     },
     {
         "remedy_id": "moon_spirituality_puja_01",
@@ -2141,7 +2185,8 @@ SOURCE_MC = "Muhurta Chintamani, classical Jyotish muhurta text"
 SOURCE_YM = "Yantra Maharnava, classical yantra text"
 SOURCE_BS = "Brihat Samhita (Varahamihira), classical Jyotish/astronomy text"
 
-# 27 nakshatra deity + mantra data (BPHS Ch.94; standard tradition)
+# 27 nakshatra deity + mantra data. BPHS Ch.94 supplies the DEVATA column only;
+# the mantra column is a constructed nama-mantra form (owner ruling R-3, F-23).
 _NAKSHATRA_DATA: list[tuple[str, str, str, str, str]] = [
     # (nakshatra_id, nakshatra_name, ruling_planet, presiding_deity, mantra_transliteration)
     ("ashwini",       "Ashwini",       "ketu",    "Ashwini Kumaras",  "Om Ashwinibhyam Namah"),
@@ -2182,7 +2227,9 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
     """
     Generate one mantra remedy row per nakshatra for birth-nakshatra propitiation.
     27 rows total.
-    Source: BPHS Ch.94 (nakshatra devata table); standard Jyotish mantra tradition.
+    Source: BPHS Ch.94 supplies the nakshatra devata attribution ONLY. The mantra
+    string is a constructed nama-mantra (Om <devata-dative> Namah), not BPHS text —
+    see PARISESA-V4 owner ruling R-3 (OWNER_RULINGS_20260821.md).
     """
     rows: list[dict[str, Any]] = []
     for nak_id, nak_name, planet, deity, mantra in _NAKSHATRA_DATA:
@@ -2190,8 +2237,9 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
             f"For birth in {nak_name} nakshatra: recite the nakshatra devata mantra "
             f"'{mantra}' 108 times daily, especially on the day ruled by {planet.capitalize()}. "
             f"The presiding deity is {deity}. This propitiation pacifies afflictions to "
-            f"the natal Moon/lagna when in this nakshatra and is prescribed for nakshatra "
-            f"shanti in BPHS Ch.94."
+            f"the natal Moon/lagna when in this nakshatra. Nakshatra shanti is prescribed in "
+            f"BPHS Ch.94, which supplies the presiding devata; the 'Om <devata> Namah' "
+            f"recitation form itself is a constructed nama-mantra, not BPHS text."
         )
         rows.append({
             "remedy_id": f"nakshatra_{nak_id}_mantra",
@@ -2204,7 +2252,7 @@ def _gen_nakshatra_mantra_rows() -> list[dict[str, Any]]:
             "deity": deity,
             "source_canonical_id": "BPHS",
             "source_citation": SOURCE_BPHS,
-            "classical_ref": "BPHS Ch.94 (Nakshatra devata table); Deva Keralam",
+            "classical_ref": CLASSICAL_REF_NAKSHATRA_MANTRA,
             "cost_tier": "free",
             "confidence": 0.85,
             "category": "nakshatra_shanti",
@@ -3012,7 +3060,7 @@ YANTRA_SPEC_REMEDIES: list[dict[str, Any]] = [
             "magic square numbers within a six-petal lotus, within a circle, within "
             "a square bhupura. Inscribe in black ink or blue paste. "
             "Energise on Saturday during Krishna Paksha (waning moon) with Shani beej "
-            "mantra 'Om Praam Preem Praum Sah Shanaye Namah' 23,000 times. "
+            "mantra 'Om Praam Preem Praum Sah Shanaischaraya Namah' 23,000 times. "
             "Install in a black cloth facing west."
         ),
         "deity": "Shani/Hanuman",
@@ -3203,7 +3251,14 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
         rows = cur.fetchall()
 
     result: list[dict[str, Any]] = []
-    for chunk_id, text_id, source_citation, content_en in rows:
+    for source_row in rows:
+        if isinstance(source_row, dict):
+            chunk_id = source_row["chunk_id"]
+            text_id = source_row["text_id"]
+            source_citation = source_row["source_citation"]
+            content_en = source_row["content_en"]
+        else:
+            chunk_id, text_id, source_citation, content_en = source_row
         if not content_en:
             continue
 
@@ -3241,12 +3296,6 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
             # (the INSERT validator would reject them)
             continue
 
-        # scaffold_status
-        if multi_marker or multi_planet:
-            scaffold_status = 'review'
-        else:
-            scaffold_status = 'live'
-
         # Deterministic remedy_id with sweep_ prefix
         h = hashlib.sha256(content_en[:80].encode()).hexdigest()[:8]
         remedy_id = f"sweep_{planet}_{remedy_type}_{h}"
@@ -3256,6 +3305,24 @@ def sweep_classical_text_chunks(conn) -> list[dict[str, Any]]:
 
         # Prescription text = first 400 chars of content_en (truncated cleanly)
         prescription_text = content_en[:400].rsplit(' ', 1)[0] if len(content_en) > 400 else content_en
+
+        # scaffold_status (F-144: marker/planet uniqueness alone says nothing about whether
+        # the extracted text is even legible, let alone an actual remedy — a single-marker,
+        # single-planet OCR-garbage row previously auto-promoted to 'live' unconditionally.
+        # score_ocr_confidence() is the same deterministic, already-reviewed EL-52 legibility
+        # heuristic classical_text_chunks.ocr_confidence_score was added for; it was never
+        # wired into this gate. Applied here at extraction time rather than depending on the
+        # chunks table being pre-scored, since it wasn't. Scores prescription_text (what is
+        # ACTUALLY served to a caller), not the full content_en chunk — a bad line elsewhere
+        # in the source chunk that never makes it into the served 400-char excerpt should not
+        # demote a row whose served content is genuinely legible, and the reverse: score what
+        # a reader will actually see, per this campaign's GA-5 review finding on the first
+        # version of this fix.)
+        ocr_score = score_ocr_confidence(prescription_text)
+        if multi_marker or multi_planet or ocr_score < LOW_CONFIDENCE_THRESHOLD:
+            scaffold_status = 'review'
+        else:
+            scaffold_status = 'live'
 
         row: dict[str, Any] = {
             "remedy_id": remedy_id,
@@ -3340,7 +3407,9 @@ def seed_remedy_corpus(
 ) -> dict[str, Any]:
     """
     Seed brahma_remedy_corpus with combined remedy corpus.
-    Uses INSERT ... ON CONFLICT (remedy_id) DO NOTHING for idempotency.
+    Uses INSERT ... ON CONFLICT (remedy_id) DO UPDATE for idempotent convergence.
+    Every writer-owned content field is restored from the deterministic source on
+    replay, including corpus-sweep classification and source attribution.
 
     Returns dict with:
         remedies_inserted, remedies_skipped, live_count, total_built
@@ -3397,7 +3466,9 @@ def seed_remedy_corpus(
                     color_associated, confidence, source_canonical_id,
                     source_citation, classical_ref,
                     category, deity, mantra_sanskrit, mantra_transliteration,
-                    cost_tier, contraindications, scaffold_status
+                    ingredients_jsonb, timing_rules_jsonb, cost_tier,
+                    contraindications, classical_attestation_text,
+                    scaffold_status
                 ) VALUES (
                     %(remedy_id)s, %(planet)s, %(domain)s, %(remedy_type)s,
                     %(prescription_text)s, %(mantra_text)s, %(gemstone)s,
@@ -3405,10 +3476,35 @@ def seed_remedy_corpus(
                     %(confidence)s, %(source_canonical_id)s,
                     %(source_citation)s, %(classical_ref)s,
                     %(category)s, %(deity)s, %(mantra_sanskrit)s,
-                    %(mantra_transliteration)s, %(cost_tier)s,
-                    %(contraindications)s, %(scaffold_status)s
+                    %(mantra_transliteration)s, %(ingredients_jsonb)s::jsonb,
+                    %(timing_rules_jsonb)s::jsonb, %(cost_tier)s,
+                    %(contraindications)s, %(classical_attestation_text)s,
+                    %(scaffold_status)s
                 )
-                ON CONFLICT (remedy_id) DO NOTHING
+                ON CONFLICT (remedy_id) DO UPDATE SET
+                    planet = EXCLUDED.planet,
+                    domain = EXCLUDED.domain,
+                    remedy_type = EXCLUDED.remedy_type,
+                    prescription_text = EXCLUDED.prescription_text,
+                    mantra_text = EXCLUDED.mantra_text,
+                    gemstone = EXCLUDED.gemstone,
+                    charity_action = EXCLUDED.charity_action,
+                    day_of_week = EXCLUDED.day_of_week,
+                    color_associated = EXCLUDED.color_associated,
+                    confidence = EXCLUDED.confidence,
+                    source_canonical_id = EXCLUDED.source_canonical_id,
+                    source_citation = EXCLUDED.source_citation,
+                    classical_ref = EXCLUDED.classical_ref,
+                    category = EXCLUDED.category,
+                    deity = EXCLUDED.deity,
+                    mantra_sanskrit = EXCLUDED.mantra_sanskrit,
+                    mantra_transliteration = EXCLUDED.mantra_transliteration,
+                    ingredients_jsonb = EXCLUDED.ingredients_jsonb,
+                    timing_rules_jsonb = EXCLUDED.timing_rules_jsonb,
+                    cost_tier = EXCLUDED.cost_tier,
+                    contraindications = EXCLUDED.contraindications,
+                    classical_attestation_text = EXCLUDED.classical_attestation_text,
+                    scaffold_status = EXCLUDED.scaffold_status
                 """,
                 {
                     "remedy_id": r["remedy_id"],
@@ -3429,8 +3525,17 @@ def seed_remedy_corpus(
                     "deity": r.get("deity"),
                     "mantra_sanskrit": r.get("mantra_sanskrit"),
                     "mantra_transliteration": r.get("mantra_transliteration"),
+                    "ingredients_jsonb": (
+                        json.dumps(r.get("ingredients_jsonb"))
+                        if r.get("ingredients_jsonb") is not None else None
+                    ),
+                    "timing_rules_jsonb": (
+                        json.dumps(r.get("timing_rules_jsonb"))
+                        if r.get("timing_rules_jsonb") is not None else None
+                    ),
                     "cost_tier": r.get("cost_tier"),
                     "contraindications": r.get("contraindications"),
+                    "classical_attestation_text": r.get("classical_attestation_text"),
                     "scaffold_status": r.get("scaffold_status", "live"),
                 },
             )
@@ -3439,7 +3544,24 @@ def seed_remedy_corpus(
             else:
                 skipped += 1
 
-        # Query live count after insert
+        # This writer owns the complete deterministic corpus projection. Remove
+        # identities no longer produced by the current base + text sweep so a
+        # replay converges after source removals as well as additions/updates.
+        cur.execute(
+            "DELETE FROM brahma_remedy_corpus "
+            "WHERE NOT (remedy_id = ANY(%s))",
+            (sorted(r["remedy_id"] for r in all_remedies),),
+        )
+
+        cur.execute("SELECT COUNT(*) FROM brahma_remedy_corpus")
+        stored_count = cur.fetchone()["count"]
+        if stored_count != total_built:
+            raise RuntimeError(
+                "bg_remedies postflight mismatch: "
+                f"expected {total_built} rows, found {stored_count}"
+            )
+
+        # Query live count after deterministic convergence.
         cur.execute(
             "SELECT COUNT(*) FROM brahma_remedy_corpus WHERE scaffold_status='live'"
         )

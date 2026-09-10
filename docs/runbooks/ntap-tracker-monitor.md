@@ -1,0 +1,125 @@
+# NTAP tracker monitor operator runbook
+
+## Scope and authority
+
+Use this runbook only as an authenticated active `super_admin`. The operational
+view is `/admin/nirmana-elevation`; its authenticated API is
+`GET /api/admin/nirmana-elevation/snapshot`, and the governed write boundary is
+`POST /api/admin/nirmana-elevation/evidence`.
+
+The scheduler monitor is read-only with respect to program identity, acceptance,
+and execution. It records observations only. It never freezes a definition,
+supersedes a definition, advances a stage, starts a build, or changes progress.
+
+Do not use direct SQL, import historical JSON/JSONL ledgers, or manually edit
+progress, stage, denominator, percentage, or monitor records. These are not
+alternate acceptance paths.
+
+## Baseline acceptance
+
+1. In the authenticated dashboard Audit Drawer, or from the authenticated snapshot
+   API, check `program_sync.status`. Continue only when it is `baseline_missing`
+   and the latest observation is fresh (the `program_monitor` source is `fresh`).
+   From that same fresh authenticated Audit Drawer observation, copy the displayed
+   `source_observation_id`, `candidate_definition_sha256`, and
+   `candidate_catalogue_sha256` together. Do not combine values from different
+   observations, calculate or infer either digest, hand-derive or substitute an
+   observation ID, or retrieve a substitute through the scheduler-only internal
+   endpoint.
+2. Choose a new, unique definition revision, for example `ntap-v1`. Submit the
+   evidence command with the exact observation UUID and two current candidate
+   digests copied above:
+
+   ```json
+   {
+     "command": "accept_baseline_candidate",
+     "definition_revision": "ntap-v1",
+     "source_observation_id": "<exact source_observation_id from the same fresh observation>",
+     "expected_candidate_sha256": "<exact current candidate_definition_sha256>",
+     "expected_candidate_catalogue_sha256": "<exact current candidate_catalogue_sha256>"
+   }
+   ```
+
+   Send it only to `POST /api/admin/nirmana-elevation/evidence` while authenticated
+   as `super_admin`. The server re-reads the live registry serializably; a `409`
+   means the candidate changed or another current definition exists. A `429`
+   means the per-actor mutation limit was reached; wait for `Retry-After`, then
+   re-read one fresh Audit Drawer observation before retrying. Never substitute a
+   digest or observation UUID by hand, and never bypass this command through the
+   scheduler endpoint.
+
+3. Confirm the result is `created` (or the exact safe retry is `idempotent`), then
+   refresh the snapshot after the next monitor observation. Verify that the
+   definition is frozen and synchronization reflects the new observation. Baseline
+   acceptance establishes program identity and its label catalogue only: stage,
+   layer, wave, asset lifecycle, and progress remain unknown until their separate
+   typed acceptance receipts exist. The actor-attributed, append-only
+   `asset_label_catalogue_accepted` campaign receipt committed by the acceptance
+   transaction is the normative audit provenance. `admin_audit_log` is a
+   best-effort operator index only; its absence neither creates nor erases an
+   acceptance.
+
+## Plan-adaptation review and adoption
+
+1. When `program_sync.status` is `plan_adaptation_required`, stop treating the
+   accepted denominator as current. Capture the observation timestamp, current and
+   candidate definition digests, and `affected_asset_ids` from the authenticated
+   dashboard/API. This is a proposal signal, not a new plan and not execution
+   authority.
+2. Review the registry/DAG change, then copy the observation ID plus its candidate
+   definition and catalogue digests. Do not calculate or submit a manifest: the
+   protected server re-derives the definition and labels from the live registry in
+   its serializable transaction. The observation must be fresh, source-available,
+   `release_state=in_sync`, and `runtime_liveness=quiet`; obtain a new observation
+   after any deployment before attempting this mutation. Confirm whether the current
+   frozen definition has campaign events or build runs: the boundary refuses a
+   supersession once it does.
+3. Only after explicit plan approval, submit one authenticated supersession command:
+
+   ```json
+   {
+     "command": "supersede_definition",
+    "campaign_id": "nirmana-elevation",
+    "expected_current_revision": "<current frozen revision>",
+    "expected_current_manifest_sha256": "<exact current digest>",
+    "source_observation_id": "<fresh authenticated observation UUID>",
+    "expected_candidate_sha256": "<candidate definition digest>",
+    "expected_candidate_catalogue_sha256": "<candidate catalogue digest>",
+    "new_definition_revision": "<new unique revision>"
+   }
+   ```
+
+   Send it only to `POST /api/admin/nirmana-elevation/evidence`. The server writes
+   the frozen definition, its exact label catalogue, and the normative catalogue
+   receipt atomically. A `409` is a concurrency or eligibility guard, `429` is the
+   per-actor mutation limit, and `503` means the limiter is unavailable; none permit
+   an altered or direct-SQL retry. An exact completed retry verifies the stored
+   definition and normative label receipt without reusing a stale observation.
+   Do not use `record_definition`/`freeze_definition` as a shortcut.
+
+4. After a successful `superseded` response, wait for the next scheduler observation
+   and confirm `program_sync.status` is no longer `plan_adaptation_required` before
+   relying on the new denominator. The monitor still does not create acceptance
+   receipts or progress.
+
+## Freshness verification and incident handling
+
+- The scheduler cadence is five minutes. An observation is fresh only while the
+  snapshot's `program_monitor` source is `fresh`; the snapshot marks it stale once
+  `age_seconds` exceeds 900 seconds (five-minute cadence plus ten-minute grace).
+  A quiet runtime can be fresh; lack of active work is not an error.
+- For `source_unavailable`, `release_attention`, `evidence_refresh_required`, or
+  `label_refresh_required`, preserve the displayed degraded status and investigate
+  the authoritative source or governed evidence path. Do not mark progress green,
+  edit an observation, or treat the previous observation as current.
+- Scheduler deployment verification is a GCP-native reviewed-release activity;
+  GitHub is not a runtime or provisioning requirement. The callback accepts only
+  a Cloud Scheduler OIDC bearer token for audience
+  `https://amjis-web-938361928218.asia-south1.run.app` and principal
+  `amjis-nirmana-monitor@madhav-astrology.iam.gserviceaccount.com`. Do not add,
+  configure, transmit, or troubleshoot a shared-secret header for this route.
+  After the reviewed saved-plan apply, verify the scheduler job exists and wait
+  for its natural five-minute cadence (including its configured retries); do not
+  invoke it manually. The authenticated dashboard should then show a fresh
+  `program_monitor` source. Until a super-admin accepts the first baseline, the
+  truthful synchronization state is `baseline_missing`, not `in_sync`.

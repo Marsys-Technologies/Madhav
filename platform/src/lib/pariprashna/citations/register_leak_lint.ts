@@ -14,6 +14,22 @@
  *                      the human label in place.
  *   (b) REDACT+FLAG  — strip the token from reader prose + emit a telemetry flag.
  *   (c) TELEMETRY    — log-only near-miss; text is left unchanged.
+ *
+ * ── LIST-COLLAPSE FIX (citation-leak-fix, 2026-08-20) ────────────────────────
+ * Live-reproduced twice in production against the real native's chart
+ * (482012f1-…): a closing sentence naming several internal registers in a list
+ * — e.g. "...provided in the MSR, CGM, and CDLM artifacts." — came out the
+ * OTHER side of this lint as "...provided in this, this, and this artifacts."
+ * The subjectSafe substitution below was correct for a SINGLE register mention
+ * ("The UCN concludes..." -> "This concludes...") but was applied
+ * INDEPENDENTLY to each match in a `.replace()` pass, so N list items each
+ * became their own demonstrative — a leak-free but nonsensical, user-visible
+ * string that reads as a broken citation. `applySubjectSafeRun` below groups
+ * consecutive subjectSafe matches joined ONLY by list connectives (",", "and",
+ * "&", whitespace — nothing else) into one RUN and emits a single "this"/
+ * "these" for the whole run, so a list of register mentions degrades to one
+ * grammatical demonstrative instead of a repeated one per item. A lone match is
+ * still a "run" of length 1 and behaves byte-for-byte as before.
  */
 
 import type { CitationResolver, RegisterLeakFlag } from './types'
@@ -53,7 +69,11 @@ const TABLE_PREFIXES = [
   'asset',
 ]
 
-const HARD_PATTERNS: HardPattern[] = [
+// Applied FIRST, in this order — id-shaped tokens, REWRITE-eligible via a
+// resolver, straight `.replace()` per pattern exactly as before the
+// list-collapse fix (none of these are subjectSafe, so they are untouched by
+// `applySubjectSafeRun` below).
+const NON_SUBJECT_SAFE_BEFORE: HardPattern[] = [
   // SIG.MSR.001, SIG.CGM.42, SIG.<REG>.<n> — signal ids.
   { name: 'signal_id', re: /SIG\.\w+\.\d+/g, idShaped: true },
   // Internal asset-id prefixes: bo_/ga_/ka_/ph_/mi_/bg_ + snake tail.
@@ -64,6 +84,12 @@ const HARD_PATTERNS: HardPattern[] = [
     re: new RegExp(`\\b(?:${TABLE_PREFIXES.join('|')})_[a-z][a-z_]*\\b`, 'g'),
     idShaped: false,
   },
+]
+
+// Applied SECOND, as one combined run-aware pass (`applySubjectSafeRun`) — see
+// the LIST-COLLAPSE FIX header comment. A list of these joined only by list
+// connectives collapses to ONE demonstrative instead of one per item.
+const SUBJECT_SAFE_PATTERNS: HardPattern[] = [
   // Register acronyms: MSR / UCN / CGM / CDLM / LEL / RM as standalone words.
   // The leading article is captured AS PART OF the match (group 1) so the
   // subjectSafe replacement below can swap the whole span at once — see
@@ -87,6 +113,12 @@ const HARD_PATTERNS: HardPattern[] = [
     idShaped: false,
     subjectSafe: true,
   },
+]
+
+// Applied THIRD, straight `.replace()` exactly as before the list-collapse
+// fix — not subjectSafe, so it runs after the run-aware pass, same relative
+// order as the original single array.
+const NON_SUBJECT_SAFE_AFTER: HardPattern[] = [
   // L1 chart_facts.fact_id / CGM node-id namespace codes: `namespace.SUBJECT`
   // or `namespace.SUBJECT.KEY` (ganita/types.ts's own doc comment: "namespace.
   // SUBJECT.KEY (e.g. PLN.SUN.LON_DEG)"), e.g. PLN.SUN, HSE.10, KRK.C8.AMATYA,
@@ -105,6 +137,14 @@ const HARD_PATTERNS: HardPattern[] = [
     re: /\b(?!SIG\.)[A-Z]{2,6}\.[A-Z0-9_]{1,40}(?:\.[A-Z0-9_]{1,40}){0,2}\b/g,
     idShaped: false,
   },
+]
+
+// Preserves the exact original array order for anything reading the FULL
+// pattern set (REWRITE-label re-leak check, `LINT_PATTERN_NAMES`).
+const HARD_PATTERNS: HardPattern[] = [
+  ...NON_SUBJECT_SAFE_BEFORE,
+  ...SUBJECT_SAFE_PATTERNS,
+  ...NON_SUBJECT_SAFE_AFTER,
 ]
 
 // ── Near-miss patterns (TELEMETRY only — never alter text) ───────────────────
@@ -158,66 +198,24 @@ function lintInner(text: string, resolver?: CitationResolver): LintResult {
   let leakCount = 0
   let clean = text
 
-  // Hard patterns: apply REWRITE or REDACT by replacing each match in-place.
-  for (const pat of HARD_PATTERNS) {
-    clean = clean.replace(
-      new RegExp(pat.re.source, pat.re.flags),
-      (match: string, article: string | undefined, offset: number, whole: string) => {
-        leakCount += 1
-        // (a) REWRITE — id-shaped + a reader label exists.
-        if (pat.idShaped && resolver) {
-          const label = safeReaderLabel(resolver, match)
-          if (label && !wouldStillLeak(label)) {
-            flags.push({
-              type: 'flag',
-              flag: 'register_leak',
-              verdict: 'rewrite',
-              pattern: pat.name,
-              original: match,
-              replacement: label,
-            })
-            return label
-          }
-        }
-        // (b1) subjectSafe: a bare citation marker like "(UCN §XX)" or
-        // "Cross-Domain Linkage Matrix (CDLM)" reads fine with the token just
-        // deleted (the existing S-3 behavior, preserved exactly) — detected
-        // by the match sitting directly inside an open paren. Everywhere
-        // else the token is standing in for a noun (subject, object of a
-        // preposition, ...); deleting it alone leaves a dangling sentence
-        // ("The UCN concludes..." -> "The concludes..."), so the whole
-        // matched span (including any captured leading article) is swapped
-        // for a neutral demonstrative instead.
-        if (pat.subjectSafe) {
-          const precedingTrimmed = whole.slice(0, offset).trimEnd()
-          const isBareCitationMarker = precedingTrimmed.endsWith('(')
-          if (!isBareCitationMarker) {
-            const capitalize = article
-              ? /^[A-Z]/.test(article)
-              : precedingTrimmed === '' || /[.!?]['"”’]?$/.test(precedingTrimmed)
-            const replacement = capitalize ? 'This' : 'this'
-            flags.push({
-              type: 'flag',
-              flag: 'register_leak',
-              verdict: 'redact',
-              pattern: pat.name,
-              original: match,
-              replacement,
-            })
-            return replacement
-          }
-        }
-        // (b2) REDACT+FLAG — strip from reader prose.
-        flags.push({
-          type: 'flag',
-          flag: 'register_leak',
-          verdict: 'redact',
-          pattern: pat.name,
-          original: match,
-        })
-        return ''
-      },
-    )
+  // Hard patterns (non-subjectSafe, BEFORE the run-aware pass): REWRITE or
+  // REDACT by replacing each match in-place, exactly as before this fix.
+  for (const pat of NON_SUBJECT_SAFE_BEFORE) {
+    clean = applyHardPatternReplace(clean, pat, resolver, flags, (n) => (leakCount += n))
+  }
+
+  // subjectSafe patterns: ONE run-aware pass over BOTH register_acronym and
+  // register_full_name matches together — see the LIST-COLLAPSE FIX header
+  // comment. A run of 1 behaves byte-for-byte as the old per-pattern
+  // `.replace()` did; a run of 2+ collapses to a single demonstrative.
+  const subjectSafeResult = applySubjectSafeRun(clean, SUBJECT_SAFE_PATTERNS, flags)
+  clean = subjectSafeResult.text
+  leakCount += subjectSafeResult.leakCount
+
+  // Hard patterns (non-subjectSafe, AFTER — same relative order as the
+  // original single array, where fact_id_namespace ran last).
+  for (const pat of NON_SUBJECT_SAFE_AFTER) {
+    clean = applyHardPatternReplace(clean, pat, resolver, flags, (n) => (leakCount += n))
   }
 
   // Tidy whitespace left by redactions ("word  ." → "word.", doubled spaces).
@@ -240,6 +238,166 @@ function lintInner(text: string, resolver?: CitationResolver): LintResult {
   }
 
   return { clean, flags, leakCount }
+}
+
+/**
+ * Apply ONE non-subjectSafe hard pattern with the original REWRITE/REDACT
+ * verdict logic, unchanged from before the list-collapse fix. `bumpLeakCount`
+ * is called with the number of matches this pattern fired (always 1 per
+ * callback invocation) so the caller can accumulate a shared counter.
+ */
+function applyHardPatternReplace(
+  text: string,
+  pat: HardPattern,
+  resolver: CitationResolver | undefined,
+  flags: RegisterLeakFlag[],
+  bumpLeakCount: (n: number) => void,
+): string {
+  return text.replace(new RegExp(pat.re.source, pat.re.flags), (match: string) => {
+    bumpLeakCount(1)
+    // (a) REWRITE — id-shaped + a reader label exists.
+    if (pat.idShaped && resolver) {
+      const label = safeReaderLabel(resolver, match)
+      if (label && !wouldStillLeak(label)) {
+        flags.push({
+          type: 'flag',
+          flag: 'register_leak',
+          verdict: 'rewrite',
+          pattern: pat.name,
+          original: match,
+          replacement: label,
+        })
+        return label
+      }
+    }
+    // (b) REDACT+FLAG — strip from reader prose.
+    flags.push({
+      type: 'flag',
+      flag: 'register_leak',
+      verdict: 'redact',
+      pattern: pat.name,
+      original: match,
+    })
+    return ''
+  })
+}
+
+/** One subjectSafe match, collected before grouping into runs. */
+interface SubjectSafeMatch {
+  patternName: string
+  index: number
+  length: number
+  matchText: string
+  article?: string
+}
+
+/**
+ * Text strictly between two adjacent subjectSafe matches that is "just a list
+ * separator" — commas, "and", "&", whitespace, in any combination, and
+ * NOTHING else. Two register mentions separated by anything else (a verb, a
+ * clause) are NOT part of the same list and must not be collapsed.
+ */
+function isListConnective(between: string): boolean {
+  const stripped = between.replace(/,/g, ' ').replace(/&/g, ' ').trim().toLowerCase()
+  return stripped === '' || stripped === 'and'
+}
+
+/**
+ * The run-aware replacement for subjectSafe patterns (LIST-COLLAPSE FIX).
+ * Collects every match from every pattern in `patterns` against `text`, sorts
+ * by position, and groups adjacent matches into "runs" wherever the text
+ * between them is nothing but a list connective (see `isListConnective`).
+ * Each run collapses to ONE replacement:
+ *   - a run inside a bare citation marker, e.g. "(UCN, CGM)" → deleted
+ *     entirely, same "bare marker" carve-out the single-match path always had;
+ *   - otherwise → a single "this"/"This" (run length 1, byte-for-byte the
+ *     pre-fix behavior) or "these"/"These" (run length 2+, the fix: one
+ *     demonstrative for the whole list instead of one per item).
+ * Capitalization is decided from the FIRST match in the run, same rule as
+ * before: its own captured article, else whether the text preceding it is
+ * empty or ends a prior sentence.
+ */
+function applySubjectSafeRun(
+  text: string,
+  patterns: readonly HardPattern[],
+  flags: RegisterLeakFlag[],
+): { text: string; leakCount: number } {
+  const rawMatches: SubjectSafeMatch[] = []
+  for (const pat of patterns) {
+    const re = new RegExp(pat.re.source, pat.re.flags)
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+      rawMatches.push({
+        patternName: pat.name,
+        index: m.index,
+        length: m[0].length,
+        matchText: m[0],
+        article: m[1],
+      })
+      if (m.index === re.lastIndex) re.lastIndex += 1 // zero-width guard
+    }
+  }
+  if (rawMatches.length === 0) return { text, leakCount: 0 }
+  rawMatches.sort((a, b) => a.index - b.index)
+
+  const runs: SubjectSafeMatch[][] = []
+  for (const m of rawMatches) {
+    const lastRun = runs[runs.length - 1]
+    const prev = lastRun?.[lastRun.length - 1]
+    if (prev && isListConnective(text.slice(prev.index + prev.length, m.index))) {
+      lastRun.push(m)
+    } else {
+      runs.push([m])
+    }
+  }
+
+  let leakCount = 0
+  let result = ''
+  let cursor = 0
+  for (const run of runs) {
+    const first = run[0]
+    const last = run[run.length - 1]
+    result += text.slice(cursor, first.index)
+    leakCount += run.length
+
+    const precedingTrimmed = text.slice(0, first.index).trimEnd()
+    const isBareCitationMarker = precedingTrimmed.endsWith('(')
+    if (isBareCitationMarker) {
+      // (b1) Bare citation marker, e.g. "(UCN §XX)" or "(UCN, CGM §XX)" — the
+      // existing S-3 behavior for a single match, generalized to a run: the
+      // whole span is just deleted, no demonstrative substitution.
+      for (const m of run) {
+        flags.push({
+          type: 'flag',
+          flag: 'register_leak',
+          verdict: 'redact',
+          pattern: m.patternName,
+          original: m.matchText,
+        })
+      }
+    } else {
+      const capitalize = first.article
+        ? /^[A-Z]/.test(first.article)
+        : precedingTrimmed === '' || /[.!?]['"”’]?$/.test(precedingTrimmed)
+      const plural = run.length > 1
+      const replacement = capitalize ? (plural ? 'These' : 'This') : (plural ? 'these' : 'this')
+      result += replacement
+      for (const m of run) {
+        flags.push({
+          type: 'flag',
+          flag: 'register_leak',
+          verdict: 'redact',
+          pattern: m.patternName,
+          original: m.matchText,
+          replacement,
+        })
+      }
+    }
+    cursor = last.index + last.length
+  }
+  result += text.slice(cursor)
+
+  return { text: result, leakCount }
 }
 
 /** A reader label must itself be clean — guard against a label that re-leaks. */

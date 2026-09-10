@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:29:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "origin_main": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "pr": {
+    "number": 1342,
+    "head": "3f4193ca1e0408b469c9e21567dc6a12e245dfa7",
+    "base": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+    "merge_state": "CLEAN"
+  },
+  "required_contexts": {
+    "TypeScript (src only)": "SUCCESS",
+    "Unit Tests": "SUCCESS",
+    "Secret Scan (unit 0b.2)": "SUCCESS",
+    "Governance Gates (drift / schema / edge / native-literal / py-sidecar)": "SUCCESS",
+    "TAP-6 — Method audit grep set": "SUCCESS"
+  },
+  "candidate_evidence": {
+    "finding_id": "F-46",
+    "direct_parent": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+    "stable_patch_id": "5fe0bad16dca5cf680f873061ca8e9f2eaea914c",
+    "independent_review": "PASS",
+    "focused_tests": "16/16 PASS",
+    "typecheck": "PASS",
+    "rollback": "git revert 3f4193ca1e0408b469c9e21567dc6a12e245dfa7"
+  },
+  "authorized_action": "normal Ganga auto-merge admission only; no bypass, force merge, deployment, rebuild, or data action",
+  "next_action": "observe exact synthetic merge-group contexts and reconcile the merge before considering F47."
+}

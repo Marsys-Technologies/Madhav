@@ -15,7 +15,9 @@ and stored them in gochara_v3_calibration, this script:
   Stage B -- Calibration state stamper: UPDATE kala_gochara_windows_v2 SET
              calibration_state = 'empirically_calibrated' for rows belonging
              to either chart, era_slice_key LIKE 'g3_%', and currently at
-             'structural_prior'. §N.8: only executes when real fit rows exist.
+             'structural_prior'. §N.8: only executes when EARNED fit signal
+             exists (non-zero weight from an engine-wired mechanism, MR-37) —
+             a gochara_v3_calibration row merely existing is not sufficient.
 
   Stage C -- Prospective ledger seeding: top 20 forward g3 windows per chart
              (window_end >= today, signed_intensity DESC) → brahma_prospective_ledger
@@ -31,8 +33,16 @@ HONESTY CONSTRAINTS
 I2: ZERO imports from gochara_grammar/*, gochara_intensity/*, ka_gochara_sweep/*.
 I4: Empty gochara_v3_calibration → weights all 0.0, no fabrication.
 §N.4: Never edit applied migrations (migration 561 already exists — not touched).
-§N.8: calibration_state stamping only when at least one fit row exists for the
-      chart's era slice in gochara_v3_calibration.
+§N.8: calibration_state stamping only when at least one EARNED fit signal exists
+      — a genuinely non-zero weight from a toggle_key whose mechanism is actually
+      wired into engine.py's production path (MECHANISM_ENGINE_WIRED, w44). A
+      gochara_v3_calibration ROW existing is NOT earned signal by itself: w44
+      writes a row for every admitted toggle_key regardless of method, including
+      the honest mechanism_not_wired/ablation_not_computable zero-delta cases
+      (PARIṢKĀRA MR-37, 2026-08-11 — the original gate checked row presence
+      only and would have stamped 120 staging rows 'empirically_calibrated' off
+      an all-zero, all-not-wired fit; confirmed live: it already had, once, on
+      107 pre-existing staging rows before this fix).
 
 MODEL POLICY: builder (sonnet). Never spawns opus.
 
@@ -54,10 +64,16 @@ import json
 import logging
 import os
 import sys
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
+
+# PARIṢKĀRA MR-37 fix: the earned-signal gate needs to know which mechanisms
+# are actually wired into engine.py's production path (w44's own registry —
+# all 10 admitted mechanisms are False today). A toggle_key not present here
+# defaults wired=True, matching w44's own `.get(key, True)` convention.
+from kala_admission.w44_weight_fitting import MECHANISM_ENGINE_WIRED  # noqa: E402
 
 # ── Chart IDs ────────────────────────────────────────────────────────────────
 
@@ -87,10 +103,30 @@ GENERATION_V3 = "g3_utkarsha"
 TABLE_WINDOWS = "kala_gochara_windows_v2"
 TABLE_CALIBRATION = "gochara_v3_calibration"
 TABLE_LEDGER = "brahma_prospective_ledger"
+TABLE_EVENT_ONTOLOGY = "brahma_event_ontology"
 
 # Calibration state values (bridged from lel_calibration.py vocabulary)
 STATE_STRUCTURAL_PRIOR = "structural_prior"
 STATE_EMPIRICALLY_CALIBRATED = "empirically_calibrated"
+
+# ── claim_shape vocabulary (named constants, never a bare literal) ───────────
+# PARIṢKĀRA MR-48 fix: Stage C previously hardcoded the bare literal
+# "interval" as claim_shape for EVERY brahma_prospective_ledger row it
+# seeded, regardless of the source row's actual event_class -- the identical
+# §N.7 item 3 defect ("no wrapper-local constant may shadow an L1-computed
+# value") MR-47/PK-R-10 fixed in ka_gochara_v3_century_materialize.py,
+# independently present in this separate script. claim_shape must be
+# honestly derived, per row, from a LIVE brahma_event_ontology lookup --
+# never a hand-typed class list (PK-R-7(iv); same discipline as MR-47).
+# These three values are exactly the set the brahma_prospective_ledger table
+# CHECK constraint and the brahma_prospective_ledger_enforce_shape() trigger
+# (migration 458, DR-13/DIS.026 event-shape symmetry) already enforce.
+CLAIM_SHAPE_POINT = "point"
+CLAIM_SHAPE_INTERVAL = "interval"
+CLAIM_SHAPE_CHAIN = "chain"
+ALL_CLAIM_SHAPES: frozenset[str] = frozenset(
+    {CLAIM_SHAPE_POINT, CLAIM_SHAPE_INTERVAL, CLAIM_SHAPE_CHAIN}
+)
 
 # Prospective ledger seeding: top N forward windows per chart.
 PROSPECTIVE_TOP_N = 20
@@ -115,19 +151,31 @@ MODEL_TAG = "gochara_v3_w45_builder"
 # Stage A — Load fitted weights
 # ═══════════════════════════════════════════════════════════════════════════
 
-def load_fitted_weights(conn: Any) -> tuple[dict[str, float], list[str], Optional[str]]:
+def load_fitted_weights(
+    conn: Any,
+) -> tuple[dict[str, float], list[str], Optional[str], list[str]]:
     """Load fitted weights from gochara_v3_calibration.
 
     For each toggle_key in ADMITTED_MECHANISM_IDS, SELECT the row with the
     highest fitted_at. Missing toggle_key → honest 0.0 (I4).
 
     Returns:
-        fitted_weights  dict[toggle_key, weight_value]  (all 10 keys present)
-        fit_run_ids     list of distinct fit_run_id UUIDs used (as strings)
-        dataset_hash    dataset_hash from the latest fit run, or None
+        fitted_weights      dict[toggle_key, weight_value]  (all 10 keys present)
+        fit_run_ids         list of distinct fit_run_id UUIDs seen (row EXISTS —
+                             reporting/audit only, NOT the §N.8 stamping gate)
+        dataset_hash        dataset_hash from the latest fit run, or None
+        earned_fit_run_ids  PARIṢKĀRA MR-37: subset of fit_run_ids that back at
+                             least one toggle_key with BOTH a genuinely non-zero
+                             weight AND MECHANISM_ENGINE_WIRED[toggle_key]=True —
+                             the actual §N.8 gate input for Stage B. A row
+                             existing (fit_run_ids) is necessary but NOT
+                             sufficient; w44 writes a row for every admitted
+                             toggle_key even on an honest all-zero
+                             mechanism_not_wired fit.
     """
     fitted_weights: dict[str, float] = {tk: 0.0 for tk in ADMITTED_MECHANISM_IDS}
     fit_run_ids_seen: list[str] = []
+    earned_fit_run_ids: list[str] = []
     dataset_hash: Optional[str] = None
 
     for toggle_key in sorted(ADMITTED_MECHANISM_IDS):
@@ -176,16 +224,34 @@ def load_fitted_weights(conn: Any) -> tuple[dict[str, float], list[str], Optiona
         if fit_run_id and fit_run_id not in fit_run_ids_seen:
             fit_run_ids_seen.append(fit_run_id)
 
+        # PARIṢKĀRA MR-37: earned signal requires BOTH a genuinely non-zero
+        # weight AND an engine-wired mechanism — row existence alone (the old
+        # gate's only check) is not earned signal. A toggle_key absent from
+        # MECHANISM_ENGINE_WIRED defaults wired=True (matches w44's own
+        # convention), so this only ever WITHHOLDS stamping for a mechanism
+        # positively confirmed dormant, never over-withholds for an unknown one.
+        is_wired = MECHANISM_ENGINE_WIRED.get(toggle_key, True)
+        if is_wired and fitted_weights[toggle_key] > 0.0:
+            if fit_run_id and fit_run_id not in earned_fit_run_ids:
+                earned_fit_run_ids.append(fit_run_id)
+        else:
+            logger.debug(
+                "[w45] Stage A: toggle_key=%s NOT earned (wired=%s, weight=%.6f) "
+                "— excluded from the §N.8 stamping gate.",
+                toggle_key, is_wired, fitted_weights[toggle_key],
+            )
+
         # Capture dataset_hash from the latest fit_provenance we encounter.
         if dataset_hash is None and isinstance(fit_prov, dict):
             dataset_hash = fit_prov.get("dataset_hash")
 
     logger.info(
-        "[w45] Stage A: loaded %d fitted weights; fit_run_ids=%s",
+        "[w45] Stage A: loaded %d fitted weights; fit_run_ids=%s; earned_fit_run_ids=%s",
         sum(1 for v in fitted_weights.values() if v > 0.0),
         fit_run_ids_seen,
+        earned_fit_run_ids,
     )
-    return fitted_weights, fit_run_ids_seen, dataset_hash
+    return fitted_weights, fit_run_ids_seen, dataset_hash, earned_fit_run_ids
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -200,16 +266,27 @@ def stamp_empirically_calibrated(conn: Any, fit_run_ids: list[str]) -> int:
       AND era_slice_key LIKE 'g3_%'
       AND calibration_state = 'structural_prior'
 
-    §N.8 gate: only executes when at least one fit row exists (fit_run_ids is
-    non-empty). If no fitted weights were found, returns 0 with a warning —
-    never stamps 'empirically_calibrated' for rows whose weights have not been
-    computed.
+    §N.8 gate: only executes when at least one EARNED fit signal exists (the
+    caller MUST pass `earned_fit_run_ids` from `load_fitted_weights`, NOT the
+    raw row-existence `fit_run_ids` — PARIṢKĀRA MR-37: a gochara_v3_calibration
+    row existing for a toggle_key is not itself earned signal, since w44 writes
+    one for every admitted mechanism regardless of method, including honest
+    all-zero mechanism_not_wired fits). The parameter is still named
+    `fit_run_ids` for call-site brevity, but semantically it must already be
+    signal-filtered before it reaches this function — this function's own gate
+    (`if not fit_run_ids`) only checks non-emptiness, not earned-ness; earned-
+    ness is the caller's responsibility (build_post_fit_report), by design,
+    per the test suite's own `test_n8_gate_is_inside_stamp_function_not_caller`
+    — the EMPTINESS check lives here, the EARNED-SIGNAL filtering lives in
+    Stage A. If no earned signal was found, returns 0 with a warning — never
+    stamps 'empirically_calibrated' for rows whose weights have not been
+    computed by an engine-wired mechanism.
 
     Returns count of rows updated.
     """
     if not fit_run_ids:
         logger.warning(
-            "[w45] Stage B: NO fit_run_ids found in %s — "
+            "[w45] Stage B: NO earned fit signal in %s — "
             "calibration_state stamping skipped (§N.8: no earned signal).",
             TABLE_CALIBRATION,
         )
@@ -270,6 +347,163 @@ def _build_falsifier(event_class: str) -> str:
     )
 
 
+def _fetch_event_class_claim_shape(conn: Any, event_class: str) -> Optional[str]:
+    """Live lookup of brahma_event_ontology.temporal_shape for event_class.
+
+    PARIṢKĀRA MR-48 fix (item 1): this is the honest replacement for Stage
+    C's previous hardcoded `claim_shape="interval"` literal. The value
+    returned here ('point'/'interval'/'chain') is exactly what the
+    brahma_prospective_ledger_enforce_shape() trigger (migration 458,
+    DR-13/DIS.026) independently re-derives and checks at INSERT time --
+    deriving it the same way here means the trigger should never have
+    anything to reject for a row this function successfully classified.
+
+    Never a hand-typed class list (PK-R-7(iv); MR-47/PK-R-10 precedent):
+    this is a live, per-event_class DB read against the ontology authority
+    table, run fresh for every distinct event_class Stage C encounters.
+
+    Returns None (an honest degrade, I4 -- never fabricate a shape) if:
+      - the query itself raises (DB error), or
+      - no brahma_event_ontology row exists for event_class, or
+      - the stored temporal_shape is not one of the three known values.
+    Callers MUST skip the row rather than guess when this returns None.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"SELECT temporal_shape FROM {TABLE_EVENT_ONTOLOGY} "
+                f"WHERE event_class_id = %s",
+                (event_class,),
+            )
+            row = cur.fetchone()
+    except Exception as exc:
+        logger.warning(
+            "[w45] Stage C: could not query %s for event_class=%s: %s — "
+            "honest skip, no fabricated claim_shape (I4)",
+            TABLE_EVENT_ONTOLOGY, event_class, exc,
+        )
+        return None
+
+    if row is None:
+        logger.warning(
+            "[w45] Stage C: no %s row for event_class=%s — honest skip, "
+            "no fabricated claim_shape (I4)",
+            TABLE_EVENT_ONTOLOGY, event_class,
+        )
+        return None
+
+    if isinstance(row, dict):
+        shape = row.get("temporal_shape")
+    else:
+        shape = row[0]
+
+    if shape not in ALL_CLAIM_SHAPES:
+        logger.warning(
+            "[w45] Stage C: event_class=%s has unrecognized temporal_shape=%r "
+            "(expected one of %s) — honest skip, no fabricated claim_shape (I4)",
+            event_class, shape, sorted(ALL_CLAIM_SHAPES),
+        )
+        return None
+
+    return str(shape)
+
+
+_STAGE_C_SAVEPOINT = "w45_stage_c_row_sp"
+
+
+def _insert_ledger_row_with_savepoint(
+    conn: Any,
+    *,
+    chart_id: str,
+    claim: str,
+    event_class: str,
+    claim_shape: str,
+    window_start: date,
+    window_end: date,
+    confidence: float,
+    falsifier: str,
+) -> None:
+    """INSERT one brahma_prospective_ledger row inside its own SAVEPOINT.
+
+    PARIṢKĀRA MR-48 fix (item 2): Stage C previously issued every row's
+    INSERT on the SAME shared cursor/transaction with no per-row isolation.
+    A single legitimate rejection (e.g. the shape-enforcement trigger, or
+    any other constraint) aborted the WHOLE Postgres transaction, cascading
+    into "current transaction is aborted" failures for every subsequent,
+    otherwise-VALID row in the same chart's batch -- confirmed live
+    2026-08-12: one education_milestone shape-mismatch rejection collateral-
+    damaged 8 genuinely-valid psychological_arc inserts, all logged
+    identically as generic "INSERT failed" warnings, indistinguishable from
+    the real defect.
+
+    Wrapping each row's INSERT in its own SAVEPOINT / RELEASE SAVEPOINT (with
+    ROLLBACK TO SAVEPOINT on failure) isolates one row's rejection from every
+    other row in the same run -- the same pattern
+    ka_gochara_v3_century_materialize.py's run_substep already uses per
+    sub-step, for the identical reason. The caller's connection is never
+    committed or rolled back here (§N.2) -- only the savepoint is managed.
+
+    Raises whatever exception the INSERT raised (after issuing ROLLBACK TO
+    SAVEPOINT so the connection remains usable for the next row) -- the
+    caller is responsible for catching it and logging/counting the failure.
+    """
+    with conn.cursor() as cur:
+        cur.execute(f"SAVEPOINT {_STAGE_C_SAVEPOINT}")
+
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                f"""
+                INSERT INTO {TABLE_LEDGER} (
+                    chart_id,
+                    claim,
+                    event_class,
+                    claim_shape,
+                    observation_window,
+                    model,
+                    formula_version,
+                    confidence,
+                    falsifier,
+                    as_of,
+                    generator_class,
+                    filed_by,
+                    filing_method,
+                    source_citation
+                ) VALUES (
+                    %s, %s, %s, %s,
+                    daterange(%s, %s),
+                    %s, %s, %s, %s,
+                    NOW(),
+                    'engine',
+                    %s,
+                    'explicit_filing_tool',
+                    %s
+                )
+                """,
+                (
+                    chart_id,
+                    claim,
+                    event_class,
+                    claim_shape,
+                    window_start,
+                    window_end,
+                    MODEL_TAG,
+                    FORMULA_VERSION,
+                    confidence,
+                    falsifier,
+                    FILED_BY,
+                    SOURCE_CITATION,
+                ),
+            )
+    except Exception:
+        with conn.cursor() as cur:
+            cur.execute(f"ROLLBACK TO SAVEPOINT {_STAGE_C_SAVEPOINT}")
+        raise
+
+    with conn.cursor() as cur:
+        cur.execute(f"RELEASE SAVEPOINT {_STAGE_C_SAVEPOINT}")
+
+
 def _window_already_filed(conn: Any, chart_id: str, event_class: str, window_start: date, window_end: date) -> bool:
     """Check whether a brahma_prospective_ledger row already exists for this window."""
     try:
@@ -306,6 +540,14 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
         today = date.today()
 
     total_seeded = 0
+
+    # PARIṢKĀRA MR-48: claim_shape is derived live from brahma_event_ontology
+    # per event_class (never hardcoded). Cached across rows/charts within
+    # this single call — the same event_class recurs across the top-N
+    # windows for both charts, and its ontology-declared shape cannot change
+    # mid-run, so re-querying it per row would be pure waste, not a
+    # correctness concern either way.
+    claim_shape_cache: dict[str, Optional[str]] = {}
 
     for chart_id in CHART_IDS:
         # Fetch top PROSPECTIVE_TOP_N forward g3 windows by signed_intensity DESC.
@@ -348,6 +590,22 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
             if isinstance(window_end, str):
                 window_end = date.fromisoformat(window_end)
 
+            # EKV C-02 guard: single-day or inverted windows produce an EMPTY daterange
+            # when using Postgres default [) bounds: daterange(d, d) = empty.
+            # The existing shape_fields_check constraint allows NULL upper()/lower() on
+            # empty ranges to slip through (NULL > NULL = NULL = CHECK pass). Migration 572
+            # adds a hard CHECK (NOT isempty(observation_window)); this guard closes the
+            # writer side: ensure window_end > window_start before filing.
+            if window_end <= window_start:
+                _adjusted = window_start + timedelta(days=1)
+                logger.warning(
+                    "[w45] Stage C: window_end=%s <= window_start=%s for chart=%s "
+                    "event_class=%s — adjusted window_end to %s to prevent empty daterange "
+                    "(EKV C-02; migration 572)",
+                    window_end, window_start, chart_id, event_class, _adjusted,
+                )
+                window_end = _adjusted
+
             # AC4: paranoid forward-only guard (the WHERE clause already does this,
             # but double-check here for the §N.8 "earned signal" discipline).
             if window_end < today:
@@ -361,64 +619,55 @@ def seed_prospective_ledger(conn: Any, today: Optional[date] = None) -> int:
                 )
                 continue
 
+            # PARIṢKĀRA MR-48 fix (item 1): claim_shape is honestly derived
+            # from brahma_event_ontology.temporal_shape for THIS event_class
+            # — never the old hardcoded "interval" literal. A class with no
+            # resolvable ontology shape is skipped (I4: no fabrication),
+            # never guessed.
+            if event_class not in claim_shape_cache:
+                claim_shape_cache[event_class] = _fetch_event_class_claim_shape(conn, event_class)
+            claim_shape = claim_shape_cache[event_class]
+
+            if claim_shape is None:
+                logger.warning(
+                    "[w45] Stage C: skipping chart=%s event_class=%s window=%s–%s "
+                    "— could not derive claim_shape from %s (I4, no fabrication)",
+                    chart_id, event_class, window_start, window_end, TABLE_EVENT_ONTOLOGY,
+                )
+                continue
+
             claim = _build_claim(event_class, window_start, window_end, signed_intensity)
             falsifier = _build_falsifier(event_class)
             confidence = _build_confidence(signed_intensity)
 
+            # PARIṢKĀRA MR-48 fix (item 2): each row's INSERT is isolated in
+            # its own SAVEPOINT so one row's legitimate rejection cannot
+            # cascade into "current transaction is aborted" collateral
+            # failures for unrelated, otherwise-valid rows later in this
+            # same chart's batch (see _insert_ledger_row_with_savepoint).
             try:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        f"""
-                        INSERT INTO {TABLE_LEDGER} (
-                            chart_id,
-                            claim,
-                            event_class,
-                            claim_shape,
-                            observation_window,
-                            model,
-                            formula_version,
-                            confidence,
-                            falsifier,
-                            as_of,
-                            generator_class,
-                            filed_by,
-                            filing_method,
-                            source_citation
-                        ) VALUES (
-                            %s, %s, %s, %s,
-                            daterange(%s, %s),
-                            %s, %s, %s, %s,
-                            NOW(),
-                            'engine',
-                            %s,
-                            'explicit_filing_tool',
-                            %s
-                        )
-                        """,
-                        (
-                            chart_id,
-                            claim,
-                            event_class,
-                            "interval",
-                            window_start,
-                            window_end,
-                            MODEL_TAG,
-                            FORMULA_VERSION,
-                            confidence,
-                            falsifier,
-                            FILED_BY,
-                            SOURCE_CITATION,
-                        ),
-                    )
+                _insert_ledger_row_with_savepoint(
+                    conn,
+                    chart_id=chart_id,
+                    claim=claim,
+                    event_class=event_class,
+                    claim_shape=claim_shape,
+                    window_start=window_start,
+                    window_end=window_end,
+                    confidence=confidence,
+                    falsifier=falsifier,
+                )
                 total_seeded += 1
                 logger.debug(
-                    "[w45] Stage C: seeded chart=%s event_class=%s window=%s–%s confidence=%.3f",
-                    chart_id, event_class, window_start, window_end, confidence,
+                    "[w45] Stage C: seeded chart=%s event_class=%s claim_shape=%s "
+                    "window=%s–%s confidence=%.3f",
+                    chart_id, event_class, claim_shape, window_start, window_end, confidence,
                 )
             except Exception as exc:
                 logger.warning(
-                    "[w45] Stage C: INSERT failed for chart=%s event_class=%s window=%s–%s: %s",
-                    chart_id, event_class, window_start, window_end, exc,
+                    "[w45] Stage C: INSERT failed for chart=%s event_class=%s claim_shape=%s "
+                    "window=%s–%s (isolated via SAVEPOINT — no cascade to other rows): %s",
+                    chart_id, event_class, claim_shape, window_start, window_end, exc,
                 )
 
     logger.info("[w45] Stage C: %d prospective rows seeded.", total_seeded)
@@ -436,13 +685,15 @@ def build_post_fit_report(conn: Any) -> dict:
 
     Returns dict with keys:
       harness, wave, fitted_weights, rows_stamped_empirically_calibrated,
-      prospective_rows_seeded, fit_run_ids_used, dataset_hash_linked
+      prospective_rows_seeded, fit_run_ids_used, earned_fit_run_ids_used,
+      dataset_hash_linked
     """
     # Stage A: load fitted weights.
-    fitted_weights, fit_run_ids, dataset_hash = load_fitted_weights(conn)
+    fitted_weights, fit_run_ids, dataset_hash, earned_fit_run_ids = load_fitted_weights(conn)
 
-    # Stage B: stamp empirically_calibrated (§N.8 gate inside the function).
-    rows_stamped = stamp_empirically_calibrated(conn, fit_run_ids)
+    # Stage B: stamp empirically_calibrated (§N.8 gate: PARIṢKĀRA MR-37 —
+    # pass the EARNED subset, not the raw row-existence fit_run_ids).
+    rows_stamped = stamp_empirically_calibrated(conn, earned_fit_run_ids)
 
     # Stage C: seed prospective ledger.
     rows_seeded = seed_prospective_ledger(conn)
@@ -455,6 +706,7 @@ def build_post_fit_report(conn: Any) -> dict:
         "rows_stamped_empirically_calibrated": rows_stamped,
         "prospective_rows_seeded": rows_seeded,
         "fit_run_ids_used": fit_run_ids,
+        "earned_fit_run_ids_used": earned_fit_run_ids,
         "dataset_hash_linked": dataset_hash,
     }
     return report
@@ -523,13 +775,18 @@ if __name__ == "__main__":
 
 __all__ = [
     "ADMITTED_MECHANISM_IDS",
+    "ALL_CLAIM_SHAPES",
     "CHART_IDS",
+    "CLAIM_SHAPE_CHAIN",
+    "CLAIM_SHAPE_INTERVAL",
+    "CLAIM_SHAPE_POINT",
     "FORMULA_VERSION",
     "GENERATION_V3",
     "NATIVE_CHART_ID",
     "ABHINANDAN_CHART_ID",
     "STATE_EMPIRICALLY_CALIBRATED",
     "STATE_STRUCTURAL_PRIOR",
+    "TABLE_EVENT_ONTOLOGY",
     "build_post_fit_report",
     "load_fitted_weights",
     "seed_prospective_ledger",

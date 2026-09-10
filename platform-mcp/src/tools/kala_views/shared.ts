@@ -92,6 +92,7 @@ const DUAL_OUTPUT_TEXT_THRESHOLD_BYTES = 50_000
 export function kalaBudgetedDualOutput<T extends Record<string, unknown> & { reading: ArgumentReading }>(
   content: T,
   toolName: string,
+  reconcileAfterBudget?: (finalized: T) => void,
 ): { structuredContent: { type: 'object'; object: unknown }; content: Array<{ type: 'text'; text: string }> } {
   const sections: TrimmableSection<T>[] = [
     kalaEvidenceTrimmableSection<T>({
@@ -101,6 +102,9 @@ export function kalaBudgetedDualOutput<T extends Record<string, unknown> & { rea
     ...autoDetectTrimmableSections(content, toolName),
   ]
   const finalized = finalizeMcpBudget(content, { maxKb: KALA_VIEWS_RESPONSE_BUDGET_KB, sections })
+  // A facade may carry a small scalar receipt derived exclusively from one of its declared
+  // arrays. Reconcile it only after the final array trim, before serializing both outputs.
+  reconcileAfterBudget?.(finalized)
   const structuredContent = { type: 'object' as const, object: finalized }
   const json = JSON.stringify(finalized)
   if (Buffer.byteLength(json, 'utf8') > DUAL_OUTPUT_TEXT_THRESHOLD_BYTES) {

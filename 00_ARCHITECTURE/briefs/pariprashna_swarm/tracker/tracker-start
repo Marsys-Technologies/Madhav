@@ -1,0 +1,74 @@
+#!/bin/sh
+# Item (b): companion to tracker-stop. Re-bootstraps the three launchd jobs from the
+# plists install.sh already rendered (no code redeploy -- that's install.sh's job), waits
+# for a fresh heartbeat, then clears STOPPED_INTENTIONALLY.json. The marker is cleared
+# AFTER health is confirmed (or the wait budget is spent), not before re-bootstrapping --
+# clearing it first would make trackerd's own item-(d) startup check see no marker and
+# treat this exact, expected gap as an unexplained one.
+set -eu
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+LABEL_PREFIX="${LABEL_PREFIX:-com.marsys.pariprashna}"
+RUNTIME_DIR="${HOME}/.pariprashna-tracker"
+LA_DIR="${HOME}/Library/LaunchAgents"
+UID_N="$(id -u)"
+
+# Item 2: mutual exclusion with install.sh/tracker-stop/tracker-cron-watchdog. Held only
+# around the actual bootout/bootstrap loop, not the health-wait below (which touches no
+# labels and would otherwise hold the lock for up to 90s for no reason).
+. "${SCRIPT_DIR}/_tracker_lock.sh"
+tracker_lock_acquire_blocking "tracker-start" || exit 1
+trap 'tracker_lock_release' EXIT
+
+for job in trackerd watchdog serve; do
+  label="${LABEL_PREFIX}-${job}"
+  plist="${LA_DIR}/${label}.plist"
+  if [ ! -f "${plist}" ]; then
+    echo "ERROR: ${plist} not found -- run install.sh first (tracker-start does not deploy code)." >&2
+    tracker_lock_release
+    trap - EXIT
+    exit 1
+  fi
+  launchctl bootout "gui/${UID_N}/${label}" 2>/dev/null || true
+  launchctl bootstrap "gui/${UID_N}" "${plist}"
+  echo "bootstrapped: ${label}"
+done
+
+tracker_lock_release
+trap - EXIT
+
+echo "waiting up to 90s for a fresh heartbeat..."
+i=0
+STATUS="WAIT"
+while [ "${i}" -lt 90 ]; do
+  if [ -f "${RUNTIME_DIR}/heartbeat.json" ]; then
+    STATUS="$(TRACKER_START_RUNTIME_DIR="${RUNTIME_DIR}" python3 -c "
+import json, datetime, os
+try:
+    with open(os.path.join(os.environ['TRACKER_START_RUNTIME_DIR'], 'heartbeat.json'), encoding='utf-8') as f:
+        d = json.load(f)
+    t = datetime.datetime.strptime(d['ts'], '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=datetime.timezone.utc)
+    age = (datetime.datetime.now(datetime.timezone.utc) - t).total_seconds()
+    print('OK' if age < 45 else 'WAIT')
+except Exception:
+    print('WAIT')
+")"
+    if [ "${STATUS}" = "OK" ]; then
+      echo "healthy: fresh heartbeat observed"
+      break
+    fi
+  fi
+  sleep 3
+  i=$((i + 3))
+done
+
+if [ "${STATUS}" != "OK" ]; then
+  echo "WARNING: no fresh heartbeat observed within 90s -- clearing the intentional-stop" >&2
+  echo "marker anyway (its job -- covering the stop/start gap -- is done either way), but" >&2
+  echo "the daemon itself may still be unhealthy. Check ${RUNTIME_DIR}/logs/trackerd.err.log." >&2
+fi
+
+if [ -f "${RUNTIME_DIR}/STOPPED_INTENTIONALLY.json" ]; then
+  rm -f "${RUNTIME_DIR}/STOPPED_INTENTIONALLY.json"
+  echo "cleared STOPPED_INTENTIONALLY.json"
+fi

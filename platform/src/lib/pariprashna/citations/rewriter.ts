@@ -9,17 +9,46 @@
  *   1. Watch for the sentinel-open character `⟦` (and the tolerant `[[`
  *      variant). From that point, HOLD BACK emitted text until the sentinel
  *      closes — but bounded, so the stream can NEVER stall:
- *         MAX_HOLDBACK = 64 bytes  → exceed without a close ⇒ flush-as-text + flag
- *         TIMEOUT      = 400 ms    → elapse without a close ⇒ flush-as-text + flag
+ *         MAX_HOLDBACK = 64 bytes  → exceed without a close ⇒ DROP the held
+ *                                    segment (fail closed) + flag
+ *         TIMEOUT      = 400 ms    → elapse without a close ⇒ DROP the held
+ *                                    segment (fail closed) + flag
  *   2. On a well-formed close, resolve the reference and emit a
  *      `citation.define{ n, reader_label, grade, audit_detail }` event, and
  *      replace the sentinel in prose with a clean inline marker `[n]`.
  *   3. An UNRESOLVABLE reference gets grade `unverified` and increments the
  *      per-model hallucination counter.
- *   4. EVERY text fragment that leaves this module — pass-through prose, a
- *      flushed malformed hold, a parse-failed bracket, the inline marker — is
- *      first run through the register-leak lint so no internal id can reach the
- *      wire by ANY path.
+ *   4. EVERY text fragment that leaves this module — pass-through prose, the
+ *      inline marker — is first run through the register-leak lint so no
+ *      internal id can reach the wire by ANY path.
+ *
+ * ── FAIL-CLOSED FIX (V3-E-061, 2026-08-30) ───────────────────────────────────
+ * Live-reproduced twice in production against the real native's chart
+ * (482012f1-…): a citation sentinel the model was mid-emitting on an internal
+ * fact-id-namespace token (`register_leak:redact` fired on `fact_id_namespace`
+ * INSIDE the same hold — proof the model really was citing internal content)
+ * timed out before its closer arrived. The pre-fix `flushHold` ran the
+ * register-leak lint over the held bytes and forwarded WHATEVER SURVIVED THE
+ * LINT (`lint.clean`) straight into `out.text` — reasoning that "lint-cleaned"
+ * meant "reader-safe". It does not: the lint's pattern list strips KNOWN
+ * internal-id shapes (signal ids, table names, register acronyms, fact-id
+ * namespaces) but has NO pattern for the sentinel markup itself (`⟦`, `cite:`,
+ * `⟧`), so every malformed flush forwarded that raw bracket syntax verbatim —
+ * observed live as the literal malformed token `⟦cite: ⟧` sitting in reader
+ * prose. Worse: had the internal token inside the hold been a SHAPE the lint's
+ * pattern list did not yet cover, the flush would have forwarded that raw
+ * content too — the lint is a pattern-matching backstop, not a structural
+ * guarantee, and a fail-OPEN path built on top of it inherits every gap in
+ * its pattern coverage.
+ *
+ * The fix does not depend on the lint's coverage at all: a malformed hold
+ * (timeout / byte-limit / eof-unclosed) — or a well-formed canonical `⟦…⟧`
+ * sentinel that closes but fails to PARSE as a citation (e.g. an empty ref)
+ * — is now DROPPED IN ITS ENTIRETY. No byte of the held buffer, lint-cleaned
+ * or not, ever reaches `out.text`. The lint still runs over the held bytes
+ * for audit/telemetry (its flags remain useful for tuning the model prompt
+ * and for security review), but its `clean` text is discarded rather than
+ * emitted — see `flushHold` and `resolveSentinel` below.
  *
  * Determinism: time is injected via `nowMs` arguments, so hold-back timeout
  * behavior is unit-testable without real timers.
@@ -208,18 +237,36 @@ export class CitationStreamRewriter {
     return { closed: false, tail: '' } // keep holding
   }
 
-  /** Flush the held buffer as reader-safe plain text + a malformed flag. */
+  /**
+   * Drop the held buffer on a malformed-sentinel condition — FAIL CLOSED
+   * (V3-E-061 fix). The held bytes are internal protocol state (a half-formed
+   * `⟦cite: …⟧` sentinel, possibly still carrying an internal id/register
+   * token the model was mid-citation on) and are NEVER forwarded to reader
+   * prose, regardless of what the register-leak lint's pattern list does or
+   * does not recognize inside them — see the module header comment. The lint
+   * still runs, purely for its audit-channel flags (telemetry / tuning); its
+   * `clean` text is intentionally discarded, never appended to `out.text`.
+   */
   private flushHold(reason: MalformedSentinelReason, out: RewriteChunk): void {
     const raw = this.holdBuffer
-    // Preserve ordering: release any staged prose BEFORE the flushed bytes.
-    this.flushStage(out)
-    // Lint the flushed bytes — a malformed sentinel body could hide a leak.
-    const lint = lintReaderProse(raw, this.resolver)
-    out.text += lint.clean
-    out.events.push(...lint.flags)
-    out.events.push({ type: 'flag', flag: 'malformed_sentinel', reason, raw: lint.clean })
+    this.dropSegment(reason, raw, out)
     this.mode = 'pass'
     this.holdBuffer = ''
+  }
+
+  /**
+   * Shared fail-closed drop path for BOTH a malformed hold (timeout /
+   * byte_limit / eof_unclosed, via `flushHold`) and a closed-but-unparseable
+   * canonical sentinel (`parse_failed`, via `resolveSentinel`). Releases any
+   * staged prose first (ordering), lints `raw` for audit-channel flags only,
+   * and appends NOTHING derived from `raw` to `out.text` — the segment is
+   * dropped in its entirety. See the module header FAIL-CLOSED FIX note.
+   */
+  private dropSegment(reason: MalformedSentinelReason, raw: string, out: RewriteChunk): void {
+    this.flushStage(out)
+    const lint = lintReaderProse(raw, this.resolver)
+    out.events.push(...lint.flags)
+    out.events.push({ type: 'flag', flag: 'malformed_sentinel', reason, raw: lint.clean })
   }
 
   /** Returns true if a timeout flush occurred. */
@@ -235,6 +282,24 @@ export class CitationStreamRewriter {
   private resolveSentinel(candidate: string, out: RewriteChunk): void {
     const parsed = parseSentinel(candidate)
     if (!parsed.ok) {
+      // The tolerant `[[…]]` bracket family is genuinely ambiguous with a
+      // real reader-facing wiki-style link (grammar.ts's own contract: "a
+      // bare [[foo]] is deliberately NOT a citation"), so it is safe — and
+      // correct — to emit as ordinary prose.
+      //
+      // The CANONICAL `⟦…⟧` opener (U+27E6/U+27E7) is never ambiguous: it is
+      // reserved, unmistakable internal protocol markup that a model should
+      // never emit for genuine prose. A closed-but-unparseable canonical
+      // sentinel (e.g. an empty ref, `⟦cite: ⟧`) is therefore the SAME
+      // fail-closed case as a malformed hold, not prose — see the module
+      // header FAIL-CLOSED FIX note (V3-E-061). Falling through to
+      // `stageProse` here would forward the raw bracket markup (and any
+      // partial internal content inside it) through the ordinary lint, which
+      // has no pattern for sentinel syntax itself.
+      if (candidate.startsWith(CANON_OPEN)) {
+        this.dropSegment('parse_failed', candidate, out)
+        return
+      }
       // Not actually a citation (e.g. a bare [[wiki]] link). Emit as prose.
       this.stageProse(candidate, out)
       return

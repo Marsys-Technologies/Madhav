@@ -1,0 +1,154 @@
+-- 914_nirmana_l1_ga_structural_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_structural`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_structural'` returning ZERO rows before this migration. Without a
+-- spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/orchestrator/
+-- output_digest.py) always returns `(None, None)` for this asset, so its provenance
+-- receipt (`platform/python-sidecar/pipeline/orchestrator/provenance.py`) can never
+-- leave `receipt_state = 'unknown'` — no matter how many times the writer rebuilds.
+-- This is the actual root blocker preventing `ga_structural` from ever freezing in
+-- the NIRMĀṆA campaign. Same defect class already fixed for sibling assets in
+-- migrations 891 (ga_strength), 892 (ga_ayurdaya), 893 (ga_sensitive_degree), 894
+-- (ga_condition), 895 (ga_transit_anchors) — `ga_structural` was simply never given
+-- one across that wave. (Migration 904, `ga_structural_integrity_check_scope`,
+-- fixed a DIFFERENT problem — the writer's `integrity_check_sql` conjuncts being
+-- unscoped across all 3 charts — and did not touch `asset_output_digest_specs`.)
+--
+-- ── fact_category provenance (writer source, independently cross-checked against
+--    live data) ──────────────────────────────────────────────────────────────────
+--
+-- `ga_structural`'s writer is `@register('ga_structural')`
+-- (platform/python-sidecar/pipeline/orchestrator/writers/ga_structural.py), which
+-- delegates all row-building to
+-- platform/python-sidecar/ga_writers/ga_structural_writer.py. Every row that writer
+-- produces flows through one helper, `_base_row(category, subject, key, ...)`
+-- (line 770), into one INSERT target, `chart_facts`, via `_CF_INSERT_SQL` (line
+-- 4813) — confirming `chart_facts` is the sole relation this asset owns and that
+-- `fact_category` is the correct partition key for a digest component.
+--
+-- The full category list was extracted programmatically: every one of the 94
+-- `rows.append(_base_row(...))` call sites in that file was located
+-- (`grep -c "_base_row("` = 95 = 94 call sites + 1 definition), and the category
+-- argument on each was read (a literal string in all but one call site; the one
+-- exception, line 1609-1610, uses a loop variable `cat` bound to 7 literal
+-- `bhava_bala_*` category strings at lines 1600-1607 — those 7 are included
+-- individually below). This produced 81 distinct `fact_category` values.
+--
+-- Cross-checked against live data on the canonical chart
+-- (`482012f1-710e-4a25-994a-93821f5871aa`): 74 of the 81 categories have live rows
+-- today; 7 have zero live rows for this chart. Each of the 7 was traced to a
+-- specific, benign cause rather than accepted on faith:
+--   * `ashtakavarga_anubindu` — `_build_anubindu_rows` (line 1645) wraps its call
+--     to `ga_strength_writer._derive_ashtakavarga` in a bare `try/except Exception`
+--     that logs a warning and returns an empty list on failure (line 1656-1660).
+--     This looks like a live writer defect (worth a separate NIRMĀṆA investigation)
+--     but is out of scope for a digest-spec migration; the category is still
+--     genuinely part of this writer's declared output surface (L2's `bo_laksana.py`
+--     reads it directly from `ga_structural`'s output), so it belongs in the spec
+--     regardless of today's row count — the `where_in` filter simply contributes
+--     zero bytes to the digest for a category with no matching rows.
+--   * `yoga_fires` / `dosha_fires` — each is the "Legacy fallback path" companion
+--     (`else` branch, line ~2425) of an if/else whose `if` branch writes
+--     `yoga_label` / `dosha_label` instead (both of which DO have live rows: 34 and
+--     6 respectively). The legacy branch is provably still-reachable code (not
+--     deleted, still read downstream by `bo_laksana.py`'s `CATEGORY_FAMILY`/
+--     `_valence` logic in `ga_structural_writer.py` itself, line 7811-7823) but not
+--     the path this canonical chart's most recent build took.
+--   * `graha_yuddha`, `parivartana_pairs`, `retrograde_aspect_modification`,
+--     `bhava_chalit_rasi_divergence` — each is conditionally emitted only when a
+--     specific astronomical configuration holds for THIS chart (an actual
+--     planetary-war pair within orb; a D1-level sign exchange; a retrograde graha
+--     on this ayanamsha; a chalit/rasi bhava divergence for a graha). Their sibling
+--     per-varga/rollup categories (`graha_yuddha_per_varga`, `parivartana_per_varga`)
+--     DO have live rows, consistent with these being real, condition-gated
+--     categories rather than dead code or a naming mismatch.
+--
+-- Ownership was also checked for collision with every OTHER `ga_writers/*.py` file
+-- (not just `ga_structural_writer.py`) for all 81 categories, since a shared
+-- `fact_category` string written by a second asset would silently pull foreign
+-- rows into this digest. Five near-hits were found (`graha_functional_class_per_
+-- ascendant`, `graha_special_state_rollup`, `graha_dignity_per_varga`,
+-- `aspect_parashari_per_varga`, `bhava_significance_link` all appear in
+-- `ga_vichara_writer.py` / `ga_yoga_writer.py`) — every one of them is a READ
+-- (`ga_vichara_writer.py`'s own docstring: "ga_structural's `bhava_significance_
+-- link` / `graha_dignity_per_varga` / ... facts"; `ga_yoga_writer.py` line 2010:
+-- `if f.get("fact_category") != "graha_special_state_rollup"`), never a write.
+-- `ga_structural` is confirmed the sole writer for all 81 categories.
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894 exactly: a plain INSERT with no ON CONFLICT clause.
+-- Confirmed correct (not just copied) by reading the table's actual constraints —
+-- `asset_output_digest_specs`'s PRIMARY KEY is the composite `(asset_id,
+-- spec_sha256)`, NOT `asset_id` alone, so `ON CONFLICT (asset_id) DO UPDATE` is not
+-- even a legal target here (Postgres requires the conflict target to match a real
+-- unique/exclusion constraint) — the precedent migrations' plain-INSERT idempotency
+-- is a deliberate consequence of that schema, not an oversight: a spec revision is
+-- expected to arrive as a NEW `(asset_id, spec_sha256)` row (the old row can be
+-- explicitly `retired_at`-stamped separately), never an in-place UPDATE keyed on
+-- `asset_id` alone. `ga_structural` has zero existing rows in this table (confirmed
+-- at the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec shape ───────────────────────────────────────────────────────────────────
+-- One component, `relation: "chart_facts"`, `key_columns: ["fact_id"]` (the primary
+-- content key precedent 891/893/895 already use for this same table),
+-- `where_equals.chart_id` pinned to the canonical chart (matching precedent — the
+-- spec is asset-level but this project's specs scope to the canonical chart per
+-- existing convention, not deferred to a runtime parameter), `where_in.fact_category`
+-- carrying all 81 categories (unique, ASCII-sorted — `output_digest.py`'s
+-- `_where_in` hard-requires `values == sorted(values)`), and `value_columns` set to
+-- the exact same 23-column "chart_facts content" list precedent 891/893 use: every
+-- `chart_facts` column (confirmed via `information_schema.columns`, 25 total)
+-- EXCEPT `build_id` and `computed_at` — both per-rebuild identifiers, not content,
+-- per the same rationale migration 894 gives for `ga_condition`.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps` with
+-- `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then `sha256().
+-- hexdigest()`). Rather than reimplementing that function by hand, this migration's
+-- hash was produced by IMPORTING the real module and calling it directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_structural', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- This both computed the hash with the production hashing code (not a
+-- reimplementation that could silently drift from it) and ran the production
+-- `_validate_spec()` validator against the drafted spec before authoring this file
+-- — confirming: version tag accepted, all identifiers pass `_IDENTIFIER`, all 81
+-- `where_in.fact_category` values are same-type/unique/sorted, `key_columns` non-
+-- empty and column-set-valid, no duplicate component name/scope. Validation passed
+-- cleanly. This migration was NOT applied to any database — authored only, per
+-- CLAUDE.md §N.4 ("Surgical migrations, verified").
+--
+-- Migration number: originally authored as 913, but by the time this PR's branch
+-- was rebased onto current `main`, `main` already carried a DIFFERENT migration
+-- claiming 913 (`913_bo_nakshatra_semantic_add_ga_structural_dep.sql`, itself a
+-- renumber of an L2 PR that collided with #2400's 911 — same class of concurrent-
+-- lane numbering race this comment originally warned about, just one hop later).
+-- Renumbered 913→914 to clear that collision; `spec_sha256` below is computed from
+-- the spec's own JSON content (via `canonical_digest()`), not the filename, so the
+-- renumber does not require recomputing it — verified by re-reading
+-- `output_digest.py`'s `_validate_spec()` / `canonical_digest()` call sites, which
+-- key on `asset_id` + the spec dict, never on the migration filename. Migration 904
+-- (`ga_structural_integrity_check_scope`, already committed on this branch) is NOT
+-- reused.
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_structural',
+  'b24906468e53894de0f223c70c9222eb8fbad3933f79ef7dbee7422b8dd709a6',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"chart_facts","relation":"chart_facts","where_in":{"fact_category":["argala_natal_matrix","ashtakavarga_anubindu","aspect_jaimini","aspect_jaimini_per_varga","aspect_matrix_summary","aspect_parashari_given","aspect_parashari_per_varga","aspect_parashari_received","aspect_received_by_special_point","aspect_tajik","bhava_bala_aspectual","bhava_bala_directional","bhava_bala_lord","bhava_bala_occupant","bhava_bala_positional","bhava_bala_temporal","bhava_bala_total_extended","bhava_chalit_rasi_divergence","bhava_significance_link","chart_center_of_gravity","chart_cluster","combustion_per_varga","combustion_relationship","composite_dispositor_strength","conjunction_per_varga","conjunction_special_point","conjunction_within_orb","contradiction_pair","convergence_count","dispositor_chain_per_varga","dispositor_tree","dosha_fires","dosha_label","graha_avastha_baladi","graha_avastha_deepta","graha_avastha_jagrad","graha_avastha_lifetime_exposure_summary","graha_centrality","graha_composite_state_classification","graha_dignity_per_varga","graha_dispositor_chain","graha_effective_dignity_modified_by_aspects","graha_functional_class_per_ascendant","graha_in_house_composite_strength","graha_saptavargaja_bala_component","graha_special_state_rollup","graha_tri_deva_role_strength","graha_vargottama_amplification_factor","graha_yoga_karaka_flag","graha_yuddha","graha_yuddha_per_varga","house_strength_classification_rollup","jaimini_tri_deva_role_per_graha","kala_sarpa_per_varga","karaka_bhava_concordance","karaka_house_lord_overlap_flag","karaka_web_per_varga","karakatva_strength_per_significance","kendradhipati_dosha","lord_aspects_lord_per_varga","lord_in_house_per_varga","nakshatra_co_tenancy","nakshatra_dispositor_chain","nakshatra_lord_relationship","net_argala_per_varga","nway_config_per_varga","panchadha_maitri","parivartana_pairs","parivartana_per_varga","pranic_strength_per_graha","retrograde_aspect_modification","sambandha_grade","significator_path","tara_bala","upapada_lagna","vargottama_per_varga","vimsopaka_bala_per_graha","virodha_argala_natal_matrix","virupa_drishti","yoga_fires","yoga_label"]},"key_columns":["fact_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["fact_id","chart_id","ayanamsha_id","fact_category","fact_subject","fact_key","fact_value_text","fact_value_num","fact_value_jsonb","unit","citation_ref","citation_human","source_calculation","verification_pass_status","engine_version","salience_formula_ver","tolerance_arcsec","near_sign_boundary_flag","near_nakshatra_boundary_flag","vargottama_flag_at_point","formula_provenance_text","cross_ayanamsha_divergence_arcsec","formula_id"]}]}'::jsonb
+);
+
+COMMIT;

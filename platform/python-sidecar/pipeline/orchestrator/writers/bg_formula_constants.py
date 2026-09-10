@@ -36,5 +36,8 @@ class FormulaConstantsWriter(WriterBase):
             asset_id=self.asset_id,
             rows_inserted=total,
             duration_seconds=time.time() - t0,
-            notes=f"brahma_formula_constants: {total} constants (classical + native_judgment + engineering + conflation_bug)",
+            notes=(
+                f"brahma_formula_constants: {total} writer-owned operational constants; "
+                "migration-owned governed constants are preserved"
+            ),
         )

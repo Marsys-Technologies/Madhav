@@ -31,12 +31,34 @@ export interface McpPrincipal {
 
 // ── Epistemics ────────────────────────────────────────────────────────────────
 
+/**
+ * Whether the served result actually carried evidence (F-126).
+ *   'present'       — the payload reports rows / a non-zero count.
+ *   'empty'         — the payload reports zero rows (nothing was found).
+ *   'indeterminate' — the payload declares no count the detector can read.
+ * Computed by `lib/mcp/evidence_state.ts` from the served result itself; never
+ * asserted by a caller.
+ */
+export type EvidenceState = 'present' | 'empty' | 'indeterminate'
+
 /** Mandatory ethics/epistemics block on every MCP response (MCP_BRIEF §4.2 + D7). */
 export interface EpistemicsBlock {
   /** True for surgical primitive calls; false for ask_madhav full-pipeline calls. */
   surgical: boolean
-  /** Calibrated confidence band for the answer. */
-  confidence_band: 'high' | 'medium' | 'low'
+  /**
+   * Calibrated confidence band for the answer.
+   *
+   * 'none' (F-126) = there is no finding for a band to grade — the result set is
+   * empty. It is NOT a low-confidence finding; it is the absence of one. Read it
+   * together with `evidence_state: 'empty'`.
+   */
+  confidence_band: 'high' | 'medium' | 'low' | 'none'
+  /**
+   * Evidence state of the served result (F-126). Present on responses whose
+   * result set was measured by the zero-result detector; absent where nothing
+   * measured it (never defaulted to a reassuring value).
+   */
+  evidence_state?: EvidenceState
   /**
    * Horizon in days for predictive answers; null for non-predictive.
    * Example: 90 = "this applies within the next ~3 months".

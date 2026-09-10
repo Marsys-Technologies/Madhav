@@ -42,6 +42,7 @@ export function buildSinglePassFixture(turnId = 't-single'): Fixture {
     classicalCount: 0,
     elapsedLabel: `0:0${Math.round(b.cursor() / 1000)}`,
     gradeSummaryLabel: 'Core claim: WELL-GROUNDED',
+    source: 'client_estimate',
   })
   b.advance(50)
   b.turnClose()

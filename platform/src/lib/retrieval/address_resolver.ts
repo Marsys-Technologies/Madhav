@@ -60,6 +60,16 @@
 
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from './registry/constants'
+// F-159 (PARIŚEṢA-V4): the existing cross-ayanamsha agreement primitive (EL-27/EL-56) — reused
+// verbatim, never re-derived, for the `chandra` frame's own sign-disagreement disclosure. See
+// `computeChandraFrameSensitivity` below.
+import {
+  REAL_AYANAMSHAS,
+  computeAyanamshaAgreement,
+  type AyanamshaRead,
+  type CrossAyanamshaVariation,
+  type RealAyanamsha,
+} from '../vidhi/ayanamsha_variation'
 // Graha code/name/alias vocabulary + grahaCodeOf() + AddressResolutionError live in
 // graha_labels.ts — the CLIENT-SAFE pure subset of this module (no `@/lib/db/client`
 // import, so no `server-only` poisoning of a client bundle that only needs graha
@@ -101,6 +111,35 @@ export const SIGN_LORDS: Record<ZodiacSign, string> = {
 
 /** Reference frames — design §27.3. `varnada` intentionally omitted (no backing data, see header). */
 export type ReferenceFrame = 'lagna' | 'chandra' | 'surya' | 'arudha' | 'karakamsha'
+
+/**
+ * F-159 (PARIŚEṢA-V4) — disclosure-only, NOT a correctness ruling. The `chandra` frame resolves
+ * its reference sign from the Moon's OWN sign under the caller's single requested ayanamsha —
+ * but the Moon's sign can genuinely differ across the 5 real ayanamshas `chart_facts` stores
+ * (`REAL_AYANAMSHAS`). This type is the cross-ayanamsha read on that ONE fact (Moon sign),
+ * computed via the existing `computeAyanamshaAgreement` primitive (ayanamsha_variation.ts) —
+ * nothing here is a new computation (B.10).
+ *
+ * Naming precedent: `bo_chart_gestalt.py`'s `fragility_class` ("ayanamsha_sensitive" /
+ * "stable_across_ayanamsha" / `None` when data is insufficient to certify either claim — see
+ * that file's `_assess_fragility`). `frame_sensitivity_class` mirrors it exactly, including the
+ * `null` case: a `chandra` frame with real-ayanamsha Moon-sign rows missing is NEVER reported as
+ * "stable" just because the rows it DOES have agree — an honest null beats an invented claim
+ * (§N.8 Earned-Signal Principle).
+ */
+export interface AyanamshaFrameSensitivity {
+  /**
+   * 'ayanamsha_sensitive'    — at least one real ayanamsha's Moon sign diverges from the modal
+   *                            reading (`variation.divergent_ayanamshas` names them).
+   * 'stable_across_ayanamsha' — all 5 real ayanamshas were read and unanimously agree.
+   * null                     — insufficient data to certify either claim (some real ayanamshas'
+   *                            Moon-sign rows are missing and no disagreement was observed among
+   *                            the rows present) — see `variation.missing_ayanamshas`.
+   */
+  readonly frame_sensitivity_class: 'ayanamsha_sensitive' | 'stable_across_ayanamsha' | null
+  /** The full cross-ayanamsha comparison this class was derived from — never re-derive it. */
+  readonly variation: CrossAyanamshaVariation
+}
 
 /** Jaimini chāra karaka short codes ↔ chart_facts.karaka_chara_position fact_subject. */
 export const KARAKA_CODE_TO_SUBJECT: Record<string, string> = {
@@ -181,6 +220,9 @@ export interface ResolvedSign {
   house_number: number
   frame: ReferenceFrame
   fact_ids: string[]
+  /** F-159: populated only when `frame === 'chandra'` and the cross-ayanamsha Moon-sign read
+   *  succeeded — see `AyanamshaFrameSensitivity`. Never populated for any other frame. */
+  ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity
 }
 
 export interface ResolvedKaraka {
@@ -202,6 +244,9 @@ export interface ResolvedOccupants {
   frame: ReferenceFrame
   grahas: string[]
   fact_ids: string[]
+  /** F-159: populated only when `frame === 'chandra'` and the cross-ayanamsha Moon-sign read
+   *  succeeded — see `AyanamshaFrameSensitivity`. Never populated for any other frame. */
+  ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity
 }
 
 /** kp paradigm — the 4-tier significator chain for one cusp (design §27.4 "sub-lord/cusp
@@ -367,11 +412,58 @@ async function resolveGrahaEntity(
   }
 }
 
+/**
+ * F-159: the ONE new read this finding adds — the Moon's `sign` across ALL 5 real ayanamshas
+ * (the widened-read `= ANY(...)` idiom, precedent `register_d7_channel.ts`'s `IN ($2,'INVARIANT')`
+ * pattern), fed straight into the EXISTING `computeAyanamshaAgreement` primitive with every
+ * dimension but `sign` left null (so the agreement/divergence it reports is scored on the Moon's
+ * sign alone — exactly the "chandra frame is itself ayanamsha-sensitive" question, not a general
+ * dignity/house/vargottama comparison). ADDITIVE ONLY (risk note): any failure here is caught and
+ * reported as `undefined` — it must NEVER cause `resolveFrameSign` itself to fail or change its
+ * existing (single-ayanamsha) sign resolution.
+ */
+async function computeChandraFrameSensitivity(
+  ctx: ResolveCtx,
+): Promise<AyanamshaFrameSensitivity | undefined> {
+  try {
+    const res = await query<{ ayanamsha_id: string; fact_value_text: string | null }>(
+      `SELECT ayanamsha_id, fact_value_text FROM chart_facts
+       WHERE chart_id = $1 AND ayanamsha_id = ANY($2::text[])
+         AND fact_category = 'graha_position' AND fact_subject = 'MOON' AND fact_key = 'sign'`,
+      [ctx.chart_id, REAL_AYANAMSHAS as unknown as string[]],
+    )
+    const reads: AyanamshaRead[] = res.rows
+      .filter((r) => (REAL_AYANAMSHAS as readonly string[]).includes(r.ayanamsha_id) && r.fact_value_text !== null)
+      .map((r) => ({
+        ayanamsha: r.ayanamsha_id as RealAyanamsha,
+        dignity_state: null,
+        house: null,
+        sign: r.fact_value_text,
+        vargottama: null,
+      }))
+    const variation = computeAyanamshaAgreement('MOON', reads, 'sign')
+    const frame_sensitivity_class: AyanamshaFrameSensitivity['frame_sensitivity_class'] =
+      variation.divergent_ayanamshas.length > 0
+        ? 'ayanamsha_sensitive'
+        : variation.unanimous
+          ? 'stable_across_ayanamsha'
+          : null // insufficient data (missing_ayanamshas non-empty) — never a default "stable" claim
+    return { frame_sensitivity_class, variation }
+  } catch (err) {
+    console.error(
+      '[address_resolver] F-159 ayanamsha_frame_sensitivity computation failed (non-fatal, ' +
+        'frame resolution proceeds unaffected):',
+      err,
+    )
+    return undefined
+  }
+}
+
 /** Frame → its reference sign + backing fact_ids. */
 async function resolveFrameSign(
   ctx: ResolveCtx,
   frame: ReferenceFrame,
-): Promise<{ sign: ZodiacSign; fact_ids: string[] }> {
+): Promise<{ sign: ZodiacSign; fact_ids: string[]; ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity }> {
   let category: string
   let subject: string
   switch (frame) {
@@ -399,7 +491,16 @@ async function resolveFrameSign(
     )
   }
   assertZodiacSign(row.fact_value_text)
-  return { sign: row.fact_value_text, fact_ids: [row.fact_id] }
+  // F-159: chandra-frame-only disclosure — the frame-determining body here IS the Moon, so this
+  // is exactly the "is the frame itself ayanamsha-sensitive" question. Never computed for any
+  // other frame (lagna/surya/arudha/karakamsha are out of scope for this finding).
+  const ayanamsha_frame_sensitivity =
+    frame === 'chandra' ? await computeChandraFrameSensitivity(ctx) : undefined
+  return {
+    sign: row.fact_value_text,
+    fact_ids: [row.fact_id],
+    ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
+  }
 }
 
 /**
@@ -413,7 +514,7 @@ export async function resolveFrameReferenceSign(
   chart_id: string,
   frame: ReferenceFrame,
   opts?: { ayanamsha_id?: string },
-): Promise<{ sign: ZodiacSign; fact_ids: string[] }> {
+): Promise<{ sign: ZodiacSign; fact_ids: string[]; ayanamsha_frame_sensitivity?: AyanamshaFrameSensitivity }> {
   const ctx: ResolveCtx = { chart_id, ayanamsha_id: opts?.ayanamsha_id ?? DEFAULT_AYANAMSHA }
   return resolveFrameSign(ctx, frame)
 }
@@ -643,9 +744,12 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
 
     case 'bhava': {
       const frame = expr.frame ?? 'lagna'
-      const { sign: refSign, fact_ids } = await resolveFrameSign(ctx, frame)
+      const { sign: refSign, fact_ids, ayanamsha_frame_sensitivity } = await resolveFrameSign(ctx, frame)
       const targetSign = signAtHouseOffset(refSign, expr.house)
-      const entity: ResolvedSign = { kind: 'sign', sign: targetSign, house_number: expr.house, frame, fact_ids }
+      const entity: ResolvedSign = {
+        kind: 'sign', sign: targetSign, house_number: expr.house, frame, fact_ids,
+        ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
+      }
       return {
         entities: [entity],
         chain: [`House ${expr.house} counted from ${frame} (${refSign}) = ${targetSign}.`],
@@ -705,10 +809,12 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
       let refSign: ZodiacSign
       let fromFactIds: string[] = []
       let fromLabel: string
+      let fromSensitivity: AyanamshaFrameSensitivity | undefined
       if (typeof expr.from === 'string') {
         const r = await resolveFrameSign(ctx, expr.from)
         refSign = r.sign
         fromFactIds = r.fact_ids
+        fromSensitivity = r.ayanamsha_frame_sensitivity
         fromLabel = expr.from
       } else {
         const r = await evaluate(ctx, expr.from)
@@ -734,6 +840,7 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
         house_number: expr.house,
         frame: (typeof expr.from === 'string' ? expr.from : 'lagna') as ReferenceFrame,
         fact_ids: fromFactIds,
+        ...(fromSensitivity ? { ayanamsha_frame_sensitivity: fromSensitivity } : {}),
       }
       return {
         entities: [entity],
@@ -781,7 +888,7 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
     case 'occupants_of': {
       const frame = expr.frame ?? 'lagna'
       const varga = expr.varga ?? 'D1'
-      const { sign: refSign, fact_ids: frameFactIds } = await resolveFrameSign(ctx, frame)
+      const { sign: refSign, fact_ids: frameFactIds, ayanamsha_frame_sensitivity } = await resolveFrameSign(ctx, frame)
       const targetSign = signAtHouseOffset(refSign, expr.house)
       const { grahas, fact_ids } =
         varga === 'D1'
@@ -795,6 +902,7 @@ async function evaluate(ctx: ResolveCtx, expr: AddressExpression): Promise<EvalR
         frame,
         grahas,
         fact_ids: [...frameFactIds, ...fact_ids],
+        ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
       }
       return {
         entities: [entity],

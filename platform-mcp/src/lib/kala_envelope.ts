@@ -7,6 +7,10 @@
  * This lane (w0-spine) builds ONLY this shared library + `argument_composer.ts` — the
  * eight tool facades that CONSUME this envelope are a separate lane's job (W0.4).
  *
+ * SAMPŪRTI-γ C4/C5 (2026-08-13): SM_GAMMA_C4_ENABLED gates gochara_narrative injection into
+ * kala_now_get and a5_gochara_agreement into kala_explain_get (§N.8 byte-identical flag-off
+ * discipline). SM_GAMMA_C5_ENABLED gates ahead_autofile field_window/<id>@<peak> citation.
+ *
  * Design authority (highest wins on conflict): KALA_SUPREME_ELEVATION_v1_0.md (v1.2,
  * "the Elevation") §5 (E3/E4/E5 — argument · question_frame · continuity), §7 (Living-LEL
  * calibration_maturity), §11 (item 43 — tri-plane traversability), CLAUDE.md §N.6 (Serving
@@ -264,6 +268,13 @@ export async function resolveFieldSnapshot(
 export interface DrillPointerLike {
   instrument: string
   hint: string
+  /** F-123 (dead-pointer repair): the exact required-argument payload a caller must pass
+   *  when following this pointer, when the target tool has a required-argument gate this
+   *  object can already satisfy (e.g. `kala_explain_get`'s `domain`/`bhava`). Omitted when
+   *  the pointer target takes no required args, or when no such arg is derivable here —
+   *  never fabricated. See `explainPointerTo` below for the typed constructor that makes
+   *  this decision explicit at every `kala_explain_get` call site. */
+  args?: Record<string, unknown>
 }
 
 /** The honest "no lever exists" terminal state — distinct from a missing/omitted pointer
@@ -288,8 +299,26 @@ export interface TriPlanePointers {
   intervention_ref: TriPlanePointer | null
 }
 
-export function pointerTo(instrument: string, hint: string): DrillPointerLike {
-  return { instrument, hint }
+export function pointerTo(instrument: string, hint: string, args?: Record<string, unknown>): DrillPointerLike {
+  return args !== undefined ? { instrument, hint, args } : { instrument, hint }
+}
+
+/** F-123 (CL-11 dead pointer): typed constructor for every pointer that targets
+ *  `kala_explain_get`. That tool hard-errors without `domain` or `bhava`
+ *  (explain.ts: "either `domain` or `bhava` is required") — a bare `pointerTo('kala_explain_get',
+ *  hint)` therefore advertises a call a caller cannot actually complete by following it as
+ *  advertised, which is exactly the CL-11 defect class (a recover_via/drill_pointer that
+ *  reads as live but dead-ends). `args` is deliberately non-optional-by-type: every call site
+ *  must consciously supply `{ domain }`, `{ bhava }`, or explicit `null` (honest degrade — the
+ *  hint says so rather than fabricating a domain) — never silently omit it. */
+export function explainPointerTo(
+  hint: string,
+  args: { domain: string } | { bhava: number } | null,
+): DrillPointerLike {
+  if (args) {
+    return pointerTo('kala_explain_get', hint, args)
+  }
+  return { instrument: 'kala_explain_get', hint: `${hint} — pass domain or bhava when calling.` }
 }
 
 export function noLeverPointer(reason: string): KalaNoLever {
@@ -441,6 +470,25 @@ export interface CalibrationMaturity {
 }
 
 /**
+ * A maturity read that could not reach its authority. Zero is meaningful for a
+ * chart with no fitted rows, so it must never stand in for this state.
+ */
+export interface CalibrationMaturityUnavailable {
+  n_events: null
+  prospective_resolutions: null
+  event_class_coverage: null
+  weights_version: null
+  skill_score: null
+  state: 'unavailable'
+  reason: string
+}
+
+export type CalibrationMaturityResolution = CalibrationMaturity | CalibrationMaturityUnavailable
+
+export const CALIBRATION_MATURITY_AUTHORITY_UNAVAILABLE =
+  'calibration_maturity_authority_unavailable'
+
+/**
  * The Elevation §7 "LEL-absent" scenario, made concrete: "cohort priors only; weights =
  * classical structural priors... an honest calibration_maturity of zero." Every W0/W1
  * facade over a chart with no LEL entries should serve exactly this — never a null
@@ -453,6 +501,82 @@ export function noLelCalibrationMaturity(): CalibrationMaturity {
     event_class_coverage: 0,
     weights_version: null,
     skill_score: null,
+  }
+}
+
+function unavailableCalibrationMaturity(): CalibrationMaturityUnavailable {
+  return {
+    n_events: null,
+    prospective_resolutions: null,
+    event_class_coverage: null,
+    weights_version: null,
+    skill_score: null,
+    state: 'unavailable',
+    reason: CALIBRATION_MATURITY_AUTHORITY_UNAVAILABLE,
+  }
+}
+
+/**
+ * F-140: reads the kala_field_skill chart-level aggregate row (event_class IS NULL)
+ * to serve real calibration data instead of the honest-zero stub. It returns the
+ * honest zero only when no row exists (chart not yet fitted); an unreadable
+ * authority is a typed unknown, never fabricated zero maturity.
+ *
+ * Uses the same /api/mcp/db/query pattern as resolveFieldSnapshot above.
+ * Reads platformUrl and internalToken from process.env internally (same as
+ * resolveFieldSnapshot) so call sites need only supply chart_id + principal.
+ */
+export async function fetchCalibrationMaturity(
+  chartId: string,
+  principal: FieldSnapshotPrincipalLike,
+): Promise<CalibrationMaturityResolution> {
+  const platformUrl = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
+  const internalToken = process.env['MCP_INTERNAL_TOKEN'] ?? ''
+  try {
+    const res = await fetch(`${platformUrl}/api/mcp/db/query`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-mcp-internal-token': internalToken,
+        'x-mcp-user': principal.user_uid,
+        'x-mcp-key-id': principal.key_id,
+      },
+      body: JSON.stringify({
+        sql: `
+          SELECT
+            agg.n_events,
+            agg.n_prospective,
+            agg.weights_version,
+            agg.skill_score,
+            (
+              SELECT COUNT(*)::int
+              FROM kala_field_skill
+              WHERE chart_id = $1 AND event_class IS NOT NULL
+            ) AS event_class_coverage
+          FROM kala_field_skill agg
+          WHERE agg.chart_id = $1 AND agg.event_class IS NULL
+          ORDER BY agg.released_at DESC
+          LIMIT 1
+        `,
+        params: [chartId],
+      }),
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (!res.ok) {
+      return unavailableCalibrationMaturity()
+    }
+    const data = (await res.json()) as { rows?: Array<Record<string, unknown>> }
+    const row = data.rows?.[0]
+    if (!row) return noLelCalibrationMaturity()
+    return {
+      n_events: Number(row['n_events'] ?? 0),
+      prospective_resolutions: Number(row['n_prospective'] ?? 0),
+      event_class_coverage: Number(row['event_class_coverage'] ?? 0),
+      weights_version: typeof row['weights_version'] === 'string' ? row['weights_version'] : null,
+      skill_score: row['skill_score'] != null ? Number(row['skill_score']) : null,
+    }
+  } catch {
+    return unavailableCalibrationMaturity()
   }
 }
 
@@ -470,7 +594,7 @@ export interface KalaEnvelope<TReading = ArgumentReading> {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
-  calibration_maturity: CalibrationMaturity
+  calibration_maturity: CalibrationMaturityResolution
 }
 
 export interface MakeKalaEnvelopeParams<TReading = ArgumentReading> {
@@ -482,7 +606,7 @@ export interface MakeKalaEnvelopeParams<TReading = ArgumentReading> {
   triPlane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: KalaFreshness
-  calibrationMaturity: CalibrationMaturity
+  calibrationMaturity: CalibrationMaturityResolution
 }
 
 /** The single assembly point every one of the eight kala_* tool facades calls to produce

@@ -921,7 +921,9 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
       // level; shape="pivoted" pages by SUBJECT (one wide row per fact_subject), so the
       // raw-row fetch below needs enough headroom to cover `offset + limit` distinct
       // subjects before grouping — see rowCapParamIdx below.
-      const offset = Math.max(0, Math.min(Number(args['offset'] ?? 0), 100_000))
+      const offsetRequested = Number(args['offset'] ?? 0)
+      const offset = Math.max(0, Math.min(offsetRequested, 100_000))
+      const offsetClamped = offset !== offsetRequested
 
       // ── `about` facet resolution — delegates to the canonical address resolver
       // (@/lib/retrieval/address_resolver.ts) for anything requiring classical derivation
@@ -1138,6 +1140,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           rows: servedRows,
           returned_count: servedRows.length,
           offset,
+          offset_requested: offsetRequested,
+          offset_clamped: offsetClamped,
           limit,
           // WP-1.3(f)/LCA-3-EXT disclosed pagination — see the count-query comment above.
           total,
@@ -1214,6 +1218,8 @@ const chartFactsQueryCapability: CapabilityDescriptor = {
           facts: pivoted,
           returned_count: pivoted.length,
           offset,
+          offset_requested: offsetRequested,
+          offset_clamped: offsetClamped,
           limit,
           // WP-1.3(f)/LCA-3-EXT disclosed pagination — `total` is the true DISTINCT-subject
           // count over the whole matching set (e.g. 5,566 unfiltered), NOT this page's slice.
@@ -1526,6 +1532,8 @@ const queryRemediesForChartCapability: CapabilityDescriptor = {
 }
 
 // D-2: list_remedies_by_category — global
+const REMEDY_CATEGORY_PAGE_LIMIT = 10
+
 const listRemediesByCategoryCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L0/list_remedies_by_category',
   type: 'tool',
@@ -1550,6 +1558,16 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
       required: true,
       enum: ['mantras', 'gemstones', 'charity', 'vrata', 'yantras', 'puja', 'tantric', 'ayurvedic', 'vastu', 'behavioral'],
     },
+    limit: {
+      type: 'number',
+      description: `Maximum remedies in one response (default and max ${REMEDY_CATEGORY_PAGE_LIMIT}). Use offset to continue.`,
+      default: REMEDY_CATEGORY_PAGE_LIMIT,
+    },
+    offset: {
+      type: 'number',
+      description: 'Zero-based offset for the next remedy page (default 0).',
+      default: 0,
+    },
   },
 
   required_inputs: ['category'],
@@ -1573,6 +1591,14 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
     if (!category) {
       return { content: { error: 'category is required' }, is_error: true }
     }
+    const requestedLimit = Number(args['limit'] ?? REMEDY_CATEGORY_PAGE_LIMIT)
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(Math.floor(requestedLimit), 1), REMEDY_CATEGORY_PAGE_LIMIT)
+      : REMEDY_CATEGORY_PAGE_LIMIT
+    const requestedOffset = Number(args['offset'] ?? 0)
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(Math.floor(requestedOffset), 0)
+      : 0
     try {
       // W4-loop-1 (E-5 group2): the corpus stores the category as remedy_type (singular:
       // 'gemstone', 'mantra', 'yantra', ...) — the hard `category = $1` predicate against a
@@ -1588,14 +1614,31 @@ const listRemediesByCategoryCapability: CapabilityDescriptor = {
         FROM brahma_remedy_corpus
         WHERE LOWER(remedy_type) = $1 OR LOWER(category) = $2 OR LOWER(category) = $1
         ORDER BY planet, remedy_id
+        LIMIT $3 OFFSET $4
       `
       // R6 0a-envauth (R-15/O-6): see query_remedies_for_chart's comment above —
       // swapped the DATABASE_URL-keyed raw pg.Pool for the shared query() helper.
-      const result = await query(sql, [catSingular, catLower])
+      const result = await query(sql, [catSingular, catLower, limit, offset])
+      const countResult = await query<{ total: number }>(
+        `SELECT COUNT(*)::int AS total
+         FROM brahma_remedy_corpus
+         WHERE LOWER(remedy_type) = $1 OR LOWER(category) = $2 OR LOWER(category) = $1`,
+        [catSingular, catLower],
+      )
+      const remedies = result.rows ?? []
+      const total = Number(countResult.rows?.[0]?.total ?? remedies.length)
+      const moreAvailable = offset + remedies.length < total
       return {
         content: {
-          category, remedies: result.rows, returned_count: result.rows.length,
-          ...(result.rows.length === 0
+          category, remedies, returned_count: remedies.length,
+          pagination: {
+            limit,
+            offset,
+            total,
+            more_available: moreAvailable,
+            next_offset: moreAvailable ? offset + remedies.length : null,
+          },
+          ...(remedies.length === 0
             ? { empty_reason: `No remedies found in category="${category}". Stored remedy_type vocabulary: mantra, gemstone, yantra, charity, puja, vrata, homa, japa, behavioral, ayurvedic.` }
             : {}),
         },
@@ -1867,7 +1910,18 @@ const queryMantrasCapability: CapabilityDescriptor = {
       // (singular); the hard `category='mantras'` predicate + case-sensitive planet match
       // was the "Venus"→0 / "venus"→N split. Match category across BOTH columns and match
       // planet case-insensitively; emit empty_reason on a genuine empty.
-      const conditions: string[] = ["(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')"]
+      //
+      // F-144: `remedy_type='mantra'` also admits `category='corpus_sweep'` rows — the
+      // deterministic OCR-sweep scaffold (brahmagyan/l0_remedy_corpus.py::sweep_classical_text_chunks)
+      // that scores extraction legibility into `scaffold_status` ('live' | 'review' | 'rejected').
+      // This handler had no scaffold_status predicate at all, so a garbled-OCR sweep row graded
+      // 'review' (or a hand-rejected 'rejected' row) was served identically to a hand-curated
+      // mantra — the R-19 defect (MARSYS_DEFECT_GAP_REGISTER_v2_0.md), confirmed live with named
+      // example sweep_jupiter_mantra_2ab17171. Only 'live'-graded rows are servable here.
+      const conditions: string[] = [
+        "(LOWER(remedy_type) = 'mantra' OR LOWER(category) = 'mantras')",
+        "scaffold_status = 'live'",
+      ]
       const values: unknown[] = []
       if (planet) { values.push(planet); conditions.push(`LOWER(planet) = LOWER($${values.length})`) }
 

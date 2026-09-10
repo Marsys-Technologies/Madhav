@@ -145,7 +145,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   // Error badge count — derived from the merged state list that DataAssetsView
   // reports via onAssetsReady. No extra polling needed.
-  const errorCount = assetStates.filter(a => a.state === 'error').length
+  const errorCount = assetStates.filter(a => a.state === 'error' || a.state === 'service_down').length
 
   // The chart identity + telemetry + actions, compact — rides at the top of the
   // scrolling ledger column (no full-width header card; graph gets the height).

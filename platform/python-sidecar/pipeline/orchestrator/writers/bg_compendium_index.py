@@ -6,15 +6,15 @@ Per CLAUDECODE_BRIEF_BG_COMPENDIUM_INDEX_v1_0.md (Doc 14 of 15) and holistic des
   - Pass A: per-text-per-chapter rows (~5,795 projected from actual corpus).
   - Pass B: per-text-per-topic_tag rows (~1,230 projected from actual topic coverage).
   - summary_text is a MECHANICAL first-3-chunks synopsis (deterministic concatenation, NOT LLM).
-  - Idempotent via ON CONFLICT on (text_id, COALESCE(chapter_num,-1), COALESCE(topic_id,'')).
+  - Convergent full replacement after complete source validation.
 
 BRAHMA-BG-0-14 | L0 Brahmagyan Build — bg_compendium_index asset (Doc 14 of 15)
 """
 from __future__ import annotations
 
 import logging
-import math
 import time
+from collections import defaultdict
 from typing import Any
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult
@@ -46,6 +46,73 @@ def _significance_score(chunk_count: int, max_chunks: int = 50) -> float:
     return round(min(1.0, chunk_count / max_chunks), 3)
 
 
+def _build_desired_rows(
+    chunks: list[dict[str, Any]],
+    valid_topics: frozenset[str],
+) -> tuple[list[tuple[Any, ...]], list[tuple[Any, ...]]]:
+    """Build the complete desired projection before any target-table write."""
+    if not chunks:
+        raise RuntimeError(
+            "bg_compendium_index HALT: classical_text_chunks is empty — bg_texts must run first"
+        )
+
+    null_chapter_ids = [str(row["id"]) for row in chunks if row["chapter"] is None]
+    if null_chapter_ids:
+        sample = ", ".join(sorted(null_chapter_ids)[:5])
+        raise RuntimeError(
+            "bg_compendium_index HALT: source contains NULL chapter values; "
+            f"sample chunk ids: {sample}"
+        )
+
+    invalid_topics = sorted({
+        str(row["topic_tag"])
+        for row in chunks
+        if row["topic_tag"] is not None and row["topic_tag"] not in valid_topics
+    })
+    if invalid_topics:
+        raise RuntimeError(
+            "bg_compendium_index HALT: source contains unknown topic_tag values: "
+            + ", ".join(invalid_topics[:10])
+        )
+
+    chapter_groups: dict[tuple[str, int], list[dict[str, Any]]] = defaultdict(list)
+    topic_groups: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in sorted(chunks, key=lambda item: item["id"]):
+        chapter_groups[(row["text_id"], row["chapter"])].append(row)
+        if row["topic_tag"] is not None:
+            topic_groups[(row["text_id"], row["topic_tag"])].append(row)
+
+    def _range(rows: list[dict[str, Any]], field: str, reducer: Any) -> int | None:
+        values = [row[field] for row in rows if row[field] is not None]
+        return reducer(values) if values else None
+
+    chapter_rows: list[tuple[Any, ...]] = []
+    for (text_id, chapter_num), rows in sorted(chapter_groups.items()):
+        chapter_rows.append((
+            text_id,
+            chapter_num,
+            _range(rows, "verse_start", min),
+            _range(rows, "verse_end", max),
+            _mechanical_synopsis([row["content_en"] or "" for row in rows]),
+            f"{text_id} chapter {chapter_num}: {len(rows)} passage(s)",
+            _significance_score(len(rows)),
+        ))
+
+    topic_rows: list[tuple[Any, ...]] = []
+    for (text_id, topic_id), rows in sorted(topic_groups.items()):
+        topic_rows.append((
+            text_id,
+            topic_id,
+            _range(rows, "verse_start", min),
+            _range(rows, "verse_end", max),
+            _mechanical_synopsis([row["content_en"] or "" for row in rows]),
+            f"{text_id} covers {topic_id} in {len(rows)} passage(s)",
+            _significance_score(len(rows)),
+        ))
+
+    return chapter_rows, topic_rows
+
+
 @register('bg_compendium_index')
 class CompendiumIndexWriter(WriterBase):
     asset_id = 'bg_compendium_index'
@@ -54,42 +121,35 @@ class CompendiumIndexWriter(WriterBase):
         t0 = time.time()
         conn = ctx.db_conn
 
-        # ── Step 0: Upstream dependency checks ───────────────────────────────
+        # ── Step 0: materialize and validate desired state ───────────────────
         with conn.cursor() as cur:
-            cur.execute("SELECT COUNT(*) AS n FROM classical_text_chunks")
-            chunk_count = cur.fetchone()["n"]
-            cur.execute("SELECT COUNT(*) AS n FROM classical_text_chunks WHERE topic_tag IS NOT NULL")
-            tagged_count = cur.fetchone()["n"]
+            cur.execute("""
+                SELECT id, text_id, chapter, topic_tag, verse_start, verse_end, content_en
+                FROM classical_text_chunks
+                ORDER BY id
+            """)
+            chunks = cur.fetchall()
+            cur.execute("SELECT canonical_id FROM reference_topic_tags")
+            valid_topics = frozenset(row["canonical_id"] for row in cur.fetchall())
+
+        chapter_rows, topic_rows = _build_desired_rows(chunks, valid_topics)
+        chunk_count = len(chunks)
+        tagged_count = sum(row["topic_tag"] is not None for row in chunks)
 
         logger.info(
-            "[bg_compendium_index] upstream: %d chunks total, %d with topic_tag",
-            chunk_count, tagged_count,
+            "[bg_compendium_index] upstream: %d chunks total, %d tagged; "
+            "desired chapters=%d topics=%d",
+            chunk_count, tagged_count, len(chapter_rows), len(topic_rows),
         )
 
-        if chunk_count == 0:
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes="HALT: classical_text_chunks is empty — bg_texts must run first",
-            )
-
         if ctx.dry_run:
-            # Project expected rows without writing
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) AS n FROM (SELECT text_id, chapter FROM classical_text_chunks GROUP BY text_id, chapter) x"
-                )
-                proj_a = cur.fetchone()["n"]
-                cur.execute(
-                    "SELECT COUNT(*) AS n FROM (SELECT text_id, topic_tag FROM classical_text_chunks WHERE topic_tag IS NOT NULL GROUP BY text_id, topic_tag) x"
-                )
-                proj_b = cur.fetchone()["n"]
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
                 notes=(
-                    f"dry_run=True; projected Pass A={proj_a} (per-text-per-chapter) + "
-                    f"Pass B={proj_b} (per-text-per-topic) = {proj_a + proj_b} total rows"
+                    f"dry_run=True; projected Pass A={len(chapter_rows)} "
+                    f"(per-text-per-chapter) + Pass B={len(topic_rows)} "
+                    f"(per-text-per-topic) = {len(chapter_rows) + len(topic_rows)} total rows"
                 ),
             )
 
@@ -102,229 +162,50 @@ class CompendiumIndexWriter(WriterBase):
             """)
         logger.info("[bg_compendium_index] dedup unique index ensured")
 
-        # ── Step 2: Pass A — per-text-per-chapter rows ────────────────────────
-        # Idempotency: full clear before re-seed (L0 global reference, no chart_id scope).
+        # ── Step 2: replace the whole global projection ──────────────────────
+        # Desired state was fully materialized and validated before this delete.
         with conn.cursor() as cur:
             cur.execute("DELETE FROM brahma_compendium_index")
-        logger.info("[bg_compendium_index] cleared brahma_compendium_index for re-seed")
+            cur.executemany("""
+                INSERT INTO brahma_compendium_index
+                  (text_id, chapter_num, verse_start, verse_end, chunk_ids,
+                   summary_text, significance, classical_significance_score)
+                VALUES (%s, %s, %s, %s, ARRAY[]::BIGINT[], %s, %s, %s)
+            """, chapter_rows)
+            cur.executemany("""
+                INSERT INTO brahma_compendium_index
+                  (text_id, topic_id, verse_start, verse_end, chunk_ids,
+                   summary_text, significance, classical_significance_score)
+                VALUES (%s, %s, %s, %s, ARRAY[]::BIGINT[], %s, %s, %s)
+            """, topic_rows)
 
-        # For each (text_id, chapter) group: verse range, chunk_ids, synopsis, score.
-        logger.info("[bg_compendium_index] Pass A: loading per-text-per-chapter groups...")
-
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT
-                    text_id,
-                    chapter            AS chapter_num,
-                    MIN(verse_start)   AS verse_start,
-                    MAX(verse_end)     AS verse_end,
-                    COUNT(*)           AS chunk_count
-                FROM classical_text_chunks
-                GROUP BY text_id, chapter
-                ORDER BY text_id, chapter
-            """)
-            pass_a_groups = cur.fetchall()
-
-        logger.info("[bg_compendium_index] Pass A: %d groups to process", len(pass_a_groups))
-
-        # Fetch first-N content for synopsis: keyed by (text_id, chapter)
-        # We batch-fetch the first 3 chunks per group using a window function
-        with conn.cursor() as cur:
-            cur.execute("""
-                SELECT text_id, chapter, content_en
-                FROM (
-                    SELECT text_id, chapter, content_en,
-                           ROW_NUMBER() OVER (PARTITION BY text_id, chapter ORDER BY id) AS rn
-                    FROM classical_text_chunks
-                ) ranked
-                WHERE rn <= %s
-                ORDER BY text_id, chapter, rn
-            """, (SYNOPSIS_CHUNKS,))
-            synopsis_rows = cur.fetchall()
-
-        # Build synopsis map: (text_id, chapter) → [content_en, ...]
-        synopsis_map: dict[tuple[str, int], list[str]] = {}
-        for row in synopsis_rows:
-            key = (row["text_id"], row["chapter"])
-            synopsis_map.setdefault(key, []).append(row["content_en"] or "")
-
-        # Insert Pass A rows
-        pass_a_inserted = 0
-        pass_a_skipped = 0
-
-        for row in pass_a_groups:
-            text_id = row["text_id"]
-            chapter_num = row["chapter_num"]
-            verse_start = row["verse_start"]
-            verse_end = row["verse_end"]
-            chunk_count = row["chunk_count"]
-
-            key = (text_id, chapter_num)
-            content_list = synopsis_map.get(key, [])
-            synopsis = _mechanical_synopsis(content_list)
-            score = _significance_score(chunk_count)
-            significance = f"{text_id} chapter {chapter_num}: {chunk_count} passage(s)"
-
-            with conn.cursor() as cur:
-                cur.execute("""
-                    INSERT INTO brahma_compendium_index
-                      (text_id, chapter_num, verse_start, verse_end,
-                       chunk_ids, summary_text, significance,
-                       classical_significance_score)
-                    VALUES (%s, %s, %s, %s, ARRAY[]::BIGINT[], %s, %s, %s)
-                    ON CONFLICT (text_id, COALESCE(chapter_num,-1), COALESCE(topic_id,''))
-                    DO NOTHING
-                """, (
-                    text_id, chapter_num, verse_start, verse_end,
-                    synopsis, significance, score,
-                ))
-                if cur.rowcount > 0:
-                    pass_a_inserted += 1
-                else:
-                    pass_a_skipped += 1
-
-            if (pass_a_inserted + pass_a_skipped) % 500 == 0:
-                logger.info(
-                    "[bg_compendium_index] Pass A progress: inserted=%d skipped=%d / %d",
-                    pass_a_inserted, pass_a_skipped, len(pass_a_groups),
-                )
-
-        logger.info(
-            "[bg_compendium_index] Pass A complete: inserted=%d, skipped=%d",
-            pass_a_inserted, pass_a_skipped,
-        )
-
-        # ── Step 3: Pass B — per-text-per-topic_tag rows ─────────────────────
-        if tagged_count == 0:
-            logger.info(
-                "[bg_compendium_index] Pass B: 0 tagged chunks — skipping "
-                "(bg_text_index must run first to populate topic_tag)"
-            )
-            pass_b_inserted = 0
-            pass_b_skipped = 0
-        else:
-            logger.info("[bg_compendium_index] Pass B: loading per-text-per-topic groups...")
-
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT
-                        text_id,
-                        topic_tag          AS topic_id,
-                        MIN(verse_start)   AS verse_start,
-                        MAX(verse_end)     AS verse_end,
-                        COUNT(*)           AS chunk_count
-                    FROM classical_text_chunks
-                    WHERE topic_tag IS NOT NULL
-                    GROUP BY text_id, topic_tag
-                    ORDER BY text_id, topic_tag
-                """)
-                pass_b_groups = cur.fetchall()
-
-            logger.info("[bg_compendium_index] Pass B: %d groups to process", len(pass_b_groups))
-
-            # Fetch first-N content for Pass B synopsis: keyed by (text_id, topic_tag)
-            with conn.cursor() as cur:
-                cur.execute("""
-                    SELECT text_id, topic_tag, content_en
-                    FROM (
-                        SELECT text_id, topic_tag, content_en,
-                               ROW_NUMBER() OVER (PARTITION BY text_id, topic_tag ORDER BY id) AS rn
-                        FROM classical_text_chunks
-                        WHERE topic_tag IS NOT NULL
-                    ) ranked
-                    WHERE rn <= %s
-                    ORDER BY text_id, topic_tag, rn
-                """, (SYNOPSIS_CHUNKS,))
-                topic_synopsis_rows = cur.fetchall()
-
-            # Build topic synopsis map: (text_id, topic_tag) → [content_en, ...]
-            topic_synopsis_map: dict[tuple[str, str], list[str]] = {}
-            for row in topic_synopsis_rows:
-                key = (row["text_id"], row["topic_tag"])
-                topic_synopsis_map.setdefault(key, []).append(row["content_en"] or "")
-
-            # Validate topic_ids against reference_topic_tags
-            with conn.cursor() as cur:
-                cur.execute("SELECT canonical_id FROM reference_topic_tags")
-                valid_topics: frozenset[str] = frozenset(r["canonical_id"] for r in cur.fetchall())
-
-            pass_b_inserted = 0
-            pass_b_skipped = 0
-            pass_b_invalid_topic = 0
-
-            for row in pass_b_groups:
-                text_id = row["text_id"]
-                topic_id = row["topic_id"]
-                verse_start = row["verse_start"]
-                verse_end = row["verse_end"]
-                chunk_count = row["chunk_count"]
-
-                # FK validation: topic_id must resolve in reference_topic_tags
-                if topic_id not in valid_topics:
-                    logger.warning(
-                        "[bg_compendium_index] Pass B SKIP: topic_id '%s' not in reference_topic_tags",
-                        topic_id,
-                    )
-                    pass_b_invalid_topic += 1
-                    continue
-
-                key = (text_id, topic_id)
-                content_list = topic_synopsis_map.get(key, [])
-                synopsis = _mechanical_synopsis(content_list)
-                score = _significance_score(chunk_count)
-                significance = f"{text_id} covers {topic_id} in {chunk_count} passage(s)"
-
-                with conn.cursor() as cur:
-                    cur.execute("""
-                        INSERT INTO brahma_compendium_index
-                          (text_id, topic_id, verse_start, verse_end,
-                           chunk_ids, summary_text, significance,
-                           classical_significance_score)
-                        VALUES (%s, %s, %s, %s, ARRAY[]::BIGINT[], %s, %s, %s)
-                        ON CONFLICT (text_id, COALESCE(chapter_num,-1), COALESCE(topic_id,''))
-                        DO NOTHING
-                    """, (
-                        text_id, topic_id, verse_start, verse_end,
-                        synopsis, significance, score,
-                    ))
-                    if cur.rowcount > 0:
-                        pass_b_inserted += 1
-                    else:
-                        pass_b_skipped += 1
-
-                if (pass_b_inserted + pass_b_skipped) % 500 == 0:
-                    logger.info(
-                        "[bg_compendium_index] Pass B progress: inserted=%d skipped=%d / %d",
-                        pass_b_inserted, pass_b_skipped, len(pass_b_groups),
-                    )
-
-            logger.info(
-                "[bg_compendium_index] Pass B complete: inserted=%d, skipped=%d, invalid_topic=%d",
-                pass_b_inserted, pass_b_skipped, pass_b_invalid_topic,
-            )
-
-        # ── Step 4: Final count ───────────────────────────────────────────────
+        # ── Step 3: exact postflight ─────────────────────────────────────────
         with conn.cursor() as cur:
             cur.execute("SELECT COUNT(*) AS n FROM brahma_compendium_index")
             total_rows = cur.fetchone()["n"]
 
         duration = time.time() - t0
-        total_inserted = pass_a_inserted + pass_b_inserted
+        total_inserted = len(chapter_rows) + len(topic_rows)
+        if total_rows != total_inserted:
+            raise RuntimeError(
+                "bg_compendium_index postflight mismatch: "
+                f"expected {total_inserted} rows, observed {total_rows}"
+            )
 
         logger.info(
             "[bg_compendium_index] COMPLETE: total_in_table=%d, "
             "pass_a_inserted=%d, pass_b_inserted=%d, duration=%.1fs",
-            total_rows, pass_a_inserted, pass_b_inserted, duration,
+            total_rows, len(chapter_rows), len(topic_rows), duration,
         )
 
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=total_inserted,
-            rows_skipped=pass_a_skipped + pass_b_skipped,
+            rows_skipped=0,
             duration_seconds=duration,
             notes=(
-                f"pass_a_inserted={pass_a_inserted}; pass_a_skipped={pass_a_skipped}; "
-                f"pass_b_inserted={pass_b_inserted}; pass_b_skipped={pass_b_skipped}; "
+                f"pass_a_inserted={len(chapter_rows)}; pass_a_skipped=0; "
+                f"pass_b_inserted={len(topic_rows)}; pass_b_skipped=0; "
                 f"total_in_table={total_rows}; duration={duration:.1f}s"
             ),
         )

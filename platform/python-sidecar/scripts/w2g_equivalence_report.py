@@ -85,6 +85,16 @@ def main() -> int:
                 )
                 classes_attempted = [r["event_class"] for r in cur.fetchall()]
 
+            # INTENTIONAL: generation='v1' pin — this script reads the frozen
+            # v1 corpus as the validation benchmark that the reworked 2.0 writer
+            # is compared against (design §3.1 / native ruling point 3). The v1
+            # rows are the ground truth for the equivalence check; reading any
+            # other generation here would change the benchmark mid-comparison and
+            # invalidate the equivalence report's conclusion. The pin is permanent
+            # for this comparator role: if the authority pointer ever flips to 3.0
+            # for a chart, this script still deliberately reads v1 as the reference
+            # side and 3.0 (via kala_gochara_windows_v2) as the candidate side.
+            # See also ADJUDICATION-6 / migration 527. (MR-18)
             cur.execute(
                 "SELECT event_class, temporal_shape, window_start, window_end, peak_date, "
                 "is_adverse, valence, signed_intensity, generation, active_sentences "

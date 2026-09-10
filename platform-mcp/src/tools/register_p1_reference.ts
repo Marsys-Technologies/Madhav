@@ -9,7 +9,7 @@
  * ref_yogas_get             → marsys://tool/L0/query_yoga_catalog
  * ref_doshas_get            → marsys://tool/L0/query_dosha_catalog
  * ref_dignity_reference_get → marsys://tool/L0/query_classical_texts (topic=dignity)
- * ref_dasha_systems_get     → marsys://tool/L0/query_classical_texts (topic=dasha)
+ * ref_dasha_systems_get     → marsys://tool/L0/query_dasha_systems
  * ref_nakshatra_get         → marsys://tool/L0/query_classical_texts (topic=nakshatra)
  * ref_transit_rules_get     → bg_transit_rules table via platformQuery
  */
@@ -55,6 +55,20 @@ function deriveHollowEnvelopeFlags(content: unknown): JudgmentFlagEntry[] {
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
+function unwrapCapabilityToolResult(data: unknown): unknown {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return data
+  const result = data as Record<string, unknown>
+  if (!('is_error' in result)) return data
+
+  if (result['is_error'] === true) {
+    const content = result['content']
+    throw new Error(typeof content === 'string'
+      ? content
+      : '[p1_reference] capability returned an in-band error')
+  }
+  return result['content']
+}
+
 async function callRegistryCapability(uri: string, args: Record<string, unknown>, principal: Principal): Promise<unknown> {
   const res = await fetch(`${PLATFORM_URL}/api/retrieval/capability`, {
     method: 'POST',
@@ -75,7 +89,27 @@ async function callRegistryCapability(uri: string, args: Record<string, unknown>
   }
   const data = await res.json() as { ok: boolean; content?: unknown; error?: string }
   if (!data.ok) throw new Error(`[p1_reference] capability error: ${data.error ?? 'unknown'}`)
-  return data.content
+  return unwrapCapabilityToolResult(data.content)
+}
+
+/**
+ * /api/retrieval/capability wraps a capability ToolResult one level below its
+ * own response. Keep that transport wrapper out of public reference receipts.
+ */
+function unwrapCapabilityPayload(data: unknown): Record<string, unknown> {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {}
+  const result = data as Record<string, unknown>
+  if (
+    'is_error' in result && result['content'] &&
+    typeof result['content'] === 'object' && !Array.isArray(result['content'])
+  ) {
+    return result['content'] as Record<string, unknown>
+  }
+  return result
+}
+
+function rowMatchesKeyword(row: Record<string, unknown>, keyword: string): boolean {
+  return JSON.stringify(row).toLowerCase().includes(keyword.toLowerCase())
 }
 
 // R6 0a-envauth (R-16/O-5): only sent x-mcp-internal-token (Layer 1). The target
@@ -167,7 +201,9 @@ function classifyErrorMessage(message: string): { error_class: McpErrorClass; sa
     return { error_class: 'validation', safe_message: message }
   }
   const looksInternal =
-    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
+    // F-89: extend to cover Postgres encoding/null-byte exceptions (invalid byte sequence for
+    // encoding "UTF8", NUL character not allowed) that bypassed sanitization and leaked verbatim.
+    /column ".*" does not exist|relation ".*" does not exist|syntax error at or near|ECONNREFUSED|invalid input syntax|invalid byte sequence for encoding|NUL character not allowed|PostgresError|\bat \S+\.(ts|js):\d+|\.node_modules[\\/]/i.test(message)
   if (looksInternal) {
     return {
       error_class: 'internal_error',
@@ -382,24 +418,51 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     },
     async ({ system, keyword, limit, offset }) => {
       try {
-        // CR-42/R-19/R-20 fix (D-1.6 S-1): no structured bg_dasha_systems catalog table
-        // exists (confirmed absent from the migration set), so this stays a classical-text
-        // search — but it used to send the actual `system` filter value only inside a
-        // `keyword` param that query_classical_texts' hybrid handler NEVER READS once
-        // `topic` is also present (freeText priority is query_text ?? query ?? topic, so
-        // the static 4-letter `topic: 'dasha'` value always won and `system`/`keyword` were
-        // silently discarded — confirmed live: system="vimshottari" -> query_used:"dasha").
-        // Fix: send the joined filter string via `query_text` (top priority) so `system`
-        // genuinely participates in the search, and disclose the degraded mode honestly.
-        const kw = [keyword, system, 'dasha system'].filter(Boolean).join(' ')
-        const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          query_text: kw, limit: limit ?? 30, offset: offset ?? 0,
+        const pageLimit = limit ?? 30
+        const pageOffset = offset ?? 0
+        const canonicalId = system?.trim().toLowerCase() || undefined
+        const data = await callRegistryCapability('marsys://tool/L0/query_dasha_systems', {
+          ...(canonicalId ? { canonical_id: canonicalId } : {}),
         }, principal)
-        const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
+        const result = (data && typeof data === 'object' && !Array.isArray(data))
+          ? data as Record<string, unknown>
+          : {}
+        if (result['is_error'] === true) {
+          throw new Error('Dasha-system catalog authority is currently unavailable.')
+        }
+        const payload = unwrapCapabilityPayload(data)
+        const rows = Array.isArray(payload['rows'])
+          ? payload['rows'].filter((row): row is Record<string, unknown> => !!row && typeof row === 'object' && !Array.isArray(row))
+          : []
+        const normalizedKeyword = keyword?.trim().toLowerCase()
+        const filteredRows = normalizedKeyword
+          ? rows.filter((row) => rowMatchesKeyword(row, normalizedKeyword))
+          : rows
+        const total = filteredRows.length
+        const pageRows = filteredRows.slice(pageOffset, pageOffset + pageLimit)
         return dualOutput(envelope({
-          structured_filter_applied: false,
-          fallback_reason: 'No structured bg_dasha_systems catalog table exists — this is a classical-text hybrid search using the system/keyword filter as the search query, not a WHERE-clause match.',
-          ...dataObj,
+          source: 'brahma_dasha_systems',
+          structured_filter_applied: true,
+          structured_catalog_served: true,
+          rows: pageRows,
+          total,
+          pagination: {
+            offset: pageOffset,
+            limit: pageLimit,
+            total,
+            more_available: pageOffset + pageRows.length < total,
+            next_offset: pageOffset + pageRows.length < total ? pageOffset + pageRows.length : null,
+          },
+          filters: { canonical_id: canonicalId ?? null, keyword: normalizedKeyword ?? null },
+          ...(total === 0
+            ? { empty_reason: `No structured dasha-system rows matched (canonical_id=${canonicalId ?? 'any'}, keyword=${normalizedKeyword ?? 'any'}).` }
+            : {}),
+          disclaimer: payload['disclaimer'] ?? 'Classical dasha-system definitions only — not any chart\'s computed dasha periods.',
+          provenance: {
+            table: 'brahma_dasha_systems',
+            capability: 'marsys://tool/L0/query_dasha_systems',
+            upstream: payload['provenance'] ?? null,
+          },
         }, 'ref_dasha_systems_get'))
       } catch (err) {
         return errorOutput('ref_dasha_systems_get', String(err))
@@ -416,28 +479,118 @@ export function registerP1ReferenceTools(server: McpServer, principal: Principal
     'Also covers Tara classification rules (9-fold Janma/Sampat/Vipat/Kshema/Pratyak/Sadhaka/Vadha/' +
     'Mitra/Ati-Mitra) and Abhijit (28th nakshatra). Filter by nakshatra name or lord.',
     {
-      nakshatra: z.string().optional().describe('Filter by nakshatra name (e.g. ashwini, rohini, purva_bhadrapada).'),
-      lord:      z.string().optional().describe('Filter by ruling planet (e.g. ketu, venus, sun).'),
-      keyword:   z.string().optional().describe('Free-text search.'),
+      nakshatra: z.string().optional().describe('Filter by canonical nakshatra name (case/space/hyphen/underscore-insensitive, e.g. ashwini, rohini, purva_bhadrapada).'),
+      lord:      z.string().optional().describe('Filter by Vimshottari ruling planet (e.g. ketu, venus, sun).'),
+      keyword:   z.string().optional().describe('Free-text classical-text search. Without a nakshatra/lord filter this preserves the text-search path.'),
       limit:     z.number().int().min(1).max(100).optional().describe('Max results (default: 30)'),
       offset:    z.number().int().min(0).optional().describe('Pagination offset (default: 0)'),
     },
     async ({ nakshatra, lord, keyword, limit, offset }) => {
       try {
-        // CR-42/R-19/R-20 fix (D-1.6 S-1): same class of bug as ref_dasha_systems_get above
-        // — no structured bg_nakshatra catalog table exists, and `nakshatra`/`lord` were
-        // silently discarded because `topic: 'nakshatra'` always won the freeText priority
-        // race inside query_classical_texts. Send the joined filter via `query_text` so the
-        // actual nakshatra/lord value participates in the search, and disclose the
-        // degraded (non-structural) mode honestly.
+        // F04: reference_nakshatra (singular, bg_nakshatra's table) is the populated, canonical
+        // grain for THIS serving surface (28 rows, including Abhijit) -- serve it directly when a
+        // structured facet is asked for, or when this is a plain catalog browse. NOT the same
+        // table as reference_nakshatras (plural, bg_reference's table) -- L0-W3 correction,
+        // 2026-09-04: that table is NOT deprecated (this comment previously called it that); it
+        // remains a real, live dependency of several L1 writers (ga_sensitive_writer.py,
+        // ga_sensitive_degree_writer.py, ga_dashas_writer.py, _vimshottari_independent_verifier.py)
+        // -- it is simply the wrong table for THIS TS serving capability, a naming-collision risk
+        // (one character apart) rather than a dead one.
+        // Keep keyword-only requests on the existing classical-text path: keyword is explicitly
+        // free-text intent, not a lossy pseudo-WHERE filter over a static catalog.
+        const pageLimit = limit ?? 30
+        const pageOffset = offset ?? 0
+        const wantsStructuredCatalog = Boolean(nakshatra || lord || !keyword)
+        if (wantsStructuredCatalog) {
+          const params: unknown[] = []
+          const filters: string[] = []
+          if (nakshatra) {
+            params.push(nakshatra)
+            const param = `$${params.length}`
+            // Normalize the common MCP spellings (Purva Bhadrapada / purva_bhadrapada /
+            // purva-bhadrapada) without discarding IAST or configured alternate names.
+            const normalized = `LOWER(REGEXP_REPLACE(%s, '[ _-]', '', 'g'))`
+            filters.push(`(
+              ${normalized.replace('%s', 'n.name_en')} = ${normalized.replace('%s', param)}
+              OR ${normalized.replace('%s', 'n.name_sa_iast')} = ${normalized.replace('%s', param)}
+              OR EXISTS (
+                SELECT 1 FROM UNNEST(n.alt_names) AS alt_name
+                WHERE ${normalized.replace('%s', 'alt_name')} = ${normalized.replace('%s', param)}
+              )
+            )`)
+          }
+          if (lord) {
+            params.push(lord)
+            filters.push(`LOWER(n.vimshottari_lord) = LOWER($${params.length})`)
+          }
+          params.push(pageLimit, pageOffset)
+          const limitParam = `$${params.length - 1}`
+          const offsetParam = `$${params.length}`
+          const where = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : ''
+          const structured = await platformQuery(
+            `SELECT n.nakshatra_id, n.name_en, n.name_sa_iast, n.name_sa_devanagari,
+                    n.alt_names, n.vimshottari_lord, n.presiding_deity, n.ruling_planet,
+                    n.gana, n.nadi, n.varna, n.nakshatra_gender, n.symbol, n.shakti,
+                    n.motivation, n.body_part, n.classical_source, n.tradition_scope,
+                    n.is_abhijit,
+                    (SELECT ARRAY_AGG(p.pada_lord ORDER BY p.pada_number)
+                     FROM reference_nakshatra_pada p
+                     WHERE p.nakshatra_id = n.nakshatra_id) AS pada_lords,
+                    COUNT(*) OVER()::int AS total_matching
+             FROM reference_nakshatra n
+             ${where}
+             ORDER BY n.nakshatra_id
+             LIMIT ${limitParam} OFFSET ${offsetParam}`,
+            params,
+            principal,
+          )
+          const total = structured.rows.length > 0
+            ? Number(structured.rows[0]!['total_matching'] ?? structured.rows.length)
+            : Number((await platformQuery(
+              `SELECT COUNT(*)::int AS total_matching FROM reference_nakshatra n ${where}`,
+              params.slice(0, -2),
+              principal,
+            )).rows[0]?.['total_matching'] ?? 0)
+          if (total > 0) {
+            const rows = structured.rows.map(({ total_matching: _total, ...row }) => row)
+            const moreAvailable = pageOffset + rows.length < total
+            return dualOutput(envelope({
+              source: 'reference_nakshatra',
+              structured_filter_applied: true,
+              structured_catalog_served: true,
+              rows,
+              total,
+              pagination: {
+                offset: pageOffset,
+                limit: pageLimit,
+                total,
+                more_available: moreAvailable,
+                next_offset: moreAvailable ? pageOffset + rows.length : null,
+              },
+              filters: { nakshatra: nakshatra ?? null, lord: lord ?? null },
+              provenance: {
+                table: 'reference_nakshatra',
+                asset_id: 'bg_nakshatra',
+                row_classical_source: 'rows[].classical_source',
+              },
+            }, 'ref_nakshatra_get'))
+          }
+        }
+
+        // A no-row structured lookup is not evidence that the catalog has no relevant
+        // classical text. Preserve that broader path, but label the source switch so callers
+        // never mistake a semantic search result for a canonical catalog row.
         const kw = [keyword, nakshatra, lord, 'nakshatra'].filter(Boolean).join(' ')
         const data = await callRegistryCapability('marsys://tool/L0/query_classical_texts', {
-          query_text: kw, limit: limit ?? 30, offset: offset ?? 0,
+          query_text: kw, limit: pageLimit, offset: pageOffset,
         }, principal)
         const dataObj = (typeof data === 'object' && data !== null) ? data as Record<string, unknown> : { result: data }
         return dualOutput(envelope({
+          source: 'classical_text_fallback',
           structured_filter_applied: false,
-          fallback_reason: 'No structured bg_nakshatra catalog table exists — this is a classical-text hybrid search using the nakshatra/lord/keyword filter as the search query, not a WHERE-clause match.',
+          fallback_reason: wantsStructuredCatalog
+            ? `No structured reference_nakshatra row matched (nakshatra=${nakshatra ?? 'any'}, lord=${lord ?? 'any'}) — classical-text hybrid search is returned instead.`
+            : 'No structured catalog filter was requested; this is the classical-text hybrid search path for keyword intent.',
           ...dataObj,
         }, 'ref_nakshatra_get'))
       } catch (err) {

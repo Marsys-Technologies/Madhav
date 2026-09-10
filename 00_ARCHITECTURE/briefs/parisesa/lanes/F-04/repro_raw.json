@@ -1,0 +1,23 @@
+{
+  "reproduce_cmd": "mcp__marsys-jis-direct__ref_nakshatra_get({nakshatra: 'purva_bhadrapada', limit: 5})",
+  "reproduced_at": "2026-08-16",
+  "verdict": "STILL LIVE — matches F-04 claim exactly",
+  "key_fields": {
+    "structured_filter_applied": false,
+    "fallback_reason": "No structured bg_nakshatra catalog table exists — this is a classical-text hybrid search using the nakshatra/lord/keyword filter as the search query, not a WHERE-clause match.",
+    "search_mode": "hybrid_vector_keyword",
+    "query_used": "purva_bhadrapada nakshatra"
+  },
+  "returned_rows_summary": [
+    "muhurta_chintamani PG20:C2 — Bhauma-Ashvini tithi-avoidance rule (irrelevant to nakshatra catalog fields)",
+    "muhurta_chintamani PG51:C2 — Tripushkara yoga verse (irrelevant)",
+    "brihat_samhita PG1005:C2 — OCR-garbled fragment 'One born in Punarvasu will be—' (irrelevant/truncated)",
+    "muhurta_chintamani PG54:C1 — star-count/gandanta doctrine verse (irrelevant)",
+    "bphs PG513:C2 — OCR-garbled fragment 'lord of Dasa, ihe Bhal'at and Bhabhog of the Janma Nakshatra' (irrelevant/truncated)"
+  ],
+  "structured_fields_promised_by_description": [
+    "lord", "devata", "gender", "gana", "varna", "nadi", "pada lords", "body part", "symbol"
+  ],
+  "structured_fields_actually_returned": "none — response contains only classical-text search hit metadata (citation_ref, verse_text_en/sa, vector_score, keyword_score, combined_score); no lord/devata/gender/gana/varna/nadi/pada_lords/body_part/symbol fields present anywhere in the envelope",
+  "note": "Full raw envelope captured via tool call in session; this file summarizes the load-bearing fields per Stage D contract to keep the artifact small. Envelope shape: envelope_version v1, tool ref_nakshatra_get, judgment_flags=[hollow_envelope_shape_not_evaluated] (proxy signal — does not detect the structured-vs-unstructured mismatch itself, only the empty-array/zero-total shape, which this response doesn't trigger since content.rows is non-empty)."
+}

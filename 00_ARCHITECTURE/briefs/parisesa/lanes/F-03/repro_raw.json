@@ -1,0 +1,86 @@
+{
+  "reproduce_cmd_A": "mcp__marsys-jis-direct__ref_remedies_by_category_list({category: 'mantra'})",
+  "response_A": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "e9a21d0b-4aac-4f6f-a5b7-95bb90001784",
+      "epistemics": { "surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null },
+      "result": {
+        "tool_bundle_id": "73267c20-9c28-4762-a1ba-b2d9ca4f29df",
+        "tool_name": "list_remedies_by_category",
+        "tool_version": "1.0",
+        "invocation_params": { "category": "mantra" },
+        "results": [
+          { "content": "{\"category\":\"mantra\",\"remedies\":[{\"remedy_id\":\"dosha_balarishta_jupiter_mantra\",\"planet\":\"jupiter\",\"domain\":\"health\",\"ca…[truncated for budget]" }
+        ],
+        "served_from_cache": false,
+        "latency_ms": 17,
+        "result_hash": "sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 1,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": { "instrument": "response_format:legacy", "hint": "full untrimmed response" }
+        }
+      ],
+      "drill_pointers": []
+    }
+  },
+  "reproduce_cmd_B": "mcp__marsys-jis-direct__ref_remedies_by_category_list({category: 'mantra', limit: 5})",
+  "response_B": {
+    "type": "object",
+    "object": {
+      "ok": true,
+      "trace_id": "44d75f0e-55fb-4778-92af-818f69dbdd0c",
+      "epistemics": { "surgical": true, "confidence_band": "high", "horizon_days": null, "falsifier": null },
+      "result": {
+        "tool_bundle_id": "7ae7fb3b-a82f-4ae6-ad3a-f3e9d6a1c879",
+        "tool_name": "list_remedies_by_category",
+        "tool_version": "1.0",
+        "invocation_params": { "category": "mantra", "limit": 5 },
+        "results": [
+          { "content": "{\"category\":\"mantra\",\"remedies\":[{\"remedy_id\":\"dosha_balarishta_jupiter_mantra\",\"planet\":\"jupiter\",\"domain\":\"health\",\"ca…[truncated for budget]" }
+        ],
+        "served_from_cache": false,
+        "latency_ms": 10,
+        "result_hash": "sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c",
+        "schema_version": "1.0"
+      },
+      "citations": [],
+      "plan": null,
+      "predictions_logged": [],
+      "synthesis_audit": null,
+      "suggested_followups": [],
+      "warnings": [],
+      "budget_kb_applied": 40,
+      "trim_report": [
+        {
+          "path": "(trim_report)",
+          "original_count": 1,
+          "kept_count": 1,
+          "reason": "full trim_report omitted to fit budget",
+          "recover_via": { "instrument": "response_format:legacy", "hint": "full untrimmed response" }
+        }
+      ],
+      "drill_pointers": []
+    }
+  },
+  "result_hash_comparison": {
+    "hash_A": "sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c",
+    "hash_B": "sha256:ad8a27bbdc37a7b8f37586af5bfcaee7463895dd36599891073203a45008006c",
+    "identical": true,
+    "matches_corpus_predicted_unfixed_hash": true
+  }
+}

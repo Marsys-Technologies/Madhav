@@ -1,0 +1,134 @@
+-- 920_nirmana_l1_ga_vichara_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_vichara`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_vichara'` returning ZERO rows before this migration. Without a
+-- spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/
+-- orchestrator/output_digest.py) always returns `(None, None)` for this asset, so
+-- its provenance receipt (platform/python-sidecar/pipeline/orchestrator/
+-- provenance.py) can never leave `receipt_state = 'unknown'`. Same defect class
+-- as migrations 914 (`ga_structural`)/915 (`ga_tajaka`)/916 (`ga_medical`)/917
+-- (`ga_vastu`)/918 (`ga_yoga`, in flight)/919 (`ga_sade_sati`, in flight). This is
+-- the LAST asset in the frontier still missing a digest-spec migration.
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────
+--
+-- `ga_vichara`'s writer (`platform/python-sidecar/ga_writers/ga_vichara_writer.py`)
+-- has exactly ONE `INSERT INTO chart_vichara` call site (line 921) plus its own
+-- delete-then-insert idempotency helper `_delete_prior_vichara_rows` (line 161,
+-- `DELETE FROM chart_vichara WHERE chart_id = %s AND ayanamsha_id = %s`) — single
+-- relation, single insert, standard shape.
+--
+-- Ownership cross-check: `grep -rln chart_vichara platform/python-sidecar --include
+-- *.py` (excluding tests/pycache) finds 10 files total; the other 9
+-- (`bodha_writers/formulas.py`, `ga_writers/ga_structural_writer.py`,
+-- `services/taranga_service.py`, `pipeline/orchestrator/writers/{bo_karanajala,
+-- bo_upaya,ga_vichara,bo_laksana}.py`, `services/kala_permission/permission.py`,
+-- `services/taranga_kernel/promise.py`) were grepped for INSERT/DELETE/UPDATE
+-- against `chart_vichara` and NONE matched — all nine are read-only consumers.
+-- `ga_vichara_writer.py` confirmed sole writer.
+--
+-- ── key + value columns (verified against live DB schema + live data) ───────
+--
+-- `chart_vichara` (migration 435) has NO unique constraint beyond its own serial
+-- `id` PK — only two non-unique btree indexes exist. Unlike every other
+-- fixed-relation spec in this campaign (`ga_tajaka`/`ga_medical`/`ga_vastu`/
+-- `ga_yoga`), there is no single natural key across the whole table: querying
+-- the canonical chart (`482012f1-...`) directly shows the `valence_pass` family
+-- (7975 of 8249 total rows) genuinely repeats `(actor, target, varga_id)` keys
+-- by design — the writer's own comment (line 458) states it "tolerates multiple
+-- valence_pass rows per key from per-src-house lord_aspects duplication" (two
+-- independent code paths — lordship-derived and aspect-derived — can both
+-- produce a row for the same actor/target/varga, sometimes with different
+-- `value_jsonb.link_kind`/`signal_source`, sometimes byte-identical). Live-
+-- verified: 7975 total valence_pass rows, only 3770 distinct on
+-- `(chart_id, ayanamsha_id, actor, target, varga_id)` — no column addition
+-- removes this, it is a structural property of the family, not a missing key
+-- column.
+--
+-- This migration therefore splits `ga_vichara` into FIVE components, one per
+-- `vichara_family` value (scoped via `where_equals: {chart_id, vichara_family}`,
+-- which the validator treats as a distinct component scope per family — no
+-- collision). Four of the five families DO have a genuine, live-verified,
+-- NULL-free unique natural key on the canonical chart:
+--   * `varga_ratification`      — `(chart_id, ayanamsha_id, subject, domain)`,
+--     45 rows / 45 distinct, `domain` non-NULL on all 45 (`varga_id`/`varga`/
+--     `actor`/`target` are NULL for every row in this family per the writer
+--     source — excluded from this family's key_columns for that reason).
+--   * `varga_ratification_divergence` — adds `varga_id` to the above,
+--     `(chart_id, ayanamsha_id, subject, domain, varga_id)`, 9 rows / 9 distinct,
+--     both `domain` and `varga_id` non-NULL on all 9.
+--   * `varga_consistency`       — `(chart_id, ayanamsha_id, subject)`, 45 rows /
+--     45 distinct (`domain`/`varga_id`/`actor`/`target` NULL for every row in
+--     this family — excluded from key_columns).
+--   * `leverage_index`          — `(chart_id, ayanamsha_id, subject, domain)`,
+--     175 rows / 175 distinct (`actor`/`target`/`varga_id`/`varga` NULL for
+--     every row in this family — excluded from key_columns).
+-- All four counts independently re-verified live against `482012f1` this cycle
+-- (not assumed from writer source alone).
+--
+-- The fifth, `valence_pass`, cannot use a strict-uniqueness key (see above), so
+-- its `key_columns` instead includes EVERY column this family ever populates —
+-- `(chart_id, ayanamsha_id, vichara_family, subject, actor, target, varga_id,
+-- varga, value_num, value_text, value_jsonb, constituent_fact_ids,
+-- constituent_facts_array, formula_version, source_citation)` — live-verified
+-- NULL-free on all 7975 rows (only `domain` and `ratification_factor` are always
+-- NULL for this family, and both are correctly excluded from `key_columns` for
+-- exactly that reason — the NULL-key preflight in `compute_output_digest()`
+-- would otherwise hard-fail on every row). `compute_output_digest()`
+-- (`_component_statement`) only `ORDER BY`s on `key_columns` and streams
+-- `value_columns` as the hashed content per row — it never asserts uniqueness.
+-- Because this family's `key_columns` set is exactly `value_columns` minus the
+-- two always-NULL columns, any two rows that tie on `key_columns` are
+-- GUARANTEED to also tie on the two excluded always-NULL columns (both are
+-- constantly NULL for this family) — i.e. every tie is a content-identical tie,
+-- so PostgreSQL's unspecified tie-break order among duplicate keys cannot change
+-- the resulting digest (swapping two byte-identical row contributions leaves the
+-- concatenated hash input unchanged). This was independently confirmed by
+-- executing `_component_key_preflight` and `_component_statement` (the actual
+-- production functions, imported directly, not reimplemented) against live
+-- `482012f1` data for all five components this cycle: zero NULL-key rows found,
+-- and a full digest run completed end-to-end with row counts 7975/45/9/45/175
+-- (summing to 8249, matching the unfiltered per-family total exactly).
+--
+-- `value_columns` for every component is the same 17-column set — every column
+-- in `chart_vichara` except `id` (serial PK, `nextval(...)`, never set
+-- explicitly by the writer's INSERT column list — same hazard already confirmed
+-- on `ga_medical.id`/`ga_vastu_planet_direction_map.id`/`ga_yoga_firings.id`),
+-- `build_id` and `computed_at` (per-rebuild identifiers, not content, same
+-- rationale as every precedent migration). `domain` and `ratification_factor`
+-- are included in `value_columns` for every component even though always NULL
+-- for four of the five families — matching the established always-NULL-column
+-- precedent (`ga_yoga_firings.activation_dasha_periods`, migration 918): a
+-- column no writer ever populates is still genuine (if currently empty) row
+-- content, not a per-rebuild-changing identifier.
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914/915/916/917/918/919: a plain INSERT with no
+-- ON CONFLICT clause. `asset_output_digest_specs`'s PRIMARY KEY is the composite
+-- `(asset_id, spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a
+-- legal target. `ga_vichara` has zero existing rows in this table (confirmed at
+-- the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ───────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps` with
+-- `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then `sha256().
+-- hexdigest()`). Produced by IMPORTING the real module and calling it directly
+-- against the exact 5-component spec below; `_validate_spec('ga_vichara', spec,
+-- sha)` raised nothing (spec accepted as well-formed) and printed:
+--   099a284c7df01ee4b0e21be715c04bedaa3e820b24314223aed31c17ca0d5550
+-- Independently re-verified a second way (plain `hashlib.sha256()` over the
+-- migration's own literal JSON string, with NO import of `canonical_digest` at
+-- all) — both matched exactly.
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_vichara',
+  '099a284c7df01ee4b0e21be715c04bedaa3e820b24314223aed31c17ca0d5550',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"chart_vichara_valence_pass","relation":"chart_vichara","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","vichara_family":"valence_pass"},"key_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","varga_id","varga","value_num","value_text","value_jsonb","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"],"value_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","domain","varga_id","varga","value_num","value_text","value_jsonb","ratification_factor","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"]},{"name":"chart_vichara_varga_ratification","relation":"chart_vichara","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","vichara_family":"varga_ratification"},"key_columns":["chart_id","ayanamsha_id","vichara_family","subject","domain"],"value_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","domain","varga_id","varga","value_num","value_text","value_jsonb","ratification_factor","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"]},{"name":"chart_vichara_varga_ratification_divergence","relation":"chart_vichara","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","vichara_family":"varga_ratification_divergence"},"key_columns":["chart_id","ayanamsha_id","vichara_family","subject","domain","varga_id"],"value_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","domain","varga_id","varga","value_num","value_text","value_jsonb","ratification_factor","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"]},{"name":"chart_vichara_varga_consistency","relation":"chart_vichara","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","vichara_family":"varga_consistency"},"key_columns":["chart_id","ayanamsha_id","vichara_family","subject"],"value_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","domain","varga_id","varga","value_num","value_text","value_jsonb","ratification_factor","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"]},{"name":"chart_vichara_leverage_index","relation":"chart_vichara","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","vichara_family":"leverage_index"},"key_columns":["chart_id","ayanamsha_id","vichara_family","subject","domain"],"value_columns":["chart_id","ayanamsha_id","vichara_family","subject","actor","target","domain","varga_id","varga","value_num","value_text","value_jsonb","ratification_factor","constituent_fact_ids","constituent_facts_array","formula_version","source_citation"]}]}'::jsonb
+);
+
+COMMIT;

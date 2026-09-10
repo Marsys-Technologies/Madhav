@@ -1,0 +1,86 @@
+{
+  "bg_panchanga": {
+    "probe_type": "panchanga_engine",
+    "forensic_instant": "1984-02-05T10:43:00",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset": 330,
+    "forensic_expected": {
+      "tithi": "Shukla Tritiya",
+      "nakshatra": "Purva Bhadrapada",
+      "yoga": "Shiva",
+      "karana": "Garaja",
+      "vara": "Ravivara"
+    }
+  },
+  "bg_ephemeris_engine": {
+    "probe_type": "ephemeris_engine",
+    "forensic_jd": 2445735.717361111,
+    "expected_sun_sign": 10,
+    "expected_mean_node_rahu_sign": 2,
+    "ayanamsha": "lahiri",
+    "node_mode": "mean",
+    "allowed_ephemeris_backends": ["swiss_ephemeris_file"],
+    "ephemeris_file_sha256": {
+      "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66",
+      "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+      "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2"
+    },
+    "note": "JD = 1984-02-05 10:43 IST = 05:13 UTC. Sun in Makara; mean-node Rahu in Vrishabha under sidereal Lahiri."
+  },
+  "ka_graha_sancara": {
+    "probe_type": "graha_sancara_forensic",
+    "forensic_birth_instant": "1984-02-05T10:43:00",
+    "forensic_ayanamsha": "lahiri",
+    "forensic_expected_moon_sign": "Aquarius"
+  },
+  "ka_tulana": {
+    "probe_type": "tulana_ranking_forensic",
+    "forensic_reference_date": "2026-01-01",
+    "forensic_window_a": {
+      "window_id": "test-window-a",
+      "mode": "A",
+      "peak_date": "2026-01-01",
+      "convergence_score": 0.8,
+      "confidence_label": "high",
+      "rarity_years": 15.0
+    },
+    "forensic_window_b": {
+      "window_id": "test-window-b",
+      "mode": "A",
+      "peak_date": "2026-06-01",
+      "convergence_score": 0.5,
+      "confidence_label": "moderate",
+      "rarity_years": 5.0
+    },
+    "forensic_expected_composite_a": 0.795,
+    "forensic_expected_composite_b": 0.4234,
+    "forensic_expected_winner_window_id": "test-window-a",
+    "forensic_expected_decisive_factor": "proximity_factor"
+  },
+  "ka_dasha_kala": {
+    "probe_type": "dasha_kala_proxy_integrity",
+    "expected_systems": [
+      "vimshottari",
+      "yogini",
+      "ashtottari",
+      "chara_karaka",
+      "naisargika",
+      "mudda",
+      "kalachakra"
+    ]
+  },
+  "ka_muhurta_seva": {
+    "probe_type": "muhurta_seva_forensic",
+    "forensic_date": "1984-02-05",
+    "forensic_lat": 20.27,
+    "forensic_lon": 85.84,
+    "forensic_tz_offset_minutes": 330,
+    "forensic_event": "vivah",
+    "forensic_birth_nakshatra_id": 25,
+    "forensic_expected_tithi": "Shukla Tritiya",
+    "forensic_expected_nakshatra": "Purva Bhadrapada",
+    "forensic_expected_score_with_native": 33.0,
+    "forensic_expected_score_without_native": 28.000000000000004
+  }
+}

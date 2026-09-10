@@ -18,6 +18,7 @@ import type {
   McpSuccessEnvelope,
   McpErrorEnvelope,
   EpistemicsBlock,
+  EvidenceState,
   SynthesisAuditBlock,
   McpCitation,
   PplEntry,
@@ -47,10 +48,19 @@ export interface BuildEpistemicsBlockParams {
   surgical: boolean
   /**
    * Calibrated confidence band. Defaults to 'medium' when not explicitly set.
-   * For surgical calls (single fact lookups), 'high' is appropriate.
-   * For holistic synthesis, use 'medium' unless there is strong convergence.
+   * For surgical calls (single fact lookups) that returned rows, 'high' is
+   * appropriate. For holistic synthesis, use 'medium' unless there is strong
+   * convergence. For a result set that came back EMPTY, pass 'none' — a band
+   * grades a finding, and there is no finding to grade (F-126).
    */
-  confidence_band?: 'high' | 'medium' | 'low'
+  confidence_band?: 'high' | 'medium' | 'low' | 'none'
+  /**
+   * Evidence state of the served result, as measured by
+   * `lib/mcp/evidence_state.ts#detectEvidenceState`. Omit where nothing measured
+   * the result — the field is then absent rather than defaulted (§N.7 item 6:
+   * an honest null beats an invented judgment).
+   */
+  evidence_state?: EvidenceState
   /**
    * Prediction horizon in days. Set for predictive answers; null otherwise.
    */
@@ -68,6 +78,7 @@ export function buildEpistemicsBlock(params: BuildEpistemicsBlockParams): Episte
   return {
     surgical: params.surgical,
     confidence_band: params.confidence_band ?? 'medium',
+    ...(params.evidence_state ? { evidence_state: params.evidence_state } : {}),
     horizon_days: params.horizon_days ?? null,
     falsifier: params.falsifier ?? null,
   }

@@ -16,7 +16,8 @@ Sources:
   SS   = Saravali by Kalyana Varma
   UK   = Uttara Kalamrita by Kalidasa
 
-Volume: 9 engine rows + ~55 rule rows + 27 moorti rows.
+Volume: 9 engine rows + 68 writer-owned rule rows + 7 retained migration-owned
+double-transit rule rows + 27 moorti rows.
 
 Gate: Transit/Gochara Subsystem Gate-1
 """
@@ -35,6 +36,15 @@ BPHS_CH22 = "BPHS Ch.22 (Graha Gati — Planetary Motion)"
 PD_CH26   = "Phaladeepika Ch.26 (Gochara Vedha and Transit Phala)"
 SS_CH12   = "Saravali Ch.12 (Gochara Phala adhyaya)"
 UK_CH4    = "Uttara Kalamrita Ch.4 (Graha Bala — Gochara context)"
+
+# F-145: Venus unfavourable houses 6/7/10 — verified directly against the ingested
+# classical-text corpus (read_classical_text / find_verses_about), not cited secondhand.
+# Phaladeepika Adh. XXVI Slokas 2, 8 & 21 establish Venus transit unfavourable at 6th,
+# 7th, 10th from the Moon (and favourable at all other houses, including 11th/12th,
+# which BG_TRANSIT_RULES already carries as favourable — ids 179/180). Owner-ruled
+# 2026-08-22; do NOT cite "BPHS Ch.29" for these three rows — that citation could not
+# be verified against the corpus for this content.
+PD_ADH26_S2_8_21 = "Phaladeepika Adh. XXVI, Slokas 2, 8 & 21 (Gochara — Sastri trans. 1950)"
 
 # ── §1 — BG_TRANSIT_ENGINE: Graha average motion parameters ──────────────────
 #
@@ -496,6 +506,36 @@ BG_TRANSIT_RULES: list[dict[str, Any]] = [
         "classical_citation": BPHS_CH29,
         "rule_notes": "Venus 12th from Moon; vedha from 6th",
     },
+    # F-145: Venus unfavourable set (6th/7th/10th from Moon) — the writer previously
+    # emitted zero Venus unfavourable rows at all, a real coverage gap. Verified against
+    # the corpus (Phaladeepika Adh. XXVI, Slokas 2, 8 & 21); owner-ruled 2026-08-22.
+    {
+        "rule_type": "unfavourable",
+        "graha": "venus",
+        "primary_house": 6,
+        "vedha_house": None,
+        "phala": "Mishap; disputes and ill-health",
+        "classical_citation": PD_ADH26_S2_8_21,
+        "rule_notes": "Venus 6th from Moon — unfavourable transit",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "venus",
+        "primary_house": 7,
+        "vedha_house": None,
+        "phala": "Trouble to wife; marital and partnership stress",
+        "classical_citation": PD_ADH26_S2_8_21,
+        "rule_notes": "Venus 7th from Moon — unfavourable despite Venus being karaka of 7th",
+    },
+    {
+        "rule_type": "unfavourable",
+        "graha": "venus",
+        "primary_house": 10,
+        "vedha_house": None,
+        "phala": "Quarrel; professional friction",
+        "classical_citation": PD_ADH26_S2_8_21,
+        "rule_notes": "Venus 10th from Moon — unfavourable transit",
+    },
     # ── SATURN (Shani) Gochara — BPHS Ch.29 ─────────────────────────────────
     {
         "rule_type": "favourable",
@@ -777,6 +817,66 @@ BG_TRANSIT_MOORTI: list[dict[str, Any]] = [
 ]
 
 
+# ── F-145 — writer-owned category reconciliation ─────────────────────────────
+#
+# bg_transit_rules.id is SERIAL and gochara_resonance_map.source_rule_id FK-references
+# it (migration 459) — a blanket delete-then-reinsert would renumber ids and silently
+# corrupt live citations (see the seed_transit_rules docstring/comment below). The
+# ruled design instead scopes retirement to rows the writer actually OWNS: rows whose
+# (rule_type, graha) both appear somewhere in BG_TRANSIT_RULES today. Anything outside
+# that — migration 397's 7 `double_transit` rows (title-case 'Jupiter'/'Saturn'), and
+# any future 'vedha' rule_type row, since this writer has never emitted one — is
+# structurally excluded from the SQL WHERE clause in `_owned_row_filter`, not merely
+# protected by a `lower()` coincidence: the ownership match below is deliberately
+# case-sensitive, against the literal graha/rule_type strings BG_TRANSIT_RULES itself
+# uses (always lowercase, by writer convention). A row belongs to this sweep only if
+# it matches one of those literal values exactly.
+
+
+def _owned_categories(rules: list[dict[str, Any]]) -> tuple[set[str], set[str]]:
+    """Compute the (rule_type, graha) categories this writer owns, from the source list.
+
+    Never hardcode this set — it must always be derived from `rules`
+    (normally `BG_TRANSIT_RULES`) so the ownership boundary tracks the writer's actual
+    output as it grows, rather than drifting behind it.
+    """
+    owned_types = {r["rule_type"] for r in rules}
+    owned_grahas = {r["graha"] for r in rules}
+    return owned_types, owned_grahas
+
+
+def compute_stale_rule_ids(
+    rules: list[dict[str, Any]],
+    owned_db_rows: list[dict[str, Any]],
+) -> list[int]:
+    """
+    Pure reconciliation logic (F-145). Given the writer's current source-of-truth
+    `rules` (normally `BG_TRANSIT_RULES`) and the DB's current rows **already scoped**
+    to the writer's owned categories (see `_owned_categories` — this function does not
+    re-derive ownership from row shape), return the `id`s of rows whose
+    `(graha, rule_type, primary_house)` key is absent from `rules` and should be
+    retired.
+
+    `owned_db_rows` must be dict-shaped rows with keys `id`, `graha`, `rule_type`,
+    `primary_house` — the same shape `cur.fetchall()` returns on the orchestrator's
+    connection, which is opened via `pipeline.orchestrator.db.connect()` with
+    `row_factory=psycopg.rows.dict_row` (see `db.py`). A `seed_transit_rules` cursor
+    inherits that connection-level row_factory, so its `SELECT id, graha, rule_type,
+    primary_house FROM bg_transit_rules ...` rows arrive as dicts, never plain tuples
+    — unpacking them as a 4-tuple would silently bind `row_id` to the literal string
+    `"id"` (iterating the dict's keys) instead of the integer id, and the follow-on
+    `DELETE FROM bg_transit_rules WHERE id = %s` would then crash with
+    `invalid input syntax for type integer: "id"` (F-145 followup). Callers must
+    never pass migration-owned or otherwise unowned rows into this function.
+    """
+    current_keys = {(r["graha"], r["rule_type"], r["primary_house"]) for r in rules}
+    return [
+        row["id"]
+        for row in owned_db_rows
+        if (row["graha"], row["rule_type"], row["primary_house"]) not in current_keys
+    ]
+
+
 def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     """
     Seed bg_transit_engine, bg_transit_rules, and bg_transit_moorti reference tables.
@@ -789,6 +889,7 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
         return {
             "bg_transit_engine": len(BG_TRANSIT_ENGINE),
             "bg_transit_rules": len(BG_TRANSIT_RULES),
+            "bg_transit_rules_retired": 0,
             "bg_transit_moorti": len(BG_TRANSIT_MOORTI),
             "total": len(BG_TRANSIT_ENGINE) + len(BG_TRANSIT_RULES) + len(BG_TRANSIT_MOORTI),
         }
@@ -857,6 +958,63 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
         )
         rules_count += 1
 
+    # ── F-145: retire stale rows in owned categories, absent from BG_TRANSIT_RULES ──
+    # Scoped strictly to (rule_type, graha) pairs the writer owns (see `_owned_categories`
+    # docstring above) — migration-owned rows (double_transit, title-case Jupiter/Saturn)
+    # and the never-emitted 'vedha' rule_type never match this WHERE clause, so they are
+    # never even fetched as candidates, let alone deleted. Safe because a genuinely
+    # FK-referenced row (gochara_resonance_map.source_rule_id → bg_transit_rules.id,
+    # migration 459) will raise loudly rather than being silently dropped — the same
+    # design the :798 comment above documents for why delete-then-insert was removed.
+    owned_types, owned_grahas = _owned_categories(BG_TRANSIT_RULES)
+    retired_ids: list[int] = []
+    if owned_types and owned_grahas:
+        cur.execute(
+            """
+            SELECT id, graha, rule_type, primary_house
+            FROM bg_transit_rules
+            WHERE rule_type = ANY(%s) AND graha = ANY(%s)
+            """,
+            (sorted(owned_types), sorted(owned_grahas)),
+        )
+        retired_ids = compute_stale_rule_ids(BG_TRANSIT_RULES, cur.fetchall())
+        for stale_id in retired_ids:
+            cur.execute("DELETE FROM bg_transit_rules WHERE id = %s", (stale_id,))
+        if retired_ids:
+            logger.warning(
+                "[transit] F-145 reconciliation: retired %d stale bg_transit_rules "
+                "row(s) absent from BG_TRANSIT_RULES source-of-truth (owned "
+                "categories only) — ids=%s",
+                len(retired_ids), retired_ids,
+            )
+
+    # ── F-145: freshness assertion ────────────────────────────────────────────────
+    # Detects silent re-accretion of stray rows in owned categories on future runs —
+    # without this the cleanup above is a one-time fix, not a standing detector
+    # (CLAUDE.md §N.8: a signal without a real, currently-running check is null).
+    if owned_types and owned_grahas:
+        cur.execute(
+            "SELECT COUNT(*) AS owned_row_count FROM bg_transit_rules "
+            "WHERE rule_type = ANY(%s) AND graha = ANY(%s)",
+            (sorted(owned_types), sorted(owned_grahas)),
+        )
+        # `cur` inherits the connection's dict_row row_factory (see db.py / the
+        # compute_stale_rule_ids docstring above) — `cur.fetchone()` returns a dict,
+        # not a 1-tuple. `(owned_row_count,) = cur.fetchone()` would silently unpack
+        # to the dict's sole KEY ("count"/"owned_row_count", a string) rather than
+        # the count value, making this comparison always-true and this warning fire
+        # on every single build (the same defect class as compute_stale_rule_ids,
+        # F-145 followup).
+        owned_row_count = cur.fetchone()["owned_row_count"]
+        if owned_row_count != len(BG_TRANSIT_RULES):
+            logger.warning(
+                "[transit] F-145 freshness check failed: bg_transit_rules owned-category "
+                "row count is %d, expected %d (len(BG_TRANSIT_RULES)) — possible silent "
+                "re-accretion of stray rows, or a retirement blocked by an FK reference; "
+                "investigate before trusting this build",
+                owned_row_count, len(BG_TRANSIT_RULES),
+            )
+
     # ── Insert bg_transit_moorti rows (BA-P7A) ───────────────────────────────────
     moorti_count = 0
     for row in BG_TRANSIT_MOORTI:
@@ -889,6 +1047,7 @@ def seed_transit_rules(conn, *, dry_run: bool = False) -> dict[str, int]:
     return {
         "bg_transit_engine": engine_count,
         "bg_transit_rules": rules_count,
+        "bg_transit_rules_retired": len(retired_ids),
         "bg_transit_moorti": moorti_count,
         "total": engine_count + rules_count + moorti_count,
     }

@@ -66,6 +66,14 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       const fromChandra = bhavaCondition['from_chandra'] as Record<string, unknown> | null
       expect(fromChandra, 'Sudarshana from-Moon resolution must be present').toBeTruthy()
       expect(fromChandra!['sign']).toBeTruthy()
+      // F-159: the key is always present (structural), even if the cross-ayanamsha read itself
+      // came back null (e.g. real-ayanamsha rows missing) — never silently absent.
+      expect('ayanamsha_frame_sensitivity' in fromChandra!).toBe(true)
+      const sensitivity = fromChandra!['ayanamsha_frame_sensitivity'] as Record<string, unknown> | null
+      if (sensitivity !== null) {
+        expect(['ayanamsha_sensitive', 'stable_across_ayanamsha', null]).toContain(sensitivity['frame_sensitivity_class'])
+        expect(sensitivity['variation']).toBeTruthy()
+      }
 
       const bhaveshaCondition = checklist['bhavesha_condition'] as Record<string, unknown>
       const lordLagna = bhaveshaCondition['from_lagna'] as Record<string, unknown>
@@ -110,7 +118,14 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(receipt['from_moon']).toBe(true)        // Sudarshana leg completed
       expect(typeof receipt['varga_confirmed']).toBe('string')
       expect(typeof receipt['yogas_checked']).toBe('number')
-      expect(receipt['bhanga_checked']).toBe(false)  // honest gap (D3 unbuilt) — never fabricated
+      // F-166c/A3-R-3 (2026-08-22): this assertion was stale — bhanga_checked was `false`
+      // when this test was written (D3 near-miss detection unbuilt), but A3/R-3 later wired
+      // ga_yoga_firings.bhanga_active into the verdict's yoga_term, so
+      // register_d9_judgment.ts:1263 now honestly reports `true` unconditionally (it is
+      // never fabricated — see that line's own comment). This is the first time this
+      // integration file has ever run in CI (F-166c: it was gated on INTEGRATION=true with
+      // no workflow ever setting it), so the drift went undetected until now.
+      expect(receipt['bhanga_checked']).toBe(true)
       expect(receipt['timing_anchored']).toBe(true)
 
       // ── grounding — real fact_id references back to chart_facts (§N.5) ──
@@ -134,7 +149,12 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
       expect(kp).toBeTruthy()
       expect(Array.isArray(kp['cusps'])).toBe(true)
       // wealth → KP cusps 2 + 11 (MC-031)
-      const kpHouses = (kp['cusps'] as Record<string, unknown>[]).map(c => c['house']).sort()
+      // F-166c (2026-08-22): bare `.sort()` compares elements as strings, so [2, 11] sorted
+      // to [11, 2] ('1' < '2' lexically) — a pre-existing test bug, invisible until this file
+      // ran in CI for the first time (F-166c). Numeric comparator fixes it.
+      const kpHouses = (kp['cusps'] as Record<string, unknown>[])
+        .map(c => c['house'] as number)
+        .sort((a, b) => a - b)
       expect(kpHouses).toEqual([2, 11])
       const gochara = checklist['gochara_sweep'] as Record<string, unknown>
       expect(gochara).toBeTruthy()
@@ -224,6 +244,65 @@ describeIf('judgment_query (marsys://tool/L-JUDGMENT/judgment_query) — live DB
         // the served data must not contradict the score it's supposed to justify.
         expect(bearingYogas.some(y => y['domain_match'] === true)).toBe(true)
       }
+    })
+
+    // ── F-57 (PARIŚEṢA-V4): domain-vocabulary resolution ────────────────────────────
+    // Before the fix, education/progeny/residence (plus family/general/transition/travel)
+    // carried `signal_domain: 'other'` — a literal absent from every downstream vocabulary
+    // (bodha_msr_signals.domains_affected_array, bodha_mechanisms.domains_affected_array,
+    // brahma_event_ontology.domain). Every domain-scoped leg therefore returned a
+    // structural zero which the response then served as an honest-looking empty.
+    for (const domain of ['education', 'progeny', 'residence'] as const) {
+      it(`[${chartId}] ${domain}: domain-scoped legs query the domain itself, never 'other'`, async () => {
+        const result = await handler()({ chart_id: chartId, domain })
+        expect(result.is_error).toBe(false)
+        const content = result.content as Record<string, unknown>
+
+        const resolution = content['domain_resolution'] as Record<string, unknown>
+        expect(resolution, 'domain_resolution disclosure must be served').toBeTruthy()
+        expect(resolution['requested']).toBe(domain)
+        expect(resolution['resolved_signal_domain']).toBe(domain)
+        expect(resolution['is_exact']).toBe(true)
+        expect(resolution['is_canonical']).toBe(true)
+
+        const gochara = (content['checklist'] as Record<string, unknown>)['gochara_sweep'] as Record<string, unknown>
+        expect(gochara['domain'], "gochara sweep must not fall back to 'other'").toBe(domain)
+
+        // An exact resolution never emits an aliasing/fallback disclosure.
+        const flags = (content['judgment_flags'] as Array<Record<string, unknown>>) ?? []
+        const codes = flags.map(f => f['code'])
+        expect(codes).not.toContain('domain_resolution_aliased')
+        expect(codes).not.toContain('domain_resolution_fallback')
+      })
+    }
+
+    it(`[${chartId}] marriage: an aliased domain resolution is DISCLOSED, not silent`, async () => {
+      const result = await handler()({ chart_id: chartId, domain: 'marriage' })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const resolution = content['domain_resolution'] as Record<string, unknown>
+      // 'marriage' is not a canonical member; the canonical vocabulary maps it to
+      // 'relationship'. That is a real mapping, not the F-57 defect — but it must be stated.
+      expect(resolution['requested']).toBe('marriage')
+      expect(resolution['resolved_signal_domain']).toBe('relationship')
+      expect(resolution['is_exact']).toBe(false)
+      expect(resolution['is_canonical']).toBe(true)
+      const codes = ((content['judgment_flags'] as Array<Record<string, unknown>>) ?? []).map(f => f['code'])
+      expect(codes).toContain('domain_resolution_aliased')
+    })
+
+    it(`[${chartId}] bare bhava 3 (no canonical domain) discloses its fallback bucket`, async () => {
+      // Bhāva 3 (parākrama/siblings) genuinely has no canonical-vocabulary member. This is
+      // the ONE case where a fallback is correct — so it must be visible, per S4-05.
+      const result = await handler()({ chart_id: chartId, bhava: 3 })
+      expect(result.is_error).toBe(false)
+      const content = result.content as Record<string, unknown>
+      const resolution = content['domain_resolution'] as Record<string, unknown>
+      expect(resolution['requested']).toBeNull()
+      expect(resolution['requested_bhava']).toBe(3)
+      expect(resolution['is_canonical'], 'the fallback bucket must still be a real tag').toBe(true)
+      const codes = ((content['judgment_flags'] as Array<Record<string, unknown>>) ?? []).map(f => f['code'])
+      expect(codes).toContain('domain_resolution_fallback')
     })
   }
 })

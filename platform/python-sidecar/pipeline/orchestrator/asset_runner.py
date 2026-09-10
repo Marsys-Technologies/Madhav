@@ -7,12 +7,15 @@ downstream stale marking.
 """
 from __future__ import annotations
 
+import ast
 import hashlib
+import json
 import logging
 import os
-import subprocess
 import threading
 import traceback
+from datetime import datetime, timezone
+from pathlib import Path
 
 import psycopg
 
@@ -41,7 +44,12 @@ _stale_mark_lock = threading.Lock()
 _DEP_ASSERT_MODE = os.environ.get("ORCHESTRATOR_DEP_ASSERT", "enforce").lower()
 
 
-def deps_unsatisfied(cur, chart_id, asset_id: str) -> list[str]:
+def deps_unsatisfied(
+    cur,
+    chart_id,
+    asset_id: str,
+    declared_deps: list[str] | None = None,
+) -> list[str]:
     """Return the list of this asset's declared deps that are NOT satisfied for the
     target scope, as 'dep(state)' strings. Empty list = all deps ready.
 
@@ -50,42 +58,58 @@ def deps_unsatisfied(cur, chart_id, asset_id: str) -> list[str]:
     A service dep (asset_kind/type='service') has no data rows and is never 'lit';
     it is satisfied unless explicitly in 'error'.
     """
-    cur.execute(
-        "SELECT COALESCE(depends_on, '{}') AS deps FROM asset_registry WHERE asset_id = %s",
-        (asset_id,),
-    )
-    row = cur.fetchone()
-    # Defensive: a real dict_row has 'deps'; if the cursor can't resolve it (no row,
-    # or a context that doesn't answer this query), treat as "no deps to verify" — the
-    # assertion is a backstop, it must never crash the writer path.
-    deps = list(row.get("deps") or []) if isinstance(row, dict) else []
+    if declared_deps is None:
+        cur.execute(
+            "SELECT COALESCE(depends_on, '{}') AS deps FROM asset_registry WHERE asset_id = %s",
+            (asset_id,),
+        )
+        row = cur.fetchone()
+        # Legacy/unit callers may omit frozen deps. Production F0 runs always
+        # supply the digest-verified manifest list from runner.py.
+        deps = list(row.get("deps") or []) if isinstance(row, dict) else []
+    else:
+        deps = list(declared_deps)
     if not deps:
         return []
     cur.execute(
         """
-        SELECT r.asset_id,
-               COALESCE(r.asset_kind, r.asset_type) AS kind,
-               t.state
-        FROM asset_registry r
+        SELECT dep.asset_id, reg.asset_kind, t.state, f.freshness_state
+        FROM unnest(%s::text[]) AS dep(asset_id)
+        LEFT JOIN asset_registry reg ON reg.asset_id = dep.asset_id
         LEFT JOIN LATERAL (
             SELECT state FROM asset_throughput at
-            WHERE at.asset_id = r.asset_id
-              AND (CASE WHEN r.scope = 'global' THEN at.chart_id IS NULL
-                        ELSE at.chart_id = %s END)
+            WHERE at.asset_id = dep.asset_id
+              AND (at.chart_id IS NOT DISTINCT FROM %s OR at.chart_id IS NULL)
+            ORDER BY (at.chart_id IS NOT DISTINCT FROM %s) DESC, at.last_built_at DESC NULLS LAST
             LIMIT 1
         ) t ON true
-        WHERE r.asset_id = ANY(%s)
+        LEFT JOIN LATERAL (
+            SELECT freshness_state FROM asset_freshness af
+            WHERE af.asset_id = dep.asset_id
+              AND (af.chart_id IS NOT DISTINCT FROM %s OR af.chart_id IS NULL)
+            ORDER BY (af.chart_id IS NOT DISTINCT FROM %s) DESC, af.observed_at DESC
+            LIMIT 1
+        ) f ON true
         """,
-        (chart_id, deps),
+        (deps, chart_id, chart_id, chart_id, chart_id),
     )
     bad: list[str] = []
     for d in cur.fetchall():
         state = d["state"]
-        if d["kind"] == "service":
-            if state == "error":
-                bad.append(f"{d['asset_id']}(service:error)")
-        elif state != "lit":
+        freshness = d["freshness_state"]
+        if state not in ("lit", "service_ok"):
             bad.append(f"{d['asset_id']}({state or 'absent'})")
+        elif d["asset_kind"] == "service":
+            # A service dependency has no data table and therefore no
+            # data-freshness receipt; its readiness IS a current GREEN probe,
+            # surfaced as state='service_ok' (P0 established probe-as-detector;
+            # the frozen manifest assigns services probe obligations). Requiring
+            # a data-freshness 'fresh' receipt of a service is a category error --
+            # 'service_ok' is what "lit" means for a service. (D-VR-DATA-CORRECTNESS
+            # §3.5 service-dependency exception.)
+            continue
+        elif freshness != "fresh":
+            bad.append(f"{d['asset_id']}(receipt:{freshness or 'absent'})")
     return bad
 
 
@@ -111,13 +135,135 @@ def compute_downstream_closure(cur, asset_id: str) -> list[str]:
 
 # ── Hash helpers ──────────────────────────────────────────────────────────────
 
-def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
+_UPSTREAM_HASH_VERSION = "nirmana-upstream-v1"
+_WRITER_HASH_VERSION = b"nirmana-writer-source-v1\\0"
+_REPO_ROOT = Path(__file__).resolve().parents[4]
+_SIDECAR_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _canonical_timestamp(value: object) -> str | None:
+    """Return a timezone-stable timestamp representation for a provenance digest."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    return str(value)
+
+
+def canonical_upstream_hash(
+    asset_id: str,
+    chart_id: str | None,
+    upstreams: list[dict[str, object]],
+) -> str:
+    """Hash the exact, sorted upstream build receipts used by one asset execution."""
+    payload = {
+        "version": _UPSTREAM_HASH_VERSION,
+        "asset_id": asset_id,
+        # chart_id can arrive as a native uuid.UUID (psycopg3's default column
+        # adapter for a `uuid` column), which json.dumps cannot serialize --
+        # coerce explicitly rather than crash (Nirmana #1856). str(chart_id) is
+        # a no-op for the already-str case, so no existing digest changes.
+        "chart_id": str(chart_id) if chart_id is not None else None,
+        "upstreams": [
+            {"asset_id": str(row["asset_id"]), "last_built_at": _canonical_timestamp(row.get("last_built_at"))}
+            for row in sorted(upstreams, key=lambda row: str(row["asset_id"]))
+        ],
+    }
+    encoded = json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def load_upstream_receipts(cur, declared_deps: list[str], chart_id: str | None) -> list[dict[str, object]]:
+    """Load exact, scoped successful receipts without consulting mutable DAG metadata.
+
+    Also carries each dependency's live `asset_kind`/`service_health` (asset
+    identity + current health, not a DAG edge) so `compute_upstream_hash` can
+    apply the §7.2 service-dependency accommodation without a second query.
+    """
+    if not declared_deps:
+        return []
+    cur.execute(
+        """
+        SELECT dep.asset_id, p.receipt_version, p.code_digest, p.config_digest,
+               p.upstream_digest, p.partition_digest, p.output_digest,
+               p.receipt_state, p.observed_at,
+               reg.asset_kind, reg.service_health
+        FROM unnest(%s::text[]) AS dep(asset_id)
+        LEFT JOIN asset_registry reg ON reg.asset_id = dep.asset_id
+        LEFT JOIN LATERAL (
+            SELECT receipt_version, code_digest, config_digest, upstream_digest,
+                   partition_digest, output_digest, receipt_state, observed_at
+              FROM asset_provenance_receipts apr
+             WHERE apr.asset_id = dep.asset_id
+               AND (apr.chart_id IS NOT DISTINCT FROM %s OR apr.chart_id IS NULL)
+             ORDER BY (apr.chart_id IS NOT DISTINCT FROM %s) DESC, apr.observed_at DESC
+             LIMIT 1
+        ) p ON true
+        ORDER BY dep.asset_id
+        """,
+        (declared_deps, chart_id, chart_id),
+    )
+    return [dict(row) for row in cur.fetchall()]
+
+
+def compute_upstream_hash(
+    cur,
+    asset_id: str,
+    chart_id: str | None,
+    declared_deps: list[str] | None = None,
+) -> str | None:
+    """Return a reproducible digest of this execution's actual scoped upstream receipts.
+
+    §7.2 service-dependency accommodation (D-NATIVE-07, 2026-09-07): a healthy
+    service dependency has no relational output for `output_digest_spec` to
+    describe, so its own receipt can never reach `receipt_state='proven'` via
+    that requirement alone -- that is a structural property of being a service,
+    not evidence the dependency is actually unverified. For such a dependency
+    ONLY, this accepts its already-real, already-persisted `output_digest`
+    (the probe-result digest `_persist_probe_receipt` writes) without also
+    requiring `receipt_state == 'proven'`, verified fresh here against the live
+    `asset_registry.service_health` column -- never trusted from the
+    dependency's own possibly-stale/unknown receipt, and never a fabricated
+    stand-in digest. A data dependency, or a service that has never been
+    probed GREEN (no `output_digest` at all), is unaffected: it still requires
+    a genuinely proven receipt.
+    """
+    if declared_deps is not None:
+        from .provenance import canonical_digest
+        receipts = load_upstream_receipts(cur, declared_deps, chart_id)
+        if len(receipts) != len(declared_deps):
+            return None
+        for row in receipts:
+            if not row.get("output_digest"):
+                return None
+            if row.get("receipt_state") == "proven":
+                continue
+            if row.get("asset_kind") != "service" or row.get("service_health") != "healthy":
+                return None
+        return canonical_digest({
+            "version": "nirmana-upstream-receipts-v2",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "receipts": [
+                {key: value for key, value in row.items() if key not in ("asset_kind", "service_health")}
+                for row in receipts
+            ],
+        })
     cur.execute(
         """
         SELECT ar.asset_id, t.last_built_at
         FROM asset_registry ar
-        LEFT JOIN asset_throughput t
-          ON t.asset_id = ar.asset_id AND t.chart_id IS NOT DISTINCT FROM %s
+        LEFT JOIN LATERAL (
+            SELECT at.last_built_at
+            FROM asset_throughput at
+            WHERE at.asset_id = ar.asset_id
+              AND (CASE WHEN ar.scope = 'global' THEN at.chart_id IS NULL
+                        ELSE at.chart_id = %s END)
+            ORDER BY at.last_built_at DESC NULLS LAST
+            LIMIT 1
+        ) t ON true
         WHERE ar.asset_id = ANY(
             SELECT unnest(depends_on) FROM asset_registry WHERE asset_id = %s
         )
@@ -125,8 +271,7 @@ def compute_upstream_hash(cur, asset_id: str, chart_id: str) -> str:
         """,
         (chart_id, asset_id),
     )
-    payload = "|".join(f"{r['asset_id']}:{r['last_built_at']}" for r in cur.fetchall())
-    return hashlib.sha256(payload.encode()).hexdigest()[:16]
+    return canonical_upstream_hash(asset_id, chart_id, cur.fetchall())
 
 
 def _writer_source_paths(asset_id: str) -> list[str]:
@@ -140,6 +285,9 @@ def _writer_source_paths(asset_id: str) -> list[str]:
          (GA adapters set this to their ga_writers/ module);
       2. else the registered class's own module file (inspect.getfile);
       3. else fall back to the legacy convention.
+
+    `_writer_source_files` extends these roots through local Python imports, so
+    delegated implementation files are part of the provenance receipt too.
     """
     import inspect
 
@@ -157,16 +305,167 @@ def _writer_source_paths(asset_id: str) -> list[str]:
     return [f"platform/python-sidecar/pipeline/orchestrator/writers/{asset_id.replace('.', '/')}.py"]
 
 
-def get_writer_git_hash(asset_id: str) -> str:
-    paths = _writer_source_paths(asset_id)
+def _local_module_path(module: str) -> Path | None:
+    """Resolve an in-repo sidecar module without importing or executing it."""
+    if not module:
+        return None
+    relative = Path(*module.split("."))
+    module_file = _SIDECAR_ROOT / relative.with_suffix(".py")
+    package_init = _SIDECAR_ROOT / relative / "__init__.py"
+    if module_file.is_file():
+        return module_file
+    if package_init.is_file():
+        return package_init
+    return None
+
+
+def _module_name_for_path(path: Path) -> str | None:
     try:
-        result = subprocess.run(
-            ["git", "log", "-1", "--format=%H", "--", *paths],
-            capture_output=True, text=True, timeout=2,
-        )
-        return result.stdout.strip()[:16] if result.returncode == 0 else "unknown"
+        relative = path.resolve().relative_to(_SIDECAR_ROOT)
+    except ValueError:
+        return None
+    if relative.suffix != ".py":
+        return None
+    parts = list(relative.with_suffix("").parts)
+    if parts[-1] == "__init__":
+        parts.pop()
+    return ".".join(parts) or None
+
+
+def _local_import_files(path: Path) -> list[Path]:
+    """Statically resolve direct local Python imports from one implementation file."""
+    module_name = _module_name_for_path(path)
+    if module_name is None:
+        return []
+    package = module_name if path.name == "__init__.py" else module_name.rpartition(".")[0]
+    try:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    except (OSError, SyntaxError, UnicodeDecodeError):
+        return []
+
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                package_parts = package.split(".") if package else []
+                base_parts = package_parts[:len(package_parts) - node.level + 1]
+                if not base_parts:
+                    continue
+                base = ".".join(base_parts)
+                target = f"{base}.{node.module}" if node.module else base
+            else:
+                target = node.module or ""
+            if target:
+                imports.add(target)
+                imports.update(f"{target}.{alias.name}" for alias in node.names)
+
+    return [resolved for module in sorted(imports) if (resolved := _local_module_path(module)) is not None]
+
+
+def _writer_source_files(paths: list[str]) -> list[tuple[str, bytes]]:
+    """Load declared source plus its local implementation closure deterministically."""
+    files: list[Path] = []
+    for raw_path in paths:
+        source_path = Path(raw_path)
+        resolved = source_path if source_path.is_absolute() else _REPO_ROOT / source_path
+        if resolved.is_file():
+            files.append(resolved)
+        elif resolved.is_dir():
+            files.extend(path for path in resolved.rglob("*.py") if path.is_file() and "tests" not in path.parts)
+        else:
+            raise RuntimeError(f"writer source path is unavailable: {raw_path}")
+
+    seen: set[Path] = set()
+    pending = sorted(files, key=lambda item: item.as_posix())
+    resolved_files: list[Path] = []
+    while pending:
+        path = pending.pop(0)
+        resolved = path.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        resolved_files.append(resolved)
+        pending.extend(_local_import_files(resolved))
+
+    out: list[tuple[str, bytes]] = []
+    for resolved in sorted(resolved_files, key=lambda item: item.as_posix()):
+        try:
+            rel = resolved.relative_to(_REPO_ROOT).as_posix()
+        except ValueError:
+            rel = resolved.as_posix()
+        out.append((rel, resolved.read_bytes()))
+    if not out:
+        raise RuntimeError("writer has no declared source files")
+    return out
+
+
+def get_writer_source_hash(asset_id: str) -> str:
+    """Return a content hash of the concrete writer source used by an execution."""
+    digest = hashlib.sha256(_WRITER_HASH_VERSION)
+    for path, content in _writer_source_files(_writer_source_paths(asset_id)):
+        encoded_path = path.encode("utf-8")
+        digest.update(len(encoded_path).to_bytes(8, "big"))
+        digest.update(encoded_path)
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def get_probe_source_hash() -> str:
+    """Hash the generic probe implementation used when no asset writer exists."""
+    from pipeline.orchestrator import service_probes
+    digest = hashlib.sha256(b"nirmana-probe-source-v1\0")
+    for path in sorted((Path(__file__).resolve(), Path(service_probes.__file__).resolve())):
+        content = path.read_bytes()
+        digest.update(path.name.encode("utf-8"))
+        digest.update(len(content).to_bytes(8, "big"))
+        digest.update(content)
+    return digest.hexdigest()
+
+
+def _persist_probe_receipt(
+    cur,
+    *,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    declared_deps: list[str] | None,
+    natural_key_partition: str | None,
+    has_cowriters: bool | None,
+    probe_config: dict[str, object],
+    result_message: str,
+) -> None:
+    """Persist a GREEN probe as evidence in the caller's success transaction."""
+    from .provenance import canonical_digest, capture_and_persist_receipt
+    deps = declared_deps or []
+    upstream_receipts = load_upstream_receipts(cur, deps, chart_id)
+    upstream_digest = compute_upstream_hash(cur, asset_id, chart_id, declared_deps)
+    try:
+        code_digest = get_writer_source_hash(asset_id)
     except Exception:
-        return "unknown"
+        code_digest = get_probe_source_hash()
+    capture_and_persist_receipt(
+        cur,
+        asset_id=asset_id,
+        chart_id=chart_id,
+        build_id=run_id,
+        code_digest=code_digest,
+        config=probe_config,
+        upstream_digest=upstream_digest,
+        upstream_receipts=upstream_receipts,
+        output_digest=canonical_digest({
+            "version": "nirmana-probe-output-v1",
+            "asset_id": asset_id,
+            "chart_id": chart_id,
+            "run_id": run_id,
+            "status": "GREEN",
+            "message": result_message,
+        }),
+        partition_declaration=natural_key_partition,
+        has_cowriters=has_cowriters,
+    )
 
 
 # ── Data-presence probe (D-1.6 state-write defect fix) ───────────────────────
@@ -313,6 +612,9 @@ def _run_service_health_probe(
     chart_id: str,
     asset_id: str,
     health_probe: dict | None,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
 ) -> None:
     """
     Execute the health probe for a service asset (storage_type='service').
@@ -351,6 +653,22 @@ def _run_service_health_probe(
                WHERE asset_id = %s""",
             (asset_id,),
         )
+        try:
+            _persist_probe_receipt(
+                cur,
+                run_id=run_id,
+                chart_id=chart_id,
+                asset_id=asset_id,
+                declared_deps=declared_deps,
+                natural_key_partition=natural_key_partition,
+                has_cowriters=has_cowriters,
+                probe_config={"health_probe": health_probe},
+                result_message=message,
+            )
+        except Exception as exc:
+            conn.rollback()
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            return
         conn.commit()
         emit_event({
             "type": "asset.state_change",
@@ -395,6 +713,7 @@ def _drive_substeps(
     writer: WriterBase,
     ctx: ContextSpec,
     completed_keys: set[str] | None = None,
+    defer_commits: bool = False,
 ) -> tuple[int, int]:
     """
     Drive a writer's sub-steps, each as its own SAVEPOINT + heartbeat + commit.
@@ -407,7 +726,9 @@ def _drive_substeps(
       marks the asset errored) — prior committed sub-steps stay durable.
     - After each successful sub-step: refresh `asset_throughput.last_built_at`
       (the reaper heartbeat — see watchdog/route.ts) + cumulative `rows_written`,
-      commit, and emit an `asset.substep` event (granular SSE).
+      commit, and emit an `asset.substep` event (granular SSE). When
+      `defer_commits` is true, every sub-step remains in the caller's transaction
+      so post-write integrity and provenance can gate the complete output.
     - `completed_keys` (optional) lets a resumed run SKIP already-finished chunks;
       omitted on a fresh run, where writer idempotency (replace-not-accrete,
       scoped to `step.key`) makes an accidental re-run safe anyway.
@@ -454,7 +775,8 @@ def _drive_substeps(
                WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
             (rows_inserted + rows_updated, chart_id, asset_id),
         )
-        conn.commit()
+        if not defer_commits:
+            conn.commit()
 
         emit_event({
             "type": "asset.substep",
@@ -510,7 +832,18 @@ def _probe_asset(conn, cur, asset_id: str, registry_row: dict, is_service: bool)
     return False, "no check defined"
 
 
-def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, message: str) -> None:
+def _mark_probe_green(
+    conn,
+    cur,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    message: str,
+    registry_row: dict,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
+) -> None:
     """Skip-if-green: mark the asset lit WITHOUT running its writer (no rows)."""
     cur.execute(
         """UPDATE asset_throughput
@@ -524,6 +857,26 @@ def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, mess
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
+    try:
+        _persist_probe_receipt(
+            cur,
+            run_id=run_id,
+            chart_id=chart_id,
+            asset_id=asset_id,
+            declared_deps=declared_deps,
+            natural_key_partition=natural_key_partition,
+            has_cowriters=has_cowriters,
+            probe_config={
+                "health_probe": registry_row.get("health_probe"),
+                "integrity_check_sql": registry_row.get("integrity_check_sql"),
+                "rebuild_on_probe_fail": bool(registry_row.get("rebuild_on_probe_fail")),
+            },
+            result_message=message,
+        )
+    except Exception as exc:
+        conn.rollback()
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+        return
     conn.commit()
     emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
                 "status": "green", "action": "skipped", "message": message[:500]})
@@ -531,11 +884,84 @@ def _mark_probe_green(conn, cur, run_id: str, chart_id: str, asset_id: str, mess
                 "from_state": "building", "to_state": "lit"})
 
 
-def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bool:
+def _skip_no_delta(
+    conn, cur, run_id: str, chart_id: str | None, asset_id: str,
+    natural_key_partition: str | None = None,
+) -> bool:
+    """O-wave WP-2 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.2, "delta-skip"):
+    the pre-execution gate found every input digest unchanged since the last
+    complete receipt. Record the skip WITHOUT invoking the writer.
+
+    asset_throughput returns to 'lit': run_asset's own unconditional
+    'building' flip (before any writer-selection logic runs) is the only
+    thing that moved it off 'lit' this run -- a receipt only exists after a
+    prior success, so 'lit' is the correct restored state, not a guess.
+    build_run_assets records disposition='skip_no_delta' (plan §3.2's own
+    acceptance wording) and output_changed=False, so staleness.py's
+    delta-directional propagation (O-wave WP-1) also reads "no delta" and
+    does not walk downstream for nothing.
+
+    Also re-attributes the existing (already-proven-unchanged) receipt's
+    build_id/observed_at to THIS run (Nirmana #1899): without this, the run
+    holding the campaign's build_run_authorized event and the run whose
+    receipt records the verified content are never the same row, which made
+    accepted_rebuild_observed structurally unreachable for any asset whose
+    inputs are stable across a short retry window -- the common case, not
+    the exception, once an asset's upstreams settle. The caller's own
+    previous_receipt_matches_inputs() check already proved this run's
+    inputs are byte-identical to the stored receipt before routing here;
+    this asserts nothing new, it attributes an already-verified fact.
+    """
+    cur.execute(
+        """UPDATE asset_throughput
+           SET state = 'lit', last_built_at = NOW(), last_error = NULL
+           WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = %s""",
+        (chart_id, asset_id),
+    )
+    _guard_state_write(cur, run_id, chart_id, asset_id, 'lit')
+    from .provenance import reattribute_unchanged_receipt
+    reattribute_unchanged_receipt(
+        cur, asset_id=asset_id, chart_id=chart_id,
+        partition_declaration=natural_key_partition, build_id=run_id,
+    )
+    cur.execute(
+        """UPDATE build_run_assets
+           SET state = 'complete', disposition = 'skip_no_delta',
+               output_changed = FALSE, ended_at = NOW()
+           WHERE run_id = %s AND asset_id = %s""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+    emit_event({
+        "type": "asset.skip_no_delta", "chart_id": chart_id, "asset_id": asset_id, "run_id": run_id,
+    }, cur=cur)
+    logger.info(
+        "[orchestrator] asset %s skip_no_delta (O-wave WP-2 delta-skip gate) — zero writer invocation",
+        asset_id,
+    )
+    return True
+
+
+def _run_data_writer(
+    conn,
+    cur,
+    run_id: str,
+    chart_id: str | None,
+    asset_id: str,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
+    force: bool = False,
+) -> bool:
     """
     Run a data asset's registered writer to completion (sub-step driven). Marks
     'lit' + downstream stale on success (returns True); marks 'error' and returns
     False on failure. Reused by both the normal data path and the regenerate path.
+
+    force=True (O-wave WP-2, plan §3.2) bypasses the pre-execution delta-skip
+    gate below unconditionally -- e.g. a campaign route that needs one
+    accepted execution regardless of whether inputs already match the last
+    complete receipt.
     """
     discover_all()
     writer_cls = get_writer(asset_id)
@@ -558,13 +984,92 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
         asset_id=asset_id, build_id=run_id, db_conn=conn,
         config={'chart_id': chart_id, 'birth_params': birth_params},
     )
+    # Capture provenance before a writer can mutate its own output. An unavailable
+    # source or receipt is a failed execution, never a successful run with an
+    # "unknown" provenance marker that would mask later invalidation.
     try:
-        rows_inserted, rows_updated = _drive_substeps(conn, cur, run_id, chart_id, asset_id, writer, ctx)
+        upstream_receipts = load_upstream_receipts(cur, declared_deps or [], chart_id)
+        upstream_hash = (
+            compute_upstream_hash(cur, asset_id, chart_id)
+            if declared_deps is None
+            else compute_upstream_hash(cur, asset_id, chart_id, declared_deps)
+        )
+        writer_hash = get_writer_source_hash(asset_id)
+    except Exception as exc:
+        mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance: {exc}")
+        return False
+
+    # O-wave WP-2 (plan §3.2, "delta-skip"): pre-execution gate. Only for the
+    # same real-data-writer path WP-1's receipt capture already covers
+    # (declared_deps is not None; has_cowriters is not None -- both always
+    # supplied by the sole production caller, _schedule_parallel -- legacy
+    # unit-fixture direct calls that omit either skip this exactly like they
+    # already skip receipt capture). Never gates a probe/service asset.
+    if declared_deps is not None and has_cowriters is not None and not force:
+        try:
+            from .provenance import previous_receipt_matches_inputs
+            if previous_receipt_matches_inputs(
+                cur, asset_id=asset_id, chart_id=chart_id, code_digest=writer_hash,
+                config=ctx.config, upstream_digest=upstream_hash,
+                partition_declaration=natural_key_partition, has_cowriters=has_cowriters,
+            ):
+                return _skip_no_delta(
+                    conn, cur, run_id, chart_id, asset_id,
+                    natural_key_partition=natural_key_partition,
+                )
+        except Exception as exc:
+            # A failed delta-skip DECISION must never become a failed BUILD.
+            # Fail open into the normal execute path -- a wasted execution is
+            # recoverable; skipping on an error we couldn't fully evaluate is
+            # not (plan §3.2 point 4).
+            logger.warning(
+                "[orchestrator] delta-skip gate check failed for %s (executing "
+                "normally): %s", asset_id, exc,
+            )
+
+    cur.execute(
+        "SELECT integrity_check_sql FROM asset_registry WHERE asset_id = %s",
+        (asset_id,),
+    )
+    integrity_row = cur.fetchone() or {}
+    has_integrity_check = bool(integrity_row.get("integrity_check_sql"))
+    # Light writers are one transaction and can be rolled back atomically when
+    # their detector fails. Heavy writers intentionally keep their established
+    # per-substep commits: those commits make heartbeats visible to the watchdog
+    # and preserve resumable work. Their detector still gates final success and
+    # provenance, while an error state prevents partial output being accepted.
+    defer_writer_commits = has_integrity_check and not writer.has_substeps
+    try:
+        rows_inserted, rows_updated = _drive_substeps(
+            conn, cur, run_id, chart_id, asset_id, writer, ctx,
+            defer_commits=defer_writer_commits,
+        )
     except Exception as exc:
         err = f"{type(exc).__name__}: {exc}\n{traceback.format_exc()[:2000]}"
         logger.warning("[orchestrator] writer %s failed: %s", asset_id, err[:200])
+        # Never let mark_asset_error's own commit capture an open writer
+        # transaction. For heavy writers, earlier substep commits remain the
+        # documented resumable output; only the failing substep is rolled back.
+        conn.rollback()
         mark_asset_error(conn, cur, run_id, chart_id, asset_id, err)
         return False
+
+    # A writer completing is not proof that its output is correct. When the
+    # registry declares integrity SQL, run it before final success/provenance.
+    # Light-writer output remains in this transaction and rolls back atomically;
+    # heavy-writer substeps remain durable/resumable but cannot be accepted while
+    # the detector is red. This applies even when rebuild_on_probe_fail=false:
+    # that flag controls the preflight skip/regenerate policy, not whether a
+    # freshly written result must satisfy its detector.
+    if has_integrity_check:
+        ok, message = _probe_asset(conn, cur, asset_id, integrity_row, False)
+        if not ok:
+            conn.rollback()
+            mark_asset_error(
+                conn, cur, run_id, chart_id, asset_id,
+                f"post-write integrity check failed: {message}",
+            )
+            return False
 
     rows_written = int((rows_inserted + rows_updated) or 0)
 
@@ -574,9 +1079,6 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     # stuck with an empty plan. 'dormant' correctly signals "ran but produced nothing
     # — safe to retry". Global assets (chart_id is None) are service singletons and
     # always get 'lit' regardless of rows_written.
-    upstream_hash = compute_upstream_hash(cur, asset_id, chart_id)
-    writer_hash = get_writer_git_hash(asset_id)
-
     # Determine whether 0 rows is correct completion for this asset.
     # target_floor=0 in asset_registry is the explicit declaration that a writer
     # may correctly produce 0 rows (e.g. ga_prashna on natal charts — the writer
@@ -699,30 +1201,65 @@ def _run_data_writer(conn, cur, run_id: str, chart_id: str, asset_id: str) -> bo
     )
     _guard_state_write(cur, run_id, chart_id, asset_id, final_state)
     cur.execute(
-        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW()
+        """UPDATE build_run_assets
+           SET state = 'complete', disposition = 'build', ended_at = NOW()
            WHERE run_id = %s AND asset_id = %s""",
         (run_id, asset_id),
     )
+    # declared_deps is supplied by the orchestrator's sole production caller
+    # (_schedule_parallel, via run_asset) for every asset in every real run;
+    # None only occurs from direct helper calls in legacy unit fixtures.
+    if declared_deps is not None:
+        try:
+            from .output_digest import compute_output_digest
+            from .provenance import (
+                WHOLE_ASSET_PARTITION,
+                capture_and_persist_receipt,
+                previous_output_digest,
+            )
+            output_digest, output_digest_spec_sha256 = compute_output_digest(cur, asset_id=asset_id)
+            # O-wave WP-1 (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1): read the
+            # prior receipt's output_digest BEFORE capture_and_persist_receipt
+            # overwrites it below -- this is the only point where "did this
+            # write's output actually change" can still be answered.
+            partition_key = natural_key_partition or WHOLE_ASSET_PARTITION
+            prior_output_digest = previous_output_digest(
+                cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
+            )
+            capture_and_persist_receipt(
+                cur,
+                asset_id=asset_id,
+                chart_id=chart_id,
+                build_id=run_id,
+                code_digest=writer_hash,
+                config=ctx.config,
+                upstream_digest=upstream_hash,
+                upstream_receipts=upstream_receipts,
+                output_digest=output_digest,
+                output_digest_spec_sha256=output_digest_spec_sha256,
+                partition_declaration=natural_key_partition,
+                has_cowriters=has_cowriters,
+            )
+            # Record the delta decision durably so staleness.py's propagation
+            # (a fresh connection in the orchestrator's on_complete callback,
+            # with no access to this transaction's local state) can read it
+            # back. No prior receipt at all counts as changed -- fail-open,
+            # never fake-fresh (plan §3.1 point 4 / CLAUDE.md §N.8).
+            output_changed = prior_output_digest is None or prior_output_digest != output_digest
+            cur.execute(
+                "UPDATE build_run_assets SET output_changed = %s WHERE run_id = %s AND asset_id = %s",
+                (output_changed, run_id, asset_id),
+            )
+        except Exception as exc:
+            conn.rollback()
+            mark_asset_error(conn, cur, run_id, chart_id, asset_id, f"provenance receipt: {exc}")
+            return False
     conn.commit()
 
     emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": asset_id,
                 "from_state": "building", "to_state": final_state})
     emit_event({"type": "asset.progress", "chart_id": chart_id, "asset_id": asset_id,
                 "rows_written": rows_written})
-
-    with _stale_mark_lock:
-        downstream = compute_downstream_closure(cur, asset_id)
-        if downstream:
-            cur.execute(
-                """UPDATE asset_throughput SET state = 'stale'
-                   WHERE chart_id IS NOT DISTINCT FROM %s AND asset_id = ANY(%s)
-                   AND state IN ('lit', 'mature')""",
-                (chart_id, downstream),
-            )
-            conn.commit()
-        for d in downstream:
-            emit_event({"type": "asset.state_change", "chart_id": chart_id, "asset_id": d,
-                        "from_state": "lit", "to_state": "stale"})
 
     logger.info("[orchestrator] asset %s complete — %d rows", asset_id, rows_written)
     return True
@@ -737,9 +1274,16 @@ def run_asset(
     chart_id: str,
     asset_id: str,
     position: int,
+    declared_deps: list[str] | None = None,
+    natural_key_partition: str | None = None,
+    has_cowriters: bool | None = None,
+    force: bool = False,
 ) -> None:
     """
     Execute one asset writer inside a savepoint.
+
+    force=True (O-wave WP-2, plan §3.2) bypasses _run_data_writer's
+    pre-execution delta-skip gate unconditionally.
 
     Robustness properties:
     - Savepoint isolation: writer crash rolls back only its writes, not run state.
@@ -754,7 +1298,11 @@ def run_asset(
     # dispatch, or a never-built upstream — so the writer never silently builds on
     # missing/incomplete data (many writers swallow missing-table reads).
     if _DEP_ASSERT_MODE != "off":
-        unmet = deps_unsatisfied(cur, chart_id, asset_id)
+        unmet = (
+            deps_unsatisfied(cur, chart_id, asset_id)
+            if declared_deps is None
+            else deps_unsatisfied(cur, chart_id, asset_id, declared_deps)
+        )
         if unmet:
             detail = ", ".join(sorted(unmet))
             if _DEP_ASSERT_MODE == "warn":
@@ -895,7 +1443,10 @@ def run_asset(
     if has_check and rebuild_policy:
         ok, msg = _probe_asset(conn, cur, asset_id, registry_row, is_service)
         if ok:
-            _mark_probe_green(conn, cur, run_id, chart_id, asset_id, msg)
+            _mark_probe_green(
+                conn, cur, run_id, chart_id, asset_id, msg, registry_row, declared_deps,
+                natural_key_partition, has_cowriters,
+            )
             return
         emit_event({"type": "asset.probe", "chart_id": chart_id, "asset_id": asset_id,
                     "status": "failed", "action": "regenerating", "message": msg[:500]})
@@ -903,7 +1454,15 @@ def run_asset(
             mark_asset_error(conn, cur, run_id, chart_id, asset_id,
                              f"probe failed ({msg}); no writer to regenerate")
             return
-        if not _run_data_writer(conn, cur, run_id, chart_id, asset_id):
+        if not _run_data_writer(
+            conn, cur, run_id, chart_id, asset_id, declared_deps,
+            natural_key_partition, has_cowriters,
+            # The probe just failed -- independent evidence that regeneration
+            # is needed regardless of what the input digests say. Always
+            # bypass the delta-skip gate here; skipping now would silently
+            # re-accept the very state the probe just rejected.
+            force=True,
+        ):
             return  # writer failed; already marked error
         ok2, msg2 = _probe_asset(conn, cur, asset_id, registry_row, is_service)
         if ok2:
@@ -921,12 +1480,21 @@ def run_asset(
         # _run_data_writer which now safely handles chart_id=None (global-scope backstop).
         discover_all()
         if get_writer(asset_id) is not None:
-            _run_data_writer(conn, cur, run_id, chart_id, asset_id)
+            _run_data_writer(
+                conn, cur, run_id, chart_id, asset_id, declared_deps,
+                natural_key_partition, has_cowriters, force,
+            )
             return
         # Legacy health-probe path (bg_* assets with health_probe JSONB spec).
-        _run_service_health_probe(conn, cur, run_id, chart_id, asset_id,
-                                  registry_row.get("health_probe"))
+        _run_service_health_probe(
+            conn, cur, run_id, chart_id, asset_id,
+            registry_row.get("health_probe"), declared_deps,
+            natural_key_partition, has_cowriters,
+        )
         return
 
     # Data asset: run its registered writer to completion (sub-step driven).
-    _run_data_writer(conn, cur, run_id, chart_id, asset_id)
+    _run_data_writer(
+        conn, cur, run_id, chart_id, asset_id, declared_deps,
+        natural_key_partition, has_cowriters, force,
+    )

@@ -124,7 +124,39 @@ export async function computeSpineBundle(
   }
   const calContent = calibrationResult.content as Record<string, unknown>
   const allMultipliers = (calContent['multipliers'] ?? []) as Array<Record<string, unknown>>
-  const domainMultipliers = allMultipliers.filter(m => m['domain'] === domain)
+
+  // NIRMĀṆA L5 W3-3 — `mimamsa_multipliers.domain` is NULL on every live row.
+  // ------------------------------------------------------------------------
+  // This filter was `m['domain'] === domain`, an exact match against a column the
+  // writer leaves NULL: live production (verified 2026-09-05) is 18 rows table-wide
+  // across 2 charts — 9 per chart — and 0 rows with a non-null `domain` on either.
+  // So this section shipped EMPTY for every chart and every domain,
+  // permanently, and the bundle's only `empty_reason` fires on `signals.length === 0`
+  // and so never mentioned it.
+  //
+  // The sibling capability query_calibration.ts met the same NULL, understood it, and
+  // deliberately refused to filter — its own comment reads: "filtering on it would EMPTY
+  // a populated section rather than narrow it wherever the writer left it NULL (global
+  // scope)". That reading — NULL domain means GLOBAL scope, i.e. the multiplier applies
+  // to every domain — is adopted here rather than a second, divergent interpretation.
+  // A NULL-domain row is therefore IN scope for any domain; a row carrying an explicit,
+  // different domain label is still excluded exactly as before.
+  //
+  // Reported as measured counts, not asserted in prose (§N.6 item 4 / §N.8), with the
+  // same field names query_calibration already uses, plus an honest per-section empty
+  // reason (§N.6 item 3) so an empty multipliers array is never silently served.
+  const domainMultipliers = allMultipliers.filter(
+    m => m['domain'] == null || m['domain'] === domain,
+  )
+  const multipliersWithDomain = allMultipliers.filter(m => m['domain'] != null).length
+  const multipliersEmptyReason = domainMultipliers.length > 0
+    ? null
+    : allMultipliers.length === 0
+      ? `No mimamsa_multipliers rows for chart ${chart_id} — the L5 calibration weights ` +
+        'asset has produced none for this chart yet.'
+      : `None of the ${allMultipliers.length} mimamsa_multipliers row(s) for chart ${chart_id} ` +
+        `are in scope for domain '${domain}': every row carries an explicit, different domain ` +
+        'label (a NULL domain would be global scope and would be included).'
 
   // ── Assemble per-signal entries ────────────────────────────────────────────
   const activationsBySignal = new Map<string, Array<Record<string, unknown>>>()
@@ -173,6 +205,9 @@ export async function computeSpineBundle(
       verdict_distribution: (calContent['verdict_distribution'] ?? []) as Array<Record<string, unknown>>,
       reliability: (calContent['reliability_curve'] ?? []) as Array<Record<string, unknown>>,
       multipliers: domainMultipliers,
+      multipliers_total: allMultipliers.length,
+      multipliers_with_domain: multipliersWithDomain,
+      multipliers_empty_reason: multipliersEmptyReason,
       qa_fail_count: Number((calContent['qa_summary'] as Record<string, unknown> | undefined)?.['fail_count'] ?? 0),
     },
     empty_reason,

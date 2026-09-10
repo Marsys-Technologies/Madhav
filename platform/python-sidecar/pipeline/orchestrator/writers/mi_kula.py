@@ -182,12 +182,16 @@ _FAMILIES = [
         json.dumps(["BPHS §67"]),
         json.dumps({"source": "chart_facts", "filter": "category='ashtakavarga'"}),
     ),
+    # fam_msr_signal / fam_anchor cite MARSYS's own canonical MSR/Phala methodology docs, not a
+    # classical Jyotish text — CLASSICAL_CITED overclaimed tradition-text grounding these two
+    # never had (C-F-01, §N.7 item 6). MARSYS_DERIVED_CITED distinguishes "real citation, but to
+    # our own derived-signal methodology" from both CLASSICAL_CITED and an invented citation.
     (
         "fam_msr_signal",
         "MSR Composite Signal",
         "Multi-System Resonance",
         "classical",
-        "CLASSICAL_CITED",
+        "MARSYS_DERIVED_CITED",
         "astrological",
         "natal",
         "ON",
@@ -201,7 +205,7 @@ _FAMILIES = [
         "Phala Anchor Prediction",
         "Prediction Anchor",
         "classical",
-        "CLASSICAL_CITED",
+        "MARSYS_DERIVED_CITED",
         "astrological",
         "lifetime_index",
         "ON",

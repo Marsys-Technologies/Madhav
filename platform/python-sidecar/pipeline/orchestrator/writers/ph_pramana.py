@@ -168,10 +168,16 @@ class PhPramanaWriter(WriterBase):
         case and roll back the SAVEPOINT so the outer transaction survives.
 
         Column map (db_schema.json / live `life_events`):
-          id (uuid) · event_date (date) · domain (text) ·
+          id (uuid) · event_date (date) · domain (text) · category (text) ·
           description -> event_summary · outcome_observed (bool) -> valence.
         `id` is a uuid; `phala_pramana.lel_entry_id` is bigint, so the uuid is
         carried in lel_jsonb (auditable) and lel_id is left unset (None).
+
+        F2 (L4_W1_ANALYSIS_BATCH_D.md §ph_pramana): LelEntry.domain is built from
+        `category` here, NOT the raw `domain` column -- `domain` is a compound
+        "<category>/<subtype>" slug (e.g. 'career/award_selection'); `category` is
+        the coarse bucket already aligned with the canonical L4 domain vocabulary
+        that the engine's `_normalize_domain()` compares against.
         """
         try:
             with conn.cursor() as sp:
@@ -179,7 +185,7 @@ class PhPramanaWriter(WriterBase):
             with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
                 cur.execute(
                     """
-                    SELECT id, event_date, domain,
+                    SELECT id, event_date, category,
                            description AS event_summary, outcome_observed
                     FROM life_events
                     ORDER BY event_date
@@ -194,7 +200,7 @@ class PhPramanaWriter(WriterBase):
                     entries.append(LelEntry(
                         lel_id=None,
                         event_date=r['event_date'],
-                        domain=str(r.get('domain') or ''),
+                        domain=str(r.get('category') or ''),
                         event_summary=str(r.get('event_summary') or ''),
                         outcome_valence=valence,
                         lel_jsonb={'id': str(r['id']), 'event_date': str(r['event_date']),

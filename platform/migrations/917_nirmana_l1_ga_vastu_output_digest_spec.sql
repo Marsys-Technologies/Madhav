@@ -1,0 +1,113 @@
+-- 917_nirmana_l1_ga_vastu_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_vastu`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_vastu'` returning ZERO rows before this migration. Without a
+-- spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/
+-- orchestrator/output_digest.py) always returns `(None, None)` for this asset,
+-- so its provenance receipt can never leave `receipt_state = 'unknown'`. Same
+-- defect class as migrations 914 (`ga_structural`), 915 (`ga_tajaka`), 916
+-- (`ga_medical`) -- this migration closes it for `ga_vastu` only; the remaining
+-- frontier (`ga_yoga`, `ga_sade_sati`, `ga_vichara`) is deliberately left for
+-- separate migrations rather than rushed into one batch.
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────────
+--
+-- `ga_vastu`'s writer (`platform/python-sidecar/ga_writers/ga_vastu_writer.py`)
+-- writes to exactly ONE relation, `ga_vastu_planet_direction_map`, via a single
+-- `INSERT INTO` call site (line 145) inside a per-graha loop -- no
+-- `fact_category`-partitioned `chart_facts` write, unlike `ga_structural`/
+-- `ga_condition`'s sibling model. The writer's own docstring (lines 8-9) states
+-- the natural key directly: "Table: ga_vastu_planet_direction_map / Natural key:
+-- (chart_id, ayanamsha_id, graha)".
+--
+-- Ownership cross-check: `grep -rl ga_vastu_planet_direction_map platform/
+-- python-sidecar` (excluding `__pycache__`/`__tests__`) finds only the writer
+-- itself and the shared idempotency helper (`ga_writers/_idempotency.py`, a
+-- `DELETE FROM ga_vastu_planet_direction_map` scoped to `(chart_id,
+-- ayanamsha_id)` before rebuild -- the standard delete-then-insert pattern, not
+-- a second writer). `ga_vastu` is confirmed the sole writer.
+--
+-- ── key + value columns (verified against live data + DB schema) ────────────────
+--
+-- Table has 11 columns total (`\d ga_vastu_planet_direction_map`): `id`
+-- (serial PK), `chart_id`, `ayanamsha_id`, `graha`, `direction`,
+-- `condition_score`, `dignity_d1`, `direction_impact`, `indication_tier`,
+-- `classical_citation`, `computed_at`.
+--
+-- Two columns are excluded from both `key_columns` and `value_columns`:
+--   * `computed_at` -- per-rebuild identifier, not content (same rationale as
+--     every precedent migration, e.g. 894's `ga_condition`).
+--   * `id` -- NOT a stable content key. Confirmed in the writer's own INSERT
+--     statement (line 143-149): `id` is never assigned explicitly, so Postgres
+--     fills it via `nextval('ga_vastu_planet_direction_map_id_seq')` -- a fresh
+--     auto-incrementing integer on every rebuild's fresh insert pass. Same
+--     exclusion class as migration 916's `ga_medical.id` (auto-incrementing
+--     serial, not random UUID, but identical hazard: including it in
+--     `value_columns` makes the digest change on every rebuild even for
+--     byte-identical astrological content; using it for `key_columns` ordering
+--     makes row order non-deterministic across rebuilds).
+--
+-- `key_columns = [chart_id, ayanamsha_id, graha]` was chosen as the stable
+-- natural key: it is exactly the table's own DB UNIQUE CONSTRAINT
+-- (`ga_vastu_planet_direction_map_chart_id_ayanamsha_id_graha_key`), and matches
+-- the writer's own docstring verbatim -- no independent derivation needed, only
+-- confirmation. Live-verified on the canonical chart (`482012f1`): `SELECT
+-- chart_id, ayanamsha_id, graha, count(*) FROM ga_vastu_planet_direction_map
+-- WHERE chart_id = '482012f1-...' GROUP BY 1,2,3 HAVING count(*) > 1` returns
+-- ZERO rows -- the natural key is genuinely unique with no collisions,
+-- confirmed against live data. Live row shape: 5 ayanamshas x 8 grahas (Ketu
+-- has no direction mapping and is skipped per the writer's own graceful-skip
+-- branch, line 133-136) = 40 rows total for this chart, matching the writer's
+-- own docstring row-count claim ("up to 9 grahas x 5 ayanamshas = 45 (Ketu
+-- skipped if no direction found)") exactly.
+--
+-- `value_columns` is every remaining column (9 total): `chart_id`,
+-- `ayanamsha_id`, `graha`, `direction`, `condition_score`, `dignity_d1`,
+-- `direction_impact`, `indication_tier`, `classical_citation` -- matching
+-- precedent's pattern of including the key columns themselves in
+-- `value_columns` too (they are genuine content, not merely an index).
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914/915/916: a plain INSERT with no ON CONFLICT
+-- clause. `asset_output_digest_specs`'s PRIMARY KEY is the composite
+-- `(asset_id, spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a
+-- legal target (Postgres requires the conflict target to match a real unique/
+-- exclusion constraint). `ga_vastu` has zero existing rows in this table
+-- (confirmed at the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps` with
+-- `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then `sha256().
+-- hexdigest()`). Produced by IMPORTING the real module and calling it directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_vastu', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- `_validate_spec` raised nothing (spec accepted as well-formed) and printed:
+--   520bd0ab7bb6fb260580fa0551338ab52f5281932b5d5743ef03c29d0fe1e2e8
+--
+-- Independently re-verified a second way (belt-and-suspenders): recomputed
+-- sha256 directly over the migration's own literal JSON string via plain
+-- `hashlib.sha256(...).hexdigest()` with no import of `canonical_digest` at
+-- all -- both computations matched exactly.
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_vastu',
+  '520bd0ab7bb6fb260580fa0551338ab52f5281932b5d5743ef03c29d0fe1e2e8',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"ga_vastu_planet_direction_map","relation":"ga_vastu_planet_direction_map","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"key_columns":["chart_id","ayanamsha_id","graha"],"value_columns":["chart_id","ayanamsha_id","graha","direction","condition_score","dignity_d1","direction_impact","indication_tier","classical_citation"]}]}'::jsonb
+);
+
+COMMIT;

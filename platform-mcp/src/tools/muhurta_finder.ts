@@ -180,11 +180,51 @@ export type MuhurtaFinderInput = z.infer<typeof MuhurtaFinderInputSchema>
 
 // ── Output shape (documented; actual shape comes from the platform) ────────────
 
+/** F-48 — the earned-signal receipt behind `transit_quality`.
+ *  Every field is data the Python scorer emitted, not narration: a caller can
+ *  audit the number rather than re-deriving it. */
+export interface MuhurtaTransitDetails {
+  available: boolean
+  method?: string                    // 'gochara_from_natal_moon'
+  resolution?: string                // 'daily_noon_ut' — the disclosed grain limit
+  ayanamsha_id?: string
+  unavailable_reason?: string        // set iff available === false
+  natal_moon_sign_id?: number
+  transit_moon_sign_id?: number
+  transit_moon_house_from_natal_moon?: number
+  chandra_bala?: number
+  significator_gochara?: Array<{
+    graha: string
+    house_from_natal_moon: number
+    verdict: 'favourable' | 'favourable_vedha_cancelled' | 'unfavourable' | 'unlisted'
+    grade: number
+    phala: string | null
+    classical_citation: string | null
+    vedha_house: number | null
+    vedha_occupants: string[]
+  }>
+  significator_gochara_mean?: number
+  components_used?: string[]
+  grade_convention?: Record<string, number>
+  weights?: Record<string, number>
+  gaps?: string[]                    // e.g. 'vedha_exemptions_not_in_corpus'
+  citation?: string
+}
+
 /** Factors breakdown for one muhurta window. */
 export interface MuhurtaFactors {
   panchanga_quality: number      // [0.0, 1.0] — tithi × vara × nakshatra × yoga
   dasha_quality: number          // [0.0, 1.0] — active MD/AD benefic quality
-  transit_quality: number        // [0.0, 1.0] — key transits in the window
+  // F-48: REAL classical Gochara (BPHS Ch.29) counted from the natal Moon —
+  // transiting positions read from ephemeris_daily (bg_ephemeris / Swiss
+  // Ephemeris), graded against bg_transit_rules with vedha cancellation, plus
+  // Chandra Bala. **null** when those authorities could not be read for the
+  // window; `transit_details.unavailable_reason` names which one, and the
+  // composite score is renormalized over the sub-scores that WERE computed
+  // rather than padded with a neutral stand-in. Before F-48 this field was a
+  // lunar-phase + weekday approximation with no transit computation behind it.
+  transit_quality: number | null
+  transit_details?: MuhurtaTransitDetails
   signal_activation: number      // [0.0, 1.0] — MSR signal activation for action_type
   panchanga_details: {
     tithi_name: string
@@ -662,7 +702,7 @@ export const MUHURTA_FINDER_DESCRIPTION =
   'action_types: marriage | travel | business | medical | education | property | general. ' +
   'panchanga_quality: classical BPHS ch.46 muhurta rules — tithi, vara, nakshatra, yoga. ' +
   'dasha_quality: active Vimshottari MD/AD benefic quality for the chart. ' +
-  'transit_quality: key planetary transits during the window. ' +
+  'transit_quality: classical Gochara (BPHS Ch.29) of the action significators and the Moon, counted from the natal Moon, from real transiting positions (bg_ephemeris / Swiss Ephemeris), with Phaladeepika Ch.26 vedha cancellation applied; null when the transit authorities are unreadable for a window (see transit_details.unavailable_reason) — never a neutral stand-in. ' +
   'signal_activation: MSR v5.0 signal ensemble for the action_type. ' +
   'B.3 mandate: source_citation NON-NULL on every window. ' +
   'provenance_envelope present on every response. ' +

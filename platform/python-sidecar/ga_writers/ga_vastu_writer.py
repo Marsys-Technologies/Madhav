@@ -12,10 +12,6 @@ Idempotency: L1 pattern — DELETE (chart_id, ayanamsha_id) then INSERT.
 
 indication_tier: 'traditional_vastu' (§N per-spec epistemic tier)
 
-FORENSIC guards:
-  - Sun in Capricorn (debilitated) → East direction must be 'weakened'
-  - Saturn in Libra (exalted) → West direction must be 'strengthened'
-
 Classical sources:
   Vastu Shastra (Mayamata Ch.6)
   Brihat Samhita Ch.53 (Vastu-vidya)
@@ -31,8 +27,6 @@ import psycopg.rows
 logger = logging.getLogger(__name__)
 
 # ── Constants ─────────────────────────────────────────────────────────────────
-
-CANONICAL_CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # All 9 classical Jyotish grahas
 ALL_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
@@ -123,10 +117,6 @@ def build_ga_vastu_substep(
 
         computed_at = datetime.now(timezone.utc)
 
-        # Track FORENSIC values during insert loop
-        _forensic_sun_impact: Optional[str] = None
-        _forensic_saturn_impact: Optional[str] = None
-
         # ── Insert one row per graha that has a direction mapping ───────────
         for graha in ALL_GRAHAS:
             direction = GRAHA_TO_DIRECTION.get(graha)
@@ -159,24 +149,16 @@ def build_ga_vastu_substep(
             )
             rows_inserted += 1
 
-            # Track FORENSIC grahas for post-loop assertion
-            if graha == "Sun":
-                _forensic_sun_impact = direction_impact
-            elif graha == "Saturn":
-                _forensic_saturn_impact = direction_impact
-
-    # ── FORENSIC assertion for canonical native chart ─────────────────────────
-    # Sun assertion removed: "Sun debilitated in Capricorn" was astrologically
-    # incorrect — Sun debilitates in Libra, not Capricorn. Sun's direction_impact
-    # is correctly derived from ga_condition_composite.condition_score via
-    # compute_direction_impact(); no hard gate is needed here.
-    if chart_id == CANONICAL_CHART_ID:
-        if not _forensic_saturn_impact or _forensic_saturn_impact != "strengthened":
-            raise AssertionError(
-                f"FORENSIC VIOLATION: Saturn direction_impact={_forensic_saturn_impact!r} "
-                f"but expected 'strengthened' (Saturn exalted in Libra) "
-                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
-            )
+    # Sun and Saturn hard-gate assertions removed: both hardcoded "must equal X"
+    # FORENSIC guards were structurally in tension with direction_impact's own
+    # threshold-derived formula (compute_direction_impact) — Sun's ("Sun
+    # debilitated in Capricorn") was astrologically incorrect outright (Sun
+    # debilitates in Libra, not Capricorn); Saturn's ("exalted in Libra ->
+    # must be 'strengthened'") could disagree with a correctly-computed
+    # 'neutral' when condition_score sits just under the 0.7 threshold. Each
+    # graha's direction_impact is correctly derived from
+    # ga_condition_composite.condition_score via compute_direction_impact();
+    # no hard gate is needed for either.
 
     logger.info(
         "ga_vastu: chart_id=%s ayanamsha_id=%s — %d rows inserted",

@@ -123,7 +123,7 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
         const next = new Map(prev)
         // Terminal states: yield immediately to polled stats (count_sql truth).
         // Non-terminal: write the overlay so the bar shows live in-flight state.
-        const TERMINAL = e.to_state === 'lit' || e.to_state === 'error' || e.to_state === 'dormant'
+        const TERMINAL = e.to_state === 'lit' || e.to_state === 'error' || e.to_state === 'service_down' || e.to_state === 'dormant'
         if (TERMINAL) next.delete(e.asset_id)
         else next.set(e.asset_id, { ...prev.get(e.asset_id), state: e.to_state })
         return next

@@ -4,24 +4,31 @@ bo_samvada — Chart Digest View (L2 Bodha UCD surface)
 Creates or replaces the `vw_chart_digest` VIEW that aggregates the entire
 Bodha layer for a chart into a compact, LLM-friendly digest:
 
-  vw_chart_digest columns:
+  vw_chart_digest columns (matches _CREATE_VIEW_CLEAN below — kept in
+  sync here on purpose; NIRMĀṆA L2-W3 S9 found this list stale against
+  eight of its own names and corrected it against the live SQL, not a
+  prior draft):
     chart_id, ayanamsha_id,
-    msr_signal_count, top_signal_ids[10],
-    top_5_yogas TEXT[], top_5_doshas TEXT[],
-    domain_summary JSONB,           ← {domain: {count, score}}
-    convergence_leaders JSONB,      ← [{domain, score, count}] top 5
-    contradiction_count INT,
-    rm_priority_class TEXT,         ← highest priority class across resonances
-    weakest_graha TEXT,
-    scorecard_trap1_count INT,
-    scored_at TIMESTAMPTZ
+    msr_signal_count INT,            ← DISTINCT signal_id count
+    yoga_count INT,                  ← signal_type_class = 'yoga'
+    dosha_count INT,                 ← signal_type_class = 'dosha'
+    avg_salience NUMERIC,            ← round(avg(computed_salience), 4)
+    max_salience NUMERIC,            ← round(max(computed_salience), 4)
+    contradiction_count INT,         ← live count from bodha_contradictions
+    weakest_graha TEXT,              ← bodha_rm_resonances, rank 1
+    top_priority_class TEXT,         ← bodha_rm_resonances, rank 1's remedy_priority_class
+    top_convergence_domains JSONB,   ← bodha_convergence, top 5 by score, static_natal snapshot
+    trap1_count INT,                 ← synthesis_quality_scorecard.trap1_authority_inversion_count, latest scored_at
+    digest_at TIMESTAMPTZ            ← NOW() at view-query time, not build time (a VIEW, not a snapshot)
 
 This is a DDL-only writer: it emits CREATE OR REPLACE VIEW and returns
 rows_inserted = 1 if the view was created successfully (0 on dry_run).
 
 The bo_samvada asset in the orchestrator registry counts rows in the
-view (via count_sql) to signal success. B5 must update count_sql
-to use: SELECT count(*) FROM vw_chart_digest WHERE chart_id = '<canonical>'
+view (via count_sql) to signal success — count_sql already reads
+`SELECT count(*) FROM vw_chart_digest WHERE chart_id = '<canonical>'`
+(NIRMĀṆA L2-W3 S8, migration 660's expected_volume_formula + the
+conformance integrity_check_sql in migration 663 / PR #1843).
 
 POSITION NOTE: bo_samvada is intentionally the LAST bodha asset in execution order.
 It is a VIEW definition (DDL, not INSERT) that spans all bodha_* tables. It must

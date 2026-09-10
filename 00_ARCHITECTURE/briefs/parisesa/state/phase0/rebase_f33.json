@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-33",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1369",
+  "branch": "parisesa/repair-F33-recovery",
+  "test_results": "get_dashas_prebirth_disclosure.test.ts: 2/2 passing. tsc --noEmit: no new errors in any changed file (5 pre-existing unrelated baseline errors present in the environment, none touching get_dashas.ts/envelope.ts/register_p1_aliases.ts).",
+  "review_notes": "Dangling commit e9bd4f58e3e88ff08aef763604ff8c4008d6bc5c was fully recoverable (git cat-file confirmed it, parent commit is an ancestor of current origin/main). Cherry-picked cleanly onto origin/main (9c11ab627, auto-merged both touched files with no conflicts -- get_dashas.ts had already absorbed F-120's separate changes). Confirmed via origin/main content search that no equivalent fix exists yet. Independently reviewed the diff: adds a machine-readable as_of_date_precedes_chart_birth judgment flag + temporal_context when a queried as_of_date precedes the chart's birth date, without altering the underlying dasha rows (pre-birth balance-of-dasha math is classically correct, this is a disclosure fix not a data-correction fix). The refactor that consolidates a previously-duplicated birth-date query was checked for regression risk: narration's trigger condition (containsDate && systemApplied==='vimshottari') is a strict subset of the new query's trigger condition (containsDate alone), so chartBirthDate is guaranteed populated whenever narration needs it -- no regression. Wrapped in try/catch so a lookup failure is non-blocking. Full prior review chain (builder/reviewer/reviser/ratifier) available under results/ingested/F-33.*.json for cross-reference -- used as background context, not as a substitute for this session's own independent verification.",
+  "next_action": "owner reviews and merges PR #1369 at morning checkpoint"
+}

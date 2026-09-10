@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 async function requireUser() {
   const user = await getServerUser()
@@ -22,6 +23,23 @@ export async function POST(req: NextRequest) {
     scope: 'global' | 'layer' | 'asset'
     scope_target?: string | null
   }
+
+  // P2-B-008: per-chart authorization on the caller-supplied chart_id, before the
+  // asset_throughput upsert below. This route checked only "is there a logged-in
+  // user", so any authenticated caller could materialize 'dormant' throughput rows
+  // against any chart — one row per active registry asset on scope: 'global'.
+  // Non-destructive, but still a cross-tenant WRITE into build state that both the
+  // cockpit stats surface and the build planner read back.
+  //
+  // 'write' (permission === 'all'), matching the Clear routes and POST
+  // /api/cockpit/runs: a chart_grants 'view' grantee may read a chart, not write
+  // build-state rows into it.
+  const denied = await requireChartPermission({
+    uid: user.uid,
+    chartId: chart_id,
+    access: 'write',
+  })
+  if (denied) return denied
 
   // Refresh = invalidate any cached asset stats and return a fresh summary
   // for the requested scope. The client calls onRefreshed() which triggers

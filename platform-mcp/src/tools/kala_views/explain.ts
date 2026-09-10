@@ -151,7 +151,7 @@ import {
   honestEmptyCoverage,
   notInCorpusCoverage,
   buildKalaFreshness,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   type ArgumentReading,
   type ArgumentEvidence,
   type KalaCoverageEntry,
@@ -168,13 +168,27 @@ import {
   type KpSchoolVoice,
   type KpRunningPeriod,
 } from '../../lib/kp_school_voice.js'
+import {
+  kpVoiceToTestimony,
+  a5AgreementToTestimony,
+  composeConcordanceVerdict,
+  type EngineTestimony,
+  type AuthorityProfileRow,
+} from '../../lib/engine_testimony.js'
 import { callKalaRegistryCap, unwrapKalaPayload, kalaBudgetedDualOutput, kalaErrorOutput } from './shared.js'
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function resolveAyanamsha(id?: string): string { return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha' }
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+// F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
+// capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
+// forcing A5's gochara agreement to 'insufficient_data' unconditionally. The real logic
+// already lives in this same platform-mcp package as a plain exported function; call it
+// directly instead of round-tripping through the registry/HTTP capability system.
+import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+// GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
+// registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
+// (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
+// unlike the registry/HTTP path this replaces, which enforced per-call authorizeChartAccess
+// for every request. Re-gate explicitly at this call site.
+import { remoteAuthorize } from '../../lib/authz.js'
 
 const TOOL_NAME = 'kala_explain_get'
 const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
@@ -184,6 +198,13 @@ const CAPABILITY_URI = 'marsys://tool/L-PACT/pact_query'
 // computation, no new capability, no second implementation of either read.
 const CHART_FACTS_URI = 'marsys://tool/L1/chart_facts_query'
 const DASHAS_URI = 'marsys://tool/L1/get_dashas'
+
+// ── N1 (Temporal Concordance Contract): the O-10 authority profile read ──────────────
+// The only factor_family seeded so far (migration 677) — "does the causal chain hold?",
+// exactly the question this PACT-chain reading already answers. Existing capability,
+// existing table (kala_paddhati_profile); no new computation.
+const PADDHATI_PROFILE_URI = 'marsys://tool/L3/query_kala_paddhati_profile'
+const O10_FACTOR_FAMILY = 'O-10'
 
 /** KP is canonically read in the Krishnamurti ayanāṃśa — the same convention
  *  `get_kp_cusps.ts` already defaults to (school_conventions.ts §3). The PACT chain is read
@@ -364,6 +385,35 @@ export async function fetchKpSchoolVoice(params: {
   })
 }
 
+/**
+ * Fetches the chart's O-10 `kala_paddhati_profile` rows — the one authority profile
+ * migration 677 has seeded so far — for `composeConcordanceVerdict` (N1 seventh step).
+ * Returns `[]` (never throws) on any read failure; the composer already treats an
+ * empty/no-primary profile as an honest `null` verdict rather than a crash (§N.8).
+ */
+async function fetchO10AuthorityProfile(
+  chartId: string,
+  principal: Principal,
+): Promise<AuthorityProfileRow[]> {
+  try {
+    const raw = await callKalaRegistryCap(
+      PADDHATI_PROFILE_URI,
+      { chart_id: chartId, factor_family: O10_FACTOR_FAMILY },
+      principal,
+    )
+    const rows = asRows(unwrapKalaPayload(raw))
+    return rows
+      .filter((r) => r['convention_status'] === 'computed')
+      .map((r) => ({
+        convention_id: String(r['convention_id']),
+        arbitration_role: (r['arbitration_role'] ?? null) as AuthorityProfileRow['arbitration_role'],
+        precedence: typeof r['precedence'] === 'number' ? (r['precedence'] as number) : null,
+      }))
+  } catch {
+    return []
+  }
+}
+
 /** The KP voice's coverage entry — `computed` only when a real verdict was reached, and
  *  otherwise `honest_empty` carrying the voice's own specific reason. Never `computed`
  *  with an empty verdict behind it (§N.8). */
@@ -408,6 +458,159 @@ export function applyKpVoiceToReading(reading: ArgumentReading, voice: KpSchoolV
   return reading
 }
 
+// ── SM-γ C4.2: A5 gochara-agreement facet ────────────────────────────────────
+// Added behind SM_GAMMA_C4_ENABLED env flag. Fetches gochara windows for the
+// event_class being explained (using callKalaRegistryCap, same pattern as KP
+// voice above) and assesses whether gochara concurs with or dissents from the
+// PACT chain verdict. No new DB query, no new computation (§N.5 / B.10).
+
+export interface A5GocharaAgreement {
+  agreement: 'concurs' | 'dissents' | 'insufficient_data'
+  gochara_windows_active: number
+  dominant_valence: 'gain' | 'loss' | 'neutral' | null
+  /** Human-readable agreement note, ≤120 chars (§N.8: never fabricated when empty). */
+  note: string
+}
+
+/** Maps a PACT status to its chain outcome polarity for agreement logic.
+ *  `positive` = chain complete/active (delivery possible); `negative` = denied/blocked. */
+function pactStatusPolarity(status: string): 'positive' | 'negative' | 'unknown' {
+  if (status === 'chain_complete' || status === 'chain_pending_activation') return 'positive'
+  if (
+    status === 'denied_at_promise' ||
+    status === 'denied_at_confirmation' ||
+    status === 'denied_at_activation'
+  )
+    return 'negative'
+  return 'unknown'
+}
+
+/** Derives the dominant valence from an array of gochara window objects (whatever the
+ *  underlying tool returns in `windows`). Never throws. */
+function dominantValenceFromWindows(
+  windows: Array<Record<string, unknown>>,
+): 'gain' | 'loss' | 'neutral' | null {
+  if (windows.length === 0) return null
+  const counts: Record<string, number> = {}
+  for (const w of windows) {
+    const v = typeof w['valence'] === 'string' ? w['valence'] : 'neutral'
+    counts[v] = (counts[v] ?? 0) + 1
+  }
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]
+  if (top === 'gain' || top === 'loss' || top === 'neutral') return top
+  return null
+}
+
+/** Fetches gochara windows for a domain/bhava, using a ±180-day window around today, via a
+ *  direct in-process call to `computeGocharaForecast` (F-73: NOT via the registry — see the
+ *  import comment above). Returns empty array (never throws) on any failure — A5 then
+ *  reports `insufficient_data`. `bhava` is accepted for signature parity with callers but not
+ *  forwarded — `computeGocharaForecast` has no bhava parameter; domain is its narrowing
+ *  primitive (matches pre-existing behavior: bhava was likewise unused in the fetch here). */
+async function fetchA5GocharaWindows(
+  chartId: string,
+  domain: string | undefined,
+  bhava: number | null | undefined,
+  principal: Principal,
+): Promise<Array<Record<string, unknown>>> {
+  const today = new Date().toISOString().slice(0, 10)
+  const endParsed = new Date(`${today}T00:00:00Z`)
+  endParsed.setUTCDate(endParsed.getUTCDate() + 180)
+  const endDate = endParsed.toISOString().slice(0, 10)
+
+  try {
+    // GA-5 review finding on #1390: computeGocharaForecast itself performs no entitlement
+    // check -- gate here, matching what registerGocharaForecastTool's own handler does
+    // before calling the same function.
+    if (!(await remoteAuthorize(principal, chartId))) return []
+    const result = await computeGocharaForecast(
+      chartId,
+      { start: today, end: endDate },
+      undefined,
+      undefined,
+      20,
+      principal,
+      domain ?? undefined,
+    )
+    return (result['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  } catch {
+    return []
+  }
+}
+
+/** Builds the A5 gochara-agreement facet from the PACT verdict and gochara windows.
+ *  Agreement logic (§N.8: never a default-positive; only `concurs` when evidence is present):
+ *  - `concurs`: windows found AND dominant valence MATCHES the PACT chain polarity
+ *    (positive PACT + gain windows, OR negative PACT + loss windows).
+ *  - `dissents`: windows found AND dominant valence CONTRADICTS the PACT chain polarity.
+ *  - `insufficient_data`: no windows, or gochara fetch failed, or polarity unknown. */
+async function buildA5GocharaAgreement(
+  chartId: string,
+  pactStatus: string,
+  domain: string | undefined,
+  bhava: number | null | undefined,
+  principal: Principal,
+): Promise<A5GocharaAgreement> {
+  let windows: Array<Record<string, unknown>> = []
+  try {
+    windows = await fetchA5GocharaWindows(chartId, domain, bhava, principal)
+  } catch {
+    // Fetch failure → insufficient_data, never thrown
+  }
+
+  if (windows.length === 0) {
+    return {
+      agreement: 'insufficient_data',
+      gochara_windows_active: 0,
+      dominant_valence: null,
+      note: 'No active gochara windows found for this domain/period.',
+    }
+  }
+
+  const domValence = dominantValenceFromWindows(windows)
+  const pactPolarity = pactStatusPolarity(pactStatus)
+
+  let agreement: 'concurs' | 'dissents' | 'insufficient_data'
+  if (pactPolarity === 'unknown' || domValence == null) {
+    agreement = 'insufficient_data'
+  } else if (
+    (pactPolarity === 'positive' && domValence === 'gain') ||
+    (pactPolarity === 'negative' && domValence === 'loss')
+  ) {
+    agreement = 'concurs'
+  } else if (
+    (pactPolarity === 'positive' && domValence === 'loss') ||
+    (pactPolarity === 'negative' && domValence === 'gain')
+  ) {
+    agreement = 'dissents'
+  } else {
+    agreement = 'insufficient_data'
+  }
+
+  const noteBase = agreement === 'concurs'
+    ? `Gochara ${domValence} windows align with PACT ${pactStatus}.`
+    : agreement === 'dissents'
+      ? `Gochara ${domValence} windows diverge from PACT ${pactStatus}.`
+      : `Gochara valence (${domValence ?? 'n/a'}) inconclusive for PACT ${pactStatus}.`
+  const note = noteBase.slice(0, 120)
+
+  return {
+    agreement,
+    gochara_windows_active: windows.length,
+    dominant_valence: domValence,
+    note,
+  }
+}
+
+/** F-123 regression hook: the exact required-argument gate `kala_explain_get` enforces
+ *  ("either `domain` or `bhava` is required"), extracted so a caller-side pointer builder
+ *  (`explainPointerTo` in `kala_envelope.ts`) and its regression test can check, without
+ *  duplicating this logic, whether a given args payload would actually clear this tool's own
+ *  guard — rather than re-deriving an independent copy that could drift from it. */
+export function explainRequiresDomainOrBhava(domain: unknown, bhava: unknown): boolean {
+  return !domain && bhava === undefined
+}
+
 export function registerKalaExplainTool(server: McpServer, principal: Principal): void {
   server.tool(
     TOOL_NAME,
@@ -420,7 +623,7 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
     'for intervention diagnosis; a live/complete chain points to kala_elect_get), 3-state ' +
     'coverage (the field-write provenance graph / classical-citation join / counterfactual ' +
     'mode, items 11 and E6, are NOT yet built — honestly flagged, not silently omitted), ' +
-    'freshness, and calibration_maturity (always the honest zero stub at W0). Pass `domain` ' +
+    'freshness, and calibration_maturity (read from the chart-level calibration authority). Pass `domain` ' +
     'or `bhava` exactly as judgment_query/pact_query accept — one is required. ' +
     '[ṢAḌ-DARŚANA W0.4]',
     {
@@ -445,12 +648,12 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
       if (!chart_id || typeof chart_id !== 'string') {
         return kalaErrorOutput(TOOL_NAME, 'chart_id is required')
       }
-      if (!domain && bhava === undefined) {
+      if (explainRequiresDomainOrBhava(domain, bhava)) {
         return kalaErrorOutput(TOOL_NAME, 'either `domain` or `bhava` is required')
       }
 
       try {
-        const resolvedAyanamsha = resolveAyanamsha(ayanamsha_id as string | undefined)
+        const resolvedAyanamsha = resolveChartFactsAyanamsha(ayanamsha_id as string | undefined)
         const raw = await callKalaRegistryCap(
           CAPABILITY_URI,
           {
@@ -558,10 +761,40 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           triPlane,
           coverage,
           freshness,
-          calibrationMaturity: noLelCalibrationMaturity(),
+          calibrationMaturity: await fetchCalibrationMaturity(chart_id, principal),
         })
 
-        const content = {
+        // SM-γ C4.2: A5 gochara-agreement facet (flag-guarded).
+        const C4_ENABLED = process.env['SM_GAMMA_C4_ENABLED'] === 'true' || process.env['SM_GAMMA_C4_ENABLED'] === '1'
+        const a5GocharaAgreement: A5GocharaAgreement | undefined = C4_ENABLED
+          ? await buildA5GocharaAgreement(
+              chart_id,
+              String(pactStatus),
+              domain as string | undefined,
+              resolvedBhava,
+              principal,
+            )
+          : undefined
+
+        // N1 (Temporal Concordance Contract, L3_W1_ANALYSIS_BATCH_E.md §1.5):
+        // `engine_testimony[]` in the one canonical shape (see lib/engine_testimony.ts),
+        // assembled from whichever engines actually voiced an opinion this call.
+        // Additive alongside `school_voices`/`a5_gochara_agreement` below, not a
+        // replacement. `concordance` is the composed verdict over that testimony
+        // (aligned | partially_aligned | disputed), read against the chart's O-10
+        // authority profile (migration 677's seed — PACT primary, KP/gochara_v3
+        // corroborating); `null` when no primary role is on record yet (honest
+        // no-verdict, §N.7 — not an invented default) or no engine actually computed.
+        const engineTestimony: EngineTestimony[] = [
+          ...(kpVoice ? [kpVoiceToTestimony(kpVoice)] : []),
+          ...(C4_ENABLED && a5GocharaAgreement !== undefined
+            ? [a5AgreementToTestimony(a5GocharaAgreement)]
+            : []),
+        ]
+        const o10Profile = await fetchO10AuthorityProfile(chart_id, principal)
+        const concordance = composeConcordanceVerdict(engineTestimony, o10Profile)
+
+        const baseContent = {
           ok: true as const,
           tool: TOOL_NAME,
           chart_id,
@@ -571,6 +804,10 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           about: about ?? null,
           pact_status: pactStatus,
           weakest_link: weakestLink,
+          // N1 (Temporal Concordance Contract): the canonical-shape testimony array
+          // plus the composed verdict over it. See lib/engine_testimony.ts docstring.
+          engine_testimony: engineTestimony,
+          concordance,
           // W3K G-5: the school-tagged Law-2 voice, served in full so the verdict is
           // auditable in place (which limb, which running lord, which ayanāṃśa).
           school_voices: kpVoice ? [kpVoice] : [],
@@ -578,6 +815,10 @@ export function registerKalaExplainTool(server: McpServer, principal: Principal)
           fact_id_refs: factIdRefs,
           pact_drill_pointers: pactDrillPointers,
         }
+
+        const content = C4_ENABLED && a5GocharaAgreement !== undefined
+          ? { ...baseContent, a5_gochara_agreement: a5GocharaAgreement }
+          : baseContent
 
         return kalaBudgetedDualOutput(content, TOOL_NAME)
       } catch (err) {

@@ -1,9 +1,17 @@
 import { Suspense } from 'react'
-import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { redirect } from 'next/navigation'
 import { AppShell } from '@/components/shared/AppShell'
+import { resolveChartPageAccess } from '@/lib/auth/chart-page-guard'
 
+// V3-E-019: this route used to carry its own `chart.client_id !== user.uid`
+// check — the exact inline model `authorizeChartAccess` (Unit 2c) says it
+// replaces. That model consults neither `charts.owner_id` nor `chart_grants`,
+// so it bounced view-grantees the parent `clients/[id]/layout.tsx` guard had
+// already admitted, while admitting principals matching only the legacy
+// `client_id` column that the canonical model denies. Converged onto
+// resolveChartPageAccess, on the same `permission === 'deny'` bar the parent
+// layout uses.
 export default async function TimelineLayout({
   children,
   params,
@@ -13,24 +21,18 @@ export default async function TimelineLayout({
 }) {
   const { id } = await params
 
-  const user = await getServerUser()
-  if (!user) redirect('/login')
+  const access = await resolveChartPageAccess(id)
+  if (!access) redirect('/login')
+  if (access.permission === 'deny') redirect('/dashboard')
 
-  const [profileResult, chartResult] = await Promise.all([
-    query<{ role: string; status: string }>('SELECT role, status FROM profiles WHERE id=$1', [user.uid]),
-    query<{ name: string; client_id: string }>('SELECT name, client_id FROM charts WHERE id=$1', [id]),
-  ])
-
-  const profile = profileResult.rows[0] ?? null
+  const chartResult = await query<{ name: string }>('SELECT name FROM charts WHERE id=$1', [id])
   const chart = chartResult.rows[0] ?? null
-
   if (!chart) redirect('/dashboard')
-  if (profile?.role !== 'super_admin' && chart.client_id !== user.uid) redirect('/dashboard')
 
   return (
     <AppShell
-      user={user}
-      profile={{ role: (profile?.role as 'super_admin' | 'guest') ?? 'guest', status: 'active' }}
+      user={access.user}
+      profile={{ role: access.role === 'super_admin' ? 'super_admin' : 'guest', status: 'active' }}
       breadcrumb={[
         { label: 'Roster', href: '/dashboard' },
         { label: chart.name ?? id, href: `/clients/${id}` },

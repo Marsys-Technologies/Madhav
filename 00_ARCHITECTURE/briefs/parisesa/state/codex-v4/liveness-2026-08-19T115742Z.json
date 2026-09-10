@@ -1,0 +1,33 @@
+{
+  "record_type": "PARISESA_V4_FALLBACK_LIVENESS",
+  "recorded_at": "2026-08-19T11:57:42Z",
+  "continuation_owner": "/root",
+  "state": "waiting_external",
+  "operation": {
+    "kind": "GitHub pull-request required contexts",
+    "identifier": "PR #1344 / commit 9b238ee0340f758591d1b333956f00974ce3615f",
+    "base": "3fd40b61baade41862c7eecb871775d8917072f3"
+  },
+  "last_observation": {
+    "at": "2026-08-19T11:57:42Z",
+    "required_contexts_success": [
+      "TypeScript (src only)",
+      "Secret Scan (unit 0b.2)",
+      "TAP-6 — Method audit grep set"
+    ],
+    "required_contexts_in_progress": [
+      "Unit Tests",
+      "Governance Gates (drift / schema / edge / native-literal / py-sidecar)"
+    ],
+    "classification": "normal external wait; no candidate-caused failure observed"
+  },
+  "next_check_at": "2026-08-19T12:02:42Z",
+  "safe_ready_queue": [
+    "Reconcile required PR contexts for F89.",
+    "After normal merge/deploy, join F92 direct-MCP behavior evidence to a deployment-revision receipt."
+  ],
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; fallback authorized by operator"
+  }
+}

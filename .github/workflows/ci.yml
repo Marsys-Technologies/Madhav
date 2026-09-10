@@ -27,7 +27,15 @@ on:
     # HEAD branch is shad-darshana/integration itself, so if that branch were also in
     # push.branches, a push landing on it while that PR is open would fire both a push
     # run and a pull_request(synchronize) run for the same commit.
-    branches: [main, 'shad-darshana/integration']
+    #
+    # parishkara/integration (added 2026-08-10, PARIṢKĀRA remediation campaign, native
+    # go-ahead — carve-in per campaign-coordination §3): same reasoning as
+    # shad-darshana/integration above — pull_request-only, not in push.branches, since
+    # parishkara/integration is itself the HEAD branch of the campaign's gate-close PR.
+    # Root cause this fixes: every PARIṢKĀRA lane PR into parishkara/integration ran
+    # ZERO CI checks (branch was never in this allowlist), merging on PARĪKṢAKA verifier
+    # verdict alone. This is additive only — no existing trigger path changes.
+    branches: [main, 'shad-darshana/integration', 'parishkara/integration']
   # MERGE-QUEUE PRECONDITION (CI efficiency audit, 2026-07-31). This is the ONLY change in
   # the PR that adds it, deliberately, because getting it wrong hangs every queued PR.
   #
@@ -127,6 +135,23 @@ jobs:
         working-directory: platform
     env:
       NODE_ENV: test
+    # Narrow exception to the usual no-service Unit Tests posture: this
+    # dedicated evidence-ingress test is a security boundary and must execute
+    # in the required protected context, not only in advisory DB Integration.
+    # Production's migration executor is amjis_app on PostgreSQL 15.18; pin the
+    # disposable service to that production major/minor contract.
+    services:
+      postgres:
+        image: postgres:15.18
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       # SAMPURTI-fix (2026-08-10): citation_verify_gate.test.ts resolves historical commit SHAs via
       # `git cat-file -e`; default depth=1 (shallow clone) fails for any SHA not at HEAD. Full
@@ -140,6 +165,33 @@ jobs:
           cache: 'npm'
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
+
+      - name: Nirmāṇa elevation — required dedicated writer handoff contract
+        # Local throwaway DB only: the test rejects a non-test DB name and
+        # proves both generic-insert denial and dedicated-login detector access.
+        env:
+          PGPASSWORD: postgres
+          NIRMANA_ELEVATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_elevation_test
+          NIRMANA_EVIDENCE_EXECUTOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_executor_test
+          NIRMANA_EVIDENCE_PREFLIGHT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_evidence_preflight_test
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_elevation_test;"
+          psql -h localhost -U postgres -d nirmana_elevation_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_evidence_executor_test;"
+          psql -h localhost -U postgres -d nirmana_evidence_executor_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_evidence_preflight_test;"
+          psql -h localhost -U postgres -d nirmana_evidence_preflight_test -v ON_ERROR_STOP=1 \
+            -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+          # PostgreSQL roles are cluster-wide.  These two real suites both
+          # exercise fixed production role names, so execute them serially
+          # even though each owns a different disposable database.
+          npx vitest run tests/integration/nirmana_elevation_asset_labels.db.test.ts --reporter=verbose
+          npx vitest run tests/integration/nirmana_evidence_ownership_preflight.db.test.ts --reporter=verbose
 
       - name: MIG-1 — migration number guard (cross-directory duplicate)
         # DURABLE GUARD. SAMĀPTI brief v2.0 §4.4 · protocol:
@@ -237,6 +289,16 @@ jobs:
           cache-dependency-path: platform/package-lock.json
       - run: npm ci
 
+      - name: Nirmāṇa 602 — provision achieved-floor contract DB
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_floor_test;"
+
+      - name: Nirmāṇa 602 — known-state migration and drift rollback on real Postgres
+        env:
+          NIRMANA_L0_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_floor_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_achieved_floor_contract.test.ts --reporter=verbose
+
       - name: SAMĀPTI A5/G3 — provision the SAMĪKṢĀ throwaway test DB
         # Mirrors platform/tests/pariprashna/samiksha/l5_roundtrip_harness.sh's local
         # recipe: a minimal message_parts(id) stub (just enough for migration 470's FK to
@@ -256,7 +318,394 @@ jobs:
             -c "SELECT to_regclass('public.brahma_mimamsa_prediction_ledger') AS ledger;"
 
       - name: SAMĪKṢĀ DB-integration suites (skip themselves without the env vars above)
-        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose
+        # --no-file-parallelism (#1973): at least 6 test files independently apply the same
+        # idempotent CREATE TABLE IF NOT EXISTS DDL (conversation_messages; migration 588 for
+        # pariprashna_samiksha_digest_journal) against this one shared throwaway Postgres, each
+        # in its own beforeAll. Postgres's IF NOT EXISTS is only safe against a STABLE object --
+        # two sessions racing to CREATE the same brand-new table can both pass the existence
+        # check and collide on pg_type's own catalog insert (duplicate key on
+        # pg_type_typname_nsp_index), which is exactly the two live occurrences #1973 reported
+        # on two unrelated tables. Serializing file execution removes the race without touching
+        # any test file's DDL (which may have quietly drifted between the ~6 copies).
+        run: npx vitest run tests/pariprashna/samiksha src/lib/pariprashna/samiksha --reporter=verbose --no-file-parallelism
+
+      - name: RATE-07 — provision the rate-limit bucket DB (migration 580, real file)
+        # A third throwaway database, bare: migration 580 is self-contained
+        # (CREATE TABLE IF NOT EXISTS, no FK to anything) and applying the REAL
+        # migration file — rather than a hand-copied DDL — is the point. If the
+        # migration and the code ever disagree, this step is where it surfaces.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE rate07_test;"
+          psql -h localhost -U postgres -d rate07_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/580_mcp_oauth_rate_buckets.sql
+          psql -h localhost -U postgres -d rate07_test -v ON_ERROR_STOP=1 \
+            -c "SELECT to_regclass('public.mcp_rate_buckets') AS buckets;"
+
+      - name: RATE-07 — cross-instance atomicity + TTL cleanup against real Postgres
+        # The claim "concurrent charges each observe a distinct count" rests on
+        # Postgres serialising ON CONFLICT DO UPDATE per row. A mocked test cannot
+        # establish that; this step is the detector behind the claim (§N.8).
+        env:
+          MCP_RATE_LIMIT_DB_TEST: '1'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/rate07_test
+        run: npx vitest run src/lib/__tests__/mcp/oauth_rate_limit.db.test.ts --reporter=verbose
+
+      - name: F-152 — provision the asset_throughput_state_audit test DB
+        # The test file itself (tests/integration/asset_throughput_state_audit.db.test.ts)
+        # builds the minimal asset_throughput fixture table and applies migration
+        # 586 (the REAL file, not a hand-copied re-implementation) in its own
+        # beforeAll — this step only needs to create the empty, name-checked
+        # throwaway database the test refuses to run without.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE f152_audit_test;"
+
+      - name: F-152 — asset_throughput_state_audit trigger fires/does-not-fire against real Postgres
+        # Mandatory prove-it-fires proof for a DB trigger on the core orchestrator
+        # table (asset_throughput): the fire case (a state-changing UPDATE writes
+        # exactly one audit row) and both negative controls (an UPDATE that
+        # doesn't touch state, and one that sets state to its own value, write
+        # NONE) all run against a real trigger attached to a real table — not a
+        # mocked assertion (§N.8).
+        env:
+          F152_AUDIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/f152_audit_test
+        run: npx vitest run tests/integration/asset_throughput_state_audit.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa T0 — provision the migration 599 DAG test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_t0_dag_test;"
+
+      - name: Nirmāṇa T0 — migration 599 source and acyclicity guards against real Postgres
+        env:
+          NIRMANA_T0_DAG_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_t0_dag_test
+        run: npx vitest run tests/integration/nirmana_t0_l0_hidden_dependencies.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 601 digest-scope test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_digest_test;"
+
+      - name: Nirmāṇa L0 — migration 601 digest-scope guards against real Postgres
+        env:
+          NIRMANA_L0_DIGEST_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_test
+        run: npx vitest run tests/integration/nirmana_l0_output_digest_scopes.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 603 formula-constants test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_formula_constants_test;"
+
+      - name: Nirmāṇa L0 — migration 603 sentinel-retirement guards against real Postgres
+        env:
+          NIRMANA_FORMULA_CONSTANTS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_formula_constants_test
+        run: npx vitest run tests/unit/migrations/nirmana_formula_constants_retire_sentinel.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 604 registry-scope test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_registry_scope_test;"
+
+      - name: Nirmāṇa L0 — migration 604 ownership-scope guards against real Postgres
+        env:
+          NIRMANA_L0_REGISTRY_SCOPE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_registry_scope_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_registry_scope_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 605 sky-calendar floor test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_sky_calendar_floor_test;"
+
+      - name: Nirmāṇa L0 — migration 605 sky-calendar provenance guards against real Postgres
+        env:
+          NIRMANA_SKY_CALENDAR_FLOOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_sky_calendar_floor_test
+        run: npx vitest run tests/unit/migrations/nirmana_sky_calendar_floor_provenance.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 606 wave-0 integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_wave0_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 606 executable integrity contracts against real Postgres
+        env:
+          NIRMANA_L0_WAVE0_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_wave0_integrity_contracts.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 607 bg_reference integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_reference_integrity_test;"
+
+      - name: Nirmāṇa L0 — install writer test runtime
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Nirmāṇa L0 — install writer test dependencies
+        run: python -m pip install 'psycopg[binary]>=3.2' 'psycopg2-binary>=2.9' 'pyyaml>=6.0' 'pytest>=8.0'
+
+      - name: Nirmāṇa L0 — migration 607 bg_reference contract against real Postgres
+        env:
+          NIRMANA_BG_REFERENCE_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_reference_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_reference_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 608 bg_remedies integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_remedies_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 608 bg_remedies contract against real Postgres
+        env:
+          NIRMANA_BG_REMEDIES_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_remedies_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_remedies_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 609 digest-revision test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_digest_revision_test;"
+
+      - name: Nirmāṇa L0 — migration 609 append-only digest revision against real Postgres
+        env:
+          NIRMANA_L0_DIGEST_REVISION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_digest_revision_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_digest_spec_revision.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 610 bg_texts integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_bg_texts_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 610 bg_texts contract against real Postgres
+        env:
+          NIRMANA_BG_TEXTS_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_bg_texts_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_bg_texts_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 611 static-table integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_static_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 611 closed static-table contracts against real Postgres
+        env:
+          NIRMANA_L0_STATIC_INTEGRITY_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_static_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_static_tables_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 612 Vastu/medical integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_vastu_medical_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 612 Vastu/medical contracts against real Postgres
+        env:
+          NIRMANA_L0_VASTU_MEDICAL_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_vastu_medical_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_vastu_medical_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 613 transit integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_transit_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 613 transit producer contracts against real Postgres
+        env:
+          NIRMANA_L0_TRANSIT_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_transit_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_transit_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 614 Ghaṭanā integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_ghatana_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 614 Ghaṭanā producer contract against real Postgres
+        env:
+          NIRMANA_L0_GHATANA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_ghatana_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_ghatana_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 615 governance integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_governance_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 615 scoped governance contracts against real Postgres
+        env:
+          NIRMANA_L0_GOVERNANCE_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_governance_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_governance_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 616 Prashna integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_prashna_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 616 Prashna producer contract against real Postgres
+        env:
+          NIRMANA_L0_PRASHNA_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_prashna_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_prashna_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 617 text-index integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_text_index_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 617 text-index contract against real Postgres
+        env:
+          NIRMANA_L0_TEXT_INDEX_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_text_index_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_text_index_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 618 rules integrity test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_rules_integrity_test;"
+
+      - name: Nirmāṇa L0 — migration 618 deterministic rules contract against real Postgres
+        env:
+          NIRMANA_L0_RULES_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_rules_integrity_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_rules_integrity_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 628 remaining-contract test DB
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE nirmana_l0_wave0_remaining_test;"
+
+      - name: Nirmāṇa L0 — migration 628 exact digest contracts and ontology co-writer retry
+        env:
+          NIRMANA_L0_WAVE0_REMAINING_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_remaining_test
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave0_remaining_test
+        run: |
+          npx vitest run tests/unit/migrations/nirmana_l0_wave0_remaining_integrity_contract.test.ts --reporter=verbose
+          python -m pytest python-sidecar/tests/test_l0_ontology.py -q
+
+      - name: NTAP monitor — provision the dedicated migration 629 contract DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The contract test also refuses any non-loopback host or any database
+        # name other than nirmana_monitor_test, so this path cannot target
+        # production accidentally. The local service credential stays in the
+        # step environment and is never printed.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_monitor_test;"
+
+      - name: NTAP monitor — migration 629 append-only contract against real Postgres
+        env:
+          NIRMANA_MONITOR_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_monitor_test
+        run: npx vitest run src/app/api/admin/internal/nirmana-elevation-monitor/__tests__/migration-contract.db.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 630 wave-one contract DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The migration test accepts only this loopback database name, so its
+        # schema setup cannot target production accidentally.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_l0_wave1_test;"
+
+      - name: Nirmāṇa L0 — migration 630 wave-one contracts against real Postgres
+        env:
+          NIRMANA_L0_WAVE1_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_wave1_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_wave1_correctness_contract.test.ts --reporter=verbose
+
+      - name: Nirmāṇa L0 — provision the migration 631 gochara citation contract DB
+        # Dedicated disposable database on this job's local postgres:16 service.
+        # The test accepts only this loopback database name, so it cannot target
+        # production while exercising first apply, replay, and detector rollback.
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 \
+            -c "CREATE DATABASE nirmana_l0_gochara_citation_test;"
+
+      - name: Nirmāṇa L0 — migration 631 gochara citation contract against real Postgres
+        env:
+          NIRMANA_L0_GOCHARA_CITATION_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nirmana_l0_gochara_citation_test
+        run: npx vitest run tests/unit/migrations/nirmana_l0_gochara_citation_chunk_repair.test.ts --reporter=verbose
+
+      # ── P3-C (SMṚTI) pipeline persistence — cold completeness audit fix ──────
+      # `src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts`
+      # is P3-C's only DB round-trip detector for the claim "tool_call/tool_result/
+      # reasoning are persisted": it self-skips (`describe.skipIf`) unless
+      # PARIPRASHNA_STORE_DB_TEST=1 AND DATABASE_URL are both set, and neither had
+      # ever been wired into any CI workflow — a §N.8 null wearing a green's
+      # clothes (the claim had no detector that had ever run anywhere but an
+      # author's laptop). Wired here rather than in a new job, per the pattern
+      # this job already established for RATE-07/F-152 above: a THIRD throwaway
+      # database against the SAME `postgres:16` service container, no new
+      # container.
+      #
+      # Unlike RATE-07/F-152 (one self-contained migration each), this test needs
+      # the real `profiles`/`charts`/`conversations`/`conversation_messages`
+      # tables (0001_brahma_baseline.sql, the full squashed schema) plus the real
+      # `message_parts` table (migration 467) — `writeTurn`/`readTurnParts`
+      # (store/writer.ts, store/reader.ts) round-trip through all five. Applying
+      # 0001_brahma_baseline.sql via psql -f (the SAME `-f <file>` mechanism this
+      # job already uses for 470/580 above) produces ~10 EXPECTED, IDENTIFIED
+      # errors — `bodha_signal_embeddings`/`conversation_message_embeddings` and
+      # their indexes need the `vector` type, and vanilla `postgres:16` has no
+      # pgvector extension available (`CREATE EXTENSION vector` errors
+      # "extension \"vector\" is not available" — confirmed live, not a guess).
+      # Neither embeddings table is on this test's read/write path. Rather than
+      # trust that silently, the next step's own SELECT to_regclass() checks are
+      # the real gate (§N.4 "surgical migrations, verified") — if any of the five
+      # tables this test actually touches is missing, the step fails loudly
+      # before the test ever runs, instead of the test failing later with a
+      # confusing "relation does not exist".
+      - name: P3-C — provision the pipeline persistence test DB (full baseline schema + migration 467)
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE p3c_persistence_test;"
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 -c \
+            'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; CREATE EXTENSION IF NOT EXISTS pgcrypto; CREATE EXTENSION IF NOT EXISTS pg_trgm;'
+          # Tolerant apply — see the comment block above for exactly which errors
+          # are expected (pgvector-only) and why. ON_ERROR_STOP is deliberately
+          # NOT set here; the verification query below is the real gate.
+          psql -h localhost -U postgres -d p3c_persistence_test -f supabase/migrations/0001_brahma_baseline.sql || true
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 \
+            -f supabase/migrations/467_pariprashna_canonical_message_parts.sql
+          psql -h localhost -U postgres -d p3c_persistence_test -v ON_ERROR_STOP=1 -c "
+            DO \$\$
+            DECLARE missing text;
+            BEGIN
+              SELECT string_agg(t, ', ') INTO missing FROM unnest(ARRAY[
+                'profiles', 'charts', 'conversations', 'conversation_messages', 'message_parts'
+              ]) AS t WHERE to_regclass('public.' || t) IS NULL;
+              IF missing IS NOT NULL THEN
+                RAISE EXCEPTION 'P3-C persistence test DB provisioning incomplete — missing table(s): %', missing;
+              END IF;
+            END \$\$;"
+
+      - name: P3-C — pipeline persistence DB round-trip (tool_call/tool_result/reasoning), real detector
+        # §N.8: this is the detector for the claim "a real turn's tool_call/
+        # tool_result/reasoning parts persist and read back" — previously an
+        # unrun null. Also carries its own can-fail proof (the third `it` block
+        # withholds the thinking block and asserts `reasoning` comes back
+        # missing while the other kinds still persist) — a regression here fails
+        # this step, not silently.
+        env:
+          PARIPRASHNA_STORE_DB_TEST: '1'
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/p3c_persistence_test
+        run: npx vitest run src/lib/pariprashna/pipeline/__tests__/reading_parts_persistence.db.test.ts --reporter=verbose
 
   pratijna-v4-fixture-property-tests:
     # PRATIJÑĀ v4 Lane B3 — the CI tier of the campaign's three-tier
@@ -576,6 +1025,36 @@ jobs:
         # baseline-style auto-accept for future violations.
         run: python platform/scripts/governance/check_fact_category_pinning.py
 
+      # ── NIRMĀṆA L2-W3 (L2_W2_DECIDE_v1_0.md N-20) ─────────────────────────
+      # A migration that registers an asset must name catalog_status. The column
+      # DEFAULTs to 'DRAFT' and the Nirmāṇa cockpit filters on it, so an INSERT
+      # that omits it registers a fully-built asset as invisible — with nothing
+      # failing anywhere.
+      #
+      # This guard exists because the defect has been introduced, diagnosed,
+      # swept, and re-introduced. migrations/294_catalog_status_current.sql
+      # diagnosed it in its own header and swept the assets that existed then;
+      # eight later registry migrations omitted it again, leaving nine L2 Bodha
+      # assets DRAFT until 660 swept them a second time. A sweep corrects the rows
+      # that exist on the day it runs; only a gate stops the next migration.
+      #
+      # Deliberately STATIC: the DB-assertion form ("no asset with a writer and
+      # rows may be DRAFT") needs a live database and only fires after the bad
+      # migration is written, reviewed, merged and applied. This fires in the PR
+      # that introduces it and names the cause rather than the consequence.
+      #
+      # Runs in this job rather than as a new required check so it gates without
+      # a branch-protection change.
+      - name: Registry-INSERT catalog_status guard — self-test (bundled fixtures)
+        run: python platform/scripts/governance/check_registry_insert_catalog_status.py --self-test
+
+      - name: Registry-INSERT catalog_status guard — migration scan (allowlist-aware)
+        # Applied migrations are immutable (CLAUDE.md §N.4), so pre-existing
+        # offenders are quarantined by filename with a written reason. Several of
+        # those reasons record that the DATA is still uncorrected and belongs to
+        # another layer's session — those entries are open findings, not closures.
+        run: python platform/scripts/governance/check_registry_insert_catalog_status.py
+
   earned-signal-lint:
     # SAMĀPTI v2.0 §7.5, lane B-N8-LINT — the standing CLAUDE.md §N.8
     # Earned-Signal guard, and a deliberate sibling to fact-category-pin-lint
@@ -728,12 +1207,35 @@ jobs:
       # recorded ruling, not a quiet edit.
       - name: drift_detector — repo scan
         # Exit code policy: 0=clean, 3=baseline residuals, 1/2=regression (fail).
-        # Whitelist location: platform/scripts/governance/drift_detector.py known_residuals[]
-        # Current whitelisted tickets: WARN.2–WARN.8 (dead Gemini mirror pointers,
-        # historical PHASE_B_PLAN refs — booked for quarterly governance pass 2026-07-24)
+        # Whitelist location: platform/scripts/governance/drift_detector.py WHITELIST_TICKETS{}
+        # Current whitelisted tickets: WARN.4, WARN.9, WARN.10 (WARN.2 and WARN.5 retired
+        # 2026-08-21/22 as confirmed-dead, RC-2/RC-1 §7.3; WARN.6/7/8 removed 2026-06-16 —
+        # see WHITELIST_TICKETS' own comments for each retirement's evidence)
         # Use || to capture exit code without set -e aborting on non-zero exit.
         env:
-          DRIFT_BASELINE_MAX: '216'   # DVA Ruling 4 T0 baseline. Lower freely; raise only by ruling.
+          # Ratcheted DOWN 165 → 79 on 2026-08-22 (RC-1 + F-163, PARISESA-V4).
+          # RC-1 repointed §H.3.5/§H.3.8 off the SUPERSEDED FILE_REGISTRY_v1_14.md
+          # onto CANONICAL_ARTIFACTS_v1_0.md / CAPABILITY_MANIFEST.json (the
+          # doctrine-named live surfaces); F-163 added the missing CURRENT-rows
+          # status filter in the same hunk (they are ruled to land as one PR,
+          # never separately). Measured 79 findings / exit=3 on the repointed
+          # tree: 77 real registry_disagreement gaps (CAPABILITY_MANIFEST.json
+          # CURRENT-status entries whose basename is not named anywhere in
+          # CANONICAL_ARTIFACTS_v1_0.md §1) + 2 pre-existing DB-unreachable LOW
+          # findings unrelated to this change (schema_db_unreachable,
+          # a3_schema_db_unreachable — this sandbox has no live DB). The F94 plan
+          # estimated "~3" real findings once the 161 FILE_REGISTRY false
+          # positives were removed; that estimate implicitly assumed the residual
+          # would resemble a "retire" outcome, not a "repoint against a second,
+          # independently-frozen registry" outcome. CANONICAL_ARTIFACTS_v1_0.md's
+          # own §1 table is frozen at ~33 rows (last grown 2026-04-27, per its own
+          # SUPERSEDED frontmatter) and never tracked most of
+          # CAPABILITY_MANIFEST.json's later growth to 128 entries, so the 77 is
+          # real, triaged drift, not a repeat of the FILE_REGISTRY false-positive
+          # class — see the PR body for the full triage and category breakdown.
+          # Prior: 216 → 165 on 2026-08-21 (F-94 narrow repair). Lower freely;
+          # raise only by ruling.
+          DRIFT_BASELINE_MAX: '79'
         run: |
           ec=0
           out=$(python platform/scripts/governance/drift_detector.py) || ec=$?
@@ -884,13 +1386,42 @@ jobs:
         run: |
           pip install -r platform/python-sidecar/requirements-ci.txt --quiet
           cd platform/python-sidecar
-          pytest tests/ bodha_writers/__tests__ \
+          # Nirmana F0: this checked-in artefact is the web planner's source of
+          # sidecar-owned writer hashes. Any Python writer change must regenerate
+          # it; otherwise old receipts could survive a code deployment as fresh.
+          python -m pipeline.orchestrator.provenance_inventory --check
+          # Nirmana #1715: the per-layer analysis-receipt pins are derived FROM
+          # that inventory. Checking them here (offline; no DB) is what keeps the
+          # generalised receipt spine fail-closed -- a writer change that lands
+          # without re-pinning its layer fails the build instead of silently
+          # letting a stale analysis authorise a rebuild.
+          python ../scripts/generate/nirmana_analysis_layer_pins.py --check
+          pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+            pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
+            pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
             --ignore=tests/test_pyjhora_adapter \
             --ignore=tests/test_dasha_chain.py \
             --ignore=tests/extractors/test_cgm_extractor.py \
             --ignore=tests/test_l0_remedy_corpus.py \
             -m "not integration" \
             -q --tb=short --no-header
+
+      - name: Nirmāṇa L0 — pinned Swiss Ephemeris corpus probe
+        # This is a production-shaped positive probe, not the ordinary fallback-only
+        # unit path: it downloads the same immutable public corpus used by the
+        # pipeline image, then requires the exact SHA-pinned Swiss backend verdict.
+        # The runner is ephemeral, so its explicitly-created temporary corpus needs
+        # no cleanup step.
+        run: |
+          nirmana_ephe_dir="$(mktemp -d)"
+          for nirmana_ephe_file in sepl_18.se1 semo_18.se1 seas_18.se1; do
+            curl --fail --silent --show-error --location --retry 2 \
+              "https://storage.googleapis.com/madhav-ephemeris/se1/$nirmana_ephe_file" \
+              --output "$nirmana_ephe_dir/$nirmana_ephe_file"
+          done
+          cd platform/python-sidecar
+          SWE_EPHE_PATH="$nirmana_ephe_dir" pytest tests/test_service_probes.py -q
 
   density-census:
     # doctrine-waves D-1.5b Lane B-7 (CLAUDE.md §N.6 — Serving Density Principle).
@@ -942,7 +1473,24 @@ jobs:
       - name: kala_elect_get hora_ladder coverage-honesty regression (platform-mcp)
         working-directory: platform-mcp
         run: npx vitest run src/tools/kala_views/elect.test.ts
-      - name: kala_now_get kala_darshana_confluence coverage-honesty regression (platform-mcp)
+      - name: kala_elect_get F-122 budget-trim section-coverage regression (platform-mcp)
+        # F-122 follow-up (independent-review fix): none of these three test files was on
+        # this allowlist before, so the PR's own "N/N passing" claim for the first two was
+        # local-only -- never actually re-run by CI. Adds all three: the exit-repro test
+        # (budget_kb:32, sections A-G + candidates setArray sync must close the gap --
+        # raised from the PR's original budget_kb:20; see that test file's own doc-comment
+        # for why), the §5 recurrence guard (all 7 JudgmentLedger array fields covered by a
+        # declared section path, and the candidates setArray genuinely syncs
+        # lattice_adjudication.ledgers), and the new judgment_ledger aliasing regression
+        # (a surviving candidate's own judgment_ledger must not be emptied by a trim of the
+        # lattice_adjudication.ledgers[] bookkeeping copy).
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/__tests__/elect_budget_trim_f122.test.ts src/tools/kala_views/__tests__/elect_sections_coverage.test.ts src/tools/kala_views/__tests__/elect_ledger_alias_f122.test.ts
+      - name: kala_now_get coverage-honesty + F-38 entitlement-gate regression (platform-mcp)
+        # Covers the original kala_darshana_confluence coverage-honesty regression AND the
+        # PARIŚEṢA-V4 F-38 gate: kala_now_get must reject an unentitled/nonexistent chart_id
+        # via remoteAuthorize BEFORE any data fetch, and must never echo a raw upstream
+        # error string (which was leaking `HTTP 404: Chart '<uuid>' not found` verbatim).
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/kala_now_get.test.ts
       - name: kala_now_get kota_chakra + sudarshana_varsha serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 16/17
@@ -951,8 +1499,45 @@ jobs:
       - name: kala_now_get moorti_nirnaya + vedha_gochara serving regression (platform-mcp) — ṢAḌ-DARŚANA W3 items 4/5 (closes R-19)
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/kala_now_get_moorti_vedha_w3.test.ts
+      - name: kala_life_arc_get include_lel_events no-op disclosure regression (platform-mcp) — F-26
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/register_p1_synthesis_life_arc_lel_noop.test.ts
+      - name: synth_chart_brief_get top_discoveries honest-fields regression (platform-mcp) — F-129
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f129_top_discoveries_honest_fields.test.ts
+      - name: bodha_pratijna_get MCP tool registration regression (platform-mcp) — F-67
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f67_bodha_pratijna_get_registration.test.ts
+      - name: F-123 kala_explain_get dead-pointer regression (real now.ts/ahead.ts/priority.ts sites) (platform-mcp)
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/kala_views/f123_dead_pointer_regression.test.ts
+      - name: F-06 ref_remedies_chart_get scope-honesty regression (platform-mcp) — PARIŚEṢA-V4
+        # The tool advertised "Chart-specific remedy suggestions" while querying a
+        # global L0 corpus table that has no chart_id column. Locks the corrected
+        # description and the provenance-only chart_id parameter.
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/f06_remedies_scope_honesty.test.ts
+      - name: RATE-07 OAuth rate-limit gate + route wiring (platform-mcp) — PARIŚEṢA-V4
+        # Two files, both required: the first proves the gate's BEHAVIOUR (identity
+        # derivation vs. XFF spoofing, 429 + Retry-After, fail-closed on store
+        # failure, no charging before validation); the second proves the gate is
+        # actually ATTACHED to all five OAuth mutation routes. A passing behaviour
+        # test on an unattached middleware is exactly the §N.8 defect class.
+        working-directory: platform-mcp
+        run: npx vitest run src/__tests__/rate07_oauth_rate_limit.test.ts src/__tests__/rate07_oauth_route_wiring.test.ts
+      - name: F-118 kala_upaya_get duplicate-collapse + actionability regression (platform-mcp) — PARIŚEṢA-V4
+        # The tool served intervention_count=100 over 14 distinct labels — 50 byte-identical
+        # phala_mitigation severity classifications (empty remedy program) plus 13 bodha_rm
+        # remedies stored once per ayanamsha. Both files are required: the lib file proves the
+        # collapse/actionability/discrimination DETECTORS behave (including the cases that make
+        # each read false — §N.8), the tool file proves they are actually WIRED into the served
+        # response against a fixture reproducing the live row shape.
+        working-directory: platform-mcp
+        run: npx vitest run src/lib/kala_upaya_diagnosis.test.ts src/tools/kala_views/upaya.test.ts src/tools/kala_views/upaya_weak_promise_gate.test.ts
       - name: vidhi registry codegen drift check (platform) — GT-56
         run: npm run codegen:vidhi:check
+      - name: signal-glossary codegen drift check (platform) — F-172
+        run: npm run codegen:signal-glossary:check
       - name: vidhi registry codegen parity test (platform-mcp) — GT-56
         working-directory: platform-mcp
         run: npx vitest run src/__tests__/vidhi_codegen_parity.test.ts

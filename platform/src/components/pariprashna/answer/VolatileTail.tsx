@@ -28,7 +28,7 @@ export function VolatileTail({
   hollowCaret: boolean
 }) {
   return (
-    <p className={ROLE_CLASS[tail.role ?? 'elaboration']} aria-live="polite">
+    <p className={ROLE_CLASS[tail.role ?? 'elaboration']} aria-live="polite" data-testid="pp-tail" data-pp-tail-live="true">
       {proseWithCitations(tail.text, turnId, citations)}
       <Caret hollow={hollowCaret} />
     </p>

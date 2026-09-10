@@ -191,6 +191,13 @@ def test_live_kala_gochara_windows_source_still_single_valued_live():
     conn = _live_conn_or_skip()
     try:
         with conn.cursor() as cur:
+            # INTENTIONAL: no generation filter — this test proves that the
+            # `source` column is uniform ('live') across ALL rows regardless
+            # of generation. That cross-generation uniformity is exactly the
+            # architectural rationale for migration 527: you cannot use `source`
+            # as a generation discriminator without mutating rows that are not
+            # yours to mutate. Restricting to one generation would defeat the
+            # test's own claim. (MR-18)
             cur.execute("SELECT DISTINCT source FROM kala_gochara_windows")
             values = {r["source"] for r in cur.fetchall()}
         if not values:

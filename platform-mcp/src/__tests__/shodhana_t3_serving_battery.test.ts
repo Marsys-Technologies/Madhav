@@ -154,14 +154,11 @@ describe('THE BATTERY — assess_career/marriage/wealth (registry_bridge.ts)', (
 
         expect(result.isError).toBeFalsy()
         const obj = result.structuredContent!.object as Record<string, unknown>
-        // The capability's `content` payload (verdict lives here — assess_* handlers spread
-        // `{content: payload, is_error}` directly, they don't hoist verdict to the top level
-        // the way judgment_query's v3 envelope does).
-        const payload = obj['content'] as Record<string, unknown>
-        expect(containsTruncationMarker(payload['verdict'])).toBe(false)
-        const clauses = (payload['verdict'] as Record<string, unknown>)['clauses'] as Array<Record<string, unknown>>
-        expect(clauses[0]['text']).toBe(longClauseText(domain)) // byte-identical, not truncated
-        expect((clauses[0]['text'] as string).endsWith('citations.')).toBe(true)
+        // A09 normalizes the capability's `{content, is_error}` ToolResult before
+        // composition, then turns VerdictLayer clauses into the stable string kernel.
+        const kernel = obj['kernel'] as Record<string, unknown>
+        expect(containsTruncationMarker(kernel['verdict'])).toBe(false)
+        expect(kernel['verdict']).toContain(longClauseText(domain))
       })
 
       it('budget_kb:1 (the tightest the tool allows): verdict prose STILL intact — disposable signal/lens arrays absorb the cut instead', async () => {
@@ -173,19 +170,14 @@ describe('THE BATTERY — assess_career/marriage/wealth (registry_bridge.ts)', (
 
         expect(result.isError).toBeFalsy()
         const obj = result.structuredContent!.object as Record<string, unknown>
-        const payload = obj['content'] as Record<string, unknown>
-        expect(containsTruncationMarker(payload['verdict'])).toBe(false)
-        const verdict = payload['verdict'] as Record<string, unknown> | undefined
-        expect(verdict).toBeDefined()
-        const clauses = verdict!['clauses'] as Array<Record<string, unknown>>
-        expect(clauses).toBeDefined()
-        expect(clauses.length).toBeGreaterThan(0)
-        expect(clauses[0]['text']).toBe(longClauseText(domain))
+        const kernel = obj['kernel'] as Record<string, unknown>
+        expect(containsTruncationMarker(kernel['verdict'])).toBe(false)
+        expect(kernel['verdict']).toContain(longClauseText(domain))
         // The disposable arrays (NOT immune) are what a 1KB budget should have gone after.
         const serializedSize = Buffer.byteLength(JSON.stringify(obj), 'utf8')
         // Honest either way: fits, or discloses the honest overage — never a silent partial
         // truncation of the verdict layer as the "solution".
-        const flags = (obj['judgment_flags'] as Array<{ code?: string }> | undefined) ?? []
+        const flags = (kernel['flags'] as Array<{ code?: string }> | undefined) ?? []
         const honestlyFlagged = flags.some(f => f.code === 'budget_exceeded_after_trim')
         expect(serializedSize <= 1024 || honestlyFlagged).toBe(true)
       })

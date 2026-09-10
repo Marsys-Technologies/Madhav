@@ -1,0 +1,23 @@
+{
+  "scenario": "branch-malformed-json",
+  "derived_from": "route-branch",
+  "http": {
+    "status": 400,
+    "headers": {
+      "content-type": "application/json"
+    }
+  },
+  "events": [
+    {
+      "non_stream_body": {
+        "error": {
+          "code": "DATA_INVALID_INPUT",
+          "message": "Invalid or missing input.",
+          "retry": false,
+          "detail": "Invalid JSON body"
+        }
+      }
+    }
+  ],
+  "side_effects": []
+}

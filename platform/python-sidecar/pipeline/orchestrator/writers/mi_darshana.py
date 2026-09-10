@@ -32,7 +32,10 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, reg
 
 logger = logging.getLogger(__name__)
 
-SURFACE_FORMULA_VERSION = "mi_darshana_v1.0"
+# v1.2: F-147 addendum — unmeasured channel_propensity narrated as unmeasured,
+#       not as the prior dressed up as an empirically-learned rate.
+# v1.1: F-143 per-discovery_class evidence grading
+SURFACE_FORMULA_VERSION = "mi_darshana_v1.2"
 LEL_VERSION = "v1.7"
 
 _INSIGHT_TYPES = {
@@ -42,7 +45,116 @@ _INSIGHT_TYPES = {
     "load_bearing": "Load-bearing conclusion from signal sensitivity map",
     "negative_knowledge": "What definitively does NOT hold for this native",
     "verdict_object": "Per-event-class promise verdict with ranked evidence, contradictions, and tradition concordance",
+    "retrodiction": "Historical-anchor probe against a known past event (mi_pariksha retrodiction substep)",
 }
+
+# ── F-143: discovery evidence grading ────────────────────────────────────────
+# `mimamsa_discoveries.n_support` does NOT mean the same thing across discovery
+# classes, so one shared `n >= 5` threshold cannot grade both honestly:
+#
+#   emergent_law  (mi_pariksha._substep_discovery) — n_support = the number of
+#       mimamsa_attribution rows for a (signal_id, dimension) pair. Those are
+#       ASSIGNMENTS of analytic credit, one per prediction↔event match the signal
+#       appears in — including matches whose verdict is UNRESOLVED (observation
+#       window not yet elapsed, adjudication can still flip) or FALSE_ALARM
+#       (control window). Counting them as scored outcomes is exactly the F-35
+#       defect: 'empirical' claimed from assignment volume. The only count that
+#       can earn 'empirical' is `evidence_refs.n_scored_matches` — distinct
+#       matches with an adjudicated verdict — which mi_pariksha now records.
+#
+#   retrodiction  (mi_pariksha._substep_retrodiction) — n_support = matched
+#       historical anchors, hard-capped at 3 by the query's LIMIT 3, so `n >= 5`
+#       is structurally unreachable and every row grades 'prior_only' forever.
+#       The threshold is not merely too strict, it is the wrong axis. But the fix
+#       is NOT to lower the bar: a "match" here is only "an anchor in the same
+#       domain had opened before the event date". The declared T−90d blinding is
+#       never applied as a filter, the anchor window is not checked to contain the
+#       event, and the anchor's event type is never compared to what happened. No
+#       detector adjudicates the hit (§N.8), so nothing in the current pipeline
+#       earns 'empirical' for this class — it is a deterministic structural probe
+#       and is graded 'structural', the tier this schema already uses for
+#       deterministically-derived, non-outcome-scored rows. What WOULD earn
+#       'empirical' here: a real cutoff-filtered recomputation plus an adjudicated
+#       hit criterion (window containment + event-class agreement) over ≥5 events.
+#
+# Threshold mirrors F-35 / migration 573 ("empirical requires scored_count >= 5").
+_EMPIRICAL_SCORED_MIN = 5
+
+_GRADE_EMPIRICAL = "empirical"
+_GRADE_ASSIGNMENT_ONLY = "assignment_only"
+_GRADE_PRIOR_ONLY = "prior_only"
+_GRADE_STRUCTURAL = "structural"
+
+
+def _discovery_evidence_grade(
+    discovery_class: str, n_support: int, evidence_refs
+) -> tuple[str, dict]:
+    """Grade one mimamsa_discoveries row, per discovery_class (F-143).
+
+    Returns (evidence_grade, grade_basis) — the basis dict is stored in the
+    insight unit's provenance_chain so the reason is auditable at serve time and
+    never has to be re-derived from the grade label alone.
+    """
+    refs = evidence_refs if isinstance(evidence_refs, dict) else {}
+
+    if discovery_class == "retrodiction":
+        # F-148 pt.1: the cutoff/containment/event_type disclosure flags live once,
+        # in evidence_refs (mi_pariksha's own write), and are echoed here — never
+        # restated as a second hardcoded copy, which is how the two would drift.
+        return _GRADE_STRUCTURAL, {
+            "rule": "retrodiction_never_empirical",
+            "n_support_means": "matched historical anchors (query LIMIT 3)",
+            "reason": (
+                "anchor match is not an adjudicated hit and the declared T−90d "
+                "blinding is not enforced — no detector scores this probe, so no "
+                "count of it can earn an empirical grade"
+            ),
+            "anchors_matched": n_support,
+            "cutoff_enforced": refs.get("cutoff_enforced"),
+            "window_containment_checked": refs.get("window_containment_checked"),
+            "event_type_compared": refs.get("event_type_compared"),
+            "n_adjudicated_hits": refs.get("n_adjudicated_hits"),
+        }
+
+    raw_scored = refs.get("n_scored_matches")
+    n_scored = (
+        int(raw_scored)
+        if isinstance(raw_scored, int) and not isinstance(raw_scored, bool)
+        else None
+    )
+
+    if n_scored is None:
+        # Either a pre-F-143 row (written before mi_pariksha recorded the scored
+        # count) or a discovery class that carries no scored count at all. An
+        # honest lower tier, never a promotion on an unknown (§N.7 item 6).
+        grade = (
+            _GRADE_ASSIGNMENT_ONLY
+            if discovery_class == "emergent_law" and n_support >= _EMPIRICAL_SCORED_MIN
+            else _GRADE_PRIOR_ONLY
+        )
+        return grade, {
+            "rule": "no_scored_count_available",
+            "n_support": n_support,
+            "n_scored_matches": None,
+            "reason": (
+                "evidence_refs carries no n_scored_matches — cannot distinguish "
+                "adjudicated outcomes from attribution assignments; graded down, "
+                "never up (rebuild mi_pariksha to populate it)"
+            ),
+        }
+
+    if n_scored >= _EMPIRICAL_SCORED_MIN:
+        grade = _GRADE_EMPIRICAL
+    elif n_support >= _EMPIRICAL_SCORED_MIN:
+        grade = _GRADE_ASSIGNMENT_ONLY
+    else:
+        grade = _GRADE_PRIOR_ONLY
+    return grade, {
+        "rule": "scored_matches_threshold",
+        "n_support": n_support,
+        "n_scored_matches": n_scored,
+        "empirical_min": _EMPIRICAL_SCORED_MIN,
+    }
 
 
 def _table_exists(conn, name: str) -> bool:
@@ -133,7 +245,7 @@ class MiDarshanaWriter(WriterBase):
                 float(obs),
                 f"[{round(conf_lo,2)},{round(conf_hi,2)})",
                 n,
-                "clean",
+                "not_assessed",
                 grade,
                 LEL_VERSION,
                 None,   # last_calibrated_at
@@ -146,9 +258,9 @@ class MiDarshanaWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 "SELECT channel_id, domain, channel_propensity, prior_propensity, "
-                "       n_support, evidence_grade "
+                "       n_support, scored_count, evidence_grade "
                 "FROM mimamsa_manifestation_grammar WHERE chart_id = %s "
-                "AND evidence_grade = 'empirical' ORDER BY n_support DESC LIMIT 20",
+                "AND evidence_grade IN ('empirical', 'assignment_only') ORDER BY n_support DESC LIMIT 20",
                 (chart_id,),
             )
             gram_rows = cur.fetchall()
@@ -162,16 +274,42 @@ class MiDarshanaWriter(WriterBase):
             # an absence marker. Only fall back to prior_propensity (NOT NULL)
             # when channel_propensity is actually missing (None).
             _channel_prop_raw = r.get("channel_propensity")
-            if _channel_prop_raw is not None:
+            propensity_measured = _channel_prop_raw is not None
+            if propensity_measured:
                 prop = float(_channel_prop_raw)
             else:
                 _prior_prop_raw = r.get("prior_propensity")
                 prop = float(_prior_prop_raw) if _prior_prop_raw is not None else 0.5
             n = r.get("n_support") or 0
-            statement = (
-                f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
-                f"(n={n}, empirical learning)."
-            )
+            grade = r.get("evidence_grade", "prior_only")
+            scored = r.get("scored_count") or 0
+            if grade == "empirical" and not propensity_measured:
+                # F-147 addendum (§N.7 item 6): a row can earn 'empirical' on
+                # scored_count while channel_propensity stays NULL, because
+                # mi_pramana._score_manifestation() is still a stub and never
+                # records WHICH channel an outcome manifested through
+                # (mi_sambandha emits citation_ref.propensity_null_reason =
+                # 'no_manifestation_channel_recorded' for exactly this case).
+                # Narrating `prop` here would print the PRIOR as though it were
+                # the empirically-learned rate — a worse invention than the 0.0
+                # this addendum removed. Say the gap instead.
+                statement = (
+                    f"For {dom} events, {scored} predictions on the '{ch}' channel have been "
+                    f"outcome-scored, but none recorded which channel the outcome actually "
+                    f"manifested through — so this channel's firing propensity is UNMEASURED, "
+                    f"not zero. Prior-based estimate only: {prop:.0%}."
+                )
+            elif grade == "empirical":
+                statement = (
+                    f"For {dom} events, the '{ch}' channel fires with {prop:.0%} propensity "
+                    f"(n={scored} outcome-scored predictions, empirical learning)."
+                )
+            else:  # assignment_only — honest, not a promoted 'empirical' claim (§N.7 item 6)
+                statement = (
+                    f"For {dom} events, the '{ch}' channel has been assigned to {n} predictions "
+                    f"with no outcomes scored yet — insufficient evidence for an empirical grade "
+                    f"(prior-based estimate: {prop:.0%})."
+                )
             insight_id = f"gram_{dom}_{ch[:20]}_{i}"
             rows.append((
                 chart_id, insight_id, "manifestation_grammar",
@@ -180,11 +318,25 @@ class MiDarshanaWriter(WriterBase):
                 prop,
                 None,   # confidence_band
                 n,
-                "clean",
-                "empirical",
+                "not_assessed",
+                grade,
                 LEL_VERSION,
                 now,
-                json.dumps({"channel": ch, "domain": dom, "propensity": prop}),
+                # rank_consequence (NOT NULL, top-level column) still carries the
+                # prior when the measured value is absent; provenance records
+                # which it is so a consumer can never read a prior as a
+                # measurement. F-147 GA-5 finding: this dict used to also embed
+                # a "rank_consequence" key duplicating that same value — the
+                # third instance of the P3-b duplicate-key leak (see
+                # query_insights.ts's suppressIfNotCalibrated comment). Removed:
+                # propensity_source already carries the disclosure, and the
+                # top-level column is the one callers/suppressors read.
+                json.dumps({
+                    "channel": ch,
+                    "domain": dom,
+                    "propensity": prop if propensity_measured else None,
+                    "propensity_source": "measured" if propensity_measured else "prior_fallback",
+                }),
                 False,
                 SURFACE_FORMULA_VERSION,
             ))
@@ -193,7 +345,7 @@ class MiDarshanaWriter(WriterBase):
         with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
             cur.execute(
                 "SELECT discovery_id, discovery_class, statement, strength, n_support, "
-                "       confidence_band, activation_status "
+                "       confidence_band, activation_status, evidence_refs "
                 "FROM mimamsa_discoveries WHERE chart_id = %s ORDER BY strength DESC NULLS LAST",
                 (chart_id,),
             )
@@ -203,19 +355,32 @@ class MiDarshanaWriter(WriterBase):
             insight_id = f"disc_{r['discovery_id'][:50]}"
             strength = float(r.get("strength") or 0.5)
             n = r.get("n_support") or 0
+            discovery_class = r.get("discovery_class") or "emergent_law"
             is_neg = False
+            # F-143: `"empirical" if n >= 5 else "prior_only"` read n_support as a
+            # count of scored outcomes for every discovery class alike. It is not —
+            # see _discovery_evidence_grade for what each class's n_support means and
+            # why one shared threshold cannot grade both honestly.
+            grade, grade_basis = _discovery_evidence_grade(
+                discovery_class, n, r.get("evidence_refs")
+            )
             rows.append((
-                chart_id, insight_id, r.get("discovery_class", "emergent_law"),
+                chart_id, insight_id, discovery_class,
                 None, None, None,
                 r["statement"],
                 strength,
                 r.get("confidence_band"),
                 n,
-                "clean",
-                "empirical" if n >= 5 else "prior_only",
+                "not_assessed",
+                grade,
                 LEL_VERSION,
                 now,
-                json.dumps({"discovery_id": r["discovery_id"], "status": r.get("activation_status")}),
+                json.dumps({
+                    "discovery_id": r["discovery_id"],
+                    "status": r.get("activation_status"),
+                    "discovery_class": discovery_class,
+                    "grade_basis": grade_basis,
+                }),
                 is_neg,
                 SURFACE_FORMULA_VERSION,
             ))
@@ -243,7 +408,7 @@ class MiDarshanaWriter(WriterBase):
                 sens,
                 None,
                 1,
-                "clean",
+                "not_assessed",
                 "structural",
                 LEL_VERSION,
                 None,
@@ -362,7 +527,7 @@ class MiDarshanaWriter(WriterBase):
                             0.0,       # rank_consequence: lowest, but row is still written (R6)
                             None,      # confidence_band: no band computable from a null grade
                             0,         # n_support: genuinely zero
-                            "clean",
+                            "not_assessed",
                             "structural",
                             LEL_VERSION,
                             None,
@@ -505,7 +670,7 @@ class MiDarshanaWriter(WriterBase):
                         g_norm,
                         f"[{conf_lo},{conf_hi})",
                         len(ranked_evidence),
-                        "clean",
+                        "not_assessed",
                         "structural",
                         LEL_VERSION,
                         None,
@@ -590,6 +755,27 @@ class MiDarshanaWriter(WriterBase):
                     counts[view] = r["count"] if r else 0
             except Exception as exc:
                 counts[view] = f"ERROR: {exc}"
+
+        # A10 (L5-W3, adjudication #1738).  This substep is NAMED views_verify
+        # and its only job is to verify.  It caught a broken view, embedded the
+        # error text in a `notes` string nothing reads, and returned success --
+        # CLAUDE.md §N.8 verbatim: what code path would have to run, and fail,
+        # for this signal to correctly read false?  None existed.  And because
+        # _substep_insight_units produces rows, rows_written > 0 promoted the
+        # asset to 'lit' regardless of what this substep found.
+        failed = {
+            view: count
+            for view, count in counts.items()
+            if isinstance(count, str) and count.startswith("ERROR:")
+        }
+        if failed:
+            raise RuntimeError(
+                f"mi_darshana:views_verify — {len(failed)} of {len(counts)} "
+                f"serving views failed to query: {failed}. This substep's entire "
+                f"job is to verify the views; reporting the error in a note and "
+                f"returning success is a verified claim with no verification "
+                f"behind it (§N.8)."
+            )
 
         logger.info("[mi_darshana:views_verify] chart %s view counts: %s", chart_id, counts)
         return WriterResult(

@@ -5,8 +5,8 @@ Populates `vidhi_intent_floors` + `vidhi_floor_items` (migration 440) with the
 per-intent-class acharya floor + machine band. Content mirrors
 `platform/src/lib/vidhi/registry_data.ts` (VIDHI_INTENT_FLOORS).
 
-PARIŚODHANA B2: the floor literals below were regenerated from the canonical TS registry
-(11 floors / 286 fully-expanded floor_items, incl. the Ω8 reachability band and the
+PARIŚODHANA B2: the floor literals below are mirrored from the canonical TS registry
+(14 floors / 409 fully-expanded floor_items, incl. the Ω8 reachability band and the
 `hard_floor` §N.6 density signal now carried per item) and are held in lockstep with it by
 a CI DRIFT GATE (platform/scripts/census/check_vidhi_registry_parity.mjs, which deep-compares
 this writer's `--dump-json` output against dump_vidhi_registry.ts). The gate, not hand-
@@ -530,17 +530,26 @@ class VidhiFloorsWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         t0 = time.time()
         total_items = sum(len(items) for (*_h, items) in FLOORS)
+        total_owned = len(FLOORS) + total_items
 
         if ctx.dry_run:
             return WriterResult(
                 asset_id=self.asset_id,
-                rows_inserted=total_items,
+                rows_inserted=total_owned,
                 duration_seconds=time.time() - t0,
-                notes=f"dry_run — would replace {len(FLOORS)} floors / {total_items} floor_items",
+                notes=(
+                    f"dry_run — would replace {len(FLOORS)} floors / "
+                    f"{total_items} floor_items; total_owned={total_owned}"
+                ),
             )
 
         with ctx.db_conn.cursor() as cur:
             items_written = 0
+            governed_intents = [floor[0] for floor in FLOORS]
+            cur.execute(
+                "DELETE FROM vidhi_intent_floors WHERE NOT (intent = ANY(%s))",
+                (governed_intents,),
+            )
             for (intent, version, cr27_coverage, notes, items) in FLOORS:
                 cur.execute(
                     """
@@ -569,11 +578,34 @@ class VidhiFloorsWriter(WriterBase):
                     )
                     items_written += 1
 
+            cur.execute(
+                """
+                SELECT
+                  (SELECT count(*) FROM vidhi_intent_floors) AS intent_count,
+                  (SELECT count(*) FROM vidhi_floor_items) AS item_count
+                """
+            )
+            postflight = cur.fetchone()
+            actual = (
+                (postflight["intent_count"], postflight["item_count"])
+                if isinstance(postflight, dict)
+                else tuple(postflight)
+            )
+            expected = (len(FLOORS), total_items)
+            if actual != expected:
+                raise RuntimeError(
+                    f"bg_vidhi_floors exact postflight failed: expected {expected}, got {actual}"
+                )
+
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=items_written,
+            rows_inserted=len(FLOORS) + items_written,
             duration_seconds=time.time() - t0,
-            notes=f"vidhi_intent_floors: {len(FLOORS)} intents; vidhi_floor_items: {items_written} rows",
+            notes=(
+                f"vidhi_intent_floors: {len(FLOORS)} intents; "
+                f"vidhi_floor_items: {items_written} rows; "
+                f"total_owned={len(FLOORS) + items_written}"
+            ),
         )
 
 

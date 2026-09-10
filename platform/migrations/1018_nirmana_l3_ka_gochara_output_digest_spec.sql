@@ -1,0 +1,174 @@
+-- 1018_nirmana_l3_ka_gochara_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v6 priority 2 (grant/contract pre-flight
+-- sweep, output_digest_spec dimension). `ka_gochara`
+-- (pipeline/orchestrator/writers/ka_gochara.py, `KaGocharaWriter`) was
+-- withheld from every prior sweep as "fix merged, rebuild-pending" -- issue
+-- #2527 found `gochara_grammar/resonance_map.py::fetch_resonance_targets`
+-- had no ORDER BY, feeding the persisted `active_sentences` JSONB array
+-- with element order undefined across rebuilds. The Conductor ratified the
+-- finding, routed the fix to L3, and explicitly withheld a digest spec
+-- "until the fix + rebuild land, and re-run the full audit fresh -- do not
+-- assume clean from this finding alone." PR #2541 (L3) added
+-- `ORDER BY target_type, target_ref` to that query; deploy confirmed live
+-- 2026-09-10T01:30:46Z (commit 51059e9f4, matching origin/main HEAD at the
+-- time). The canonical chart's `ka_gochara` asset then rebuilt
+-- (asset_throughput.last_built_at 2026-09-10 01:52:48, AFTER the fix
+-- deployed) -- the rebuild-pending condition is now cleared, triggering
+-- this cycle's fresh audit per the ruling's own instruction.
+--
+-- FRESH AUDIT (not assumed clean from #2527 alone):
+--   * `fetch_resonance_targets` confirmed live on origin/main HEAD to carry
+--     `ORDER BY target_type, target_ref` (both present in the SELECT list,
+--     matching the tiebreak convention already used for #2519/#2521/#2522/
+--     #2525 in this writer family).
+--   * `active_sentences`' order-dependency chain (resonance_map fetch ->
+--     `enrich_targets` 1:1 list comp -> `gather_configuration_sentences`
+--     `for target in targets: out.extend(...)`) is exactly what #2527
+--     traced end to end -- now deterministic given the fixed fetch order.
+--   * `contributing_systems` (`permission.py`'s `systems` list,
+--     `r.permission_detail.get("systems", [])`): the TOP-level list order
+--     was already deterministic before this fix (11 numbered steps
+--     appended in a fixed source-code sequence, never derived from the
+--     unordered fetch) -- not a second instance of #2527's bug. Several
+--     entries' nested `detail` sub-dict DO pick one representative target
+--     via `for target in targets: ... break` (first-match-wins,
+--     e.g. `av_threshold`/`guru_shani_double_transit`/`planetary_return`
+--     system entries) -- this WAS order-dependent pre-fix (flagged but "not
+--     independently traced" in the Conductor's #2527 ruling) and is now
+--     covered by the same `targets`-order fix, since `enrich_targets`
+--     preserves `raw_targets`' order 1:1.
+--   * `term_breakdown`/`lambda_v3_ci_low`/`lambda_v3_ci_high`/`ci_source`:
+--     live-verified 0/87 non-NULL for the canonical chart's generation='2.0'
+--     rows. Confirmed via source read (`materialize.py` sets these from
+--     `IntensityResult.term_breakdown` etc., and `ka_gochara.py`'s
+--     `materialize_event_class` call never overrides the default
+--     `compute_lambda_e_fn` -- so it always uses v1's own
+--     `gochara_intensity.engine.compute_lambda_e`, which never populates
+--     `term_breakdown`; only the gochara_v3 engine path populates it, and
+--     this writer never calls that path). No order-dependency risk in
+--     columns that are always NULL for this writer's own output.
+--   * `suppression_state`: a plain scalar JSONB object (kartari_pincer/
+--     vedha_cancellation/sarvatobhadra_vedha counts + a fixed note string),
+--     no nested list -- `canonical_digest`'s dict-key sort makes its
+--     construction order irrelevant regardless.
+--
+-- THE SHARED-TABLE WRINKLE (why `generation` is pinned in `where_equals`,
+-- not left as a free value_column). `kala_gochara_windows_v2` is NOT
+-- sole-owned by `ka_gochara` -- `ka_gochara_v3_century_materialize.py`
+-- (`KaGocharaV3CenturyMaterializeWriter`, a DIFFERENT registered asset,
+-- itself EXCLUDED from digest-spec per issue #2534: "hardcoded native
+-- birth epoch used for ALL charts, known-RED since migration 670") ALSO
+-- writes into this same table, tagged `generation='g3_utkarsha'`
+-- (`ka_gochara_v3_century_materialize.py` GENERATION_V3, its calibration/
+-- staging surface). `ka_gochara.py` itself only ever writes
+-- `generation='2.0'` (module constant `GENERATION_V2`, delete-then-insert
+-- scoped to `(chart_id, event_class, generation='2.0')`, migration 542's
+-- unique index). Live-verified for the canonical chart: 87 rows at
+-- generation='2.0' (this writer, all extra/nullable columns --
+-- `milestone_id`, `resolution`, `era_slice_key`, `parent_window_id`,
+-- `shape_conformance`, `threshold_percentile` -- cleanly NULL, since
+-- `ka_gochara.py`'s own `INSERT_SQL` does not even list those columns) vs.
+-- 914 rows at generation='g3_utkarsha' (the OTHER, EXCLUDED writer, with
+-- those columns populated). Pinning `generation='2.0'` in `where_equals`
+-- (alongside `chart_id`) correctly scopes this spec to ONLY this writer's
+-- own output -- omitting it would silently fold a known-RED sibling
+-- writer's content into `ka_gochara`'s reproducibility contract, the exact
+-- non-sole-writer scoping hazard #2502 and the campaign's `where_in`-
+-- pinned-catalog precedent (migration 875) both guard against.
+--
+-- Natural key: verified live that `(chart_id, event_class, peak_date)` is
+-- ALREADY unique among this scope's 87 rows (0 duplicate-key groups) --
+-- `generation` is included in `key_columns` for parity with `where_equals`
+-- (same convention as every prior spec pinning `chart_id` in both places).
+-- `milestone_id` is NEVER used as a key column: `materialize.py` hardcodes
+-- `"milestone_id": None` for every row this writer produces (point-shape
+-- event classes only, per module docstring -- interval/chain milestone
+-- concept is out of this lane's scope), and the table's real UNIQUE index
+-- (`uq_kala_gochara_windows_v2_natural_key`, migration 542) additionally
+-- coalesces `milestone_id`/`resolution` precisely because those columns
+-- are legitimately NULL for point-shape rows -- no nullable-key wrinkle
+-- (mi_bhara-class split) is needed here since this writer's own rows are
+-- uniformly NULL on both, and `window_start = window_end = peak_date` for
+-- 100% of rows (point-shape writer, live-verified 0 mismatches), so
+-- `window_start` carries no additional discriminating information beyond
+-- `peak_date` and is included only as a value_column, not a key_column.
+--
+-- value_columns is the writer's full own column list (INSERT_SQL in
+-- `ka_gochara.py`), minus:
+--   * `id` -- surrogate identity PK.
+--   * `computed_at` -- plain wall-clock DEFAULT now() write-time stamp.
+--
+-- Live checks against prod (canonical chart 482012f1 only -- the spec's
+-- own `where_equals` scope; Abhinandan 1c826d5a also holds 25
+-- generation='2.0' rows today, not touched by or relevant to this spec):
+-- 87 rows, 0 duplicate `(chart_id, event_class, peak_date)` groups, 0 NULL
+-- `chart_id`/`event_class`/`peak_date`/`generation` (all NOT NULL columns
+-- per schema, confirmed live), 0 rows with `window_start <> peak_date` or
+-- `window_end <> peak_date`. All 87 rows come from the single build at
+-- `last_built_at 2026-09-10 01:52:48` -- i.e. every row already reflects
+-- the post-#2527-fix deterministic ordering; no stale pre-fix row survives
+-- in this scope.
+--
+-- Grant pre-flight (RESOLUTION_L1 v6 priority 2, grant dimension):
+-- `has_table_privilege('nirmana_evidence_ingress_writer',
+-- 'public.kala_gochara_windows_v2', 'SELECT')` = true (live-verified). No
+-- grant gap. `asset_registry.integrity_check_sql` for `ka_gochara` is
+-- non-null (live-verified). No migration needed on either dimension.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('ka_gochara', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERTed this exact spec row ->
+-- called the REAL `compute_output_digest(cur, asset_id='ka_gochara')` ->
+-- got back a clean 64-hex digest
+-- (f9ca0e1c85279cd1bc211f468c5a43f959f54360136807ef8a01e78d2293b677, no
+-- exception on the key preflight) -> `conn.rollback()` -> re-queried
+-- `asset_output_digest_specs` from a fresh connection afterward and
+-- confirmed 0 rows for `ka_gochara`, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Applied DIRECTLY to production ahead of this migration's deploy, per
+-- this lane's established apply-then-PR precedent (bo_upaya #2538,
+-- ph_nimitta #2539, bo_upaya-narrow #2544 -- Conductor DB-fast-path
+-- ratification, #2514): the exact INSERT below was committed live, then
+-- re-queried from a fresh autocommit connection to confirm 1 non-retired
+-- row for `ka_gochara`, then `compute_output_digest` called again against
+-- that live row (fresh transaction) and returned the SAME digest as the
+-- rehearsal -- confirming the applied spec matches what was rehearsed, not
+-- a re-derivation. This migration file is the durable, reviewable record;
+-- re-applying it via the deploy-time `migrate.ts` runner is an idempotent
+-- no-op (`ON CONFLICT (asset_id, spec_sha256) DO NOTHING`).
+--
+-- Numbering note: highest migration file on disk at cycle start was 1017
+-- (bo_upaya digest-spec narrow FK columns, PR #2544, MERGED). `gh pr list
+-- --state open --json files` shows no open PR claiming any
+-- `migrations/101*`/`migrations/1018*` path. `_migrations_applied` does
+-- not yet show 1016/1017 (those were applied via this lane's direct-DB
+-- apply-then-PR pattern, not yet processed by a deploy-time `migrate.ts`
+-- run) -- consistent with precedent, not a numbering conflict. 1018
+-- confirmed free. Authored on a FRESH branch off origin/main per STATE
+-- precedent.
+--
+-- Post-apply verification (§N.8 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_gochara' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_gochara',
+  'ac32bdd3e5c24abda422a61e3f9a6b51c5c67c4ac868044e465444f0de61c596',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_gochara_windows_v2","relation":"kala_gochara_windows_v2","key_columns":["chart_id","event_class","peak_date","generation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa","generation":"2.0"},"value_columns":["chart_id","event_class","temporal_shape","window_start","window_end","peak_date","milestone_id","is_irreversibility_milestone","signed_intensity","raw_intensity","valence","is_adverse","active_sentences","contributing_systems","suppression_state","peak_basis","calibration_state","source","generation","term_breakdown","lambda_v3_ci_low","lambda_v3_ci_high","ci_source"]}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

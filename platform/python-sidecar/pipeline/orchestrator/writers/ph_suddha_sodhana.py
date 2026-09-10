@@ -126,45 +126,53 @@ class PhSuddhaSodhanaWriter(WriterBase):
             return [str(row["anchor_id"]) for row in cur.fetchall()]
 
     def _load_flags_grouped(self, conn, chart_id: str) -> dict[str, FlagSummary]:
-        """Load phala_sodhana rows grouped by anchor_id."""
+        """Load phala_sodhana rows grouped by anchor_id.
+
+        F-16 (L4_W1_ANALYSIS_BATCH_C.md §2.4, N-5): this used to wrap the whole query
+        in `try/except -> logger.debug`, so any read failure silently returned an
+        empty dict -- and an empty flags dict makes classify_cleanliness() label
+        EVERY anchor 'clean' (§N.7 item 6: absence of evidence read as evidence of
+        cleanliness). `ph_sodhana` is a declared dependency (this writer runs after
+        it) and `phala_sodhana` always exists by the time this query runs -- the
+        identical shape to `ph_pratikara._load_obstructions`, whose own comment now
+        names this "the bug pattern" after F-173 removed it from that writer.
+        Fails loud on query errors -- silent suppression is the bug pattern.
+        """
         result: dict[str, FlagSummary] = {}
-        try:
-            with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
-                cur.execute(
-                    """
-                    SELECT sodhana_id, anchor_id, anomaly_type, anomaly_severity,
-                           detected_field, expected_value_text, observed_value_text,
-                           recommendation_text
-                    FROM phala_sodhana
-                    WHERE chart_id = %s
-                    ORDER BY anchor_id, anomaly_severity
-                    """,
-                    (chart_id,),
-                )
-                for row in cur.fetchall():
-                    aid = str(row['anchor_id'])
-                    if aid not in result:
-                        result[aid] = FlagSummary(anchor_id=aid)
-                    fs = result[aid]
-                    sev = str(row.get('anomaly_severity') or '')
-                    fs.sodhana_ids.append(str(row['sodhana_id']))
-                    fs.flag_details.append({
-                        'sodhana_id':       str(row['sodhana_id']),
-                        'anomaly_type':     row.get('anomaly_type'),
-                        'severity':         sev,
-                        'detected_field':   row.get('detected_field'),
-                        'expected':         row.get('expected_value_text'),
-                        'observed':         row.get('observed_value_text'),
-                        'recommendation':   row.get('recommendation_text'),
-                    })
-                    if sev == 'critical':
-                        fs.critical_count += 1
-                    elif sev == 'major':
-                        fs.major_count += 1
-                    elif sev == 'minor':
-                        fs.minor_count += 1
-                    else:
-                        fs.informational_count += 1
-        except Exception as exc:
-            logger.debug("ph_suddha_sodhana: flags load skipped: %s", exc)
+        with conn.cursor(row_factory=psycopg.rows.dict_row) as cur:
+            cur.execute(
+                """
+                SELECT sodhana_id, anchor_id, anomaly_type, anomaly_severity,
+                       detected_field, expected_value_text, observed_value_text,
+                       recommendation_text
+                FROM phala_sodhana
+                WHERE chart_id = %s
+                ORDER BY anchor_id, anomaly_severity
+                """,
+                (chart_id,),
+            )
+            for row in cur.fetchall():
+                aid = str(row['anchor_id'])
+                if aid not in result:
+                    result[aid] = FlagSummary(anchor_id=aid)
+                fs = result[aid]
+                sev = str(row.get('anomaly_severity') or '')
+                fs.sodhana_ids.append(str(row['sodhana_id']))
+                fs.flag_details.append({
+                    'sodhana_id':       str(row['sodhana_id']),
+                    'anomaly_type':     row.get('anomaly_type'),
+                    'severity':         sev,
+                    'detected_field':   row.get('detected_field'),
+                    'expected':         row.get('expected_value_text'),
+                    'observed':         row.get('observed_value_text'),
+                    'recommendation':   row.get('recommendation_text'),
+                })
+                if sev == 'critical':
+                    fs.critical_count += 1
+                elif sev == 'major':
+                    fs.major_count += 1
+                elif sev == 'minor':
+                    fs.minor_count += 1
+                else:
+                    fs.informational_count += 1
         return result

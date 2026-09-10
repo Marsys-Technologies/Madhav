@@ -95,6 +95,12 @@ describe('synthesizeReading — happy path', () => {
     expect(req.systemPrompt).toMatch(/acharya/i)
   })
 
+  it('the system prompt declares the canonical ayanamsha (F-93 defense-in-depth prompt guard)', async () => {
+    await synthesizeReading(baseInput())
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).toMatch(/canonical ayan[aā]ṁśa is.*lahiri_chitrapaksha/i)
+  })
+
   it('includes the gathered evidence in the user message', async () => {
     await synthesizeReading(baseInput())
     const req = mockRunAdapter.mock.calls[0][0] as { messages: Array<{ content: string }> }
@@ -139,6 +145,43 @@ describe('synthesizeReading — temporal anchor (W6.3 fix-cycle, live trace d08d
     const content = req.messages[0].content
     expect(content).toContain('could not be resolved')
     expect(content).not.toContain('Mercury MD / Saturn AD')
+  })
+})
+
+describe('synthesizeReading — synthesis guidance (V3-E-024)', () => {
+  // Synthetic test chart only (never the native's real chart) for any request
+  // this suite constructs itself; `mockQuery` fully replaces the DB layer so no
+  // real lookup ever happens regardless.
+  const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+  it('threads plan.synthesis_guidance (with the E-7 llm_extension_note folded in by the call site) into the system prompt', async () => {
+    const guidance =
+      'INSIGHT MANDATE (E-7): go beyond acharya-grade pattern recognition.\n\n' +
+      'Band 3 (question-specific extension) is LLM-owned; ground every claim in the evidence above.'
+    await synthesizeReading(baseInput({ chartId: SYNTH_CHART, synthesisGuidance: guidance }))
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).toContain('SYNTHESIS GUIDANCE:')
+    expect(req.systemPrompt).toContain('INSIGHT MANDATE (E-7)')
+    expect(req.systemPrompt).toContain('Band 3 (question-specific extension) is LLM-owned')
+  })
+
+  it('omits the SYNTHESIS GUIDANCE block entirely when no guidance is supplied — honest absence, not an empty section', async () => {
+    await synthesizeReading(baseInput({ chartId: SYNTH_CHART, synthesisGuidance: undefined }))
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).not.toContain('SYNTHESIS GUIDANCE:')
+  })
+
+  it('omits the block for an explicit null (the shape plan.synthesis_guidance ?? null produces at the MCP call site)', async () => {
+    await synthesizeReading(baseInput({ chartId: SYNTH_CHART, synthesisGuidance: null }))
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).not.toContain('SYNTHESIS GUIDANCE:')
+  })
+
+  it('does not corrupt the rest of the system prompt (acharya framing + tool override survive) when guidance is present', async () => {
+    await synthesizeReading(baseInput({ chartId: SYNTH_CHART, synthesisGuidance: 'Lead with the dominant yoga.' }))
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).toMatch(/acharya/i)
+    expect(req.systemPrompt).toMatch(/do not attempt to call/i)
   })
 })
 

@@ -523,12 +523,32 @@ def build_aspect_valence_rows(
 
 # ── Dignity direction helper (shared by families 2 & 3) ─────────────────────
 
+# F-62: the dignity_state values that count as a POSITIVE ratification vote.
+# 'moolatrikona' belongs here for the same classical reason 'own' does — it is
+# the graha in its own rashi, in the specific degree band BPHS ranks highest
+# after exaltation (45 vs 30 shashtiamsa in Saptavargaja / Sthana Bala).
+_POSITIVE_DIGNITIES: frozenset[str] = frozenset(
+    ["exalted", "moolatrikona", "own"]
+)
+
 def dignity_direction(dignity_text: str | None) -> str | None:
-    """Maps stored L1 dignity_state {exalted, own, neutral, debilitated} to a
-    ternary agreement direction. NOTE (known simplification, B.10): L1 only
-    stores this 4-way scale — no mooltrikona/friend/enemy granularity — so
-    'own' is the sole positive non-exalted bucket and 'neutral' abstains."""
-    if dignity_text in ("exalted", "own"):
+    """Maps stored L1 dignity_state to a ternary agreement direction.
+
+    The stored vocabulary is exactly `brahmagyan.dignity_oracle.DIGNITY_STATES`
+    = {exalted, moolatrikona, own, neutral, debilitated}: 'exalted',
+    'moolatrikona' and 'own' are positive, 'debilitated' is negative, and
+    'neutral' (or a missing value) abstains. No friend/enemy granularity is
+    stored, so those tiers have no direction here (known simplification, B.10).
+
+    F-62: this docstring previously described a four-value scale and the
+    predicate below matched only ('exalted', 'own'), so a moolatrikona graha —
+    the STRONGEST own-sign tier in classical Sthana Bala, ranked above plain
+    own — abstained from the varga-ratification vote entirely instead of voting
+    positive. The four-value claim was true when written and became false the
+    moment the B-01 oracle's degree-gated moolatrikona tier went live; it is
+    corrected here rather than restated (CLAUDE.md §N.7 item 1).
+    """
+    if dignity_text in _POSITIVE_DIGNITIES:
         return "positive"
     if dignity_text == "debilitated":
         return "negative"

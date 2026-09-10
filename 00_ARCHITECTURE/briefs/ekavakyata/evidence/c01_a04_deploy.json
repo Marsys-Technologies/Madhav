@@ -1,0 +1,49 @@
+{
+  "_note": "Post-deploy probe evidence for C-01+C-02+A-04 batch deploy (run 31907248672, headSha=a2ce6dc37). EKV-R-1 4 post-deploy SQL assertions ALL PASSED. MCP also deployed (tools_changed_at advanced 2026-08-13→2026-08-15T20:43Z).",
+  "probe_time_utc": "2026-08-15T20:50:00Z",
+  "deployed_main_sha_at_probe": "a2ce6dc37ef3f460cabefa7e76287750a565441c",
+  "deploy_run_id": "31907248672",
+  "deploy_head_sha": "a2ce6dc37ef3f460cabefa7e76287750a565441c",
+  "deploy_conclusion": "success",
+  "deploy_jobs": {
+    "deploy-web": "success",
+    "deploy-mcp": "success",
+    "deploy-sidecar": "skipped",
+    "deploy-pipeline-job": "skipped"
+  },
+  "mcp_server_info": {
+    "catalog_version": "catalog-1+t152+r653c2a1a98c8",
+    "tool_count": 125,
+    "tools_changed_at": "2026-08-15T20:43:10.000Z",
+    "stale": false
+  },
+  "note_catalog_unchanged": "C-01/C-02 (migration + writer guard) + A-04 (kala facades) touch platform/ not platform-mcp catalog surface; no tool additions/removals expected. MCP deploy ran because A-04 or C-01 touches platform-mcp code.",
+  "lanes_in_batch": ["C-01 (20266702a)", "C-02 (20266702a)", "A-04 (a2ce6dc37)"],
+  "ekv_r1_assertions": {
+    "assertion_1_migration_applied": {
+      "sql": "SELECT count(*) FROM _migrations_applied WHERE filename='572_ekv_c01_ledger_empty_daterange_repair.sql'",
+      "result": 1,
+      "expected": 1,
+      "pass": true
+    },
+    "assertion_2_zero_empty_rows": {
+      "sql": "SELECT count(*) FROM brahma_prospective_ledger WHERE isempty(observation_window)",
+      "result": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "assertion_3_check_constraint_fires": {
+      "sql": "BEGIN; INSERT INTO brahma_prospective_ledger(...) VALUES (..., 'empty'::daterange, ...); ROLLBACK",
+      "result": "ERROR: new row for relation 'brahma_prospective_ledger' violates check constraint 'brahma_prospective_ledger_no_empty_window'",
+      "expected": "CHECK constraint violation",
+      "pass": true
+    },
+    "assertion_4_open_count": {
+      "sql": "SELECT count(*) FROM brahma_prospective_ledger WHERE lifecycle_status='open'",
+      "result": 29,
+      "expected": 29,
+      "pass": true
+    },
+    "all_pass": true
+  }
+}

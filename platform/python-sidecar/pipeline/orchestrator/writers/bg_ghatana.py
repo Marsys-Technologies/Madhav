@@ -1,5 +1,5 @@
 """
-bg_ghatana writer — populates brahma_event_ontology (22 life-event classes)
+bg_ghatana writer — populates brahma_event_ontology (27 life-event classes)
 and brahma_activity_ontology (12 electional activity classes).
 
 Source data: brahmagyan.l0_ghatana — W1 seed package §5–§6.
@@ -34,7 +34,7 @@ class GhatanaWriter(WriterBase):
         activities = counts.get("brahma_activity_ontology", 0)
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=events,
+            rows_inserted=events + activities,
             duration_seconds=time.time() - t0,
             notes=f"brahma_event_ontology: {events} events; brahma_activity_ontology: {activities} activities",
         )

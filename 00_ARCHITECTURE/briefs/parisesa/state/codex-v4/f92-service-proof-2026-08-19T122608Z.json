@@ -1,0 +1,28 @@
+{
+  "record_type": "PARISESA_V4_SERVICE_PROOF",
+  "recorded_at": "2026-08-19T12:26:08Z",
+  "finding_id": "F92",
+  "disposition": "CURRENT_SERVICE_VERIFIED_CLOSURE_ELIGIBLE",
+  "direct_mcp_evidence": {
+    "tool": "judgment_query",
+    "input": {
+      "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+      "domain": "career",
+      "response_format": "v3"
+    },
+    "calls": 2,
+    "is_error": false,
+    "timing_anchored": true,
+    "activation_rows_each": 6,
+    "activation_rows_exactly_equal": true
+  },
+  "deployment_join": {
+    "service": "amjis-mcp",
+    "active_revision": "amjis-mcp-00572-p9r",
+    "traffic_percent": 100,
+    "commit_sha_label": "b328e4aaff82427276fc28a214a21f23965ee7d3",
+    "commit_is_ancestor_of_current_main": true,
+    "current_main": "3fd40b61baade41862c7eecb871775d8917072f3"
+  },
+  "closure_boundary": "This record proves the current deployed MCP behavior for F92. The immutable 141-finding corpus remains unchanged; normal V4 tracker projection awaits restoration of its designated writer."
+}

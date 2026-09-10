@@ -60,4 +60,29 @@ describe('bodha_signals_get min_weight -> min_salience alias (D15b-F3)', () => {
     const callBody = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body) as { args: Record<string, unknown> }
     expect(callBody.args['min_salience']).toBeUndefined()
   })
+
+  it('rebuilds verdict_summary from signals that survive the final budget trim', async () => {
+    const signals = Array.from({ length: 80 }, (_, index) => ({
+      signal_id: `signal-${index}`,
+      signature_tier: index % 2 === 0 ? 'high' : 'medium',
+      constituent_facts_array: [`fact-${index % 4}`],
+      detail: 'evidence '.repeat(500),
+    }))
+    mockFetch.mockResolvedValueOnce(jsonResponse({
+      ok: true,
+      content: { content: { signals }, is_error: false },
+    }))
+
+    const result = await handler({ chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }) as unknown as {
+      structuredContent?: { object: { content: Record<string, unknown> } }
+    }
+    const content = result.structuredContent!.object.content
+    const served = content['signals'] as unknown[]
+    const verdict = content['verdict_summary'] as { served_count: number; tier_distribution: Record<string, number> }
+
+    expect(served.length).toBeLessThan(signals.length)
+    expect(verdict.served_count).toBe(served.length)
+    expect(Object.values(verdict.tier_distribution).reduce((total, count) => total + count, 0)).toBe(served.length)
+    expect(Buffer.byteLength(JSON.stringify(content), 'utf8')).toBeLessThanOrEqual(25 * 1024)
+  })
 })

@@ -44,6 +44,12 @@ const nextConfig: NextConfig = {
       "./node_modules/@grpc/**",
       "./node_modules/grpc-js/**",
     ],
+    "/api/admin/nirmana-elevation/snapshot": [
+      "./node_modules/@google-cloud/run/**",
+      "./node_modules/google-gax/**",
+      "./node_modules/@grpc/**",
+      "./node_modules/grpc-js/**",
+    ],
     "/api/cockpit/sse": [
       "./node_modules/@google-cloud/pubsub/**",
       "./node_modules/google-gax/**",

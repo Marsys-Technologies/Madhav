@@ -18,6 +18,13 @@ Tests:
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
+
+import pytest
+
 
 def _get_module():
     from brahmagyan import l0_rules as mod
@@ -159,3 +166,92 @@ class TestExtractRulesWiring:
         assert rows
         for r in rows:
             assert r.get("yoga_canonical_id") is None
+
+
+class TestNadiTripleDeterminism:
+    def test_planet_order_is_canonical_across_python_hash_seeds(self):
+        script = (
+            "import json; from brahmagyan import l0_rules as m; "
+            "text='Mars, Ketu and Venus in Cancer. So, the native will take up a job'; "
+            "match=m._P27.search(text); "
+            "print(json.dumps([a['planet'] for a in m._p27_extract(match,text)['antecedent']]))"
+        )
+        observed = []
+        for seed in ("0", "3"):
+            env = {**os.environ, "PYTHONHASHSEED": seed}
+            output = subprocess.check_output(
+                [sys.executable, "-c", script],
+                text=True,
+                env=env,
+            )
+            observed.append(json.loads(output))
+
+        assert observed == [["mars", "ketu"], ["mars", "ketu"]]
+
+
+def test_seed_rules_propagates_insert_failure_instead_of_reporting_success(monkeypatch):
+    """A failed PostgreSQL statement aborts the build; it is never skipped."""
+    mod = _get_module()
+    rule = {
+        "rule_id": "11111111-1111-1111-1111-111111111111",
+        "text_id": "bphs",
+        "verse_ref": "BPHS 1.1",
+        "antecedent_jsonb": "{}",
+        "predicate_jsonb": "{}",
+        "prediction_jsonb": "{}",
+        "confidence": "two_pass_verified",
+        "extracted_by": mod.EXTRACTED_BY,
+        "extraction_pass_log": "{}",
+        "quality_score": 1.0,
+        "yoga_canonical_id": None,
+        "dasha_system_id": None,
+        "transit_marker": False,
+        "_quality": 1.0,
+    }
+    monkeypatch.setattr(mod, "extract_rules_from_chunk", lambda *_a, **_k: iter([rule.copy()]))
+
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self):
+            self.sql = ""
+            self._chunks_returned = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def execute(self, sql, _params=None):
+            self.sql = sql
+            if "INSERT INTO sutravali_rules" in sql:
+                raise RuntimeError("constraint violation")
+
+        def fetchone(self):
+            return {"count": 1}
+
+        def fetchall(self):
+            if "DISTINCT text_id" in self.sql:
+                return [{"text_id": "bphs"}]
+            if "brahma_dasha_systems" in self.sql:
+                return [{"canonical_id": "vimshottari"}]
+            if "brahma_yoga_catalog" in self.sql:
+                return [{"canonical_id": "ruchaka"}]
+            return []
+
+        def fetchmany(self, _size):
+            if self._chunks_returned:
+                return []
+            self._chunks_returned = True
+            return [{
+                "id": rule["rule_id"], "text_id": "bphs",
+                "verse_ref": "BPHS 1.1", "content_en": "Mars gives authority",
+            }]
+
+    class Conn:
+        def cursor(self):
+            return Cursor()
+
+    with pytest.raises(RuntimeError, match="constraint violation"):
+        mod.seed_rules(Conn(), autocommit=False)

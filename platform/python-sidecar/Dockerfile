@@ -31,8 +31,21 @@ ENV SWE_EPHE_PATH=/app/ephe
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
 
-COPY requirements.txt .
+# Build context widened to ./platform (was ./platform/python-sidecar, see
+# deploy.yml) so this image can also reach the sibling platform/scripts/temporal
+# package. Fix for #2096: services/ka_graha_sancara/engine.py's live-compute
+# path (PATH-B) locates `temporal.compute_transits` via a 4-parents-up walk
+# from its own file, matching the real repo layout where python-sidecar/ sits
+# one level below platform/scripts/. WORKDIR is nested one level deeper here
+# (/app/python-sidecar, not /app) so that identical 4-parents-up arithmetic
+# lands on /app/scripts/temporal inside the container too -- no engine.py
+# change needed. main.py and platform/python-sidecar's own local scripts/
+# folder land at /app/python-sidecar/... exactly as before, just under the
+# new prefix; CMD's cwd (this WORKDIR) is unaffected either way.
+WORKDIR /app/python-sidecar
+COPY python-sidecar/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
+COPY python-sidecar/ .
+COPY scripts/temporal/ /app/scripts/temporal/
 EXPOSE 8000
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

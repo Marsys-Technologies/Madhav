@@ -23,6 +23,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
 
 const MAX_LIMIT = 50
 
@@ -85,6 +86,14 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
   llm_hints: {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
+  },
+  // NIRMĀṆA L2-W3 (N-17, §N.6). Hand-authored: deriveDensityContract() auto-stamps
+  // `empty_reason: true` from the archetype alone, whether or not the handler sets it.
+  // These values state what this handler actually does.
+  density_contract: {
+    paginated: true, // limit + offset + total_matching + more_available, on both rows and families
+    facets: ['ayanamsha_id', 'discovery_class', 'domain'],
+    empty_reason: true,
   },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
@@ -193,10 +202,32 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
         }
       })
 
+      // NIRMĀṆA L2-W3 (N-14 / N-15) — the constitutional tail, D-SALIENCE.
+      //
+      // Wired here first because this capability is `tool_role: 'umbrella'` and because
+      // bo_anveshana writes BOTH surfaces: bodha_discoveries, which this serves, and
+      // bodha_anomalies, whose `low_salience_high_consequence` rows had no serving path
+      // at all. W1 confirmed three independent reasons those rows could never reach a
+      // caller — the only reader gates them behind an `include_anomalies` parameter that
+      // defaults false, that no call site in the repository sets, on a capability not
+      // registered on the live MCP surface.
+      //
+      // Best-effort by construction: a tail that cannot be computed must never fail the
+      // discovery read that a caller actually asked for. buildTailWatch already returns
+      // an explained empty rather than throwing, and distinguishes "assessed and empty"
+      // from "could not be assessed" — so an empty tail here is never silent.
+      const tail = await buildTailWatch(chart_id, ayanamsha_id ?? 'lahiri_chitrapaksha')
+
       return {
         content: {
           chart_id,
           rows: rowsRes.rows,
+          // Budget-protected: declared hardFloor with minKeep >= 1 and a member of
+          // IMMUNE_HONESTY_FIELDS, so no trim can zero it (platform-mcp
+          // registry_bridge.ts / response_budget.ts).
+          tail_watch: tail.tail_watch,
+          tail_watch_empty_reason: tail.tail_watch_empty_reason,
+          tail_watch_components: tail.tail_watch_components,
           count: rowsRes.rows.length,
           total_matching,
           more_available: offset + rowsRes.rows.length < total_matching,
@@ -206,10 +237,20 @@ export const queryDiscoveriesCapability: CapabilityDescriptor = {
           discovery_family_count: discovery_families.length,
           total_family_count,
           more_families_available: offset + discovery_families.length < total_family_count,
+          empty_reason: rowsRes.rows.length > 0 ? null
+            : total_matching > 0
+              ? `offset ${offset} is past the end of ${total_matching} matching discoveries`
+              : `no discoveries for chart ${chart_id}` +
+                (discovery_class ? ` of class ${discovery_class}` : '') +
+                (domain ? ` in domain ${domain}` : '') +
+                (ayanamsha_id ? ` at ayanamsha ${ayanamsha_id}` : '') +
+                '. bo_anveshana writes this ledger; an absent set means the writer has not run ' +
+                'for this chart, not that the chart yielded nothing non-obvious. Note the tail_watch ' +
+                'section is computed independently and may be populated even when this set is empty.',
           ayanamsha_universe_count,
           filters: { ayanamsha_id, discovery_class, domain, limit, offset },
           provenance: {
-            tables: ['bodha_discoveries'],
+            tables: ['bodha_discoveries', 'bodha_msr_signals', 'bodha_anomalies'],
             source: 'L2 Bodha discovery ledger; served chart-scoped, budgeted.',
             note: 'discovery_families collapses (discovery_class, discovery_subsystem, hypothesis_text) ' +
               'duplicates across ayanāṃśa variants and repeated signal instances into one motif per family ' +

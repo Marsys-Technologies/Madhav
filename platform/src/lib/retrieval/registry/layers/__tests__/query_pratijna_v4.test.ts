@@ -122,3 +122,92 @@ describe('query_pratijna — G10 varga_confirmation serving (SAMPURTI L0e)', () 
     expect(vc['consensus_dignity']).toBe('great_enemy')
   })
 })
+
+describe('query_pratijna — consensus_chip (N-24, D-SYNTHESIS singular verdict voice)', () => {
+  it('unanimous consensus renders "N/N agree: <dignity>" with no dissent count', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'marriage', status: 'promised', grade: 8.5,
+        varga_confirmation: {
+          per_system: {
+            lahiri_chitrapaksha: { dignity_state: 'exalted' },
+            raman: { dignity_state: 'exalted' },
+            krishnamurti: { dignity_state: 'exalted' },
+          },
+          consensus_dignity: 'exalted', unanimous: true, dissent: [],
+        } },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows[0]['consensus_chip']).toBe('3/3 agree: exalted')
+  })
+
+  it('dissent renders the dissent count and the correct agree/total split', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'separation', status: 'denied', grade: 3.1,
+        varga_confirmation: {
+          per_system: {
+            lahiri_chitrapaksha: { dignity_state: 'own' },
+            raman: { dignity_state: 'own' },
+            krishnamurti: { dignity_state: 'own' },
+            surya_siddhanta_classical: { dignity_state: 'own' },
+            true_chitra: { dignity_state: 'enemy' },
+          },
+          consensus_dignity: 'own', unanimous: false,
+          dissent: [{ ayanamsha_id: 'true_chitra', dignity_state: 'enemy' }],
+        } },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows[0]['consensus_chip']).toBe('4/5 agree: own (1 dissent)')
+  })
+
+  it('is null when varga_confirmation is null (no divisional for this class)', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'birth_anchor', status: 'no_evidence', grade: null,
+        varga_confirmation: null },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows[0]['consensus_chip']).toBeNull()
+  })
+
+  it('is null (not a fabricated chip) on the older raw single-ayanamsha shape (no consensus_dignity key)', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'marriage', status: 'promised', grade: 6.0,
+        varga_confirmation: {
+          varga: 'D9', graha: 'Venus', varga_sign: 'Pisces',
+          dignity_state: 'exalted', band: 1, weight: 0.14, contribution: 0.14,
+        } },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows[0]['consensus_chip']).toBeNull()
+  })
+
+  it('handles a pre-serialized JSON string defensively, same as a parsed object', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'career_advancement', status: 'promised', grade: 7.2,
+        varga_confirmation: JSON.stringify({
+          per_system: { lahiri_chitrapaksha: { dignity_state: 'great_enemy' }, raman: { dignity_state: 'great_enemy' } },
+          consensus_dignity: 'great_enemy', unanimous: true, dissent: [],
+        }) },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    const rows = content['rows'] as Array<Record<string, unknown>>
+    expect(rows[0]['consensus_chip']).toBe('2/2 agree: great_enemy')
+  })
+
+  it('reference_note documents the consensus_chip field', async () => {
+    mockRows.mockReturnValue([
+      { pratijna_id: 'p1', event_class_id: 'marriage', status: 'promised', grade: 8.5, varga_confirmation: null },
+    ])
+    const r = await queryPratijnaCapability.handler({ chart_id: CHART_A }, {})
+    const content = r.content as Record<string, unknown>
+    expect(String(content['reference_note'])).toMatch(/consensus_chip/)
+  })
+})

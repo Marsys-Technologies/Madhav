@@ -76,6 +76,7 @@ import { toolSearchCapability } from './tool_search'
 // ONE-ENGINE RULE: ELECT and YAJÑA share it, neither reimplements it).
 import { queryMuhurtaLatticeCapability } from './query_muhurta_lattice'
 import { queryPariharaGraphCapability } from './query_parihara_graph'
+import { querySkyCalendarCapability } from './query_sky_calendar'
 
 export const L0_CAPABILITIES = [
   // Stream A: foundation + ontology
@@ -131,6 +132,8 @@ export const L0_CAPABILITIES = [
   // ṢAḌ-DARŚANA W3 items 36/41: muhūrta election substrate readers
   queryMuhurtaLatticeCapability,
   queryPariharaGraphCapability,
+  // Nirmana L0-W2 NOW item 14: sky-event diary reader
+  querySkyCalendarCapability,
 ] as const
 
 export function registerL0Capabilities(): void {
@@ -195,4 +198,5 @@ export {
   toolSearchCapability,
   queryMuhurtaLatticeCapability,
   queryPariharaGraphCapability,
+  querySkyCalendarCapability,
 }

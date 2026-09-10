@@ -141,6 +141,7 @@ def _fetch_anchors(
 
 def _fetch_mitigations(
     chart_id: str,
+    date_range: dict[str, str],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """
     Fetch mitigations from PH-4-2 (phala.mitigation engine).
@@ -158,7 +159,7 @@ def _fetch_mitigations(
         db_url = _get_db_url()
         conn = psycopg2.connect(db_url)
         try:
-            result = mitigation_map(conn, chart_id)
+            result = mitigation_map(conn, chart_id, date_range=date_range)
         finally:
             conn.close()
 
@@ -436,7 +437,7 @@ def phala_outlook(
     anchors, anchors_prov = _fetch_anchors(chart_id, date_range, min_confidence)
 
     # ── PH-4-2: mitigations ────────────────────────────────────────────────────
-    mitigations, mitigations_prov = _fetch_mitigations(chart_id)
+    mitigations, mitigations_prov = _fetch_mitigations(chart_id, date_range)
 
     # ── PH-4-3: rectification ──────────────────────────────────────────────────
     rectification, rectification_prov = _fetch_rectification(chart_id)

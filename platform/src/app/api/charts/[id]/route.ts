@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 
 export async function GET(
   _req: NextRequest,
@@ -10,6 +11,27 @@ export async function GET(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: chartId } = await params
+
+  // P2-B-001 / E-012: this handler used to check only that the caller was
+  // *some* authenticated user — never that they owned or had a grant on
+  // THIS chart_id — letting any authenticated user read any other user's
+  // sensitive birth data. Route through the shared authorization brain
+  // (same one the sibling DELETE handler below uses for its owner/
+  // super_admin check) before touching chart rows.
+  const profileResult = await query<{ role: string }>(
+    'SELECT role FROM profiles WHERE id = $1',
+    [user.uid],
+  )
+  const role = (profileResult.rows[0]?.role as string) ?? 'guest'
+
+  const permission = await authorizeChartAccess({
+    principal: { uid: user.uid, role: role === 'super_admin' ? 'super_admin' : 'guest' },
+    chartId,
+    db: { query },
+  })
+  if (permission === 'deny') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const result = await query<{
     subject_name: string

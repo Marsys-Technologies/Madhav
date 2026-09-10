@@ -1,0 +1,22 @@
+{
+  "record_type": "PARISESA_V4_GANGA_ADMISSION",
+  "recorded_at": "2026-08-19T12:51:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "pull_request": 1345,
+  "head": "6b6179dd2f2e88e6e2a5d286fc01fb6afd09580d",
+  "base": "dddaaef2cfbe0971fe057e3c9b81756f79bfae39",
+  "required_contexts": {
+    "TypeScript (src only)": "SUCCESS",
+    "Unit Tests": "SUCCESS",
+    "Secret Scan (unit 0b.2)": "SUCCESS",
+    "Governance Gates (drift / schema / edge / native-literal / py-sidecar)": "SUCCESS",
+    "TAP-6 — Method audit grep set": "SUCCESS"
+  },
+  "merge_state": "CLEAN",
+  "next_safe_action": "Enable normal auto-merge with an exact-head match and wait for fresh merge-group contexts; never bypass branch protection.",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

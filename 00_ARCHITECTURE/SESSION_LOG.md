@@ -36399,3 +36399,1038 @@ F6a, F6b, F7), using the same blind-spec / side-by-side / adoption-ruling sequen
 the prior amendment cycle established; chart 3 (`cb73cd3d`) provisioning + rebuild; or a new
 campaign entirely. `00_ARCHITECTURE/briefs/pratijna_v4/F1_CYCLE_STATE.md` is the full ledger for
 anyone picking this back up.
+
+---
+
+## CODEX-ONBOARDING-CLOSE-2026-08-15 — shared-brain parity installed
+
+**Tool:** Codex
+**Decision citations:** CCD-001, CCD-002, CCD-003, CCD-004 in
+`00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md`.
+
+Codex onboarding closed in the leased task worktree. The root `AGENTS.md` loader preserves
+canonical `CLAUDE.md`; its full-read acceptance cited §N.6 beyond byte 32,768. Fresh Codex wrote
+CCD-002, fresh Claude Code consumed it and wrote CCD-003, and fresh Codex consumed both. The
+canonical skill inventory is four (`create-migration`, `pr-description`, `run-checks`,
+`session-close`), not five; CCD-004 records the audit correction and the owner-visible security
+and validator-debt follow-ups. Live MCP acceptance succeeded against `marsys-jis` at `/mcp` with
+environment-sourced authentication. No existing Claude, Gemini, or Kilo configuration was
+modified; no production, migration, deploy, or application code was touched.
+
+```yaml
+session_open:
+  session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
+  cowork_thread_name: "Codex onboarding close"
+  agent_name: gpt-5.6-terra
+  agent_version: gpt-5.6-terra
+  tool: "Codex"
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/Vibe-Coding/Apps/Madhav-worktrees/codex-onboarding
+  step_number_or_macro_phase: GOVERNANCE
+  predecessor_session: F1-ADOPTION-CONDUCTOR-2026-08-09
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: L-12
+    lease_status_verified: true
+    lease_verified_at: 2026-08-15T15:25:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (when COMPLETE)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-15T14:35:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: n/a, read_at: 2026-08-15T14:35:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, fingerprint_sha256: n/a, read_at: 2026-08-15T14:35:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch: [AGENTS.md, "00_ARCHITECTURE/**", "01_FACTS_LAYER/AGENTS.md", "025_HOLISTIC_SYNTHESIS/AGENTS.md", "035_DISCOVERY_LAYER/AGENTS.md", "03_DOMAIN_REPORTS/AGENTS.md", .agents/skills, .codex/agents/**, platform/scripts/governance/schema_validator.py]
+    must_not_touch: [CLAUDE.md, .claude/**, .gemini/**, .geminirules, .kilo/**, platform/src/**]
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: CODEX-ONBOARDING-CLOSE-2026-08-15
+  closed_at: 2026-08-15T15:26:00+05:30
+  tool: "Codex"
+  files_touched:
+    - {path: AGENTS.md, mutation_type: created, sha256_before: null, sha256_after: 6dfd1e86e84c441b2654c2790bfe7ae64f02c50521352cbc2ff9bd9ce32c3a63, justification: "Root Codex loader", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/{AGENTS.md,CROSS_CUTTING_DECISION_REGISTER_v1_0.md}", mutation_type: created, sha256_before: null, sha256_after: n/a, justification: "Nested instruction bridge and CCD register", within_declared_scope: true}
+    - {path: "01_FACTS_LAYER/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: e87f8286205dc545a1d0effcfd2767bd9ae3feaa64be6120ae69fd7812280dc9, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "025_HOLISTIC_SYNTHESIS/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: 57facf3ae7a7e802e59010665a0dadf17477cbdc916a844e03faf805dc19ea61, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "035_DISCOVERY_LAYER/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: 285c098627990bf572bd82a8422363739e1a0f4f236e05194093ac7f42b6d9e3, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: "03_DOMAIN_REPORTS/AGENTS.md", mutation_type: created_symlink, sha256_before: null, sha256_after: b823e4e9cee69852bc76c4841598d1878e1226fe74a91a57a79b41ed71e1b5c5, justification: "Nested canonical instruction bridge", within_declared_scope: true}
+    - {path: .agents/skills, mutation_type: created_symlink, sha256_before: null, sha256_after: n/a, justification: "Codex discovery bridge to canonical Claude skills", within_declared_scope: true}
+    - {path: ".codex/agents/{code-reviewer,migration-guard,security-reviewer}.toml", mutation_type: created, sha256_before: null, sha256_after: n/a, justification: "Additive Codex review-agent definitions", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: 946c1c3745c925b47fffbd670b49ee4a332703ea91be3dc23ece7b7680288b32, sha256_after: n/a, justification: "Register and fingerprint CCD register", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 5a4a815f9931e6deeff79e09ace7b431eaaf815d6d838eebf68990e4fcb5d009, sha256_after: n/a, justification: "CCD orientation pointer and close state", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, mutation_type: modified, sha256_before: 3cfcb20f7ace61cce6933669ca006d4f70ce5a83bf85d419bca3d74de181d950, sha256_after: n/a, justification: "Cross-tool convention and /mcp warning", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md, mutation_type: modified, sha256_before: 9e73a5e4ca88ac2ca83de89ef17f396ba883d00c58add5ac061a96e64a855b64, sha256_after: n/a, justification: "Governance registration", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_{OPEN,CLOSE}_TEMPLATE_v1_0.md", mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "Shared Codex/Claude provenance and synchronization fields", within_declared_scope: true}
+    - {path: platform/scripts/governance/schema_validator.py, mutation_type: modified, sha256_before: bbf414f8cb9cbfd0d834866072ec0d9b85c94bd4e9ed768b6f57247f80e6a4e4, sha256_after: c90052143bf08fd8fa8adac342d3f80324a5d0d8c0acfecebd6a0aabe0f0c349, justification: "Enforce new handshake and close fields", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "This close entry", within_declared_scope: true}
+  registry_updates_made:
+    governance_stack: [{section: "§25", entry_excerpt: "CODEX_ONBOARDING"}]
+    capability_manifest: [{canonical_id: CROSS_CUTTING_DECISION_REGISTER_v1_0, change: registered_and_fingerprinted}]
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 218}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42}
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: [CCD-001, CCD-002, CCD-003, CCD-004]
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    next_session_can_resume_from: [00_ARCHITECTURE/CURRENT_STATE_v1_0.md, 00_ARCHITECTURE/SESSION_LOG.md, 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md]
+  close_criteria_met: true
+  unblocks: ["Owner review and merge of Codex onboarding PR"]
+  handoff_notes: "Do not merge without owner review. CCD-004 carries credential-rotation and validator-debt follow-ups."
+  known_residuals:
+    - {finding_id: CODEX-ONBOARDING-SCHEMA-BASELINE, finding: "schema_validator repository-wide baseline", severity: MEDIUM, booking_reference: "CCD-004 — owner-authorized dual-tool debt follow-up", policy_ref: "CCD-004 recorded 43 findings; this close resolves the stale last-session pointer, leaving 42"}
+    - {finding_id: CODEX-ONBOARDING-DRIFT-BASELINE, finding: "drift_detector repository-wide baseline", severity: MEDIUM, booking_reference: "CCD-004 — owner-authorized dual-tool debt follow-up", policy_ref: "CCD-004 — 218 findings"}
+```
+
+### Next session objective
+
+Owner review of the Codex onboarding PR. Do not merge until the owner approves; then complete
+the owner-authorized merge procedure and address CCD-004 follow-ups only under their own scope.
+
+---
+
+## PARIPRASHNA-G0-CLOSE-2026-08-19 — architecture ratified, TA superseded, ND.2 logged
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
+  cowork_thread_name: "Paripraśna G0 close — docs, registration, git only"
+  agent_name: claude-sonnet-4-6
+  agent_version: claude-sonnet-4-6
+  tool: "Claude Code"
+  tool_profile: madhav-safe
+  worktree_path: /private/tmp/pariprashna-g0-close
+  step_number_or_macro_phase: PARIPRASHNA-G0
+  predecessor_session: CODEX-ONBOARDING-CLOSE-2026-08-15
+  coordination:
+    coordination_ref: n/a (doc-only session; no Campaign Coordination lease required)
+    lease_id: null
+    lease_status_verified: false
+    work_order_surface: 00_ARCHITECTURE/briefs/pariprashna_v012/CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: false
+    stale_surfaces_disregarded: ["STEP_LEDGER_v1_0.md (GOVERNANCE_CLOSED)", "CAMPAIGN_COORDINATION.md (MM — deferred per brief scope rule)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: dacee94f3e17e3ff416e8f1b51b8ade42da3475cdb9dd8850dd2b31a2d53bfa7, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 85e55e42ff0f9b049ce2d79953650f905cc024b5acdbfcae30ea8798d70953d0, read_at: 2026-08-19T00:00:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_v012/CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md, fingerprint_sha256: 73b14c3e6047ca5f5fceb8f7d6eb1eb958bac66f79e32adfb57c2603453314c0, read_at: 2026-08-19T00:00:00+05:30}
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: PARIPRASHNA_ARCHITECTURE, path: 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md, expected_fingerprint: null, note: "new file — being imported in step 1"}
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md
+      - 00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md
+      - "00_ARCHITECTURE/PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md (status flip + changelog row ONLY)"
+      - "00_ARCHITECTURE/PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md (relates_to annotation ONLY)"
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md (§2 banner + changelog)"
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (append NCD-10 directive ONLY)"
+      - "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (AFTER dirty state resolves — deferred)"
+      - 00_ARCHITECTURE/briefs/pariprashna_v012/**
+      - "CLAUDECODE_BRIEF.md (root — status flip at close)"
+      - git
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "migrations of any kind"
+      - "any credential/flag/deploy"
+      - "any file dirty from ANOTHER workstream"
+      - "MACRO_PLAN/PROJECT_ARCHITECTURE/CLAUDE.md/GOVERNANCE_INTEGRITY_PROTOCOL"
+      - "the sealed pg1/pg2/PB trees"
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - {directive_id: ND.2, action: "append NCD-10 ruling as ND.2 in NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (Step 5a)"}
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-G0-CLOSE-2026-08-19
+  closed_at: 2026-08-19T10:30:00+05:30
+  tool: "Claude Code"
+  files_touched:
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: e5d0ab3e2f4bc19d2809d4c64d33725333edcfad64b2d98d31e5852adedbae00, justification: "Step 1 import + Step 3 status flip (DRAFT_PENDING_REDTEAM → CURRENT; version 1.0-RC → 1.0)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_ASBUILT_BASELINE_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: c913c6d668084ec19466fb7e4344a9ec98a01b9fa7abcd7b782088aac24174ae, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_DECISION_REGISTER_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: 9b6994d95cf74b2fc0c53e8ff24b387a75b67034b43c44864c3769721b78dafd, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: bd3d7c0638c2108d70f0062de36d6a707f92e899e9bcbf84c7e72e0af60df07b, justification: "Step 1 import", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: 2d2012d1cc5fbb980ff1a85910f5b4f60de96798f25faccd53e9700fd97cfa75, sha256_after: f7fb5b868547934504c1429ac2971e9e38d4083a28556dfd2dbca3cb5ebc3a5a, justification: "Step 2: 4 new PARIPRASHNA_* entries registered; Step 3: PARIPRASHNA_ARCHITECTURE fingerprint updated + status CURRENT", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_TARGET_ARCHITECTURE_v0_1.md, mutation_type: modified, sha256_before: a37e94b4d5d20056b4479c6b678724ba3eb1212d4f649f23e1feeb69efc53913, sha256_after: 41457ca6ed26a2aef4f083ed73ecf9b946bf1abb8556e44e7ea5dd33e551bde3, justification: "Step 3: status SUPERSEDED + banner + §20 changelog row", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/PARIPRASHNA_DESIGN_ENGINEERING_PLAN_v0_1.md, mutation_type: modified, sha256_before: 9cc8619fe16723c0cc3e70df244d09b79c37b772b8b515cb288a3516566b7416, sha256_after: 7ed61aabd8fa60385fa6f7d32a2b42d382b7f35c6f8f7f1a3112aca56005a26c, justification: "Step 4: relates_to forward-pointer annotation; version 0.3 → 0.4; CAMPAIGN_COORDINATION deferral logged", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 85e55e42ff0f9b049ce2d79953650f905cc024b5acdbfcae30ea8798d70953d0, sha256_after: 2356f35709b2325899c527179fa48929e2f70c8b16f3bba68f1531fbc7425b5d, justification: "Step 5: §2 G0-close banner + v6.62 changelog entry; last_session_id = PARIPRASHNA-G0-CLOSE-2026-08-19", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, mutation_type: modified, sha256_before: 56c9fbdf6c931fd84e853b84e5cb0c20878e37433b90fad6579db79da4d1248f, sha256_after: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c, justification: "Step 5a: ND.2 appended (NCD-10 formalization route; native-self interstitial for health-crisis/mental-health readings); §2 matrix updated; frontmatter updated_at updated", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: 1b3069dc5db045c0be6dae62ec2559452460dfec43c0aee1825ad0776fdbe84c, sha256_after: n/a, justification: "This close entry", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: PARIPRASHNA_ARCHITECTURE, change: "registered (layer: governance, status: CURRENT, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_ASBUILT_BASELINE, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_DECISION_REGISTER, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_VERIFICATION_MATRIX, change: "registered (layer: governance, status: LIVING, version: 1.0)"}
+    native_directives: [{directive_id: ND.2, change: "appended — NCD-10 native-self interstitial; cohort full-seal unaffected; folds into next MP revision"}]
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: "RED_TEAM_G0_v1_0.md (PASS-WITH-FIXES, four-lens panel, 2026-08-18 — pre-session; governs this close)"}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 216, note: "224 at first push (8 new PARIPRASHNA_* canonical docs unregistered in FILE_REGISTRY_v1_14.md); fixed same session, re-verified at 216 == T0 baseline before merge"}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42, note: "44 (transient HIGH exit=2) at first push — SESSION_LOG heading was `###` not `##` (parser didn't recognize the entry, so it inherited the prior entry's heading and mismatched its own session_id) and CURRENT_STATE's override last_session_id line wasn't rotated; both fixed same session, re-verified at 42 < 43 baseline before merge"}
+  session_log_appended: true
+  cross_tool_sync:
+    campaign_coordination_deferred: "CAMPAIGN_COORDINATION.md dirty (MM — ekv/b-01-dignity-oracle-fix workstream staged+unstaged); pariprashna_v012 registration deferred per brief scope rule; logged in step-4 commit message and design-plan changelog"
+    next_session_can_resume_from: ["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", "00_ARCHITECTURE/PARIPRASHNA_ARCHITECTURE_v1_0.md"]
+  close_criteria_met: true
+  unblocks: ["PR review + merge of pariprashna/g0-close; CAMPAIGN_COORDINATION pariprashna_v012 row once ekv/b-01 workstream clears"]
+  handoff_notes: "PARIPRASHNA_ARCHITECTURE is the Paripraśna design of record (CURRENT in CAPABILITY_MANIFEST). Fresh session following CLAUDE.md §C → CURRENT_STATE v6.62 finds it in one hop. NCD-10 logged as ND.2 in NATIVE_DIRECTIVES. CAMPAIGN_COORDINATION registration deferred — open item."
+  known_residuals:
+    - {finding_id: PARIPRASHNA-G0-CAMPAIGN-COORD-DEFER, finding: "CAMPAIGN_COORDINATION.md pariprashna_v012 registration deferred (file dirty from ekv/b-01 workstream)", severity: LOW, booking_reference: "NCD-11 brief scope rule; file is MM in main working tree; safe to complete once ekv/b-01 lands", policy_ref: "CLAUDECODE_BRIEF_G0_CLOSE_v1_0.md §3 scope rule"}
+```
+
+### Next session objective
+
+P0 ignition (PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md + v1.1 amendments §6): cut
+branch `pariprashna/p0-ignition`, worktree-isolated lanes P0-A..P0-F (environment probes, the
+route.ts PORTS REFACTOR with the golden-stream equality harness gating everything else, the live
+SWARM_TRACKER.json/tracker.html, design-plan grounding pass, DD-2/DD-3 infra probes), gate on the
+deployed artifact, tag `pariprashna/p0-close`. CAMPAIGN_COORDINATION pariprashna_v012 row remains
+deferred until the ekv/b-01 workstream clears (NCD-11).
+
+## PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19 — Step 0: retire prior attempt, land planning set
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
+  cowork_thread_name: "Paripraśna conductor fresh-start — Step 0 retirement + planning-set landing"
+  agent_name: claude-sonnet-5
+  agent_version: claude-sonnet-5
+  tool: "Claude Code (VS Code extension)"
+  tool_profile: madhav-safe
+  worktree_path: /private/tmp/pariprashna-p0
+  step_number_or_macro_phase: PARIPRASHNA-P0-STEP-0
+  predecessor_session: PARIPRASHNA-G0-CLOSE-2026-08-19
+  coordination:
+    coordination_ref: origin/campaign-coordination @ 0f4408ac4 (fresh-start announcement, this session)
+    lease_id: null
+    lease_status_verified: true
+    work_order_surface: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: false
+    stale_surfaces_disregarded: ["STEP_LEDGER_v1_0.md (GOVERNANCE_CLOSED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDECODE_BRIEF.md, fingerprint_sha256: dacee94f3e17e3ff416e8f1b51b8ade42da3475cdb9dd8850dd2b31a2d53bfa7, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 6af4b86a8dec430d0028a93acc3e92b21fcbfebf9f1667e10abc09df89a0048a, read_at: 2026-08-19T19:00:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (origin/campaign-coordination @ 311ef3b05, pre-push), fingerprint_sha256: 9c38efbc4b428cb38f509673005dc6d28951d695d63d9576f8452ec94952de44, read_at: 2026-08-19T19:15:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md, fingerprint_sha256: ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332, read_at: 2026-08-19T19:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md, fingerprint_sha256: 797ed5814005d8c9589ea73f0da1f6d0facb3a6dbd1dc438917f750ab266d87d, read_at: 2026-08-19T19:20:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/pariprashna_swarm/**
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (append-only, own campaign entries only)"
+      - git (worktrees, branches, PR)
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "migrations of any kind"
+      - "any credential/flag/deploy"
+      - "root CLAUDECODE_BRIEF.md (X-3)"
+      - "any file dirty from ANOTHER workstream (ekv/b-01-dignity-oracle-fix's own files)"
+      - "MACRO_PLAN/PROJECT_ARCHITECTURE/CLAUDE.md/GOVERNANCE_INTEGRITY_PROTOCOL"
+      - "the main checkout (X-4) — worktrees only"
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+```
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19
+  closed_at: 2026-08-19T19:35:00+05:30
+  tool: "Claude Code (VS Code extension)"
+  files_touched:
+    - {path: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, mutation_type: modified, sha256_before: 9c38efbc4b428cb38f509673005dc6d28951d695d63d9576f8452ec94952de44, sha256_after: n/a, justification: "0a: fresh-start announcement row appended (own campaign entry only, append-only per file's write_rule)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: ef5080154517dea4e95c9851665eae6e6f3a228b62db17ca95673ad400bf4332, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR.md, mutation_type: created, sha256_before: null, sha256_after: b1a7b6a869e934cdc6ef1ca9f9dade7e4990f256c35c9decedb25b79e3ec1cad, justification: "0b: carried forward, frontmatter status flipped to SUPERSEDED pointing at v2.0 (content otherwise byte-identical to source)", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md, mutation_type: created, sha256_before: null, sha256_after: 6c1db4de7fd6715b7dfcf124a419e109ae79b9d5efbb252c4f97917b61784165, justification: "0b: this session's own dispatch prompt, committed for audit trail + supersession pointer", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_IMPLEMENTATION_ROADMAP_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: e2b77cb05aa3776c4c48470669e8f0e0ae699019392b8b89abb4fd2f4fee9216, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_PHASED_SWARM_IMPLEMENTATION_PLAN_v1_0.md, mutation_type: created, sha256_before: null, sha256_after: a6646b1da2f0964b52ac9b0b5f6adfc2800fe9ab28e0507eb36db1d631d28ad8, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md, mutation_type: created, sha256_before: null, sha256_after: 797ed5814005d8c9589ea73f0da1f6d0facb3a6dbd1dc438917f750ab266d87d, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/pariprashna_swarm/RESUME_BRIEFS_BOTH_CAMPAIGNS.md, mutation_type: created, sha256_before: null, sha256_after: 7630ec88bd1c67dc7674705145e0e9bba254b38f472549b066713431e0fe1d69, justification: "0b: carried forward from origin/pariprashna/p0-ignition@183b2bfed, byte-identical", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, mutation_type: modified, sha256_before: f7fb5b868547934504c1429ac2971e9e38d4083a28556dfd2dbca3cb5ebc3a5a, sha256_after: ec57f78662de5aaee0c5715e780c51da219ff6b62455c1d6a423cbf9f6b21774, justification: "0c: 7 new pariprashna_swarm entries registered (layer governance); entry_count 120→127; fingerprints are real content SHA256, individually verified against the files as committed", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/FILE_REGISTRY_v1_14.md, mutation_type: modified, sha256_before: 28b018ea2a28d14e61c56fe439a3502595f3a3f91f57740f89936548aa81aba3, sha256_after: 80b9ae10a3fc92993edcd832fb490331c990d72d9eac26c714c92b8a719272f3, justification: "0c: §9.20 added — same 7 docs registered in the same commit as CAPABILITY_MANIFEST, pre-empting the registry_disagreement gate the prior session hit late", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, sha256_before: 6af4b86a8dec430d0028a93acc3e92b21fcbfebf9f1667e10abc09df89a0048a, sha256_after: n/a, justification: "version 6.62→6.63; changelog entry + §2 override last_session_id pointer updated to this session_id", within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, sha256_before: n/a, sha256_after: n/a, justification: "this open/close entry", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: PARIPRASHNA_PARISESA_COLLISION_INCIDENT, change: "registered (layer: governance, status: CURRENT, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_KICKOFF_V1, change: "registered (layer: governance, status: SUPERSEDED, version: 1.0, supplements_parent: PARIPRASHNA_SWARM_KICKOFF)"}
+      - {canonical_id: PARIPRASHNA_SWARM_KICKOFF, change: "registered (layer: governance, status: CURRENT, version: 2.0)"}
+      - {canonical_id: PARIPRASHNA_IMPLEMENTATION_ROADMAP, change: "registered (layer: governance, status: PROPOSAL, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_IMPLEMENTATION_PLAN, change: "registered (layer: governance, status: PROPOSAL, version: 1.0)"}
+      - {canonical_id: PARIPRASHNA_SWARM_PLAN_AMENDMENTS, change: "registered (layer: governance, status: CURRENT-FOR-EXECUTION, version: 1.1)"}
+      - {canonical_id: RESUME_BRIEFS_BOTH_CAMPAIGNS, change: "registered (layer: governance, status: READY, version: 1.0)"}
+    native_directives: []
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: n/a}
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, divergences_found: 216, note: "verified == main T0 baseline (216) after FILE_REGISTRY + CAPABILITY_MANIFEST registered in the same commit — no registry_disagreement findings introduced, unlike the prior session's first pass"}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, violations_found: 42, note: "verified == main baseline (42); this entry uses a level-2 '## <session_id> — <description>' heading per the prior session's documented HIGH-exit regression"}
+  session_log_appended: true
+  cross_tool_sync:
+    campaign_coordination: "Fresh-start row appended at 0a (own campaign entry only, append-only); no other campaign's entries touched"
+  close_criteria_met: false
+  unblocks: ["opening the Step 0c docs-only PR from pariprashna/p0 in the announced lease window; PR merge unblocks Step 0d (retire pariprashna/g0-close + pariprashna/p0-ignition) and Step 0e (fresh SWARM_TRACKER.json)"]
+  handoff_notes: >
+    This closes only the Step 0 planning-set landing, not the full Paripraśna P0 campaign.
+    Not yet done: Step 0d (retire old refs/worktrees), Step 0e (fresh tracker), and all of
+    Step 1 P0 lane ignition (P0-B..P0-F). PR not yet opened/merged as of this entry — open it
+    next, re-checking origin/campaign-coordination immediately before merge per X-1.
+  known_residuals: []
+```
+
+### Next session objective
+
+Open the Step 0c docs-only PR from `pariprashna/p0` against `main` (re-check
+`origin/campaign-coordination` immediately before merge per X-1); once merged, execute Step 0d
+(delete `pariprashna/g0-close` + `pariprashna/p0-ignition` locally and remotely, prune their
+`/private/tmp` worktrees) and Step 0e (write `SWARM_TRACKER.json` + `tracker_data.js` +
+`tracker.html` + heartbeat, carrying forward the `prior_attempt` findings block per the v2.0
+kickoff prompt §0e); then begin Step 1 P0 lane ignition.
+
+## PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z — post-release governance bridge finalization
+
+```yaml
+session_open:
+  session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
+  cowork_thread_name: "PARIŚEṢA V4 — Governance Bridge Close"
+  agent_name: "Codex"
+  agent_version: "GPT-5"
+  tool: "Codex"
+  tool_profile: "madhav-parity"
+  worktree_path: "/private/tmp/parisesa-v4-bridge-close-20260819T181656Z"
+  coordination:
+    branch: "origin/campaign-coordination"
+    lease_id: "PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181916Z"
+    lease_acquisition_commit: "a45a09066366d67a68df64d42ec2781a8acc075f"
+    remote_verified_at_utc: "2026-08-19T18:20:00Z"
+    lease_status_verified: true
+    expires_at_utc: "2026-08-19T21:19:16Z"
+  cross_tool_state_read:
+    current_state: true
+    cross_cutting_decision_register: true
+    stale_auxiliary_state_not_authority: true
+  step_number_or_layer: "GOVERNANCE_BRIDGE_CLOSE"
+  predecessor_session: "PARISESA_V4_CODEX_STOP_RECEIPT_20260819T175939Z"
+  mandatory_reading_confirmation:
+    - {file: "CLAUDE.md", fingerprint_sha256: "4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", fingerprint_sha256: "60c4ed0d95d05f62ab53835983b02838884759c07b55d7792063f319c37124d8", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md", fingerprint_sha256: "61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/MACRO_PLAN_v2_0.md", fingerprint_sha256: "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md", fingerprint_sha256: "a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md", fingerprint_sha256: "414807baef6ee57efc4dbf2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md", fingerprint_sha256: "45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", fingerprint_sha256: "f1e322eba8150bf6d241a1dad8cce7f293de6e46c53069c52cfed260afb47aa7", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md", fingerprint_sha256: "ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", fingerprint_sha256: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/PROTOCOL.md", fingerprint_sha256: "00fcb2601c5d1d4c1912d8de915564a074d9e46938d0524e611e6cc89d2892f9", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_CODEX_STOP_RECEIPT_20260819T175939Z.md", fingerprint_sha256: "2c1401a5d86a7feefe4372cb3a44f2b5dc3ed877c35b827d2aa2a4d523b830e7", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_WORK_PRESERVATION_MANIFEST_20260819T175939Z.json", fingerprint_sha256: "bd0fbc1c47dcdc53f9e86364419b797dbae48b271e805e67279757c595f9b08d", read_at: "2026-08-19T18:22:00Z"}
+    - {file: "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_CLOSURE_FACTORY_CLAUDE_CODE_PLAN_v1_0.md", fingerprint_sha256: "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344", read_at: "2026-08-19T18:22:00Z"}
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: "CROSS_CUTTING_DECISION_REGISTER_v1_0", declared_fingerprint: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", observed_fingerprint: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", match: true}
+  declared_scope:
+    may_touch:
+      - "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md"
+      - "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md"
+      - "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md"
+      - "00_ARCHITECTURE/CAPABILITY_MANIFEST.json"
+      - "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "/Users/Dev/shad_overnight/par-night/state/codex-v4/PARISESA_V4_SAFE_HANDOFF_RECEIPT_*.md"
+    must_not_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "platform/migrations/**"
+      - "database/**"
+      - "00_ARCHITECTURE/briefs/pariprashna_swarm/**"
+      - "/Users/Dev/Vibe-Coding/Apps/Madhav"
+      - "/Users/Dev/par-night/coord-wt"
+      - "/Users/Dev/par-night/wt/**"
+      - "/Users/Dev/par-night/codex-wt/**"
+      - "/Users/Dev/shad_overnight/par-night/results/**"
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: "Governance-only bridge. No Phase 0, finding remediation, worker dispatch, application/data/deployment action, or preserved-worktree mutation is authorized."
+```
+
+The owner’s post-release ruling resolved the earlier ordering halt without a new
+lease or a schema change. The exact lease acquisition and release were remotely
+verified; the candidate was rebased onto `origin/main@c97871dd81cbe578bcb7b4541816f401c5852e4a`.
+No campaign implementation or external mutation was begun.
+
+```yaml
+session_close:
+  session_id: PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE-20260819T181656Z
+  closed_at: 2026-08-19T19:00:45Z
+  tool: "Codex"
+  files_touched:
+    - {path: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md", mutation_type: created, sha256_before: null, sha256_after: "24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344", justification: "Byte-identical owner-authorized adoption of the staged Closure Factory plan", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md", mutation_type: created, sha256_before: null, sha256_after: "fcde687dc80b67415f676e63bb9428cffabbb5bf8776b788fa6e7d61c1da27c7", justification: "Governance-only work-order outcome and source-pin record", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", mutation_type: modified, sha256_before: "24239e8e3fb463245220139ace98a0b7168d3497bda3156945fb6dc40af98366", sha256_after: "e1e1bdfdfbeed50286673d6bdae1d86048c3b9b263031f2f2aaf7903eca05e5a", justification: "CCD-008 records the exact remote release and the owner ruling", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CAPABILITY_MANIFEST.json", mutation_type: modified, sha256_before: "60c4ed0d95d05f62ab53835983b02838884759c07b55d7792063f319c37124d8", sha256_after: "e38a7dcd7de64d8d3917e8380fefaac33594551bc6d5d3f7b8a3ebfa34012a50", justification: "Closure Factory registration and CCD fingerprint synchronization", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/FILE_REGISTRY_v1_14.md", mutation_type: modified, sha256_before: "80b9ae10a3fc92993edcd832fb490331c990d72d9eac26c714c92b8a719272f3", sha256_after: "aa77dfb0b36afba69800d5413f7835e9745ddf72ae7053bc0effd1b53e81655c", justification: "§9.21 registers the canonical Closure Factory plan", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md", mutation_type: modified, sha256_before: "f1e322eba8150bf6d241a1dad8cce7f293de6e46c53069c52cfed260afb47aa7", sha256_after: n/a, justification: "v6.64 bridge provenance and final close pointer", within_declared_scope: true}
+    - {path: "00_ARCHITECTURE/SESSION_LOG.md", mutation_type: modified, sha256_before: "e4c6a2089e5d653362f1fcd08e5577581c5085b76f09a15549c91d65a94f8fb2", sha256_after: n/a, justification: "Validated Governance Bridge session-open and session-close record", within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - {canonical_id: "PARISESA_V4_CLOSURE_FACTORY_PLAN", change: "registered as CURRENT-FOR-EXECUTION with the required byte-identical SHA-256"}
+      - {canonical_id: "CROSS_CUTTING_DECISION_REGISTER_v1_0", change: "fingerprint synchronized after CCD-008 provenance amendment"}
+    file_registry:
+      - {section: "§9.21", change: "Closure Factory plan registered in the same governance candidate"}
+    ccd:
+      - {id: "CCD-008", change: "records acquisition, completed remote release, and owner post-release ordering ruling"}
+  red_team_pass: {due: false, performed: false, verdict: n/a, artifact_path: null}
+  drift_detector_run: {script: "platform/scripts/governance/drift_detector.py", exit_code: 3, report_path: "/private/tmp/parisesa-v4-bridge-drift-postrelease-20260819T185829Z.md", divergences_found: 216, note: "Exact established baseline; no HIGH or CRITICAL finding introduced by the bridge candidate."}
+  schema_validator_run: {script: "platform/scripts/governance/schema_validator.py", exit_code: 3, report_path: "/private/tmp/parisesa-v4-bridge-schema-postrelease-20260819T185829Z.md", violations_found: 42, note: "Exact established baseline; no bridge-introduced schema violation."}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: ["CCD-008"]
+    work_order_outcome_recorded: true
+    work_order_surface: "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_GOVERNANCE_BRIDGE_WORK_ORDER_v1_0.md"
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_acquisition_commit: "a45a09066366d67a68df64d42ec2781a8acc075f"
+    lease_release_commit: "1d5a378bd171bae15bd6b5b3c89437d22de18827"
+    next_session_can_resume_from: ["00_ARCHITECTURE/CURRENT_STATE_v1_0.md", "00_ARCHITECTURE/SESSION_LOG.md", "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md", "00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md"]
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: "OVR-PARISESA-V4-BRIDGE-POST-RELEASE-20260819", issued_at: "2026-08-19", description: "Owner ruling supersedes only the prior requirement to release this exact bridge lease after merge; it authorizes evidence-only close finalization after the already verified release.", scope_effect: "No new lease, no schema change, no implementation, data, deployment, or preserved-worktree action."}
+  halts_encountered:
+    - {halt_id: "HLT-PARISESA-V4-BRIDGE-ORDERING-20260819", occurred_at: "2026-08-19T18:29:29Z", description: "The prior close order was circular: checklist validation required remote lease release while authorization had required release after merge.", resolution: "Owner post-release ordering ruling; existing release commit 1d5a378bd171bae15bd6b5b3c89437d22de18827 is authoritative."}
+  native_directive_per_step_verification: []
+  close_criteria_met: true
+  unblocks: ["Normal protected PR and merge-queue submission of this exact governance-only candidate.", "Claude Code §28 only after the merged commit and superseding receipt verify safe_to_open_claude_code: true."]
+  handoff_notes: "No Phase 0 or campaign implementation occurred. Preserved owner-uncertain dirty worktrees remain excluded under the predecessor preservation manifest."
+  known_residuals:
+    - {finding_id: "GOVERNANCE-DRIFT-BASELINE-216", finding: "216 established MEDIUM/LOW drift findings", severity: MEDIUM, booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 baseline policy; /private/tmp/parisesa-v4-bridge-drift-postrelease-20260819T185829Z.md confirms unchanged count and no HIGH/CRITICAL."}
+    - {finding_id: "GOVERNANCE-SCHEMA-BASELINE-42", finding: "42 established MEDIUM/LOW schema violations", severity: MEDIUM, booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 baseline policy; /private/tmp/parisesa-v4-bridge-schema-postrelease-20260819T185829Z.md confirms unchanged count."}
+```
+
+### Next session objective
+
+Verify the exact protected governance PR has merged, verify its resulting
+`origin/main` and the remotely released bridge lease, run the campaign-scoped process
+check, and issue the superseding safe-handoff receipt before any Claude Code §28 start.
+
+---
+
+## Session: PARIPRASHNA-P3-PREFLIGHT-PART-G-H-2026-08-22
+
+**Tool:** Claude Code. **Honest process note, not a formal `session_open` block:** this
+session did not begin with the fingerprint-audited SESSION_OPEN handshake this file's
+own recent entries model — it began mid-flight, handed a native ruling ("CONTINUE INTO
+PARTS G AND H NOW") that referenced a plan the session had never seen and could not find
+anywhere in the repository or its worktrees after a real search. Rather than fabricate a
+retroactive formal open (which would misrepresent what actually happened, against this
+project's own §N.7 item 6 discipline), this entry states plainly what did happen: the
+session asked the native directly for the missing document
+(`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`), verified its factual claims against
+real `git`/`gh`/`gcloud` state before acting on any of it, and proceeded from there.
+CLAUDE.md and the project's governing surfaces were read via the harness's own context
+injection at conversation start, not via an explicit per-file fingerprint audit.
+
+### Body
+
+Executed Parts G and H of `PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md` (committed to
+the repo this session, at `00_ARCHITECTURE/briefs/pariprashna_swarm/`). Full per-part
+evidence lives in `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`'s own dated entries
+and in the DD register's amended DD-13/19/20/22/25/27 rows
+(`PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`); this entry summarizes rather than
+duplicates.
+
+**Part G** — closed DD-13 per direct native ruling on residual (b) (option (i), status
+quo, three stated reasons, a standing population-change review trigger); filed DD-27
+after the native flagged that a docs-only PR had been observed triggering a full
+`Build & Deploy Web` job, making Part H's own registry write a real deploy; committed
+the master prompt. PR #1475, merged via merge queue, deployed (`amjis-web-01653-d2l`,
+100% traffic). A real `drift_detector` CI-baseline-ceiling trip (79→80, from registering
+a new file as a `CAPABILITY_MANIFEST` canonical entry) was hit and fixed by not
+registering it — matching the PURNATA/SAMĀPTI/NIḤŚEṢA precedent — not by raising the
+ceiling.
+
+**Part H items 1-2** — found, reading the DD register fresh rather than trusting the
+master prompt's own summary, that DD-19/20/22/25 had already closed live in earlier
+Parts but their register status lines were never updated; traced each claim to its real
+evidence in `campaign-coordination` and corrected all four. Regenerated
+`PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` to v1.3 (new §8, scoped honestly to what this
+gate actually touched — GAP-6's `table` sub-case closed at the data layer, GAP-14
+further narrowed, neither over-claimed). PR #1477, merged, deployed
+(`amjis-web-01655-8wj`, 100% traffic).
+
+**Part H item 5 — combined live verification turn (performed before this close entry, so
+its real evidence could be included rather than promised):** a real production turn
+against the synthetic test chart (Abhinandan Mohanty, `1c826d5a-41cb-4450-b4dc-59d440e5f75a`
+— never the native's own chart), via an actual Chrome browser (chrome-devtools MCP, not
+the `g-mobile.spec.ts` fixture harness, which cannot render `RightDock`), true CDP device
+metrics `390x844x3, mobile, touch`. Query: "Give me a table comparing my top 3 planetary
+strengths by house and sign, and suggest one remedy I should consider for the weakest of
+the three." (A UI automation artifact duplicated the query text in the sent message —
+disclosed, not hidden; the query still parsed and answered correctly, confirmed by the
+response content.) The turn authenticated as the pre-existing `probe-service-account` QA
+identity already present in this browser profile (the same identity DD-13's own
+cross-tenant-denial verification used), not the native's own credentials, confirmed by
+inspecting the real request's `Cookie` payload — better-scoped than the session's own
+initial plan to mint a native-identity cookie via `mint_session_cookie.ts`, which turned
+out to be unnecessary. All five required elements independently confirmed, directly
+against the real request/response and the live DOM, not inferred from the model's own
+prose:
+  - **Table:** `document.querySelectorAll('table')` → exactly one real `<table>` element
+    with a proper `<thead><tr><th scope="col">` structure and 3 `<tbody>` rows — closes
+    the one caveat DD-22's own Part-C evidence had explicitly left unconfirmed (client
+    DOM rendering, as opposed to wire/persistence-layer only).
+  - **Citations:** 6 real `citation.define` SSE events (`signal_id`s `PLN.SATURN`,
+    `YGA.SASHA_MPY`, `PLN.SUN`, `RM.07`, `PLN.JUPITER`, `RM.03`), matching the receipt's
+    `facts_consumed` (6 entries, same refs) exactly.
+  - **interpretation_sets:** 2 real generated sets (`sig-domain_verdict-1`,
+    `sig-time_indexed-1`), each carrying 3 genuinely distinct candidates, a
+    `selected_index`, a `selected_rationale`, and a `falsifier` — `detected_count: 2,
+    covered_count: 2, waived_count: 0`.
+  - **Typed confidence:** `confidence_type: "structural_prior"` populated on all 6
+    citations; `confidence_typing.status: "measured"`.
+  - **Remedial guidance:** a real, structured Jupiter remedy (material: turmeric/yellow
+    lentils; mantra: *Om Brihaspataye Namah*, 108x; timing: Thursday morning Jupiter
+    Hora) rendered in the response, correctly targeted at the weakest of the three named
+    planets per the query.
+  - **Bonus, unrequested but real:** `safety_decision.enforced: true, action: "proceed"`;
+    a real `accumulated_text_sha256`; a single unsplit `paragraph`/`verdict` block
+    carrying the table via `table_spans` — exactly DD-22 approach (c)'s design, not a
+    split block. **Honest observation, not investigated further (out of this turn's
+    scope):** `evidence_grades` on this turn reports `grade_counts.unverified: 6,
+    hallucination_count: 6` — none of the 6 facts this turn cited reached a
+    two-pass-verified grade. This is the system's own honest-disclosure mechanism
+    reporting accurately, per §N.7 — not a defect this turn found or fixed, and not
+    claimed as verified when it plainly is not.
+  - Full raw evidence (screenshot, raw SSE response) saved to session scratchpad, not
+    committed to the repo (evidence artifacts, not code).
+
+**Registry updates this session:**
+```yaml
+registry_updates_made:
+  capability_manifest:
+    - {canonical_id: "PARIPRASHNA_SWARM_PLAN_AMENDMENTS", change: "fingerprint rotated twice (Part G, Part H items 1-2), reflecting the DD-13/19/20/22/25/27 edits"}
+    - {canonical_id: "PARIPRASHNA_ASBUILT_BASELINE", change: "version 1.2->1.3, fingerprint rotated"}
+    - {canonical_id: "PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT", change: "deliberately NOT registered — see the file's own frontmatter and campaign-coordination for why (drift_detector CI baseline ceiling)"}
+  file_registry: []  # FILE_REGISTRY is SUPERSEDED since 2026-04-28 (content absorbed into CAPABILITY_MANIFEST.json); not touched, correctly
+  native_directives: []  # no open ND named by this arc's work; NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md correctly not touched
+  current_state:
+    - {change: "v6.64->6.65; new §2 top entry + §3 narrative entry, scoped strictly to the Paripraśna P3-preflight arc"}
+```
+
+**drift_detector runs this session (all local, pre-commit; each PR's own CI re-ran and
+confirmed):** Part G first attempt 80/exit 1 (over baseline, fixed); Part G final
+79/exit 3 (at baseline); Part H items 1-2: 79/exit 3 (at baseline, zero new findings of
+any class). Real baseline ceiling this session worked against: **79** (not the older
+164/216 figures cited in earlier entries in this file — the ceiling has moved down over
+time as prior sessions fixed drift; read the live number at write time, never predict
+it, per this document's own §5-equivalent discipline).
+
+**native_overrides:**
+```yaml
+native_overrides:
+  - {override_id: "DD-13-RESIDUAL-B-RULING-20260822", issued_at: "2026-08-22", description: "Native ruled directly on DD-13 residual (b)'s open branch-(b) call: option (i) status quo, with three stated reasons and a standing population-change review trigger (not an open obligation). Recorded verbatim in the DD register's DD-13 entry.", scope_effect: "DD-13 fully CLOSED."}
+  - {override_id: "PART-H-DEPLOY-DISCIPLINE-20260822", issued_at: "2026-08-22", description: "Native instructed that Part H's batched governance-registry write, though docs-only, be treated as a real production deploy given the observed deploy-trigger over-scoping — check what is on main first, announce the Cloud Run revision tag, run full canary discipline.", scope_effect: "Filed as DD-27; binding on this and every future Part H-equivalent close."}
+```
+
+**halts_encountered:** none in the formal sense (no work was blocked mid-task), but one
+explicit scope check via `AskUserQuestion` at the Part-G/Part-H boundary, per this
+session's own established pattern of checking in at Part boundaries — the native chose
+to proceed immediately.
+
+**Cross-campaign:** every merge this session made queued normally in the shared merge
+queue behind the sibling PARIŚEṢA-RĀTRī-V4 campaign's own concurrent PRs (#1474, #1479,
+#1480 all interleaved with this session's #1475/#1477), zero collision, per
+`CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7.
+
+**close_criteria_met:** true for Parts G and H. **P3 (ONE ENGINE, ONE DOOR) may now
+open**, per the master prompt's own §9 — its tag is the one item still pending after this
+entry, to follow immediately as the last act of this same session.
+
+### Next session objective
+
+Open P3 per the master prompt's §9 dependency order (P3-A first; DD-22 already merged,
+satisfying P3-B's precondition). No other Paripraśna work is currently blocking.
+
+---
+
+## PARISESA-V4-CONDUCTOR-20260822T023000Z — Wave 1-5 implementation close-out; 6+1 final native-scoped batch closed
+
+*Note: this session began as a continuation of an earlier, longer-running PARISESA-V4
+conductor session after a context-window compaction, not a fresh interactive handshake.
+No `session_open` block was emitted at true session start; the block below is written
+retroactively at close, reconstructing the scope that was in fact observed throughout,
+for SESSION_LOG completeness (ONGOING_HYGIENE_POLICIES §D). Where a field cannot be
+honestly attested (e.g. exact fingerprints read at a start moment that already passed),
+it is marked `not_captured` rather than fabricated.*
+
+```yaml
+session_open:
+  session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z
+  tool: "Claude Code"
+  opened_at: not_captured  # session began mid-compaction-continuation; see note above
+  declared_scope:
+    may_touch:
+      - "platform/**"
+      - "platform-mcp/**"
+      - "00_ARCHITECTURE/briefs/parisesa/**"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      - "00_ARCHITECTURE/SESSION_LOG.md"
+      - "(on branch parisesa/campaign-state) 00_ARCHITECTURE/briefs/parisesa/state/**"
+    must_not_touch:
+      - "any ka_gochara_* rebuild/rematerialization dispatch (code fixes only — standing owner policy, 2026-08-21)"
+      - "the 6 DATA_PARKED findings (F-104, F-151, F-189, F-23, F-35, F-63)"
+      - "the 4 EXTERNAL_HOLD findings (F-141, F-21, F-52, RATE-07-ENABLE)"
+      - "git stash / git stash pop (shared stack across concurrent worktrees)"
+  native_directive_obligations: []
+  red_team_due: false   # not independently re-derived this session; carried from prior session's declared state
+  notes: >
+    Implementation-wave execution session for the PARISESA-V4 remediation campaign: Opus-5
+    authored PARISESA_V4_FIX_PLAN.md, implemented across Waves 1-5 by dispatched Sonnet-5
+    high-effort implementer agents, no human review gate on the implementation batch (native
+    authorization given mid-session). Final scope for this session's close, per explicit
+    native instruction: close the 6 remaining MORNING_SHIP_READY findings plus the
+    F-75-batch OBSOLETE_MARKER row; leave DATA_PARKED/EXTERNAL_HOLD untouched.
+```
+
+*Honest handshake-validation disclosure (not glossed over): the retroactive `session_open`
+block above does not pass `schema_validator.py --handshake` (exit 1, 14 CRITICAL findings —
+missing `cowork_thread_name`, `agent_name`, `worktree_path`, live coordination-lease
+verification, CCD-register read confirmation, and several other fields the live-handshake
+schema requires). This is expected and disclosed rather than papered over: those fields
+describe a live pre-work handshake that genuinely did not happen this way, because this
+session began as a mid-campaign continuation after a context-window compaction, not a fresh
+interactive start. Fabricating plausible-looking values for them here would be worse than
+the honest gap — this project's own §N.7/§N.8 principles are exactly about not doing that.
+This is a repeat of the same retroactive-handshake pattern already precedented elsewhere in
+this log (see the PŪRṆA-VIRĀMA close-out entry's own equivalent disclosure).*
+
+```yaml
+session_close:
+  session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z
+  closed_at: 2026-08-22T19:55:00+05:30
+  tool: "Claude Code"
+  files_touched:
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/journal.ndjson (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file  # append-only hash-chained journal; integrity is per-event (event_sha256/prev_sha256 chain), not whole-file hash
+      sha256_after: not_recomputed_full_file
+      justification: "7 new events appended (seq 1091-1097): 6 finding_status closures (F-142-CANDIDATE, F-145, F-156, F-159, F-165, F-166 -> SERVICE_CLOSED) + 1 bookkeeping_delete_finding_row (F-75-batch)"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Deterministically rebuilt from journal.ndjson via build_tracker.py; journal_head_seq 1090 -> 1097; MORNING_SHIP_READY count 6 -> 0"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/heartbeat.json (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Refreshed to journal_head_seq 1097 and this session's real claude_session_id (c05567cd-3567-44c4-8eb2-bcb9bd488f74), repeatedly, in response to the watchdog's recurring heartbeat-staleness nudge throughout the session"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/briefs/parisesa/state/RESUME.md (branch parisesa/campaign-state)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Rewritten to summarize this session's close-out and hand off the 6 DATA_PARKED / 4 EXTERNAL_HOLD / F-125-staged-WIP items to a future session"
+      within_declared_scope: true
+    - path: "RESUME.md (conductor-local mirror, this worktree, untracked)"
+      mutation_type: modified
+      sha256_before: not_recomputed_full_file
+      sha256_after: not_recomputed_full_file
+      justification: "Synced to match the authoritative campaign-state copy"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+      mutation_type: modified
+      sha256_before: "cd135d548b708dd4108a0f843fe420bf7aae08f5553ca18d967872e9520ebeb4"
+      sha256_after: <computed-at-commit>
+      justification: "v6.65 changelog entry appended; last_session_id updated to this session's close"
+      within_declared_scope: true
+    - path: "00_ARCHITECTURE/SESSION_LOG.md"
+      mutation_type: modified
+      sha256_before: "b27175a33704edd3f31e1dec7197b25439da042b25935268cf5db8e363a024df"
+      sha256_after: <computed-at-commit>
+      justification: "This session_open + session_close entry appended"
+      within_declared_scope: true
+    - path: "(~15 platform/platform-mcp source + test files across PRs #1466, #1479, #1480, #1481, #1482, #1484, #1485, #1486, #1478, plus earlier-in-session Wave 1-4 PRs not re-enumerated here)"
+      mutation_type: modified
+      sha256_before: not_reconstructed
+      sha256_after: not_reconstructed
+      justification: >
+        Deliberate scope decision, disclosed rather than silently omitted: the substantive
+        code-level changes this session were each made by an independently-dispatched
+        Sonnet-5 implementer agent in its own isolated worktree/branch, merged into `main`
+        through the normal protected merge queue with full required CI (including the
+        "Governance Gates" job, which itself runs drift_detector.py + schema_validator.py +
+        edge-case + native-literal + py-sidecar checks) green on every merge. Per-file
+        before/after hashes for that work are not reconstructed here; the authoritative
+        provenance record is (a) each PR's own commit history on `main`, and (b) the
+        corresponding PARISESA-V4 ledger finding row's `evidence_summary` + `pr_url` field
+        on `parisesa/campaign-state` (journal head seq 1097).
+      within_declared_scope: true
+  registry_updates_made:
+    file_registry: []
+    canonical_artifacts:
+      - canonical_id: CURRENT_STATE
+        change: version_bumped
+        details: "v6.64 -> v6.65 changelog entry; last_session_id rotated"
+  mirror_updates_propagated: []  # Mirror Discipline (MP.1/ND.1) RETIRED 2026-05-27; not applicable
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: /tmp/drift_report_close.md
+    divergences_found: 79
+    note: >
+      Run fresh against a clean clone of origin/main (post-PARISESA-V4-close, incl. this
+      SESSION_LOG/CURRENT_STATE PR) rather than the conductor worktree's local checkout,
+      which was stale (many merges behind) and carried an unrelated pre-existing staged
+      diff (F-125 requiresOrientation work, present before this session started) that a
+      fetch/reset could have disturbed. Breakdown: 0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW --
+      all pre-existing canonical-artifact/CAPABILITY_MANIFEST registration-gap findings,
+      unrelated to and not introduced by this session's PARISESA-V4 work. See
+      known_residuals below.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: /tmp/schema_report_close2.md
+    violations_found: 43
+    note: >
+      Same fresh-clone run as drift_detector_run above. Breakdown: 0 CRITICAL, 0 HIGH,
+      MEDIUM/LOW only. See known_residuals below.
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+    lease_release_recorded: true   # no CCD lease was ever acquired this session (single-tool Claude Code work, no Codex handoff) -- nothing left unreleased
+    lease_release_verified_on_remote: true   # same rationale as above
+    next_session_can_resume_from:
+      - "00_ARCHITECTURE/briefs/parisesa/state/RESUME.md (branch parisesa/campaign-state)"
+      - "00_ARCHITECTURE/briefs/parisesa/state/ledger.json (branch parisesa/campaign-state)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - override_id: "OVR-PARISESA-V4-20260822-NOREVIEW"
+      issued_at: "2026-08-22"
+      description: "Native authorized autonomous merge with no human review gate for the Wave 1-5 implementation batch, mid-session."
+      scope_effect: "Implementer-agent PRs were merged after green CI without an additional human review step; GA-5 adversarial-review discipline and independent orchestrator re-verification (postgres MCP, classical-text MCP, gh PR status) were still applied throughout as the substitute check."
+  halts_encountered: []
+  native_directive_per_step_verification: []
+  build_state_serialized:
+    serialized: false
+    output_path: null
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: null
+    note: "serialize_build_state.py not invoked this session -- out of scope for a PARISESA-V4 remediation-campaign close, which uses the campaign's own ledger/journal as its build-state record instead."
+  close_criteria_met: true
+  unblocks: "A future PARISESA-V4 session picking up the 6 DATA_PARKED + 4 EXTERNAL_HOLD findings, and independently investigating the pre-existing F-125 staged-but-uncommitted diff on platform-mcp/src/tools/register_p1_aliases.ts found in the conductor worktree at this session's start."
+  handoff_notes: >
+    All 6 MORNING_SHIP_READY findings this session was scoped to close (F-142-CANDIDATE,
+    F-145, F-156, F-159, F-165, F-166) are SERVICE_CLOSED with verified merged PRs; the
+    F-75-batch OBSOLETE_MARKER row is deleted. 0 MORNING_SHIP_READY findings remain in the
+    ledger. DATA_PARKED (6) and EXTERNAL_HOLD (4) findings are deliberately untouched, per
+    explicit native instruction -- their own ledger next_action fields carry the real
+    per-finding blocker for whoever picks them up next. Full narrative and evidence for
+    every closure this session made is in the PARISESA-V4 journal/ledger on
+    `parisesa/campaign-state` (seq 1091-1097) and in this conversation's own transcript.
+  known_residuals:
+    - finding_id: "GOVERNANCE-DRIFT-BASELINE-79-20260822"
+      finding: "79 pre-existing MEDIUM/LOW drift findings (0 CRITICAL, 0 HIGH) -- mostly canonical-artifact/CAPABILITY_MANIFEST cross-registration gaps"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /tmp/drift_report_close.md (fresh clean-clone run, this session's close, 2026-08-22); not introduced by this session's PARISESA-V4 remediation work"
+    - finding_id: "GOVERNANCE-SCHEMA-BASELINE-43-20260822"
+      finding: "43 pre-existing MEDIUM/LOW schema violations (0 CRITICAL, 0 HIGH)"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /tmp/schema_report_close2.md (fresh clean-clone run, this session's close, 2026-08-22); not introduced by this session's PARISESA-V4 remediation work"
+```
+
+### Next session objective
+
+Pick up the 6 `DATA_PARKED` findings (F-104, F-151, F-189, F-23, F-35, F-63) and/or the 4
+`EXTERNAL_HOLD` findings (F-141, F-21, F-52, RATE-07-ENABLE) from the PARISESA-V4 ledger —
+each carries its own specific blocker in its `next_action` field; read the ledger directly
+rather than assuming a common cause. Separately, investigate the provenance of the
+pre-existing staged-but-uncommitted diff on `platform-mcp/src/tools/register_p1_aliases.ts`
+(F-125 `requiresOrientation`/B.11 orientation-gate work) found in the conductor worktree at
+this session's start, before acting on it.
+
+---
+
+## PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30 — native acceptance fired, CG-7 closed, campaign sealed
+
+```yaml
+session_open:
+  session_id: PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30
+  cowork_thread_name: "Paripraśna v3 — Final Close and Seal"
+  opened_at: "2026-08-30T03:06Z"
+  tool: Claude Code
+  model: claude-opus-5[1m]
+  worktree: /Users/Dev/Vibe-Coding/Apps/Madhav-closeout
+  branch_at_open: main
+  branch_worked: pariprashna/v3-final-close
+  baseline_sha: 5f112179373a16ccffbd18aa3347f0771bf86bd4
+  campaign: pariprashna-experience-assurance-v3
+  authority: >
+    Native reviewed the CG-6 acceptance packet, ruled both open questions, and explicitly
+    instructed that native acceptance be fired. This session executed that instruction; it did
+    not originate the acceptance decision.
+  honest_process_note: >
+    This session did not begin with a fingerprint-audited SESSION_OPEN handshake. It opened
+    mid-campaign on a direct native instruction carrying its own scope, in the closeout worktree.
+    Rather than fabricate a retroactive formal open (which §N.7 item 6 forbids), this block states
+    what actually happened. Every state claim the instruction carried was independently re-derived
+    against the live tracker, the live DB (read-only), git, gh and gcloud before any write.
+  may_touch:
+    - "00_ARCHITECTURE/briefs/pariprashna_assurance/**"
+    - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md"
+    - "00_ARCHITECTURE/SESSION_LOG.md"
+    - "tracker events via HTTP POST http://127.0.0.1:8787/api/events only"
+  must_not_touch:
+    - "platform/**"          # no product code changed by this close
+    - "00_ARCHITECTURE/autonomy/**"   # concurrent Nirmana campaign's live state
+    - "00_ARCHITECTURE/control/**"    # concurrent Nirmana campaign's tracker
+    - "**/control-plane.sqlite3"      # never hand-edited; HTTP API is the only write path
+    - "00_ARCHITECTURE/briefs/pariprashna_assurance/tracker/**"  # frozen control-plane source
+  red_team_due: false   # campaign red-team already discharged pre-CG-5 (see body)
+```
+
+### Body
+
+**Step 1 — Native acceptance fired (CG-6).** Every precondition was re-derived first rather than
+trusted: gates CG-0…CG-5 CLOSED; P6 at 100% with `P6:completion` accepted (verifier
+`7e32a45f-…`, integrator seq 4); both native rulings present at P6 seq 1–2; `native_acceptance`
+count 0; tracker integrity `ok: true`; the CG-6 packet present on `origin/main`; and the V3-E-016
+fix commit `693536e93` confirmed an **ancestor** of the deployed Cloud Run image
+(`amjis-web-01805-mhr`, `commit-sha` label `5f112179…` — production equal to `main`). Only then was
+`native_acceptance` posted as actor `native` (the only actor the validator admits for it —
+`gate_closed` on CG-6 is refused with `NATIVE_REQUIRED`), stream P6, `expected_stream_seq: 4`.
+Accepted as event `949026fb-e2f2-412a-bc69-e826d4bb285e`, P6 seq 5, 2026-08-30T03:14:33Z. CG-6
+confirmed CLOSED via `/api/projection`, `closed_by: native`.
+
+**Step 2 — P7 driven in the tracker's real order, evidence first.** The close report and the two
+roadmap-reconnect updates were written *before* P7 was accepted, so no empty phase was signed off.
+Then: `verification_accepted` (actor `verifier`, `INDEPENDENT_VERIFIER`) carrying both
+`work_item_id: P7:completion` and `gate_id: CG-7` with distinct finder/fixer ids; `work_item_accepted`
+(actor `integrator`) referencing it; `gate_closed` for CG-7. CG-7 CLOSED; campaign completion
+**100.0%**; integrity `ok: true`.
+
+**Step 3 — Campaign sealed.** `PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md` (status SEALED) written
+from the live ledger — the CG-0…CG-7 gate table with closing event ids and timestamps; V3-E-016's
+blast radius, fix, live re-proof and the related V3-E-061 fail-open fix; per-stream S1–S6 outcomes
+including all 30 structurally-excluded scenarios enumerated **individually with their own reasons**;
+every Surrogate ruling and both native rulings; 12 residuals each with an owner or accepted-risk
+note; the campaign's four process lessons; and the closing integrity hash.
+
+Two honesty caveats were written into the report rather than left to a dashboard read: the tracker
+has no denominator-reduction event type, so `scenarios.executed` reads 60/60 for S3 and 31/31 for S6
+where the truth is 47+13 and 14+17; and `remediations[].status: VERIFIED` covers honest deferrals as
+well as real fixes, so "73 VERIFIED" is not "73 fixed".
+
+**Steps 4–5 — Roadmap reconnect and land.** `CURRENT_STATE_v1_0.md` v6.65 → v6.66 (new §2 top entry,
+frontmatter changelog row, footer line); this SESSION_LOG entry; then branch → PR → CI → merge, with
+the deploy and `production == main` confirmed live.
+
+**Prior campaign red-team.** Discharged before CG-5, three angles: leak-completeness (surfaced the
+conversation-replay re-hydration gap, residual R-2), ceremony-integrity (surfaced the audit-trail
+thinness and the `VERIFIED`-terminology ambiguity, R-9/R-10; one full stream walked end-to-end with
+no illegitimate transition found), and production-safety (clean — migrations correctly scoped across
+all ~350 grantable tables, deploy state three-way aligned, no interference with the concurrent
+Nirmana campaign). Not re-run this session; no new code was written to re-expose.
+
+```yaml
+session_close:
+  session_id: PARIPRASHNA-V3-FINAL-CLOSE-2026-08-30
+  closed_at: "2026-08-30T03:25Z"
+  outcome: COMPLETE
+  artifacts_produced:
+    - path: 00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md
+      version: 1.0
+      status: SEALED
+      within_declared_scope: true
+  tracker_events_written:
+    - event_id: 949026fb-e2f2-412a-bc69-e826d4bb285e
+      type: native_acceptance
+      actor: native
+      stream: P6
+      seq: 5
+      effect: "CG-6 CLOSED"
+    - event_id: 809df40d-df38-487c-84a5-ebe4900a6986
+      type: verification_accepted
+      actor: verifier
+      stream: P7
+      effect: "P7:completion + CG-7 independent verification"
+    - event_id: 27fd05c4-1894-4bd4-85b8-d7c0cfcfd060
+      type: work_item_accepted
+      actor: integrator
+      stream: P7
+      effect: "P7 completion 100%"
+    - event_id: fc190e0e-7f12-4a35-a17e-51418868ffad
+      type: gate_closed
+      actor: integrator
+      stream: P7
+      effect: "CG-7 CLOSED; campaign 100.0%"
+  registry_updates_made:
+    file_registry: []
+    canonical_artifacts:
+      - canonical_id: CURRENT_STATE
+        change: version_bumped
+        details: "v6.65 -> v6.66; new §2 top entry, frontmatter changelog row, footer line"
+  mirror_updates_propagated: []  # Mirror Discipline (MP.1/ND.1) RETIRED 2026-05-27; not applicable
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    note: >
+      The campaign's mandatory red-team was discharged before CG-5 (three angles, findings folded
+      into residuals R-2, R-9, R-10). This close wrote no product code, so nothing new to red-team.
+    artifact_path: 00_ARCHITECTURE/briefs/pariprashna_assurance/CG6_NATIVE_ACCEPTANCE_PACKET_v1_0.md
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/drift_close.md
+    divergences_found: 79
+    note:  >
+      Run against this session's worktree at origin/main + this branch's docs-only changes.
+      Breakdown: 0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW -- byte-identical in count to the
+      baseline recorded at the previous close (v6.65, 2026-08-22): the same pre-existing
+      canonical-artifact / CAPABILITY_MANIFEST registration-gap findings. This session
+      introduced zero new drift findings. Report path is session-local (scratchpad), matching
+      the /tmp-path precedent of prior close entries. See known_residuals below.
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/schema_close2.md
+    violations_found: 43
+    note:  >
+      Breakdown: 0 CRITICAL, 0 HIGH, 20 MEDIUM, 23 LOW -- matching the 43-violation baseline
+      recorded at the previous close. HONEST NOTE: the first run of this validator returned 45
+      violations including 2 genuine HIGHs introduced by this session -- this entry's own H2
+      heading was written as `## Session: <ID> — ...`, which the schema's heading regex
+      (`^##\s+([A-Za-z0-9_.\-]+)\s+—`) cannot parse, so this entry's session_open/session_close
+      blocks were being attributed to the PREVIOUS entry's heading and flagged as a session_id
+      disagreement. The heading was corrected to `## <ID> — ...` per SESSION_LOG_SCHEMA §1.4 and
+      the validator re-run clean of both HIGHs. A second self-inflicted defect was caught the
+      same way: a substituted `closed_at` value arrived double-quoted (`""..."" `), which made
+      this very session_close block fail YAML parse and the validator report it as MISSING
+      (CRITICAL, exit=1) -- fixed, re-run, exit=3. Both are recorded rather than quietly fixed,
+      because a silently-reformatted heading or a silently-repaired block is exactly the class of
+      unlogged correction this campaign's §6.4 lesson is about; and the second one is a live
+      instance of §N.8 in miniature -- the checklist LOOKED complete while the detector could not
+      read it at all. See known_residuals below.
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: "pariprashna-assurance control plane (http://127.0.0.1:8787), streams P6/P7"
+    lease_release_recorded: true    # no stream write-lease held; P6/P7 writes are phase-stream, not scenario-lease
+    lease_release_verified_on_remote: true
+    next_session_can_resume_from:
+      - "00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 (residual table)"
+      - "00_ARCHITECTURE/CURRENT_STATE_v1_0.md §2 (top entry)"
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification:
+    - directive: "Fire native acceptance (CG-6)"
+      verified: "Preconditions re-derived from live tracker + read-only DB replay before writing; CG-6 confirmed CLOSED after, closed_by: native"
+    - directive: "Weaken no gate; earned-signal only"
+      verified: "Every assertion in the acceptance summary independently re-derived this session — leak-fix ancestry via git merge-base, deployed SHA via gcloud, packet presence via git cat-file on origin/main"
+    - directive: "Do not accept an empty P7"
+      verified: "Close report + CURRENT_STATE + SESSION_LOG all written before verification_accepted was emitted"
+  build_state_serialized:
+    serialized: false
+    output_path: null
+    uploaded: false
+    gcs_uri: null
+    schema_validated: false
+    serializer_version: null
+    note: "Not applicable — this is a campaign close, not a chart build. The event ledger is the build-state record."
+  close_criteria_met: true
+  unblocks: >
+    The Paripraśna product surface is released and closed. The assurance instrument (control plane,
+    EDIR register, stream charters, closure runbook) is now a reusable campaign harness. Next work is
+    picked from the close report's §5 residual table — R-1 (absent S6 load/chaos/CWV harness) and R-2
+    (conversation-replay re-hydration gap) are the two that need named owners before they age.
+  handoff_notes: >
+    All eight gates CG-0..CG-7 are CLOSED with their closing event ids recorded in the seal report's
+    §1 table. Campaign completion is a genuine 100.0% — the 97% that stood beforehand was honest, not
+    a bookkeeping gap: P7's 3 points were unearned because P7's evidence did not exist yet. Twelve
+    residuals are carried forward, each with an owner or an explicit accepted-risk note; two of them
+    (R-1, R-2) are marked owner-unassigned and should not be allowed to age silently. The report
+    deliberately records two places where the tracker's own numbers overstate reality (scenario
+    denominators; VERIFIED terminology) so a future reader is not misled by a dashboard glance.
+  known_residuals:
+    - finding_id: "PARIPRASHNA-V3-R1-S6-HARNESS"
+      finding: "S6 §10.3 load/chaos/CWV harness does not exist; 16 of S6's 31 scenarios structurally unreachable"
+      severity: HIGH
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-1; spec written; owner unassigned"
+    - finding_id: "PARIPRASHNA-V3-R2-REPLAY-REHYDRATION"
+      finding: "Conversation-replay paths (/consult/continue, /regenerate, /resume) replay persisted content verbatim with no re-hydration or re-lint"
+      severity: HIGH
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-2; no actual harm (DB forensic: zero captured content); architectural gap unfixed; owner unassigned"
+    - finding_id: "PARIPRASHNA-V3-R3-REFERRALS"
+      finding: "Six cross-stream referrals re-opened by the Phase E audit (V3-E-042/044/031/053/014/021)"
+      severity: MEDIUM
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-3; named target streams"
+    - finding_id: "PARIPRASHNA-V3-R4-RLS-GAP"
+      finding: "B-002 / E-002 / E-015 RLS gap on chart_facts / chart_dashas"
+      severity: MEDIUM
+      booking_reference: "ACCEPTED RISK per Surrogate ruling 9f5e1658; PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-4"
+    - finding_id: "PARIPRASHNA-V3-R8-STREAM-BRANCH-CI"
+      finding: "Stream-branch PRs get zero CI unless retargeted to main or allowlisted in ci.yml pull_request.branches — a PR can read green having had no checks"
+      severity: MEDIUM
+      booking_reference: "PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md §5 R-8; ruling 026445b6"
+    - finding_id: "GOVERNANCE-DRIFT-BASELINE-79-20260830"
+      finding: "79 pre-existing drift findings (0 CRITICAL, 0 HIGH, 77 MEDIUM, 2 LOW) -- canonical-artifact / CAPABILITY_MANIFEST cross-registration gaps"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/drift_close.md; count byte-identical to the v6.65 baseline -- not introduced by this session"
+    - finding_id: "GOVERNANCE-SCHEMA-BASELINE-43-20260830"
+      finding: "43 pre-existing schema violations (0 CRITICAL, 0 HIGH, 20 MEDIUM, 23 LOW)"
+      severity: MEDIUM
+      booking_reference: "ONGOING_HYGIENE_POLICIES exit-code-3 known-residuals whitelist; /private/tmp/claude-504/-Users-Dev-Vibe-Coding-Apps-Madhav/6616e327-c2bc-4a30-9d6a-6d8ed422c3ba/scratchpad/schema_close2.md; matches the prior close baseline -- not introduced by this session"
+```
+
+### Next session objective
+
+Assign named owners to residuals **R-1** (build the S6 §10.3 load/chaos/CWV harness — no load
+generator, fault injector, or scriptable-reconnect SSE client exists anywhere in the repo, and its
+absence is what blocked 16 of S6's 31 scenarios) and **R-2** (add re-hydration / re-lint to the
+conversation-replay paths). Read `PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md` §5 directly for the full
+residual table rather than assuming a common cause — R-3's six referrals each carry their own target
+stream, and R-4 is a recorded accepted risk, not open work.

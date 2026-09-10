@@ -95,6 +95,47 @@ const DIVISIONALS: Record<string, Record<string, Record<string, { sign: string; 
   },
 }
 
+// ── F-159 fixtures: synthetic charts exercising ayanamsha_frame_sensitivity ───────────────
+// Purely synthetic (not the two canonical charts) — isolated fixtures for the one new query
+// `computeChandraFrameSensitivity` adds (Moon's `sign` across the 5 REAL_AYANAMSHAS). Each
+// chart's single-ayanamsha MOON sign (used by the pre-existing frame-resolution path) matches
+// its own 'lahiri_chitrapaksha' row below, so the ordinary chandra-frame resolution is
+// unaffected — only the NEW cross-ayanamsha disclosure differs per fixture.
+const MOON_SENSITIVE_CHART_ID = 'f159-test-moon-sensitive'
+const MOON_STABLE_CHART_ID = 'f159-test-moon-stable'
+const MOON_MISSING_DATA_CHART_ID = 'f159-test-moon-missing-data'
+
+FACTS[MOON_SENSITIVE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
+FACTS[MOON_STABLE_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
+FACTS[MOON_MISSING_DATA_CHART_ID] = { graha_position: { LAGNA: { sign: 'Aries', house: 1 }, MOON: { sign: 'Pisces', house: 12 } } }
+
+// chart_id -> ayanamsha_id -> Moon's `sign` for THIS finding's own widened cross-ayanamsha read.
+const MOON_SIGN_BY_AYANAMSHA: Record<string, Record<string, string>> = {
+  // Positive case: 4/5 agree on Pisces, surya_siddhanta_classical diverges to Aquarius.
+  [MOON_SENSITIVE_CHART_ID]: {
+    krishnamurti: 'Pisces',
+    lahiri_chitrapaksha: 'Pisces',
+    raman: 'Pisces',
+    surya_siddhanta_classical: 'Aquarius',
+    true_chitra: 'Pisces',
+  },
+  // Negative case: unanimous 5/5 Pisces.
+  [MOON_STABLE_CHART_ID]: {
+    krishnamurti: 'Pisces',
+    lahiri_chitrapaksha: 'Pisces',
+    raman: 'Pisces',
+    surya_siddhanta_classical: 'Pisces',
+    true_chitra: 'Pisces',
+  },
+  // Missing-data case: 'raman' has no row at all; the 4 present rows agree.
+  [MOON_MISSING_DATA_CHART_ID]: {
+    krishnamurti: 'Pisces',
+    lahiri_chitrapaksha: 'Pisces',
+    surya_siddhanta_classical: 'Pisces',
+    true_chitra: 'Pisces',
+  },
+}
+
 let idCounter = 0
 function fid(): string {
   return `fact-${idCounter++}`
@@ -113,6 +154,15 @@ vi.mock('@/lib/db/client', () => ({
           { fact_id: fid(), fact_key: 'house_d1', fact_value_text: null, fact_value_num: String(rec.house) },
         ],
       }
+    }
+    // ── F-159: cross-ayanamsha Moon `sign` read (computeChandraFrameSensitivity) ──
+    if (sql.includes('ayanamsha_id = ANY($2::text[])')) {
+      const [chart_id, ayanamshaIds] = params as [string, string[]]
+      const byAya = MOON_SIGN_BY_AYANAMSHA[chart_id] ?? {}
+      const rows = ayanamshaIds
+        .filter((a) => byAya[a] !== undefined)
+        .map((a) => ({ ayanamsha_id: a, fact_value_text: byAya[a] }))
+      return { rows }
     }
     // ── frame reference sign (LAGNA/MOON/SUN/bhava_arudha/karakamsa) ──
     if (sql.includes('fact_category = $3') && sql.includes("fact_subject = $4 AND fact_key = 'sign'")) {
@@ -572,5 +622,81 @@ describe('assertParadigmCoherent — the paradigm-mixing coherence guard (design
     await expect(
       resolveAddress(NATIVE_CHART_ID, { type: 'karaka', code: 'AK' }, { ayanamsha_id: AYANAMSHA, paradigm: 'kp' }),
     ).rejects.toThrow(ParadigmMixError)
+  })
+})
+
+// ── F-159: ayanamsha_frame_sensitivity disclosure on the chandra frame ─────────────────────
+// The chandra frame resolves its reference sign from the Moon's OWN sign under ONE requested
+// ayanamsha — but that Moon sign can genuinely differ across the 5 real ayanamshas chart_facts
+// stores. `resolveFrameSign`'s chandra branch discloses this via `ayanamsha_frame_sensitivity`
+// on every ResolvedSign/ResolvedOccupants it produces. Three cases per the finding spec: fires
+// on a genuine cross-ayanamsha disagreement, does NOT fire (and reports stable) when unanimous,
+// and honestly reports a data gap (neither sensitive nor stable) when rows are missing.
+describe('resolveAddress — F-159 ayanamsha_frame_sensitivity (chandra frame only)', () => {
+  it('POSITIVE: fires ayanamsha_sensitive when the Moon\'s sign disagrees across the 5 real ayanamshas', async () => {
+    const result = await resolveAddress(
+      MOON_SENSITIVE_CHART_ID, { type: 'bhava', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const s = result.entities[0] as ResolvedSign
+    const sens = s.ayanamsha_frame_sensitivity
+    expect(sens).toBeDefined()
+    expect(sens!.frame_sensitivity_class).toBe('ayanamsha_sensitive')
+    expect(sens!.variation.ayanamsha_agreement).toBe('4/5')
+    expect(sens!.variation.unanimous).toBe(false)
+    expect(sens!.variation.divergent_ayanamshas).toEqual(['surya_siddhanta_classical'])
+    expect(sens!.variation.missing_ayanamshas).toEqual([])
+  })
+
+  it('NEGATIVE: does NOT fire (reports stable_across_ayanamsha) when all 5 real ayanamshas unanimously agree', async () => {
+    const result = await resolveAddress(
+      MOON_STABLE_CHART_ID, { type: 'bhava', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const s = result.entities[0] as ResolvedSign
+    const sens = s.ayanamsha_frame_sensitivity
+    expect(sens).toBeDefined()
+    expect(sens!.frame_sensitivity_class).toBe('stable_across_ayanamsha')
+    expect(sens!.variation.ayanamsha_agreement).toBe('5/5')
+    expect(sens!.variation.unanimous).toBe(true)
+    expect(sens!.variation.divergent_ayanamshas).toEqual([])
+    expect(sens!.variation.missing_ayanamshas).toEqual([])
+  })
+
+  it('MISSING-DATA: honestly reports the gap (frame_sensitivity_class null, missing_ayanamshas ' +
+    'populated) rather than claiming stability it cannot verify — a real detector that can read ' +
+    'false, per §N.8', async () => {
+    const result = await resolveAddress(
+      MOON_MISSING_DATA_CHART_ID, { type: 'bhava', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const s = result.entities[0] as ResolvedSign
+    const sens = s.ayanamsha_frame_sensitivity
+    expect(sens).toBeDefined()
+    expect(sens!.frame_sensitivity_class).toBeNull()
+    expect(sens!.variation.unanimous).toBe(false)
+    expect(sens!.variation.missing_ayanamshas).toEqual(['raman'])
+    expect(sens!.variation.divergent_ayanamshas).toEqual([])
+  })
+
+  it('is NEVER computed for a non-chandra frame (lagna) — scope is chandra-only', async () => {
+    const result = await resolveAddress(
+      MOON_SENSITIVE_CHART_ID, { type: 'bhava', house: 1, frame: 'lagna' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const s = result.entities[0] as ResolvedSign
+    expect(s.ayanamsha_frame_sensitivity).toBeUndefined()
+  })
+
+  it('propagates through occupants_of(frame:"chandra") as well as bhava', async () => {
+    const result = await resolveAddress(
+      MOON_SENSITIVE_CHART_ID, { type: 'occupants_of', house: 1, frame: 'chandra' }, { ayanamsha_id: AYANAMSHA },
+    )
+    const o = result.entities[0] as ResolvedOccupants
+    expect(o.ayanamsha_frame_sensitivity?.frame_sensitivity_class).toBe('ayanamsha_sensitive')
+  })
+
+  it('propagates through bhava_from(chandra, N) as well', async () => {
+    const result = await resolveAddress(
+      MOON_SENSITIVE_CHART_ID, { type: 'bhava_from', from: 'chandra', house: 5 }, { ayanamsha_id: AYANAMSHA },
+    )
+    const s = result.entities[0] as ResolvedSign
+    expect(s.ayanamsha_frame_sensitivity?.frame_sensitivity_class).toBe('ayanamsha_sensitive')
   })
 })

@@ -28,8 +28,15 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     "(fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu /",
     'Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years',
     '(fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu).',
-    'Filter by ayanamsha_id (omit for all 5) or method (fact_subject). NOT a death',
-    'prediction — classical longevity-band computation only. Bounded with a disclosed total.',
+    'Every row carries fact_value_jsonb with method-specific detail: total_years rows carry',
+    'per_graha contributions, lagna_years, classification, and harana_status; the CHART/',
+    'maraka_grahas row carries the 2nd/7th-house maraka significators (signs, lords,',
+    'occupants); the CHART/applicable_method row carries the ruling method + all three raw',
+    'totals. harana_status is also promoted to a top-level field on this response whenever a',
+    'total_years row is present on the page (honest disclosure — reductive haranas are not',
+    'yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit',
+    'for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band',
+    'computation only. Bounded with a disclosed total.',
   ].join(' '),
 
   input_schema: {
@@ -68,9 +75,13 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
     if (method)       { filters.push(`UPPER(fact_subject) = UPPER($${p++})`); params.push(method) }
     const where = filters.join(' AND ')
 
+    // F-E2 (L1_W1_ANALYSIS_BATCH_E.md, NOW, LEVERAGE/§N.6): fact_value_jsonb was omitted,
+    // making maraka_grahas (2nd/7th signs, lords, occupants), per_graha contributions,
+    // lagna_years, and the harana_status disclosure unreachable at 0 hops despite the
+    // writer already computing and storing them (ga_ayurdaya_writer.py:239-241, 263-265).
     const sql = `
       SELECT fact_id, fact_subject, fact_key, fact_value_num, fact_value_text,
-             unit, ayanamsha_id, citation_ref
+             fact_value_jsonb, unit, ayanamsha_id, citation_ref
       FROM chart_facts
       WHERE ${where}
       ORDER BY ayanamsha_id, fact_subject, fact_key
@@ -82,6 +93,22 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, params),
       ])
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+
+      // F-E3 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.7 item 4/6; §N.6 item 3): harana_status
+      // is a real, correct incompleteness disclosure (reductive haranas not yet applied)
+      // that lived only inside fact_value_jsonb — no consumer could see it without
+      // already knowing to look. Promoted to a top-level field, honestly derived from the
+      // actual served rows (never hardcoded) — present only when at least one total_years
+      // row is on this page, absent otherwise (never fabricated for a page that doesn't
+      // carry it).
+      const haranaStatuses = new Set<string>()
+      for (const r of rowsRes.rows) {
+        if (r['fact_key'] === 'total_years') {
+          const jsonb = r['fact_value_jsonb'] as { harana_status?: string } | null
+          if (jsonb?.harana_status) haranaStatuses.add(jsonb.harana_status)
+        }
+      }
+
       return {
         content: {
           chart_id,
@@ -93,8 +120,11 @@ export const getAyurdayaCapability: CapabilityDescriptor = {
           ...(total_matching === 0
             ? { empty_reason: `No ayurdaya (longevity) facts for chart ${chart_id}${ayanamsha_id ? ` at ayanamsha '${ayanamsha_id}'` : ''}${method ? ` for method '${method}'` : ''}.` }
             : {}),
+          ...(haranaStatuses.size > 0
+            ? { harana_status: haranaStatuses.size === 1 ? [...haranaStatuses][0] : [...haranaStatuses] }
+            : {}),
           disclaimer: 'NOT a death prediction — classical Āyurdāya longevity-band computation only.',
-          note: 'fact_value_num = total_years for the method; fact_value_text = longevity band (alpayu/madhyayu/purnayu).',
+          note: 'fact_value_num = total_years for the method; fact_value_text = longevity band (alpayu/madhyayu/purnayu). fact_value_jsonb carries method-specific detail (per_graha, lagna_years, maraka significators, applicable-method rule) — see harana_status for the reductive-haranas disclosure.',
           provenance: { tables: ['chart_facts'], fact_category: 'ayurdaya' },
         },
         is_error: false,

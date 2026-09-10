@@ -63,9 +63,9 @@ describe('RosterTableView — Nirmāṇa affordance (Phase 2B canBuild gate)', (
     expect(nirmanaLink).toBeUndefined()
   })
 
-  it('canBuild=false → Vimarśa link still present', () => {
+  it('canBuild=false → Pariprashna link still present', () => {
     render(<RosterTableView charts={[makeChart({ canBuild: false })]} />)
-    const link = screen.getByRole('link', { name: /vimarśa \(analyze\)/i })
+    const link = screen.getByRole('link', { name: /pariprashna \(consult\)/i })
     expect(link).toBeTruthy()
   })
 

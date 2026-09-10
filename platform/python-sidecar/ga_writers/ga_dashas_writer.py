@@ -43,14 +43,39 @@ from brahmagyan.verification_vocab import (
     DIVERGENT_FLAGGED,
     TWO_PASS_VERIFIED,
     UNVERIFIED_DEFAULT,
+    entry_for as _vocab_entry_for,
 )
+
+# F-A17 fix, second half: 'scope_cap_sentinel' (verification_vocab.py's settled
+# vocabulary entry 9) had no exported named constant -- CLASSICAL_MATCH/
+# TWO_PASS_VERIFIED/DIVERGENT_FLAGGED/UNVERIFIED_DEFAULT are the only four the
+# module exports symbols for. Adding a fifth top-level constant there would be
+# the doctrinally cleaner fix, but verification_vocab.py is a shared L0 module
+# every ga_*/bo_* writer's provenance digest transitively includes
+# (pipeline/orchestrator/asset_runner.py's get_writer_source_hash walks the
+# local-import closure) -- confirmed live: editing that file and regenerating
+# nirmana-writer-digests.json shifted ~24 unrelated L1+L2 writers' digests, and
+# `nirmana_analysis_layer_pins.py --check` then reported ALL THREE of L0/L1/L2's
+# writer_inventory_sha256 stale, the exact "would invalidate already-frozen
+# capsules, not forced through unilaterally" residual this file's own F-A10 fix
+# already named for RESTRICTED_TABLE_VOCAB (see write_dasha_scope_cap_sentinels
+# below). Resolved here without touching the shared module: still reads the
+# canonical vocabulary's OWN stored value via `entry_for()` (so a shared-module
+# rename would still be caught, not silently drift), at exactly one controlled
+# lookup site instead of two raw literal emission sites -- not a second local
+# copy of the string, a read of the single source of truth.
+_SCOPE_CAP_SENTINEL_ENTRY = _vocab_entry_for("scope_cap_sentinel")
+assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
+    "verification_vocab.py no longer has a 'scope_cap_sentinel' member; "
+    "ga_dashas_writer.py's scope-cap sentinel rows have nothing to reference"
+)
+SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
 from ga_writers._idempotency import replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
     compute_independent_vimshottari_tree as _iv_compute_independent_tree,
 )
-from ga_writers.ga_condition_writer import _DIVISIONAL_DIGNITY_NORMALIZE
 from pipeline.orchestrator.birth_params import CANONICAL_CHART_ID as _BP_CANONICAL_CHART_ID, resolve_birth_params
 
 logger = logging.getLogger(__name__)
@@ -556,7 +581,16 @@ def _load_natal_context_inner(
         for graha, dignity_text in cur.fetchall():
             entry = ctx.setdefault(graha, {"house_d1": None, "sign": None, "nakshatra": None,
                                             "dignity_d1": None, "shadbala_total": None})
-            entry["dignity_d1"] = _DIVISIONAL_DIGNITY_NORMALIZE.get(dignity_text, dignity_text.lower() if dignity_text else None)
+            # F-A12: lowercase the oracle's own Title-cased tier name directly — do NOT
+            # route through ga_condition_writer's _DIVISIONAL_DIGNITY_NORMALIZE. That map
+            # exists for a different consumer (avastha_deeptaadi_from_dignity_and_state's
+            # own "*_sign" vocabulary) and was never the right translation for this field;
+            # get_dashas.ts's own serve-time authority (chart_facts.graha_dignity_per_varga,
+            # written by ga_structural from the same brahmagyan.dignity_oracle.classify_dignity
+            # this asset's own upstream ga_vargas delegates to) stores the bare lowercase tier
+            # name with no suffix — this is what dignity_d1 must match to stop the two L1
+            # surfaces disagreeing (§N.5).
+            entry["dignity_d1"] = dignity_text.lower() if dignity_text else None
 
         cur.execute(
             """
@@ -829,7 +863,7 @@ def _verify_ashtottari(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return "classical_match"  # Non-applicable → empty is OK
+        return CLASSICAL_MATCH  # Non-applicable → empty is OK
 
     known = set(ASHTOTTARI_LORDS_ORDER)
     for row in l1_rows:
@@ -845,7 +879,7 @@ def _verify_chara(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return "classical_match"
+        return CLASSICAL_MATCH
 
     sign_names = [
         "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
@@ -908,13 +942,13 @@ def _verify_mudda(rows: list[dict], moon_nak_idx0: int | None = None) -> str:
     file's FORENSIC-halt convention elsewhere.
     """
     if not rows:
-        return "classical_match"
+        return CLASSICAL_MATCH
     l1_rows = sorted(
         (r for r in rows if r["level_n"] == 1),
         key=lambda r: r["start_date"],
     )
     if not l1_rows:
-        return "classical_match"
+        return CLASSICAL_MATCH
     if moon_nak_idx0 is not None:
         natal_planet_id = _MUDDA_NATAL_ADHIPATI[moon_nak_idx0 % 9]
         expected_planet_id = _MUDDA_VARSHA_ADHIPATI[natal_planet_id]
@@ -958,12 +992,12 @@ def _verify_kalachakra(rows: list[dict]) -> str:
     """
     l1_rows = [r for r in rows if r["level_n"] == 1]
     if not l1_rows:
-        return "classical_match"
+        return CLASSICAL_MATCH
     known_signs = {s for s, _ in KALACHAKRA_SIGN_YEARS}
     for row in l1_rows:
         if row["lord_graha"] not in known_signs:
             raise ValueError(f"Kalachakra: invalid sign/lord {row['lord_graha']!r}")
-    return "single"
+    return UNVERIFIED_DEFAULT
 
 
 # ── Core row builder ──────────────────────────────────────────────────────────
@@ -1169,7 +1203,7 @@ def compute_vimshottari(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "vimshottari",
                 1, md_lord, md_start_d, md_end_d,
-                None, None, "two_pass_verified", ref, human,
+                None, None, TWO_PASS_VERIFIED, ref, human,
                 is_trunc_start=is_trunc_s, is_trunc_end=is_trunc_e,
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
@@ -1202,7 +1236,7 @@ def compute_vimshottari(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "vimshottari",
                     2, ad_lord, ad_start_d, ad_end_d,
-                    md_row_id, md_lord, "two_pass_verified", ref, human,
+                    md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
                     is_trunc_start=is_trunc_s2, is_trunc_end=is_trunc_e2,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
@@ -1233,7 +1267,7 @@ def compute_vimshottari(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "vimshottari",
                         3, pd_lord, pd_start_d, pd_end_d,
-                        ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                        ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -1262,7 +1296,7 @@ def compute_vimshottari(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "vimshottari",
                             4, sk_lord, sk_start_d, sk_end_d,
-                            pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                            pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -1367,7 +1401,7 @@ def compute_kp_subperiods(
             kp_row = _build_row(
                 chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                 2, sub_lord, clipped_s, clipped_e,
-                md_row_id, md_lord, "two_pass_verified", ref, human,
+                md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
                 is_trunc_start=trunc_s, is_trunc_end=trunc_e,
                 kp_sublevel="sub",
                 kp_sub_lord=sub_lord,
@@ -1410,7 +1444,7 @@ def compute_kp_subperiods(
                 kp_sub_row = _build_row(
                     chart_id, build_id, ayanamsha_id, KP_SYSTEM_ID,
                     3, sub2_lord, clipped_s2, clipped_e2,
-                    kp_row_id, sub_lord, "two_pass_verified", ref2, human2,
+                    kp_row_id, sub_lord, TWO_PASS_VERIFIED, ref2, human2,
                     is_trunc_start=trunc_s2, is_trunc_end=trunc_e2,
                     kp_sublevel="sub_sub",
                     kp_sub_lord=sub_lord,
@@ -1495,7 +1529,7 @@ def compute_yogini_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "yogini",
                 1, name, md_start_d, md_end_d,
-                None, None, "two_pass_verified", ref, human,
+                None, None, TWO_PASS_VERIFIED, ref, human,
                 period_deity=name,
                 is_trunc_start=(md_jd < min_jd), is_trunc_end=(md_end_jd > max_jd),
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
@@ -1528,7 +1562,7 @@ def compute_yogini_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "yogini",
                     2, ad_name, ad_start_d, ad_end_d,
-                    md_row_id, name, "two_pass_verified", ref, human,
+                    md_row_id, name, TWO_PASS_VERIFIED, ref, human,
                     period_deity=ad_name,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
@@ -1559,7 +1593,7 @@ def compute_yogini_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "yogini",
                         3, pd_name, pd_start_d, pd_end_d,
-                        ad_row_id, ad_name, "two_pass_verified", ref, human,
+                        ad_row_id, ad_name, TWO_PASS_VERIFIED, ref, human,
                         period_deity=pd_name,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
@@ -1589,7 +1623,7 @@ def compute_yogini_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "yogini",
                             4, sk_name, sk_start_d, sk_end_d,
-                            pd_row_id, pd_name, "two_pass_verified", ref, human,
+                            pd_row_id, pd_name, TWO_PASS_VERIFIED, ref, human,
                             period_deity=sk_name,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
@@ -1673,7 +1707,7 @@ def compute_ashtottari_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "ashtottari",
                 1, md_lord, md_start_d, md_end_d,
-                None, None, "two_pass_verified", ref, human,
+                None, None, TWO_PASS_VERIFIED, ref, human,
                 applies_to_chart=True,  # FORENSIC: Rahu in 5H → applicable
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
@@ -1703,7 +1737,7 @@ def compute_ashtottari_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "ashtottari",
                     2, ad_lord, ad_start_d, ad_end_d,
-                    md_row_id, md_lord, "two_pass_verified", ref, human,
+                    md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
@@ -1732,7 +1766,7 @@ def compute_ashtottari_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "ashtottari",
                         3, pd_lord, pd_start_d, pd_end_d,
-                        ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                        ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -1760,7 +1794,7 @@ def compute_ashtottari_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "ashtottari",
                             4, sk_lord, sk_start_d, sk_end_d,
-                            pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                            pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -1985,7 +2019,7 @@ def compute_chara_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "chara_karaka",
                 1, sign, md_start_d, md_end_d,
-                None, None, "two_pass_verified", ref, human,
+                None, None, TWO_PASS_VERIFIED, ref, human,
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
@@ -2014,7 +2048,7 @@ def compute_chara_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "chara_karaka",
                     2, ad_sign, ad_start_d, ad_end_d,
-                    md_row_id, sign, "two_pass_verified", ref, human,
+                    md_row_id, sign, TWO_PASS_VERIFIED, ref, human,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 ad_row["dasha_row_id"] = ad_row_id
@@ -2043,7 +2077,7 @@ def compute_chara_system(
                     pd_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "chara_karaka",
                         3, pd_sign, pd_start_d, pd_end_d,
-                        ad_row_id, ad_sign, "two_pass_verified", ref, human,
+                        ad_row_id, ad_sign, TWO_PASS_VERIFIED, ref, human,
                         start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                     )
                     pd_row["dasha_row_id"] = pd_row_id
@@ -2071,7 +2105,7 @@ def compute_chara_system(
                         sk_row = _build_row(
                             chart_id, build_id, ayanamsha_id, "chara_karaka",
                             4, sk_sign, sk_start_d, sk_end_d,
-                            pd_row_id, pd_sign, "two_pass_verified", ref, human,
+                            pd_row_id, pd_sign, TWO_PASS_VERIFIED, ref, human,
                             start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                         )
                         rows.append(sk_row)
@@ -2152,7 +2186,7 @@ def _verify_narayana(rows: list[dict]) -> str:
     raises ValueError rather than encoding an ad-hoc string into this column."""
     md_rows = sorted((r for r in rows if r["level_n"] == 1), key=lambda r: r["start_date"])
     if not md_rows:
-        return "classical_match"
+        return CLASSICAL_MATCH
     for a, b in zip(md_rows, md_rows[1:]):
         if a["end_date"] > b["start_date"]:
             raise ValueError(
@@ -2244,7 +2278,7 @@ def compute_narayana_system(
             md_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "narayana",
                 1, sign, md_start_d, md_end_d,
-                None, None, "single", ref, human,
+                None, None, UNVERIFIED_DEFAULT, ref, human,
                 start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
             )
             md_row["dasha_row_id"] = md_row_id
@@ -2272,7 +2306,7 @@ def compute_narayana_system(
                 ad_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "narayana",
                     2, ad_sign, ad_start_d, ad_end_d,
-                    md_row_id, sign, "single", ref, human,
+                    md_row_id, sign, UNVERIFIED_DEFAULT, ref, human,
                     start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
                 )
                 rows.append(ad_row)
@@ -2334,7 +2368,7 @@ def compute_naisargika_system(
         md_row = _build_row(
             chart_id, build_id, ayanamsha_id, "naisargika",
             1, md_lord, md_start_d, md_end_d,
-            None, None, "two_pass_verified", ref, human,
+            None, None, TWO_PASS_VERIFIED, ref, human,
             start_jd=max(md_jd, min_jd), end_jd=min(md_end_jd, max_jd),
         )
         md_row["dasha_row_id"] = md_row_id
@@ -2362,7 +2396,7 @@ def compute_naisargika_system(
             ad_row = _build_row(
                 chart_id, build_id, ayanamsha_id, "naisargika",
                 2, ad_lord, ad_start_d, ad_end_d,
-                md_row_id, md_lord, "two_pass_verified", ref, human,
+                md_row_id, md_lord, TWO_PASS_VERIFIED, ref, human,
                 start_jd=max(ad_jd, min_jd), end_jd=min(ad_end_jd, max_jd),
             )
             ad_row["dasha_row_id"] = ad_row_id
@@ -2390,7 +2424,7 @@ def compute_naisargika_system(
                 pd_row = _build_row(
                     chart_id, build_id, ayanamsha_id, "naisargika",
                     3, pd_lord, pd_start_d, pd_end_d,
-                    ad_row_id, ad_lord, "two_pass_verified", ref, human,
+                    ad_row_id, ad_lord, TWO_PASS_VERIFIED, ref, human,
                     start_jd=max(pd_jd, min_jd), end_jd=min(pd_end_jd, max_jd),
                 )
                 pd_row["dasha_row_id"] = pd_row_id
@@ -2417,7 +2451,7 @@ def compute_naisargika_system(
                     sk_row = _build_row(
                         chart_id, build_id, ayanamsha_id, "naisargika",
                         4, sk_lord, sk_start_d, sk_end_d,
-                        pd_row_id, pd_lord, "two_pass_verified", ref, human,
+                        pd_row_id, pd_lord, TWO_PASS_VERIFIED, ref, human,
                         start_jd=max(sk_jd, min_jd), end_jd=min(sk_end_jd, max_jd),
                     )
                     rows.append(sk_row)
@@ -2645,7 +2679,7 @@ def compute_mudda_system(
         md_row = _build_row(
             chart_id, build_id, ayanamsha_id, "mudda",
             1, varsha_lord, varsha_start_d, varsha_end_d,
-            None, None, "two_pass_verified", ref, human,
+            None, None, TWO_PASS_VERIFIED, ref, human,
             varsha_year_lord=varsha_lord,
             start_jd=max(varsha_start_jd, min_jd), end_jd=min(varsha_end_jd, max_jd_global),
         )
@@ -2670,7 +2704,7 @@ def compute_mudda_system(
             row2 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 2, lord_name, s_d, e_d,
-                md_row_id, varsha_lord, "two_pass_verified", ref2, human2,
+                md_row_id, varsha_lord, TWO_PASS_VERIFIED, ref2, human2,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2701,7 +2735,7 @@ def compute_mudda_system(
             row3 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 3, lord_name, s_d, e_d,
-                parent_id, parent_lord, "two_pass_verified", ref3, human3,
+                parent_id, parent_lord, TWO_PASS_VERIFIED, ref3, human3,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2729,7 +2763,7 @@ def compute_mudda_system(
             row4 = _build_row(
                 chart_id, build_id, ayanamsha_id, "mudda",
                 4, lord_name, s_d, e_d,
-                parent_id, parent_lord, "two_pass_verified", ref4, human4,
+                parent_id, parent_lord, TWO_PASS_VERIFIED, ref4, human4,
                 varsha_year_lord=varsha_lord,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd_global),
             )
@@ -2841,7 +2875,7 @@ def compute_kalachakra_system(
             row = _build_row(
                 chart_id, build_id, ayanamsha_id, "kalachakra",
                 depth, sign, s_d, e_d,
-                parent_id, parent_lord, "two_pass_verified", ref, human,
+                parent_id, parent_lord, TWO_PASS_VERIFIED, ref, human,
                 period_deity=f"Kalachakra-{sign}",
                 anchored_solar_return_iso=solar_return_iso,
                 start_jd=max(s_jd, min_jd), end_jd=min(e_jd, max_jd),
@@ -3310,8 +3344,36 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     to (chart_id, system_id='scope_cap', ayanamsha_id='INVARIANT'), so a
     rebuild under a new build_id replaces instead of accreting.
 
-    Returns count of rows written (0, 1, or 2 — partial writes are logged as
-    warnings, never fatal, matching the pre-existing non-fatal semantics).
+    F-A10 fix (migration 652): 'scope_cap_sentinel' was not in
+    chart_dashas_verification_pass_status_check, so BOTH sentinels violated it
+    on every write -- the KP row silently in addition to the already-documented
+    Prana failure. Migration 652 admits the new value. The KP row's own
+    level_n=4 already satisfies cd_level_n_max4, so it now writes; the Prana
+    row's level_n=5 still does not (SD-DASHA-1 remains OPEN -- deliberately,
+    per the docstring on _write_one_sentinel below).
+
+    KNOWN, DELIBERATE RESIDUAL: brahmagyan/verification_vocab.py's
+    RESTRICTED_TABLE_VOCAB (the Python-side mirror of chart_dashas' and
+    chart_divisionals' shared CHECK vocabulary) still does not include
+    'scope_cap_sentinel' for chart_dashas after migration 652 -- the two
+    tables' constraints have now genuinely diverged, and correcting the
+    mirror requires splitting that shared L0 (brahmagyan) constant into a
+    per-table shape. Regenerating the writer-digest inventory to reflect
+    such a change shifts bg_kp_sublord_division's digest too (it imports
+    from this module's neighborhood) -- nirmana_analysis_layer_pins.py's own
+    safety check refuses to regenerate ANY layer's pin once it detects L0's
+    frozen inputs have drifted, citing "would invalidate 29 already-frozen L0
+    capsules". Not forced through unilaterally; this is nothing that blocks
+    the DB-level fix here (nothing in this module calls assert_legal() for
+    chart_dashas today), only the Python mirror's completeness. Left for a
+    deliberate, coordinated follow-up (see the campaign issue tracker) rather
+    than risking those capsules on an L1 session's own judgment call.
+
+    Returns count of rows written. Honestly always 1 as of this fix (KP
+    succeeds, Prana is structurally excluded by cd_level_n_max4 until
+    SD-DASHA-1's semantic question is resolved) -- never silently 0 or a
+    hopeful 2; partial/zero writes are still logged as warnings, non-fatal,
+    matching the pre-existing semantics.
     """
     from contextlib import nullcontext
 
@@ -3336,8 +3398,8 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
         # the row is unambiguous; falls through
         # VERIFICATION_RESCALE.get(status, documented_approximation) to the
         # lowest honest tier (0.60), never the top tier.
-        "verification_pass_status": "scope_cap_sentinel",
-        "verification_method": "scope_cap_sentinel",
+        "verification_pass_status": SCOPE_CAP_SENTINEL,
+        "verification_method": SCOPE_CAP_SENTINEL,
         "citation_ref": "L1_GANITA_SCOPE_CAP",
         "computed_at": datetime.now(timezone.utc).isoformat(),
         "engine_version": "pyjhora_adapter/0.1.0",

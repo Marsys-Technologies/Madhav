@@ -48,6 +48,7 @@ export function buildHonestGapFixture(turnId = 't-gap'): Fixture {
     classicalCount: 0,
     elapsedLabel: `0:0${Math.round(b.cursor() / 1000)}`,
     gradeSummaryLabel: 'Honest gap — silence verified across consulted factors.',
+    source: 'client_estimate',
   })
   b.advance(50)
   b.turnClose()

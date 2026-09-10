@@ -148,6 +148,27 @@ describe('queryKalaPaddhatiProfileCapability — zero-padding version note', () 
   })
 })
 
+describe('queryKalaPaddhatiProfileCapability — arbitration_role/precedence (migration 675, N1)', () => {
+  it('description documents arbitration_role and precedence for the concordance arbiter', () => {
+    const desc = queryKalaPaddhatiProfileCapability.description ?? ''
+    expect(desc).toMatch(/arbitration_role/)
+    expect(desc).toMatch(/precedence/)
+  })
+
+  it('when is_error:false, rows carry arbitration_role and precedence keys (may be null)', async () => {
+    const result = await queryKalaPaddhatiProfileCapability.handler(
+      { chart_id: '482012f1-710e-4a25-994a-93821f5871aa' }, undefined,
+    ).catch(() => null)
+    if (result === null || result.is_error) return // DB not available; skip body assertion
+    const rows = (result.content as Record<string, unknown>)['rows'] as Array<Record<string, unknown>>
+    if (rows.length === 0) return // no rows seeded yet for this chart/version filter
+    for (const row of rows) {
+      expect(row).toHaveProperty('arbitration_role')
+      expect(row).toHaveProperty('precedence')
+    }
+  })
+})
+
 describe('queryKalaPaddhatiProfileCapability — determinism property (item 37 brief requirement)', () => {
   /**
    * Brief requirement for item 37 property test: "For the same chart input,

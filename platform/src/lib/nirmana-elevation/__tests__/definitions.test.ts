@@ -1,0 +1,2879 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { readFileSync } from 'node:fs'
+import {
+  assertNirmanaL0WriterInventoryMatchesConvergence,
+  NIRMANA_L0_ANALYSIS_RECEIPT_COUNT,
+  NIRMANA_L0_ANALYSIS_RECEIPTS,
+  NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE,
+} from '@/generated/nirmana-l0-analysis-receipts'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
+
+vi.mock('server-only', () => ({}))
+
+// The generated convergence inventory is intentionally unavailable in this
+// checkout.  Lifecycle validation must still be exercised against a pinned
+// receipt base; this mock replaces only the lookup consumed by definitions,
+// leaving the generated-inventory assertions below against their real value.
+//
+// The overrides simulate the two receipt-base changes the v2 digest ruling
+// (adjudication #2450, cycle 320) distinguishes: a SIBLING writer deploy moves
+// only the layer-shared convergence pin (must NOT move an untouched asset's
+// digest), while an OWN writer change moves the asset's own digest (must).
+const receiptBaseOverrides = vi.hoisted(() => ({
+  convergenceCommit: null as string | null,
+  writerDigest: null as string | null,
+}))
+vi.mock('@/generated/nirmana-analysis-receipts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/generated/nirmana-analysis-receipts')>()
+  return {
+    ...actual,
+    getNirmanaAnalysisReceiptBase: (assetId: string, layer: 'L0' | 'L1' | 'L2' | 'L3' | 'L4' | 'L5') =>
+      layer === 'L0' && assetId.startsWith('bg_')
+        ? {
+            schema_version: 'nirmana-asset-analysis-receipt-base/v1' as const,
+            asset_id: assetId,
+            layer: 'L0' as const,
+            writer_digest_sha256: assetId === 'bg_prashna_rules'
+              ? (receiptBaseOverrides.writerDigest ?? '1'.repeat(64))
+              : null,
+            grounding: {
+              convergence_commit: receiptBaseOverrides.convergenceCommit
+                ?? actual.NIRMANA_ANALYSIS_LAYER_PINS.L0.convergence_commit,
+              frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest' as const,
+              writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json' as const,
+            },
+          }
+        : undefined,
+  }
+})
+
+const queryMock = vi.fn()
+const transactionQueryMock = vi.fn()
+const transactionReleaseMock = vi.fn()
+const fetchMock = vi.fn()
+vi.stubGlobal('fetch', fetchMock)
+vi.mock('@/lib/db/client', () => ({
+  query: (...args: unknown[]) => queryMock(...args),
+  getPool: () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
+
+vi.mock('../evidence-ingress', () => ({
+  getNirmanaEvidenceIngressPool: async () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
+
+vi.mock('../campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({
+    connect: async () => ({ query: (...args: unknown[]) => transactionQueryMock(...args), release: transactionReleaseMock }),
+  }),
+}))
+const releaseStatusMock = vi.fn()
+const ciRunMock = vi.fn()
+vi.mock('../release', () => ({
+  loadNirmanaReleaseStatus: (...args: unknown[]) => releaseStatusMock(...args),
+  verifyNirmanaCiRun: (...args: unknown[]) => ciRunMock(...args),
+}))
+
+import {
+  assertFreezableManifest,
+  acceptNirmanaBaselineCandidate,
+  assertNirmanaGitCommitMatchesDeployment,
+  canonicalManifestDigest,
+  canonicalNirmanaOptimizationVerdictDigest,
+  canonicalNirmanaRunPlanManifestDigest,
+  canonicalNirmanaAssetAnalysisDigestForRegistryRow,
+  canonicalNirmanaAssetAnalysisReceiptDigest,
+  canonicalNirmanaProbeContractDigest,
+  canonicalNirmanaProbeResponseDigest,
+  canonicalNirmanaIntegrityContractDigest,
+  canonicalNirmanaIntegrityResultDigest,
+  canonicalRegistryContractDigest,
+  createNirmanaElevationDefinition,
+  freezeNirmanaElevationDefinition,
+  nirmanaReadOnlyDetectorSqlAcceptable,
+  nirmanaDetectorSqlHasBindPlaceholder,
+  recordNirmanaElevationEvidence,
+  registryContractFingerprintInput,
+  supersedeNirmanaElevationDefinition,
+  supersedeNirmanaElevationDefinitionMidCampaign,
+  type NirmanaRegistryContractRow,
+} from '../definitions'
+import { buildNirmanaBaselineCandidate } from '../monitor'
+
+const registry_contract = {
+  sort_order: 1,
+  scope: 'global' as const,
+  asset_kind: 'data' as const,
+  catalog_status: 'CURRENT' as const,
+  is_active: true,
+  has_writer: true,
+  target_table: 'bg_prashna_rules',
+  count_sql: 'SELECT count(*) FROM bg_prashna_rules',
+  integrity_check_sql: null,
+  health_probe: null,
+  natural_key_partition: null,
+  superseded_by: null,
+  data_disposition: null,
+  dead_flag: null,
+}
+const manifestAsset = {
+  asset_id: 'bg_prashna_rules',
+  layer: 'L0' as const,
+  wave_index: 0,
+  execution_obligation: 'build' as const,
+  depends_on: [],
+  registry_contract,
+  registry_fingerprint_sha256: canonicalRegistryContractDigest({
+    asset_id: 'bg_prashna_rules',
+    layer: 'L0',
+    depends_on: [],
+    registry_contract,
+  }),
+}
+const manifest = {
+  chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+  assets: [manifestAsset],
+}
+const historicalT0Manifest = JSON.parse(readFileSync(
+  new URL('../../../../../00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_0.json', import.meta.url),
+  'utf8',
+))
+const reconciledT0Manifest = JSON.parse(readFileSync(
+  new URL('../../../../../00_ARCHITECTURE/control/NIRMANA_T0_MANIFEST_v1_1.json', import.meta.url),
+  'utf8',
+))
+
+function registryRowsFor(candidate: typeof manifest | typeof reconciledT0Manifest) {
+  const layerNames = { L0: 'brahmagyan', L1: 'ganita', L2: 'bodha', L3: 'kala', L4: 'phala', L5: 'mimamsa' } as const
+  return candidate.assets.map((asset: typeof manifestAsset) => ({
+    asset_id: asset.asset_id,
+    layer: layerNames[asset.layer],
+    depends_on: asset.depends_on,
+    frozen_manifest_asset: asset,
+    ...asset.registry_contract,
+  }))
+}
+
+const baselineObservationId = '30303030-3030-4030-8030-303030303030'
+
+function baselineObservationFor(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: baselineObservationId,
+    observed_at: '2026-08-26T05:00:01.000Z',
+    status: 'baseline_missing',
+    current_definition_sha256: null,
+    candidate_definition_sha256: candidate.manifest_sha256,
+    registry_identity_sha256: candidate.registry_identity_sha256,
+    registry_contract_sha256: candidate.registry_contract_sha256,
+    candidate_catalogue_sha256: candidate.catalogue_sha256,
+    source_state: 'available',
+    source_observed_at: '2026-08-26T05:00:00.000Z',
+    freshness_state: 'fresh',
+    freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+    source_error_code: null,
+    currently_fresh: true,
+    ...overrides,
+  }
+}
+
+function planAdaptationObservationFor(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  currentDefinitionSha256: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return baselineObservationFor(candidate, {
+    status: 'plan_adaptation_required',
+    current_definition_sha256: currentDefinitionSha256,
+    release_state: 'in_sync',
+    runtime_liveness: 'quiet',
+    ...overrides,
+  })
+}
+
+function supersessionInput(
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>,
+  expectedCurrentManifestSha256: string,
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    campaign_id: 'nirmana-elevation' as const,
+    expected_current_revision: 'v1',
+    expected_current_manifest_sha256: expectedCurrentManifestSha256,
+    source_observation_id: baselineObservationId,
+    expected_candidate_sha256: candidate.manifest_sha256,
+    expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+    new_definition_revision: 'v2',
+    created_by: 'admin-1',
+    ...overrides,
+  }
+}
+
+function mockSupersessionTransaction({
+  candidate,
+  oldDigest,
+  oldManifest = manifest,
+  storedRows,
+  sourceObservation = planAdaptationObservationFor(candidate, oldDigest),
+  liveRows = registryRowsFor(manifest),
+  usage = { event_count: 0, build_run_count: 0 },
+  update = { rowCount: 1, rows: [{ definition_revision: 'v1' }] },
+  insert = { rowCount: 1, rows: [{ definition_revision: 'v2' }] },
+  insertError,
+  receipt,
+  labels = { label_count: candidate.labels.length, digest_matches: true },
+}: {
+  candidate: ReturnType<typeof buildNirmanaBaselineCandidate>
+  oldDigest: string
+  oldManifest?: typeof manifest
+  storedRows?: unknown[]
+  sourceObservation?: Record<string, unknown>
+  liveRows?: NirmanaRegistryContractRow[]
+  usage?: { event_count: number; build_run_count: number }
+  update?: { rowCount: number; rows: unknown[] }
+  insert?: { rowCount: number; rows: unknown[] }
+  insertError?: Error
+  receipt?: Record<string, unknown>
+  labels?: { label_count: number; digest_matches: boolean }
+}) {
+  const stored = storedRows ?? [{
+    definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest,
+    manifest: oldManifest, created_by: 'admin-0', superseded_at: null,
+  }]
+  const isExactRetry = stored.some((row) => (row as { definition_revision?: string }).definition_revision === 'v1'
+    && (row as { definition_status?: string }).definition_status === 'superseded')
+  const exactReceipt = receipt ?? {
+    event_type: 'asset_label_catalogue_accepted',
+    entity_type: 'label_catalogue',
+    entity_id: 'v2',
+    layer: null,
+    evidence_payload: {
+      catalogue_sha256: candidate.catalogue_sha256,
+      asset_count: candidate.labels.length,
+      audit_provenance: 'normative',
+      source_observation_id: baselineObservationId,
+      source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+      source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+      source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+    },
+    source_kind: 'governed_catalogue',
+    source_ref: 'label_catalogue:v2',
+  }
+  transactionQueryMock.mockImplementation((sql: string) => {
+    const statement = String(sql)
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+      || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+      || statement.includes('pg_advisory_xact_lock')
+      || statement.startsWith('LOCK TABLE')) return Promise.resolve({ rows: [] })
+    if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')
+      && statement.includes('ORDER BY definition_revision')) return Promise.resolve({ rows: stored })
+    if (statement.includes('FROM nirmana_elevation_monitor_observations')) return Promise.resolve({ rows: [sourceObservation] })
+    if (statement.includes('AS event_count')) return Promise.resolve({ rows: [usage] })
+    if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+    if (statement.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')) return Promise.resolve(update)
+    if (statement.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+      return insertError ? Promise.reject(insertError) : Promise.resolve(insert)
+    }
+    if (statement.includes('SELECT definition_status, manifest FROM nirmana_evidence')) {
+      return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+    }
+    if (statement.includes('SELECT event_type, entity_type, entity_id, layer')) {
+      return Promise.resolve({ rows: isExactRetry ? [exactReceipt] : [] })
+    }
+    if (statement.includes('SELECT count(*)::int AS label_count')) {
+      return Promise.resolve({ rows: [isExactRetry ? labels : { label_count: 0, digest_matches: false }] })
+    }
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+      return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+    }
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+      return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+    }
+    throw new Error(`Unexpected SQL: ${statement}`)
+  })
+}
+
+function useEvidenceTransaction({
+  existing = [],
+  current = true,
+}: {
+  existing?: unknown[]
+  current?: boolean
+} = {}) {
+  transactionQueryMock.mockImplementation((sql: string, params?: unknown[]) => {
+    const statement = String(sql)
+    if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) {
+      return Promise.resolve({ rows: [] })
+    }
+    if (statement.includes('SELECT campaign_id, definition_revision')) return Promise.resolve({ rows: existing })
+    if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current }] })
+    return queryMock(sql, params)
+  })
+}
+
+function currentRebuildReceipt() {
+  const currentRegistryRow = registryRowsFor(manifest)[0]
+  const binding = {
+    registry_fingerprint_sha256: canonicalRegistryContractDigest({
+      asset_id: currentRegistryRow.asset_id, layer: 'L0', depends_on: currentRegistryRow.depends_on,
+      registry_contract: registry_contract,
+    }),
+    analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset),
+  }
+  const decision = {
+    ...binding,
+    verdict: 'optimize' as const,
+    basis: {
+      measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+      evidence_refs: ['git:test-evidence'],
+    },
+    proposal: { action: 'optimize' as const, summary: 'A current change is required.', output_contract: 'digest_identical' as const },
+  }
+  const implementation = {
+    ...binding,
+    decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+    implementation_digest: 'c'.repeat(64),
+  }
+  const plan_manifest = {
+    version: 'nirmana-run-manifest/v1', chart_id: manifest.chart_id, scope: 'asset_set', scope_target: 'bg_prashna_rules', action: 'rebuild',
+    waves: [['bg_prashna_rules']], assets: [{ asset_id: 'bg_prashna_rules' }],
+    campaign_control: { campaign_id: 'nirmana-elevation', definition_revision: 'v1', layer: 'L0', wave_index: 0, snapshot_ref: 'test:snapshot' },
+  }
+  return {
+    currentRegistryRow,
+    decision,
+    implementation,
+    plan_manifest,
+    payload: {
+      ...binding,
+      build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      wave_index: 0,
+      authorization_sha256: '9'.repeat(64),
+      decision_digest: implementation.decision_digest,
+      implementation_digest: implementation.implementation_digest,
+      output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
+    },
+  }
+}
+
+function mockCurrentRebuildEvidence(proven: boolean) {
+  const receipt = currentRebuildReceipt()
+  queryMock.mockImplementation((sql: string) => {
+    const statement = String(sql)
+    if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [receipt.currentRegistryRow] })
+    if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+    if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:56:00.000Z', recorded_at: '2026-08-25T08:56:00.000Z' }] })
+    if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: receipt.implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:57:00.000Z', recorded_at: '2026-08-25T08:57:00.000Z' }] })
+    if (statement.includes("event_type = 'build_run_authorized'")) return Promise.resolve({ rows: [{ evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: '9'.repeat(64) }, source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa', observed_at: '2026-08-25T08:55:00.000Z', recorded_at: '2026-08-25T08:55:00.000Z' }] })
+    if (statement.includes('FROM build_runs run')) return Promise.resolve({ rows: proven ? [{ plan_manifest: receipt.plan_manifest, plan_manifest_digest: canonicalNirmanaRunPlanManifestDigest(receipt.plan_manifest) }] : [] })
+    if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+    return Promise.resolve({ rows: [] })
+  })
+  return receipt.payload
+}
+
+describe('Nirmana elevation definition repository', () => {
+  const acceptedReceiptIt = it
+
+  beforeEach(() => {
+    queryMock.mockReset()
+    transactionQueryMock.mockReset()
+    transactionReleaseMock.mockReset()
+    releaseStatusMock.mockReset()
+    ciRunMock.mockReset()
+    fetchMock.mockReset()
+    process.env.NIRMANA_PROBE_RUNNER_URL = 'https://sidecar.test/internal/nirmana/probe'
+    process.env.NIRMANA_PROBE_RUNNER_API_KEY = 'test-sidecar-key'
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        asset_id: 'bg_panchanga', probe_contract_sha256: canonicalNirmanaProbeContractDigest({ probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' }),
+        observed_at: new Date().toISOString(), runner_revision: 'service-probes/v1',
+        result: { status: 'GREEN', message: 'all checks passed', checks: [{ check: 'typed_probe', passed: true }] },
+      }),
+    })
+  })
+
+  it('derives one canonical SHA-256 digest for the validated manifest', () => {
+    expect(canonicalManifestDigest(manifest)).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  describe('read-only integrity detector SQL guard', () => {
+    it('accepts a single SELECT whose string literal contains a semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        "SELECT count(*) > 0 FROM t WHERE source = 'a via b; c'")).toBe(true)
+    })
+    it('accepts a read-only WITH ... SELECT CTE', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        'WITH s AS (SELECT count(*) AS n FROM t) SELECT n = 15 FROM s')).toBe(true)
+    })
+    it('accepts a query whose -- comment contains an empty string and a semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        "SELECT a = '' -- generates '' for null; reject otherwise\n  FROM t")).toBe(true)
+    })
+    it('accepts a plain SELECT and one with a trailing semicolon', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT count(*) FROM t')).toBe(true)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT count(*) FROM t;')).toBe(true)
+    })
+    it('rejects a genuine multi-statement script', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT 1; DROP TABLE t')).toBe(false)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('SELECT 1; SELECT 2')).toBe(false)
+    })
+    it('rejects a data-modifying CTE and bare DML even without a separator', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(
+        'WITH d AS (DELETE FROM t RETURNING 1) SELECT count(*) FROM d')).toBe(false)
+      expect(nirmanaReadOnlyDetectorSqlAcceptable('UPDATE t SET x = 1')).toBe(false)
+    })
+    it('rejects a statement separator hidden after a closed string literal', () => {
+      expect(nirmanaReadOnlyDetectorSqlAcceptable("SELECT 'a''b'; DROP TABLE t")).toBe(false)
+    })
+  })
+
+  describe('bind-placeholder guard (#1723 Part B)', () => {
+    // The freeze-time detector runs with NO parameter array, so a parameterised query
+    // cannot be evaluated. Before this guard, every per_chart asset's count_sql fallback
+    // reached client.query() and Postgres raised `there is no parameter $1` from inside
+    // the call, naming nothing actionable -- for 81 of 128 assets.
+
+    it('is invisible to the read-only guard, which is why this one is needed', () => {
+      // The exact shape carried by every per_chart count_sql in the live registry.
+      const perChartCountSql = 'SELECT count(*) FROM phala_anchors WHERE chart_id = $1'
+      // Starts with SELECT, no separator, no DML -- the read-only guard passes it.
+      expect(nirmanaReadOnlyDetectorSqlAcceptable(perChartCountSql)).toBe(true)
+      // ...and it is precisely the query that cannot be executed.
+      expect(nirmanaDetectorSqlHasBindPlaceholder(perChartCountSql)).toBe(true)
+    })
+
+    it('detects placeholders beyond $1 and in a CTE', () => {
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'WITH s AS (SELECT n FROM t WHERE chart_id = $2) SELECT n > 0 FROM s')).toBe(true)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT a = $1 AND b = $10 FROM t')).toBe(true)
+    })
+
+    it('does not fire on a chart-agnostic detector, including the partitioned form', () => {
+      expect(nirmanaDetectorSqlHasBindPlaceholder('SELECT count(*) = 0 FROM t')).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT NOT EXISTS (SELECT 1 FROM t GROUP BY chart_id HAVING count(*) <> 13)')).toBe(false)
+    })
+
+    it('does not fire on a $ that is not a placeholder', () => {
+      // A literal dollar sign followed by a non-digit, and a currency string.
+      expect(nirmanaDetectorSqlHasBindPlaceholder("SELECT price = 'US$ 5' FROM t")).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder('SELECT a FROM t -- costs $ per row\n')).toBe(false)
+    })
+
+    it('ignores a placeholder that appears only inside a string literal or a comment', () => {
+      // Not executable syntax -- rejecting these would be a false positive.
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        "SELECT note = 'bind $1 here' FROM t")).toBe(false)
+      expect(nirmanaDetectorSqlHasBindPlaceholder(
+        'SELECT count(*) = 0 FROM t -- was: WHERE chart_id = $1\n')).toBe(false)
+    })
+  })
+
+  it('canonicalizes live registry dependency order while preserving real dependency changes', () => {
+    const rawRegistryRow: NirmanaRegistryContractRow = {
+      ...registryRowsFor(manifest)[0],
+      asset_id: 'bg_target',
+      depends_on: ['bg_beta', 'bg_alpha'],
+    }
+    const orderedRegistryRow: NirmanaRegistryContractRow = {
+      ...rawRegistryRow,
+      depends_on: ['bg_alpha', 'bg_beta'],
+    }
+    const changedRegistryRow: NirmanaRegistryContractRow = {
+      ...rawRegistryRow,
+      depends_on: ['bg_alpha'],
+    }
+
+    expect(canonicalRegistryContractDigest(registryContractFingerprintInput(rawRegistryRow)))
+      .toBe(canonicalRegistryContractDigest(registryContractFingerprintInput(orderedRegistryRow)))
+    expect(canonicalRegistryContractDigest(registryContractFingerprintInput(changedRegistryRow)))
+      .not.toBe(canonicalRegistryContractDigest(registryContractFingerprintInput(orderedRegistryRow)))
+    expect(registryContractFingerprintInput(rawRegistryRow).depends_on).toEqual(['bg_alpha', 'bg_beta'])
+  })
+
+  it('binds a build-run plan digest to the immutable canonical plan bytes', () => {
+    const plan = {
+      version: 'nirmana-run-manifest/v1',
+      campaign_control: { campaign_id: 'nirmana-elevation', definition_revision: 'v1', layer: 'L0', wave_index: 0 },
+      assets: [{ asset_id: 'bg_prashna_rules' }],
+    }
+    expect(canonicalNirmanaRunPlanManifestDigest(plan)).toMatch(/^[a-f0-9]{64}$/)
+    expect(canonicalNirmanaRunPlanManifestDigest({ ...plan, campaign_control: { ...plan.campaign_control, definition_revision: 'foreign' } }))
+      .not.toBe(canonicalNirmanaRunPlanManifestDigest(plan))
+    expect(canonicalNirmanaRunPlanManifestDigest({ ...plan, campaign_control: { ...plan.campaign_control, snapshot_ref: 'निर्‍മाण' } }))
+      .not.toBe(canonicalNirmanaRunPlanManifestDigest(plan))
+  })
+
+  it('does not let a detector contract label stand in for observed probe or integrity output', () => {
+    const probe = { endpoint: 'https://detector.example.test/health' }
+    expect(canonicalNirmanaProbeResponseDigest(probe, { status: 200, body_sha256: 'a'.repeat(64) }))
+      .not.toBe(canonicalNirmanaProbeResponseDigest(probe, { status: 503, body_sha256: 'a'.repeat(64) }))
+    expect(canonicalNirmanaIntegrityResultDigest(registry_contract, { rows: [{ count: 1 }] }))
+      .not.toBe(canonicalNirmanaIntegrityResultDigest(registry_contract, { rows: [{ count: 0 }] }))
+  })
+
+  it('rejects a zero-row SQL integrity detector result before it can append evidence', async () => {
+    const receipt = currentRebuildReceipt()
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [receipt.currentRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT count(*) FROM bg_prashna_rules')) return Promise.resolve({ rows: [{ count: 0 }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:zero',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: receipt.payload.registry_fingerprint_sha256,
+        analysis_digest: receipt.payload.analysis_digest,
+        integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(registry_contract),
+        result_digest: 'a'.repeat(64),
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/positive integer result/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('accepts an unaliased boolean integrity_check_sql result via the orchestrator\'s positional convention', async () => {
+    // Mirrors asset_runner.py's own frozen "single row, first column truthy"
+    // convention (no named column required) -- most integrity_check_sql
+    // values (e.g. migration 611's row-count + content-digest checks)
+    // predate this validator and were authored against that convention.
+    // Uses the same empty-acceptance disposition prerequisite chain as
+    // "accepts exactly zero from the frozen empty-acceptance count contract"
+    // below -- only the detector contract/result differs (explicit
+    // unaliased boolean integrity_check_sql instead of the count_sql
+    // fallback), proving the positional path composes with a real
+    // obligation's prerequisite check, not just the raw detector in
+    // isolation.
+    const explicitContract = {
+      ...registry_contract, has_writer: false, target_table: 'bg_sarvatobhadra_grid',
+      integrity_check_sql: 'SELECT (count(*) = 5) FROM bg_sarvatobhadra_grid',
+    }
+    const explicitAsset = {
+      ...manifestAsset, asset_id: 'bg_sarvatobhadra_grid', execution_obligation: 'empty_acceptance' as const,
+      registry_contract: explicitContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_sarvatobhadra_grid', layer: 'L0', depends_on: [], registry_contract: explicitContract }),
+    }
+    const explicitManifest = { ...manifest, assets: [explicitAsset] }
+    const explicitRegistryRow = { ...registryRowsFor(explicitManifest)[0], frozen_manifest_asset: explicitAsset }
+    const binding = {
+      registry_fingerprint_sha256: explicitAsset.registry_fingerprint_sha256,
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_sarvatobhadra_grid', explicitRegistryRow, explicitAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [explicitRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: explicitManifest, manifest_sha256: canonicalManifestDigest(explicitManifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT (count(*) = 5) FROM bg_sarvatobhadra_grid')) return Promise.resolve({ rows: [{ '?column?': true }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{
+        evidence_payload: {
+          ...binding, verdict: 'non_build_disposition',
+          basis: { measurement: { status: 'not_applicable', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+          proposal: { action: 'formal_disposition', summary: 'Intentional empty asset.', output_contract: 'not_applicable' },
+        },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z',
+      }] })
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{
+        evidence_payload: { ...binding, disposition: 'empty_acceptance', disposition_digest: 'd'.repeat(64) },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z',
+      }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_sarvatobhadra_grid:integrity:positional-true',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_sarvatobhadra_grid', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(explicitContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_sarvatobhadra_grid',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+  })
+
+  it('rejects an unaliased boolean integrity_check_sql result that is positionally false', async () => {
+    const explicitContract = { ...registry_contract, integrity_check_sql: 'SELECT (count(*) = 5) FROM bg_prashna_rules' }
+    const explicitAsset = {
+      ...manifestAsset, registry_contract: explicitContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: 'bg_prashna_rules', layer: 'L0', depends_on: [], registry_contract: explicitContract,
+      }),
+    }
+    const explicitManifest = { ...manifest, assets: [explicitAsset] }
+    const explicitRegistryRow = { ...registryRowsFor(explicitManifest)[0], frozen_manifest_asset: explicitAsset }
+    const binding = {
+      registry_fingerprint_sha256: explicitAsset.registry_fingerprint_sha256,
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', explicitRegistryRow, explicitAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [explicitRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: explicitManifest, manifest_sha256: canonicalManifestDigest(explicitManifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT (count(*) = 5) FROM bg_prashna_rules')) return Promise.resolve({ rows: [{ '?column?': false }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:positional-false',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(explicitContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/failing boolean verdict/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('accepts exactly zero from the frozen empty-acceptance count contract', async () => {
+    const emptyContract = {
+      ...registry_contract, has_writer: false, target_table: 'bg_sarvatobhadra_grid',
+      count_sql: 'SELECT count(*) FROM bg_sarvatobhadra_grid',
+    }
+    const emptyAsset = {
+      ...manifestAsset, asset_id: 'bg_sarvatobhadra_grid', execution_obligation: 'empty_acceptance' as const,
+      registry_contract: emptyContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_sarvatobhadra_grid', layer: 'L0', depends_on: [], registry_contract: emptyContract }),
+    }
+    const emptyManifest = { ...manifest, assets: [emptyAsset] }
+    const emptyRegistryRow = { ...registryRowsFor(emptyManifest)[0], frozen_manifest_asset: emptyAsset }
+    const binding = {
+      registry_fingerprint_sha256: emptyAsset.registry_fingerprint_sha256,
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_sarvatobhadra_grid', emptyRegistryRow, emptyAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [emptyRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: emptyManifest, manifest_sha256: canonicalManifestDigest(emptyManifest), manifest_asset_count: 1 }] })
+      if (statement.includes('SELECT count(*) FROM bg_sarvatobhadra_grid')) return Promise.resolve({ rows: [{ count: 0 }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{
+        evidence_payload: {
+          ...binding, verdict: 'non_build_disposition',
+          basis: { measurement: { status: 'not_applicable', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+          proposal: { action: 'formal_disposition', summary: 'Intentional empty asset.', output_contract: 'not_applicable' },
+        },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z',
+      }] })
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{
+        evidence_payload: { ...binding, disposition: 'empty_acceptance', disposition_digest: 'd'.repeat(64) },
+        source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+        observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z',
+      }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_sarvatobhadra_grid:integrity:empty',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_sarvatobhadra_grid', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(emptyContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_sarvatobhadra_grid',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql))).not.toContain('SET LOCAL ROLE nirmana_evidence_ingress')
+  })
+
+  it('accepts only the exact live baseline candidate and its label catalogue in one serializable transaction', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      sanskrit_name: 'Prashna Niyama',
+      english_name: 'Prashna rules',
+      english_description: 'Governed horary reference rules.',
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation',
+      source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+    const observationSql = transactionSql.find((sql) => sql.includes('FROM nirmana_elevation_monitor_observations'))
+    expect(observationSql).not.toContain('FOR SHARE')
+    // See the identical regression guard in the supersede_definition test:
+    // nirmana_campaign_control_writer is deliberately SELECT-only on
+    // asset_registry; FOR SHARE/FOR UPDATE require UPDATE privilege and
+    // would fail closed in production, as this call's real first
+    // invocation did before this fix.
+    const registrySql = transactionSql.find((sql) => sql.includes('FROM asset_registry'))
+    expect(registrySql).not.toContain('FOR SHARE')
+    expect(registrySql).not.toContain('FOR UPDATE')
+    expect(transactionSql).toEqual(expect.arrayContaining([
+      expect.stringContaining('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE'),
+      expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
+      expect.stringContaining('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'),
+      expect.stringContaining("SET definition_status = 'frozen'"),
+      expect.stringContaining('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'),
+      expect.stringContaining("'asset_label_catalogue_accepted'"),
+    ]))
+    expect(transactionSql.join('\n')).not.toContain('stage_transition_accepted')
+    expect(transactionSql.join('\n')).not.toContain('asset_frozen')
+    const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))
+    expect(JSON.parse(String(receiptCall?.[1]?.[4]))).toEqual({
+      catalogue_sha256: candidate.catalogue_sha256,
+      asset_count: candidate.labels.length,
+      audit_provenance: 'normative',
+      source_observation_id: baselineObservationId,
+      source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+      source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+      source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+      candidate_manifest_sha256: candidate.manifest_sha256,
+      registry_identity_sha256: candidate.registry_identity_sha256,
+      registry_contract_sha256: candidate.registry_contract_sha256,
+      candidate_catalogue_sha256: candidate.catalogue_sha256,
+    })
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('accepts an all-null registry label using the deterministic catalogue placeholder', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      sanskrit_name: null,
+      english_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation',
+      source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    const labelInsert = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))
+    expect(labelInsert?.[1]).toEqual(expect.arrayContaining([
+      expect.stringContaining('Not yet catalogued'),
+    ]))
+  })
+
+  it('rejects a stale baseline candidate digest after re-reading the live registry', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules',
+      sanskrit_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
+      expected_candidate_sha256: 'f'.repeat(64),
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).rejects.toThrow(/candidate changed/i)
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql))).toContain('ROLLBACK')
+  })
+
+  it('rejects a baseline candidate sourced from an observation that is no longer fresh', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules',
+      sanskrit_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate, { currently_fresh: false })] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes("SET definition_status = 'frozen'")) {
+        return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'ntap-v1' }] })
+      }
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1', expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256, created_by: 'admin-1',
+    })).rejects.toThrow(/fresh/i)
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')
+  })
+
+  it('returns idempotent only for an exact frozen candidate and exact accepted catalogue receipt', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules',
+      sanskrit_name: null,
+      english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [{
+          definition_revision: 'ntap-v1', definition_status: 'frozen',
+          manifest: candidate.manifest, manifest_sha256: candidate.manifest_sha256,
+          created_by: 'admin-1', superseded_at: null,
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+          entity_id: 'ntap-v1', layer: null,
+          evidence_payload: {
+            catalogue_sha256: candidate.catalogue_sha256,
+            asset_count: candidate.labels.length,
+            audit_provenance: 'normative',
+            source_observation_id: baselineObservationId,
+            source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+            source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+            source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+            candidate_manifest_sha256: candidate.manifest_sha256,
+            registry_identity_sha256: candidate.registry_identity_sha256,
+            registry_contract_sha256: candidate.registry_contract_sha256,
+            candidate_catalogue_sha256: candidate.catalogue_sha256,
+          },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:ntap-v1',
+        }] })
+      }
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: candidate.labels.length, digest_matches: true }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).resolves.toBe('idempotent')
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')
+  })
+
+  it('rejects an idempotency replay when the normative receipt names a different source observation', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules', sanskrit_name: null, english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [{
+          definition_revision: 'ntap-v1', definition_status: 'frozen',
+          manifest: candidate.manifest, manifest_sha256: candidate.manifest_sha256,
+          created_by: 'admin-1', superseded_at: null,
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      if (statement.includes('SELECT definition_status, manifest')) {
+        return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+      }
+      if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+          entity_id: 'ntap-v1', layer: null,
+          evidence_payload: {
+            catalogue_sha256: candidate.catalogue_sha256,
+            asset_count: candidate.labels.length,
+            audit_provenance: 'normative',
+            source_observation_id: '40404040-4040-4040-8040-404040404040',
+            source_observation_observed_at: '2026-08-26T05:00:01.000Z',
+            source_snapshot_observed_at: '2026-08-26T05:00:00.000Z',
+            source_freshness_deadline_at: '2026-08-26T05:15:00.000Z',
+            candidate_manifest_sha256: candidate.manifest_sha256,
+            registry_identity_sha256: candidate.registry_identity_sha256,
+            registry_contract_sha256: candidate.registry_contract_sha256,
+            candidate_catalogue_sha256: candidate.catalogue_sha256,
+          },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:ntap-v1',
+        }] })
+      }
+      if (statement.includes('SELECT count(*)::int AS label_count')) {
+        return Promise.resolve({ rows: [{ label_count: candidate.labels.length, digest_matches: true }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId,
+      definition_revision: 'ntap-v1', expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256, created_by: 'admin-1',
+    })).rejects.toThrow(/exact accepted label catalogue/i)
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql))).toContain('ROLLBACK')
+  })
+
+  it('loses a competing-current-definition race as a conflict without creating baseline state', async () => {
+    const liveRows = registryRowsFor(manifest).map((row: NirmanaRegistryContractRow) => ({
+      ...row,
+      english_name: 'Prashna rules', sanskrit_name: null, english_description: null,
+    }))
+    const candidate = buildNirmanaBaselineCandidate(liveRows)
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'ROLLBACK'].includes(statement)
+        || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT definition_revision, definition_status, manifest, manifest_sha256')) {
+        return Promise.resolve({ rows: [{
+          definition_revision: 'competing-v1', definition_status: 'frozen', manifest,
+          manifest_sha256: canonicalManifestDigest(manifest), created_by: 'other-admin', superseded_at: null,
+        }] })
+      }
+      if (statement.includes('FROM nirmana_elevation_monitor_observations')) {
+        return Promise.resolve({ rows: [baselineObservationFor(candidate)] })
+      }
+      if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(acceptNirmanaBaselineCandidate({
+      campaign_id: 'nirmana-elevation', source_observation_id: baselineObservationId, definition_revision: 'ntap-v1',
+      expected_candidate_sha256: candidate.manifest_sha256,
+      expected_candidate_catalogue_sha256: candidate.catalogue_sha256,
+      created_by: 'admin-1',
+    })).rejects.toThrow(/different current campaign definition/i)
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql)).join('\n')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')
+    expect(transactionSql).not.toContain('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')
+    expect(transactionSql).toContain('ROLLBACK')
+  })
+
+  it('keeps grounded receipt bases all-or-none against the pinned convergence inventory', () => {
+    if (NIRMANA_L0_ANALYSIS_RECEIPTS_AVAILABLE) {
+      expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(NIRMANA_L0_ANALYSIS_RECEIPT_COUNT)
+      expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS).sort()).toEqual(
+        reconciledT0Manifest.assets.filter((asset: typeof manifestAsset) => asset.layer === 'L0').map((asset: typeof manifestAsset) => asset.asset_id).sort(),
+      )
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_prashna_rules.writer_digest_sha256).toMatch(/^[a-f0-9]{64}$/)
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS.bg_panchanga.writer_digest_sha256).toBeNull()
+    } else {
+      expect(NIRMANA_L0_ANALYSIS_RECEIPTS).toEqual({})
+    }
+  })
+
+  it('rejects a same-count L0 writer substitution against the pinned convergence inventory', () => {
+    const substituted = Object.fromEntries(Object.entries(writerDigestInventory.writers)
+      .filter(([assetId]) => assetId.startsWith('bg_')))
+    substituted.bg_prashna_rules = 'f'.repeat(64)
+
+    expect(() => assertNirmanaL0WriterInventoryMatchesConvergence(substituted)).toThrow(/convergence inventory/i)
+  })
+
+  it('requires the frozen manifest to pin its campaign chart', () => {
+    expect(() => canonicalManifestDigest({ assets: manifest.assets })).toThrow(/chart_id/i)
+    expect(() => canonicalManifestDigest({ ...manifest, chart_id: '11111111-1111-4111-8111-111111111111' })).toThrow(/chart_id/i)
+  })
+
+  it('gives JSONB-equivalent manifests the same digest regardless of object-key order', () => {
+    const reordered = {
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      assets: [{
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        registry_contract: { ...registry_contract },
+        depends_on: [],
+        execution_obligation: 'build',
+        wave_index: 0,
+        layer: 'L0',
+        asset_id: 'bg_prashna_rules',
+      }],
+    }
+    expect(canonicalManifestDigest(reordered)).toBe(canonicalManifestDigest(manifest))
+  })
+
+  it('accepts every formal non-build execution obligation in a frozen denominator', () => {
+    const nonBuildManifest = {
+      chart_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      assets: [
+        { asset_id: 'bg_non_build_producer', layer: 'L0', execution_obligation: 'build' },
+        ...['probe', 'static_acceptance', 'source_acceptance', 'empty_acceptance', 'retired_with_disposition'].map((execution_obligation, index) => ({
+          asset_id: `bg_non_build_${index}`,
+          layer: 'L0',
+          execution_obligation,
+        })),
+        { asset_id: 'bg_non_build_covered', layer: 'L0', execution_obligation: 'producer_covered', producer_id: 'bg_non_build_producer' },
+      ],
+    }
+
+    expect(() => canonicalManifestDigest(nonBuildManifest)).not.toThrow()
+  })
+
+  it('preserves the immutable historical T0 v1.0 definition bytes and digest', () => {
+    expect(historicalT0Manifest.assets).toHaveLength(128)
+    expect(canonicalManifestDigest(historicalT0Manifest)).toBe('c0097895ab6b5318e8b9a2c34de34f7fe685eedfe9b8fb2293abe78593a5a3c4')
+    expect(() => assertFreezableManifest(historicalT0Manifest)).not.toThrow()
+  })
+
+  it('validates the full post-626 T0 v1.1 manifest, exact DAG waves, and registry fingerprints', async () => {
+    expect(reconciledT0Manifest.assets).toHaveLength(128)
+    expect(canonicalManifestDigest(reconciledT0Manifest)).toBe('faa4d6b08dcde6c64efedc11c56561f24f8832ec92d2b6680660ba94de85f4a8')
+    expect(() => assertFreezableManifest(reconciledT0Manifest)).not.toThrow()
+
+    const exactAssets = new Map(reconciledT0Manifest.assets.map((asset: typeof manifestAsset) => [asset.asset_id, asset]))
+    expect(exactAssets.get('bg_gochara_arcs')).toMatchObject({ wave_index: 1, depends_on: ['bg_ephemeris'] })
+    expect(exactAssets.get('bg_kp_sublord_division')).toMatchObject({ wave_index: 1, depends_on: ['bg_nakshatra'] })
+    expect(exactAssets.get('bg_parihara_rules')).toMatchObject({ wave_index: 2, depends_on: ['bg_doshas', 'bg_texts'] })
+
+    transactionQueryMock
+      .mockResolvedValueOnce({ rows: registryRowsFor(reconciledT0Manifest) })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 't0-v1',
+      manifest: reconciledT0Manifest,
+      manifest_sha256: canonicalManifestDigest(reconciledT0Manifest),
+    })).resolves.toBe('frozen')
+  })
+
+  it('rejects a mismatched digest before attempting an insert or freeze', async () => {
+    await expect(createNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 'v1',
+      definition_status: 'reconciling',
+      manifest,
+      manifest_sha256: '0'.repeat(64),
+      created_by: 'admin-1',
+    })).rejects.toThrow(/digest/i)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('persists only a validated definition revision', async () => {
+    transactionQueryMock.mockResolvedValue({ rowCount: 1, rows: [] })
+    await expect(createNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 'v1',
+      definition_status: 'reconciling',
+      manifest,
+      manifest_sha256: canonicalManifestDigest(manifest),
+      created_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    expect(transactionQueryMock).toHaveBeenCalledTimes(1)
+    expect(transactionQueryMock.mock.calls[0][0]).toContain('ON CONFLICT (campaign_id, definition_revision) DO NOTHING')
+  })
+
+  it('accepts an exact retried definition revision without overwriting its first receipt', async () => {
+    transactionQueryMock
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ definition_status: 'reconciling', manifest_sha256: canonicalManifestDigest(manifest) }] })
+
+    await expect(createNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', definition_status: 'reconciling', manifest,
+      manifest_sha256: canonicalManifestDigest(manifest), created_by: 'admin-2',
+    })).resolves.toBe('idempotent')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('freezes only the exact prior reconciling manifest and accepts an exact retry', async () => {
+    transactionQueryMock
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest, manifest_sha256: canonicalManifestDigest(manifest),
+    })).resolves.toBe('frozen')
+
+    transactionQueryMock
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ definition_status: 'frozen', manifest_sha256: canonicalManifestDigest(manifest) }] })
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest, manifest_sha256: canonicalManifestDigest(manifest),
+    })).resolves.toBe('idempotent')
+  })
+
+
+it('atomically supersedes the exact current frozen definition with the server-derived live candidate', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: registryRowsFor(manifest) })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
+
+    const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+    const observationSql = transactionSql.find((sql) => sql.includes('FROM nirmana_elevation_monitor_observations'))
+    expect(observationSql).not.toContain('FOR SHARE')
+    expect(transactionSql.some((sql) => sql.startsWith('LOCK TABLE'))).toBe(false)
+    // nirmana_campaign_control_writer is deliberately SELECT-only (no
+    // UPDATE) on asset_registry; FOR SHARE/FOR UPDATE require UPDATE
+    // privilege in Postgres and would fail closed with "permission denied
+    // for table asset_registry" in production, as this call's live-DB first
+    // invocation actually did before this fix. SERIALIZABLE isolation
+    // (asserted above via the observation query, same transaction) already
+    // provides the conflict protection a row lock would have added.
+    const registrySql = transactionSql.find((sql) => sql.includes('FROM asset_registry'))
+    expect(registrySql).not.toContain('FOR SHARE')
+    expect(registrySql).not.toContain('FOR UPDATE')
+    expect(transactionSql).toEqual(expect.arrayContaining([
+      expect.stringContaining('FROM nirmana_elevation_monitor_observations'),
+      expect.stringContaining('FROM asset_registry'),
+      expect.stringContaining("SET definition_status = 'superseded'"),
+      expect.stringContaining("VALUES ($1, $2, 'frozen', $3::jsonb, $4, $5)"),
+      expect.stringContaining("'asset_label_catalogue_accepted'"),
+    ]))
+    const insertedDefinition = transactionQueryMock.mock.calls.find(([sql]) =>
+      String(sql).startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))
+    expect(JSON.parse(String(insertedDefinition?.[1]?.[2]))).toEqual(candidate.manifest)
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('requires a currently fresh server-derived plan-adaptation observation for a new supersession', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      sourceObservation: planAdaptationObservationFor(candidate, oldDigest, { currently_fresh: false }),
+    })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/fresh in-sync quiet/i)
+  })
+
+  it('supersedes a candidate whose dependency order differs from the live registry order', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const dependencyRows: NirmanaRegistryContractRow[] = [
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_beta', 'bg_alpha'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
+    ]
+    const candidate = buildNirmanaBaselineCandidate(dependencyRows)
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: dependencyRows })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
+  })
+
+  it('refuses supersession when the live registry changes a candidate dependency set', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidateRows: NirmanaRegistryContractRow[] = [
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_alpha', 'bg_beta'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
+    ]
+    const candidate = buildNirmanaBaselineCandidate(candidateRows)
+    const changedRows = candidateRows.map((row) => row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha'] } : row)
+    mockSupersessionTransaction({ candidate, oldDigest, liveRows: changedRows })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/candidate changed/i)
+  })
+
+  it('treats only an exact completed supersession retry as idempotent', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      sourceObservation: planAdaptationObservationFor(candidate, oldDigest, { currently_fresh: false }),
+      storedRows: [
+        { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: '2026-08-26T00:00:00.000Z' },
+        { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: candidate.manifest_sha256, manifest: candidate.manifest, created_by: 'admin-1', superseded_at: null },
+      ],
+    })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('idempotent')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('FROM asset_registry'))).toBe(false)
+  })
+
+  it('requires recorded in-sync quiet monitor state before reading the registry or mutating definitions', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    for (const sourceObservation of [
+      planAdaptationObservationFor(candidate, oldDigest, { release_state: 'out_of_sync' }),
+      planAdaptationObservationFor(candidate, oldDigest, { runtime_liveness: 'active' }),
+    ]) {
+      transactionQueryMock.mockReset()
+      transactionReleaseMock.mockReset()
+      mockSupersessionTransaction({ candidate, oldDigest, sourceObservation })
+
+      await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+        .rejects.toThrow(/exact plan-adaptation monitor observation/i)
+      const attemptedSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(attemptedSql.some((sql) => sql.includes('FROM asset_registry')
+        || sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    }
+  })
+
+  it('rolls back and leaves the old definition current when the replacement insert fails', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, insertError: new Error('replacement insert failed') })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow('replacement insert failed')
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('refuses supersession when the expected frozen revision has campaign evidence', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, usage: { event_count: 1, build_run_count: 0 } })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/already has campaign events/i)
+  })
+
+  it('refuses supersession when a build-run manifest identifies the expected frozen revision', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest, usage: { event_count: 0, build_run_count: 1 } })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/already has campaign events or build runs/i)
+    const usageCall = transactionQueryMock.mock.calls.find(([sql]) => String(sql).includes('AS event_count'))
+    expect(String(usageCall?.[0])).toContain("plan_manifest #>> '{campaign_control,campaign_id}'")
+    expect(usageCall?.[1]).toEqual(['nirmana-elevation', 'v1'])
+  })
+
+  it('allows supersession when no build run belongs to the expected campaign definition', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({ candidate, oldDigest })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .resolves.toBe('superseded')
+  })
+
+  it('rejects reuse of an existing replacement revision before superseding the current definition', async () => {
+    const oldDigest = 'c'.repeat(64)
+    const candidate = buildNirmanaBaselineCandidate(registryRowsFor(manifest))
+    mockSupersessionTransaction({
+      candidate,
+      oldDigest,
+      storedRows: [
+        { definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: oldDigest, manifest, created_by: 'admin-0', superseded_at: null },
+        { definition_revision: 'v2', definition_status: 'superseded', manifest_sha256: 'd'.repeat(64), manifest, created_by: 'admin-other', superseded_at: '2026-08-26T00:00:00.000Z' },
+      ],
+    })
+
+    await expect(supersedeNirmanaElevationDefinition(supersessionInput(candidate, oldDigest)))
+      .rejects.toThrow(/fresh in-sync quiet/i)
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  describe('mid-campaign supersession (D-NATIVE-13)', () => {
+    const t0Rows: NirmanaRegistryContractRow[] = [
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_alpha', depends_on: [], sort_order: 1, target_table: 'bg_alpha', count_sql: 'SELECT count(*) FROM bg_alpha' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_beta', depends_on: [], sort_order: 2, target_table: 'bg_beta', count_sql: 'SELECT count(*) FROM bg_beta' },
+      { ...registryRowsFor(manifest)[0], asset_id: 'bg_target', depends_on: ['bg_alpha'], sort_order: 3, target_table: 'bg_target', count_sql: 'SELECT count(*) FROM bg_target' },
+    ]
+    const liveRowsWithDependsOnDrift = t0Rows.map((row) =>
+      row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha', 'bg_beta'] } : row)
+    const t0Candidate = buildNirmanaBaselineCandidate(t0Rows)
+    const t1Candidate = buildNirmanaBaselineCandidate(liveRowsWithDependsOnDrift)
+
+    function midCampaignInput(overrides: Record<string, unknown> = {}) {
+      return {
+        campaign_id: 'nirmana-elevation' as const,
+        expected_current_revision: 'v1',
+        expected_current_manifest_sha256: t0Candidate.manifest_sha256,
+        new_definition_revision: 'v2',
+        native_authorization: 'D-NATIVE-13' as const,
+        created_by: 'conductor-1',
+        mode: 'execute' as const,
+        ...overrides,
+      }
+    }
+
+    function mockMidCampaignTransaction({
+      candidate = t1Candidate,
+      storedRows,
+      inflight = 0,
+      usage = { event_count: 500, build_run_count: 91 },
+      liveRows = liveRowsWithDependsOnDrift,
+      insertError,
+      retryReceipt,
+    }: {
+      candidate?: ReturnType<typeof buildNirmanaBaselineCandidate>
+      storedRows?: unknown[]
+      inflight?: number
+      usage?: { event_count: number; build_run_count: number }
+      liveRows?: NirmanaRegistryContractRow[]
+      insertError?: Error
+      retryReceipt?: Record<string, unknown>
+    } = {}) {
+      const stored = storedRows ?? [{
+        definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: t0Candidate.manifest_sha256,
+        manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: null,
+      }]
+      transactionQueryMock.mockImplementation((sql: string) => {
+        const statement = String(sql)
+        if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+          || statement.includes('SET TRANSACTION ISOLATION LEVEL SERIALIZABLE')
+          || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+        if (statement.includes('FROM nirmana_evidence.nirmana_elevation_campaign_definitions')
+          && statement.includes('ORDER BY definition_revision')) return Promise.resolve({ rows: stored })
+        if (statement.includes('AS inflight_count')) return Promise.resolve({ rows: [{ inflight_count: inflight }] })
+        if (statement.includes('AS event_count')) return Promise.resolve({ rows: [usage] })
+        if (statement.includes('FROM asset_registry')) return Promise.resolve({ rows: liveRows })
+        if (statement.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+          return Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v1' }] })
+        }
+        if (statement.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions')) {
+          return insertError ? Promise.reject(insertError) : Promise.resolve({ rowCount: 1, rows: [{ definition_revision: 'v2' }] })
+        }
+        if (statement.includes('SELECT evidence_payload FROM nirmana_evidence.nirmana_elevation_campaign_events')) {
+          return Promise.resolve({ rows: retryReceipt ? [retryReceipt] : [] })
+        }
+        if (statement.includes('SELECT definition_status, manifest FROM nirmana_evidence')) {
+          return Promise.resolve({ rows: [{ definition_status: 'frozen', manifest: candidate.manifest }] })
+        }
+        if (statement.includes('SELECT event_type, entity_type, entity_id, layer')) {
+          return Promise.resolve({ rows: [] })
+        }
+        if (statement.includes('SELECT count(*)::int AS label_count')) {
+          return Promise.resolve({ rows: [{ label_count: 0, digest_matches: false }] })
+        }
+        if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels')) {
+          return Promise.resolve({ rowCount: candidate.labels.length, rows: [] })
+        }
+        if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) {
+          return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'receipt-1' }] })
+        }
+        throw new Error(`Unexpected SQL: ${statement}`)
+      })
+    }
+
+    it('flips t0 to t1 under D-NATIVE-13 while historical events and build runs stay bound to t0', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .resolves.toMatchObject({
+          outcome: 'superseded',
+          superseded_revision: 'v1',
+          new_definition_revision: 'v2',
+          new_manifest_sha256: t1Candidate.manifest_sha256,
+          bound_event_count: 500,
+          bound_build_run_count: 91,
+          asset_count: 3,
+        })
+
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      const updateSql = transactionSql.find((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions'))
+      expect(updateSql).toContain("SET definition_status = 'superseded', superseded_at = clock_timestamp()")
+      expect(String(updateSql).split('WHERE')[0]).not.toContain('manifest')
+      const insertedDefinition = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))
+      expect(JSON.parse(String(insertedDefinition?.[1]?.[2]))).toEqual(t1Candidate.manifest)
+      const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).includes("'definition_superseded_mid_campaign'"))
+      expect(receiptCall).toBeDefined()
+      const receiptPayload = JSON.parse(String((receiptCall?.[1] as unknown[])?.[3]))
+      expect(receiptPayload).toMatchObject({
+        native_authorization: 'D-NATIVE-13',
+        superseded_revision: 'v1',
+        superseded_manifest_sha256: t0Candidate.manifest_sha256,
+        bound_event_count: 500,
+        bound_build_run_count: 91,
+      })
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('COMMIT')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
+
+    it('exercises the whole flip in dry-run mode and rolls back without committing', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput({ mode: 'dry_run' })))
+        .resolves.toMatchObject({ outcome: 'dry_run_ok', new_manifest_sha256: t1Candidate.manifest_sha256 })
+
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(true)
+      expect(transactionSql.some((sql) => sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(true)
+      expect(transactionSql).not.toContain('COMMIT')
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
+
+    it('refuses supersession without a recognised native authorization before touching the database', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-99' })))
+        .rejects.toThrow(/recognised native authorization/)
+      expect(transactionQueryMock).not.toHaveBeenCalled()
+    })
+
+    it('flips t1 to t2 under the standing D-NATIVE-14 authorization, recording it verbatim in the receipt', async () => {
+      mockMidCampaignTransaction()
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-14' })))
+        .resolves.toMatchObject({ outcome: 'superseded', superseded_revision: 'v1', new_definition_revision: 'v2' })
+
+      const receiptCall = transactionQueryMock.mock.calls.find(([sql]) =>
+        String(sql).includes("'definition_superseded_mid_campaign'"))
+      const receiptPayload = JSON.parse(String((receiptCall?.[1] as unknown[])?.[3]))
+      expect(receiptPayload.native_authorization).toBe('D-NATIVE-14')
+    })
+
+    it('refuses a mid-campaign retry whose input authorization does not match the recorded receipt', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [
+          { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: t0Candidate.manifest_sha256, manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: '2026-09-08T00:00:00.000Z' },
+          { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: t1Candidate.manifest_sha256, manifest: t1Candidate.manifest, created_by: 'conductor-1', superseded_at: null },
+        ],
+        retryReceipt: { evidence_payload: { native_authorization: 'D-NATIVE-13' } },
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(
+        midCampaignInput({ native_authorization: 'D-NATIVE-14' })))
+        .rejects.toThrow(/does not match the recorded/)
+    })
+
+    it('refuses supersession while any build run is in flight', async () => {
+      mockMidCampaignTransaction({ inflight: 1 })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/in-flight build runs/i)
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      const inflightSql = transactionSql.find((sql) => sql.includes('AS inflight_count'))
+      expect(inflightSql).toContain("state IN ('planned', 'running', 'paused')")
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    })
+
+    it('excludes D-NATIVE-11 supporting writers from the live snapshot so the denominator is preserved', async () => {
+      // bo_grounding holds a real asset_registry row (migration 899) purely for
+      // orchestrator ordering; the flip snapshot must not count it against the
+      // frozen denominator.
+      const liveRowsWithSupportingWriter = [
+        ...liveRowsWithDependsOnDrift,
+        {
+          ...registryRowsFor(manifest)[0],
+          asset_id: 'bo_grounding',
+          layer: 'bodha' as const,
+          depends_on: ['bg_alpha'],
+          sort_order: 25,
+          target_table: 'bodha_grounding_matches',
+          count_sql: 'SELECT count(*) FROM bodha_grounding_matches',
+          catalog_status: 'DRAFT',
+        },
+      ]
+      mockMidCampaignTransaction({ liveRows: liveRowsWithSupportingWriter })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput({ mode: 'dry_run' })))
+        .resolves.toMatchObject({
+          outcome: 'dry_run_ok',
+          asset_count: 3,
+          new_manifest_sha256: t1Candidate.manifest_sha256,
+        })
+    })
+
+    it('hard-asserts the identical asset denominator between t0 and the live snapshot', async () => {
+      const liveRowsMissingAsset = liveRowsWithDependsOnDrift.filter((row) => row.asset_id !== 'bg_beta')
+        .map((row) => row.asset_id === 'bg_target' ? { ...row, depends_on: ['bg_alpha'] } : row)
+      mockMidCampaignTransaction({ liveRows: liveRowsMissingAsset })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/denominator/i)
+      const transactionSql = transactionQueryMock.mock.calls.map(([sql]) => String(sql))
+      expect(transactionSql.some((sql) => sql.startsWith('UPDATE nirmana_evidence.nirmana_elevation_campaign_definitions')
+        || sql.startsWith('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_definitions'))).toBe(false)
+    })
+
+    it('refuses supersession when the live snapshot is identical to the current frozen manifest', async () => {
+      mockMidCampaignTransaction({ liveRows: t0Rows, candidate: t0Candidate })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/identical/i)
+    })
+
+    it('treats only an exact completed mid-campaign supersession retry as idempotent', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [
+          { definition_revision: 'v1', definition_status: 'superseded', manifest_sha256: t0Candidate.manifest_sha256, manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: '2026-09-08T00:00:00.000Z' },
+          { definition_revision: 'v2', definition_status: 'frozen', manifest_sha256: t1Candidate.manifest_sha256, manifest: t1Candidate.manifest, created_by: 'conductor-1', superseded_at: null },
+        ],
+        retryReceipt: { evidence_payload: { native_authorization: 'D-NATIVE-13' } },
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .resolves.toMatchObject({ outcome: 'idempotent', new_definition_revision: 'v2' })
+      expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('FROM asset_registry'))).toBe(false)
+    })
+
+    it('refuses supersession when the expected current definition is not the frozen one', async () => {
+      mockMidCampaignTransaction({
+        storedRows: [{
+          definition_revision: 'v1', definition_status: 'frozen', manifest_sha256: 'd'.repeat(64),
+          manifest: t0Candidate.manifest, created_by: 'admin-0', superseded_at: null,
+        }],
+      })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow(/current frozen definition/i)
+    })
+
+    it('rolls back the flip and leaves t0 current when the replacement insert fails', async () => {
+      mockMidCampaignTransaction({ insertError: new Error('replacement insert failed') })
+
+      await expect(supersedeNirmanaElevationDefinitionMidCampaign(midCampaignInput()))
+        .rejects.toThrow('replacement insert failed')
+      expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+      expect(transactionReleaseMock).toHaveBeenCalledOnce()
+    })
+  })
+
+ it('refuses to freeze when any pinned registry contract differs from the live row', async () => {
+    const driftedRows = registryRowsFor(manifest)
+    driftedRows[0].count_sql = 'SELECT count(*) FROM a_different_table'
+    transactionQueryMock.mockResolvedValueOnce({ rows: driftedRows })
+
+    await expect(freezeNirmanaElevationDefinition({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', manifest,
+      manifest_sha256: canonicalManifestDigest(manifest),
+    })).rejects.toThrow(/live registry contract/i)
+    expect(transactionQueryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('locks the campaign revision before validation and records evidence on one dedicated connection', async () => {
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement === 'BEGIN' || statement === 'COMMIT') return Promise.resolve({})
+      if (statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('SELECT campaign_id, definition_revision')) return Promise.resolve({ rows: [] })
+      if (statement.includes('definition_status = \'frozen\'')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'event-1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation',
+      definition_revision: 'v1',
+      idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+      event_type: 'test_receipt',
+      entity_type: 'test',
+      entity_id: 'bg_prashna_rules',
+      layer: 'L0',
+      evidence_payload: { receipt: 'test' },
+      source_kind: 'test',
+      source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z',
+      recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    expect(transactionQueryMock.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/).slice(0, 2).join(' ')))
+      .toEqual(['BEGIN', 'SELECT pg_advisory_xact_lock(hashtextextended($1,', 'SELECT campaign_id,', 'SELECT EXISTS', 'INSERT INTO', 'COMMIT'])
+    expect(transactionQueryMock.mock.calls[1][1]).toEqual(['nirmana-elevation:nirmana-elevation:v1'])
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rolls back and releases the evidence transaction when validation fails', async () => {
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ current: false }] })
+      .mockResolvedValueOnce({})
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:stale',
+      event_type: 'test_receipt', entity_type: 'test', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'test' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/current frozen definition/i)
+    expect(String(transactionQueryMock.mock.calls.at(-1)?.[0])).toBe('ROLLBACK')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a syntactically valid asset-analysis digest that is not the deployed canonical receipt', async () => {
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: registryRowsFor(manifest) })
+      if (String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:analysis:forged',
+      event_type: 'asset_analysis_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: 'f'.repeat(64),
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/canonical deployed analysis receipt/i)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  it('requires a configured production deployment SHA and matches the receipt source to it', () => {
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: undefined,
+    })).toThrow(/NIRMANA_DEPLOYED_SHA/)
+
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: 'b'.repeat(40),
+    })).toThrow(/currently deployed commit/i)
+
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'production',
+      deployedSha: 'a'.repeat(40),
+    })).not.toThrow()
+  })
+
+  it('permits an exact Git source in test/dev only when no deployment SHA is configured', () => {
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'test',
+      deployedSha: undefined,
+    })).not.toThrow()
+    expect(() => assertNirmanaGitCommitMatchesDeployment(`git:${'a'.repeat(40)}`, {
+      nodeEnv: 'development',
+      deployedSha: 'not-a-sha',
+    })).toThrow(/NIRMANA_DEPLOYED_SHA/)
+  })
+
+  acceptedReceiptIt('rejects an optimization verdict unless an exact accepted analysis binds the current contract', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:unbound',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching accepted asset analysis/i)
+    expect(queryMock).toHaveBeenCalled()
+  })
+
+  acceptedReceiptIt('records a strict optimization verdict when it binds the exact current accepted analysis', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        return Promise.resolve({ rows: [{ accepted_count: 1 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:accepted',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes("event_type = 'asset_analysis_accepted'"))).toBe(true)
+  })
+
+  acceptedReceiptIt('accepts an optimization verdict whose source_ref differs from the accepted analysis event it binds (adjudication #2224)', async () => {
+    // Regression for the orphaned-generation deadlock: an asset_analysis_accepted
+    // event accepted under an earlier deployed commit, followed by this fleet
+    // deploying again before the matching optimization_verdict_accepted call --
+    // a routine timing gap on a fleet that deploys every few minutes, not an edge
+    // case. The verdict's own source_ref must match the CURRENT deployment
+    // (assertNirmanaGitCommitMatchesDeployment, exercised separately above), which
+    // is necessarily different from the analysis event's now-stale source_ref.
+    // Before the #2224 fix, matching on source_ref here made this combination
+    // permanently unsatisfiable for the generation. The fix drops that
+    // requirement; only the generation-binding fields (registry_fingerprint_sha256,
+    // analysis_digest) govern.
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const analysisSourceRef = `git:${'b'.repeat(40)}`
+    const verdictSourceRef = `git:${'a'.repeat(40)}`
+    expect(analysisSourceRef).not.toBe(verdictSourceRef)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string, params: unknown[]) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        // Faithful to the live query: no source_ref bind param, and the mock's
+        // own accepted row is deliberately stamped with a DIFFERENT source_ref
+        // than this verdict's own -- proving the match is on the generation
+        // fields alone, not incidentally still gated on source_ref equality.
+        expect(params).not.toContain(verdictSourceRef)
+        expect(statement).not.toMatch(/source_ref\s*=\s*\$7/)
+        return Promise.resolve({ rows: [{ accepted_count: 1 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:cross-deploy',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: verdictSourceRef,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+  })
+
+  acceptedReceiptIt('rejects an optimization verdict when current accepted analysis receipts are ambiguous', async () => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) {
+        return Promise.resolve({ rows: [{ accepted: true, accepted_count: 2 }] })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:optimization:ambiguous',
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: manifestAsset.registry_fingerprint_sha256,
+        analysis_digest: analysisDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/ambiguous/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt.each([
+    ['registry fingerprint', 'f'.repeat(64), null],
+    ['analysis digest', manifestAsset.registry_fingerprint_sha256, 'f'.repeat(64)],
+  ])('rejects an optimization verdict with a stale or mismatched %s', async (_caseName, registryFingerprint, digestOverride) => {
+    const currentRegistryRow = registryRowsFor(manifest)[0]
+    const currentDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      if (String(sql).includes('FROM asset_registry registry')) return Promise.resolve({ rows: [currentRegistryRow] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `asset:bg_prashna_rules:optimization:${_caseName}`,
+      event_type: 'optimization_verdict_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: {
+        registry_fingerprint_sha256: registryFingerprint,
+        analysis_digest: digestOverride ?? currentDigest,
+        verdict: 'examined_and_already_efficient',
+        basis: {
+          measurement: { status: 'insufficient_history', sample_count: null, p50_ms: null, p90_ms: null, hotspot: null },
+          evidence_refs: ['git:test-evidence'],
+        },
+        proposal: { action: 'no_change', summary: 'No measured hotspot warrants a change.', output_contract: 'digest_identical' },
+      },
+      source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`,
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/does not match/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt('uses the current live registry operational contract for a probe after a frozen T0 contract drifts', async () => {
+    const frozenProbeContract = {
+      ...registry_contract,
+      asset_kind: 'service' as const,
+      health_probe: { probe_type: 'panchanga_engine', path: '/health/legacy', method: 'GET' },
+    }
+    const frozenProbeAsset = {
+      ...manifestAsset, asset_id: 'bg_panchanga',
+      execution_obligation: 'probe' as const,
+      registry_contract: frozenProbeContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: 'bg_panchanga', layer: 'L0', depends_on: [], registry_contract: frozenProbeContract,
+      }),
+    }
+    const frozenProbeManifest = { ...manifest, assets: [frozenProbeAsset] }
+    const liveProbeContract = { ...frozenProbeContract, health_probe: { probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' } }
+    const liveRegistryRow = { ...registryRowsFor(frozenProbeManifest)[0], ...liveProbeContract, frozen_manifest_asset: frozenProbeAsset }
+    const currentFingerprint = canonicalRegistryContractDigest({
+      asset_id: liveRegistryRow.asset_id, layer: 'L0', depends_on: liveRegistryRow.depends_on, registry_contract: liveProbeContract,
+    })
+    const analysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_panchanga', liveRegistryRow, frozenProbeAsset)
+    const binding = { registry_fingerprint_sha256: currentFingerprint, analysis_digest: analysisDigest }
+    const decision = {
+      ...binding, verdict: 'examined_and_already_efficient' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'no_change' as const, summary: 'No implementation is required.', output_contract: 'digest_identical' as const },
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: frozenProbeManifest, manifest_sha256: canonicalManifestDigest(frozenProbeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:probe:live-contract',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
+      evidence_payload: {
+        ...binding,
+        probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe), response_digest: 'a'.repeat(64),
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    const [runnerUrl, runnerRequest] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(runnerUrl).toBe('https://sidecar.test/internal/nirmana/probe')
+    expect(runnerRequest.method).toBe('POST')
+    expect(JSON.parse(String(runnerRequest.body))).toMatchObject({
+      asset_id: 'bg_panchanga',
+      probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe),
+    })
+
+    queryMock.mockClear()
+    const futureAnalysisAt = new Date(Date.now() + 60_000).toISOString()
+    const futureDecisionAt = new Date(Date.now() + 120_000).toISOString()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRegistryRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: frozenProbeManifest, manifest_sha256: canonicalManifestDigest(frozenProbeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: futureAnalysisAt, recorded_at: futureAnalysisAt }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: futureDecisionAt, recorded_at: futureDecisionAt }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '2' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:probe:before-generation',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
+      evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(liveProbeContract.health_probe), response_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/must follow the current analysis, decision, and required implementation before dispatch/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt('rejects a non-passing authoritative typed probe verdict before it can append evidence', async () => {
+    const probeContract = {
+      ...registry_contract,
+      asset_kind: 'service' as const,
+      health_probe: { probe_type: 'panchanga_engine' },
+    }
+    const probeAsset = {
+      ...manifestAsset,
+      execution_obligation: 'probe' as const,
+      registry_contract: probeContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: manifestAsset.asset_id, layer: 'L0', depends_on: [], registry_contract: probeContract }),
+    }
+    const probeManifest = { ...manifest, assets: [probeAsset] }
+    const liveRow = { ...registryRowsFor(probeManifest)[0], frozen_manifest_asset: probeAsset }
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract: probeContract }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, probeAsset),
+    }
+    const decision = {
+      ...binding, verdict: 'examined_and_already_efficient' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'no_change' as const, summary: 'No implementation is required.', output_contract: 'digest_identical' as const },
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: probeManifest, manifest_sha256: canonicalManifestDigest(probeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        asset_id: 'bg_prashna_rules', probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeContract.health_probe),
+        observed_at: '2026-08-25T09:00:00.000Z', runner_revision: 'service-probes/v1',
+        result: { status: 'down', message: '503 upstream unavailable', checks: [{ check: 'endpoint', passed: false, status: 503 }] },
+      }),
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:probe:down',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeContract.health_probe), response_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/passing authoritative typed health-probe verdict/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt('does not dispatch a probe before the exact current analysis and decision are validated', async () => {
+    const probeContract = { ...registry_contract, asset_kind: 'service' as const, health_probe: { probe_type: 'panchanga_engine' } }
+    const probeAsset = {
+      ...manifestAsset, execution_obligation: 'probe' as const, registry_contract: probeContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: manifestAsset.asset_id, layer: 'L0', depends_on: [], registry_contract: probeContract }),
+    }
+    const probeManifest = { ...manifest, assets: [probeAsset] }
+    const liveRow = { ...registryRowsFor(probeManifest)[0], frozen_manifest_asset: probeAsset }
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract: probeContract }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, probeAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: probeManifest, manifest_sha256: canonicalManifestDigest(probeManifest), manifest_asset_count: 1 }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:probe:missing-prerequisite',
+      event_type: 'probe_accepted', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeContract.health_probe), response_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/exactly one current accepted asset analysis/i)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  acceptedReceiptIt('rejects a freeze receipt observed before its exact current integrity receipt', async () => {
+    const liveRow = registryRowsFor(manifest)[0]
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({
+        asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract,
+      }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, manifestAsset),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'integrity_verified'")) return Promise.resolve({
+        rows: [{
+          evidence_payload: {
+            ...binding,
+            integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(registry_contract),
+            result_digest: 'a'.repeat(64),
+          },
+          source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+          observed_at: '2026-08-25T10:00:00.000Z', recorded_at: '2026-08-25T10:00:00.000Z',
+        }],
+      })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'freeze' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:freeze:before-integrity',
+      event_type: 'asset_frozen', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...binding, lifecycle_digest: 'b'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:freeze:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/exactly one current validated integrity receipt/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt('verifies a probe-obligation service asset by re-running the authoritative typed probe as its integrity detector', async () => {
+    const probeHealth = { probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' }
+    const probeContract = {
+      ...registry_contract, asset_kind: 'service' as const, has_writer: false,
+      target_table: null, count_sql: null, integrity_check_sql: null, health_probe: probeHealth,
+    }
+    const probeAsset = {
+      ...manifestAsset, asset_id: 'bg_panchanga', execution_obligation: 'probe' as const,
+      registry_contract: probeContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_panchanga', layer: 'L0', depends_on: [], registry_contract: probeContract }),
+    }
+    const probeManifest = { ...manifest, assets: [probeAsset] }
+    const liveRow = { ...registryRowsFor(probeManifest)[0], asset_id: 'bg_panchanga', ...probeContract, frozen_manifest_asset: probeAsset }
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_panchanga', layer: 'L0', depends_on: liveRow.depends_on, registry_contract: probeContract }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_panchanga', liveRow, probeAsset),
+    }
+    const decision = {
+      ...binding, verdict: 'examined_and_already_efficient' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'no_change' as const, summary: 'No implementation is required.', output_contract: 'digest_identical' as const },
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: probeManifest, manifest_sha256: canonicalManifestDigest(probeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      // The integrity provenance check loads its operation prerequisite (here
+      // the prior probe_accepted) via a parameterized `event_type = $3` query.
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{ evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeHealth), response_digest: 'a'.repeat(64) }, source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga', observed_at: '2026-08-25T09:00:00.000Z', recorded_at: '2026-08-25T09:00:00.000Z' }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:integrity:probe',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(probeContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_panchanga',
+      observed_at: '2026-08-25T10:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    // The integrity detector for a probe asset is the real deployed probe runner, not a SQL query.
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[0]).toBe('https://sidecar.test/internal/nirmana/probe')
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  acceptedReceiptIt('rejects probe-obligation integrity when the re-run typed probe verdict is not GREEN', async () => {
+    const probeHealth = { probe_type: 'panchanga_engine', path: '/health/current', method: 'GET' }
+    const probeContract = {
+      ...registry_contract, asset_kind: 'service' as const, has_writer: false,
+      target_table: null, count_sql: null, integrity_check_sql: null, health_probe: probeHealth,
+    }
+    const probeAsset = {
+      ...manifestAsset, asset_id: 'bg_panchanga', execution_obligation: 'probe' as const,
+      registry_contract: probeContract,
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_panchanga', layer: 'L0', depends_on: [], registry_contract: probeContract }),
+    }
+    const probeManifest = { ...manifest, assets: [probeAsset] }
+    const liveRow = { ...registryRowsFor(probeManifest)[0], asset_id: 'bg_panchanga', ...probeContract, frozen_manifest_asset: probeAsset }
+    const binding = {
+      registry_fingerprint_sha256: canonicalRegistryContractDigest({ asset_id: 'bg_panchanga', layer: 'L0', depends_on: liveRow.depends_on, registry_contract: probeContract }),
+      analysis_digest: canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_panchanga', liveRow, probeAsset),
+    }
+    const decision = {
+      ...binding, verdict: 'examined_and_already_efficient' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'no_change' as const, summary: 'No implementation is required.', output_contract: 'digest_identical' as const },
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest: probeManifest, manifest_sha256: canonicalManifestDigest(probeManifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'asset_analysis_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: binding, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      if (statement.includes("event_type = 'probe_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: { ...binding, probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeHealth), response_digest: 'a'.repeat(64) }, source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:health-probe:bg_panchanga', observed_at: '2026-08-25T09:00:00.000Z', recorded_at: '2026-08-25T09:00:00.000Z' }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        asset_id: 'bg_panchanga', probe_contract_sha256: canonicalNirmanaProbeContractDigest(probeHealth),
+        observed_at: '2026-08-25T10:00:00.000Z', runner_revision: 'service-probes/v1',
+        result: { status: 'down', message: '503 upstream unavailable', checks: [{ check: 'endpoint', passed: false }] },
+      }),
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_panchanga:integrity:probe-down',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_panchanga', layer: 'L0',
+      evidence_payload: { ...binding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(probeContract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_panchanga',
+      observed_at: '2026-08-25T10:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/passing authoritative typed health-probe verdict/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  acceptedReceiptIt('admits accepted rebuild evidence only after an exact completed run/asset and matching proven content receipt', async () => {
+    useEvidenceTransaction()
+    const evidence_payload = mockCurrentRebuildEvidence(true)
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:1',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload,
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    const rebuildQuery = queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM build_runs run'))
+    expect(rebuildQuery?.[0]).toContain("receipt.output_digest_spec_sha256 = $4")
+    expect(rebuildQuery?.[0]).toContain("run.triggered_by <> 'nirmana-f0-machinery-canary'")
+    expect(rebuildQuery?.[0]).toContain("run.plan_manifest #>> '{campaign_control,campaign_id}' = $5")
+    expect(rebuildQuery?.[0]).toContain('run.started_at > $7::timestamptz')
+    expect(rebuildQuery?.[0]).toContain("run.created_at >= $7::timestamptz - interval '10 minutes'")
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  acceptedReceiptIt('accepts integrity_verified for a build asset whose accepted decision/implementation/rebuild predate a shared-pin drift (#2450)', async () => {
+    // Adjudication #2450: the L2 layer-wide analysis pin can regenerate from an
+    // unrelated sibling asset's deploy after this asset's own decision chain was
+    // legitimately accepted, changing the CURRENT analysis_digest out from under
+    // an in-flight chain even though this asset's own registry_fingerprint_sha256
+    // never changed. The historical decision/implementation/rebuild rows below
+    // carry a stale analysis_digest standing in for that drift; only the fresh
+    // integrity_verified submission binds to the live (current) digest.
+    const liveRow = registryRowsFor(manifest)[0]
+    const liveFingerprint = canonicalRegistryContractDigest({
+      asset_id: liveRow.asset_id, layer: 'L0', depends_on: liveRow.depends_on, registry_contract,
+    })
+    const liveAnalysisDigest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', liveRow, manifestAsset)
+    const staleBinding = { registry_fingerprint_sha256: liveFingerprint, analysis_digest: 'e'.repeat(64) }
+    const liveBinding = { registry_fingerprint_sha256: liveFingerprint, analysis_digest: liveAnalysisDigest }
+    const decision = {
+      ...staleBinding, verdict: 'optimize' as const,
+      basis: { measurement: { status: 'insufficient_history' as const, sample_count: null, p50_ms: null, p90_ms: null, hotspot: null }, evidence_refs: ['git:test-evidence'] },
+      proposal: { action: 'optimize' as const, summary: 'A prior change was required.', output_contract: 'digest_identical' as const },
+    }
+    const implementation = {
+      ...staleBinding,
+      decision_digest: canonicalNirmanaOptimizationVerdictDigest(decision),
+      implementation_digest: 'c'.repeat(64),
+    }
+    const rebuild = {
+      ...staleBinding,
+      build_run_id: '482012f1-710e-4a25-994a-93821f5871aa',
+      wave_index: 0,
+      authorization_sha256: '9'.repeat(64),
+      decision_digest: implementation.decision_digest,
+      implementation_digest: implementation.implementation_digest,
+      output_digest: 'a'.repeat(64), output_digest_spec_sha256: 'b'.repeat(64),
+    }
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('FROM asset_registry registry')) return Promise.resolve({ rows: [liveRow] })
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes("event_type = 'optimization_verdict_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: decision, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:00:00.000Z', recorded_at: '2026-08-25T07:00:00.000Z' }] })
+      if (statement.includes("event_type = 'implementation_accepted'")) return Promise.resolve({ rows: [{ evidence_payload: implementation, source_kind: 'git_commit', source_ref: `git:${'a'.repeat(40)}`, observed_at: '2026-08-25T07:30:00.000Z', recorded_at: '2026-08-25T07:30:00.000Z' }] })
+      // requireIntegrityProvenance's own prior-execution-receipt lookup (the
+      // already-accepted accepted_rebuild_observed row) is parameterized.
+      if (statement.includes('event_type = $3')) return Promise.resolve({ rows: [{ evidence_payload: rebuild, source_kind: 'build_run', source_ref: `build_run:${rebuild.build_run_id}`, observed_at: '2026-08-25T08:00:00.000Z', recorded_at: '2026-08-25T08:00:00.000Z' }] })
+      if (statement.includes('SELECT count(*) FROM bg_prashna_rules')) return Promise.resolve({ rows: [{ count: 5 }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:pin-drift',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { ...liveBinding, integrity_contract_sha256: canonicalNirmanaIntegrityContractDigest(registry_contract), result_digest: 'a'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:integrity:bg_prashna_rules',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  it('authorizes build runs only for execution-permitting manifest obligations', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ authorized: true }] })
+      .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'run:482012f1:authorization',
+      event_type: 'build_run_authorized', entity_type: 'build_run', entity_id: '482012f1-710e-4a25-994a-93821f5871aa', layer: 'L0',
+      evidence_payload: { wave_index: 0, asset_ids: ['bg_prashna_rules'], authorization_sha256: 'c'.repeat(64) },
+      source_kind: 'campaign_authorization', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+
+    expect(queryMock.mock.calls[0][0]).toContain("manifest_asset.value ->> 'execution_obligation' IN ('build', 'probe')")
+    expect(queryMock.mock.calls[0][0]).toContain('run.started_at IS NULL')
+    expect(queryMock.mock.calls[0][0]).toContain("run.state = 'planned'")
+  })
+
+  acceptedReceiptIt('fails closed when the completed run has no matching proven receipt', async () => {
+    useEvidenceTransaction()
+    const evidence_payload = mockCurrentRebuildEvidence(false)
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:missing',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload,
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching proven content receipt/i)
+    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('FROM build_runs run'))).toBe(true)
+  })
+
+  acceptedReceiptIt.each([
+    ['build action', "run.action = 'rebuild'"],
+    ['wrong canonical chart', 'run.chart_id = (definition.manifest ->> \'chart_id\')::uuid'],
+    ['asset outside the frozen manifest', "manifest_asset.value ->> 'asset_id' = $2"],
+    ['non-build manifest asset', "manifest_asset.value ->> 'execution_obligation' = 'build'"],
+  ])('rejects accepted rebuild evidence for %s', async (_caseName, requiredGuard) => {
+    useEvidenceTransaction()
+    const evidence_payload = mockCurrentRebuildEvidence(false)
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `asset:bg_prashna_rules:rebuild:${_caseName}`,
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload,
+      source_kind: 'build_run', source_ref: 'build_run:482012f1-710e-4a25-994a-93821f5871aa',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/matching proven content receipt/i)
+    expect(queryMock.mock.calls.find(([sql]) => String(sql).includes('FROM build_runs run'))?.[0]).toContain(requiredGuard)
+  })
+
+  it('rejects legacy or malformed rebuild evidence before it can query or append an event', async () => {
+    useEvidenceTransaction()
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:rebuild:legacy',
+      event_type: 'accepted_rebuild_observed', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { output_digest: 'a'.repeat(64) }, source_kind: 'build_run', source_ref: 'build_run:not-a-uuid',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/output digest/i)
+    expect(queryMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects a reused evidence idempotency key whose immutable receipt differs', async () => {
+    useEvidenceTransaction({
+      existing: [{
+        campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+        event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+        evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+        observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+      }],
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'second' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/idempotency key/i)
+  })
+
+  it('rejects a conflicting lifecycle fact even when its idempotency key is different', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:first',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first, idempotency_key: 'asset:bg_prashna_rules:test:second', evidence_payload: { receipt: 'second' },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('allows a new immutable lifecycle generation after registry or analysis drift while retaining same-generation conflict checks', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:old-generation',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'new' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:new-generation',
+      evidence_payload: { registry_fingerprint_sha256: 'c'.repeat(64), analysis_digest: 'd'.repeat(64) },
+    })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  it('still rejects a same-pair resubmission carrying no decision_digest (W1/W2 generation key unchanged)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:test:w2-first',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bg_prashna_rules:test:w2-second',
+      evidence_payload: { registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64) },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('accepts a superseding decision_digest on the same (registry_fingerprint, analysis_digest) pair instead of stranding the prior receipt (#1770)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bo_laksana:implementation:decision-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bo_laksana', layer: 'L2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'd'.repeat(64),
+      },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: 'new' }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bo_laksana:implementation:decision-2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'e'.repeat(64), implementation_digest: 'f'.repeat(64),
+      },
+    })).resolves.toBe('created')
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(true)
+  })
+
+  it('still rejects a genuine duplicate carrying the identical decision_digest (dedup not weakened)', async () => {
+    const first = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bo_laksana:implementation:dup-1',
+      event_type: 'test_receipt', entity_type: 'asset', entity_id: 'bo_laksana', layer: 'L2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'd'.repeat(64),
+      },
+      source_kind: 'test', source_ref: 'test:receipt', observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement) || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('idempotency_key = $3')) return Promise.resolve({ rows: [] })
+      if (statement.includes("event_type = $3 AND entity_type = 'asset'")) return Promise.resolve({ rows: [first] })
+      if (statement.includes('AS current')) return Promise.resolve({ rows: [{ current: true }] })
+      return Promise.resolve({ rows: [] })
+    })
+
+    await expect(recordNirmanaElevationEvidence({
+      ...first,
+      idempotency_key: 'asset:bo_laksana:implementation:dup-2',
+      evidence_payload: {
+        registry_fingerprint_sha256: 'a'.repeat(64), analysis_digest: 'b'.repeat(64),
+        decision_digest: 'c'.repeat(64), implementation_digest: 'z'.repeat(64),
+      },
+    })).rejects.toThrow(/conflicting lifecycle receipt/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it('accepts an exact retried evidence receipt without overwriting the original actor', async () => {
+    const input = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'asset:bg_prashna_rules:integrity:v1',
+      event_type: 'integrity_verified', entity_type: 'asset', entity_id: 'bg_prashna_rules', layer: 'L0',
+      evidence_payload: { receipt: 'first' }, source_kind: 'test', source_ref: 'test:receipt',
+      observed_at: '2026-08-25T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    transactionQueryMock
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [input] })
+      .mockResolvedValueOnce({})
+    await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
+    expect(transactionQueryMock).toHaveBeenCalledTimes(4)
+    expect(String(transactionQueryMock.mock.calls[3][0])).toBe('COMMIT')
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+
+  it('rejects a forged foundation census count before appending an evidence event', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:forged',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 2,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/asset count/i)
+    expect(transactionQueryMock.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+  })
+
+  it.each([
+    ['stale', 'a'.repeat(40), 'a'.repeat(40), { main_sha: 'b'.repeat(40), deployed_sha: 'b'.repeat(40), deployed_revision: 'amjis-web-01799-abc', production_in_sync: true }],
+    ['divergent', 'a'.repeat(40), 'b'.repeat(40), { main_sha: 'a'.repeat(40), deployed_sha: 'a'.repeat(40), deployed_revision: 'amjis-web-01799-abc', production_in_sync: true }],
+  ])('rejects %s release identities before appending F0 release evidence', async (_caseName, main_sha, serving_sha, release) => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+    releaseStatusMock.mockResolvedValue({ release })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: `f0:D:${_caseName}`,
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'D', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'D', manifest_sha256: 'a'.repeat(64), main_sha, serving_sha,
+        serving_revision: 'amjis-web-01799-abc', ci_run_id: '12345',
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:D',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/release receipt/i)
+    expect(ciRunMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing migration-ledger evidence before appending the evidence-control lane', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ applied: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:E:missing-ledger',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'E', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'E',
+        manifest_sha256: 'a'.repeat(64),
+        migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: '56a86201d15a0d91cf35455758416391e36960e71043cc84fbdb11ff3b72a53e',
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:E',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/migration-ledger/i)
+  })
+
+  it('rejects a typed stage receipt when the immediately preceding spine receipt is absent', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:T0:no-bootstrap',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', manifest_sha256: 'a'.repeat(64),
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/immediately preceding/i)
+  })
+
+  it('rejects a second logical foundation-lane receipt with a different idempotency key', async () => {
+    useEvidenceTransaction()
+    queryMock.mockResolvedValueOnce({ rows: [{ present: true }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:conflicting-replay',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: { schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 1 },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/Foundation lane already/i)
+  })
+
+  it('rejects a lane-C receipt when its current registry fingerprint set diverges', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: registryRowsFor(manifest) })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ live_registry_asset_count: 1 }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:C:stale-contract',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'C', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'C', manifest_sha256: canonicalManifestDigest(manifest),
+        registry_fingerprint_set_sha256: 'f'.repeat(64), manifest_asset_count: 1, live_registry_asset_count: 1, invalidated_analysis_count: 0,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:C',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/hash\/invalidation census/i)
+  })
+
+  it('rejects a noncanonical migration-592 hash even when the ledger reports an applied row', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ manifest_sha256: 'a'.repeat(64), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ applied: true }] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:E:wrong-canonical-hash',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'E', layer: null,
+      evidence_payload: { schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'E', manifest_sha256: 'a'.repeat(64), migration_filename: '592_nirmana_elevation_campaign_evidence.sql', migration_sha256: 'f'.repeat(64) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:E',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/migration-ledger/i)
+  })
+
+  it('rejects an L0 exit when the freeze-lifecycle verifier finds an asset with no evidence at all', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-presence',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/without a complete evidence chain/i)
+  })
+
+  it('rejects an L0 exit when the freeze-lifecycle verifier finds a partial chain (missing integrity_verified)', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({
+        rows: [{
+          entity_id: 'bg_prashna_rules', frozen: true, w2_analysis: true, w2_verdict: true,
+          integrity_verified: false, terminal_acceptance: true,
+        }],
+      })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-partial',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/bg_prashna_rules/)
+  })
+
+  acceptedReceiptIt('admits an L0 exit once the freeze-lifecycle verifier reconstructs a complete chain for every L0 asset', async () => {
+    useEvidenceTransaction()
+    queryMock.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (statement.includes('SELECT manifest, manifest_sha256')) return Promise.resolve({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      if (statement.includes('evidence_payload ->> \'to_stage\' = $3')) return Promise.resolve({ rows: [{ present: true }] })
+      if (statement.includes('entity_id = $3')) return Promise.resolve({ rows: [{ present: false }] })
+      if (statement.includes('GROUP BY entity_id')) {
+        return Promise.resolve({
+          rows: [{
+            entity_id: 'bg_prashna_rules', frozen: true, w2_analysis: true, w2_verdict: true,
+            integrity_verified: true, terminal_acceptance: true,
+          }],
+        })
+      }
+      if (statement.includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events')) return Promise.resolve({ rowCount: 1, rows: [{ event_id: '1' }] })
+      return Promise.resolve({ rows: [] })
+    })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:L1:freeze-complete',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'L1', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'L0', to_stage: 'L1', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).resolves.toBe('created')
+  })
+
+  it('rejects BOOTSTRAP to T0 when the frozen denominator no longer has a canonical registry identity', async () => {
+    useEvidenceTransaction()
+    queryMock
+      .mockResolvedValueOnce({ rows: [{ manifest, manifest_sha256: canonicalManifestDigest(manifest), manifest_asset_count: 1 }] })
+      .mockResolvedValueOnce({ rows: [{ present: false }] })
+      .mockResolvedValueOnce({ rows: [{ present: true }] })
+      .mockResolvedValueOnce({ rows: [] })
+    await expect(recordNirmanaElevationEvidence({
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'stage:T0:registry-drift',
+      event_type: 'stage_transition_accepted', entity_type: 'campaign_stage', entity_id: 'T0_CENSUS', layer: null,
+      evidence_payload: { schema_version: 'nirmana-stage-transition-receipt/v1', from_stage: 'BOOTSTRAP', to_stage: 'T0_CENSUS', manifest_sha256: canonicalManifestDigest(manifest) },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:stage-spine',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    })).rejects.toThrow(/canonical live registry gate/i)
+  })
+
+  it('keeps an exact typed foundation receipt retry idempotent without revalidating or overwriting it', async () => {
+    const input = {
+      campaign_id: 'nirmana-elevation', definition_revision: 'v1', idempotency_key: 'f0:A:exact-retry',
+      event_type: 'foundation_lane_accepted', entity_type: 'foundation_lane', entity_id: 'A', layer: null,
+      evidence_payload: {
+        schema_version: 'nirmana-foundation-lane-receipt/v1', lane_id: 'A', manifest_sha256: 'a'.repeat(64), asset_count: 1,
+      },
+      source_kind: 'server_reconstructed', source_ref: 'nirmana-elevation:foundation-lane:A',
+      observed_at: '2026-08-26T09:00:00.000Z', recorded_by: 'admin-1',
+    }
+    useEvidenceTransaction({ existing: [input] })
+    await expect(recordNirmanaElevationEvidence(input)).resolves.toBe('idempotent')
+    expect(queryMock).not.toHaveBeenCalled()
+    expect(transactionReleaseMock).toHaveBeenCalledOnce()
+  })
+})
+
+describe('asset analysis digest v2 — per-asset identity scoping (adjudication #2450, cycle-320 structural ruling)', () => {
+  const currentRegistryRow = registryRowsFor(manifest)[0]
+
+  afterEach(() => {
+    receiptBaseOverrides.convergenceCommit = null
+    receiptBaseOverrides.writerDigest = null
+  })
+
+  it('(i) a sibling writer deploy — layer-shared convergence pin moved, own contract untouched — does NOT move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    receiptBaseOverrides.convergenceCommit = 'f'.repeat(40)
+    const afterSiblingDeploy = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    // Under v1 this assertion fails: the pin was hashed into every asset's
+    // identity, so ANY sibling writer deploy moved every digest in the layer —
+    // the #2450 evidence treadmill.
+    expect(afterSiblingDeploy).toBe(before)
+  })
+
+  it('(ii) an own-writer (or imported-helper) change DOES move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    receiptBaseOverrides.writerDigest = '2'.repeat(64)
+    const afterOwnWriterChange = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    expect(afterOwnWriterChange).not.toBe(before)
+  })
+
+  it('(iii) an own-registry-row change DOES move the digest', () => {
+    const before = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const changedRow = { ...currentRegistryRow, count_sql: 'SELECT count(*) FROM bg_prashna_rules WHERE TRUE' }
+    const afterRegistryChange = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', changedRow, manifestAsset)
+    expect(afterRegistryChange).not.toBe(before)
+  })
+
+  it('(iv) v1 historical receipts still parse and re-derive byte-identically via the compat schema', () => {
+    // The digest below was computed by the PRE-v2 implementation of
+    // canonicalNirmanaAssetAnalysisReceiptDigest over this exact payload
+    // (verified against origin/main 3c6699da7 before the v2 change landed).
+    // If the v1 arm of the schema union drifts, stored v1 history silently
+    // stops being re-derivable — that is the compat path this pins.
+    expect(canonicalNirmanaAssetAnalysisReceiptDigest({
+      schema_version: 'nirmana-asset-analysis-receipt/v1',
+      base: {
+        schema_version: 'nirmana-asset-analysis-receipt-base/v1',
+        asset_id: 'bg_prashna_rules',
+        layer: 'L0',
+        writer_digest_sha256: '1'.repeat(64),
+        grounding: {
+          convergence_commit: 'a'.repeat(40),
+          frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+          writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
+        },
+      },
+      frozen_manifest_asset: { asset_id: 'bg_prashna_rules', layer: 'L0' },
+      current_registry_contract: {
+        asset_id: 'bg_prashna_rules', layer: 'L0', depends_on: [],
+        registry_contract: {
+          sort_order: 1, scope: 'global', asset_kind: 'data', catalog_status: 'CURRENT',
+          is_active: true, has_writer: true, target_table: 'bg_prashna_rules',
+          count_sql: 'SELECT count(*) FROM bg_prashna_rules', integrity_check_sql: null,
+          health_probe: null, natural_key_partition: null, superseded_by: null,
+          data_disposition: null, dead_flag: null,
+        },
+      },
+    })).toBe('a7a6789160c56e12014e414723741413e5f2f93d9cd40207801d66b4c39e367e')
+  })
+
+  it('the layer stays bound in v2: the same base served under another layer digest cannot collide', () => {
+    // v1 bound the layer through the nested base; v2 must keep it bound
+    // through its own top-level fields. Serve the identical registry row and
+    // manifest asset but relabel the layer — the digest must move.
+    const l0Digest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    expect(() => canonicalNirmanaAssetAnalysisDigestForRegistryRow(
+      'bg_prashna_rules',
+      currentRegistryRow,
+      { ...manifestAsset, layer: 'L1' },
+    )).toThrow(/does not match its deployed analysis receipt base/i)
+    expect(l0Digest).toMatch(/^[a-f0-9]{64}$/)
+  })
+
+  it('v2 and v1 digests over the same contract surface never coincide (version is part of identity)', () => {
+    const v2Digest = canonicalNirmanaAssetAnalysisDigestForRegistryRow('bg_prashna_rules', currentRegistryRow, manifestAsset)
+    const v1Equivalent = canonicalNirmanaAssetAnalysisReceiptDigest({
+      schema_version: 'nirmana-asset-analysis-receipt/v1',
+      base: {
+        schema_version: 'nirmana-asset-analysis-receipt-base/v1',
+        asset_id: 'bg_prashna_rules',
+        layer: 'L0',
+        writer_digest_sha256: '1'.repeat(64),
+        grounding: {
+          convergence_commit: 'a'.repeat(40),
+          frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+          writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
+        },
+      },
+      frozen_manifest_asset: manifestAsset,
+      current_registry_contract: registryContractFingerprintInput(currentRegistryRow),
+    })
+    expect(v2Digest).not.toBe(v1Equivalent)
+  })
+})

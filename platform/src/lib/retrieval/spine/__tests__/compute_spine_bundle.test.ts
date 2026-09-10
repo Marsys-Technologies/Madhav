@@ -119,12 +119,58 @@ describe('computeSpineBundle', () => {
     // Domain-filtered calibration: only the 'career' multiplier survives.
     expect(bundle.calibration.multipliers).toHaveLength(1)
     expect(bundle.calibration.multipliers[0]['weight_id']).toBe('W-1')
+    // NIRMĀṆA L5 W3-3: the measured coverage counters, alongside the filtered rows.
+    expect(bundle.calibration.multipliers_total).toBe(2)
+    expect(bundle.calibration.multipliers_with_domain).toBe(2)
+    expect(bundle.calibration.multipliers_empty_reason).toBeNull()
     expect(bundle.calibration.verdict_distribution).toEqual([{ composite_verdict: 'confirmed', n: 5 }])
     expect(bundle.calibration.qa_fail_count).toBe(0)
 
     expect(bundle.empty_reason).toBeNull()
     expect(bundle.provenance.tables).toContain('bodha_msr_signals')
     expect(bundle.provenance.composed_from_capabilities).toHaveLength(4)
+  })
+
+  // ── NIRMĀṆA L5 W3-3 regression: the real production shape ────────────────────
+  // `mimamsa_multipliers.domain` is NULL on every live row (verified 2026-09-05: 18 rows
+  // table-wide, 9 per chart, 0 with a non-null domain). The old `m['domain'] === domain`
+  // exact match therefore shipped this section EMPTY for every chart and every domain,
+  // forever, with no empty_reason naming it. A NULL domain is GLOBAL scope — the same
+  // reading query_calibration.ts already committed to — so those rows are IN scope here.
+  it('serves NULL-domain (global-scope) multipliers for any domain — the live production shape', async () => {
+    installFixtures({
+      signals: [{ signal_id: 'SIG-1', signal_headline_text: 'x', computed_salience: 0.9, domains_affected_array: ['career'], valence: 'positive' }],
+      activations: [], anchors: [], verdicts: [], reliability: [],
+      multipliers: [
+        { weight_id: 'W-N1', domain: null, applied_multiplier: 1.1 },
+        { weight_id: 'W-N2', domain: null, applied_multiplier: 0.8 },
+        { weight_id: 'W-H1', domain: 'health', applied_multiplier: 0.9 }, // explicit other domain — still excluded
+      ],
+      qa: [],
+    })
+
+    const bundle = await computeSpineBundle({ chart_id: CHART_A, domain: 'career', top_k: 10 })
+
+    expect(bundle.calibration.multipliers.map(m => m['weight_id'])).toEqual(['W-N1', 'W-N2'])
+    expect(bundle.calibration.multipliers_total).toBe(3)
+    expect(bundle.calibration.multipliers_with_domain).toBe(1)
+    expect(bundle.calibration.multipliers_empty_reason).toBeNull()
+  })
+
+  it('emits an honest multipliers_empty_reason when every multiplier belongs to another domain', async () => {
+    installFixtures({
+      signals: [{ signal_id: 'SIG-1', signal_headline_text: 'x', computed_salience: 0.9, domains_affected_array: ['career'], valence: 'positive' }],
+      activations: [], anchors: [], verdicts: [], reliability: [],
+      multipliers: [{ weight_id: 'W-H1', domain: 'health', applied_multiplier: 0.9 }],
+      qa: [],
+    })
+
+    const bundle = await computeSpineBundle({ chart_id: CHART_A, domain: 'career', top_k: 10 })
+
+    expect(bundle.calibration.multipliers).toHaveLength(0)
+    expect(bundle.calibration.multipliers_total).toBe(1)
+    // §N.6 item 3: the empty is reported, and says WHY — never a silent empty array.
+    expect(bundle.calibration.multipliers_empty_reason).toMatch(/explicit, different domain label/)
   })
 
   it('reports an honest empty_reason when no signals exist for the domain, without querying activations/anchors', async () => {

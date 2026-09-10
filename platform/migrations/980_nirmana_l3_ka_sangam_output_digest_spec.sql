@@ -1,0 +1,162 @@
+-- 980_nirmana_l3_ka_sangam_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear, widened
+-- fleet-wide audit). Fresh fleet-wide audit at cycle start: unchanged at
+-- 37 rows (w387/w388 both re-ran the same query with no lane merge in
+-- between). This cycle picks `ka_sangam` -- the last remaining
+-- unscreened single/moderate-size `ka_*` candidate per standing
+-- next-cycle notes item 4a (`ka_sangam` -- 1166-line shim +
+-- services/ka_sangam/engine.py, 1809 lines, ~2975 total). Read both
+-- files in full.
+--
+-- Co-writer investigation (FOUR checks, per this campaign's established
+-- discipline): grepped all .py files tree-wide (excluding __pycache__)
+-- for `kala_convergence` INSERT/DELETE/UPDATE statements specifically
+-- (not just any mention -- many downstream readers reference the table
+-- read-only: mi_adhilepa, ka_jivana_parva, ka_bhavishya_lekha,
+-- ph_pratikara, ka_kala_darshana, ph_muhurta, ph_nimitta, mi_kula,
+-- ka_taranga, ka_vighnakara, ka_kalasutra, kala_derivation_completeness_
+-- guard.py, dag_edge_guard.py, asset_runner.py, bodha_writers/
+-- _idempotency.py, several services/ modules -- ALL confirmed read-only
+-- via grep for the literal INSERT/DELETE/UPDATE INTO kala_convergence
+-- pattern, zero hits in any of them):
+--   (1) liveness/reachability -- the ONE other file with a real INSERT/
+--       DELETE INTO kala_convergence is `brahmagyan/kala/convergence.py`
+--       (a standalone BRAHMA-KA-3-2 module, self-described in its own
+--       docstring as a "self-contained -- does not depend on live
+--       kala_timeline DB rows" CLI seed script: `python -m
+--       brahmagyan.kala.convergence seed --chart-id ...`). Grepped
+--       tree-wide for any import of this module (`from brahmagyan.kala
+--       import convergence`, `from brahmagyan.kala.convergence import`,
+--       `brahmagyan.kala.convergence` as a substring anywhere outside
+--       the file itself) and for `@register`/WriterBase registration
+--       inside it -- ZERO hits on both. Not imported by any reachable
+--       entrypoint, not orchestrator-registered: dead code by this
+--       campaign's liveness/reachability test, not a live co-writer.
+--   (2) KaSangamWriter (`@register('ka_sangam')`, pipeline/orchestrator/
+--       writers/ka_sangam.py) is the confirmed SOLE LIVE writer of
+--       `kala_convergence`.
+--
+-- Non-determinism check: `services/ka_sangam/engine.py` (Mode A/B/C/D
+-- window generation) issues NO SQL of its own at all (grepped for
+-- `cur.execute`/`.execute(` -- zero hits) -- its inputs are the
+-- writer's own pre-fetched, already-ordered pred_dicts plus live
+-- swisseph ephemeris computation (deterministic given a fixed chart's
+-- birth datetime/lat/lon/tz), so the DB-fetch-without-ORDER-BY defect
+-- class that sank ka_avadhi/ka_kalasutra/ka_taranga/ka_yojaka/ka_gochara
+-- this campaign cannot arise inside it. `windows.sort(key=lambda w:
+-- w['convergence_score'], ...)` calls (4 call sites) have no explicit
+-- tiebreak, but Python's sort is stable and the pre-sort list order
+-- itself derives from deterministic iteration over the writer's own
+-- already-total-ordered predicate list, not a DB fetch -- ties preserve
+-- deterministic insertion order, not run-to-run drift.
+--
+-- Checked the writer's own prefetch dicts (`dignity_map`,
+-- `graha_name_map`, `house_num_map`, `domain_map`, all keyed by
+-- `signal_id` from a `bodha_msr_signals` SELECT) against this
+-- campaign's now-standard dict-keyed-by-non-unique-column trap
+-- (confirmed twice already this campaign: ka_yojaka/ka_gochara):
+-- `signal_id` is `bodha_msr_signals`'s own PRIMARY KEY
+-- (`bodha_msr_signals_pkey`) -- live-verified 0 duplicate signal_id
+-- rows table-wide. Not the same defect class; this key genuinely is
+-- unique at the granularity assumed. `_build_house_lord_map` is a pure
+-- 12-entry computation from a single fetched lagna sign, not a
+-- multi-row reduction.
+--
+-- Natural key: NO unique DB constraint exists beyond the surrogate
+-- `convergence_id` bigint-sequence PK. Declared here as (chart_id,
+-- horizon_tier, mode, peak_date, signal_id), mirroring the writer's own
+-- `_dedup()` collision key (`(mode, peak_date, signal_id)`, applied
+-- per-tier before every INSERT batch) with `chart_id` and `horizon_tier`
+-- added for cross-chart/cross-tier scoping (`_dedup` runs once per
+-- `_generate_windows` call, which is itself always scoped to a single
+-- chart and a single horizon_tier -- 'near' from `_substep_near`, or
+-- 'lifetime' from one `_substep_lifetime` call per lifetime predicate,
+-- each of which clears and re-inserts ONLY its own signal_id's lifetime
+-- rows). Live-verified table-wide (`GROUP BY chart_id, horizon_tier,
+-- mode, peak_date, signal_id HAVING count(*) > 1`): 0 duplicate-key
+-- groups across all 20,497 live rows (17,957 for chart
+-- 1c826d5a-41cb-4450-b4dc-59d440e5f75a + 2,540 for chart
+-- cb73cd3d-9eba-4220-9902-0de91566e980). `signal_id` itself is never
+-- NULL in this table today (0/20,497), consistent with
+-- `kala_activation_predicates.signal_id` (this writer's own predicate
+-- source) also carrying 0 NULLs across 150,150 live rows.
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns (same exclusion class as every prior spec in
+-- this campaign): kala_convergence.convergence_id (surrogate PK, bigint
+-- sequence -- NOT in the writer's own `_insert_windows` INSERT column
+-- list, confirmed by reading that INSERT statement in full) and
+-- kala_convergence.computed_at (present in the INSERT's column list but
+-- bound to the literal SQL `NOW()` function call, not a parameterized
+-- Python value -- same exclusion class as every DEFAULT/NOW()-driven
+-- timestamp column in this campaign).
+--
+-- Canonical chart 482012f1-710e-4a25-994a-93821f5871aa has ZERO rows in
+-- kala_convergence today (confirmed: `kala_activation_predicates`, this
+-- writer's own predicate source, DOES have 50,104 live rows for that
+-- chart -- so the INPUT exists but ka_sangam itself has not yet been
+-- run to completion for the canonical chart). This mirrors the already-
+-- ratified 974/975 (ka_bhavishya_lekha) precedent exactly, which is
+-- itself downstream of this same table -- expected, not a defect: this
+-- campaign's spec convention pins `where_equals.chart_id` to the
+-- canonical chart per the fleet-wide universal convention regardless of
+-- whether that specific chart has been built yet for this asset; the
+-- REHEARSAL below is run against chart 1c826d5a instead (the chart this
+-- asset HAS been built for), exactly as 974/975's own rehearsal was.
+--
+-- spec_sha256 computed and independently re-verified via the REAL
+-- server functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                              # == the literal below
+--   print(_validate_spec('ka_sangam', spec, sha).asset_id)      # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK
+-- transaction (psycopg3, autocommit=False, row_factory=dict_row).
+-- Because the canonical chart (482012f1) has zero rows in
+-- kala_convergence today, the REHEARSAL spec's `where_equals.chart_id`
+-- was temporarily pointed at 1c826d5a-41cb-4450-b4dc-59d440e5f75a (the
+-- chart this asset HAS been built for) so the REAL
+-- compute_output_digest(cur, asset_id='ka_sangam') call would genuinely
+-- execute the query against real, non-empty rows rather than trivially
+-- succeeding over an empty set -- got back a clean 65-hex digest
+-- (31d30e9e291961723a48280e1fb66c3033623aa1c75103750600564aecfd5cc6, no
+-- exception, key-preflight passed over all 17,957 live rows for that
+-- chart) -> rolled back -> re-queried asset_output_digest_specs from a
+-- FRESH connection afterward and confirmed 0 rows for ka_sangam, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal. The spec
+-- ACTUALLY APPLIED below keeps `where_equals.chart_id` pinned to the
+-- canonical chart 482012f1 per this campaign's universal convention --
+-- its live digest will compute over zero rows until ka_sangam is
+-- actually built for that chart, which is honest and expected, not a
+-- defect in the spec itself.
+--
+-- Numbering note: origin/main's highest applied migration was 973
+-- (ka_kala_darshana, #2493, merged) when this migration was first opened
+-- as 976/977. Renumbered to 980/981 by the CONDUCTOR lane (cycle 436,
+-- 2026-09-09) after a genuine cross-lane collision surfaced in the merge
+-- queue: L2's #2495 (bo_karanajala, migration 976) enqueued first and
+-- merged first, claiming 976 on main; this PR's own sibling #2497
+-- (bo_samskara) had independently claimed 978/979. 980/981 confirmed
+-- free against main (976 highest applied) and all open PRs (#2497 at
+-- 978/979) at renumber time.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_sangam' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_sangam',
+  'a0566b729d514d76e88dbd1c4135bf71e3396af00cb736267103ec6128aaf759',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_convergence","relation":"kala_convergence","key_columns":["chart_id","horizon_tier","mode","peak_date","signal_id"],"value_columns":["chart_id","window_start","window_end","convergence_score","constituent_factors","source_citation","signal_id","mode","peak_date","orb_strength","rarity_years","confidence_score","confidence_label","independent_current_count","is_off_dasha_discovery","horizon_tier","domain","confidence_label_relative","tier_basis"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

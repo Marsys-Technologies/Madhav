@@ -58,13 +58,20 @@ class MiBhavisyaWriter(WriterBase):
         conn = ctx.db_conn
         chart_id: str = ctx.config["chart_id"]
 
-        # Guard: L4 tables may not exist yet
+        # A6 (L5-W3, adjudication #1738).  "L4 not yet built" is no longer a
+        # reachable state: L4 Phala is CLOSED and ph_pramana / ph_nimitta /
+        # ph_phaladesa are DECLARED dependencies of this asset.  A missing table
+        # is a deployment defect.  Critically, the per-chart-empty case -- a
+        # chart that genuinely has no anchors -- is already handled separately
+        # below, so this branch had no legitimate purpose beyond masking a schema
+        # failure, and the two outcomes were indistinguishable downstream.
         if not _table_exists(conn, "phala_anchors"):
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                duration_seconds=time.time() - t0,
-                notes="phala_anchors does not exist — L4 not yet built; 0 rows",
+            raise RuntimeError(
+                "mi_bhavisya: phala_anchors table not found — L4 Phala is not "
+                "deployed. ph_pramana/ph_nimitta/ph_phaladesa are DECLARED "
+                "dependencies, so a missing table is a deployment defect. Zero "
+                "frozen predictions here would be indistinguishable from a chart "
+                "that genuinely has no anchors (handled separately below)."
             )
 
         # Load L4 anchors for this chart

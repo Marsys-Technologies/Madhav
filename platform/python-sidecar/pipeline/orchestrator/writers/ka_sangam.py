@@ -907,6 +907,12 @@ class KaSangamWriter(WriterBase):
                     # Mode A/B always do
                     'transit': mode in ('A', 'B'),
                     # Newly wired currents
+                    # L3-W3 (§N.8): `panchanga` now means "pāñcāṅga was consulted AND supported
+                    # this window". When the term could not be evaluated at all the key is absent
+                    # (see engine._c_panchanga_quality), and this stays False — an unevaluated term
+                    # must not count as independent support either. What changes is that the ROW
+                    # now records WHY, via c_panchanga_quality_unavailable, instead of carrying a
+                    # 0.0 that read as a real unsupportive score on 4,729 of 4,729 Mode A/B rows.
                     'panchanga': bool(cf.get('c_panchanga_quality', 0) > 0.0),
                     'benefic_dristi': bool(cf.get('c_benefic_dristi', 0) > 0.0),
                     'cross_dasha_agreement': bool(cf.get('c_cross_dasha_agreement', 0) > 0.0),
@@ -1028,23 +1034,40 @@ class KaSangamWriter(WriterBase):
             except Exception:
                 pass
 
-        # C11: vedha rules from bg_transit_rules
+        # C11: vedha windows from kala_vedha_gochara
+        #
+        # NIRMĀṆA L3-W3 (F-SANGAM-5, §N.8). This query used to read
+        # `bg_transit_rules WHERE rule_type = 'vedha'` — a filter value that does
+        # not exist on that table (its real rule_type vocabulary is
+        # {unfavourable, favourable, double_transit}; measured live: 0 rows ever
+        # matched), so `_c11_vedha_factor` — the NECESSARY-side veto — was
+        # permanently neutral (1.0) on every window, on every chart, forever.
+        # `kala_vedha_gochara` (354 rows, catalog_status=CURRENT) is the real,
+        # populated, per-chart source: precomputed [window_start, window_end)
+        # date ranges per graha where classical house-vedha genuinely applies
+        # (BPHS Ch.29), not an abstract house-number rule needing a separate
+        # house-FROM-MOON resolution step. Pinned to `vedha_kind='house_vedha'`
+        # (the classical transit-house vedha this current is named for) and
+        # `ayanamsha_id='lahiri_chitrapaksha'`, matching this writer's own
+        # convention elsewhere.
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_vedha")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT graha, primary_house, vedha_house
-                    FROM bg_transit_rules
-                    WHERE rule_type = 'vedha'
-                    """
+                    SELECT graha, window_start, window_end
+                    FROM kala_vedha_gochara
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
+                      AND vedha_kind = 'house_vedha'
+                    """,
+                    (chart_id,),
                 )
                 for row in cur.fetchall():
                     vedha_rules.append({
                         'graha': row['graha'],
-                        'transit_to_house': row['primary_house'],
-                        'vedha_house': row['vedha_house'],
+                        'window_start': row['window_start'],
+                        'window_end': row['window_end'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_vedha")
@@ -1057,24 +1080,41 @@ class KaSangamWriter(WriterBase):
                 pass
 
         # C12: tajika year lords (may not exist yet — pre-L3 builds)
+        #
+        # NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This query used to select
+        # `varshesha, muntha` — neither column exists on
+        # l1_tajik_varsha_year_lords (real columns: year_lord, a plain lord-name
+        # string; muntha_position_jsonb, a JSON object with a top-level 'lord'
+        # key). Every call raised "column does not exist", silently swallowed
+        # by the surrounding try/except (designed for "table doesn't exist yet",
+        # not "my query is wrong"), so tajika_year_lords was permanently empty —
+        # the actual, real cause of C12's 100% zero, not a genuine data gap
+        # (240 rows exist for the canonical chart). Also added the missing
+        # ayanamsha_id pin: without it, 5 rows (one per ayanamsha) come back per
+        # varsha_year, and the unpinned duplicate the loop in
+        # _c12_tajika_score would have picked from was arbitrary.
         try:
             with conn.cursor() as sp:
                 sp.execute("SAVEPOINT sp_enrichment_tajika")
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT varsha_year, varshesha, muntha
+                    SELECT varsha_year, year_lord, muntha_position_jsonb,
+                           varsha_start_iso, varsha_end_iso
                     FROM l1_tajik_varsha_year_lords
-                    WHERE chart_id = %s
+                    WHERE chart_id = %s AND ayanamsha_id = 'lahiri_chitrapaksha'
                     ORDER BY varsha_year
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
+                    muntha_position = row['muntha_position_jsonb'] or {}
                     tajika_year_lords.append({
                         'varsha_year': row['varsha_year'],
-                        'varshesha': row['varshesha'],
-                        'muntha': row['muntha'],
+                        'varshesha': row['year_lord'],
+                        'muntha': muntha_position.get('lord'),
+                        'varsha_start': row['varsha_start_iso'],
+                        'varsha_end': row['varsha_end_iso'],
                     })
             with conn.cursor() as sp:
                 sp.execute("RELEASE SAVEPOINT sp_enrichment_tajika")

@@ -78,6 +78,75 @@ describe('buildWebCompletenessReceipt', () => {
     expect(r2.served).toHaveLength(0)
   })
 
+  // V3-E-034 (EDIR_V3_REGISTER_v1_0.md, DEFECT, S3): a registry-lookup miss ("tool authorized,
+  // but getToolByName could not resolve it") and a genuine non-authorization ("tool never
+  // executed for this request at all") both used to collapse into the SAME empty_reason,
+  // 'route_not_invoked' — because a registry-lookup miss produced NO toolEventLog entry at all,
+  // so buildWebCompletenessReceipt's `!outcome` branch could not tell them apart. Fixed:
+  // evidence_stage.ts now pushes a toolEventLog row with `error_kind:'registry_unresolvable'`
+  // for a registry-lookup miss, and this file gives that case its own distinct empty_reason.
+  describe('V3-E-034 — registry-lookup-miss is honestly distinguishable from genuine non-authorization', () => {
+    it('RED→GREEN: a mapped tool reported error_kind="registry_unresolvable" gets a DISTINCT empty_reason from a tool never invoked at all', () => {
+      const mappedRetrievalTools = Object.values(LIVE_TOOL_TO_RETRIEVAL)
+      expect(mappedRetrievalTools.length).toBeGreaterThan(0) // sanity: the fixture has ≥1 mapped tool to test against
+
+      // Case A: the tool was authorized and dispatch was attempted, but the registry bridge
+      // could not resolve it (the V3-E-034 case — before the fix, this outcome could not even
+      // be represented because evidence_stage never pushed a toolEventLog row for it).
+      const registryMiss: ToolExecutionOutcome[] = mappedRetrievalTools.map(name => ({
+        name,
+        status: 'error',
+        ok_count: 0,
+        error_kind: 'registry_unresolvable',
+      }))
+      const rMiss = buildWebCompletenessReceipt(tuple(), CHART, registryMiss)!
+
+      // Case B: genuine non-authorization — the tool simply never appears in toolOutcomes at
+      // all (the pre-existing, still-correct `route_not_invoked` path).
+      const rNeverAuthorized = buildWebCompletenessReceipt(tuple(), CHART, [])!
+
+      const missReasons = rMiss.empty.map(e => e.empty_reason)
+      const neverAuthorizedReasons = rNeverAuthorized.empty.map(e => e.empty_reason)
+
+      // THE FIX: at least one empty item now carries the new, distinct reason string — before
+      // this fix, a registry-lookup miss produced ZERO toolEventLog entries, so this outcome
+      // could not even be constructed; `outcomeByTool.get(name)` would have been undefined and
+      // every mapped tool would have fallen into the SAME `route_not_invoked` bucket as case B.
+      const registryUnresolvableReasons = missReasons.filter(r => r.startsWith('registry_unresolvable'))
+      expect(registryUnresolvableReasons.length).toBeGreaterThan(0)
+
+      // Honesty: the registry-unresolvable reason never appears for the genuinely-never-invoked
+      // case, and `route_not_invoked` never appears for the registry-miss case's mapped items —
+      // the two failure classes are no longer indistinguishable.
+      expect(neverAuthorizedReasons.some(r => r.startsWith('registry_unresolvable'))).toBe(false)
+      const anyRouteNotInvokedInMissCase = missReasons.some(r =>
+        mappedRetrievalTools.some(name => r === `route_not_invoked: retrieval tool "${name}" was not executed for this request`),
+      )
+      expect(anyRouteNotInvokedInMissCase).toBe(false)
+    })
+
+    it('a mapped tool that errored with error_kind="dispatch_error" (or omitted entirely) still reports the pre-existing generic route_error — the new reason is additive, not a silent behavior change', () => {
+      const mappedRetrievalTools = Object.values(LIVE_TOOL_TO_RETRIEVAL)
+
+      // Explicit dispatch_error (the catch-branch shape after this fix).
+      const explicit: ToolExecutionOutcome[] = mappedRetrievalTools.map(name => ({
+        name,
+        status: 'error',
+        ok_count: 0,
+        error_kind: 'dispatch_error',
+      }))
+      const rExplicit = buildWebCompletenessReceipt(tuple(), CHART, explicit)!
+      expect(rExplicit.empty.some(e => e.empty_reason === 'route_error')).toBe(true)
+      expect(rExplicit.empty.every(e => !e.empty_reason.startsWith('registry_unresolvable'))).toBe(true)
+
+      // error_kind entirely omitted (any pre-existing caller that hasn't adopted the field).
+      const omitted: ToolExecutionOutcome[] = mappedRetrievalTools.map(name => ({ name, status: 'error', ok_count: 0 }))
+      const rOmitted = buildWebCompletenessReceipt(tuple(), CHART, omitted)!
+      expect(rOmitted.empty.some(e => e.empty_reason === 'route_error')).toBe(true)
+      expect(rOmitted.empty.every(e => !e.empty_reason.startsWith('registry_unresolvable'))).toBe(true)
+    })
+  })
+
   it('returns a receipt for every registered intent family (total mapping, never throws)', () => {
     const domainSets: ClassifierScopeTuple['domains'][] = [['career'], ['wealth'], ['health'], ['marriage'], ['general']]
     for (const domains of domainSets) {

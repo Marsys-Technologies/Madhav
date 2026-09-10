@@ -25,6 +25,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
 
@@ -43,6 +44,14 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const chartId = req.nextUrl.searchParams.get('chart_id')
   if (!chartId) return NextResponse.json({ error: 'chart_id required' }, { status: 400 })
+
+  // V3-E-011 finding 3: this route returned another tenant's build_status,
+  // ready/missing asset lists to any authenticated user — a cross-tenant read
+  // disclosure. `requireChartPermission` (read: owner, super_admin, or a
+  // chart_grants 'view' grantee) gates this before any of the readiness data
+  // below is queried.
+  const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+  if (denied) return denied
 
   // ── 1. Get all known active data asset_ids from asset_registry ──────────────
   // asset_registry.depends_on is the authoritative DAG source; build_dependencies

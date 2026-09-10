@@ -133,7 +133,7 @@ def interval_from_window(
         "tier": _validate_enum(str(window["confidence_tier"]), TIERS, "tier"),
         "shape": _validate_enum(str(window["temporal_shape"]), SHAPES, "shape"),
         "label": str(window.get("label") or window["event_class"]),
-        "expected_count": float(window["expected_count"]),
+        "expected_count": None if window.get("baseline_is_synthetic") else float(window["expected_count"]),
         "null_p": None if window.get("null_p") is None else float(window["null_p"]),
         "precision_regime": str(window.get("precision_regime") or PRECISION_DAY_GRADE),
     }

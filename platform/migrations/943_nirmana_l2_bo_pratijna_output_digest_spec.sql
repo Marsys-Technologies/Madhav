@@ -1,0 +1,124 @@
+-- 943_nirmana_l2_bo_pratijna_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- past the originally-named 7-asset list (fully dispositioned as of
+-- #1770's ~22:55Z 2026-09-08 comment; bo_drishti #2476 was the first pick
+-- from the wider fleet-wide audit). This cycle screened several more
+-- candidates from that list before picking bo_pratijna:
+--
+--   - bo_chart_gestalt: RULED OUT. TWO independent contamination vectors
+--     found this cycle: (1) `central_dynamics_ids` embeds `cell_id` read
+--     straight from `bodha_cdlm_cells`, which is written by `bo_sangati`
+--     (writer line ~280: `"cell_id": str(uuid.uuid4())` -- bare, one of
+--     the already-known #1888-class-blocked writers); (2)
+--     `center_of_gravity_node_ids` embeds `bodha_cgm_paths.to_node_id`
+--     for final-dispositor nodes -- `bo_cgm_paths` is ALSO already on the
+--     do-not-attempt list for its own #1888-class defect, and live-checked
+--     this cycle: its `to_node_id` values for the canonical chart's
+--     `is_final_dispositor = true` rows do not even resolve against
+--     `bodha_cgm_nodes` (0 rows on a plain `node_id` join with no
+--     chart/aya filter) -- an orphaned/stale reference, not just a
+--     non-deterministic-but-resolvable one.
+--   - bo_cdlm_summary: its third component (`bodha_cdlm_pattern_clusters`,
+--     `involved_cells_array`) embeds the same `bo_sangati`-sourced
+--     `cell_id` as above -- same contamination class, blocks that one
+--     component (the other two, `bodha_cdlm_chart_summary` and
+--     `bodha_cdlm_domain_rollups`, are aggregate statistics with no raw
+--     id embeds, but a partial-asset spec excluding a whole live component
+--     table is not attempted here -- parking the full asset for now).
+--   - bo_anveshana: RULED OUT. Its broker-detection primitive
+--     (`_fetch_dict` at ~line 328, function finding CGM articulation
+--     points) reads `bodha_cgm_nodes` with NO `node_type` filter --
+--     confirmed by reading the SQL directly -- so `broker.get("node_id")`
+--     (embedded into `bodha_discoveries`/`bodha_anomalies` jsonb payload
+--     columns) can be sourced from a `bo_karanajala`-written node
+--     (node_type IN ('arudha','special_lagna'), bare-uuid4, NOT fixed),
+--     not just the `bo_bimba`-written 'graha'/'yoga' nodes bo_drishti's
+--     equivalent check (941) cleared. This is a THIRD confirmed instance
+--     of "a content column with a real deterministic hash function can
+--     still be non-deterministic because its inputs read a still-broken
+--     co-writer's table without narrowing to that co-writer's clean slice"
+--     -- same class as bo_yantra_mechanism (prior cycle), now also
+--     bo_chart_gestalt and bo_anveshana.
+--   - bg_sign_medical: SCOPED OUT, not a contamination case. Confirmed via
+--     `\d bg_sign_medical`: no `chart_id` column at all -- a genuinely
+--     global L0 reference table (12 zodiac signs), upsert idempotency per
+--     N.3, not the per-chart delete-then-insert model this output-digest
+--     mechanism's `where_equals: {chart_id: ...}` scoping assumes. Left
+--     for a future decision on whether/how a global-table digest model
+--     should even exist; not attempted as an L1-authorable per-chart spec.
+--
+-- bo_pratijna (BoPratijnaWriter, pipeline/orchestrator/writers/
+-- bo_pratijna.py, @register at line 421) is the SOLE writer of
+-- bodha_pratijna -- confirmed the two sibling files in the same module
+-- family (bo_pratijna_v4_engine.py, bo_pratijna_karyatva.py) have NO
+-- `@register` and NO INSERT/UPDATE of their own; both are pure helper
+-- libraries imported by bo_pratijna.py, not separate writers or a
+-- co-writer risk.
+--
+-- The writer's own INSERT statement (line ~216) declares the natural key
+-- directly: `ON CONFLICT (chart_id, ayanamsha_id, event_class_id)` --
+-- the strongest possible signal, not an inference. Live-verified for the
+-- canonical chart: 135 rows, 135 distinct (chart_id, ayanamsha_id,
+-- event_class_id) tuples, 0 NULLs on any of the three columns. `event_class_id`
+-- has its own FK to `brahma_event_ontology` (stable L0 reference), not an
+-- embedded content value.
+--
+-- `pratijna_id` is a bare `uuid.uuid4()` (writer lines ~360, ~402; also the
+-- column's own DB default `gen_random_uuid()`) -- excluded from both
+-- key_columns and value_columns per the established random-PK-exclusion
+-- rule.
+--
+-- Contamination check (the same class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana this cycle and last): grepped bo_pratijna.py
+-- for `node_id`, `cell_id`, `bodha_cgm_nodes`, `bodha_cdlm_cells` -- zero
+-- hits. `supporting_signal_ids`/`contradicting_signal_ids` reference
+-- `bodha_msr_signals.signal_id` only -- the same already-established
+-- deterministic key every prior spec in this series relies on. No
+-- contamination risk found.
+--
+-- value_columns = every live column on bodha_pratijna EXCEPT pratijna_id
+-- (random uuid, excluded above) and {build_id, computed_at} (the standard
+-- table-invariant exclusion set used by every prior spec in this series).
+-- Live schema re-verified via psql \d bodha_pratijna immediately before
+-- authoring this migration: 16 columns total, 13 in the spec. Checked
+-- every nullable column for a 100%-NULL case on the canonical chart (the
+-- pgvector-exclusion precedent): only `varga_confirmation` has any NULLs
+-- (5 of 135), well short of 100% -- kept, same as any other partially-NULL
+-- value column in this series.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                            # == the literal below
+--   print(_validate_spec('bo_pratijna', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur, asset_id='bo_pratijna')
+-- -> got back a clean digest hex
+-- (328571902394f23d166e956ec0a3b21b8ed7f5856ef12d115e81713a5e11bcbe,
+-- no exception, key-preflight passed) -> conn.rollback() -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and confirmed
+-- 0 rows for bo_pratijna, i.e. genuinely rolled back, nothing persisted by
+-- the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_pratijna' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_pratijna',
+  '8701e846fd16d2101442eb757f9d4f6bf6e836da3c819f0dc36027063d7c73bb',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_pratijna","relation":"bodha_pratijna","key_columns":["ayanamsha_id","event_class_id"],"value_columns":["chart_id","ayanamsha_id","event_class_id","status","grade","supporting_signal_ids","contradicting_signal_ids","varga_confirmation","derivation","formula_version","engine_version","occurrence_grade","condition_grade"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

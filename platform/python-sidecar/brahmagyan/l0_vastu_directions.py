@@ -5,7 +5,7 @@ brahmagyan.l0_vastu_directions — Astrovastu Gate-1 L0 Brahmagyan seed
 Seeds two L0 static reference tables:
   bg_vastu_directions           — 8 compass directions with ruling graha, element,
                                    color, and classical citation (Mayamata Ch.6)
-  bg_vastu_direction_remedials  — 2–3 Vastu remedies per direction (~22 rows)
+  bg_vastu_direction_remedials  — 3 Vastu remedies per direction (24 rows)
 
 Volume floors:
   bg_vastu_directions:          8 rows (one per compass direction)
@@ -15,7 +15,7 @@ All rows carry classical_citation — no row is citationless.
 
 Sources: Vastu Shastra (Mayamata Ch.6), Brihat Samhita Ch.53.
 
-Idempotency: L0 pattern — ON CONFLICT (direction) DO UPDATE / ON CONFLICT DO NOTHING.
+Idempotency: both tables converge with ON CONFLICT DO UPDATE.
 """
 from __future__ import annotations
 
@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 MAYAMATA_CH6 = "Vastu Shastra (Mayamata Ch.6)"
 BRIHAT_SAMHITA_CH53 = "Brihat Samhita Ch.53 (Vastu-vidya)"
+MAYAMATA_REMEDIAL = "Mayamata Ch.6"
+BRIHAT_SAMHITA_REMEDIAL = "Brihat Samhita Ch.53"
 VASTU_TRADITION = "Vastu Shastra tradition (Nairitya corner)"
 VASTU_TRAD_GENERAL = "Vastu Shastra tradition"
 
@@ -127,14 +129,14 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "North",
         "remedy_type": "material",
         "remedy_description": "Use light metals or glass in north walls to enhance Water element conductivity",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     # South (Mars/Fire)
     {
         "direction": "South",
         "remedy_type": "color",
         "remedy_description": "Use red or earthy tones in south zone to honour Mars rulership and protect against loss",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "South",
@@ -146,20 +148,20 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "South",
         "remedy_type": "space",
         "remedy_description": "Keep south zone heavier and closed; avoid large windows or open gates in this direction",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     # East (Sun/Fire)
     {
         "direction": "East",
         "remedy_type": "space",
         "remedy_description": "Keep east zone open and well-lit; sunrise energy strengthens vitality and authority (Sun domain)",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     {
         "direction": "East",
         "remedy_type": "color",
         "remedy_description": "Use orange or golden hues in east-facing spaces to amplify solar Agni quality",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "East",
@@ -172,13 +174,13 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "West",
         "remedy_type": "color",
         "remedy_description": "Use grey, indigo, or black in west zone; Saturn governs discipline and karma here",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     {
         "direction": "West",
         "remedy_type": "symbol",
         "remedy_description": "Place iron objects or Shani yantra in west to balance Saturn energy constructively",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "West",
@@ -191,13 +193,13 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "Northeast",
         "remedy_type": "space",
         "remedy_description": "Keep northeast (Ishanya) zone clean, open, and free of heavy objects; Jupiter and Ether require lightness",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     {
         "direction": "Northeast",
         "remedy_type": "color",
         "remedy_description": "Use yellow or gold in northeast puja or meditation space to amplify Guru (Jupiter) grace",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "Northeast",
@@ -210,13 +212,13 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "Southeast",
         "remedy_type": "function",
         "remedy_description": "Place kitchen (fire/Agni zone) in southeast; Venus and Fire element converge here",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     {
         "direction": "Southeast",
         "remedy_type": "color",
         "remedy_description": "Use white, pink, or cream tones in southeast to harmonise Venus energy and prevent conflicts",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "Southeast",
@@ -229,13 +231,13 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "Northwest",
         "remedy_type": "function",
         "remedy_description": "Northwest suits storage rooms, guest rooms, or granaries; Moon governs transitory stays",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
     {
         "direction": "Northwest",
         "remedy_type": "color",
         "remedy_description": "Use white or silver tones in northwest to align with lunar energy and invite calm emotions",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "Northwest",
@@ -254,13 +256,13 @@ VASTU_DIRECTION_REMEDIALS = [
         "direction": "Southwest",
         "remedy_type": "color",
         "remedy_description": "Use earthy tones — brown, terracotta — in southwest to ground Rahu energy and prevent instability",
-        "classical_citation": BRIHAT_SAMHITA_CH53,
+        "classical_citation": BRIHAT_SAMHITA_REMEDIAL,
     },
     {
         "direction": "Southwest",
         "remedy_type": "symbol",
         "remedy_description": "Avoid toilets or water bodies in southwest; place heavy furniture or master bedroom here to suppress negative Nairitya influence",
-        "classical_citation": MAYAMATA_CH6,
+        "classical_citation": MAYAMATA_REMEDIAL,
     },
 ]
 
@@ -312,7 +314,7 @@ def seed_vastu_directions(
             )
             counts["bg_vastu_directions"] += 1
 
-        # ── bg_vastu_direction_remedials — ON CONFLICT DO NOTHING ───────────
+        # ── bg_vastu_direction_remedials — deterministic repair replay ──────
         for row in VASTU_DIRECTION_REMEDIALS:
             cur.execute(
                 """
@@ -320,7 +322,9 @@ def seed_vastu_directions(
                     (direction, remedy_type, remedy_description, classical_citation)
                 VALUES
                     (%(direction)s, %(remedy_type)s, %(remedy_description)s, %(classical_citation)s)
-                ON CONFLICT (direction, remedy_type) DO NOTHING
+                ON CONFLICT (direction, remedy_type) DO UPDATE SET
+                    remedy_description = EXCLUDED.remedy_description,
+                    classical_citation = EXCLUDED.classical_citation
                 """,
                 row,
             )

@@ -1,0 +1,16 @@
+[
+  {
+    "fixtureId": "drift-001-saturn-then-jupiter",
+    "turnId": "b44bb28f-334d-45af-ba4a-bd3f4714584e",
+    "conversationId": "8a86b7aa-7379-45b8-97f1-547b517d1d32",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "outcome-001-saturn-ad-2026-authority-transition",
+    "turnId": "6f7f39c0-6681-4cde-bd7e-735a892a582a",
+    "conversationId": "a8337d37-24c9-4b6d-a7f8-c01dfe8d475c",
+    "seedConversationId": null,
+    "realChart": true
+  }
+]

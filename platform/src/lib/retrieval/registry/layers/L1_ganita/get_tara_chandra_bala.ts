@@ -38,28 +38,51 @@ export const getTaraChanndraBalaCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 60, always_include: false },
   },
+  // F-B28 (L1_W1_ANALYSIS_BATCH_B.md, MUST, §N.6 items 3 & 4): total previously reported
+  // the PAGE size (result.rows.length), not the true matching count -- a truncated answer
+  // was indistinguishable from a complete one. Now backed by a real COUNT(*) query.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id'],
+    empty_reason: true,
+  },
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
       const limit   = Math.min((args.limit as number) ?? 200, 1000)
       const offset  = (args.offset as number) ?? 0
 
-      const params: unknown[] = [chartId, ['tara_bala_natal_baseline', 'chandra_bala_natal_baseline'], limit, offset]
-      let sql = `
+      const whereParams: unknown[] = [chartId, ['tara_bala_natal_baseline', 'chandra_bala_natal_baseline']]
+      let where = `chart_id = $1 AND fact_category = ANY($2::text[])`
+      if (args.ayanamsha_id) {
+        whereParams.push(args.ayanamsha_id as string)
+        where += ` AND ayanamsha_id = $${whereParams.length}`
+      }
+
+      const sql = `
         SELECT fact_id, fact_category, ayanamsha_id, fact_key, fact_value_num,
                fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
         FROM chart_facts
-        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
-      `
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+        WHERE ${where}
+        ORDER BY fact_category, ayanamsha_id, fact_key
+        LIMIT $${whereParams.length + 1} OFFSET $${whereParams.length + 2}`
 
-      const result = await query<Record<string, unknown>>(sql, params)
+      const [rowsRes, countRes] = await Promise.all([
+        query<Record<string, unknown>>(sql, [...whereParams, limit, offset]),
+        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM chart_facts WHERE ${where}`, whereParams),
+      ])
+      const rows = rowsRes.rows ?? []
+      const total_matching = Number(countRes.rows[0]?.total ?? 0)
       return {
-        content: { chart_id: chartId, rows: result.rows ?? [], total: result.rows?.length ?? 0 },
+        content: {
+          chart_id: chartId,
+          rows,
+          total_matching,
+          more_available: total_matching > rows.length,
+          ...(total_matching === 0
+            ? { empty_reason: `No Tara Bala/Chandra Bala facts for chart ${chartId}${args.ayanamsha_id ? ` ayanamsha '${args.ayanamsha_id}'` : ''}.` }
+            : {}),
+        },
         is_error: false,
       }
     } catch (err) {

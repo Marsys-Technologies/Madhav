@@ -10,9 +10,14 @@ Covers:
     planets hit; a single-planet hit does not.
   - Saham current: Dhana-saham fires on transit conjunction and on
     dasha-lord match.
-  - Vedha-filter gap: a case the base `_c11_vedha_factor` (fed the wrong
-    sign-number argument at both ka_sangam.engine call sites) misses, that
-    `vedha_factor_corrected` (fed the correct house-from-Moon) catches.
+  - (Vedha-filter gap coverage removed, F-SANGAM-5/L3-W3: the diagnostic
+    this covered — `_c11_vedha_factor` fed a raw sign number vs
+    `vedha_factor_corrected` fed the correct house-from-Moon — was superseded
+    when F-SANGAM-5 replaced the whole house-number approach with date-range
+    matching against kala_vedha_gochara; see trigger.py's own comment where
+    T-5.4 used to live. F-SANGAM-5's own coverage lives in
+    tests/test_u3_convergence_currents.py::TestVedhaVeto and
+    tests/l3/test_ka_sangam.py::TestFSangam5VedhaWired.)
   - school_consensus honest not_computed flag vs a real computed value.
   - audit_binder_stub_predicates: honest, code-observed stub count (NOT the
     doctrine doc's unverified "~90%" claim).
@@ -202,70 +207,24 @@ class TestSahamCurrent:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5. Vedha-filter extension — catches a case the base filter misses (CR-102)
+# 5. Vedha-filter extension (REMOVED, F-SANGAM-5/L3-W3 — see below)
 # ═══════════════════════════════════════════════════════════════════════════
-
-class TestVedhaFilterGap:
-    def test_corrected_filter_catches_sign_vs_house_from_moon_gap(self):
-        """
-        Moon in Cancer (0-based idx 3). Jupiter transits Taurus (1-based sign
-        idx 2). Classical house-from-Moon = ((2-1-3) % 12) + 1 = 11 (the
-        11th-from-Moon, Jupiter's BEST transit per BPHS Gochara — see
-        brahmagyan/l0_transit.py: "Jupiter 11th from Moon — best transit;
-        vedha from 8th"). A vedha rule keys off transit_to_house=11.
-
-        The BASE `_c11_vedha_factor` (as called by both ka_sangam.engine
-        call sites) is fed the RASI SIGN NUMBER (2) instead of the
-        house-from-Moon (11) — 2 != 11, so it misses the rule entirely and
-        reports 1.0 (neutral / no vedha), even though this transit IS
-        classically vedha-eligible.
-        """
-        from services.kala_trigger.trigger import vedha_factor_corrected, house_from_moon
-        from services.ka_sangam.engine import _c11_vedha_factor, EnrichmentContext
-
-        vedha_rules = [{"graha": "Jupiter", "transit_to_house": 11, "vedha_house": 8}]
-        moon_sign_idx_0based = 3   # Cancer
-        transit_sign_idx_1based = 2  # Taurus
-
-        assert house_from_moon(transit_sign_idx_1based, moon_sign_idx_0based) == 11
-
-        # Base filter: fed the sign number directly (the actual call-site bug).
-        old_factor = _c11_vedha_factor(
-            "Jupiter", transit_sign_idx_1based, EnrichmentContext(vedha_rules=vedha_rules)
-        )
-        assert old_factor == pytest.approx(1.0), (
-            "base filter should MISS this rule (fed sign number, not house-from-Moon)"
-        )
-
-        # Corrected filter: fed the real house-from-Moon.
-        corrected_factor = vedha_factor_corrected(
-            "Jupiter", transit_sign_idx_1based, moon_sign_idx_0based, vedha_rules
-        )
-        assert corrected_factor == pytest.approx(0.3), (
-            "corrected filter should CATCH the vedha rule"
-        )
-        assert corrected_factor < old_factor
-
-    def test_compute_trigger_currents_reports_gap_caught(self):
-        from services.kala_trigger.trigger import compute_trigger_currents
-
-        vedha_rules = [{"graha": "Jupiter", "transit_to_house": 11, "vedha_house": 8}]
-        trig = compute_trigger_currents(
-            chart_id="test-chart-vedha",
-            vedha_rules=vedha_rules,
-            vedha_planet="Jupiter",
-            transit_sign_idx_1based=2,
-            moon_sign_idx_0based=3,
-        )
-        vf = trig["components"]["vedha_filter"]
-        assert vf["gap_caught"] is True
-        assert vf["corrected_factor_house_from_moon"] < vf["old_factor_sign_number_bug"]
-
-    def test_no_vedha_planet_reports_none(self):
-        from services.kala_trigger.trigger import compute_trigger_currents
-
-        trig = compute_trigger_currents(chart_id="test-chart-no-vedha")
-        assert trig["components"]["vedha_filter"] is None
+#
+# This section formerly tested house_from_moon()/vedha_factor_corrected() and
+# compute_trigger_currents()'s components["vedha_filter"] diagnostic — a
+# CR-102 comparison between _c11_vedha_factor fed a raw sign number (a bug)
+# vs the same current fed the correct house-from-Moon (a fix for that one
+# bug). F-SANGAM-5 (L3-W3) found a DEEPER defect in the same current: its
+# vedha_rules data source (bg_transit_rules WHERE rule_type='vedha') never
+# matched any row at all, in EITHER reference frame — measured live, 0 of 0
+# — and replaced the whole house-number approach with date-range matching
+# against kala_vedha_gochara (the real, populated, per-chart source). That
+# fix removed house_from_moon()/vedha_factor_corrected() and the
+# components["vedha_filter"] diagnostic entirely (see trigger.py's own
+# comment at their former location) rather than updating them to compare two
+# calls that would now always be identical. F-SANGAM-5's own test coverage
+# lives in tests/test_u3_convergence_currents.py::TestVedhaVeto and
+# tests/l3/test_ka_sangam.py::TestFSangam5VedhaWired.
 
 
 # ═══════════════════════════════════════════════════════════════════════════

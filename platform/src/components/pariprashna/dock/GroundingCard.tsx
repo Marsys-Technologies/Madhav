@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Citation } from '../state/types'
+import type { ConfidenceType } from '@/lib/pariprashna/confidence/types'
 
 const GRADE_GLYPH: Record<Citation['grade'], string> = {
   confirmed: '●',
@@ -17,14 +18,44 @@ const GRADE_LABEL: Record<Citation['grade'], string> = {
 }
 
 /**
+ * P2-close Lane K (PPR-03 typed confidence, G3-C). Reader-facing labels for
+ * the 5-type enum in `confidence/types.ts` — plain-language, never the
+ * internal type name verbatim (CLAUDE.md §L "no internal register in prose").
+ */
+const CONFIDENCE_TYPE_LABEL: Record<ConfidenceType, string> = {
+  deterministic_fact: 'chart fact',
+  structural_prior: 'structural signal',
+  classical_prior: 'classical source',
+  empirically_calibrated: 'calibrated',
+  unresolved: 'untyped',
+}
+
+/**
  * One grounding row (§6.7 card / §N.6 density principle): confirmed and
  * catalog-only findings are never flattened together — shape + label
  * differentiate, never color alone. Click opens the mono audit detail
  * beneath (fact/citation ref), same affordance for every entitlement tier
  * (P4) — only whether it *resolves* to raw data differs, never whether the
  * affordance exists.
+ *
+ * `confidenceType` (Lane K): the PPR-03 typing for THIS citation's own `ref`,
+ * looked up by `RightDock.tsx` from the turn's receipt
+ * (`confidence_typing.entries[].ref`, the same token as `citation.ref` — see
+ * `TypedConfidenceEntrySchema`'s own doc comment). `undefined` when the
+ * receipt hasn't arrived yet, the flag was off this turn, or this specific
+ * ref wasn't typed — renders nothing rather than a guessed type (§N.7 item 6).
  */
-export function GroundingCard({ citation, highlighted, registerRef }: { citation: Citation; highlighted: boolean; registerRef?: (el: HTMLDivElement | null) => void }) {
+export function GroundingCard({
+  citation,
+  highlighted,
+  registerRef,
+  confidenceType,
+}: {
+  citation: Citation
+  highlighted: boolean
+  registerRef?: (el: HTMLDivElement | null) => void
+  confidenceType?: ConfidenceType
+}) {
   const [open, setOpen] = useState(false)
   return (
     <div>
@@ -84,6 +115,12 @@ export function GroundingCard({ citation, highlighted, registerRef }: { citation
           }}
         >
           {citation.ref}
+          {confidenceType && (
+            <>
+              {'  ·  '}
+              <span style={{ color: 'var(--pp-gold-tertiary)' }}>{CONFIDENCE_TYPE_LABEL[confidenceType]}</span>
+            </>
+          )}
         </div>
       )}
     </div>

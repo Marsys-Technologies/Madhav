@@ -4,7 +4,7 @@
   "frozen_at_commit": "5f5033a55def0b9006aec29a66946b7a57f25121",
   "frozen_by": "SAMAPTI lane B-MIGGUARD (brief v2.0 §4.4 / MIG-1)",
   "group_count": 35,
-  "disclosed_additions_count": 1,
+  "disclosed_additions_count": 2,
   "legacy_duplicate_groups": {
     "0": [
       "platform/supabase/migrations/0000_seed_legacy_applied.sql",
@@ -158,6 +158,20 @@
       "landed_at": "2026-07-30",
       "disclosed_via": "DVA RULING 70 (00_ARCHITECTURE/briefs/samapti/SAMAPTI_DVARAPALA_LEDGER.md), residual R6 in MIGRATION_AND_MERGE_PROTOCOL_v1_0.md",
       "fixed_by_samapti": false
+    },
+    "588": {
+      "status": "DISCLOSED — NOT RESOLVED. Both immutable filenames are applied in production and now coexist in source; this entry records the collision without renaming either applied artifact.",
+      "files": [
+        "platform/migrations/588_remove_asset_build_protection.sql",
+        "platform/supabase/migrations/588_samiksha_digest_journal.sql"
+      ],
+      "owner": "NIRMĀṆA (platform/migrations/588_remove_asset_build_protection.sql) + PARIPRAŚNA p4-i, PR #1497 (platform/supabase/migrations/588_samiksha_digest_journal.sql)",
+      "landed_at": "2026-08-23 in production; source reconciliation prepared 2026-08-25",
+      "disclosed_via": "NIRMĀṆA ruling D-10 part 3, 00_ARCHITECTURE/autonomy/state/DECISIONS.jsonl (evidence: 00_ARCHITECTURE/control/MIGRATION_588_589_REGISTRATION_v1_0.md); Dvārapāla RULING 70 route",
+      "fixed_by_samapti": false,
+      "production_evidence": "_migrations_applied id 447 = 588_samiksha_digest_journal.sql and id 448 = 588_remove_asset_build_protection.sql; both carry distinct immutable filename and hash identities.",
+      "why_not_renumbered": "migrate.ts keys _migrations_applied on the bare filename. Renaming either already-applied file would sever the production-ledger identity and violate the applied-migration immutability rule.",
+      "what_would_actually_fix_it": "A separately authorised cross-campaign ledger migration would have to rename one file and atomically update its filename identity in every applied environment. Until then this remains an itemised residual, never a resolved or green claim."
     }
   }
 }

@@ -5,6 +5,7 @@ Runs WITHOUT a real DB connection — validates data module constants
 and writer dry_run path. Matching the pattern from existing bg_reference tests.
 """
 import pytest
+import inspect
 from brahmagyan.l0_nakshatra import (
     NAKSHATRAS_ENRICHED, PADAS, MATRICES,
     seed_nakshatra, _AKSHARAS,
@@ -203,6 +204,13 @@ class TestMatrices:
 # ── Writer: dry_run + registration ───────────────────────────────────────────
 
 class TestWriter:
+    def test_rebuild_replaces_all_owned_rows_instead_of_preserving_stale_content(self):
+        source = inspect.getsource(seed_nakshatra)
+        assert "DELETE FROM reference_nakshatra_matrix" in source
+        assert "DELETE FROM reference_nakshatra_pada" in source
+        assert "DELETE FROM reference_nakshatra" in source
+        assert "ON CONFLICT" not in source
+
     def test_dry_run_returns_counts(self):
         result = seed_nakshatra(conn=None, build_id="test", dry_run=True)
         assert result['reference_nakshatra'] == 28

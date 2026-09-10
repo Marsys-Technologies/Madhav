@@ -18,6 +18,10 @@
  * for the honest list of fields synthesized where S-1's wire is minimal.
  */
 
+import type { StructuredPredictionCandidate } from '@/lib/pariprashna/samiksha/detector'
+import type { ReceiptInterpretationSets } from '@/lib/pariprashna/interpretation/schema'
+import type { AcharyaReadingReceipt } from '@/lib/pariprashna/receipt/schema'
+
 // ── Roles / grades / block kinds ────────────────────────────────────────────
 
 export type ReadingRole = 'verdict' | 'elaboration' | 'verse' | 'caveat'
@@ -58,12 +62,23 @@ export interface TableBlockContent {
   rows: string[][]
 }
 
+/** A table embedded inside a `paragraph` block, not occupying the whole
+ *  block (DD-22, approach (c)). `start`/`end` are exact character offsets
+ *  into the block's own `html` text — see `ParagraphBlock` for how they're
+ *  used to slice prose/table segments. */
+export interface TableSpan {
+  start: number
+  end: number
+  table: TableBlockContent
+}
+
 export interface CommittedBlock {
   id: string
   kind: BlockKind
   role?: ReadingRole
   html: string // reader-safe HTML/text with citation sentinels already resolved to chip markup tokens
   table?: TableBlockContent
+  tableSpans?: TableSpan[]
   gapText?: string
   prediction?: PredictionCardData
   seamSummary?: string // for kind === 'seam': the settled divider text
@@ -95,6 +110,20 @@ export interface GroundingSummary {
   elapsedLabel: string
   compositionNote?: string // "Composed from complete house coverage" (dossier route)
   gradeSummaryLabel: string // "Core claim: WELL-GROUNDED" | "Honest gap — silence verified…"
+  /**
+   * G2-B (PPR-08/FD-2/FD-6). "server" when `gradeSummaryLabel` (and
+   * `completenessLine`, when present) were derived from the wire's
+   * server-computed `turn.commit.grounding_summary` (the server's own
+   * citation-resolution ledger + floor/completeness receipt — never
+   * re-derived client-side). "client_estimate" is the DISCLOSED degrade path:
+   * the server sent no summary this turn (flag off, or none built), so this
+   * turn's rollup is the client's own citation-tally guess and must be
+   * labeled as such wherever it is shown — never rendered indistinguishably
+   * from a server-derived summary (§N.7 item 6).
+   */
+  source: 'server' | 'client_estimate'
+  /** Server-derived only (`source === 'server'`) — e.g. "4/6 floor items served". */
+  completenessLine?: string
 }
 
 export type ClassifiedErrorKind =
@@ -103,6 +132,13 @@ export type ClassifiedErrorKind =
   | 'timeout'
   | 'network'
   | 'auth'
+  // V3-E-041 fix: entitlement/consent refusal kinds — mirrors
+  // `PariprashnaErrorKind` in `lib/pariprashna/errors/classify.ts`, the
+  // sole place that constructs a `ClassifiedError`.
+  | 'not_authorized'
+  | 'chart_not_found'
+  | 'consent_required'
+  | 'conversation_not_found'
   | 'unknown'
 
 export interface ClassifiedError {
@@ -121,6 +157,52 @@ export type TurnStatus =
   | 'settled'
   | 'interrupted'
   | 'errored'
+
+/**
+ * A detected, ALREADY-PERSISTED prediction candidate awaiting the reader's
+ * one-tap confirm (lane P2-A / G2-A · FD-4). `partId` is the REAL
+ * `message_parts.id` the server minted at commit — never a client-guessed
+ * id — so `LogToSamiksha`'s POST to `/api/pariprashna/samiksha/confirm` has
+ * a genuine FK to attach to. Arrives via the wire's `prediction_card` event,
+ * strictly AFTER the turn's parts are persisted (see
+ * `pipeline/persistence_stage.ts`), so it can land any time after that point
+ * in the stream — still well before `turn.close`.
+ */
+export interface PendingPredictionCandidate {
+  partId: string
+  conversationId: string
+  candidate: StructuredPredictionCandidate
+}
+
+/**
+ * P2-D (PPR-10, FD-9) — the settled_visual/durably_persisted split.
+ *
+ * `TurnState.status === 'settled'` is SETTLED_VISUAL: the reader sees a
+ * finished answer. It says nothing about whether the assistant turn is
+ * safely, irrecoverably stored — that is `TurnState.persistence`, tracked
+ * SEPARATELY:
+ *   'unknown' — no persistence signal has arrived yet (still streaming, or a
+ *               pre-P2-D wire that never emits one at all — see below).
+ *   'pending' — the write is underway/queued but not yet confirmed. An
+ *               HONEST intermediate state, never treated as durable.
+ *   'durable' — confirmed safely stored.
+ *   'failed'  — the write did not succeed. The turn's PROSE is unaffected
+ *               (it already rendered) — this is a storage-durability failure,
+ *               not a reading failure.
+ *
+ * Back-compat note: `turn.commit`'s `status: 'ok'` already meant "the write
+ * committed" in the pre-P2-D synchronous persistence path (see
+ * pipeline/persistence_stage.ts) — there was never actually a gap in that
+ * path, just no wire signal telling the client so. The reducer's `turn.commit`
+ * case therefore optimistically resolves `persistence` to 'durable' at commit
+ * time (never regressing an already-set value), so a pre-P2-D fixture/stream
+ * that never emits `turn.persisted` shows NO incomplete-turn banner — exactly
+ * today's behavior. A real `turn.persisted` event (only emitted by the new
+ * durable-persistence code path, gated behind
+ * `PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED`) can then REFINE that optimistic
+ * guess with the true state, including downgrading it back to 'pending'.
+ */
+export type PersistenceStatus = 'unknown' | 'pending' | 'durable' | 'failed'
 
 export interface ActiveSeam {
   blockId: string
@@ -156,6 +238,31 @@ export interface TurnState {
   citations: Record<number, Citation>
   grounding: GroundingSummary | null
   error: ClassifiedError | null
+  /** Detected prediction candidates awaiting the reader's confirm — see
+   *  `PendingPredictionCandidate`. Append-only; a candidate is never removed
+   *  from this list post-arrival (`LogToSamiksha` tracks its own
+   *  confirmed/dismissed UI state internally). */
+  pendingPredictionCandidates: PendingPredictionCandidate[]
+  /**
+   * Lane P2-C (PPR-09/16) — honest depth disclosure. The ACTUAL depth the
+   * planner's `scope_tuple` resolved to for this turn (server-derived,
+   * `plan_stage.ts`'s `reading_depth_received` grade), distinct from whatever
+   * depth the composer requested. `null` until the event arrives — including
+   * permanently, on a flag-OFF deploy or a turn the planner never scored — and
+   * is rendered as an honest absence, never a guessed value (§N.7 item 6).
+   */
+  readingDepthReceived: string | null
+  /**
+   * V3-E-023 (Paripraśna assurance, S2). `status === 'interrupted'` is
+   * reached via TWO genuinely different causes that must not share the same
+   * reader-facing copy: `'user_stop'` (CLIENT_STOP — a deliberate Stop
+   * click) and `'connection_lost'` (`snapshot.apply` forwarding
+   * `ring_buffer.ts`'s `finalizeInterruptedIfStale` — a real server-died/
+   * no-wire-activity timeout, `resume/route.ts`). `null` for every other
+   * status. Consumers (`WorkingBand.tsx`, `Turn.tsx`) branch on this rather
+   * than assuming the cause.
+   */
+  interruptedReason: 'user_stop' | 'connection_lost' | null
   /** Most-recently-applied event id (debug/telemetry only — NOT the dedup key). */
   lastEventId: string | null
   /**
@@ -169,6 +276,34 @@ export interface TurnState {
    */
   seenEventIds: Set<string>
   reconnectHollowCaret: boolean
+  /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment. */
+  persistence: PersistenceStatus
+  /**
+   * P2-close item 3. The full `AcharyaReadingReceipt` this turn's
+   * `receipt.define` event carried — the same validated object persisted to
+   * `conversation_messages.metadata_json`, now also reachable client-side.
+   * `null` until that event arrives (or permanently, on a flag-OFF deploy).
+   * `interpretationSets` below is a convenience projection of this same
+   * object's `interpretation_sets` field for G3-E's existing consumer; a
+   * future consumer needing the whole receipt (P3-D receipt-hash parity)
+   * reads this field directly rather than reconstructing it.
+   */
+  receipt: AcharyaReadingReceipt | null
+  /**
+   * Lane G3-E (PPR-05) — the reader-facing "Read it another way" / "What
+   * would change my mind" affordances (`dock/InterpretationSetsSection.tsx`)
+   * render from this field when populated. `interpretation_sets` (G3-B,
+   * PPR-02) is assembled server-side at PERSISTENCE time
+   * (`pipeline/persistence_stage.ts`), strictly AFTER `turn.commit` already
+   * went out over the wire — so this field stays `null` until the LATER
+   * `receipt.define` event arrives (P2-close item 3), same bootstrapping
+   * convention `readingDepthReceived` used before its own wire event
+   * existed. Populated by the reducer's `receipt.define` case from
+   * `receipt.interpretation_sets`, the same object the server persisted to
+   * `conversation_messages.metadata_json` — one validated object, not two
+   * independently-assembled copies.
+   */
+  interpretationSets: ReceiptInterpretationSets | null
 }
 
 export type SurfaceStatus = 'empty' | 'idle' | 'composing'
@@ -222,6 +357,7 @@ export type WireEvent =
       role?: ReadingRole
       html?: string
       table?: TableBlockContent
+      tableSpans?: TableSpan[]
       gapText?: string
       prediction?: PredictionCardData
       eventId: string
@@ -229,7 +365,32 @@ export type WireEvent =
   | { type: 'citation.define'; turnId: string; citation: Citation; eventId: string }
   | { type: 'flag'; turnId: string; flag: string; eventId: string }
   | { type: 'grade'; turnId: string; grade: Grade; note?: string; eventId: string }
-  | { type: 'turn.commit'; turnId: string; grounding: GroundingSummary; eventId: string }
+  /**
+   * Lane P2-C. Distinct from `grade` above (a different, S-3 citation-tier
+   * namespace) — the server's `reading_depth_received` grade subject maps
+   * here rather than through `mapGrade`, which has no case for it.
+   */
+  | { type: 'reading_depth.received'; turnId: string; depth: string; eventId: string }
+  | { type: 'receipt.define'; turnId: string; receipt: AcharyaReadingReceipt; eventId: string }
+  | {
+      type: 'turn.commit'
+      turnId: string
+      grounding: GroundingSummary
+      eventId: string
+      /**
+       * P2-D ADDITIVE: the underlying wire `turn.commit.status` ('ok'|'error'),
+       * forwarded so the reducer can seed `persistence` honestly (see
+       * `PersistenceStatus`). Optional — a pre-P2-D adapter/fixture that never
+       * sets this leaves `persistence` at 'unknown' until (if ever) a
+       * `turn.persisted` event arrives, which is a strict subset of today's
+       * behavior, never a regression (no existing consumer read this before).
+       */
+      persistStatus?: 'ok' | 'error'
+    }
+  /** P2-D (PPR-10, FD-9) — see `PersistenceStatus`'s doc comment on TurnState.
+   *  Never 'unknown' on the wire — that value means "no signal has arrived",
+   *  which is a client-side absence, not something a server ever asserts. */
+  | { type: 'turn.persisted'; turnId: string; status: Exclude<PersistenceStatus, 'unknown'>; detail?: string; eventId: string }
   | { type: 'turn.close'; turnId: string; eventId: string }
   | { type: 'error'; turnId: string; error: ClassifiedError; eventId: string }
   | { type: 'reconnecting'; turnId: string; eventId: string }
@@ -251,6 +412,19 @@ export type WireEvent =
       turnStatus: 'open' | 'closed' | 'interrupted'
       eventId: string
     }
+  /**
+   * PB-1... lane P2-A / G2-A ADDITIVE: a detected, already-persisted
+   * prediction candidate. See `PendingPredictionCandidate` for the field
+   * meanings — this is its wire-transport shape.
+   */
+  | {
+      type: 'prediction_card'
+      turnId: string
+      partId: string
+      conversationId: string
+      candidate: StructuredPredictionCandidate
+      eventId: string
+    }
 
 // ── Query controls (composer) ───────────────────────────────────────────
 
@@ -261,4 +435,20 @@ export interface ModelOption {
   label: string
   tier: 'Auto' | 'A' | 'B' | 'C'
   tierNote: string
+}
+
+/**
+ * Lane P2-C (PPR-09/16) — what the composer actually submits alongside the
+ * question, once its three pills stopped being cosmetic. `modelId` is a REAL
+ * registry id (`@/lib/models/registry`) or `undefined` for "Auto" (no
+ * override — the stack's synthesis primary binds, same as today).
+ * `readingDepth`/`lengthTier` are the wire's own request vocabulary
+ * (`@/lib/pariprashna/protocol/events`), computed honestly from the picker
+ * state rather than smuggled through the dev-fixture `mode` the live host
+ * used to reuse for this.
+ */
+export interface SubmitControls {
+  modelId?: string
+  readingDepth: 'auto' | 'deep_dive'
+  lengthTier: 'brief' | 'standard' | 'exhaustive'
 }

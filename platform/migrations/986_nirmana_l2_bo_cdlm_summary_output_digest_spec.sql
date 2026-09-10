@@ -1,0 +1,141 @@
+-- 986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3, following the Conductor's
+-- #2502 ruling (subset-of-tables output_digest_spec APPROVED as the
+-- default pattern -- no per-instance sign-off needed). `bo_cdlm_summary`
+-- (pipeline/orchestrator/writers/bo_cdlm_summary.py, 456 lines, LIGHT
+-- writer) is a THREE-TABLE writer (bodha_cdlm_chart_summary,
+-- bodha_cdlm_domain_rollups, bodha_cdlm_pattern_clusters), all three
+-- confirmed sole-writer (tree-wide grep for INSERT/UPDATE/DELETE across
+-- pipeline/orchestrator/writers/*.py, services/*.py, and
+-- bodha_writers/_idempotency.py: the only hits outside this writer's own
+-- file are the shared idempotency helper, not a distinct co-writer, same
+-- carve-out as every prior spec this campaign).
+--
+-- THIS MIGRATION SPECS ONLY ONE OF THE THREE TABLES:
+-- `bodha_cdlm_chart_summary` -- live-verified fully deterministic. The
+-- other two (bodha_cdlm_domain_rollups, bodha_cdlm_pattern_clusters) carry
+-- a REAL, live-verified non-determinism defect and are deliberately
+-- excluded, not silently omitted -- see the "DEFECT FOUND, NOT FIXED
+-- HERE" section below and the #1770 flag. Per #2502's own rationale
+-- ("fabricating coverage... violates B.10/N.8; silently omitting with no
+-- flag violates N.6"), the correct move for a writer that is sole-writer
+-- of a table but whose OWN construction logic is non-deterministic on
+-- that specific table is the same as for a table it doesn't own: spec the
+-- clean component, flag the rest, do not block on it and do not fabricate
+-- over it.
+--
+-- `bodha_cdlm_chart_summary` non-determinism check (both defect shapes
+-- from this campaign's playbook):
+--   * `sorted_domains = sorted(domain_strength.items(), key=value,
+--     reverse=True)` (feeds dominant_3_domains_array /
+--     weakest_3_domains_array) -- domain_strength is a per-domain SUM
+--     (order-independent regardless of the unordered cell fetch), and a
+--     live tie-check across all 3 charts x 5 ayanamshas (15 rows) found
+--     ZERO duplicate total_strength values within any (chart,ayanamsha)
+--     group at ANY rank, not just the top-3/bottom-3 boundary -- the
+--     dict's stable-sort tie-order can never be observed on live data.
+--   * `strongest_pair` (max-pick over `computed_linkage_strength`, feeds
+--     pattern_cluster_markers_jsonb) -- live tie-check (ROW_NUMBER OVER
+--     PARTITION BY chart_id, ayanamsha_id ORDER BY
+--     computed_linkage_strength DESC, rn=1 groups) found ZERO ties across
+--     all 3 charts x 5 ayanamshas -- the max is always unique.
+--   * house_to_domain_strength_jsonb / karaka_to_domain_strength_jsonb are
+--     always the literal json.dumps({}) (not yet populated at this
+--     layer) -- constant, trivially deterministic.
+--   * bridge_link_count / asymmetric_link_count are both the same scalar
+--     COUNT (asymmetric_count) -- order-independent.
+--   * verification_pass_status / citation_ref / citation_human are fixed
+--     literals (UNVERIFIED_DEFAULT / 'bo_cdlm_summary:aggregation_v1:...'
+--     / fixed human string) -- same invariants migration 716's
+--     integrity_check_sql already asserts hold on all live rows.
+--
+-- DEFECT FOUND, NOT FIXED HERE (flagged on #1770, same disposition class
+-- as bo_sangati w392 / bo_cgm_motifs w395 -- a missing-tiebreak top-N pick
+-- fed by an unordered SQL SELECT, live-verified not just theorized):
+--   * `_build_rollups`'s `top3 = sorted(agg["partners"].items(), key=value,
+--     reverse=True)[:3]` (-> bodha_cdlm_domain_rollups.
+--     top_3_linked_domains_jsonb) -- `agg["partners"]` accumulates by
+--     summing per-partner strength, but `_fetch_cells_full`'s SELECT has
+--     NO ORDER BY, so dict-insertion order (and therefore stable-sort
+--     tie-order at equal partner-strength) depends on Postgres's
+--     unordered row-fetch order, which is not guaranteed stable across
+--     rebuilds. Live tie-check (ROW_NUMBER OVER PARTITION BY chart_id,
+--     ayanamsha_id, domain ORDER BY partner_strength DESC, grouped for
+--     ties straddling rank 3) found REAL ties spanning the rank-3 cutoff
+--     on the CANONICAL chart (482012f1), across ALL 5 ayanamshas, for
+--     domains "residence" (4-way tie at ranks 2-5) and "travel" (2-way
+--     tie at ranks 3-4).
+--   * `_build_clusters`'s `involved_cells_array": agg["cells"]` (->
+--     bodha_cdlm_pattern_clusters.involved_cells_array) appends cell ids
+--     in fetch order and is never sorted (unlike
+--     `involved_signals_array`, which IS `sorted(agg["signals"])` and is
+--     therefore safe) -- the same unordered-fetch-feeds-a-stored-array
+--     defect shape as `bo_yantra_mechanism`'s `final_disp_nodes` (this
+--     campaign, RULED OUT), not live-tie-checked further here since the
+--     rollups defect above already disqualifies the two sibling tables
+--     from this migration; a future writer fix for one should fix both in
+--     the same pass (both need `_fetch_cells_full`'s SELECT to carry
+--     `ORDER BY cell_id` at minimum, plus an explicit tiebreak on the
+--     rollup top3 sort).
+--
+-- Natural key: `(chart_id, ayanamsha_id)` -- the table's live UNIQUE
+-- CONSTRAINT `bodha_cdlm_chart_summary_chart_id_ayanamsha_id_build_id_sna_key`
+-- includes build_id + four always-NULL dynamic_*/tradition_view_id
+-- columns, but the writer's own idempotent `DELETE FROM
+-- bodha_cdlm_chart_summary WHERE chart_id = %s` (all three sibling
+-- tables) before the per-ayanamsha insert loop means exactly one row per
+-- (chart_id, ayanamsha_id) exists at any point in time -- live-verified 0
+-- duplicate-key groups and 0 NULL chart_id/ayanamsha_id across all 15
+-- live rows (5 rows x 3 charts: 482012f1 canonical, 1c826d5a, cb73cd3d).
+--
+-- Surrogate/non-deterministic-across-rebuilds columns excluded from the
+-- digest value columns (same exclusion class as every prior spec this
+-- campaign): bodha_cdlm_chart_summary.summary_id (surrogate PK,
+-- uuid4-generated by the writer), .build_id (build-run identifier), and
+-- .computed_at (Python datetime.now(timezone.utc) wall-clock
+-- write-time-artifact).
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                  # == the literal below
+--   print(_validate_spec('bo_cdlm_summary', spec, sha).asset_id)    # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row), calling the REAL
+-- `compute_output_digest(cur, asset_id='bo_cdlm_summary')` over the 5
+-- canonical-chart rows -- got back a clean 65-hex digest
+-- (86c7e183c294235a994d7a296ef42e1aba4f8a4893505171ba0727a672d23d09, no
+-- exception, key-preflight passed) -> rolled back -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for bo_cdlm_summary, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Numbering note: highest APPLIED migration in `_migrations_applied` at
+-- cycle start is 985 (bo_chart_gestalt, this lane's own prior cycle).
+-- Checked every other open PR branch fresh this cycle for any 986 file
+-- (#2501 l2-w5-bo-karanajala-ingress-writer-grant, #2503
+-- fix/nirmana-migration-976-980-renumber-disclosure, both up to 985 max)
+-- -- zero hits. 986 confirmed free against `_migrations_applied`, every
+-- open PR branch, and origin/main.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_cdlm_summary' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_cdlm_summary',
+  'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_cdlm_chart_summary","relation":"bodha_cdlm_chart_summary","key_columns":["chart_id","ayanamsha_id"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","dynamic_system_id","dynamic_maha_lord","dynamic_antar_lord","tradition_view_id","chart_typology_class","pattern_cluster_markers_jsonb","total_chart_linkage","contradiction_density","house_to_domain_strength_jsonb","karaka_to_domain_strength_jsonb","dominant_3_domains_array","weakest_3_domains_array","bridge_link_count","asymmetric_link_count","verification_pass_status","citation_ref","citation_human"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

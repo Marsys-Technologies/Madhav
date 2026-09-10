@@ -19,13 +19,21 @@ action_types: marriage | travel | business | medical | education | property | ge
 FORENSIC grounding:
     Native: Abhisek Mohanty, 1984-02-05, 10:43 IST, Bhubaneswar
     chart_id: 482012f1-710e-4a25-994a-93821f5871aa
-    Mercury MD (2026–2043) per FORENSIC v8.0 §5.1 DSH.V.023
-    A high-score muhurta for education aligns with Mercury+Pushya windows.
+    Current Vimshottari MD/AD are read from chart_dashas for each requested
+    window; activity significators are read from brahma_activity_ontology.
 
 Depends:
     - panchanga_daily (Phase 4C-3): for panchanga_quality sub-score
-    - chart_facts (BRAHMA G9/G10): for dasha_quality derivation
+    - chart_dashas (BRAHMA L1): for live dasha-quality derivation
+    - brahma_activity_ontology (BG): for canonical action significators
     - phala_muhurta (this migration): pre-computed cache rows
+    - ephemeris_daily (BG bg_ephemeris): transiting sidereal positions for the
+      transit_quality sub-score (F-48), read via
+      services.ka_graha_sancara.engine.get_ephemeris
+    - bg_transit_rules (BG, migration 266): classical Gochara favourable/
+      unfavourable houses FROM THE NATAL MOON + vedha houses (BPHS Ch.29)
+    - chart_facts (BRAHMA L1): natal Moon longitude_sidereal, for the
+      house-from-natal-Moon frame every Gochara rule is counted in
 
 Authors:  Silpī (PH-4-4 session)
 Version:  1.0 — 2026-06-04
@@ -44,6 +52,8 @@ import psycopg
 import psycopg.rows
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+from brahmagyan.graha_vocabulary import norm_graha, to_title
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +108,79 @@ def _get_db_url() -> str:
 # that live result. Falls back to "unknown"/no-citation-claim rather than ever
 # re-asserting the stale hardcoded string (B.10 — no fabricated computation).
 _DASHA_LORD_CACHE: dict[tuple[str, str, str], dict[str, Any] | None] = {}
+
+# The public PH-4-4 action names predate the canonical electional ontology.
+# Keep the compatibility translation here, then read the actual significators
+# from brahma_activity_ontology rather than maintaining a second karakatva map.
+_ACTION_TO_ACTIVITY_CLASS = {
+    "marriage": "marriage",
+    "travel": "travel_journey",
+    "business": "business_start",
+    "medical": "medical_procedure",
+    "education": "education_start",
+    "property": "property_purchase",
+}
+_ACTIVITY_SIGNIFICATOR_CACHE: dict[str, list[str]] = {}
+_CANONICAL_GRAHA_CODES = frozenset({
+    "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN",
+})
+
+
+def _activity_significators_for_action(action_type: str) -> list[str] | None:
+    """Return canonical graha names for a served PH-4-4 action, if available.
+
+    The ontology is the authority for electional action significators.  A
+    missing action mapping, unavailable database, or malformed ontology row is
+    an honest unavailable result; callers retain a neutral dasha score rather
+    than inventing a local replacement table.
+    """
+    activity_class = _ACTION_TO_ACTIVITY_CLASS.get(action_type)
+    if not activity_class:
+        return None
+    if activity_class in _ACTIVITY_SIGNIFICATOR_CACHE:
+        return _ACTIVITY_SIGNIFICATOR_CACHE[activity_class]
+
+    resolved: list[str] | None = None
+    try:
+        db_url = _get_db_url()
+        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT significators
+                    FROM brahma_activity_ontology
+                    WHERE activity_class_id = %s
+                    LIMIT 1
+                    """,
+                    [activity_class],
+                )
+                row = cur.fetchone()
+        raw = row.get("significators") if row else None
+        if isinstance(raw, str):
+            raw = json.loads(raw)
+        members = raw.get("strengthen_grahas") if isinstance(raw, dict) else None
+        if isinstance(members, list):
+            found: list[str] = []
+            for member in members:
+                # The canonical medical row expresses ``controlled Mars``.
+                # Extracting a recognized graha token preserves that authority
+                # qualifier while comparing its actual planetary significator.
+                for token in str(member).replace("-", " ").split():
+                    code = norm_graha(token)
+                    if code in _CANONICAL_GRAHA_CODES:
+                        title = to_title(code)
+                        if title not in found:
+                            found.append(title)
+            if found:
+                resolved = found
+    except Exception:
+        resolved = None
+
+    # Cache only a successful authority read.  An unavailable database is a
+    # per-call honest-neutral fallback, not a permanent process-lifetime fact.
+    if resolved:
+        _ACTIVITY_SIGNIFICATOR_CACHE[activity_class] = resolved
+    return resolved
 
 
 def _current_dasha_lords(
@@ -202,7 +285,7 @@ def _dasha_citation_fragment(chart_id: str, at_date: datetime) -> str:
 def compute_muhurta_score(
     panchanga_quality: float,
     dasha_quality: float,
-    transit_quality: float,
+    transit_quality: Optional[float],
     signal_activation: float,
 ) -> float:
     """
@@ -216,15 +299,36 @@ def compute_muhurta_score(
         0.0, 1.0
     )
 
-    All inputs must be in [0.0, 1.0].
-    This mirrors the SQL phala_compute_muhurta_score() function.
+    All supplied inputs must be in [0.0, 1.0].
+    With all four sub-scores present this mirrors the SQL
+    phala_compute_muhurta_score() function exactly.
+
+    F-48: `transit_quality` may now be **None** — the honest value when the
+    transit authorities (`ephemeris_daily` / the chart's natal Moon fact /
+    `bg_transit_rules`) cannot be read for this window. The 0.20 transit weight
+    is then REDISTRIBUTED across the three sub-scores that genuinely were
+    computed, in their existing proportion (0.40 : 0.30 : 0.10 → renormalized
+    over 0.80). This is deliberately NOT the same as passing a neutral 0.55:
+    a stand-in number would silently claim the transits were assessed and found
+    middling, which is the exact unearned-signal defect F-48 is about
+    (§N.7 item 6, §N.8). The SQL function has no None-arm and is unchanged;
+    the divergence is confined to this honest-unavailable path, and the
+    response labels it via `factors.transit_details.unavailable_reason`.
     """
-    raw = (
-        WEIGHT_PANCHANGA * panchanga_quality
-        + WEIGHT_DASHA * dasha_quality
-        + WEIGHT_TRANSIT * transit_quality
-        + WEIGHT_SIGNAL * signal_activation
-    )
+    if transit_quality is None:
+        denominator = WEIGHT_PANCHANGA + WEIGHT_DASHA + WEIGHT_SIGNAL
+        raw = (
+            WEIGHT_PANCHANGA * panchanga_quality
+            + WEIGHT_DASHA * dasha_quality
+            + WEIGHT_SIGNAL * signal_activation
+        ) / denominator
+    else:
+        raw = (
+            WEIGHT_PANCHANGA * panchanga_quality
+            + WEIGHT_DASHA * dasha_quality
+            + WEIGHT_TRANSIT * transit_quality
+            + WEIGHT_SIGNAL * signal_activation
+        )
     return float(max(0.0, min(1.0, raw)))
 
 
@@ -369,100 +473,458 @@ def _panchanga_quality_for_action(
     return float(max(0.0, min(1.0, raw)))
 
 
-def _dasha_quality_for_chart(chart_id: str, window_start: datetime) -> float:
+def _dasha_quality_for_chart(chart_id: str, window_start: datetime, action_type: str) -> float:
     """
-    Derive dasha quality from chart_facts (if available) or use native defaults.
-
-    For the native (Abhisek Mohanty), FORENSIC v8.0 §5.1 DSH.V.023 establishes:
-      Mercury MD: 2026-03-08 → 2043-03-08
-      Sub-periods vary; Mercury MD is inherently education/commerce-favorable.
-
-    Fallback: 0.55 (neutral moderate quality) when chart_facts unavailable.
+    Score current MD/AD alignment with the requested action's ontology-backed
+    significators.  The relationship is intentionally transparent: neutral
+    0.55 when either authority is unavailable, 0.45 when neither active lord
+    matches, +0.15 for a matching MD, and +0.10 for a matching AD.
     """
-    # Native chart defaults per FORENSIC v8.0 §5.1 DSH.V.023
-    if chart_id == NATIVE_CHART_ID:
-        # Mercury MD period (2026-2043): Mercury favors education, business, communication
-        year = window_start.year
-        if 2026 <= year <= 2043:
-            # Mercury is a benefic for this native (Virgo lagna — Mercury is lagna lord)
-            return 0.72
-        # Fallback for other periods
+    significators = _activity_significators_for_action(action_type)
+    live_dasha = _current_dasha_lords(chart_id, window_start)
+    if not significators or not live_dasha:
         return 0.55
 
-    # Non-native: attempt to read from chart_facts, fall back to neutral
+    md_lord = to_title(str(live_dasha.get("md_lord") or ""))
+    ad_lord = to_title(str(live_dasha.get("ad_lord") or ""))
+    score = 0.45
+    if md_lord in significators:
+        score += 0.15
+    if ad_lord in significators:
+        score += 0.10
+    return float(min(1.0, score))
+
+
+# ── F-48 — transit_quality: REAL gochara, or an honest null ───────────────────
+#
+# WHAT THIS FIELD USED TO BE (the earned-signal violation, PARIŚEṢA F-48):
+#   `_transit_quality_for_window` contained NO transit computation whatsoever.
+#   It was 60% a locally re-derived synodic lunar phase (from a hardcoded
+#   `jd_ref = 2451550.1` new-moon epoch) and 40% a weekday-lord lookup. Its own
+#   docstring admitted it ("simplified seasonal approximation… All values are
+#   approximations only"), and it narrated Jupiter/Saturn sign positions it never
+#   computed. Two separate doctrine failures compounded there:
+#
+#     (a) §N.8 Earned-Signal — a field named `transit_quality`, served to callers
+#         as "key planetary transits during the window" and carrying 20% of the
+#         composite auspiciousness score, with no detector behind the claim. No
+#         code path existed that could make the signal correctly read "the
+#         transits are bad" for a transit reason.
+#     (b) §N.7 items 1/3 + §N.5 — BOTH of its actual inputs are panchāṅga limbs
+#         the composite ALREADY scores at 40% weight: synodic lunar phase IS
+#         tithi (the Moon-Sun elongation in 12° units, read from
+#         `panchanga_daily.tithi_name` two lines above), and weekday IS vara
+#         (`panchanga_daily.vara_lord`). So the old field re-derived, from a
+#         wrapper-local constant, two values L0 had already computed — and then
+#         double-counted them, silently giving panchāṅga ~60% of a composite
+#         that advertises 40%, while the transit slot contributed nothing.
+#
+# WHAT IT IS NOW: classical Gochara (BPHS Ch.29), counted from the natal Moon,
+# computed from REAL transiting positions. Every input is READ from an existing
+# authority, never re-derived here (§N.5):
+#
+#   · transiting sidereal positions ← `services.ka_graha_sancara.engine.get_ephemeris`,
+#     the codebase's own shared "9 grahas sidereal at instant X" helper, whose
+#     PATH-A reads `ephemeris_daily` (bg_ephemeris / Swiss Ephemeris DE441,
+#     1900-01-01→2150-12-31, `ayanamsha_id='tropical'` stored + Lahiri derived at
+#     read). Same helper `ka_vedha_gochara` / `ka_kota_chakra` / `ka_moorti_nirnaya`
+#     already build on. NOTE this is a READ of precomputed rows, not a Swiss
+#     Ephemeris re-computation — the module's standing "no swisseph recomputation
+#     inside generate_muhurta_windows" constraint is preserved, exactly as reading
+#     `panchanga_daily` is not re-deriving panchāṅga.
+#   · natal Moon ← `chart_facts` (`graha_position`/`MOON`/`longitude_sidereal`),
+#     the L1 fact, pinned by `fact_key` with a total ORDER BY (§N.7 item 2).
+#   · the classical rules themselves ← `bg_transit_rules` (L0 `bg_transit_rules`
+#     writer, migration 266): per-graha favourable/unfavourable houses FROM THE
+#     NATAL MOON plus the vedha house that nullifies each favourable result, every
+#     row carrying a mandatory `classical_citation` (BPHS Ch.29 / Phaladeepika
+#     Ch.26). Read in its OWN documented frame — the table comment states
+#     "primary_house is counted from natal Moon" — so no Lagna↔Moon frame
+#     conversion is performed or needed here (contrast `gochara_grammar.
+#     primitives.gochara_vedha_pair`, whose arithmetic is Lagna-framed and which
+#     therefore honestly refuses to fire; see its MR-41(a)/IR-4 note).
+#   · Chandra Bala (the Moon's own gochara from the natal Moon) ←
+#     `panchang_engine.tara_bala.compute_chandra_bala_score`, the codebase's
+#     existing authority for that exact rule, already used at build time by the
+#     `ph_muhurta` writer. Not re-implemented here (§N.5: one classical rule,
+#     one implementation).
+#
+# WHEN THE INPUTS ARE UNAVAILABLE the score is **None**, never a plausible
+# neutral number (§N.7 item 6 — an honest null beats an invented judgment; the
+# same discipline the R5.1 C3 `_fetch_panchanga_row` fix applied to fabricated
+# panchāṅga placeholders). `compute_muhurta_score` then renormalizes over the
+# three sub-scores that ARE available and the response says so explicitly, rather
+# than a 0.55 stand-in silently claiming the transits were assessed and found
+# middling.
+#
+# DISCLOSED LIMITS (reported in `factors.transit_details`, not hidden here):
+#   1. `ephemeris_daily` is DAY-GRAIN at noon UT. The Moon moves ~13.2°/day, so a
+#      window whose Moon is within ~6.6° of a sign boundary can be graded on the
+#      adjacent rāśi. Sub-day precision would need the live path; that is a
+#      deliberate non-goal for a 48-hour window scored against a daily panchāṅga
+#      row, and is named in `resolution`.
+#   2. `bg_transit_rules` holds NO vedha-exemption rows. Classical Gochara exempts
+#      the Sun↔Saturn and Moon↔Mercury pairs from mutual vedha; because the L0
+#      corpus does not carry that rule, this scorer does NOT apply it, and says so
+#      (`gaps: ['vedha_exemptions_not_in_corpus']`) instead of hardcoding a rule
+#      the authority does not hold.
+#   3. The categorical classical verdicts (favourable / vedha-cancelled /
+#      unfavourable / unlisted) are mapped to numbers by a SERVING-LAYER
+#      convention, exposed as data in `grade_convention` — the classical rule is
+#      categorical; the numbers are this scorer's, and are labelled as such.
+
+# Serving-layer grade convention for a categorical BPHS Ch.29 verdict.
+# Exposed in factors.transit_details.grade_convention so a caller/auditor sees
+# the mapping as data rather than having to infer it from source (§N.6 item 4).
+_GOCHARA_GRADE: dict[str, float] = {
+    "favourable": 0.85,
+    "favourable_vedha_cancelled": 0.45,
+    "unfavourable": 0.15,
+    "unlisted": 0.50,
+}
+
+# Chandra Bala is the universal muhūrta transit gate (it applies to every action);
+# the action's own significator grahas carry the action-specific half. The split
+# is a serving-layer weighting convention, not a classical quantity — reported in
+# factors.transit_details.weights.
+_TRANSIT_W_CHANDRA_BALA = 0.40
+_TRANSIT_W_SIGNIFICATORS = 0.60
+
+_GOCHARA_RULES_CACHE: dict[str, dict[tuple[str, int], dict[str, Any]]] = {}
+_NATAL_MOON_SIGN_CACHE: dict[tuple[str, str], Optional[int]] = {}
+_TRANSIT_SIGNS_CACHE: dict[tuple[str, str], Optional[dict[str, int]]] = {}
+
+# The three F-48 reads are the only DB touches in this module that sit inside a
+# per-window loop, so an unreachable database must degrade to the honest-None
+# arm rather than stalling the whole request behind libpq's default (indefinite)
+# connect wait. The module's older helpers do not set this; they are each a
+# once-per-call read and are deliberately left alone by this change.
+_TRANSIT_CONNECT_TIMEOUT_S = 5
+
+
+def _fetch_gochara_rules(db_url: str) -> dict[tuple[str, int], dict[str, Any]]:
+    """`bg_transit_rules` → {(graha_lower, house_from_natal_moon): rule}.
+
+    Cached per db_url for the process lifetime: this is L0 static classical
+    reference data (chart-agnostic, seeded once by the `bg_transit_rules`
+    writer), the same caching rationale as `_TARA_BASELINE_CACHE`. An empty
+    dict is NOT cached — a transient read failure must stay retryable rather
+    than freezing as "the corpus has no gochara rules" for the process's life
+    (the same trap `gochara_grammar.primitives._fetch_vedha_rules` documents).
+    """
+    if db_url in _GOCHARA_RULES_CACHE:
+        return _GOCHARA_RULES_CACHE[db_url]
+    out: dict[tuple[str, int], dict[str, Any]] = {}
     try:
-        db_url = _get_db_url()
-        sql = """
-            SELECT value, confidence
-            FROM chart_facts
-            WHERE chart_id = %s
-              AND category = 'dasha'
-              AND key = 'current_md_lord'
-            LIMIT 1
-        """
-        with psycopg.connect(db_url, row_factory=psycopg.rows.dict_row) as conn:
+        with psycopg.connect(
+            db_url, row_factory=psycopg.rows.dict_row,
+            connect_timeout=_TRANSIT_CONNECT_TIMEOUT_S,
+        ) as conn:
             with conn.cursor() as cur:
-                cur.execute(sql, [chart_id])
+                cur.execute(
+                    """
+                    SELECT rule_type, graha, primary_house, vedha_house,
+                           phala, classical_citation
+                    FROM bg_transit_rules
+                    WHERE rule_type IN ('favourable', 'unfavourable')
+                    ORDER BY graha, rule_type, primary_house
+                    """
+                )
+                for row in cur.fetchall():
+                    graha = str(row.get("graha") or "").strip().lower()
+                    house = row.get("primary_house")
+                    if not graha or house is None:
+                        continue
+                    out[(graha, int(house))] = dict(row)
+    except Exception as exc:
+        logger.debug("bg_transit_rules read failed: %s", exc)
+        return {}
+    if out:
+        _GOCHARA_RULES_CACHE[db_url] = out
+    return out
+
+
+def _natal_moon_sign_id(
+    chart_id: str, db_url: str, ayanamsha_id: str = "lahiri_chitrapaksha"
+) -> Optional[int]:
+    """Natal Moon rāśi as a 1-indexed id (1=Aries … 12=Pisces), or None.
+
+    Reads the L1 `graha_position`/`MOON`/`longitude_sidereal` fact — the SAME
+    fact the transit-consuming Kāla writers (`ka_vedha_gochara`,
+    `ka_kota_chakra`, `ka_moorti_nirnaya`) already anchor on — and takes the
+    rāśi by floor division, exactly as those writers do. Never recomputed from
+    birth params (§N.5: L1 is the authority over L2+ derivations).
+
+    `fact_key` is pinned and the select carries a total ORDER BY (§N.7 item 2 —
+    no category-only selection). Returns None on any miss so the caller can tell
+    "no L1 build for this chart" apart from "genuinely Aries".
+    """
+    cache_key = (chart_id, ayanamsha_id)
+    if cache_key in _NATAL_MOON_SIGN_CACHE:
+        return _NATAL_MOON_SIGN_CACHE[cache_key]
+    resolved: Optional[int] = None
+    try:
+        with psycopg.connect(
+            db_url, row_factory=psycopg.rows.dict_row,
+            connect_timeout=_TRANSIT_CONNECT_TIMEOUT_S,
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT fact_value_num
+                    FROM chart_facts
+                    WHERE chart_id = %s
+                      AND ayanamsha_id = %s
+                      AND fact_category = 'graha_position'
+                      AND UPPER(fact_subject) = 'MOON'
+                      AND fact_key = 'longitude_sidereal'
+                      AND fact_value_num IS NOT NULL
+                    ORDER BY fact_id
+                    LIMIT 1
+                    """,
+                    [chart_id, ayanamsha_id],
+                )
                 row = cur.fetchone()
-                if row:
-                    # Simple heuristic: Mercury/Jupiter MD = high quality for learning
-                    md_lord = str(row.get("value", ""))
-                    benefic_lords = {"Mercury", "Jupiter", "Venus"}
-                    if md_lord in benefic_lords:
-                        return 0.70
-                    return 0.50
-    except Exception:
-        pass
-
-    return 0.55
+        if row and row.get("fact_value_num") is not None:
+            lon = float(row["fact_value_num"]) % 360.0
+            resolved = int(lon // 30.0) + 1
+    except Exception as exc:
+        logger.debug("natal Moon longitude_sidereal lookup failed for %s: %s", chart_id, exc)
+        return None
+    _NATAL_MOON_SIGN_CACHE[cache_key] = resolved
+    return resolved
 
 
-def _transit_quality_for_window(window_start: datetime) -> float:
+def _transiting_sign_ids(window_start: datetime, db_url: str) -> Optional[dict[str, int]]:
+    """{graha_lower: sign_id 1..12} for the window's date, or None if unavailable.
+
+    Delegates to `services.ka_graha_sancara.engine.get_ephemeris` — the shared
+    helper whose PATH-A reads `ephemeris_daily` (bg_ephemeris). A tuple-row
+    connection is opened deliberately: that helper indexes rows positionally
+    (`row[0]`), so the module-default `dict_row` factory used elsewhere in this
+    file would break it.
+
+    Cached per (date, db_url). `ephemeris_daily` is day-grain, chart-agnostic
+    global data, so the SAME date is re-read by every action_type and every
+    chart a caller scores — without this cache a 90-day range across the 7
+    action types would open ~315 connections for ~45 distinct dates. A `None`
+    result is cached too: within one process an absent ephemeris date does not
+    become present, and re-attempting it once per window is the cost this
+    avoids.
     """
-    Approximate transit quality based on known planetary cycles.
+    cache_key = (window_start.date().isoformat(), db_url)
+    if cache_key in _TRANSIT_SIGNS_CACHE:
+        return _TRANSIT_SIGNS_CACHE[cache_key]
+    resolved = _read_transiting_sign_ids(window_start, db_url)
+    _TRANSIT_SIGNS_CACHE[cache_key] = resolved
+    return resolved
 
-    Full transit computation requires Swiss Ephemeris (B.10: no fabricated computation).
-    This function uses a simplified seasonal approximation:
-      - Jupiter transits ~1 year per sign; currently (2026) in Gemini/Cancer.
-      - Saturn transits ~2.5 years per sign; currently (2026) in Aquarius/Pisces.
-      - Monthly lunar cycle: full moon weeks generally more auspicious.
 
-    All values are approximations only. For production use, integrate with
-    the sidecar's ephemeris engine (/ephemeris endpoint).
+def _read_transiting_sign_ids(
+    window_start: datetime, db_url: str
+) -> Optional[dict[str, int]]:
+    """Uncached read behind `_transiting_sign_ids` (split out so a test can
+    exercise the read and the caching separately)."""
+    try:
+        from services.ka_graha_sancara.engine import get_ephemeris
+    except Exception as exc:  # pragma: no cover - import guard
+        logger.debug("ka_graha_sancara.engine unavailable: %s", exc)
+        return None
+    try:
+        with psycopg.connect(
+            db_url, connect_timeout=_TRANSIT_CONNECT_TIMEOUT_S
+        ) as conn:
+            result = get_ephemeris(window_start, ayanamsha="lahiri", db_conn=conn)
+    except Exception as exc:
+        logger.debug("get_ephemeris failed for %s: %s", window_start, exc)
+        return None
+    grahas = getattr(result, "grahas", None) or {}
+    if not grahas:
+        return None
+    out: dict[str, int] = {}
+    for name, state in grahas.items():
+        sign_idx = getattr(state, "sign_idx", None)
+        if sign_idx is None:
+            continue
+        out[str(name).strip().lower()] = int(sign_idx) % 12 + 1
+    return out or None
 
-    Returns a score in [0.0, 1.0].
+
+def _house_from_natal_moon(transit_sign_id: int, natal_moon_sign_id: int) -> int:
+    """Whole-sign house of a transiting graha counted FROM the natal Moon (1..12).
+
+    This is the frame `bg_transit_rules.primary_house` is natively expressed in
+    (see that table's own COMMENT), and matches `kala_now_get`'s
+    `houseFromSign(signNumber, refSignNumber)` arithmetic exactly.
     """
-    # Simple approximation based on day of lunar cycle (28-day cycle)
-    # Using Julian Day approximation:
-    #   JD 2451550.1 = 2000-01-06 18:14 UTC (known new moon)
-    #   Lunar period = 29.53059 days
-    jd_ref = 2451550.1
-    jd_window = (
-        (window_start - datetime(2000, 1, 1, tzinfo=timezone.utc)).total_seconds()
-        / 86400.0
-        + 2451545.0
-    )
-    lunar_phase = ((jd_window - jd_ref) % 29.53059) / 29.53059  # 0.0–1.0
+    return ((transit_sign_id - natal_moon_sign_id) % 12) + 1
 
-    # Waxing moon (0.0–0.5): generally more auspicious for initiations
-    # Full moon peak (0.45–0.55): auspicious
-    # Waning moon dark (0.85–1.0): less auspicious
-    if 0.45 <= lunar_phase <= 0.55:
-        phase_quality = 0.80  # full moon
-    elif 0.05 <= lunar_phase <= 0.45:
-        phase_quality = 0.65  # waxing
-    elif 0.55 <= lunar_phase <= 0.80:
-        phase_quality = 0.55  # waning
+
+def _grade_gochara(
+    graha: str,
+    house: int,
+    rules: dict[tuple[str, int], dict[str, Any]],
+    occupied_houses: dict[int, list[str]],
+) -> dict[str, Any]:
+    """Grade one graha's transit house against `bg_transit_rules`.
+
+    Applies the classical vedha CANCELLATION (not merely detection): a
+    favourable result is nullified when the rule's `vedha_house` is
+    simultaneously occupied by some OTHER transiting graha. Vedha exemptions
+    (Sun↔Saturn, Moon↔Mercury) are NOT applied — `bg_transit_rules` carries no
+    exemption rows, and inventing one here would assert a rule the authority
+    does not hold; the gap is reported instead.
+    """
+    rule = rules.get((graha, house))
+    if rule is None:
+        return {
+            "graha": graha,
+            "house_from_natal_moon": house,
+            "verdict": "unlisted",
+            "grade": _GOCHARA_GRADE["unlisted"],
+            "phala": None,
+            "classical_citation": None,
+            "vedha_house": None,
+            "vedha_occupants": [],
+        }
+    rule_type = str(rule.get("rule_type") or "")
+    vedha_house = rule.get("vedha_house")
+    occupants: list[str] = []
+    verdict = rule_type
+    if rule_type == "favourable" and vedha_house is not None:
+        occupants = [g for g in occupied_houses.get(int(vedha_house), []) if g != graha]
+        if occupants:
+            verdict = "favourable_vedha_cancelled"
+    return {
+        "graha": graha,
+        "house_from_natal_moon": house,
+        "verdict": verdict,
+        "grade": _GOCHARA_GRADE.get(verdict, _GOCHARA_GRADE["unlisted"]),
+        "phala": rule.get("phala"),
+        "classical_citation": rule.get("classical_citation"),
+        "vedha_house": int(vedha_house) if vedha_house is not None else None,
+        "vedha_occupants": occupants,
+    }
+
+
+def _transit_quality_for_window(
+    chart_id: str,
+    window_start: datetime,
+    action_type: str,
+    db_url: str,
+) -> tuple[Optional[float], dict[str, Any]]:
+    """Real Gochara transit quality for a window, or (None, reason).
+
+    Returns ``(score in [0.0, 1.0] | None, details)``. `details` always carries
+    `available`; when unavailable it carries `unavailable_reason` naming which
+    authority was missing, so an empty is never mistaken for "the transits were
+    assessed and found neutral".
+
+    See the F-48 block above for the full ruling, the authorities read, and the
+    three disclosed limits.
+    """
+    details: dict[str, Any] = {
+        "available": False,
+        "method": "gochara_from_natal_moon",
+        "resolution": "daily_noon_ut",
+        "ayanamsha_id": "lahiri_chitrapaksha",
+        "grade_convention": dict(_GOCHARA_GRADE),
+        "weights": {
+            "chandra_bala": _TRANSIT_W_CHANDRA_BALA,
+            "significator_gochara": _TRANSIT_W_SIGNIFICATORS,
+        },
+        "gaps": ["vedha_exemptions_not_in_corpus"],
+        "citation": (
+            "BPHS Ch.29 (Gochara Phala) + Phaladeepika Ch.26 (Gochara Vedha) via "
+            "bg_transit_rules, counted from the natal Moon; Chandra Bala per "
+            "Muhurta Chintamani via panchang_engine.tara_bala; transiting "
+            "positions from ephemeris_daily (bg_ephemeris — pyswisseph + Swiss "
+            "Ephemeris .se1)."
+        ),
+    }
+
+    if not db_url:
+        details["unavailable_reason"] = "no_database_url"
+        return None, details
+
+    natal_moon_sign = _natal_moon_sign_id(chart_id, db_url)
+    if natal_moon_sign is None:
+        details["unavailable_reason"] = "natal_moon_sign_unavailable"
+        return None, details
+    details["natal_moon_sign_id"] = natal_moon_sign
+
+    transit_signs = _transiting_sign_ids(window_start, db_url)
+    if not transit_signs:
+        details["unavailable_reason"] = "ephemeris_daily_unavailable_for_date"
+        return None, details
+
+    occupied_houses: dict[int, list[str]] = {}
+    for graha, sign_id in transit_signs.items():
+        occupied_houses.setdefault(
+            _house_from_natal_moon(sign_id, natal_moon_sign), []
+        ).append(graha)
+
+    # ── Chandra Bala — the Moon's own gochara from the natal Moon ──
+    chandra_bala: Optional[float] = None
+    moon_sign = transit_signs.get("moon")
+    if moon_sign is not None:
+        try:
+            from panchang_engine.tara_bala import compute_chandra_bala_score
+            chandra_bala = float(compute_chandra_bala_score(natal_moon_sign, moon_sign))
+            details["chandra_bala"] = round(chandra_bala, 4)
+            details["transit_moon_sign_id"] = moon_sign
+            details["transit_moon_house_from_natal_moon"] = _house_from_natal_moon(
+                moon_sign, natal_moon_sign
+            )
+        except Exception as exc:
+            logger.debug("chandra bala computation failed: %s", exc)
+
+    # ── Action-significator gochara from bg_transit_rules ──
+    rules = _fetch_gochara_rules(db_url)
+    significators = _activity_significators_for_action(action_type) or []
+    graded: list[dict[str, Any]] = []
+    if rules:
+        for name in significators:
+            key = str(name).strip().lower()
+            sign_id = transit_signs.get(key)
+            if sign_id is None:
+                continue
+            graded.append(
+                _grade_gochara(
+                    key,
+                    _house_from_natal_moon(sign_id, natal_moon_sign),
+                    rules,
+                    occupied_houses,
+                )
+            )
     else:
-        phase_quality = 0.30  # dark moon (near new moon)
+        details.setdefault("gaps", []).append("bg_transit_rules_empty_or_unreadable")
+    details["significator_gochara"] = graded
 
-    # Day-of-week overlay (some days have inherently stronger transits)
-    weekday = window_start.weekday()  # 0=Mon, 6=Sun
-    # Thursday (3, Guruvara) and Friday (4, Shukravara) = Jupiter and Venus days
-    day_boost = {0: 0.60, 1: 0.55, 2: 0.65, 3: 0.75, 4: 0.70, 5: 0.50, 6: 0.50}
-    day_quality = day_boost.get(weekday, 0.55)
+    significator_mean: Optional[float] = None
+    if graded:
+        significator_mean = sum(g["grade"] for g in graded) / len(graded)
+        details["significator_gochara_mean"] = round(significator_mean, 4)
 
-    return float(max(0.0, min(1.0, 0.60 * phase_quality + 0.40 * day_quality)))
+    # ── Compose over whichever real components resolved ──
+    if chandra_bala is None and significator_mean is None:
+        details["unavailable_reason"] = "no_transit_component_resolved"
+        return None, details
+    if significator_mean is None:
+        score = chandra_bala
+        details["components_used"] = ["chandra_bala"]
+    elif chandra_bala is None:
+        score = significator_mean
+        details["components_used"] = ["significator_gochara"]
+    else:
+        score = (
+            _TRANSIT_W_CHANDRA_BALA * chandra_bala
+            + _TRANSIT_W_SIGNIFICATORS * significator_mean
+        )
+        details["components_used"] = ["chandra_bala", "significator_gochara"]
+
+    details["available"] = True
+    return float(max(0.0, min(1.0, float(score)))), details
 
 
 def _signal_activation_for_action(action_type: str, chart_id: str) -> float:
@@ -791,10 +1253,20 @@ def generate_muhurta_windows(
     B.10 compliance:
         panchanga_quality — derived from panchanga_daily table (classical rules),
                             gated by the native's OWN tāra-bala baseline (MC-027)
-        dasha_quality     — from chart_facts or FORENSIC defaults
-        transit_quality   — simplified lunar-phase approximation
+        dasha_quality     — live chart_dashas aligned to activity-ontology significators
+        transit_quality   — REAL classical Gochara (BPHS Ch.29) counted from the
+                            natal Moon: transiting sidereal positions read from
+                            ephemeris_daily (bg_ephemeris / Swiss Ephemeris),
+                            graded against bg_transit_rules with vedha
+                            cancellation, plus Chandra Bala. **None** when those
+                            authorities are unreadable — see the F-48 block and
+                            `_transit_quality_for_window`. (Before F-48 this was a
+                            lunar-phase + weekday approximation with no transit
+                            computation behind it at all.)
         signal_activation — from MSR v5.0 (native) or chart_facts
-        NO Swiss Ephemeris recomputation inside this function.
+        NO Swiss Ephemeris recomputation inside this function — the transit
+        positions are READ from the precomputed ephemeris_daily rows, exactly as
+        the panchāṅga limbs are read from panchanga_daily rather than re-derived.
 
     R5.1 C3: a date with no real panchanga_daily row (outside the rolling
     +12-month populated window) is SKIPPED, never fabricated with placeholder
@@ -810,8 +1282,9 @@ def generate_muhurta_windows(
     whichever panchanga_daily.auspicious carries for the date) are surfaced
     under factors.intraday_windows instead of only the coarse 48h block.
     """
-    # Pre-fetch dasha and signal quality (chart-level, constant across windows)
-    dasha_q = _dasha_quality_for_chart(chart_id, range_start)
+    # Signal quality is chart-level and constant across windows. Dasha quality is
+    # deliberately resolved per window below: a requested range may cross an
+    # MD/AD boundary, so a range-start score cannot be reused honestly.
     signal_q = _signal_activation_for_action(action_type, chart_id)
 
     # Attempt DB connection for panchanga lookups
@@ -855,7 +1328,12 @@ def generate_muhurta_windows(
         panchanga_q = _panchanga_quality_for_action(
             tithi_name, vara_lord, moon_nakshatra, yoga, action_type
         )
-        transit_q = _transit_quality_for_window(current)
+        dasha_q = _dasha_quality_for_chart(chart_id, current, action_type)
+        # F-48: real Gochara (BPHS Ch.29 from the natal Moon) or an honest None —
+        # never the old lunar-phase/weekday stand-in. See the F-48 block above.
+        transit_q, transit_details = _transit_quality_for_window(
+            chart_id, current, action_type, db_url
+        )
 
         # MC-027: gate panchanga_quality against the native's OWN tāra-bala
         # baseline for this window's day Moon-nakshatra. A demotion, not a
@@ -877,8 +1355,38 @@ def generate_muhurta_windows(
                 avoid_notes.append(
                     f"Low panchanga quality: {yoga} yoga + {tithi_name}"
                 )
-            if transit_q < 0.35:
-                avoid_notes.append("Dark moon phase — reduced lunar strength")
+            # F-48: the avoid-note now names the classical mechanism that actually
+            # fired, derived from the graded gochara rows — not a "dark moon phase"
+            # claim the old lunar-phase proxy could never have substantiated.
+            if transit_q is not None and transit_q < 0.35:
+                adverse = [
+                    g["graha"] for g in transit_details.get("significator_gochara", [])
+                    if g.get("verdict") == "unfavourable"
+                ]
+                chandra = transit_details.get("chandra_bala")
+                parts: list[str] = []
+                if adverse:
+                    parts.append(
+                        "adverse gochara for " + ", ".join(sorted(adverse))
+                        + " counted from the natal Moon (BPHS Ch.29)"
+                    )
+                if chandra is not None and chandra < 0.35:
+                    parts.append(
+                        "weak Chandra Bala (transit Moon in house "
+                        f"{transit_details.get('transit_moon_house_from_natal_moon')} "
+                        "from the natal Moon)"
+                    )
+                avoid_notes.append(
+                    ("Adverse transits: " + "; ".join(parts)) if parts
+                    else "Adverse transits for this window (see transit_details)."
+                )
+            elif transit_q is None:
+                avoid_notes.append(
+                    "Transit quality NOT assessed for this window ("
+                    f"{transit_details.get('unavailable_reason', 'unavailable')}"
+                    ") — the composite score is renormalized over the sub-scores "
+                    "that were computed, not padded with a neutral stand-in."
+                )
             if tara_verdict and tara_verdict["adverse"]:
                 avoid_notes.append(
                     f"{tara_verdict['tara_class']}-tārā for the native: day Moon in "
@@ -914,7 +1422,16 @@ def generate_muhurta_windows(
                 "factors": {
                     "panchanga_quality": round(panchanga_q, 4),
                     "dasha_quality": round(dasha_q, 4),
-                    "transit_quality": round(transit_q, 4),
+                    # F-48: null when the transit authorities could not be read
+                    # for this window — an honest unavailable, never a stand-in.
+                    "transit_quality": (
+                        round(transit_q, 4) if transit_q is not None else None
+                    ),
+                    # F-48: the earned-signal receipt — which grahas were graded,
+                    # in which house from the natal Moon, against which classical
+                    # rule, with the vedha verdict, the grade convention, the
+                    # weights, and the named gaps. A caller can audit the number.
+                    "transit_details": transit_details,
                     "signal_activation": round(signal_q, 4),
                     "panchanga_details": {
                         "tithi_name": tithi_name,
@@ -1008,7 +1525,8 @@ def muhurta_finder(
                     "factors": {
                         "panchanga_quality": float,
                         "dasha_quality": float,
-                        "transit_quality": float,
+                        "transit_quality": float | None,  # F-48: None = not assessed
+                        "transit_details": {...},         # F-48: earned-signal receipt
                         "signal_activation": float,
                         "panchanga_details": {...},
                         "dasha_details": {...},

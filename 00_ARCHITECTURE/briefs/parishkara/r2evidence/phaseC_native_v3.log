@@ -1,0 +1,18 @@
+[native] PLAN: 270 substeps
+[native] asset_throughput -> building (cockpit-visible)
+[native] 1/270 SKIP (already done, resume) key=achievement_recognition::g3_1984_1994
+[native] 2/270 SKIP (already done, resume) key=achievement_recognition::g3_1994_2004
+[native] 3/270 SKIP (already done, resume) key=achievement_recognition::g3_2004_2014
+[native] 30/270 SKIP (already done, resume) key=birth_anchor::g3_2074_2084
+[native] 60/270 SKIP (already done, resume) key=career_change::g3_2074_2084
+[native] 80/270 ok key=career_setback::g3_2074_2084 ins=21 skipped=77 elapsed=2.7m
+[native] 120/270 ok key=exam_outcome::g3_2074_2084 ins=109 skipped=83 elapsed=11.9m
+[native] 140/270 ok key=foreign_settlement::g3_2074_2084 ins=209 skipped=83 elapsed=17.8m
+[native] 147/270 SKIP (already done, resume) key=illness_acute::g3_2044_2054
+[native] 200/270 ok key=property_acquisition::g3_2074_2084 ins=359 skipped=113 elapsed=27.5m
+[native] 220/270 ok key=relocation::g3_2074_2084 ins=493 skipped=113 elapsed=34.6m
+[native] 240/270 ok key=separation::g3_2074_2084 ins=533 skipped=113 elapsed=40.4m
+[native] 257/270 SKIP (already done, resume) key=surgery::g3_2044_2054
+[native] PROMOTED to lit: 270/270 substeps (123 resumed, 147 run this pass), 613 rows
+[native] DONE committed=270/270 (resumed=123) ins=613 upd=0 wall=46.5m
+aborted, commands ignored until end of transaction block — STOPPING (no hand-patch)

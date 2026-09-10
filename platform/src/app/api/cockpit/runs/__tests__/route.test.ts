@@ -16,6 +16,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
+import writerDigestInventory from '@/generated/nirmana-writer-digests.json'
 
 // ─── module-level mocks (must precede route import) ───────────────────────────
 
@@ -58,6 +59,28 @@ const REGISTRY_WITH_L0 = [
 
 const REGISTRY_GANITA_ONLY = REGISTRY_WITH_L0.filter(r => r.scope === 'per_chart')
 
+const REGISTRY_EPHEMERIS_SERVICE = [{
+  asset_id: 'bg_ephemeris_engine', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'ephemeris_engine' },
+}]
+
+const REGISTRY_PANCHANGA_SERVICE = [{
+  asset_id: 'bg_panchanga', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'panchanga_engine' },
+}]
+
+const REGISTRY_UNTRUSTED_NO_WRITER_SERVICE = [{
+  asset_id: 'bg_untrusted_no_writer_service', layer: 'brahmagyan', scope: 'global', depends_on: [], estimated_seconds: 30,
+  has_writer: false, asset_kind: 'service', asset_type: 'service', health_probe: { probe_type: 'untrusted' },
+}]
+
+// The registry must retain bg_panchanga as a dependency identity for ga_panchanga,
+// while the route must never select it in an ordinary build plan.
+const REGISTRY_PANCHANGA_DEPENDENT = [
+  { asset_id: 'ga_panchanga', layer: 'ganita', scope: 'per_chart', depends_on: ['bg_panchanga'], estimated_seconds: 30 },
+  ...REGISTRY_PANCHANGA_SERVICE,
+]
+
 // Bodha registry: includes bo_* assets for G4 precondition gate tests
 const REGISTRY_BODHA = [
   { asset_id: 'ga_structural', layer: 'ganita', scope: 'per_chart', depends_on: [],              estimated_seconds: 30 },
@@ -76,6 +99,7 @@ const REGISTRY_GLOBAL_FULL = [
 
 // No protected assets for this chart — the common case every existing test exercises.
 const NO_PROTECTED_ASSETS = { rows: [], rowCount: 0 }
+const NO_FRESHNESS = { rows: [], rowCount: 0 }
 
 function makeReq(body: object): NextRequest {
   return new NextRequest('http://localhost/api/cockpit/runs', {
@@ -89,6 +113,11 @@ function makeReq(body: object): NextRequest {
 function seedRole(role: string) {
   mockGetServerUser.mockResolvedValue(USER)
   mockQuery.mockResolvedValueOnce({ rows: [{ role }], rowCount: 1 }) // getUserRole
+  // P2-B-008: the route now gates on authorizeChartAccess before any other work.
+  // USER owns chart 'c1', so Rule 2 (owner_id match) returns 'all' on this single
+  // query and chart_grants is never consulted — one extra queued response, no more.
+  // (For role='super_admin' this same row satisfies Rule 1's chart-exists probe.)
+  mockQuery.mockResolvedValueOnce({ rows: [{ owner_id: USER.uid }], rowCount: 1 }) // SELECT owner_id FROM charts
 }
 
 /**
@@ -101,8 +130,19 @@ function seedSuccessfulBuild(registryRows: typeof REGISTRY_WITH_L0) {
     .mockResolvedValueOnce({ rows: registryRows, rowCount: registryRows.length }) // asset_registry
     .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // asset_throughput (all dormant)
     .mockResolvedValueOnce(NO_PROTECTED_ASSETS) // build_protected_assets — none
+    .mockResolvedValueOnce(NO_FRESHNESS) // asset_freshness — no prior receipts
     .mockResolvedValue({ rows: [{ id: 'run-abc' }], rowCount: 1 }) // INSERT build_runs + assets
   mockInvokeRunJob.mockResolvedValue(undefined)
+}
+
+function freshnessRow(assetId: string, state: 'fresh' | 'stale') {
+  const writerDigests = writerDigestInventory.writers as Record<string, string>
+  return {
+    asset_id: assetId,
+    state,
+    reasons: state === 'fresh' ? [] : ['probe receipt is stale'],
+    code_digest: assetId === 'bg_panchanga' ? writerDigestInventory.probe_digest : writerDigests[assetId],
+  }
 }
 
 beforeEach(() => {
@@ -139,6 +179,50 @@ describe('POST /api/cockpit/runs — super_admin global build', () => {
     expect(body.data.plan).not.toContain('bg_ontology')
     // Per-chart L1+ assets are included as usual
     expect(body.data.plan).toContain('ga_positions')
+  })
+
+  it('does not include either no-writer service probe in a broad global build', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      ...REGISTRY_WITH_L0,
+      ...REGISTRY_EPHEMERIS_SERVICE,
+      ...REGISTRY_PANCHANGA_SERVICE,
+      ...REGISTRY_UNTRUSTED_NO_WRITER_SERVICE,
+    ] as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).not.toContain('bg_ephemeris_engine')
+    expect(body.data.plan).not.toContain('bg_panchanga')
+    expect(body.data.plan).not.toContain('bg_untrusted_no_writer_service')
+  })
+
+  it('persists the ordered waves and registry dependency snapshot with the run', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', scope_target: null, action: 'build' }))
+    expect(res.status).toBe(201)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    expect(insert).toBeDefined()
+    const params = insert![1] as unknown[]
+    expect(JSON.parse(params[5] as string)).toEqual({
+      version: 'nirmana-run-manifest/v1',
+      chart_id: 'c1',
+      scope: 'global',
+      scope_target: null,
+      action: 'build',
+      waves: [['ga_positions'], ['ga_strength']],
+      assets: [
+        { asset_id: 'ga_positions', scope: 'per_chart', depends_on: [], natural_key_partition: null, has_cowriters: false, expected_code_digest: (writerDigestInventory.writers as Record<string, string>).ga_positions },
+        { asset_id: 'ga_strength', scope: 'per_chart', depends_on: ['ga_positions'], natural_key_partition: null, has_cowriters: false, expected_code_digest: (writerDigestInventory.writers as Record<string, string>).ga_strength },
+      ],
+    })
+    expect(params[6]).toMatch(/^[a-f0-9]{64}$/)
   })
 })
 
@@ -210,6 +294,34 @@ describe('POST /api/cockpit/runs — client + scope=layer/ganita', () => {
     expect(body.data.plan).not.toContain('bg_ontology')
     // Ganita assets must appear
     expect(body.data.plan).toContain('ga_positions')
+    // O-wave WP-3 disposition pass-through (plan §3.3): a layer-scoped build's
+    // response carries a total disposition map covering every ganita registry
+    // row, JSON-serialized as a plain object (a Map would silently vanish).
+    expect(body.data.dispositions).toBeTruthy()
+    expect(body.data.dispositions.ga_positions).toEqual({ disposition: 'build' })
+    const ganitaAssetIds = REGISTRY_WITH_L0.filter(r => r.layer === 'ganita').map(r => r.asset_id)
+    expect(Object.keys(body.data.dispositions).sort()).toEqual([...ganitaAssetIds].sort())
+  })
+
+  it('maps the durable one-active-run constraint to 409 under a concurrent insert race', async () => {
+    seedRole('client')
+    const conflict = Object.assign(new Error('duplicate active run'), {
+      code: '23505', constraint: 'build_runs_one_active_per_chart_idx',
+    })
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+      .mockRejectedValueOnce(conflict)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(409)
+    expect((await res.json()).code).toBe('RUN_ACTIVE')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 })
 
@@ -272,6 +384,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_BODHA, rowCount: REGISTRY_BODHA.length })   // asset_registry
       .mockResolvedValueOnce({ rows: throughput, rowCount: 0 })                            // asset_throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                          // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                  // asset_freshness
       // Promise.all x3 preconditions (order matches Promise.all array in route.ts)
       .mockResolvedValueOnce({ rows: [{ count: String(chartFactsCount) }], rowCount: 1 }) // chart_facts count
       .mockResolvedValueOnce({ rows: gaStructuralState ? [{ state: gaStructuralState }] : [], rowCount: gaStructuralState ? 1 : 0 }) // ga_structural
@@ -352,6 +465,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput (all dormant)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0 (empty)
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '500' }], rowCount: 1 })                              // remedy_corpus present
@@ -375,6 +489,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GLOBAL_FULL, rowCount: REGISTRY_GLOBAL_FULL.length })  // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // asset_throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                    // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                            // asset_freshness
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // chart_facts = 0
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                              // ga_structural not lit
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })                                // remedy_corpus EMPTY
@@ -399,6 +514,7 @@ describe('G4 — Bodha build precondition gate', () => {
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                       // throughput
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                              // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                      // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-ga-001' }], rowCount: 1 })                      // INSERT
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -498,9 +614,328 @@ describe('POST /api/cockpit/runs — scope=asset_set', () => {
   })
 })
 
+describe('POST /api/cockpit/runs — governed global service probes', () => {
+  it('dispatches exactly one super_admin-selected no-writer service probe without a clear', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_EPHEMERIS_SERVICE as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild', clear_before: false,
+    }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toEqual(['bg_ephemeris_engine'])
+    expect(body.data.asset_count).toBe(1)
+    expect(mockInvokeRunJob).toHaveBeenCalledTimes(1)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest.waves).toEqual([['bg_ephemeris_engine']])
+    expect(manifest.assets).toHaveLength(1)
+    expect(manifest.assets[0].asset_id).toBe('bg_ephemeris_engine')
+
+    const assetInsert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_run_assets'))
+    expect(assetInsert![1]).toContain('bg_ephemeris_engine')
+    expect(assetInsert![1]).not.toContain('ga_positions')
+  })
+
+  it('dispatches bg_panchanga as the same singleton, manifest-shaped probe contract', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild(REGISTRY_PANCHANGA_SERVICE as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_panchanga', action: 'rebuild', clear_before: false,
+    }))
+
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.data.plan).toEqual(['bg_panchanga'])
+    expect(body.data.asset_count).toBe(1)
+
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest).toMatchObject({
+      scope: 'asset_set',
+      scope_target: 'bg_panchanga',
+      waves: [['bg_panchanga']],
+    })
+    expect(manifest.assets).toHaveLength(1)
+    expect(manifest.assets[0].asset_id).toBe('bg_panchanga')
+  })
+
+  it('rejects a client before creating a global service-probe run', async () => {
+    seedRole('client')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_EPHEMERIS_SERVICE, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild',
+    }))
+    expect(res.status).toBe(403)
+    expect((await res.json()).code).toBe('FORBIDDEN_SERVICE_PROBE')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+    expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO build_runs'))).toBe(false)
+  })
+
+  it('refuses clear_before for a service probe', async () => {
+    seedRole('super_admin')
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_EPHEMERIS_SERVICE, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce(NO_FRESHNESS)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({
+      chart_id: 'c1', scope: 'asset_set', scope_target: 'bg_ephemeris_engine', action: 'rebuild', clear_before: true,
+    }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).code).toBe('SERVICE_PROBE_CLEAR_FORBIDDEN')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+})
+
+describe('POST /api/cockpit/runs — service probe dependency identities', () => {
+  function seedPanchangaDependentBuild(
+    throughputRows: ReadonlyArray<{ asset_id: string; state: string }>,
+    freshnessRows: ReadonlyArray<ReturnType<typeof freshnessRow>>,
+    scope: 'asset' | 'layer' | 'global' = 'asset',
+  ) {
+    seedRole('client')
+    // scope=asset checks the target before the normal dispatch reads. A client
+    // must retain the global probe as a dependency identity without gaining an
+    // L0/service selection path.
+    if (scope === 'asset') {
+      mockQuery.mockResolvedValueOnce({ rows: [{ scope: 'per_chart' }], rowCount: 1 })
+    }
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: REGISTRY_PANCHANGA_DEPENDENT, rowCount: REGISTRY_PANCHANGA_DEPENDENT.length })
+      .mockResolvedValueOnce({ rows: throughputRows, rowCount: throughputRows.length })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce({ rows: freshnessRows, rowCount: freshnessRows.length })
+      .mockResolvedValue({ rows: [{ id: 'run-panchanga-001' }], rowCount: 1 })
+    mockInvokeRunJob.mockResolvedValue(undefined)
+  }
+
+  it('allows ga_panchanga only when its retained service probe identity is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'fresh')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+    const insert = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO build_runs'))
+    const manifest = JSON.parse((insert![1] as unknown[])[5] as string)
+    expect(manifest.assets.map((asset: { asset_id: string }) => asset.asset_id)).toEqual(['ga_panchanga'])
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is missing', async () => {
+    seedPanchangaDependentBuild([], [])
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'unknown', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('blocks ga_panchanga when its service probe receipt is stale', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'stale')],
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ga_panchanga', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('never dispatches a no-writer service in an L0 layer build', async () => {
+    seedRole('super_admin')
+    seedSuccessfulBuild([
+      ...REGISTRY_WITH_L0.filter(row => row.layer === 'brahmagyan'),
+      ...REGISTRY_PANCHANGA_SERVICE,
+    ] as typeof REGISTRY_WITH_L0)
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'brahmagyan', action: 'rebuild' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['bg_ephemeris', 'bg_ontology'])
+  })
+
+  it('allows a client ganita-layer build when the out-of-scope Panchanga probe is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('bg_panchanga', 'fresh')],
+      'layer',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each([
+    ['missing', [], []],
+    ['stale', [{ asset_id: 'bg_panchanga', state: 'service_ok' }], [freshnessRow('bg_panchanga', 'stale')]],
+  ] as const)('blocks a client ganita-layer build when the Panchanga probe is %s', async (_state, throughputRows, freshnessRows) => {
+    seedPanchangaDependentBuild(throughputRows, freshnessRows, 'layer')
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', required_by: ['ga_panchanga'] }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('allows global update only when the excluded Panchanga probe is healthy and fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'update' }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each(['build', 'rebuild'] as const)('allows global %s when the excluded Panchanga probe is healthy and fresh', async (action) => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action }))
+
+    expect(res.status).toBe(201)
+    expect((await res.json()).data.plan).toEqual(['ga_panchanga'])
+  })
+
+  it.each(['build', 'rebuild'] as const)('blocks global %s when its planned consumer has a stale excluded Panchanga probe', async (action) => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
+  it('blocks global update and cascade when their planned consumer has a stale excluded Panchanga probe', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'dormant' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const update = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'update' }))
+    expect(update.status).toBe(422)
+    expect((await update.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+
+    vi.clearAllMocks()
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'lit' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'stale')],
+      'global',
+    )
+    const cascade = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'cascade' }))
+    expect(cascade.status).toBe(422)
+    expect((await cascade.json()).blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'bg_panchanga', dep_state: 'stale' }),
+    ]))
+  })
+
+  it('keeps global cascade as a no-op when all dependency identities are fresh', async () => {
+    seedPanchangaDependentBuild(
+      [{ asset_id: 'ga_panchanga', state: 'lit' }, { asset_id: 'bg_panchanga', state: 'service_ok' }],
+      [freshnessRow('ga_panchanga', 'fresh'), freshnessRow('bg_panchanga', 'fresh')],
+      'global',
+    )
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'global', action: 'cascade' }))
+
+    expect(res.status).toBe(422)
+    expect((await res.json()).code).toBe('ALL_LIT')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+})
+
 // ─── G1 — Build on lit layer returns ALL_LIT with Rebuild hint (not generic 422) ──
 
 describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () => {
+  it('O-wave WP-1: trusts a fresh receipt classification even when the asset is absent from the generated writer-digest inventory', async () => {
+    // Before the WP-1 fix, this route re-derived its own "expected" code_digest
+    // from the generated nirmana-writer-digests.json and treated any asset the
+    // inventory didn't cover (the large majority -- it only ever listed L0's
+    // bg_* writers) as 'unknown', overriding the sidecar's own 'fresh'
+    // classification. asset_freshness.freshness_state is now the sole runtime
+    // authority (NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1 "one authority");
+    // the inventory remains campaign-evidence pinning only. A ga_* asset (never
+    // in the inventory) reported 'fresh' by the sidecar must stay ALL_LIT, not
+    // silently reclassified to 'unknown'/'stale' and rebuilt.
+    seedRole('client')
+    const registry = [REGISTRY_GANITA_ONLY[0]]
+    mockQuery
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      .mockResolvedValueOnce({ rows: registry, rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ asset_id: registry[0].asset_id, state: 'lit' }], rowCount: 1 })
+      .mockResolvedValueOnce(NO_PROTECTED_ASSETS)
+      .mockResolvedValueOnce({
+        rows: [{ asset_id: registry[0].asset_id, state: 'fresh', reasons: [] }],
+        rowCount: 1,
+      })
+
+    const { POST } = await import('../route')
+    const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
+    expect(res.status).toBe(422)
+    expect((await res.json()).code).toBe('ALL_LIT')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
+  })
+
   it('RED — action=build on all-lit layer returns 422 with generic error (before G1 fix)', async () => {
     // Demonstrates the pre-G1 behavior: 422 with no actionable guidance.
     // After G1 the response now includes code=ALL_LIT + hint pointing to Rebuild.
@@ -512,6 +947,15 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
+      .mockResolvedValueOnce({
+        rows: REGISTRY_GANITA_ONLY.map(r => ({
+          asset_id: r.asset_id,
+          state: 'fresh',
+          reasons: [],
+          code_digest: (writerDigestInventory.writers as Record<string, string>)[r.asset_id],
+        })),
+        rowCount: REGISTRY_GANITA_ONLY.length,
+      })                                                                                         // asset_freshness
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'ganita', action: 'build' }))
@@ -531,6 +975,7 @@ describe('G1 — All-lit Build returns ALL_LIT code with Rebuild redirect', () =
       .mockResolvedValueOnce({ rows: REGISTRY_GANITA_ONLY, rowCount: REGISTRY_GANITA_ONLY.length }) // registry
       .mockResolvedValueOnce({ rows: allLitThroughput, rowCount: allLitThroughput.length })     // throughput (all lit)
       .mockResolvedValueOnce(NO_PROTECTED_ASSETS)                                                // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                        // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-rebuild-001' }], rowCount: 1 })
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -569,6 +1014,7 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
       .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (dormant)
       .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets — protected!
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                // asset_freshness
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'asset', scope_target: 'ka_gochara_sweep', action: 'build' }))
@@ -591,6 +1037,7 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
       .mockResolvedValueOnce({ rows: REGISTRY_SWEEP, rowCount: REGISTRY_SWEEP.length })   // asset_registry
       .mockResolvedValueOnce({ rows: [], rowCount: 0 })                                    // asset_throughput (both dormant)
       .mockResolvedValueOnce({ rows: [{ asset_id: 'ka_gochara_sweep' }], rowCount: 1 })   // build_protected_assets
+      .mockResolvedValueOnce(NO_FRESHNESS)                                                // asset_freshness
       .mockResolvedValue({ rows: [{ id: 'run-kala-001' }], rowCount: 1 })                 // INSERT build_runs + assets
     mockInvokeRunJob.mockResolvedValue(undefined)
 
@@ -609,17 +1056,17 @@ describe('SHAD-DARSHANA sweep-protection — build_protected_assets planner guar
     ])
   })
 
-  it('a non-protected pair proceeds normally — no protected_assets key when nothing is protected', async () => {
+  it('a retired writer cannot be dispatched merely because protection was removed', async () => {
     seedRole('client')
     seedSuccessfulBuild(REGISTRY_SWEEP) // NO_PROTECTED_ASSETS — nothing protected for this chart
 
     const { POST } = await import('../route')
     const res = await POST(makeReq({ chart_id: 'c1', scope: 'layer', scope_target: 'kala', action: 'build' }))
 
-    expect(res.status).toBe(201)
+    expect(res.status).toBe(422)
     const body = await res.json()
-    expect(body.data.plan).toContain('ka_gochara_sweep')
-    expect(body.data.plan).toContain('ka_kshetra')
-    expect(body.data.protected_assets).toBeUndefined()
+    expect(body.code).toBe('CODE_DIGEST_UNAVAILABLE')
+    expect(body.error).toContain('ka_gochara_sweep')
+    expect(mockInvokeRunJob).not.toHaveBeenCalled()
   })
 })

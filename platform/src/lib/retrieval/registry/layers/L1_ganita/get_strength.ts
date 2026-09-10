@@ -105,10 +105,25 @@ export const getStrengthCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 85, always_include: false },
   },
+  // F-C21 (L1_W1_ANALYSIS_BATCH_C.md, NOW, §N.6 item 4): was undeclared, so no census
+  // harness could assert this surface's byte caps/facet/empty-reason discipline.
+  // empty_reason: false is an honest gap, not a violation — the handler below has no
+  // empty_reason field (unlike get_condition_composite.ts's real implementation); the
+  // total_available_basis disclosure this file IS known for is a separate mechanism.
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'categories', 'graha_key', 'frame', 'all'],
+    empty_reason: false,
+  },
   async handler(args, _ctx) {
     try {
-      const chartId    = args.chart_id as string
-      const limit      = Math.min((args.limit as number) ?? 500, 2000)
+      const chartId       = args.chart_id as string
+      // F-60 fix: the requested limit is recorded BEFORE the 2000-row hard cap is applied,
+      // so a silent truncation can be disclosed explicitly instead of hidden inside a
+      // same-shaped response (see `limit_capped` below).
+      const requestedLimit = (args.limit as number) ?? 500
+      const limit          = Math.min(requestedLimit, 2000)
+      const limitCapped    = requestedLimit > 2000
       const offset     = (args.offset as number) ?? 0
       const categories = (args.categories as string[]) ?? STRENGTH_CATEGORIES
       const frame = ((args.frame as string) ?? 'lagna') as ReferenceFrame
@@ -121,16 +136,16 @@ export const getStrengthCapability: CapabilityDescriptor = {
       const frameAyanamsha = (args.ayanamsha_id as string) ?? DEFAULT_AYANAMSHA
       const all = (args.all as boolean) === true
 
-      const params: unknown[] = [chartId, categories, limit, offset]
-      let sql = `
-        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
-               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
-        FROM chart_facts
-        WHERE chart_id = $1 AND fact_category = ANY($2::text[])
-      `
+      // F-60 fix: build the WHERE clause + its params ONCE, shared by a dedicated COUNT
+      // query (the true pre-LIMIT/OFFSET row count matching this filter) and the SELECT
+      // query (the capped, paginated page) — so `total_available` below is never derived
+      // from the served page's own length (the defect: `total: servedRows.length` silently
+      // reported a post-cap, post-filter page length as if it were the true row count).
+      const whereParams: unknown[] = [chartId, categories]
+      let whereClause = `WHERE chart_id = $1 AND fact_category = ANY($2::text[])`
       if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
+        whereClause += ` AND ayanamsha_id = $${whereParams.length + 1}`
+        whereParams.push(args.ayanamsha_id as string)
       }
       if (args.graha_key) {
         // R5 W3 (graha_portrait lane) fix: the graha's identity lives in `fact_subject`
@@ -141,13 +156,30 @@ export const getStrengthCapability: CapabilityDescriptor = {
         // accident; filtering fact_subject with an exact-or-prefixed-or-suffixed match
         // covers both the bare-code categories (fact_subject = "SAT") and the
         // graha_in_house_composite_strength category (fact_subject = "SAT_IN_HOUSE_5").
-        sql += ` AND (fact_subject = $${params.length + 1}
-                  OR fact_subject ILIKE $${params.length + 2}
-                  OR fact_subject ILIKE $${params.length + 3})`
+        whereClause += ` AND (fact_subject = $${whereParams.length + 1}
+                  OR fact_subject ILIKE $${whereParams.length + 2}
+                  OR fact_subject ILIKE $${whereParams.length + 3})`
         const grahaKey = args.graha_key as string
-        params.push(grahaKey, `${grahaKey}\\_%`, `%\\_${grahaKey}`)
+        whereParams.push(grahaKey, `${grahaKey}\\_%`, `%\\_${grahaKey}`)
       }
-      sql += ` ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $3 OFFSET $4`
+
+      // F-60 fix: the TRUE pre-cap, pre-offset row count matching this filter — a distinct
+      // field from the served page length, computed by its own COUNT(*) query sharing the
+      // exact same WHERE predicate (never guessed from, or conflated with, the page below).
+      const countSql = `SELECT COUNT(*)::int AS total_count FROM chart_facts ${whereClause}`
+      const countResult = await query<{ total_count: number }>(countSql, whereParams)
+      const totalAvailable = Number(countResult.rows?.[0]?.total_count ?? 0)
+
+      const params: unknown[] = [...whereParams, limit, offset]
+      const limitParamIdx = whereParams.length + 1
+      const offsetParamIdx = whereParams.length + 2
+      const sql = `
+        SELECT fact_id, fact_category, fact_subject, ayanamsha_id, fact_key, fact_value_num,
+               fact_value_text, fact_value_jsonb, unit, verification_pass_status, citation_ref
+        FROM chart_facts
+        ${whereClause}
+        ORDER BY fact_category, ayanamsha_id, fact_key LIMIT $${limitParamIdx} OFFSET $${offsetParamIdx}
+      `
 
       const result = await query<Record<string, unknown>>(sql, params)
       const rows = result.rows ?? []
@@ -160,7 +192,8 @@ export const getStrengthCapability: CapabilityDescriptor = {
       let activeHouseByGraha: Record<string, number> | undefined
       let frameContext: Record<string, unknown> | undefined
       try {
-        const { sign: referenceSign } = await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
+        const { sign: referenceSign, ayanamsha_frame_sensitivity } =
+          await resolveFrameReferenceSign(chartId, frame, { ayanamsha_id: frameAyanamsha })
         const grahaCodes = Object.keys(GRAHA_CODE_TO_NAME)
         const signRes = await query<{ fact_subject: string; fact_value_text: string | null }>(
           `SELECT fact_subject, fact_value_text FROM chart_facts
@@ -184,6 +217,9 @@ export const getStrengthCapability: CapabilityDescriptor = {
               `graha's strength "from ${frame}", select its graha_in_house_composite_strength row for ` +
               `fact_subject = "<GRAHA>_IN_HOUSE_<active_house_by_graha[GRAHA]>" from the rows above. ` +
               `Strength VALUES are frozen build-time output — only which row is "active" changes with frame.`,
+            // F-159: frame="chandra" only — disclosure (never a correctness ruling) of whether
+            // the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.
+            ...(ayanamsha_frame_sensitivity ? { ayanamsha_frame_sensitivity } : {}),
           }
         }
       } catch (e) {
@@ -211,7 +247,43 @@ export const getStrengthCapability: CapabilityDescriptor = {
 
       return {
         content: {
-          chart_id: chartId, categories, frame, rows: servedRows, total: servedRows.length,
+          chart_id: chartId, categories, frame, rows: servedRows,
+          // `total` is the ROWS SERVED IN THIS PAGE (unchanged shape/name — callers that
+          // already treat this as a page-length receipt keep working). F-60 fix: it is no
+          // longer the only count reported — `total_available` (below) is the TRUE row
+          // count matching this chart_id/categories/ayanamsha_id/graha_key filter, computed
+          // by its own COUNT(*) query, independent of `limit`/`offset`/the 2000-row cap/the
+          // `all:false` counterfactual-row drop. A caller that previously read `total` as
+          // "how many rows exist" was reading a page-length; `total_available` is the field
+          // that actually answers that question.
+          total: servedRows.length,
+          // GA-5 review finding on #1388: total_available is a real COUNT(*) against the
+          // SAME filter as the page query -- but it is computed BEFORE the all:false
+          // counterfactual-row collapse below (that collapse needs each graha's resolved
+          // active house, an app-level computation this SQL-level count cannot see without
+          // re-deriving that logic here too, risking drift from the real collapse). Live-
+          // measured on the canonical chart: total_available=520, but the all:false default
+          // path can never serve more than 223 rows once counterfactual rows are dropped --
+          // total_available overstates the servable maximum by ~2.3x under the default. The
+          // basis is now disclosed explicitly rather than presented as unconditionally true.
+          total_available: totalAvailable,
+          total_available_basis: all
+            ? 'exact: matches every row this call can serve (all:true — no counterfactual-row collapse applies).'
+            : 'PRE-COLLAPSE: raw filter match only, computed before this call\'s own all:false ' +
+              'counterfactual-row collapse (see the all/counterfactual_rows_dropped/note fields below). ' +
+              'The true maximum row count this call can ever serve is total_available minus the ' +
+              'counterfactual graha_in_house_composite_strength rows for every graha with a resolved ' +
+              'active house -- smaller than total_available, not equal to it. Pass all:true for an ' +
+              'exact total_available.',
+          limit, offset,
+          ...(limitCapped ? {
+            limit_capped: true,
+            requested_limit: requestedLimit,
+            note_limit_cap: `The requested limit (${requestedLimit}) exceeds this tool's hard cap of ` +
+              '2000 and was reduced to 2000 for this call — disclosed explicitly rather than silently ' +
+              "truncated. See total_available_basis above before using total_available to page — " +
+              "it does not equal the servable maximum when all:false (the default).",
+          } : {}),
           ...(frameContext ? { frame_context: frameContext } : {}),
           ...(!all ? {
             all: false,

@@ -1,0 +1,205 @@
+"""Shared constants + pure functions for the Paripraśna Execution Observatory. Stdlib only."""
+import json
+import os
+import subprocess
+
+RUNTIME_DIR = os.path.expanduser("~/.pariprashna-tracker")
+EVENTS_DIR = os.path.join(RUNTIME_DIR, "events")
+LOGS_DIR = os.path.join(RUNTIME_DIR, "logs")
+STATE_JSON = os.path.join(RUNTIME_DIR, "state.json")
+TRACKER_DATA_JS = os.path.join(RUNTIME_DIR, "tracker_data.js")
+HEARTBEAT_JSON = os.path.join(RUNTIME_DIR, "heartbeat.json")
+COLLECTOR_SNAPSHOT_JSON = os.path.join(RUNTIME_DIR, "collector_snapshot.json")
+PIDFILE = os.path.join(RUNTIME_DIR, "trackerd.pid")
+SERVE_TOKEN_FILE = os.path.join(RUNTIME_DIR, "serve_token")
+# Where the current dashboard URLs are always recorded (see serve.py.stable_hostname).
+URL_FILE = os.path.join(RUNTIME_DIR, "URL.txt")
+
+CODE_DIR = os.path.dirname(os.path.abspath(__file__))
+INSTALLED_FROM_JSON = os.path.join(CODE_DIR, "INSTALLED_FROM.json")
+
+# The daemon's OWN private mirror clone -- see collect.py's mirror_fetch(). Every origin/*
+# ref read (lane branches, ahead/behind, main's tip, campaign-coordination, code
+# staleness) comes from here, fetched on the daemon's own cadence, so ref freshness is
+# something THIS process controls and can report on -- never a hope that some unrelated
+# process fetched the shared checkout recently. `git clone --mirror` maps the remote's
+# refs/heads/* and refs/tags/* verbatim into this bare repo's own refs (NOT
+# refs/remotes/origin/*) -- so "origin/main" there is just this mirror's own `main`.
+MIRROR_DIR = os.path.join(RUNTIME_DIR, "mirror.git")
+GIT_REMOTE_URL = "https://github.com/Marsys-Technologies/Madhav.git"
+
+# Repo root for the tracker's own read-only git operations (for-each-ref, campaign-
+# coordination reads, merge-base staleness checks). In SNAPSHOT installs (see install.sh
+# --install-from-ref) this code directory is an immutable `git archive` extraction with NO
+# .git of its own -- it cannot be its own repo root. TRACKER_GIT_REPO (set in the launchd
+# plist's EnvironmentVariables by install.sh) points at a separate, ideally-permanent
+# checkout to read from instead. Falls back to the old relative-path guess (this file lives
+# at 00_ARCHITECTURE/briefs/pariprashna_swarm/tracker/_common.py) only for IN-PLACE/dev runs
+# where the code dir genuinely is inside a live checkout and the env var isn't set.
+REPO_ROOT = os.environ.get("TRACKER_GIT_REPO") or os.path.abspath(
+    os.path.join(CODE_DIR, "..", "..", "..", "..")
+)
+PLAN_PATH = os.path.join(CODE_DIR, "PLAN.yaml")
+
+STALE_AMBER_S = 45
+STALE_RED_S = 120
+REF_AMBER_S = 60
+REF_RED_S = 180
+STALL_MINUTES = 20
+HEARTBEAT_INTERVAL_FRESH_S = 20
+HEARTBEAT_INTERVAL_IDLE_S = 60
+IDLE_CYCLES_BEFORE_BACKOFF = 10
+WATCHDOG_STALE_THRESHOLD_S = 90
+
+# Runtime state used ONLY to track consecutive mirror-fetch failures across daemon cycles
+# (a plain counter, not part of the event-log/pure-fold state -- it exists purely so the
+# next cycle knows whether the PREVIOUS one failed, without re-deriving it from a log scan
+# every cycle). Not read by the projector; collect.py owns it exclusively.
+MIRROR_FETCH_STATE_JSON = os.path.join(RUNTIME_DIR, "mirror_fetch_state.json")
+
+# Durable, git-verified record of which merge commit completed which lane. Lane completion
+# is a PERMANENT fact, but it was being derived from a ROLLING `gh pr list --limit N`
+# window -- so once the six phase PRs (#1349..#1365) aged out past #1368, every P0/P1/P2
+# lane silently reverted MERGED -> UNOBSERVABLE and the board "forgot" two shipped phases.
+# Recording (lane -> merge commit) here and re-verifying ancestry against the mirror every
+# cycle makes the evidence window-independent while keeping it DERIVED: git stays the
+# authority and a rewritten history would correctly revoke the state.
+LANE_EVIDENCE_JSON = os.path.join(RUNTIME_DIR, "lane_evidence.json")
+
+# Liveness beat, distinct from heartbeat.json. heartbeat.json is written only when a cycle
+# COMPLETES, so a slow-but-perfectly-healthy cycle is indistinguishable from a dead process
+# to anything watching it -- and the watchdog was consequently SIGKILLing working daemons
+# mid-cycle (measured 2026-08-21: a 77s cycle + 20s sleep = 97s apparent age, past the 90s
+# threshold; 7 more cycles came within 20s of it). This file is stamped at cycle start and
+# between collector steps, so "alive and working" and "finished a cycle" stop being the
+# same signal.
+ALIVE_JSON = os.path.join(RUNTIME_DIR, "alive.json")
+ALIVE_STALE_THRESHOLD_S = 90
+
+# Item (b): written by tracker-stop BEFORE it boots the three launchd jobs out, cleared by
+# tracker-start once the daemon is confirmed healthy again. Its presence at daemon-startup
+# time is what lets trackerd distinguish "this gap was requested" from "this gap is an
+# incident" -- see item (d) below. Never write this from trackerd.py itself; only
+# tracker-stop writes it, only tracker-start clears it.
+STOPPED_INTENTIONALLY_JSON = os.path.join(RUNTIME_DIR, "STOPPED_INTENTIONALLY.json")
+
+# Item (d): a restart must never launder an outage into green. If trackerd starts and finds
+# the previous heartbeat older than BLIND_GAP_THRESHOLD_S with no STOPPED_INTENTIONALLY.json
+# present, it records the gap here. This file OUTLIVES the restart that wrote it -- the
+# banner it drives stays up across further restarts until something explicitly acknowledges
+# it (tracker-ack-blind), not until the heartbeat merely turns green again.
+BLIND_WINDOW_JSON = os.path.join(RUNTIME_DIR, "BLIND_WINDOW.json")
+BLIND_GAP_THRESHOLD_S = 120
+
+
+def _class_for_thresholds(age_seconds, amber_max, red_max):
+    if age_seconds <= amber_max:
+        return "green"
+    if age_seconds <= red_max:
+        return "amber"
+    return "red"
+
+
+def staleness_class(age_seconds):
+    """Pure function: age (seconds, float/int) -> 'green' | 'amber' | 'red'.
+    Mirrored byte-for-byte in tracker.html's JS stalenessClass()."""
+    return _class_for_thresholds(age_seconds, STALE_AMBER_S, STALE_RED_S)
+
+
+def classify_code_provenance(is_ancestor_of_main, contains_latest_tracker_commit):
+    """Pure (item 1a): the deployed code's relationship to main's tracker-subtree history,
+    replacing the old binary is_current (which conflated "unmerged, ahead of main" with
+    "behind main" -- both read False and both rendered amber "STALE CODE"). Four states:
+      CURRENT  -- merged (is_ancestor_of_main) and has everything main has for tracker/.
+      AHEAD    -- unmerged, but has everything main has for tracker/ (plus its own new
+                  work) -- e.g. code deployed pre-merge for live verification. NOT amber.
+      BEHIND   -- merged, but main has tracker/ history this sha lacks. Amber.
+      DIVERGED -- neither an ancestor nor has everything main has -- no clean ordering
+                  (e.g. after a rebase/force-push). Amber.
+    """
+    if contains_latest_tracker_commit:
+        return "CURRENT" if is_ancestor_of_main else "AHEAD"
+    return "BEHIND" if is_ancestor_of_main else "DIVERGED"
+
+
+def compute_blind_window(last_heartbeat_ts, now_ts, marker_present):
+    """Pure (item d): decide, at daemon start, whether this restart followed an
+    unexplained gap. `last_heartbeat_ts`/`now_ts` are timezone-aware datetimes (or
+    last_heartbeat_ts is None for a genuine first-ever boot -- nothing to have been blind
+    about). Returns None (no blind window to record) or a dict with gap_start_ts/
+    gap_end_ts/duration_s. A restart must never launder an outage into green: the caller is
+    responsible for writing this to a file that OUTLIVES the restart, not just this cycle."""
+    if last_heartbeat_ts is None:
+        return None
+    gap_s = (now_ts - last_heartbeat_ts).total_seconds()
+    if gap_s <= BLIND_GAP_THRESHOLD_S:
+        return None
+    if marker_present:
+        return None
+    return {
+        "gap_start_ts": last_heartbeat_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "gap_end_ts": now_ts.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "duration_s": gap_s,
+    }
+
+
+def ref_freshness_class(age_seconds):
+    """Pure function for the THIRD liveness axis (ref freshness -- distinct from observer
+    freshness and subject progress; the observatory can be alive, the swarm can be moving,
+    and the refs can still be stale, independently). Mirrored byte-for-byte in
+    tracker.html's JS refFreshnessClass()."""
+    return _class_for_thresholds(age_seconds, REF_AMBER_S, REF_RED_S)
+
+
+def load_plan():
+    with open(PLAN_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def atomic_write_json(path, obj):
+    # Tmp filename includes this process's own pid: two processes writing the SAME target
+    # path concurrently (which should never happen once acquire_pidfile()'s flock is
+    # correct, but did happen in production before that fix -- see the 2026-08-20
+    # duplicate-trackerd incident) must never race on ONE shared tmp path, where the loser's
+    # os.replace() would crash with FileNotFoundError because the winner already consumed
+    # it. Each process now always renames its OWN tmp file; os.replace() is independently
+    # atomic per call, so the only possible outcome is "last writer's content wins," never a
+    # crash.
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, sort_keys=True)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def atomic_write_text(path, text):
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(text)
+    os.replace(tmp, path)
+
+
+def run(cmd, cwd=None, timeout=20):
+    """Run a command, never raise. Returns (ok, stdout, stderr)."""
+    try:
+        r = subprocess.run(
+            cmd, cwd=cwd or REPO_ROOT, timeout=timeout,
+            capture_output=True, text=True,
+        )
+        return (r.returncode == 0, r.stdout, r.stderr)
+    except Exception as e:  # noqa: BLE001 — collector signals must never raise
+        return (False, "", str(e))
+
+
+def ensure_runtime_dirs():
+    os.makedirs(EVENTS_DIR, exist_ok=True)
+    os.makedirs(LOGS_DIR, exist_ok=True)
+
+
+def run_mirror(args, timeout=20):
+    """Run a read-only git command against the daemon's OWN mirror (MIRROR_DIR) -- never
+    against REPO_ROOT (the shared checkout). Ref names inside the mirror have no
+    `refs/remotes/origin/` prefix: use `main`, `pariprashna/p0`, `campaign-coordination`,
+    never `origin/main` etc. Never raises; returns (ok, stdout, stderr) like run()."""
+    return run(["git", "--git-dir", MIRROR_DIR, "--no-optional-locks"] + args,
+                cwd=RUNTIME_DIR, timeout=timeout)

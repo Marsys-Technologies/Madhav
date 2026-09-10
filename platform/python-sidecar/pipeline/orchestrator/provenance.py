@@ -1,0 +1,433 @@
+"""Versioned build receipts and sidecar-owned freshness reconciliation.
+
+This module intentionally owns digest construction and database mutation.  The
+Node planner consumes the resulting freshness projection but never hashes Python
+source or updates build state while serving a read request.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import Any, Literal
+
+
+RECEIPT_VERSION = "nirmana-provenance-receipt-v2"
+WHOLE_ASSET_PARTITION = "__whole_asset__"
+FreshnessState = Literal["fresh", "stale", "unknown"]
+
+
+def _normalise(value: Any) -> Any:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+    if isinstance(value, uuid.UUID):
+        # psycopg3 adapts a `uuid` column to a native uuid.UUID by default -- any
+        # digest input carrying a DB-sourced id (chart_id, run_id, ...) can arrive
+        # as one of these rather than a str, and json.dumps cannot serialize it
+        # (Nirmana #1856).
+        return str(value)
+    if isinstance(value, dict):
+        return {str(key): _normalise(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_normalise(item) for item in value]
+    if isinstance(value, set):
+        return sorted(_normalise(item) for item in value)
+    return value
+
+
+def canonical_digest(value: Any) -> str:
+    """SHA-256 of a canonical, versioned JSON value."""
+    payload = json.dumps(_normalise(value), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True)
+class Receipt:
+    asset_id: str
+    chart_id: str | None
+    partition_key: str
+    code_digest: str | None
+    config_digest: str | None
+    upstream_digest: str | None
+    partition_digest: str | None
+    output_digest: str | None
+    output_digest_spec_sha256: str | None
+    upstream_receipts: list[dict[str, Any]]
+    unknown_reasons: tuple[str, ...]
+    receipt_version: str = RECEIPT_VERSION
+
+    @property
+    def receipt_state(self) -> Literal["proven", "unknown"]:
+        return "unknown" if self.unknown_reasons else "proven"
+
+
+def build_receipt(
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    code_digest: str | None,
+    config: dict[str, Any],
+    upstream_digest: str | None,
+    upstream_receipts: list[dict[str, Any]],
+    partition_declaration: str | None,
+    has_cowriters: bool,
+    output_digest: str | None,
+    output_digest_spec_sha256: str | None,
+) -> Receipt:
+    """Build a receipt without guessing a missing partition or output digest."""
+    partition_key = partition_declaration or WHOLE_ASSET_PARTITION
+    reasons: list[str] = []
+    if code_digest is None:
+        reasons.append("code_digest_unavailable")
+    if upstream_digest is None:
+        reasons.append("upstream_digest_unavailable")
+    if output_digest is None:
+        reasons.append("output_digest_unavailable")
+    if output_digest_spec_sha256 is None:
+        reasons.append("output_digest_spec_unavailable")
+    if has_cowriters and partition_declaration is None:
+        reasons.append("partition_undeclared")
+    partition_digest = None if has_cowriters and partition_declaration is None else canonical_digest({
+        "version": RECEIPT_VERSION,
+        "partition_key": partition_key,
+    })
+    if partition_digest is None:
+        reasons.append("partition_digest_unavailable")
+    try:
+        config_digest = canonical_digest({"version": RECEIPT_VERSION, "config": config})
+    except (TypeError, ValueError):
+        # Receipt creation must not turn an already successful writer into a
+        # false failure merely because a new config value is not serialisable.
+        # It is an explicit blocker until the config representation is defined.
+        config_digest = None
+        reasons.append("config_digest_unavailable")
+    normalised_upstream = _normalise(upstream_receipts)
+    if not isinstance(normalised_upstream, list):
+        normalised_upstream = []
+        reasons.append("upstream_receipts_unavailable")
+    return Receipt(
+        asset_id=asset_id,
+        chart_id=chart_id,
+        partition_key=partition_key,
+        code_digest=code_digest,
+        config_digest=config_digest,
+        upstream_digest=upstream_digest,
+        partition_digest=partition_digest,
+        output_digest=output_digest,
+        output_digest_spec_sha256=output_digest_spec_sha256,
+        upstream_receipts=normalised_upstream,
+        unknown_reasons=tuple(sorted(set(reasons))),
+    )
+
+
+def classify_receipt(stored: Receipt | None, current: Receipt | None) -> tuple[FreshnessState, list[str]]:
+    """Pure, component-wise freshness classification; never mutates on read."""
+    if stored is None or current is None:
+        return "unknown", ["receipt_missing"]
+    if stored.receipt_state == "unknown":
+        return "unknown", list(stored.unknown_reasons)
+    if current.receipt_state == "unknown":
+        return "unknown", list(current.unknown_reasons)
+    if stored.receipt_version != current.receipt_version:
+        return "stale", ["receipt_version_changed"]
+    changed = [
+        name for name in ("code_digest", "config_digest", "upstream_digest", "partition_digest", "output_digest", "output_digest_spec_sha256")
+        if getattr(stored, name) != getattr(current, name)
+    ]
+    return ("stale", [f"{name}_changed" for name in changed]) if changed else ("fresh", [])
+
+
+def _registry_partition(cur, asset_id: str) -> tuple[str | None, bool]:
+    cur.execute(
+        """
+        SELECT ar.natural_key_partition,
+               EXISTS (
+                 SELECT 1 FROM asset_registry peer
+                 WHERE peer.target_table IS NOT DISTINCT FROM ar.target_table
+                    AND ar.target_table IS NOT NULL
+                    AND peer.asset_id <> ar.asset_id
+                    AND peer.is_active = true
+                    AND peer.has_writer = true
+               ) AS has_cowriters
+          FROM asset_registry ar
+         WHERE ar.asset_id = %s
+        """,
+        (asset_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise RuntimeError(f"asset registry row missing for provenance receipt: {asset_id}")
+    return row.get("natural_key_partition"), bool(row.get("has_cowriters"))
+
+
+def _stored_receipt(cur, receipt: Receipt) -> Receipt | None:
+    cur.execute(
+        """
+        SELECT code_digest, config_digest, upstream_digest, partition_digest,
+               output_digest, output_digest_spec_sha256, upstream_receipts, unknown_reasons, receipt_version
+          FROM asset_provenance_receipts
+         WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        """,
+        (receipt.asset_id, receipt.chart_id, receipt.partition_key),
+    )
+    old = cur.fetchone()
+    stored = None if not old else Receipt(
+        asset_id=receipt.asset_id,
+        chart_id=receipt.chart_id,
+        partition_key=receipt.partition_key,
+        code_digest=old.get("code_digest"), config_digest=old.get("config_digest"),
+        upstream_digest=old.get("upstream_digest"), partition_digest=old.get("partition_digest"),
+        output_digest=old.get("output_digest"), output_digest_spec_sha256=old.get("output_digest_spec_sha256"),
+        upstream_receipts=list(old.get("upstream_receipts") or []),
+        unknown_reasons=tuple(old.get("unknown_reasons") or []),
+        receipt_version=old.get("receipt_version") or RECEIPT_VERSION,
+    )
+    return stored
+
+
+def _upsert_freshness_row(
+    cur,
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    partition_key: str,
+    freshness: FreshnessState,
+    reasons: list[str],
+    receipt_version: str,
+) -> None:
+    """Store the sidecar projection only; this never commits a transaction."""
+    cur.execute(
+        """
+        INSERT INTO asset_freshness
+          (asset_id, chart_id, partition_key, freshness_state, reasons, receipt_version, observed_at)
+        VALUES (%s, %s, %s, %s, %s::jsonb, %s, NOW())
+        ON CONFLICT (asset_id, scope_key, partition_key) DO UPDATE SET
+          freshness_state = EXCLUDED.freshness_state, reasons = EXCLUDED.reasons,
+          receipt_version = EXCLUDED.receipt_version, observed_at = EXCLUDED.observed_at
+        """,
+        (asset_id, chart_id, partition_key, freshness,
+         json.dumps(reasons), receipt_version),
+    )
+
+
+def _upsert_freshness(
+    cur,
+    receipt: Receipt,
+    freshness: FreshnessState,
+    reasons: list[str],
+) -> None:
+    _upsert_freshness_row(
+        cur, asset_id=receipt.asset_id, chart_id=receipt.chart_id,
+        partition_key=receipt.partition_key, freshness=freshness,
+        reasons=reasons, receipt_version=receipt.receipt_version,
+    )
+
+
+def reconcile_receipt(cur, current: Receipt) -> tuple[FreshnessState, list[str]]:
+    """Classify the last successful receipt against current inputs and record it.
+
+    This is the sole sidecar reconciliation path.  It intentionally preserves the
+    old receipt while inputs differ: replacing it before a successful writer run
+    would let new code/config/upstreams masquerade as having produced old output.
+    The caller owns the transaction, so this is idempotent and never mutates on
+    a planner read.
+    """
+    freshness, reasons = classify_receipt(_stored_receipt(cur, current), current)
+    _upsert_freshness(cur, current, freshness, reasons)
+    return freshness, reasons
+
+
+def persist_successful_receipt(cur, receipt: Receipt, build_id: str | None) -> tuple[FreshnessState, list[str]]:
+    """Atomically replace the receipt after a successful writer execution.
+
+    A success proves its own newly written output; prior input changes must not
+    leave the just-produced receipt stale.  Incomplete evidence remains unknown.
+    The caller owns the encompassing throughput transaction.
+    """
+    freshness: FreshnessState = "unknown" if receipt.receipt_state == "unknown" else "fresh"
+    reasons = list(receipt.unknown_reasons)
+    cur.execute(
+        """
+        INSERT INTO asset_provenance_receipts
+          (asset_id, chart_id, partition_key, receipt_version, code_digest, config_digest,
+           upstream_digest, partition_digest, output_digest, output_digest_spec_sha256, upstream_receipts, receipt_state,
+           unknown_reasons, observed_at, build_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, NOW(), %s)
+        ON CONFLICT (asset_id, scope_key, partition_key) DO UPDATE SET
+          receipt_version = EXCLUDED.receipt_version, code_digest = EXCLUDED.code_digest,
+          config_digest = EXCLUDED.config_digest, upstream_digest = EXCLUDED.upstream_digest,
+          partition_digest = EXCLUDED.partition_digest, output_digest = EXCLUDED.output_digest,
+          output_digest_spec_sha256 = EXCLUDED.output_digest_spec_sha256,
+          upstream_receipts = EXCLUDED.upstream_receipts, receipt_state = EXCLUDED.receipt_state,
+          unknown_reasons = EXCLUDED.unknown_reasons, observed_at = EXCLUDED.observed_at,
+          build_id = EXCLUDED.build_id
+        """,
+        (receipt.asset_id, receipt.chart_id, receipt.partition_key, receipt.receipt_version,
+         receipt.code_digest, receipt.config_digest, receipt.upstream_digest, receipt.partition_digest,
+         receipt.output_digest, receipt.output_digest_spec_sha256, json.dumps(receipt.upstream_receipts), receipt.receipt_state,
+         json.dumps(list(receipt.unknown_reasons)), build_id),
+    )
+    _upsert_freshness(cur, receipt, freshness, reasons)
+    return freshness, reasons
+
+
+def capture_and_persist_receipt(
+    cur,
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    build_id: str | None,
+    code_digest: str | None,
+    config: dict[str, Any],
+    upstream_digest: str | None,
+    upstream_receipts: list[dict[str, Any]],
+    output_digest: str | None = None,
+    output_digest_spec_sha256: str | None = None,
+    partition_declaration: str | None = None,
+    has_cowriters: bool | None = None,
+) -> tuple[FreshnessState, list[str]]:
+    """Construct and persist the sidecar's receipt without committing the caller txn."""
+    if has_cowriters is None:
+        partition_declaration, has_cowriters = _registry_partition(cur, asset_id)
+    receipt = build_receipt(
+        asset_id=asset_id, chart_id=chart_id, code_digest=code_digest, config=config,
+        upstream_digest=upstream_digest, upstream_receipts=upstream_receipts,
+        partition_declaration=partition_declaration, has_cowriters=has_cowriters,
+        output_digest=output_digest, output_digest_spec_sha256=output_digest_spec_sha256,
+    )
+    return persist_successful_receipt(cur, receipt, build_id)
+
+
+def previous_output_digest(
+    cur, *, asset_id: str, chart_id: str | None, partition_key: str,
+) -> str | None:
+    """Read-side lookup: the output_digest of the last successfully persisted
+    receipt for (asset_id, chart_id, partition_key), or None if no receipt
+    exists yet for this exact key.
+
+    Used by the delta-directional staleness authority (O-wave WP-1,
+    NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md §3.1) to detect whether a writer's
+    output actually changed since its last complete receipt, without exposing
+    the receipt-persistence machinery itself to callers outside this module.
+    Never mutates; safe to call from a savepoint the caller may still roll
+    back.
+    """
+    cur.execute(
+        """
+        SELECT output_digest
+          FROM asset_provenance_receipts
+         WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        """,
+        (asset_id, chart_id, partition_key),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+    return row.get("output_digest") if isinstance(row, dict) else row[0]
+
+
+def reattribute_unchanged_receipt(
+    cur, *, asset_id: str, chart_id: str | None, partition_declaration: str | None, build_id: str | None,
+) -> None:
+    """After a delta-skip (O-wave WP-2), re-stamp the existing matching receipt's
+    build_id/observed_at to the run that just verified it is still current.
+
+    Only ever called immediately after previous_receipt_matches_inputs() has
+    already proven -- by comparing code/config/upstream/partition digests --
+    that this run's inputs are byte-identical to the receipt's. Nothing here
+    re-derives or asserts a NEW fact; it attributes an already-verified,
+    unchanged fact to the run that reconfirmed it, the same "verified-unchanged
+    is still verified" posture the freshness classifier already applies (Nirmana
+    #1899). Skipping this update is what previously left accepted_rebuild_observed
+    structurally unreachable: the run holding the build_run_authorized event and
+    the run whose receipt records the (unchanged) content were never the same row.
+
+    Also reconciles asset_freshness exactly as persist_successful_receipt does
+    (D-NATIVE-10, Nirmana #2300): this run IS the rebuild that re-verified the
+    output under current inputs, so a `registry_changed`-stale flag must clear
+    here just as it would on a full rebuild. Before this, the delta-skip fast
+    path left freshness permanently 'stale' for any asset whose content happened
+    to be byte-identical across a registry-contract edit -- the receipt said
+    'proven' while asset_freshness said 'stale', and every downstream dependent
+    failed DEP-ASSERT ('receipt:stale' despite rows present). The freshness
+    value mirrors the completion path's own rule: 'unknown' receipts stay
+    'unknown' (never promoted), everything else is 'fresh'.
+    """
+    partition_key = partition_declaration or WHOLE_ASSET_PARTITION
+    cur.execute(
+        """
+        UPDATE asset_provenance_receipts
+           SET build_id = %s, observed_at = NOW()
+         WHERE asset_id = %s AND chart_id IS NOT DISTINCT FROM %s AND partition_key = %s
+        RETURNING receipt_state, unknown_reasons, receipt_version
+        """,
+        (build_id, asset_id, chart_id, partition_key),
+    )
+    row = cur.fetchone()
+    if not row:
+        # No stored receipt (should be unreachable: the caller just matched one).
+        # Write no freshness rather than invent one (§N.7: honest null).
+        return
+    if isinstance(row, dict):
+        receipt_state = row.get("receipt_state")
+        unknown_reasons = row.get("unknown_reasons")
+        receipt_version = row.get("receipt_version")
+    else:
+        receipt_state, unknown_reasons, receipt_version = row[0], row[1], row[2]
+    freshness: FreshnessState = "unknown" if receipt_state == "unknown" else "fresh"
+    _upsert_freshness_row(
+        cur, asset_id=asset_id, chart_id=chart_id, partition_key=partition_key,
+        freshness=freshness, reasons=list(unknown_reasons or []),
+        receipt_version=receipt_version or RECEIPT_VERSION,
+    )
+
+
+def previous_receipt_matches_inputs(
+    cur,
+    *,
+    asset_id: str,
+    chart_id: str | None,
+    code_digest: str | None,
+    config: dict[str, Any],
+    upstream_digest: str | None,
+    partition_declaration: str | None,
+    has_cowriters: bool,
+) -> bool:
+    """Read-side lookup (O-wave WP-2, plan §3.2, "delta-skip"): True iff a
+    'proven' stored receipt exists for this exact key and its
+    code_digest/config_digest/upstream_digest/partition_digest/receipt_version
+    all match the given CURRENT inputs. output_digest is deliberately
+    excluded from the comparison -- it isn't known before the writer runs;
+    that is exactly why this is a PRE-execution gate, distinct from WP-1's
+    post-execution previous_output_digest comparison above.
+
+    Fail-open by construction: any missing/unknown input, or an 'unknown'
+    stored receipt, or no stored receipt at all, returns False -- the caller
+    then executes. A wasted execution is recoverable; a wrongly skipped one
+    is silent corruption (CLAUDE.md §N.8 / plan §3.2 point 4).
+    """
+    if code_digest is None or upstream_digest is None:
+        return False
+    current = build_receipt(
+        asset_id=asset_id, chart_id=chart_id, code_digest=code_digest, config=config,
+        upstream_digest=upstream_digest, upstream_receipts=[],
+        partition_declaration=partition_declaration, has_cowriters=has_cowriters,
+        output_digest=None, output_digest_spec_sha256=None,
+    )
+    if current.config_digest is None or current.partition_digest is None:
+        return False
+    stored = _stored_receipt(cur, current)
+    if stored is None or stored.receipt_state == "unknown":
+        return False
+    if stored.receipt_version != current.receipt_version:
+        return False
+    return (
+        stored.code_digest == current.code_digest
+        and stored.config_digest == current.config_digest
+        and stored.upstream_digest == current.upstream_digest
+        and stored.partition_digest == current.partition_digest
+    )

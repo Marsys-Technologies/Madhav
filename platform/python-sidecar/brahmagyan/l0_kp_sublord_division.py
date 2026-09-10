@@ -402,10 +402,11 @@ def seed_kp_sublord_division(conn: Any, *, dry_run: bool = False,
     rows = build_divisions()
 
     verdict = verify_star_lords_against_reference(conn)
-    if verdict["status"] == "divergent_flagged":
+    if verdict["status"] != TWO_PASS_VERIFIED:
         raise RuntimeError(
-            "HALT: bg_kp_sublord_division star_lord disagrees with the L0 nakshatra "
-            f"authority (reference_nakshatra): {verdict['mismatches'][:5]}"
+            "HALT: bg_kp_sublord_division requires a two_pass_verified star-lord "
+            "cross-check against the L0 nakshatra authority (reference_nakshatra); "
+            f"received {verdict['status']}: {verdict['mismatches'][:5]}"
         )
     logger.info(
         "[bg_kp_sublord_division] star-lord cross-check: %s (%d divisions checked)",
@@ -418,8 +419,35 @@ def seed_kp_sublord_division(conn: Any, *, dry_run: bool = False,
         return {"bg_kp_sublord_division": len(rows)}
 
     with conn.cursor() as cur:
+        cur.execute(
+            "DELETE FROM bg_kp_sublord_division "
+            "WHERE table_version <> %s OR division_index NOT BETWEEN 1 AND %s",
+            (TABLE_VERSION, len(rows)),
+        )
         for r in rows:
             cur.execute(_INSERT_SQL, {k: v for k, v in r.items() if not k.startswith("_")})
+        cur.execute(
+            """
+            SELECT count(*) AS row_count,
+                   min(division_index) AS min_index,
+                   max(division_index) AS max_index,
+                   count(DISTINCT table_version) AS version_count,
+                   sum(end_longitude_deg - start_longitude_deg)::double precision AS total_span
+            FROM bg_kp_sublord_division
+            """
+        )
+        postflight = cur.fetchone()
+        values = (
+            (postflight["row_count"], postflight["min_index"], postflight["max_index"],
+             postflight["version_count"], float(postflight["total_span"]))
+            if isinstance(postflight, dict)
+            else (postflight[0], postflight[1], postflight[2], postflight[3], float(postflight[4]))
+        )
+        if values[:4] != (len(rows), 1, len(rows), 1) or abs(values[4] - 360.0) > 1e-8:
+            raise RuntimeError(
+                "bg_kp_sublord_division exact postflight failed: "
+                f"expected ({len(rows)},1,{len(rows)},1,360.0), got {values}"
+            )
 
     if autocommit:
         conn.commit()

@@ -1,0 +1,41 @@
+RUBRIC F109-WEALTH-REPLAY-v1.0 — WRITTEN BEFORE ANY ANSWER WAS INSPECTED
+Timestamp: 2026-08-21 (session start, pre-replay)
+
+DEFINITION OF "THE SYSTEM'S ANSWER" for a question Q:
+  the union of (a) the canonical wealth surface response for Q, and
+  (b) any drill the response's OWN drill_pointers / judgment_flags direct to.
+  Tools I have to discover myself, outside that closure, are NOT part of the answer;
+  if the named technique is only reachable that way, G1 fails with reason
+  "not reachable from the wealth surface" (a routing defect, recorded separately
+  from a data defect).
+
+THREE GATES. BRIGHT iff G1 AND G2 AND G3. Otherwise DARK, with failing gate recorded.
+
+G1 SPECIFICITY — the answer engages the specific test the question poses.
+  naive band  (W-01..07): a chart-specific wealth verdict, not a generic paragraph.
+  narrow band (W-08..14): the named object (house / yoga / varga / lagna / dasha)
+                          is COMPUTED for this chart, with values.
+  expert band (W-15..21): the named multi-step technique is actually EXECUTED —
+                          dispositor chain, cross-varga convergence, karaka-vs-lord
+                          reconciliation, cross-ayanamsha divergence, stellium/
+                          reception/aspect-triangle trace, sudarshana agreement,
+                          bhavat-bhavam net verdict. Naming the term without
+                          producing its chart-specific computation FAILS.
+                          Substituting a generic 2nd/11th reading for the named
+                          technique FAILS (the original F-109 "silent evasion" mode).
+
+G2 GROUNDING — at least one chart-specific verifiable datum (planet/sign/house/
+  degree/dignity/dasha date/yoga id/fact_id), not internally contradicting L1.
+  Labels with no values FAIL.
+
+G3 HONEST CLOSURE — delivers the asked-for judgment, OR explicitly reports the gap
+  (empty / unavailable) with a pointer. A silently-empty section dressed as an
+  answer FAILS. Per CLAUDE.md §N.6/§N.7: honest null PASSES; hollow-but-populated
+  FAILS.
+
+ANTI-MOTIVATED-REASONING RULE: if I have to argue for BRIGHT, it is DARK.
+  Ties go DARK. No post-hoc gate re-weighting.
+
+SCORING: bright% = BRIGHT / 21. Reported to 2 dp. Compared to the prior
+  90.48% (19/21) which used a DIFFERENT, unrecorded rubric — comparison is
+  therefore directional only and must be labelled as such.

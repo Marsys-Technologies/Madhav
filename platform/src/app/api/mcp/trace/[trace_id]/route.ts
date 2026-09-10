@@ -20,6 +20,7 @@ import { NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
 import { buildEnvelope, buildErrorEnvelope, buildEpistemicsBlock } from '@/lib/mcp/epistemics'
 import { validateServiceToken } from '@/lib/mcp/service_token'
+import { detectEvidenceState, surgicalConfidenceBand } from '@/lib/mcp/evidence_state'
 
 // ── TraceStep shape (matches query_trace_steps schema) ───────────────────────
 
@@ -127,17 +128,33 @@ export async function GET(request: Request, { params }: RouteParams) {
     // Compute total latency from step latencies
     const totalLatencyMs = rows.reduce((sum, step) => sum + (step.latency_ms ?? 0), 0)
 
+    // F-161 hardening (not a live-reachable fix — see note below): `confidence_band`
+    // was hardcoded 'high' here, the same §N.8 pattern F-126 fixed in the primitives
+    // route. Unlike that route, `rows.length === 0` above already returns a 404 error
+    // envelope before this code runs, so `steps` here can never be empty and
+    // `detectEvidenceState` will always grade 'present' → 'high'. The detector is
+    // wired up anyway for defense-in-depth and consistency with the sibling routes,
+    // but there is no zero-row defect for it to catch at this call site today.
+    const result = {
+      trace_id,
+      steps: rows,
+      step_count: rows.length,
+      latency_ms_total: totalLatencyMs,
+    }
+    const evidenceState = detectEvidenceState(result)
+
     return NextResponse.json(
       buildEnvelope({
         trace_id,
         audience_tier: audienceTier,
-        epistemics: buildEpistemicsBlock({ surgical: true, confidence_band: 'high' }),
-        result: {
-          trace_id,
-          steps: rows,
-          step_count: rows.length,
-          latency_ms_total: totalLatencyMs,
-        },
+        epistemics: buildEpistemicsBlock({
+          surgical: true,
+          confidence_band: surgicalConfidenceBand(evidenceState),
+          evidence_state: evidenceState,
+          horizon_days: null,
+          falsifier: null,
+        }),
+        result,
         citations: [],
         plan: null,
         predictions_logged: [],

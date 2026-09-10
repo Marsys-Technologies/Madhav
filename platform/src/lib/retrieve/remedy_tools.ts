@@ -23,7 +23,7 @@
  *
  * 7 retrieval capabilities for brahma_remedy_corpus:
  *   1. query_remedies           — planet + domain + category + top_k
- *   2. query_remedies_for_chart — chart_id + affliction
+ *   2. query_remedies_for_chart — affliction keyword (global corpus; NOT chart-scoped)
  *   3. list_remedies_by_category — category
  *   4. read_remedy              — remedy_id
  *   5. query_tantric_remedies   — deity + purpose
@@ -58,6 +58,12 @@ async function queryDb(sql: string, params: unknown[]): Promise<Record<string, u
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────
+
+const LIVE_REMEDY_CONDITION = "scaffold_status = 'live'"
+
+function normalizePlanet(planet: string): string {
+  return planet.trim().toLowerCase()
+}
 
 function makeBundle(
   toolName: string,
@@ -103,12 +109,12 @@ export const queryRemedies: RetrievalTool = {
     const category = params?.category as string | undefined
     const topK = Number(params?.top_k ?? 10)
 
-    const conditions: string[] = []
+    const conditions: string[] = [LIVE_REMEDY_CONDITION]
     const values: unknown[] = []
 
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
     if (domain) {
       values.push(domain)
@@ -119,7 +125,7 @@ export const queryRemedies: RetrievalTool = {
       conditions.push(`category = $${values.length}`)
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
+    const where = `WHERE ${conditions.join(' AND ')}`
     values.push(topK)
     const sql = `
       SELECT remedy_id, planet, domain, category, deity,
@@ -141,9 +147,15 @@ export const queryRemedies: RetrievalTool = {
 export const queryRemediesForChart: RetrievalTool = {
   name: 'query_remedies_for_chart',
   version: '1.0.0',
+  // F-06 (PARIŚEṢA-V4) scope honesty: the SQL below reads only
+  // brahma_remedy_corpus (a global L0 reference table with no chart_id column).
+  // No chart-scoped filtering happens or can happen here; the previous
+  // "chart_id + affliction" description promised scoping the code never did.
   description:
-    'Return remedies relevant to a chart\'s afflictions. ' +
-    'chart_id + affliction (planet name or domain) → matching remedies.',
+    'Return corpus remedies matching an affliction keyword (planet name or life domain), ' +
+    'matched ILIKE against the planet and domain columns of brahma_remedy_corpus. ' +
+    'NOT chart-scoped: chart_id is not read and no chart-scoped SQL runs. ' +
+    'For chart-derived remedies use the L2 surface (marsys://tool/L2/query_remedies).',
   async retrieve(plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle> {
     const t0 = Date.now()
     const affliction = (params?.affliction as string | undefined) ?? (plan.planets?.[0]) ?? ''
@@ -156,7 +168,7 @@ export const queryRemediesForChart: RetrievalTool = {
              cost_tier, contraindications, source_canonical_id, source_citation,
              classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE planet ILIKE $1 OR domain ILIKE $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND (planet ILIKE $1 OR domain ILIKE $1)
       ORDER BY confidence DESC NULLS LAST, cost_tier ASC
       LIMIT $2
     `
@@ -181,7 +193,7 @@ export const listRemediesByCategory: RetrievalTool = {
              prescription_text, mantra_text, mantra_sanskrit,
              cost_tier, source_canonical_id, classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE category = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND category = $1
       ORDER BY planet, remedy_id
     `
     const rows = await queryDb(sql, [category])
@@ -203,7 +215,7 @@ export const readRemedy: RetrievalTool = {
     const sql = `
       SELECT *
       FROM brahma_remedy_corpus
-      WHERE remedy_id = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND remedy_id = $1
     `
     const rows = await queryDb(sql, [remedyId])
     return makeBundle('read_remedy', '1.0.0', params ?? {}, rows, Date.now() - t0)
@@ -223,7 +235,7 @@ export const queryTantricRemedies: RetrievalTool = {
     const deity = params?.deity as string | undefined
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = ["category = 'tantric'"]
+    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'tantric'"]
     const values: unknown[] = []
 
     if (deity) {
@@ -231,8 +243,8 @@ export const queryTantricRemedies: RetrievalTool = {
       conditions.push(`deity ILIKE $${values.length}`)
     }
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
 
     const sql = `
@@ -265,10 +277,10 @@ export const queryRemediesByPlanet: RetrievalTool = {
              prescription_text, mantra_text, mantra_sanskrit, mantra_transliteration,
              cost_tier, contraindications, source_canonical_id, classical_attestation_text
       FROM brahma_remedy_corpus
-      WHERE planet = $1
+      WHERE ${LIVE_REMEDY_CONDITION} AND LOWER(planet) = $1
       ORDER BY category, remedy_id
     `
-    const rows = await queryDb(sql, [planet])
+    const rows = await queryDb(sql, [normalizePlanet(planet)])
     return makeBundle('query_remedies_by_planet', '1.0.0', params ?? {}, rows, Date.now() - t0)
   },
 }
@@ -285,12 +297,12 @@ export const queryMantras: RetrievalTool = {
     const t0 = Date.now()
     const planet = params?.planet as string | undefined
 
-    const conditions: string[] = ["category = 'mantras'"]
+    const conditions: string[] = [LIVE_REMEDY_CONDITION, "category = 'mantras'"]
     const values: unknown[] = []
 
     if (planet) {
-      values.push(planet)
-      conditions.push(`planet = $${values.length}`)
+      values.push(normalizePlanet(planet))
+      conditions.push(`LOWER(planet) = $${values.length}`)
     }
 
     const sql = `

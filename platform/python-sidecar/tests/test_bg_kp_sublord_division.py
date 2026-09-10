@@ -30,6 +30,7 @@ import pytest
 from brahmagyan.l0_kp_sublord_division import (
     NAKSHATRA_COUNT, NAK_SPAN_DEG, PLANET_CYCLE, RASHI_SPAN_DEG, TABLE_VERSION,
     VIMSHOTTARI_YEARS, build_divisions, build_sub_segments, lookup_division,
+    seed_kp_sublord_division,
 )
 
 
@@ -153,6 +154,56 @@ def test_l0_constants_have_not_drifted_from_the_l1_consumer():
 
     assert l1.VIMSHOTTARI_YEARS == VIMSHOTTARI_YEARS
     assert l1.PLANET_CYCLE == PLANET_CYCLE
+
+
+def test_seed_halts_when_reference_cross_check_is_unverified(monkeypatch):
+    """A missing/incomplete L0 nakshatra authority is UNKNOWN, never acceptable."""
+    monkeypatch.setattr(
+        "brahmagyan.l0_kp_sublord_division.verify_star_lords_against_reference",
+        lambda _conn: {"checked": 0, "mismatches": [], "status": "unverified"},
+    )
+
+    with pytest.raises(RuntimeError, match="two_pass_verified"):
+        seed_kp_sublord_division(object(), dry_run=True)
+
+
+def test_seed_removes_stale_versions_and_checks_exact_partition(monkeypatch):
+    monkeypatch.setattr(
+        "brahmagyan.l0_kp_sublord_division.verify_star_lords_against_reference",
+        lambda _conn: {"checked": 249, "mismatches": [], "status": "two_pass_verified"},
+    )
+
+    class Cursor:
+        rowcount = 1
+
+        def __init__(self, owner):
+            self.owner = owner
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            return False
+
+        def execute(self, sql, params=None):
+            self.owner.statements.append((" ".join(sql.split()), params))
+
+        def fetchone(self):
+            return {"row_count": 249, "min_index": 1, "max_index": 249,
+                    "version_count": 1, "total_span": 360.0}
+
+    class Conn:
+        def __init__(self):
+            self.statements = []
+
+        def cursor(self):
+            return Cursor(self)
+
+    conn = Conn()
+    seed_kp_sublord_division(conn, autocommit=False)
+
+    assert any(sql.startswith("DELETE FROM bg_kp_sublord_division") for sql, _ in conn.statements)
+    assert any("AS version_count" in sql and "AS total_span" in sql for sql, _ in conn.statements)
 
 
 @pytest.mark.parametrize("step_deg", [0.01])

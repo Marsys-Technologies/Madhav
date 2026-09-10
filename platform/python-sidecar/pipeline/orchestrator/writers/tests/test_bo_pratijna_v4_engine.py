@@ -18,6 +18,8 @@ from pipeline.orchestrator.writers.bo_pratijna_v4_engine import (
     BASE_WEIGHTS,
     DIGNITY_BAND,
     NAISARGIKA,
+    _compute_panchadha_maitri,
+    _compute_tatkalika_relation,
     aspect_fraction,
     check_denial_cfg1,
     check_denial_cfg3,
@@ -278,6 +280,34 @@ def test_naisargika_matches_ga_condition_writer_source():
     assert NAISARGIKA == parsed
 
 
+def test_tatkalika_and_panchadha_maitri_match_ga_condition_writer_source():
+    """Behavioral drift guard for the two functions severed 2026-09-05 (NIRMĀṆA
+    L2-W3): this local copy must keep matching ga_condition_writer.py's own
+    functions across their full input domain. The reference import lives ONLY
+    in this test file -- provenance_inventory's writer-digest walk excludes
+    `tests/` (asset_runner.py's `_writer_source_files`), so this file reading
+    ga_condition_writer.py does not reintroduce the cross-layer coupling the
+    severing was for."""
+    from ga_writers.ga_condition_writer import (
+        compute_panchadha_maitri as ref_panchadha_maitri,
+        compute_tatkalika_relation as ref_tatkalika_relation,
+    )
+
+    for planet_house in range(1, 13):
+        for reference_planet_house in range(1, 13):
+            assert (
+                _compute_tatkalika_relation(planet_house, reference_planet_house)
+                == ref_tatkalika_relation(planet_house, reference_planet_house)
+            ), (planet_house, reference_planet_house)
+
+    for naisargika in ("friend", "neutral", "enemy"):
+        for tatkalika in ("friend", "enemy"):
+            assert (
+                _compute_panchadha_maitri(naisargika, tatkalika)
+                == ref_panchadha_maitri(naisargika, tatkalika)
+            ), (naisargika, tatkalika)
+
+
 # ── §2.7 — aspect fraction table ────────────────────────────────────────────
 
 
@@ -322,6 +352,14 @@ def test_aspect_saturn_4th_falls_to_general_not_special():
     reach from Saturn is the general 0.75 tier, matching RUNG_P3 §3.3's
     childbirth condition table exactly (Saturn house7 -> Sun house10)."""
     assert aspect_fraction("Saturn", 7, 10) == 0.75
+
+
+def test_aspect_nodal_specials_remain_v4_fractional_tiers():
+    """The shared oracle knows nodal 5th/9th aspects, while the V4 rubric
+    intentionally keeps those contacts in its existing general fractional
+    scoring tiers rather than promoting them to a named full-contact tier."""
+    assert aspect_fraction("Rahu", 1, 5) == 0.50
+    assert aspect_fraction("ketu", 1, 9) == 0.50
 
 
 def test_aspect_no_contact():

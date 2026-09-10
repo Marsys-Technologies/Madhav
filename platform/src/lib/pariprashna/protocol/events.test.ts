@@ -15,6 +15,10 @@ import {
   serializeEvent,
   decodeEvent,
   PariprashnaEventSchema,
+  PARIPRASHNA_PROTOCOL_VERSION,
+  MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION,
+  protocolVersionOf,
+  isCompatibleProtocolVersion,
   type PariprashnaEvent,
 } from './events'
 import { PariprashnaEmitter } from './emitter'
@@ -32,8 +36,9 @@ const ONE_OF_EACH: PariprashnaEvent[] = [
   { type: 'flag', seq: 9, t: 1, code: 'citation_gate_warn', level: 'warn' },
   { type: 'grade', seq: 10, t: 1, subject: 'citation_gate', grade: 'PASS' },
   { type: 'turn.commit', seq: 11, t: 1, turn_id: 'T', conversation_id: 'C', message_id: 'M', status: 'ok', assistant_chars: 42 },
-  { type: 'turn.close', seq: 12, t: 1, turn_id: 'T', status: 'ok', ms: 5 },
-  { type: 'error', seq: 13, t: 1, code: 'PLANNER_INVALID_PLAN', message: 'nope', retryable: false, phase: 'plan' },
+  { type: 'turn.persisted', seq: 12, t: 1, turn_id: 'T', status: 'durable', mode: 'direct' },
+  { type: 'turn.close', seq: 13, t: 1, turn_id: 'T', status: 'ok', ms: 5 },
+  { type: 'error', seq: 14, t: 1, code: 'PLANNER_INVALID_PLAN', message: 'nope', retryable: false, phase: 'plan' },
 ]
 
 describe('pariprashna protocol events', () => {
@@ -48,9 +53,9 @@ describe('pariprashna protocol events', () => {
     }
   })
 
-  it('covers all 14 event types in the discriminated union', () => {
+  it('covers all 15 event types in the discriminated union (+1: snapshot.apply, tested separately)', () => {
     const types = new Set(ONE_OF_EACH.map((e) => e.type))
-    expect(types.size).toBe(14)
+    expect(types.size).toBe(15)
     // Every fixture validates against the union.
     for (const evt of ONE_OF_EACH) {
       expect(PariprashnaEventSchema.safeParse(evt).success).toBe(true)
@@ -105,5 +110,77 @@ describe('PariprashnaEmitter', () => {
     expect(decoded.at(-1)?.type).toBe('turn.close')
     // seq strictly increments from 0.
     decoded.forEach((d, i) => expect(d?.seq).toBe(i))
+  })
+
+  it('does NOT auto-stamp protocol_version — byte-identical to pre-P2-D emission unless the caller opts in (golden-stream baseline safety)', async () => {
+    const frames = await drain((em) => {
+      em.turnOpen({ turn_id: 'T', conversation_id: 'C', chart_id: 'X', model_id: 'm', reading_depth: 'auto', length_tier: 'standard' })
+      em.turnClose({ turn_id: 'T', status: 'ok', ms: 1 })
+    })
+    const first = decodeEvent(frames[0].split('\n')[1].slice('data: '.length))
+    expect(first?.type).toBe('turn.open')
+    expect(first && 'protocol_version' in first ? first.protocol_version : undefined).toBeUndefined()
+  })
+
+  it('DOES carry protocol_version when the caller explicitly declares it', async () => {
+    const frames = await drain((em) => {
+      em.turnOpen({
+        turn_id: 'T',
+        conversation_id: 'C',
+        chart_id: 'X',
+        model_id: 'm',
+        reading_depth: 'auto',
+        length_tier: 'standard',
+        protocol_version: PARIPRASHNA_PROTOCOL_VERSION,
+      })
+      em.turnClose({ turn_id: 'T', status: 'ok', ms: 1 })
+    })
+    const first = decodeEvent(frames[0].split('\n')[1].slice('data: '.length))
+    expect(first && 'protocol_version' in first ? first.protocol_version : undefined).toBe(PARIPRASHNA_PROTOCOL_VERSION)
+  })
+})
+
+describe('protocol schema versioning + declared compatibility (P2-D, PPR-10)', () => {
+  it('a pre-versioning turn.open frame (no protocol_version field) still parses', () => {
+    const legacy = {
+      type: 'turn.open',
+      seq: 0,
+      t: 1,
+      turn_id: 'T',
+      conversation_id: 'C',
+      chart_id: 'X',
+      model_id: 'm',
+      reading_depth: 'auto',
+      length_tier: 'standard',
+      // no protocol_version — exactly what every emitter sent before P2-D.
+    }
+    const result = PariprashnaEventSchema.safeParse(legacy)
+    expect(result.success).toBe(true)
+    if (result.success && result.data.type === 'turn.open') {
+      expect(protocolVersionOf(result.data)).toBe(1)
+    }
+  })
+
+  it('protocolVersionOf reads the declared version when present', () => {
+    expect(protocolVersionOf({ protocol_version: 3 })).toBe(3)
+    expect(protocolVersionOf({ protocol_version: undefined })).toBe(1)
+  })
+
+  it('isCompatibleProtocolVersion is true only within [MIN, current]', () => {
+    expect(isCompatibleProtocolVersion(1)).toBe(true)
+    expect(isCompatibleProtocolVersion(PARIPRASHNA_PROTOCOL_VERSION)).toBe(true)
+    expect(isCompatibleProtocolVersion(MIN_SUPPORTED_PARIPRASHNA_PROTOCOL_VERSION)).toBe(true)
+    expect(isCompatibleProtocolVersion(0)).toBe(false)
+    expect(isCompatibleProtocolVersion(PARIPRASHNA_PROTOCOL_VERSION + 1)).toBe(false)
+    expect(isCompatibleProtocolVersion(1.5)).toBe(false)
+  })
+
+  it('turn.persisted round-trips and carries an honest pending/durable/failed status', () => {
+    for (const status of ['pending', 'durable', 'failed'] as const) {
+      const evt: PariprashnaEvent = { type: 'turn.persisted', seq: 0, t: 1, turn_id: 'T', status, mode: 'outbox' }
+      const frame = serializeEvent(evt)
+      const decoded = decodeEvent(frame.split('\n')[1].slice('data: '.length))
+      expect(decoded).toEqual(evt)
+    }
   })
 })

@@ -68,9 +68,22 @@ function sig(id: string, cls: string, sss = 'structural') {
 // ── query() router — dispatches on SQL text so every DB touchpoint this file's new
 // code exercises (stagePool, fetchL1Context ×2, buildVargaAnalysisDirect ×3) gets a
 // realistic, distinguishable answer instead of one undifferentiated mock. ──────────
+// F-164: mirrors migration 435_ga_vichara.sql's brahma_vichara_constants seed exactly —
+// DOMAIN_DIRECT_VARGAS is now a live read of this row (minus D1), not a hardcoded literal.
+const OPERATIVE_VARGAS_FIXTURE = {
+  wealth:   { vargas: ['D1', 'D2', 'D9', 'D11'], provisional: false, houses: [2, 11], karaka: 'Jupiter' },
+  career:   { vargas: ['D1', 'D10', 'D9'], provisional: true, houses: [10], karaka: 'Saturn' },
+  marriage: { vargas: ['D1', 'D9', 'D7'], provisional: true, houses: [7], karaka: 'Venus' },
+  health:   { vargas: ['D1', 'D6', 'D9'], provisional: true, houses: [6], karaka: 'Saturn' },
+  general:  { vargas: ['D1', 'D9'], provisional: true, houses: [1], karaka: 'Sun' },
+}
+
 function installQueryRouter() {
   queryMock.mockImplementation(async (sql: string, params: unknown[]) => {
     const s = String(sql)
+    if (s.includes('brahma_vichara_constants')) {
+      return { rows: [{ value_jsonb: OPERATIVE_VARGAS_FIXTURE }] }
+    }
     if (s.includes('FROM bodha_msr_signals') && s.includes('domains_affected_array')) {
       return {
         rows: [
@@ -239,7 +252,8 @@ describe('EL-45 — direct varga/AV consumption, never a stub', () => {
     const content = await run('marsys://tool/L-DOMAIN/assess_wealth')
     const va = content['varga_analysis'] as Record<string, unknown>
     expect(va['direct_consumption']).toBe(true)
-    expect(va['consumed_vargas']).toEqual(['D2', 'D11'])
+    // F-164: the live-read set now includes D9 (the old ['D2','D11'] literal had drifted).
+    expect(va['consumed_vargas']).toEqual(['D2', 'D9', 'D11'])
     expect(va['indu_lagna']).toBeDefined()
     const perVarga = va['per_varga'] as Record<string, Record<string, unknown>>
     expect(perVarga['D2']!['ashtakavarga_available']).toBe(true)

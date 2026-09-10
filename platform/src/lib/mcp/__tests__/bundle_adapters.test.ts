@@ -43,7 +43,10 @@ function stubFetchCapturingPrimitiveCalls(): { calls: RecordedCall[] } {
       // storeCache() is fire-and-forget/non-fatal — just ack it.
       return { ok: true, status: 200, json: async () => ({ ok: true }) }
     }
-    const body = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {}
+    const rawBody = init?.body ? JSON.parse(String(init.body)) as Record<string, unknown> : {}
+    // callPrimitive wraps params under { params } (F-127) so the primitives route
+    // reads body.params correctly; unwrap here so assertions use flat param names.
+    const body = (rawBody['params'] as Record<string, unknown>) ?? rawBody
     const toolName = url.split('/api/mcp/primitives/')[1] ?? 'unknown'
     calls.push({ url, toolName, body })
     return { ok: true, status: 200, json: async () => ({ ok: true, result: {} }) }

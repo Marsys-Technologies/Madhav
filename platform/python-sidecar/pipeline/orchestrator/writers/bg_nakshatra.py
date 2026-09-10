@@ -1,10 +1,10 @@
 """
-bg_nakshatra writer — populates the 3 nakshatra reference tables.
+bg_nakshatra writer — replaces the 3 owned nakshatra reference tables.
 
-L0 global asset. ON CONFLICT idempotency (no chart_id).
+L0 global asset. Exact full-replacement idempotency (no chart_id).
 Delegates to brahmagyan.l0_nakshatra.seed_nakshatra() for all INSERT logic.
 
-§N.3: L0 idempotency — ON CONFLICT DO NOTHING.
+§N.3: L0 idempotency — source-validated, transaction-owned replacement.
 §N.2: Frozen orchestrator contract — run(ctx) → WriterResult, never commits.
 """
 from __future__ import annotations

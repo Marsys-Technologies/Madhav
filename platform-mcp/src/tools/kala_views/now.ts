@@ -68,10 +68,11 @@ import { z } from 'zod'
 import type { Principal } from '../../types.js'
 import {
   makeKalaEnvelope,
-  noLelCalibrationMaturity,
+  fetchCalibrationMaturity,
   buildKalaFreshness,
   resolveFieldSnapshot,
   pointerTo,
+  explainPointerTo,
   isNoLever,
   computedCoverage,
   honestEmptyCoverage,
@@ -84,10 +85,25 @@ import {
   type DrillPointerLike,
   type KalaCoverageEntry,
   type FieldSnapshotState,
+  type CalibrationMaturityResolution,
+  type KalaDensityContract,
 } from '../../lib/kala_envelope.js'
 import { composeArgument } from '../../lib/argument_composer.js'
 import { autoDetectTrimmableSections, finalizeMcpBudget } from '../../lib/response_budget.js'
 import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../../lib/kala_uncertainty.js'
+import { resolveChartFactsAyanamsha } from '../../lib/ayanamsha.js'
+// F-73: marsys://tool/L4/gochara_forecast_get was never backed by a registered
+// capability (no layers/*/index.ts entry exists for it) — every call 404'd silently,
+// forcing field_gochara_alignment to 'insufficient_data' unconditionally. The real logic
+// already lives in this same platform-mcp package as a plain exported function; call it
+// directly instead of round-tripping through the registry/HTTP capability system.
+import { computeGocharaForecast } from '../retrieval/register_gochara_windows.js'
+// GA-5 review finding on #1390: computeGocharaForecast is called IN-PROCESS, bypassing
+// registerGocharaForecastTool's own remoteAuthorize(principal, chart_id) entitlement gate
+// (that gate lives in the tool wrapper, not inside computeGocharaForecast itself) --
+// unlike the registry/HTTP path this replaces, which enforced per-call authorizeChartAccess
+// for every request. Re-gate explicitly at this call site.
+import { remoteAuthorize } from '../../lib/authz.js'
 
 // ── Infrastructure (self-contained proxy helper — mirrors the established per-file
 // pattern in register_p1_aliases.ts / tools/retrieval/kala_temporal.ts / registry_bridge.ts;
@@ -96,14 +112,6 @@ import { buildSukshmaBoundaryIntervals, type SukshmaBoundaryInterval } from '../
 
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
-
-const AYANAMSHA_ALIAS: Record<string, string> = {
-  lahiri: 'lahiri_chitrapaksha', LAHIRI: 'lahiri_chitrapaksha', Lahiri: 'lahiri_chitrapaksha',
-  lahiri_chitrapaksha: 'lahiri_chitrapaksha', true_chitra: 'lahiri_chitrapaksha',
-}
-function normalizeAyanamsha(id?: string): string {
-  return id ? (AYANAMSHA_ALIAS[id] ?? id) : 'lahiri_chitrapaksha'
-}
 
 /**
  * Calls a registry capability via /api/retrieval/capability. NEVER throws — a transport
@@ -411,13 +419,17 @@ async function fetchKotaChakraNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: KotaChakraRow[] }> {
+): Promise<{ reachable: boolean; rows: KotaChakraRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_kota_chakra',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: KotaChakraRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -436,7 +448,9 @@ async function fetchKotaChakraNow(
       ring_table_citation: String(r['ring_table_citation']),
       uncited_extension: Boolean(r['uncited_extension']),
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 export interface SudarshanaVarshaYearNow {
@@ -509,13 +523,17 @@ async function fetchMoortiNirnayaNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: MoortiNirnayaRow[] }> {
+): Promise<{ reachable: boolean; rows: MoortiNirnayaRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_moorti_nirnaya',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: MoortiNirnayaRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -530,7 +548,9 @@ async function fetchMoortiNirnayaNow(
       phala_brief: r['phala_brief'] != null ? String(r['phala_brief']) : null,
       moorti_classical_citation: r['moorti_classical_citation'] != null ? String(r['moorti_classical_citation']) : null,
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 export interface VedhaGocharaRow {
@@ -560,13 +580,17 @@ async function fetchVedhaGocharaNow(
   chartId: string,
   asOfDate: string,
   principal: Principal,
-): Promise<{ reachable: boolean; rows: VedhaGocharaRow[] }> {
+): Promise<{ reachable: boolean; rows: VedhaGocharaRow[]; truncated: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_vedha_gochara',
-    { chart_id: chartId, as_of: asOfDate },
+    // current_only pushes the currency filter into SQL, ahead of the handler's row cap. Without
+    // it this call received the first page by the capability's ORDER BY and filtered for
+    // is_current afterwards, so current rows beyond the cap were unreachable and the honest-empty
+    // sentence below asserted a substantive absence whose real cause was pagination (§N.8).
+    { chart_id: chartId, as_of: asOfDate, current_only: true },
     principal,
   )
-  if (!resp.ok || !resp.content) return { reachable: false, rows: [] }
+  if (!resp.ok || !resp.content) return { reachable: false, rows: [], truncated: false }
   const rawRows = (resp.content['rows'] as Array<Record<string, unknown>> | undefined) ?? []
   const rows: VedhaGocharaRow[] = rawRows
     .filter((r) => r['is_current'] === true)
@@ -581,7 +605,9 @@ async function fetchVedhaGocharaNow(
       grid_school_tag: r['grid_school_tag'] != null ? String(r['grid_school_tag']) : null,
       detail: (r['detail'] as Record<string, unknown> | undefined) ?? {},
     }))
-  return { reachable: true, rows }
+  // `truncated` is the capability's own row-cap signal. It is carried, never collapsed:
+  // a short result caused by the cap must not be reportable as a substantive absence.
+  return { reachable: true, rows, truncated: resp.content['truncated'] === true }
 }
 
 // ── W3 item 13 (Tithi-Praveśa, lunar-return annual chart) — SHAD_DARSHANA_BRIEF_v2_0.md
@@ -834,7 +860,7 @@ async function fetchSukshmaBoundaryUncertainty(
 // ── W1 item 1-lite (daśā-sandhi bands) — SHAD_DARSHANA_BRIEF_v2_0.md §3 W1: "sandhi bands
 // from existing period spans; full calendar W3". [J]-kind JOIN: pure interval arithmetic over
 // the SAME already-computed start_date/end_date bounds `query_active_dashas` already returns
-// for the active Vimśottarī Mahādaśā/Antardaśā chain (no new astrological computation, no new
+// for the active Vimśottarī daśā chain across all 4 bandable levels (no new astrological computation, no new
 // migration — §N.5/B.10). Self-contained fetch (not reusing `fetchActiveVimshottariChain`
 // above, which discards start_date/end_date for item 28's purposes) per this file's own
 // established anti-coupling convention (see file header): a second, independent call to the
@@ -859,7 +885,20 @@ const SANDHI_BAND_CONVENTION =
   'KALA_SIX_VIEWS_DESIGN_v1_0.md §1.2 ("configurable orb, last/first ~3% of period span"). ' +
   'Simplification: uses the SAME period\'s span on both sides of each boundary rather than the ' +
   'full classical asymmetric last-outgoing/first-incoming convention (which needs the adjacent ' +
-  'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3).'
+  'period too) — that full two-period, all-level, both-direction calendar is item 1-full (W3). ' +
+  'Scope: bands levels 1–4 of the active Vimśottarī chain (Mahādaśā, Antardaśā, Pratyantardaśā, ' +
+  'Sūkṣmadaśā). Level 5 (Prāṇa-daśā) is NEVER computed for any chart by design, enforced at the ' +
+  'DB layer by chart_dashas\' cd_level_n_max4 CHECK (level_n BETWEEN 1 AND 4) constraint ' +
+  '(migration 211_ga7_dashas_kp_sublevel.sql; see test_dasha_scope_cap_sentinel.py for the ' +
+  'enforcement semantics) — see sukshma_boundary_uncertainty ' +
+  'convention for the same reasoning applied to the Sūkṣma-boundary uncertainty field. ' +
+  'FLOOR: band_width_days is max(1, round(3% × span)), never zero, even for a sub-33-day ' +
+  'span where 3% rounds below 1. At level 4 (Sūkṣmadaśā, typically ~10-13 days for this ' +
+  'chart) the floor is what actually sets the width, not the 3% rule — e.g. a 12-day ' +
+  'Sūkṣma period bands ±1 day per boundary (8.3% each side, ~50% of the period\'s own span ' +
+  'across both boundaries combined), proportionally far wider than the 3% figure above ' +
+  'describes. A caller reading is_now_within_band at level 4 should treat it as a coarse ' +
+  'lite-pass signal, not the narrow classical junction window the 3% figure implies.'
 
 interface ActiveDashaBoundaryEntry {
   level_n: number
@@ -880,7 +919,7 @@ async function fetchVimshottariMdAdBoundaries(
 ): Promise<{ entries: ActiveDashaBoundaryEntry[]; ok: boolean }> {
   const resp = await callRegistryCapability(
     'marsys://tool/L3/query_active_dashas',
-    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 2 },
+    { chart_id: chartId, date: dateISO, ayanamsha_id: ayanamshaId, systems: 'vimshottari', max_level: 4 },
     principal,
   )
   if (!resp.ok || !resp.content) return { entries: [], ok: false }
@@ -960,7 +999,7 @@ function buildBoundaryBand(
 }
 
 /** Item 1-lite (SHAD_DARSHANA_BRIEF_v2_0.md item 1, wave W1): a band around every currently-
- *  active Vimśottarī Mahādaśā/Antardaśā period's start AND end boundary, computed purely from
+ *  active Vimśottarī daśā period's (levels 1-4) start AND end boundary, computed purely from
  *  the period's own already-computed span — see the doc-comment above for the full band-width
  *  convention and its documented lite simplification. */
 async function computeDashaSandhi(
@@ -1004,6 +1043,42 @@ function errOut(tool: string, msg: string, extra?: Record<string, unknown>) {
   return { ...dualOutput({ ok: false, error: msg, tool, ...extra }, tool), isError: true as const }
 }
 
+/** Generic, bounded stand-in for an upstream overlay error whose text is an existence /
+ *  authorization oracle rather than a diagnosable defect description. */
+const NATIVE_CONTEXT_ERROR_GENERIC =
+  'the birth-chart overlay was not available for this chart on this call'
+
+/**
+ * F-38 (PARIŚEṢA-V4): bound the panchāṅga `native_context_error` passthrough.
+ *
+ * ND-4 (ṢAḌ-DARŚANA W1 verify-reopen) deliberately surfaces the specific upstream reason so a
+ * deterministic upstream defect is not relabelled a transient outage — that stays. What must NOT
+ * survive is the raw upstream transport/identity detail: a verbatim `HTTP 404: Chart '<uuid>' not
+ * found` echoes an internal status code AND answers "does this chart exist?" straight out of the
+ * envelope. Same discipline as the F-01 `query_prospective_ledger.ts` bounding (PR #1322): the
+ * caller gets a truthful reason, never the upstream's raw string.
+ *
+ * Rules, in order: drop non-strings/empties → collapse existence/authorization-class errors to a
+ * generic sentence → strip `HTTP <code>:` transport prefixes → redact UUIDs and URLs → cap length.
+ */
+export function sanitizeNativeContextError(raw: unknown): string | null {
+  if (typeof raw !== 'string' || raw.length === 0) return null
+
+  // Existence / authorization oracle classes carry no diagnosable content — collapse wholesale.
+  if (/\b(not found|does not exist|no such chart|unauthori[sz]ed|forbidden|permission denied)\b/i.test(raw)) {
+    return NATIVE_CONTEXT_ERROR_GENERIC
+  }
+
+  const redacted = raw
+    .replace(/^\s*HTTP\s+\d{3}\s*:?\s*/i, '')
+    .replace(/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}/g, '<redacted>')
+    .replace(/https?:\/\/\S+/gi, '<redacted>')
+    .trim()
+
+  if (redacted.length === 0) return NATIVE_CONTEXT_ERROR_GENERIC
+  return redacted.length > 200 ? `${redacted.slice(0, 200)}…` : redacted
+}
+
 // ── Window-family shape (query_temporal_activation's `window_families` /
 // `forward_windows` rows — read verbatim, never re-derived) ────────────────────────
 
@@ -1017,6 +1092,24 @@ interface WindowFamily {
   domains?: string[]
   max_orb_strength?: number
   [key: string]: unknown
+}
+
+const WINDOW_CLASS_GLOSS: Readonly<Record<string, string>> = {
+  CLASSIFY_RESIDUAL: 'residual pattern',
+  DIGNITY: 'planetary dignity',
+  DISPOSITOR_RELATIONAL: 'dispositor relationship',
+  DOSHA: 'affliction pattern',
+  SUBSYSTEM: 'supporting subsystem',
+  YOGA: 'yoga pattern',
+  dasha_ingress: 'daśā ingress',
+  dasha_transit_conjunction: 'daśā–transit conjunction',
+}
+
+function formatWindowClasses(classes: string[] | null | undefined): string {
+  if (!classes || classes.length === 0) return 'unlabeled'
+  return classes
+    .map((value) => WINDOW_CLASS_GLOSS[value] ?? value.replace(/[_-]+/g, ' ').toLowerCase())
+    .join(' + ')
 }
 
 interface DarshanaRow {
@@ -1180,7 +1273,7 @@ function buildNowReading(params: {
   } else if (windowFamilies.length === 0) {
     thesisParts.push(`No temporal activation window is active for this chart as of ${asOfDate}.`)
   } else {
-    const label = (top?.signature_classes ?? []).join('/') || 'unlabeled'
+    const label = formatWindowClasses(top?.signature_classes)
     const orb = typeof top?.max_orb_strength === 'number' ? top.max_orb_strength.toFixed(2) : 'n/a'
     thesisParts.push(
       `${windowFamilies.length} temporal activation window(s) active as of ${asOfDate}; strongest: ` +
@@ -1197,7 +1290,7 @@ function buildNowReading(params: {
 
   const evidence: ArgumentEvidence[] = windowFamilies.slice(0, 3).map((f) => ({
     claim:
-      `${(f.signature_classes ?? []).join('/') || 'activation'} window ` +
+      `${formatWindowClasses(f.signature_classes)} window ` +
       `${f.window_start ?? '?'}..${f.window_end ?? '?'}` +
       (f.domains && f.domains.length > 0 ? ` touching ${f.domains.join(', ')}` : ''),
     fact_ids: f.member_signal_ids ?? [],
@@ -1295,6 +1388,174 @@ export interface JanmaResonanceResult {
 
 // ── Core compute (exported for tests — mirrors computeKalaTemporalBundle's shape) ──
 
+// ── SM-γ C4: GocharaNarrativeBlock ────────────────────────────────────────────
+// Added behind SM_GAMMA_C4_ENABLED env flag (C4.1). All fields come from
+// existing substrate: moon_primary from computeGocharaDualReference (already
+// run above); active_windows from gochara_forecast_get (callRegistryCapability,
+// same pattern as every other sub-call in this file). No new DB query, no new
+// computation (§N.5 / B.10).
+
+export interface GocharaNarrativeMoonPrimary {
+  description: string
+  house_from_lagna: number | null
+  house_from_moon: number | null
+  current_sign: string | null
+  is_retrograde: boolean | null
+}
+
+export interface GocharaNarrativeWindow {
+  event_class: string
+  window_start: string
+  window_end: string
+  peak_date: string
+  valence: string
+  signed_intensity: number
+  coverage_tier: 'thin' | 'moderate' | 'rich' | null
+}
+
+export interface GocharaNarrativeBlock {
+  moon_primary: GocharaNarrativeMoonPrimary
+  active_windows: GocharaNarrativeWindow[]
+  field_gochara_alignment: 'aligned' | 'divergent' | 'insufficient_data'
+  narrative_tier: 'rich' | 'moderate' | 'thin'
+}
+
+/** Derives the coverage_tier from calibration_state — mirrors the Serving Density Principle
+ *  (§N.6): 'calibrated' → 'rich', 'provisional' → 'moderate', else 'thin'. Never fabricated. */
+function deriveCoverageTier(
+  calibrationState: unknown,
+): 'thin' | 'moderate' | 'rich' | null {
+  if (typeof calibrationState !== 'string') return null
+  if (calibrationState === 'calibrated') return 'rich'
+  if (calibrationState === 'provisional') return 'moderate'
+  if (calibrationState === 'uncalibrated') return 'thin'
+  return null
+}
+
+/** Gain-aligned house numbers from Lagna (classical upachaya + dhana houses for gain/income) */
+const GAIN_ALIGNED_HOUSES = new Set([1, 2, 5, 9, 10, 11])
+/** Loss-aligned house numbers from Lagna (dushtana + maraka houses) */
+const LOSS_ALIGNED_HOUSES = new Set([6, 8, 12])
+
+/** Returns true when the Moon's house-from-Lagna is semantically aligned with the dominant
+ *  valence of the active gochara windows (e.g. Moon in 11th (gains) + gain-valence windows). */
+function isAligned(houseFromLagna: number | null, dominantValence: string | null): boolean {
+  if (houseFromLagna == null || dominantValence == null) return false
+  if (dominantValence === 'gain' && GAIN_ALIGNED_HOUSES.has(houseFromLagna)) return true
+  if (dominantValence === 'loss' && LOSS_ALIGNED_HOUSES.has(houseFromLagna)) return true
+  return false
+}
+
+/** Fetches current-date gochara forecast windows for the given chart via a direct in-process
+ *  call to `computeGocharaForecast` (F-73: NOT via the registry — see the import comment
+ *  above). Returns an empty array (never throws) on any failure — the narrative block uses
+ *  `field_gochara_alignment = 'insufficient_data'` in that case. */
+async function fetchGocharaForecastWindows(
+  chartId: string,
+  asOfDate: string,
+  principal: Principal,
+): Promise<GocharaNarrativeWindow[]> {
+  // A ±90-day window around asOfDate captures windows active "now" without fetching
+  // multi-year history. Mirrors gochara_forecast_get's own overlap semantics:
+  // window_end >= start AND window_start <= end.
+  const startDate = asOfDate
+  const endParsed = new Date(`${asOfDate}T00:00:00Z`)
+  endParsed.setUTCDate(endParsed.getUTCDate() + 90)
+  const endDate = endParsed.toISOString().slice(0, 10)
+
+  let result: Record<string, unknown>
+  try {
+    // GA-5 review finding on #1390: computeGocharaForecast itself performs no entitlement
+    // check -- gate here, matching what registerGocharaForecastTool's own handler does
+    // before calling the same function.
+    if (!(await remoteAuthorize(principal, chartId))) return []
+    result = await computeGocharaForecast(
+      chartId,
+      { start: startDate, end: endDate },
+      undefined,
+      undefined,
+      20,
+      principal,
+    )
+  } catch {
+    return []
+  }
+  const rawWindows = (result['windows'] as Array<Record<string, unknown>> | undefined) ?? []
+  return rawWindows
+    .filter((w) => typeof w['event_class'] === 'string')
+    .map((w) => ({
+      event_class: String(w['event_class']),
+      window_start: typeof w['window_start'] === 'string' ? String(w['window_start']) : asOfDate,
+      window_end: typeof w['window_end'] === 'string' ? String(w['window_end']) : asOfDate,
+      peak_date: typeof w['peak_date'] === 'string' ? String(w['peak_date']) : asOfDate,
+      valence: typeof w['valence'] === 'string' ? String(w['valence']) : 'neutral',
+      signed_intensity: typeof w['signed_intensity'] === 'number' ? (w['signed_intensity'] as number) : 0,
+      coverage_tier: deriveCoverageTier(w['calibration_state']),
+    }))
+}
+
+/** Builds the SM-γ C4 GocharaNarrativeBlock. Called only when SM_GAMMA_C4_ENABLED is on.
+ *  Sources: gocharaDual (already computed above for item 8) + live gochara forecast fetch.
+ *  Never throws — returns a minimal `insufficient_data` block on any missing piece. */
+async function buildGocharaNarrativeBlock(
+  chartId: string,
+  asOfDate: string,
+  gocharaDual: { rows: GocharaDualReferenceRow[]; rowsWithTransitData: number },
+  natalRefSigns: NatalReferenceSigns,
+  principal: Principal,
+): Promise<GocharaNarrativeBlock> {
+  // Moon row from the already-computed dual-reference (no second transit fetch needed).
+  const moonRow = gocharaDual.rows.find((r) => r.planet === 'Moon') ?? null
+  const moonTransitAvailable = moonRow != null && moonRow.transit_sign_number != null
+
+  // moon_primary — sourced entirely from the dual-reference already in scope (§N.5).
+  const moonPrimary: GocharaNarrativeMoonPrimary = {
+    description: moonTransitAvailable && moonRow
+      ? `Moon in ${moonRow.transit_sign_name ?? 'unknown'} transiting ` +
+        `${moonRow.house_from_lagna != null ? `house ${moonRow.house_from_lagna} from Lagna` : 'unknown house'}`
+      : '',
+    house_from_lagna: moonRow?.house_from_lagna ?? null,
+    house_from_moon: moonTransitAvailable ? 1 : null,  // Moon from itself is always house 1
+    current_sign: moonRow?.transit_sign_name ?? null,
+    is_retrograde: moonRow?.is_retrograde ?? null,
+  }
+
+  // Active gochara windows — fetched via callRegistryCapability (no new DB query).
+  const activeWindows = await fetchGocharaForecastWindows(chartId, asOfDate, principal)
+
+  // field_gochara_alignment — requires both Moon transit and at least one window.
+  let fieldGocharaAlignment: 'aligned' | 'divergent' | 'insufficient_data'
+  if (!moonTransitAvailable || activeWindows.length === 0) {
+    fieldGocharaAlignment = 'insufficient_data'
+  } else {
+    // Dominant valence: most-common valence across active windows.
+    const valenceCounts: Record<string, number> = {}
+    for (const w of activeWindows) {
+      valenceCounts[w.valence] = (valenceCounts[w.valence] ?? 0) + 1
+    }
+    const dominantValence = Object.entries(valenceCounts)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+    fieldGocharaAlignment = isAligned(moonPrimary.house_from_lagna, dominantValence) ? 'aligned' : 'divergent'
+  }
+
+  // narrative_tier — driven by Moon transit quality + window count.
+  let narrativeTier: 'rich' | 'moderate' | 'thin'
+  if (moonTransitAvailable && activeWindows.length >= 2) {
+    narrativeTier = 'rich'
+  } else if (moonTransitAvailable && activeWindows.length >= 1) {
+    narrativeTier = 'moderate'
+  } else {
+    narrativeTier = 'thin'
+  }
+
+  return {
+    moon_primary: moonPrimary,
+    active_windows: activeWindows,
+    field_gochara_alignment: fieldGocharaAlignment,
+    narrative_tier: narrativeTier,
+  }
+}
+
 export interface KalaNowResult {
   tool: 'kala_now_get'
   chart_id: string
@@ -1308,7 +1569,7 @@ export interface KalaNowResult {
   tri_plane: TriPlanePointers
   coverage: KalaCoverageEntry[]
   freshness: ReturnType<typeof buildKalaFreshness>
-  calibration_maturity: ReturnType<typeof noLelCalibrationMaturity>
+  calibration_maturity: CalibrationMaturityResolution
   windows: WindowFamily[]
   darshana: DarshanaRow | null
   disha_shula: DishaShulaResult | null
@@ -1336,6 +1597,8 @@ export interface KalaNowResult {
   // Item 13 (wave W3): current Tithi-Praveśa (lunar-return annual chart) praveśa year.
   tithi_pravesha: TithiPraveshaYearNow | null
   drill_pointers: DrillPointerLike[]
+  // SM-γ C4.1: unified NOW narrative (flag-guarded — absent when SM_GAMMA_C4_ENABLED is off).
+  gochara_narrative?: GocharaNarrativeBlock
   provenance_envelope: {
     source: string
     assets: string[]
@@ -1376,7 +1639,7 @@ export async function computeKalaNow(
   args: { ayanamsha_id?: string; as_of?: string; question_frame?: QuestionFrame | null },
   principal: Principal,
 ): Promise<KalaNowResult> {
-  const ayanamshaId = normalizeAyanamsha(args.ayanamsha_id)
+  const ayanamshaId = resolveChartFactsAyanamsha(args.ayanamsha_id)
   const asOfDate = args.as_of ?? new Date().toISOString().slice(0, 10)
 
   const [windowsResp, darshanaResp, natalRefSigns, panchangaResp, natalPanchangaResp, kotaChakraNow, sudarshanaVarshaNow, moortiNirnayaNow, vedhaGocharaNow, tithiPraveshaNow] = await Promise.all([
@@ -1448,9 +1711,7 @@ export async function computeKalaNow(
   // "L0 panchāṅga service unreachable this call" — wording that named a transient outage for
   // what was in fact a deterministic upstream defect reproducible on every call.
   const nativeContextError = panchangaResp.content?.['native_context_error']
-  const nativeContextErrorDetail = typeof nativeContextError === 'string' && nativeContextError.length > 0
-    ? nativeContextError
-    : null
+  const nativeContextErrorDetail = sanitizeNativeContextError(nativeContextError)
   /** The honest, non-misleading reason string for any panchāṅga-backed field that came up
    *  empty. Distinguishes a genuine dispatch failure from a present-but-incomplete payload —
    *  and never calls a persistent defect "unreachable this call". */
@@ -1575,6 +1836,8 @@ export async function computeKalaNow(
   // Item 24-lite and item 1-lite are both independent of natalRefSigns but are batched
   // alongside them (same await point) rather than the earlier Promise.all, purely to keep
   // each lane's diff additive and low-conflict against sibling W1 lanes editing the same file.
+  const C4_ENABLED = process.env['SM_GAMMA_C4_ENABLED'] === 'true' || process.env['SM_GAMMA_C4_ENABLED'] === '1'
+
   const [gocharaDual, dashaLordCondition, sukshmaBoundaryUncertainty, dashaSandhi] = await Promise.all([
     computeGocharaDualReference(asOfDate, natalRefSigns, principal),
     computeDashaLordTransitCondition(chartId, ayanamshaId, asOfDate, asOfDate, natalRefSigns.lagna_sign_number, principal),
@@ -1585,6 +1848,14 @@ export async function computeKalaNow(
   const reading = buildNowReading({ asOfDate, windowFamilies, darshana, windowsOk, darshanaOk })
   const composed = composeArgument(reading)
 
+  // F-123 (CL-11 dead pointer): kala_explain_get hard-errors without `domain` or `bhava`.
+  // The bare pointerTo(...) below used to advertise a follow-up call that would dead-end the
+  // instant a caller made it exactly as advertised. Derive the strongest active window's
+  // first domain (honest best-effort — never fabricated) so the pointer, when a domain IS
+  // derivable, carries the argument that makes it actually resolvable.
+  const primaryDomain: string | null =
+    windowFamilies[0]?.domains?.[0] ?? windowFamilies.flatMap((f) => f.domains ?? []).find(Boolean) ?? null
+
   const triPlane: TriPlanePointers = {
     // ND-1 (ṢAḌ-DARŚANA W1 verify-reopen, 2026-07-30). This slot was a bare `null`, justified
     // as "NOW IS the interpretation plane". That was wrong on the facts: NOW reports a
@@ -1593,9 +1864,9 @@ export async function computeKalaNow(
     // already the interpretation_ref target of the sibling `kala_ahead_get`. A bare null here
     // was a dead end on a plane that genuinely HAS a lever, which is precisely what item 43's
     // no-dead-end contract exists to prevent (Elevation §11).
-    interpretation_ref: pointerTo(
-      'kala_explain_get',
+    interpretation_ref: explainPointerTo(
       'Why this NOW state reads as it does — the drivers and classical grounds behind the active windows and confluence',
+      primaryDomain ? { domain: primaryDomain } : null,
     ),
     prediction_ref: pointerTo(
       'kala_ahead_get',
@@ -1719,6 +1990,9 @@ export async function computeKalaNow(
           'kota_chakra',
           !kotaChakraNow.reachable
             ? 'L3 registry (query_kota_chakra) could not be dispatched this call.'
+            : kotaChakraNow.truncated
+            ? 'query_kota_chakra truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence. Do not read it as "no current ring occupancy".'
             : `ka_kota_chakra has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
         ),
     // Item 17 (wave W3): Sudarśana-Chakra year-wheel.
@@ -1737,19 +2011,28 @@ export async function computeKalaNow(
           'moorti_nirnaya',
           !moortiNirnayaNow.reachable
             ? 'L3 registry (query_moorti_nirnaya) could not be dispatched this call.'
+            : moortiNirnayaNow.truncated
+            ? 'query_moorti_nirnaya truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence.'
             : `ka_moorti_nirnaya has not built this chart, or its scanned horizon does not cover ${asOfDate} — honest empty, not fabricated.`,
         ),
     // Item 5 (wave W3, closes R-19): vedha application (house_vedha + sarvatobhadra). An
     // empty result is the classically NORMAL state on most days (no vedha-checkable transit
-    // or sarvatobhadra-vedha dwelling currently active) — this coverage entry cannot
-    // distinguish that from "chart not yet built", matching the same honest ambiguity
-    // kota_chakra/sudarshana_varsha already carry (see their own coverage messages above).
+    // or sarvatobhadra-vedha dwelling currently active). This entry previously could not
+    // distinguish that from "chart not yet built", and — the defect actually found in L3-W1 —
+    // could not distinguish either from "the row cap dropped the current rows", which was the
+    // real cause: measured, 0 of 1 current vedha rows were reachable through the capped page.
+    // The currency filter now runs in SQL (current_only) and `truncated` is reported explicitly,
+    // so the classical-absence claim is only made when it is earned (§N.8, §N.7 item 4).
     vedhaGocharaNow.reachable && vedhaGocharaNow.rows.length > 0
       ? computedCoverage('vedha_gochara')
       : honestEmptyCoverage(
           'vedha_gochara',
           !vedhaGocharaNow.reachable
             ? 'L3 registry (query_vedha_gochara) could not be dispatched this call.'
+            : vedhaGocharaNow.truncated
+            ? 'query_vedha_gochara truncated its result at the row cap — this is a PAGINATION '
+              + 'limit, not an absence. The classical-absence sentence below is NOT earned here.'
             : `ka_vedha_gochara has not built this chart, or no vedha-checkable transit / `
               + `sarvatobhadra-vedha dwelling is currently active for ${asOfDate} — honest `
               + 'empty (the classically normal state on most days), not fabricated.',
@@ -1765,6 +2048,21 @@ export async function computeKalaNow(
             : `ka_tithi_pravesha has not built this chart, or ${asOfDate} falls outside the `
               + 'built 120-year praveśa-year horizon — honest empty, not fabricated.',
         ),
+    // E6 per-view elevation for NOW: state_delta — field diff against previous inflection point.
+    // KALA_SUPREME_ELEVATION_v1_0.md §6: NOW elevation = "state_delta: what changed since the
+    // last significant configuration (field diff against previous inflection point)."
+    // SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); the state_delta
+    // sub-elevation is the W3 depth portion. No authoritative state-delta rows are currently
+    // available for this chart, so this facade discloses that gap rather than a build-status guess.
+    honestEmptyCoverage(
+      'state_delta',
+      'E6 per-view elevation for NOW (KALA_SUPREME_ELEVATION_v1_0.md §6): the field diff ' +
+      'against the previous inflection point (what changed since the last significant ' +
+      'configuration) has no authoritative state-delta result for this chart. The facade ' +
+      'therefore serves an honest empty rather than inferring a diff from other timing rows. ' +
+      'SHAD_DARSHANA_CLOSE_v1_0.md §2 E6 disposition: VERIFIED-FIXED (lite); state_delta is ' +
+      'the W3 depth remainder, not yet computed.',
+    ),
   ]
 
   const drillPointers: DrillPointerLike[] = [
@@ -1776,6 +2074,11 @@ export async function computeKalaNow(
   // W2 (E5): the real field snapshot read — served id, or an honest marker; never a stub.
   const fieldSnapshot = await resolveFieldSnapshot(chartId, principal)
 
+  // SM-γ C4.1: build the unified NOW narrative block when flag is on.
+  const gocharaNarrative: GocharaNarrativeBlock | undefined = C4_ENABLED
+    ? await buildGocharaNarrativeBlock(chartId, asOfDate, gocharaDual, natalRefSigns, principal)
+    : undefined
+
   const envelope = makeKalaEnvelope({
     reading,
     questionFrame: args.question_frame ?? null,
@@ -1783,14 +2086,33 @@ export async function computeKalaNow(
     triPlane,
     coverage,
     freshness: buildKalaFreshness({ ephemerisVersion: null, sweepBuildDate: null, fieldHash: fieldSnapshot.field_content_hash }),
-    calibrationMaturity: noLelCalibrationMaturity(),
+    calibrationMaturity: await fetchCalibrationMaturity(chartId, principal),
   })
 
-  return {
-    tool: 'kala_now_get',
+  // F-CONC-5 (L3_W1_ANALYSIS_BATCH_E.md §1.5): this facade served no `density_contract` at
+  // all (the pattern explain.ts already declares) despite carrying ~20 top-level engine
+  // arrays/objects — the exact shape §N.6 calls "most exposed to a budget trim zeroing a
+  // dissent". The trim protection itself is already real without this: `reading` is a
+  // hardFloor-equivalent entry in response_budget.ts's IMMUNE_HONESTY_FIELDS set, so
+  // autoDetectTrimmableSections (called by this file's own dualOutput, below) never
+  // zeroes it. What was missing is the DECLARATIVE metadata itself (§N.6 part 4:
+  // "density signaling is data, not narration") — the machine-readable record a census/CI
+  // harness reads without re-deriving discipline from source. `as_of` (not `domain`/`bhava`
+  // as in explain.ts) is this tool's one real content-narrowing input — it selects which
+  // date's NOW state is returned; there is no domain/bhava split here, this facade always
+  // returns the full multi-engine bundle for the chart.
+  const densityContract: KalaDensityContract = {
+    paginated: false,
+    facets: ['as_of'],
+    empty_reason: true,
+  }
+
+  const baseResult = {
+    tool: 'kala_now_get' as const,
     chart_id: chartId,
     as_of_date: asOfDate,
     ...envelope,
+    density_contract: densityContract,
     reading_prose: composed.full_text,
     windows: windowFamilies,
     darshana,
@@ -1845,6 +2167,12 @@ export async function computeKalaNow(
       tithi_pravesha_reachable: tithiPraveshaNow.reachable,
     },
   }
+
+  // SM-γ C4.1: conditionally add gochara_narrative (flag-guarded — zero footprint when off).
+  if (C4_ENABLED && gocharaNarrative !== undefined) {
+    return { ...baseResult, gochara_narrative: gocharaNarrative }
+  }
+  return baseResult
 }
 
 // ── Input schema + registration ─────────────────────────────────────────────────
@@ -1945,6 +2273,17 @@ export function registerKalaNowGetTool(server: McpServer, principal: Principal):
   server.tool(TOOL_NAME, TOOL_DESCRIPTION, InputSchema.shape, async (params) => {
     const input = InputSchema.parse(params)
     if (!input.chart_id) return errOut(TOOL_NAME, 'chart_id is required')
+    // F-38 (PARIŚEṢA-V4): entitlement/existence gate BEFORE any computation or data fetch —
+    // the same fail-closed `remoteAuthorize` helper every other chart-scoped tool uses
+    // (ganita_chart_facts_get, assess_career, judgment_query, dossier, catalog_chart_select,
+    // and this file's own gochara join at fetchGocharaNarrativeWindows). Without it, a
+    // syntactically-valid but nonexistent/unentitled chart_id returned a structurally
+    // successful envelope full of chart-UNRELATED live transit data.
+    if (!(await remoteAuthorize(principal, input.chart_id))) {
+      return errOut(TOOL_NAME, 'AUTHZ_DENIED: not authorized to access this chart', {
+        chart_id: input.chart_id,
+      })
+    }
     try {
       const result = await computeKalaNow(
         input.chart_id,

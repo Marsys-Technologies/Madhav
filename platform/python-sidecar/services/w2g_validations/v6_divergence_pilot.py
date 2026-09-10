@@ -264,9 +264,17 @@ def run_divergence_report(
 
 def _pilot_census(query: QueryFn, chart_id: str, year: int) -> dict[str, Any]:
     """v1-side class-(a) candidate census for one materialized year."""
+    # INTENTIONAL: generation='v1' pin — this pilot measures chunk-boundary
+    # candidates in v1's own rows (the rows produced by ka_gochara_sweep whose
+    # chunk structure this census analyses). Including gen-3.0 rows would mix
+    # corpora: 3.0 rows use a different materialization strategy and do not share
+    # v1's Jan-1/Dec-31 substep-chunk boundaries, so they would spuriously inflate
+    # the candidate count and misrepresent the v1 workload. The pin is permanent:
+    # this pilot exists specifically to characterise the v1 corpus. (MR-18)
     rows = query(
         f"SELECT event_class, temporal_shape, window_start, window_end, peak_date "
         f"FROM {WINDOWS_TABLE} WHERE chart_id::text = %s "
+        f"AND generation = 'v1' "
         f"AND window_start >= %s AND window_start <= %s "
         f"ORDER BY window_start",
         [chart_id, date(year, 1, 1), date(year, 12, 31)],

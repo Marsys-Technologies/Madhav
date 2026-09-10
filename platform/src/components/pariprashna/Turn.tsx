@@ -4,6 +4,7 @@ import { UserBlock } from './UserBlock'
 import { WorkingRegion } from './working/WorkingRegion'
 import { AnswerRegion } from './answer/AnswerRegion'
 import { GroundingRegion } from './GroundingRegion'
+import { PersistenceNotice } from './PersistenceNotice'
 
 /**
  * One question→answer unit (§3.4): fixed vertical region order — working
@@ -17,9 +18,9 @@ import { GroundingRegion } from './GroundingRegion'
  * updated, with no custom comparator needed: a 200-turn thread streaming
  * its 201st re-renders exactly one `<Turn>`, not 201.
  */
-function TurnImpl({ turn }: { turn: TurnState }) {
+function TurnImpl({ turn, chartId }: { turn: TurnState; chartId?: string }) {
   return (
-    <div className="pp-turn my-3.5 pb-7">
+    <div className="pp-turn my-3.5 pb-7" data-testid="pp-turn" data-turn-status={turn.status}>
       <UserBlock text={turn.userText} />
       <div className="my-3.5">
         <WorkingRegion turn={turn} />
@@ -37,13 +38,44 @@ function TurnImpl({ turn }: { turn: TurnState }) {
             Connection dropped — resuming from where it left off. Nothing was lost.
           </div>
         )}
-        <AnswerRegion turn={turn} />
-        {turn.status === 'interrupted' && (
+        <AnswerRegion turn={turn} chartId={chartId} />
+        {turn.status === 'errored' && turn.error && (
           <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
-            The connection was lost partway. What arrived is above; nothing was altered.
+            {/* V3-E-060 (partial fix): `classifyPariprashnaError` computes a
+                fuller explanatory `sentence` for every error kind (§7.5), but
+                the working band above only ever rendered the short
+                `bandLabel` — the reader saw "The connection was lost" with
+                no explanation of what was preserved or what to do next. This
+                renders the honest §7.5 sentence the pipeline already
+                computed. NOT fixed by this pass: `turn.error.actions`
+                (retry/switch_model/continue/settings) still has zero
+                consumers — real click-handler wiring (re-submit, open model
+                picker, reopen stream, open settings) needs callback
+                threading down from `PariprashnaApp.tsx` through
+                `Transcript`/`Turn`, which is a genuine feature-completion
+                item, not a one-line fix; carried forward as this defect
+                class's next unit, same disposition V3-E-030 used for
+                `WorkingBand.tsx`'s sealed-band label. */}
+            {turn.error.sentence}
           </p>
         )}
+        {turn.status === 'interrupted' && (
+          <p className="pp-caveat mt-2" style={{ borderTop: '1px solid var(--pp-rule)', paddingTop: 10 }}>
+            {/* V3-E-023: `interrupted` has two genuinely different causes
+                (turn.interruptedReason) — a deliberate Stop click, or a real
+                stale-connection/server-died timeout. The band label two
+                lines above already states the honest cause
+                (EDGE_STATE_LABELS.user_stopped /
+                EDGE_STATE_LABELS.connection_lost_final); this caveat must
+                not contradict it by asserting the other cause unconditionally. */}
+            {turn.interruptedReason === 'connection_lost'
+              ? 'The connection was lost partway. What arrived is above; nothing was altered.'
+              : 'What arrived is above; nothing was altered.'}
+          </p>
+        )}
+        <PersistenceNotice turn={turn} />
         <GroundingRegion turn={turn} />
+        {turn.status === 'settled' && <div aria-hidden className="pp-closing-rule" />}
       </div>
     </div>
   )

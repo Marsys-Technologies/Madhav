@@ -67,12 +67,36 @@ export async function deriveShadbalaWeakestGraha(
 ): Promise<{ graha: string | null; shadbala_rupa: number | null } | null> {
   try {
     const res = await query<{ fact_subject: string; fact_value_num: string | number | null }>(
+      // NIRMĀṆA L2-W3 (L1 handoff #1750 item 1, MUST). `fact_category =
+      // 'graha_shadbala_total'` alone is NOT a single-row selection: the category holds
+      // two incommensurable fact_keys. Measured live, canonical chart, lahiri:
+      //
+      //     fact_key='ratio'  7 rows, range 0.844 – 1.694
+      //     fact_key='rupa'   9 rows, range 4.640 – 8.470
+      //
+      // Every ratio is below every rupa, so an unpinned `ORDER BY fact_value_num ASC
+      // LIMIT 1` ALWAYS lands in 'ratio' — and returns it under a field named
+      // shadbala_rupa. On the canonical chart the graha happened to come out right
+      // (Venus is weakest by both measures) while the VALUE was a ratio, 0.8436, where
+      // Venus's actual ṣaḍbala is 4.64 rupa; L1 measured the graha itself coming out
+      // wrong on 5/5 ayanamshas for both other production charts.
+      //
+      // 'rupa' is the classical six-fold measure BPHS Ch.27 names for this question,
+      // which is what this function's own docstring reaches for. The total ORDER BY is
+      // kept and extended with fact_subject as a deterministic tiebreak so two grahas at
+      // an identical rupa cannot return a planner-dependent winner (§N.7 item 2).
+      //
+      // Method note worth keeping: the earlier fix and its re-verification were both run
+      // against the canonical chart — the one chart where this defect cannot manifest in
+      // the graha. A single-chart verification cannot establish a selector is correct
+      // when the defect is chart-dependent.
       `SELECT fact_subject, fact_value_num
        FROM chart_facts
        WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_shadbala_total'
+         AND fact_key = 'rupa'
          AND fact_value_num IS NOT NULL
          AND fact_subject NOT IN ('RAH_MEAN', 'KET_MEAN')
-       ORDER BY fact_value_num ASC
+       ORDER BY fact_value_num ASC, fact_subject ASC
        LIMIT 1`,
       [chart_id, ayanamsha_id],
     )

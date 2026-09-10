@@ -227,9 +227,12 @@ export const queryProspectiveLedgerCapability: CapabilityDescriptor = {
         },
         is_error: false,
       }
-    } catch (err) {
+    } catch {
       return {
-        content: { error: String(err), chart_id },
+        content: {
+          error: 'Standing prospective predictions are currently unavailable.',
+          chart_id,
+        },
         is_error: true,
       }
     }

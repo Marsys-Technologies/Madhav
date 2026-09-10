@@ -529,7 +529,7 @@ CENSUS_ROWS: list[tuple[str, str, str, str, str, str | None]] = [
      "bg_sky_calendar (this campaign's Night-1 sibling L0 asset, PR #888) "
      "computes real global eclipse timing via pyswisseph's own eclipse-"
      "finding functions.",
-     "bg_sky_events (event_type IN eclipse_solar, eclipse_lunar)", None),
+     "bg_sky_calendar (event_type IN eclipse_solar, eclipse_lunar)", None),
     ("astronomical", "combustion", "computed",
      "panchang_engine.planets._is_combust (per-planet combustion-orb check). "
      "Source: shastra_tables.py §12 Combustion Orbs.",

@@ -147,6 +147,17 @@ resource "google_cloud_run_v2_service_iam_member" "web_invokes_sidecar" {
   member   = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
+// Nirmana Elevation tracker: allow the web runtime to observe the one Cloud
+// Run service it reports on. This supplies run.services.get and
+// run.revisions.get without granting project-wide visibility or mutation.
+resource "google_cloud_run_v2_service_iam_member" "web_observes_own_release" {
+  project  = var.gcp_project
+  location = var.gcp_region
+  name     = "amjis-web"
+  role     = "roles/run.viewer"
+  member   = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+}
+
 // ── amjis-sidecar-runtime grants ─────────────────────────────────────────────
 
 resource "google_project_iam_member" "sidecar_sql_client" {

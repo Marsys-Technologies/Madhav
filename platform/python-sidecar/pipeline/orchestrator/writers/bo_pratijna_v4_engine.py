@@ -29,12 +29,19 @@ description — never silently baked in.
 ── Reused, not reinvented ───────────────────────────────────────────────────
 The naisargika friend/enemy table, the tatkalika (temporal) relation rule,
 and the panchadha-maitri (5-fold compound) matrix are NOT re-derived here —
-they are the same functions already live in `ga_writers/ga_condition_writer.
-py` (`compute_tatkalika_relation`, `compute_panchadha_maitri`), imported
-directly, plus a literal copy of that module's `_NAISARGIKA` dict (a nested
-function-local constant, not itself importable — copied with a drift-guard
-test the same way `chart_reader_v4.py` copies `SIGN_LORD` from
-`probe_p2_tracer.py`).
+all three are literal copies of the same logic already live in
+`ga_writers/ga_condition_writer.py` (`_NAISARGIKA`, `compute_tatkalika_
+relation`, `compute_panchadha_maitri`), kept honest with drift-guard tests
+the same way `chart_reader_v4.py` copies `SIGN_LORD` from `probe_p2_
+tracer.py`. `compute_tatkalika_relation`/`compute_panchadha_maitri` were a
+live cross-layer `import` here through NIRMĀṆA L2-W3, not a copy — severed
+2026-09-05 after that coupling forced an L1-owned edit to `ga_condition_
+writer.py` to re-derive an L2 writer-inventory pin for the third time
+(conductor-2b flagged the count; the native had left "sever or keep
+absorbing it" as L2's call). Two tiny, pure, classical-rule functions (a
+1-line offset arithmetic and a 6-entry lookup matrix) are the entire cost
+of owning a local copy instead of an import, against a real, recurring,
+cross-session CI cost from keeping it — not a marginal call.
 
 ── The one documented honest gap: the yoga-presence slot (§2.5) ───────────
 `RUNG_P3_HAND_WORKED_v1_0.md` §1.3/§5 found, by hand, that NONE of the nine
@@ -64,15 +71,23 @@ from fractions import Fraction as F
 from typing import Any
 
 from brahmagyan.chart_reader_v4 import ChartReaderError, ChartReaderV4, SIGN_LORD
-from ga_writers.ga_condition_writer import (
-    compute_panchadha_maitri,
-    compute_tatkalika_relation,
-)
+from brahmagyan.dignity_oracle import classify_dignity as _oracle_classify_dignity
+from brahmagyan.aspects import NODAL_GRAHAS, get_graha_aspects
 
 from .bo_pratijna_karyatva import KaryatvaMap, KARYATVA_REGISTRY, get_karyatva
 
 ENGINE_VERSION = "bo_pratijna_v4_engine.0.1"
 RUBRIC_VERSION = "V4_RUBRIC_SPEC_v1_0"
+
+# 1-based sign number → sign name (Aries=1 … Pisces=12).
+# Kept as a local constant to avoid importing pyjhora_adapter (which requires
+# the jhora wheel) from this engine library module.  Drift-guarded by
+# test_bo_pratijna_v4_engine.py (SIGN_LORD keeps the same mapping honest).
+_SIGN_NUMBER_TO_NAME: dict[int, str] = {
+    1: "Aries", 2: "Taurus", 3: "Gemini", 4: "Cancer", 5: "Leo", 6: "Virgo",
+    7: "Libra", 8: "Scorpio", 9: "Sagittarius", 10: "Capricorn",
+    11: "Aquarius", 12: "Pisces",
+}
 
 # ── §2.1 — the shared dignity band (verbatim from V4_RUBRIC_SPEC_v1_0.md §2.1,
 #    itself adopted from ga_condition_writer.py's DIGNITY_SCORES / pañcadhā
@@ -130,6 +145,41 @@ NAISARGIKA: dict[str, dict[str, str]] = {
                 "Jupiter": "neutral", "Rahu": "enemy"},
 }
 
+# Literal copy of ga_condition_writer.py's compute_tatkalika_relation() and
+# compute_panchadha_maitri() — same coupling-severing rationale as NAISARGIKA
+# above (module docstring, "Reused, not reinvented"). Both are kept honest by
+# a behavioral drift-guard test
+# (test_bo_pratijna_v4_engine.py::test_tatkalika_and_panchadha_maitri_match_ga_condition_writer_source)
+# that imports the source functions directly — inside the TEST file only, so
+# it never re-enters this writer's own transitive-import digest.
+
+
+def _compute_tatkalika_relation(planet_house: int, reference_planet_house: int) -> str:
+    """Tatkalika (temporary) friendship from house position (BPHS Ch.27).
+
+    A planet occupying the 2nd, 3rd, 4th, 10th, 11th, or 12th house FROM the
+    reference planet is a temporary friend; all others (1st = same sign,
+    5th-9th) are temporary enemies.
+    """
+    offset = (planet_house - reference_planet_house) % 12
+    friend_offsets = {1, 2, 3, 9, 10, 11}   # 2nd, 3rd, 4th, 10th, 11th, 12th from reference
+    return "friend" if offset in friend_offsets else "enemy"
+
+
+def _compute_panchadha_maitri(naisargika: str, tatkalika: str) -> str:
+    """5-fold (panchadha) maitri: combine naisargika (permanent) + tatkalika
+    (temporary) friendship per the BPHS Ch.27 result matrix."""
+    _MATRIX: dict[tuple[str, str], str] = {
+        ("friend",  "friend"): "great_friend",
+        ("friend",  "enemy"):  "neutral",
+        ("neutral", "friend"): "friend",
+        ("neutral", "enemy"):  "enemy",
+        ("enemy",   "friend"): "neutral",
+        ("enemy",   "enemy"):  "great_enemy",
+    }
+    return _MATRIX.get((naisargika, tatkalika), "neutral")
+
+
 # ── §3.1 — the universal base-weight table (Fraction, exact) ───────────────
 BASE_WEIGHTS: dict[str, F] = {
     "bhava_lord": F(35, 100),
@@ -178,13 +228,6 @@ def condition_band(condition: float) -> str:
 
 # ── §2.7 — classical graha-dṛṣṭi fractional aspect table ───────────────────
 
-_SPECIAL_FULL_ASPECTS: dict[str, set[int]] = {
-    "Mars": {4, 8},
-    "Jupiter": {5, 9},
-    "Saturn": {3, 10},
-}
-
-
 def house_distance(source_house: int, target_house: int) -> int:
     """Classical 'Nth house counted from source' distance (1 = same house/
     conjunction, 7 = opposition, ...), 1-indexed, wrapping at 12."""
@@ -199,7 +242,13 @@ def aspect_fraction(source_graha: str, source_house: int, target_house: int) -> 
     d = house_distance(source_house, target_house)
     if d == 1 or d == 7:
         return 1.00
-    if d in _SPECIAL_FULL_ASPECTS.get(source_graha, set()):
+    # The canonical oracle supplies the named graha aspects.  The V4 rubric
+    # intentionally retains its existing fractional treatment for nodal
+    # 5th/9th contacts; they are genuine Parashari aspects, but not a V4
+    # named full-contact tier.  This is a scoring-profile distinction, not a
+    # second aspect table.
+    normalized = source_graha.strip().casefold() if isinstance(source_graha, str) else ""
+    if d != 7 and normalized not in NODAL_GRAHAS and d in get_graha_aspects(source_graha):
         return 1.00
     if d in (4, 8):
         return 0.75
@@ -268,9 +317,24 @@ def dignity_of(
         return DignityResult(graha, sign_number, "neutral", DIGNITY_BAND["neutral"],
                               "node — no exalt/debil match, neutral default (§2.1)")
 
-    if r["mooltrikona_sign"] is not None and sign_number == r["mooltrikona_sign"]:
-        return DignityResult(graha, sign_number, "moolatrikona", DIGNITY_BAND["moolatrikona"],
-                              f"sign={sign_number} matches mooltrikona_sign")
+    # MT + own check: delegate to the shared dignity oracle for a single
+    # authoritative classification.  The engine works with sign numbers and does
+    # not carry degree_in_sign for varga positions, so degree is omitted here
+    # (defaults to 0.0 inside classify_dignity).  This means the degree gate
+    # fires only for MT ranges that include 0° (Sun, Mars, Jupiter, Venus,
+    # Saturn); Moon's [4°,30°) and Mercury's [16°,20°) will not match at 0°
+    # and correctly fall through.  A future extension that threads degree_in_sign
+    # through the chart reader would tighten this.
+    # sign_number is 1-based (from reference_planets / chart_divisionals)
+    _sign_name = _SIGN_NUMBER_TO_NAME.get(sign_number)
+    if _sign_name is not None:
+        _oracle_state = _oracle_classify_dignity(graha, _sign_name, 0.0)
+        if _oracle_state == "moolatrikona":
+            return DignityResult(graha, sign_number, "moolatrikona", DIGNITY_BAND["moolatrikona"],
+                                  f"sign={sign_number} ({_sign_name}) matches oracle moolatrikona")
+        if _oracle_state == "own":
+            return DignityResult(graha, sign_number, "own", DIGNITY_BAND["own"],
+                                  f"sign={sign_number} ({_sign_name}) matches oracle own")
     if sign_number in r["own_signs"]:
         return DignityResult(graha, sign_number, "own", DIGNITY_BAND["own"],
                               f"sign={sign_number} in own_signs={r['own_signs']}")
@@ -354,8 +418,8 @@ def dignity_of_with_positions(
                 f"dispositor {need.sign_lord} (both D1 house {graha_house_d1}) — "
                 f"naisargika-only={state}, tatkalika set aside",
             )
-        tatkalika_rel = compute_tatkalika_relation(sign_lord_house_d1, graha_house_d1)
-        compound = compute_panchadha_maitri(need.naisargika_rel, tatkalika_rel)
+        tatkalika_rel = _compute_tatkalika_relation(sign_lord_house_d1, graha_house_d1)
+        compound = _compute_panchadha_maitri(need.naisargika_rel, tatkalika_rel)
         return DignityResult(
             graha, sign_number, compound, DIGNITY_BAND[compound],
             f"naisargika({graha}->{need.sign_lord})={need.naisargika_rel}, "
@@ -374,11 +438,27 @@ class SlotWeight:
     weight: F
 
 
+#: EVENT_CLASS_ONTOLOGY_v1_0.md §5: of the 6 classes carrying kill_switch_criteria,
+#: `birth_anchor.epoch_tautology` is the only UNCONDITIONAL one — "always
+#: kill-switched... never scored, it defines t=0" — vs. the other 5, which
+#: disqualify a specific INSTANCE from a downstream λ_e scoring harness (A-3/A-5)
+#: only when their per-instance criterion fires. Because compute_class_weights
+#: operates at the class level, not the instance level, only birth_anchor's
+#: always-true exclusion is relevant here: its own citations already document it
+#: as a chart-epoch definitional anchor, not a predicted/scored event, so the
+#: divisional/yoga axes (which score how strongly a predicted event's timing
+#: manifests) are a category error for it, not merely inapplicable data.
+_EPOCH_TAUTOLOGY_CLASSES = frozenset({"birth_anchor"})
+
+
 def compute_class_weights(karyatva: KaryatvaMap) -> list[SlotWeight]:
     """§3.1's ONE mechanical rule, applied identically to all 27 classes:
     populate whichever slots this class's own KaryatvaMap carries, split
     multi-item slots evenly, renormalize the populated subset to sum to
-    exactly 1 (Fraction, no float drift)."""
+    exactly 1 (Fraction, no float drift). Exception: classes in
+    _EPOCH_TAUTOLOGY_CLASSES never activate divisional/yoga regardless of
+    whether their KaryatvaMap happens to carry those fields (see the
+    constant's own docstring)."""
     if karyatva.dusthana_required:
         core_houses = [karyatva.primary_bhava[0]]
         dusthana_houses = karyatva.primary_bhava[1:]
@@ -386,13 +466,15 @@ def compute_class_weights(karyatva: KaryatvaMap) -> list[SlotWeight]:
         core_houses = list(karyatva.primary_bhava)
         dusthana_houses = []
 
+    epoch_tautology = karyatva.event_class_id in _EPOCH_TAUTOLOGY_CLASSES
+
     active: dict[str, F] = {
         "bhava_lord": BASE_WEIGHTS["bhava_lord"],
         "karaka": BASE_WEIGHTS["karaka"],
     }
-    if karyatva.divisional:
+    if karyatva.divisional and not epoch_tautology:
         active["divisional"] = BASE_WEIGHTS["divisional"]
-    if karyatva.yoga_keywords:
+    if karyatva.yoga_keywords and not epoch_tautology:
         active["yoga"] = BASE_WEIGHTS["yoga"]
     if karyatva.dusthana_required:
         active["dusthana"] = BASE_WEIGHTS["dusthana"]

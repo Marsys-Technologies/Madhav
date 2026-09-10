@@ -93,6 +93,11 @@ const ALLOWED_TABLES = new Set([
   // for bg_transit_rules). Read-only L0 Brahmagyan reference table (migration 250); no
   // write path added.
   'bg_dignity_reference',
+  // F04: ref_nakshatra_get reads the canonical global catalog and its correlated
+  // pada-lord rows through this SELECT-only proxy. Both tables are reference data
+  // (migration 238), and the MCP handler has no write capability.
+  'reference_nakshatra',
+  'reference_nakshatra_pada',
   // ṢAḌ-DARŚANA W2 (E5 follow-up to PR #1033): resolveFieldSnapshot
   // (platform-mcp/src/lib/kala_envelope.ts) reads the chart's newest field-snapshot row
   // (`SELECT field_snapshot_id, field_content_hash ... ORDER BY built_at DESC, field_snapshot_id
@@ -112,15 +117,43 @@ const ALLOWED_TABLES = new Set([
   // must lead with the highest-scoring insight_score row). Same writer, same chart scope.
   'kala_field_salience',
   'kala_insights',
+  // V4 Bundle B: every kala_* facade reads the chart-level aggregate maturity row
+  // (event_class IS NULL) plus its per-class coverage count from this migration-497 table.
+  // The query is server-authored, SELECT-only, and chart-scoped; the facade has already
+  // authorized the chart before it reaches this proxy. No write capability is added.
+  'kala_field_skill',
+  // SM-γ C5 (SAMPŪRTI-γ lane C5, 2026-08-13): ahead_autofile.ts's SM_GAMMA_C5_ENABLED path
+  // queries kala_field_windows to find the best-matching field window overlapping a served
+  // AHEAD window (by chart_id + event_class + date range) and enrich authority_basis with the
+  // field_window provenance (item-44 format). Chart-scoped (chart_id FK), written only by
+  // ka_kshetra; read-only here, no write path added. Gated behind SM_GAMMA_C5_ENABLED=true.
+  'kala_field_windows',
+  // MR-25 (PARIṢKĀRA, migration 565): register_gochara_windows.ts's verse_refs
+  // lookup queries bg_gochara_citation_resolution to resolve gochara citation
+  // strings (gochara_grammar/citations.py constants) to classical_text_chunks
+  // verse_refs. Global read-only reference table; no write path added.
+  'bg_gochara_citation_resolution',
 ])
 
 // Forbidden anywhere in the statement: write/DDL verbs and statement separators.
 const FORBIDDEN_PATTERN =
   /\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|GRANT|REVOKE|TRUNCATE|COPY|EXECUTE|CALL|VACUUM|MERGE)\b|;|--/i
 
-// Matches identifiers following FROM/JOIN (schema-unqualified; this DB has no
-// cross-schema tables in the whitelist so unqualified matching is sufficient).
-const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?/gi
+// Matches relation identifiers following FROM/JOIN (schema-unqualified; this DB
+// has no cross-schema tables in the whitelist so unqualified matching is
+// sufficient). A PostgreSQL table function such as `FROM UNNEST(...)` is not a
+// relation and must not be mistaken for an unallowlisted table.
+const TABLE_REF_PATTERN = /\b(?:FROM|JOIN)\s+"?([a-zA-Z_][a-zA-Z0-9_]*)"?\b(?!\s*\()/gi
+
+function isCteName(sql: string, name: string): boolean {
+  // Identifiers captured from FROM/JOIN may be CTE references. Limit the
+  // exception to a WITH declaration (including a later comma-separated CTE),
+  // rather than accepting arbitrary "name AS (...)" text in the query.
+  return new RegExp(
+    `\\b(?:WITH\\s+(?:RECURSIVE\\s+)?|,)\\s*"?${name}"?\\s+AS\\s*\\(`,
+    'i'
+  ).test(sql)
+}
 
 function validateSql(sql: string): { ok: true } | { ok: false; reason: string } {
   const trimmed = sql.trim()
@@ -139,12 +172,20 @@ function validateSql(sql: string): { ok: true } | { ok: false; reason: string } 
   if (referenced.size === 0) {
     return { ok: false, reason: 'Could not identify any referenced table (FROM/JOIN clause required).' }
   }
+  let hasAllowedBaseRelation = false
   for (const t of referenced) {
     // CTE names (declared in WITH ... AS (...)) are legitimate self-references
     // that will not appear in ALLOWED_TABLES; only reject real table names.
-    if (!ALLOWED_TABLES.has(t) && !trimmed.match(new RegExp(`\\b${t}\\s+AS\\s*\\(`, 'i'))) {
+    if (ALLOWED_TABLES.has(t)) {
+      hasAllowedBaseRelation = true
+      continue
+    }
+    if (!isCteName(trimmed, t)) {
       return { ok: false, reason: `Table '${t}' is not in the read-only whitelist for this route.` }
     }
+  }
+  if (!hasAllowedBaseRelation) {
+    return { ok: false, reason: 'Query must reference at least one allowlisted base table.' }
   }
   return { ok: true }
 }

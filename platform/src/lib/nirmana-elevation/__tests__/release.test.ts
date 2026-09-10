@@ -1,0 +1,283 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
+import { loadNirmanaReleaseStatus, verifyNirmanaCiRun } from '../release'
+
+const observedAt = new Date('2026-08-25T09:00:00.000Z')
+
+function cloudRun({
+  trafficStatuses = [{ percent: 100, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb' }],
+  latestReadyRevision,
+  templateLabels,
+  revisionLabels,
+}: {
+  trafficStatuses?: Array<{ percent?: number; revision?: string; type?: string }>
+  latestReadyRevision?: string
+  templateLabels?: Record<string, string>
+  revisionLabels?: Record<string, string>
+} = {}) {
+  return {
+    getService: vi.fn().mockResolvedValue([{ trafficStatuses, latestReadyRevision, template: { labels: templateLabels } }]),
+    getRevision: vi.fn().mockResolvedValue([{ labels: revisionLabels }]),
+  }
+}
+
+describe('loadNirmanaReleaseStatus', () => {
+  beforeEach(() => vi.restoreAllMocks())
+  afterEach(() => vi.useRealTimers())
+
+  it('accepts only the successful main-push Ganga Quality Gate for the exact release commit', async () => {
+    const sha = 'a'.repeat(40)
+    await expect(verifyNirmanaCiRun('12345', sha, vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      name: 'CI — Ganga Quality Gate', event: 'push', head_sha: sha, status: 'completed', conclusion: 'success',
+    }), { status: 200 })))).resolves.toBeUndefined()
+
+    await expect(verifyNirmanaCiRun('12346', sha, vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      name: 'ad hoc green check', event: 'workflow_dispatch', head_sha: sha, status: 'completed', conclusion: 'success',
+    }), { status: 200 })))).rejects.toThrow(/not a successful completed run/i)
+  })
+
+  it('reports independent main and serving-revision observations while withholding a commit-unproven sync verdict', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'a'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun() as never,
+    })
+
+    expect(result.release).toEqual({
+      main_sha: 'a'.repeat(40), deployed_sha: null, deployed_revision: 'amjis-web-01704-mvb',
+      production_in_sync: null, observed_at: observedAt.toISOString(),
+    })
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'github_main', state: 'fresh' }),
+      expect.objectContaining({ source_id: 'cloud_run_web', state: 'fresh' }),
+      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'unknown' }),
+    ]))
+    expect(result.gaps).toContain('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
+  })
+
+  it('isolates unavailable GitHub observations without inventing a main SHA', async () => {
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn,
+      cloudRunClient: cloudRun() as never,
+    })
+
+    expect(result.release).toMatchObject({ main_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'github_main', state: 'unavailable' })]))
+    expect(result.gaps).toContain('Authoritative GitHub main revision is unavailable; release sync is withheld.')
+  })
+
+  it('isolates unavailable Cloud Run observations without inventing a serving revision', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const unavailableCloudRun = { getService: vi.fn().mockRejectedValue(new Error('ADC unavailable')) }
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'b'.repeat(40) }), { status: 200 })),
+      cloudRunClient: unavailableCloudRun as never,
+    })
+
+    expect(result.release).toMatchObject({ main_sha: 'b'.repeat(40), deployed_revision: null, production_in_sync: null })
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'cloud_run_web', state: 'unavailable',
+      error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
+    expect(JSON.stringify(result)).not.toContain('ADC unavailable')
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', {
+      source_id: 'cloud_run_web',
+      error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+    })
+    expect(result.gaps).toContain('Authoritative Cloud Run serving revision is unavailable; release sync is withheld.')
+  })
+
+  it('keeps secret-looking immutable provenance failures out of public output and logger arguments', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const cloudRunClient = cloudRun()
+    cloudRunClient.getRevision.mockRejectedValue(new Error('authorization=Bearer super-secret'))
+
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'b'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'artifact_registry_commit', state: 'unknown',
+      error_code: 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+      error_message: 'Immutable serving-revision commit provenance is unavailable.',
+    })]))
+    expect(JSON.stringify(result)).not.toContain('super-secret')
+    expect(JSON.stringify(log.mock.calls)).not.toContain('super-secret')
+    expect(JSON.stringify(log.mock.calls)).not.toContain('authorization=Bearer')
+    expect(log).toHaveBeenCalledWith('[nirmana-elevation] release source query failed', {
+      source_id: 'artifact_registry_commit',
+      error_code: 'NIRMANA_RELEASE_PROVENANCE_UNAVAILABLE',
+    })
+  })
+
+  it('treats split serving traffic as unavailable instead of choosing a revision arbitrarily', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'c'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({ trafficStatuses: [
+        { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-old' },
+        { percent: 50, revision: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-new' },
+      ] }) as never,
+    })
+
+    expect(result.release).toMatchObject({ deployed_revision: null, production_in_sync: null })
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' })]))
+  })
+
+  it('resolves a 100% LATEST traffic target through the realized latest-ready revision', async () => {
+    const sha = 'd'.repeat(40)
+    const cloudRunClient = cloudRun({
+      trafficStatuses: [
+        { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST', percent: 100, revision: '' },
+        { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION', percent: 0, revision: 'amjis-web-tagged' },
+      ],
+      latestReadyRevision: 'amjis-web-01717-l42',
+      revisionLabels: { 'commit-sha': sha },
+    })
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01717-l42',
+    })
+    expect(result.release).toMatchObject({
+      main_sha: sha,
+      deployed_sha: sha,
+      deployed_revision: 'amjis-web-01717-l42',
+      production_in_sync: true,
+    })
+  })
+
+  it('does not substitute latest-ready for an unresolved pinned-revision target', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({
+        trafficStatuses: [
+          { type: 'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION', percent: 100, revision: '' },
+        ],
+        latestReadyRevision: 'amjis-web-01717-l42',
+        revisionLabels: { 'commit-sha': 'd'.repeat(40) },
+      }) as never,
+    })
+
+    expect(result.release).toMatchObject({
+      deployed_sha: null,
+      deployed_revision: null,
+      production_in_sync: null,
+    })
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'cloud_run_web', state: 'unavailable' }),
+    ]))
+  })
+
+  it('uses the GitHub commits feed when the shared REST quota is exhausted', async () => {
+    const sha = 'f'.repeat(40)
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response(
+        `<feed><entry><id>tag:github.com,2008:Grit::Commit/${sha}</id></entry></feed>`,
+        { status: 200 },
+      ))
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn,
+      cloudRunClient: cloudRun({ revisionLabels: { 'commit-sha': sha } }) as never,
+    })
+
+    expect(result.release).toMatchObject({ main_sha: sha, deployed_sha: sha, production_in_sync: true })
+    expect(fetchFn).toHaveBeenCalledTimes(2)
+  })
+
+  it('normalizes a short realized revision name before reading its immutable label', async () => {
+    const cloudRunClient = cloudRun({
+      trafficStatuses: [{ percent: 100, revision: 'amjis-web-01704-mvb' }],
+      revisionLabels: { 'commit-sha': 'd'.repeat(40) },
+    })
+    await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb',
+    })
+  })
+
+  it('uses a valid commit label from the exact serving revision', async () => {
+    const cloudRunClient = cloudRun({ revisionLabels: { 'commit-sha': 'd'.repeat(40) } })
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'd'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRunClient as never,
+    })
+
+    expect(cloudRunClient.getRevision).toHaveBeenCalledWith({
+      name: 'projects/madhav-astrology/locations/asia-south1/revisions/amjis-web-01704-mvb',
+    })
+    expect(result.release).toMatchObject({ deployed_sha: 'd'.repeat(40), production_in_sync: true })
+    expect(result.sources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source_id: 'artifact_registry_commit', state: 'fresh', error_code: null, error_message: null }),
+    ]))
+    expect(result.gaps).not.toContain('Serving revision commit SHA is not published as immutable Cloud Run provenance; production sync is withheld.')
+  })
+
+  it('withholds a desired-template commit label when the serving revision has no provenance', async () => {
+    const result = await loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue(new Response(JSON.stringify({ sha: 'e'.repeat(40) }), { status: 200 })),
+      cloudRunClient: cloudRun({
+        templateLabels: { 'commit-sha': 'e'.repeat(40) },
+      }) as never,
+    })
+
+    expect(result.release).toMatchObject({ deployed_sha: null, production_in_sync: null })
+  })
+
+  it('times out a stalled release source and returns a degraded observation', async () => {
+    vi.useFakeTimers()
+    const stalledFetch = vi.fn(() => new Promise<Response>(() => {}))
+    const resultPromise = loadNirmanaReleaseStatus({ now: observedAt, fetchFn: stalledFetch, cloudRunClient: cloudRun() as never })
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    const result = await resultPromise
+
+    expect(result.release).toMatchObject({ main_sha: null, deployed_revision: 'amjis-web-01704-mvb', production_in_sync: null })
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'github_main', state: 'unavailable', error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
+  })
+
+  it('times out a stalled GitHub response body after headers arrive', async () => {
+    vi.useFakeTimers()
+    const resultPromise = loadNirmanaReleaseStatus({
+      now: observedAt,
+      fetchFn: vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => new Promise(() => {}) } as unknown as Response),
+      cloudRunClient: cloudRun() as never,
+    })
+
+    await vi.advanceTimersByTimeAsync(5_000)
+    const result = await resultPromise
+
+    expect(result.release.main_sha).toBeNull()
+    expect(result.sources).toEqual(expect.arrayContaining([expect.objectContaining({
+      source_id: 'github_main', state: 'unavailable', error_code: 'NIRMANA_RELEASE_SOURCE_UNAVAILABLE',
+      error_message: 'Authoritative release source is unavailable.',
+    })]))
+  })
+})

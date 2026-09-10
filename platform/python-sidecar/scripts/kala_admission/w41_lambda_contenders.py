@@ -201,7 +201,14 @@ def _parse_date_field(val) -> date:
 def load_v1_windows(conn, chart_id: str) -> list[GochaWindow]:
     """Load λ_v1: signed_intensity from kala_gochara_windows WHERE
     chart_id = %s AND generation = 'v1'. READ-ONLY -- no mutation.
-    Falls back to raw_intensity when signed_intensity is NULL."""
+    Falls back to raw_intensity when signed_intensity is NULL.
+
+    INTENTIONAL: generation='v1' pin — λ_v1 IS the v1 corpus by definition.
+    This function is one side of a two-contender bakeoff (λ_v1 vs λ_v3) whose
+    entire purpose is to compare v1 scoring against 3.0 scoring. Reading any
+    other generation here would collapse the comparison to a single corpus and
+    produce a meaningless bakeoff. The pin is permanent and correct. (MR-18)
+    """
     with conn.cursor() as cur:
         cur.execute(
             "SELECT event_class, window_start, window_end, "

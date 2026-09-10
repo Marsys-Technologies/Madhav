@@ -15,6 +15,109 @@
 import type { CapabilityDescriptor } from '../../index'
 import { query } from '@/lib/db/client'
 
+export const EMPIRICALLY_CALIBRATED = 'empirical'
+
+// GA-5 review finding on #1386 (rounds 2-3): mi_darshana.py embeds a suppressed numeric
+// value in `statement` across (at least) FIVE distinct templates, not just one --
+// verdict_object: "(grade N.N/10)"; load_bearing: "(sensitivity=N.NN)"; calibrated_outlook:
+// "observed outcome rate is N.N%"; manifestation_grammar's non-empirical branch:
+// "(prior-based estimate: N%)" (line 179 -- found round 3, LATENT on the canonical chart
+// today since its 7 rows are all currently evidence_grade=empirical, but the branch is
+// reachable and will fire on other charts). Redacting by SHAPE (not by re-deriving the
+// row's own value, which risks drifting from how mi_darshana actually formats it) catches
+// every known citation shape regardless of which template produced it. `g` flag added --
+// a statement could in principle carry more than one citation.
+//
+// STRUCTURAL RESIDUAL, NOT fully closed by this list (disclosed, not fixed -- round 3
+// finding): emergent_law statements are free text copied from mimamsa_discoveries, an
+// unbounded shape no fixed regex list can be proven exhaustive against. Closing that
+// durably needs either a write-path fix (mi_darshana.py never embeds a numeric confidence
+// citation in free-text discoveries) or a serve-time numeric-residue assertion (fail loud
+// if ANY bare confidence-shaped number survives a suppressed row's statement) -- both
+// larger changes than this fix's own scope. Tracked, not chased into a round 4.
+//
+// F-143 UPDATE: that residual stopped being latent. Before F-143, discovery rows with
+// n_support >= 5 were graded 'empirical' and so never reached this suppressor at all; the
+// fix demotes them (20 rows on the canonical chart) to 'assignment_only', which routes
+// their statements through here for the first time. The two shapes mi_pariksha's discovery
+// substep actually emits are now covered explicitly -- the current "mean credit=N.NN" form
+// and the pre-v2.1 "(mean=N.NN, n=N)" form, which stays in prod rows until mi_pariksha
+// re-runs. The unbounded-free-text residual above is unchanged in principle.
+const EMBEDDED_NUMERIC_EVIDENCE_PATTERNS: Array<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /\(grade\s+[\d.]+\/10\)/gi, replacement: '(grade suppressed — see tier_suppression_note)' },
+  { pattern: /\(sensitivity=[\d.]+\)/gi, replacement: '(sensitivity suppressed — see tier_suppression_note)' },
+  { pattern: /observed outcome rate is [\d.]+%/gi, replacement: 'observed outcome rate is [suppressed — see tier_suppression_note]' },
+  { pattern: /\(prior-based estimate: [\d.]+%\)/gi, replacement: '(prior-based estimate suppressed — see tier_suppression_note)' },
+  { pattern: /mean credit=[\d.]+/gi, replacement: 'mean credit=[suppressed — see tier_suppression_note]' },
+  { pattern: /\(mean=[\d.]+,\s*n=\d+\)/gi, replacement: '(mean credit suppressed — see tier_suppression_note)' },
+]
+
+// F-143: evidence_grade is a TIERED vocabulary, not a boolean. Served verbatim per row and
+// counted in evidence_grade_counts; this legend keeps a caller from collapsing the tiers
+// into "empirical vs. not" and reading an assignment count as scored evidence.
+export const EVIDENCE_GRADE_LEGEND: Record<string, string> = {
+  empirical:
+    'backed by >= 5 outcome-adjudicated prediction/event matches (CONFIRMED|PARTIAL|REFUTED). ' +
+    'The only tier whose numeric fields are served unsuppressed.',
+  assignment_only:
+    'enough ASSIGNMENTS (attribution rows / channel opportunities) to look well-supported, but ' +
+    'fewer than 5 of them were outcome-adjudicated. Not evidence of accuracy. Numerics suppressed.',
+  prior_only:
+    'below every evidence threshold, or no scored count is recorded at all — the number shown ' +
+    'would come from a prior, not from this chart. Numerics suppressed.',
+  structural:
+    'deterministically derived from chart structure or from an unadjudicated probe ' +
+    '(e.g. retrodiction rows: an anchor match is not a scored hit). Numerics suppressed.',
+}
+
+export function redactEmbeddedNumericEvidence(statement: string): string {
+  let out = statement
+  for (const { pattern, replacement } of EMBEDDED_NUMERIC_EVIDENCE_PATTERNS) {
+    out = out.replace(pattern, replacement)
+  }
+  return out
+}
+
+export function suppressIfNotCalibrated(row: Record<string, unknown>): Record<string, unknown> {
+  if (row['evidence_grade'] === EMPIRICALLY_CALIBRATED) return row
+  // P3-b tier-suppression (F-69): evidence_grade is anything other than 'empirical' (structural,
+  // prior_only, missing) → no empirically-calibrated score exists for this insight. Mirrors
+  // ka_kshetra/stage8_spec.py:136. The stored mimamsa_insight_units row is never mutated.
+  const pc = row['provenance_chain'] as Record<string, unknown> | null
+  const rawStatement = row['statement']
+  const statement = typeof rawStatement === 'string'
+    ? redactEmbeddedNumericEvidence(rawStatement)
+    : rawStatement
+  // GA-5 review finding on #1386 round 3 (2nd finding, same round): mi_darshana.py writes
+  // the SAME suppressed float into more than one provenance_chain key depending on
+  // insight_type -- manifestation_grammar duplicates it as both provenance_chain.grade AND
+  // provenance_chain.propensity (mi_darshana.py's json.dumps({'channel':.., 'domain':.., 
+  // 'propensity': prop})). Nulling only .grade left .propensity serving the exact number
+  // .grade was just nulled for -- confirmed live: all 10 manifestation_grammar rows on the
+  // canonical chart currently carry this key (latent today, all currently empirical). Null
+  // BOTH known duplicate keys explicitly -- not a blanket "null every number in
+  // provenance_chain", which would incorrectly strip unrelated numeric fields other insight
+  // types legitimately carry (e.g. verdict_object's ranked_evidence[].salience, an evidence-
+  // weighting score, not a suppressed confidence value).
+  //
+  // F-147 GA-5 review finding on #1439: a THIRD instance of the same duplicate-key leak --
+  // mi_darshana.py's manifestation_grammar provenance dict also carried a "rank_consequence"
+  // key duplicating the same suppressed float (0.42 live-reproduced). The write-path
+  // duplication was removed at the source (mi_darshana.py no longer emits the key), but this
+  // list also nulls it defense-in-depth, the same posture as .grade/.propensity above, in case
+  // the key ever returns via another writer or a stale row. Do not blanket-null every number
+  // in provenance_chain -- see the comment above.
+  const suppressedProvenanceChain = pc == null ? pc : { ...pc, grade: null, propensity: null, rank_consequence: null }
+  return {
+    ...row,
+    statement,
+    rank_consequence: null,
+    confidence_band: null,
+    provenance_chain: suppressedProvenanceChain,
+    tier_suppression_note: `rank_consequence/confidence_band/provenance_chain.grade+propensity+rank_consequence/statement's embedded numeric evidence (grade/sensitivity/outcome-rate/prior-estimate citations) suppressed at serve time: evidence_grade=${JSON.stringify(row['evidence_grade'])} — no empirically-calibrated score exists for this insight yet (P3-b tier-suppression; see services/ka_kshetra/stage8_spec.py for the precedent this mirrors). The stored value is unaffected.`,
+  }
+}
+
 export const queryInsightsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L5/query_insights',
   type:  'tool',
@@ -36,7 +139,7 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     },
     insight_type: {
       type: 'string',
-      description: "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'load_bearing'|'negative_knowledge'",
+      description: "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'retrodiction'|'load_bearing'|'negative_knowledge'|'verdict_object'. ('retrodiction' and 'verdict_object' rows are written by mi_darshana and were previously undocumented here — insight_type mirrors mimamsa_discoveries.discovery_class for discovery-sourced rows.)",
       required: false,
     },
     domain: {
@@ -80,6 +183,18 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). paginated: a clamped `top_k` LIMIT
+  // with a measured `total_matching` + `more_available` (added this pass — the surface
+  // previously reported only `total_returned`, from which a caller could not tell a
+  // complete result from a truncated one). `empty_reason: true` is earned by the honest
+  // empty the handler emits below, which also distinguishes "no insight units at all for
+  // this chart" from "filters excluded every row" — §N.6 item 3.
+  density_contract: {
+    paginated: true,
+    facets: ['insight_type', 'domain', 'min_rank', 'include_negative_knowledge'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id    = String(args.chart_id)
     const insight_type = args.insight_type ? String(args.insight_type) : null
@@ -97,6 +212,8 @@ export const queryInsightsCapability: CapabilityDescriptor = {
     if (min_rank > 0)  { filters.push(`rank_consequence >= $${p++}`); params.push(min_rank) }
     if (!include_neg)  { filters.push(`is_negative_knowledge = false`) }
 
+    const where = filters.join(' AND ')
+    const countParams = [...params]
     params.push(top_k)
 
     const sql = `
@@ -106,38 +223,83 @@ export const queryInsightsCapability: CapabilityDescriptor = {
              last_calibrated_at, provenance_chain, is_negative_knowledge,
              surface_formula_version, updated_at
       FROM mimamsa_insight_units
-      WHERE ${filters.join(' AND ')}
+      WHERE ${where}
       ORDER BY rank_consequence DESC NULLS LAST
       LIMIT $${p}
     `
 
+    // Family size BEFORE the LIMIT, same filters as the page — so `more_available` is
+    // measured rather than inferred from whether the page happened to fill (§N.6 item 4).
+    const countSql = `SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE ${where}`
+    // Total insight rows for this chart with NO filters — lets an empty result say whether
+    // the chart has no insights at all, or the filters excluded them.
+    const chartTotalSql = `SELECT COUNT(*)::text AS total FROM mimamsa_insight_units WHERE chart_id = $1`
+
     // Calibration summary
     const calSql = `
       SELECT
-        COUNT(*)::int                                             AS total_matches,
-        COUNT(*) FILTER (WHERE composite_verdict = 'confirmed')  AS confirmed,
-        COUNT(*) FILTER (WHERE composite_verdict = 'partial')    AS partial,
-        COUNT(*) FILTER (WHERE composite_verdict = 'denied')     AS denied,
-        AVG(composite_score)::numeric(4,3)                       AS mean_composite_score
+        COUNT(*)::int                                              AS total_matches,
+        COUNT(*) FILTER (WHERE composite_verdict = 'CONFIRMED')   AS confirmed,
+        COUNT(*) FILTER (WHERE composite_verdict = 'PARTIAL')     AS partial,
+        COUNT(*) FILTER (WHERE composite_verdict = 'REFUTED')     AS refuted,
+        COUNT(*) FILTER (WHERE composite_verdict = 'UNRESOLVED')  AS unresolved,
+        AVG(composite_score)::numeric(4,3)                        AS mean_composite_score
       FROM mimamsa_calibration
       WHERE chart_id = $1
     `
 
     try {
-      const [insightResult, calResult] = await Promise.all([
+      const [insightResult, calResult, countResult, chartTotalResult] = await Promise.all([
         query(sql, params),
         query(calSql, [chart_id]),
+        query<{ total: string }>(countSql, countParams),
+        query<{ total: string }>(chartTotalSql, [chart_id]),
       ])
+      const total_matching   = Number(countResult.rows[0]?.total ?? 0)
+      const chart_total_rows = Number(chartTotalResult.rows[0]?.total ?? 0)
 
       const calibration_summary = (calResult.rows[0] ?? {}) as Record<string, unknown>
+
+      const evidence_grade_counts: Record<string, number> = {}
+      for (const row of insightResult.rows as Array<Record<string, unknown>>) {
+        const g = String(row.evidence_grade ?? 'unknown')
+        evidence_grade_counts[g] = (evidence_grade_counts[g] ?? 0) + 1
+      }
+
+      // F-143: only legend entries for grades actually present, so the legend can never
+      // imply a tier this response does not contain.
+      const evidence_grade_legend: Record<string, string> = {}
+      for (const g of Object.keys(evidence_grade_counts)) {
+        evidence_grade_legend[g] = EVIDENCE_GRADE_LEGEND[g] ?? 'unrecognized tier — treated as not-calibrated (fail-closed: numerics suppressed).'
+      }
 
       return {
         content: {
           chart_id,
-          insight_units:       insightResult.rows,
+          insight_units:       insightResult.rows.map(suppressIfNotCalibrated),
           calibration_summary,
+          evidence_grade_counts,
+          evidence_grade_legend,
           filters:             { insight_type, domain, min_rank, top_k, include_neg },
           total_returned:      insightResult.rows.length,
+          total_matching,
+          more_available:      total_matching > insightResult.rows.length,
+          ...(insightResult.rows.length === 0
+            ? {
+                empty_reason:
+                  `No insight units matched for chart ${chart_id} ` +
+                  `(insight_type=${insight_type ?? 'any'}, domain=${domain ?? 'any'}, ` +
+                  `min_rank=${min_rank}, include_negative_knowledge=${include_neg}). ` +
+                  (chart_total_rows === 0
+                    ? 'mimamsa_insight_units holds NO rows for this chart at all — the L5 ' +
+                      'mi_darshana asset has not produced insights for it yet.'
+                    : `The chart has ${chart_total_rows} insight unit(s); these filters excluded all of them.`),
+              }
+            : {}),
+          provenance: {
+            tables: ['mimamsa_insight_units', 'mimamsa_calibration'],
+            source: 'L5 Mīmāṃsā insight surface (mi_darshana); served chart-scoped.',
+          },
         },
         is_error: false,
       }

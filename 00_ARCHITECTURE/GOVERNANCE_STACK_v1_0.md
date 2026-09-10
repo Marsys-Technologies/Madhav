@@ -4,7 +4,7 @@ version: 1.0-updated-STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION
 status: CURRENT (updated in-place; next version will be v2.0)
 session: 35 (created); FIX_SESSION_003; FIX_SESSION_003_deferred; GAP_RESOLUTION_SESSION; UCN_MERGE_SESSION + corpus_integrity_pass (2026-04-19); STEP_5_MACRO_PLAN_CLOSURE (2026-04-23); STEP_5A_PROJECT_ARCHITECTURE_REFRESH (2026-04-24); STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24); Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 (2026-04-26)
 date_closed: 2026-04-18
-date_updated: 2026-04-26 (Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 — Portal Build Tracker Session 3 of 3 COMPLETE; PORTAL_BUILD_TRACKER_PLAN_v0_1.md → IMPLEMENTED; all 28 ACs pass; 5 new build components + 4 stub pages implemented). Prior: 2026-04-24 (STEP_7 closure — CANONICAL_ARTIFACTS_v1_0.md + three governance scripts + three templates + DISAGREEMENT_REGISTER produced; .geminirules + .gemini/project_state.md re-authored per ND.1 adapted parity; FILE_REGISTRY bumped to v1_3; ND.1 global status flipped `open` → `addressed`). Prior: 2026-04-24 (STEP_5A closure — PROJECT_ARCHITECTURE_v2_2 CURRENT, v2.1 SUPERSEDED; FILE_REGISTRY bumped to v1_2). Prior: 2026-04-23 (STEP_5 closure — MP v2.0 CURRENT, MP v1.0 SUPERSEDED, MSR row corrected to MSR_v3_0, FILE_REGISTRY bumped to v1_1, governance-rebuild family registered)
+date_updated: 2026-08-22 (RC-1/RC-4, PARISESA-V4 — added MSR_v5_0 row to §1 L2.5 Holistic Synthesis, closing the §H.3.6 check_governance_stack_agreement finding on 'MSR_v5_0.md' missing from this registry; MSR_v3_0 demoted to SUPERSEDED). Prior: 2026-04-26 (Madhav_PORTAL_BUILD_TRACKER_IMPL_v0_3 — Portal Build Tracker Session 3 of 3 COMPLETE; PORTAL_BUILD_TRACKER_PLAN_v0_1.md → IMPLEMENTED; all 28 ACs pass; 5 new build components + 4 stub pages implemented). Prior: 2026-04-24 (STEP_7 closure — CANONICAL_ARTIFACTS_v1_0.md + three governance scripts + three templates + DISAGREEMENT_REGISTER produced; .geminirules + .gemini/project_state.md re-authored per ND.1 adapted parity; FILE_REGISTRY bumped to v1_3; ND.1 global status flipped `open` → `addressed`). Prior: 2026-04-24 (STEP_5A closure — PROJECT_ARCHITECTURE_v2_2 CURRENT, v2.1 SUPERSEDED; FILE_REGISTRY bumped to v1_2). Prior: 2026-04-23 (STEP_5 closure — MP v2.0 CURRENT, MP v1.0 SUPERSEDED, MSR row corrected to MSR_v3_0, FILE_REGISTRY bumped to v1_1, governance-rebuild family registered)
 scope: "Project-wide governance stack: version registry, confidence ledger, known-gaps consolidation, change-control protocol"
 architecture_ref: "§G.9 Governance"
 ---
@@ -52,7 +52,8 @@ CLAUDE.md). See `VALIDATED_ASSET_REGISTRY_v1_0.json §archive_actions`.
 | **CGM_v9_0** | **9.0** | **CURRENT** | **Canonical per CAPABILITY_MANIFEST.json; LAG corrections from GAP_RESOLUTION_SESSION carried forward through v9.0** |
 | MSR_v1_0 | 1.0 | **SUPERSEDED** | Superseded by MSR_v2_0 |
 | MSR_v2_0 | 2.1 | **SUPERSEDED** | Superseded by MSR_v3_0 (CURRENT per CLAUDE.md §Canonical corpus artifact paths and GROUNDING_AUDIT §GA.1). v2.0 carried 500 signals under internal v2.2 cleanup; v3.0 is the canonical 499-signal register. |
-| **MSR_v3_0** | **3.0** | **CURRENT** | **499 signals — canonical per CLAUDE.md §Canonical corpus artifact paths; registered here via STEP_5_MACRO_PLAN_CLOSURE (2026-04-23) per GA.1 registry-discipline correction** |
+| MSR_v3_0 | 3.0 | **SUPERSEDED** | Superseded by MSR_v5_0 (CAPABILITY_MANIFEST.json / CLAUDE.md §D). Registered here via STEP_5_MACRO_PLAN_CLOSURE (2026-04-23) per GA.1 registry-discipline correction. |
+| **MSR_v5_0** | **5.0** | **CURRENT** | **573 signals — canonical per CAPABILITY_MANIFEST.json / CLAUDE.md §D; row added RC-1/RC-4 (2026-08-22) closing the §H.3.6 governance_stack_disagreement finding on 'MSR_v5_0.md' missing from this registry** |
 | CDLM_v1_0 | 1.0 | **SUPERSEDED** | Superseded by CDLM_v1_1 in FIX_SESSION_003_deferred |
 | **CDLM_v1_1** | **1.1** | **CURRENT** | **NEW FIX_SESSION_003_deferred — 9 cells corrected; D4.D3 0.78↔→0.61→; Shree Lagna 7H; Hora Lagna 3H; Roga/Mahatmya Sahams correct houses; 1,135 lines** |
 | RM_v1_0 | 1.0 | CLOSED (SUPERSEDED by v1.1) | Superseded in FIX_SESSION_001 |
@@ -122,6 +123,7 @@ CLAUDE.md). See `VALIDATED_ASSET_REGISTRY_v1_0.json §archive_actions`.
 | **GOVERNANCE_INTEGRITY_PROTOCOL_v1_0** | **1.0** | **DRAFT_PENDING_REDTEAM** | **Step 6 deliverable (2026-04-24) — 999-line design specification; 14 sections (§A–§N); six axes; 32 GA.N + ND.1 covered; 13-deliverable Step 7 hand-off. Status flips to CURRENT at Step 8 close if red-team verdict PASS or PASS_WITH_FIXES.** |
 | **SESSION_OPEN_TEMPLATE_v1_0** | **1.0** | **CURRENT** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Session-open handshake template per protocol §F.** |
 | **SESSION_CLOSE_TEMPLATE_v1_0** | **1.0** | **CURRENT** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Session-close checklist template per protocol §G.** |
+| **CROSS_CUTTING_DECISION_REGISTER_v1_0** | **1.0** | **LIVING** | **NEW CODEX_ONBOARDING (2026-08-15) — append-only, tool-neutral decision register. Read immediately after CURRENT_STATE by Claude Code and Codex; CCD-001 establishes the shared onboarding convention.** |
 | **DISAGREEMENT_REGISTER_v1_0** | **1.0** | **LIVING** | **NEW STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24) — Multi-agent disagreement log per protocol §K. Zero entries at creation.** |
 | FALSIFIER_REGISTRY_v1_0 | 1.0 | **SUPERSEDED** | Superseded by v1.1 |
 | FALSIFIER_REGISTRY_v1_1 | 1.1 | **SUPERSEDED** | Superseded by FALSIFIER_REGISTRY_v2_0_EXPANSION (current) |
@@ -995,6 +997,33 @@ M2 execution session. red_team_counter 2 → 3 → cadence FIRED → reset to 0 
 **Governance verdicts:** drift_detector exit=2 (62 findings; pre-existing; no Exec_8 regression); schema_validator exit=2 (54 violations; pre-existing heading/session_id mismatches; SESSION_LOG "Body" H2 heading corrected); mirror_enforcer exit=0 (8/8 pairs clean). build_state.json re-uploaded to GCS.
 
 *End of §24 — Madhav_M2A_Exec_8 amendment log.*
+
+---
+
+### §25 — CODEX_ONBOARDING (2026-08-15) — cross-tool governance addition
+
+**Decision register.** `CROSS_CUTTING_DECISION_REGISTER_v1_0.md` is registered as a
+LIVING governance artifact. It is the first decision record both Claude Code and Codex
+read after `CURRENT_STATE_v1_0.md`; CCD-001 records this orientation, loader, profile,
+and lease convention.
+
+**Tool parity.** The root `AGENTS.md` is a minimal Codex bootstrap that requires a full
+read of canonical `CLAUDE.md`; both Codex profiles set
+`project_doc_fallback_filenames = []`, preventing the native 32 KiB fallback from
+silently truncating `CLAUDE.md`. Directory-local Codex instruction files are symlinks to
+their canonical `CLAUDE.md` targets, and `.agents/skills` points to the canonical
+`.claude/skills` tree.
+
+**Session enforcement.** The open/close templates and schema validator now require tool
+identity, profile, worktree, coordination lease evidence, CCD consumption, and CCD/work
+order/lease synchronization at close. The governance protocol adds §P as the normative
+cross-tool convention.
+
+**Lease authority.** During this user-authorized onboarding session only, Codex may
+commit and push acquisition/release rows for its campaign-coordination lease. No other
+onboarding files are committed by that authority; all remain available for native review.
+
+*End of §25 — CODEX_ONBOARDING amendment log.*
 
 ## Changelog
 

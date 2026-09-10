@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.57
+version: 6.66
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -43,6 +43,8 @@ update_rules: >
   Post-Step-15, `step_ledger_updated` is dropped from the close-checklist; only
   `current_state_updated` remains as the state-transition field.
 consumers:
+  - CROSS_CUTTING_DECISION_REGISTER_v1_0.md — first tool-neutral decision record read
+    by Claude Code and Codex during orientation, immediately after this state pointer
   - CLAUDE.md §F + §C item #8 — cite this file as the primary you-are-here surface
   - .geminirules §F + §C item #8 (MP.1 mirror of the Claude-side citations)
   - .gemini/project_state.md — reflects CURRENT_STATE fields in Gemini-idiom prose (MP.2)
@@ -54,6 +56,156 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.66 (2026-08-30, PARIPRASHNA-V3-FINAL-CLOSE): Paripraśna Experience Assurance Programme
+    v3.0 SEALED. New §2 top entry. All 8 gates CG-0..CG-7 CLOSED; campaign 100.0%; tracker
+    replay integrity ok:true. Native acceptance fired by the native's own native_acceptance
+    event (949026fb, P6 seq 5) — the one gate the control plane reserves to NATIVE. Both native
+    rulings recorded verbatim in substance (V3-E-016: NO DISCLOSURE, closed; V3-E-054
+    SUBJECT_CONSENT_ENFORCEMENT: stays OFF by design, no trigger condition). Headline finding
+    V3-E-016 (real-chart context leak, ~79KB native corpus into 5 of 6 production charts, 4
+    belonging to other real people, ~16+h live) fixed, deployed, live-re-proofed, twice ratified.
+    Residuals carried forward with owners or accepted-risk notes (R-1 absent S6 load/chaos/CWV
+    harness and R-2 conversation-replay re-hydration gap both need named owners). Honest scenario
+    accounting stated: S3 47+13 excluded, S6 14+17 excluded, and "73 VERIFIED" is not "73 fixed".
+    Sealed record: 00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md
+  - v6.65 (2026-08-22, PARISESA-V4-CONDUCTOR-20260822T023000Z close): Final native-scoped
+    close-out of this conductor session's implementation waves. Executed the Opus-5-authored
+    PARISESA_V4_FIX_PLAN.md across Waves 1-5 via Sonnet-5 implementer agents (high effort,
+    no human review gate per native authorization), then closed the specific final batch the
+    native scoped for this session's close: 6 MORNING_SHIP_READY findings (F-142-CANDIDATE,
+    F-145, F-156, F-159, F-165, F-166) plus the F-75-batch OBSOLETE_MARKER row, deleted per
+    its own safe-to-delete note. F-145 required a real production writer bug fix mid-flight
+    (compute_stale_rule_ids dict-row-vs-tuple unpacking, PR #1479) discovered when the actual
+    production rerun crashed safely; production state independently re-verified via direct
+    read-only SQL, not trusted from agent self-report. F-159 (ayanamsha_frame_sensitivity
+    disclosure) and the F-166 integration-test wiring (PR #1482/#1485) each surfaced and fixed
+    genuine plan-inaccuracy / stale-test defects along the way, disclosed rather than glossed
+    over. DATA_PARKED (6) and EXTERNAL_HOLD (4) findings deliberately left untouched per
+    explicit native instruction. Full provenance (per-finding evidence_summary + pr_url) is
+    recorded in the PARISESA-V4 campaign ledger on `parisesa/campaign-state`
+    (00_ARCHITECTURE/briefs/parisesa/state/ledger.json, journal head seq 1097) -- that ledger,
+    not a file-by-file sha256 reconstruction here, is this close's authoritative code-level
+    provenance record, since the substantive PRs were each independently merged through the
+    normal protected-main merge queue with full CI (including the Governance Gates job) green.
+    No `ka_gochara_*`/gochara rebuild or rematerialization was executed or dispatched this
+    session (code-only fixes, per standing owner policy). No `git stash`/`git stash pop` was
+    used by this session's own actions (two dispatched implementer agents did use it against
+    instruction; both were caught, one self-corrected via `apply` not `pop`, the other's stray
+    entry was independently found and cleaned up by exact SHA -- see the PARISESA-V4 RESUME.md
+    and journal for the full account). last_session_id below updated accordingly.
+  - v6.64 (2026-08-19, PARISESA-V4-GOVERNANCE-BRIDGE-CLOSE): Governance-only
+    Codex-to-Claude Code handoff finalized after the owner’s post-release ordering
+    ruling. The bridge adopted
+    00_ARCHITECTURE/briefs/parisesa/PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md
+    byte-identically from the preserved staged artifact (SHA-256
+    24cbeea92c8617697bb10b8f57dcd281056e7c92d4f7ecc9550352410ddcf344),
+    appended CCD-008, recorded the blocked Codex drain and preservation manifest, and
+    recorded its exact coordination lease acquisition
+    (`a45a09066366d67a68df64d42ec2781a8acc075f`) and completed remote-verified
+    release (`1d5a378bd171bae15bd6b5b3c89437d22de18827`). The candidate was
+    reconciled onto `origin/main@c97871dd81cbe578bcb7b4541816f401c5852e4a`.
+    This is a governance-aside close: the active PARIPRASHNA P0 pointers and work
+    remain unchanged. No Phase 0, finding remediation, application code, database,
+    migration, deployment, scheduler, infrastructure, credential, or customer action
+    occurred. The next PARISESA action is only the Closure Factory plan section 28
+    entrypoint after the protected merge and superseding safe-handoff receipt.
+  - v6.63 (2026-08-19, PARIPRASHNA-CONDUCTOR-P0-FRESH, session Claude Code/VS Code):
+    **Paripraśna conductor fresh-start, Step 0 (retire prior attempt).** The prior Paripraśna
+    conductor session (dispatched under `KICKOFF_PROMPT_SWARM_CONDUCTOR.md` v1.0) made one
+    docs-only commit (`pariprashna/p0-ignition` @ `183b2bfed`, 7 files, no code) and was
+    retired after merging G0 to main without a cross-campaign lease — see
+    `CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7 (rules X-1..X-7). This session
+    (`PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19`) restarts cleanly: (1) fresh-start
+    announcement pushed to `origin/campaign-coordination` (`0f4408ac4`), requesting a
+    docs-only main-merge window; (2) worktree `pariprashna/p0` cut from `origin/main` @
+    `a7136b467`; (3) the 6 p0-ignition planning docs carried forward (SWARM_TRACKER.json
+    intentionally NOT carried — a fresh tracker follows in Step 0e) plus a new
+    `KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md` recording this restart, and the v1.0 kickoff
+    prompt marked SUPERSEDED in place; (4) all 7 docs registered in both
+    `CAPABILITY_MANIFEST.json` (entry_count 120→127, layer governance) and
+    `FILE_REGISTRY_v1_14.md` §9.20 in the SAME commit as their addition, pre-empting the
+    registry-disagreement gate the prior session hit late; (5) `drift_detector.py` (216
+    findings, exit=3) and `schema_validator.py` (42 violations, exit=3) both re-verified at
+    the existing main baseline — no new findings introduced. Step 0d (retire old
+    `pariprashna/g0-close` + `pariprashna/p0-ignition` refs and worktrees) and Step 0e
+    (fresh SWARM_TRACKER) follow once this docs-only PR merges; P0 lane ignition (P0-B
+    environment, P0-C ports refactor, P0-D tracker, P0-E design-plan grounding, P0-F DD-2/
+    DD-3 infra probes) has not yet started. No code, deploy, DB, or migration action taken.
+    last_session_id: PARIPRASHNA-CONDUCTOR-P0-FRESH-2026-08-19.
+  - v6.62 (2026-08-19, PARIPRASHNA-G0-CLOSE, session PB-3-Bot): **Paripraśna decomposition
+    ratified and registered.** NCD-1..11 all RULED (2026-08-18, native); red-team
+    RED_TEAM_G0_v1_0.md PASS-WITH-FIXES. G0 close mechanics executed: (1) Paripraśna v1.0-RC
+    doc set imported to branch `pariprashna/g0-close` (fingerprints verified); (2)
+    PARIPRASHNA_ARCHITECTURE_v1_0.md registered in CAPABILITY_MANIFEST.json (entry_count
+    116→120, + ASBUILT_BASELINE + DECISION_REGISTER + VERIFICATION_MATRIX as LIVING companions);
+    (3) PARIPRASHNA_ARCHITECTURE_v1_0 status DRAFT_PENDING_REDTEAM→CURRENT (version 1.0-RC→1.0);
+    PARIPRASHNA_TARGET_ARCHITECTURE_v0_1 status→SUPERSEDED (mechanism: superseded-by-decomposition;
+    banner updated; §20 changelog row appended; file NOT renamed — 30+ inbound referrers);
+    (4) PARIPRASHNA_DESIGN_ENGINEERING_PLAN relates_to annotated (normative successor added;
+    CAMPAIGN_COORDINATION.md registration DEFERRED — file MM from another workstream);
+    (5) SESSION_LOG open/close + CURRENT_STATE this entry; NCD-10 native directive appended to
+    NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md (step 5a). Gate plan adopted (PARIPRASHNA_ARCHITECTURE
+    §8 G1..G7 gates). PB-4 re-entry = G5/G7 (per NCD-6, ruling: start at G5 when PB-4 resumes).
+    Doc-only PR from branch `pariprashna/g0-close`.
+    last_session_id: PARIPRASHNA-G0-CLOSE-2026-08-19.
+  - v6.61 (2026-08-15, CODEX_ONBOARDING_CLOSE): Closed the owner-approved Codex
+    shared-brain onboarding under CCD-001 through CCD-004. The project now has a
+    tool-neutral decision register, Codex loader/profile/skill/agent bridges, and shared
+    session provenance fields. Fresh Codex→Claude Code→Codex CCD handoff, full-CLAUDE
+    truncation proof, skill discovery, and live MCP acceptance passed. CCD-004 carries the
+    owner-visible credential-rotation and validator-debt follow-ups. No production, migration,
+    deployment, or application-code action occurred.
+  - v6.60 (2026-08-15, CODEX_ONBOARDING): Added the governed orientation pointer to
+    `CROSS_CUTTING_DECISION_REGISTER_v1_0.md`. Claude Code and Codex read this file
+    first and the CCD register second; CCD-001 records the cross-tool onboarding and
+    lease convention. This pointer supersedes no project decision and does not make
+    stale auxiliary state an authority.
+  - v6.59 (2026-08-12, PARIṢKĀRA CAMPAIGN CLOSE — genuine, MR-29-verified close of the
+    GOCHARA-UTKARṢA transit-prediction elevation): GOCHARA-UTKARṢA (v1 daily-grid gochara
+    sweep → v3 arc-solved engine) declared itself closed on its own campaign branch
+    2026-08-10, "flawlessly integrated, confirmed by successful testing" — that claim was
+    never merged to main and was, independently, FALSE at the time: a native-directed
+    post-close audit (POST_CLOSE_GAP_REGISTER_v1_0.md, 33 gaps, 6 SEV-1) found production
+    tools 500ing, calibration data dishonestly stamped, valence hardcoded, ablations never
+    run against real data, and several required numbers simply absent. PARIṢKĀRA — a
+    dedicated remediation campaign — was chartered to close every one of those 33 gaps for
+    real, via live execution against production-shaped environments, tracked as a 49-item
+    register (`00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/
+    MASTER_REMEDIATION_REGISTER_v2_0.md`, documentation-only branch `parishkara/campaign`
+    — the register/ledger narrative lives there; all actual code/migrations landed on
+    `main` via ordinary PRs, same as any other campaign) in a single continuously-appended,
+    evidence-pasted ledger (`PARISHKARA_LEDGER.md`, same branch). This entry is that
+    campaign's own genuine close, sealed only after a fresh, independent, default-REFUTED
+    re-close verdict (MR-29) confirmed every load-bearing claim against primary evidence —
+    live DB queries, live MCP calls, fresh test re-runs, git history — not narrative.
+    Production state (verified live, 2026-08-12, both canonical charts):
+    `kala_gochara_windows` gen='3.0' rows=943 (native)/941 (Abhinandan) — the full 27-class
+    century build; `kala_gochara_windows_v2` gen='g3_utkarsha' rows=914/916, full
+    peak-anchored era⊃month⊃day hierarchy + chain rows + honestly-marked point-class
+    envelopes (`shape_conformance`, zero NULLs anywhere); v1 corpus intact and unchanged
+    (native=16297, Abhinandan=19323, cb73cd3d=2667 — the I1 protection invariant HOLDS);
+    calibration honestly `structural_prior` (zero out-of-band dishonest
+    `empirically_calibrated` stamps — the §N.8 earned-signal gate, MR-37's fix,
+    live-reconfirmed: 0 rows stamped, given zero Wave-2 mechanisms are engine-wired yet, an
+    honest negative not a defect); `brahma_prospective_ledger` genuinely auto-seeding (29
+    rows, MR-48's fix); noise floor genuinely computed and published (W4.2, real
+    1000-shuffle distribution). Two real production-writer defects were found and fixed in
+    this close pass alone (MR-46→MR-47 PR #1235, MR-48 PR #1236 — both independently
+    re-verified live before and after merge, both found by live execution not review), plus
+    a live-caught registry-bookkeeping defect (MR-47/48 initially lacked proper register
+    closure entries despite being described as closed elsewhere — fixed same-session,
+    MR-29's own finding). Full account:
+    `00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/
+    GOCHARA_UTKARSHA_CLOSE_REPORT_v1_1.md` and `MASTER_BRIEF_CONFORMANCE_REPORT_v1_0.md`
+    (both on `parishkara/campaign`; 6/6 master-brief §5 criteria resolved). Known, honestly
+    disclosed residuals carried forward (none silently closed): MR-23's W1.2/W0.2, MR-27's
+    I6(b), MR-39's synthetic timeout test, MR-21's wall-clock + W0.4 speedup
+    (HONEST-DEFERRED, triggers recorded), MR-33's CRPS (HONEST-DEFERRED, L5 loop wiring
+    independently verified end-to-end, trigger recorded), MR-48's chain-canonical Stage C
+    seeding gap, MR-49's coverage-envelope under-claim (fails safe). GOCHARA-UTKARṢA
+    CAMPAIGN STATUS: COMPLETE. Main HEAD at close: `a8f6c2052` (merge of PR #1236).
+    last_session_id: PARISHKARA-CONDUCTOR-R2-R3-R4-2026-08-12.
+    predecessor_session: SAMPURTI-CONDUCTOR-2026-08-10.
   - v6.58 (2026-08-10, SAMPURTI Wave 0 COMPLETE): Wave 0 of SAMPURTI Gap Remediation fully
     closed. PR #1138 (sampurti/integration → main) merged via merge queue @ merge commit
     3311ae0e3 (2026-08-09T23:18Z). All 6 lanes landed: L0a (G16 record repair + citation gate
@@ -5717,6 +5869,126 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🔵 **ACTIVE CAMPAIGN (2026-09-01): Nirmāṇa L0→L5 velocity-reset.** Native-authorized, full
+> execution authority delegated per `00_ARCHITECTURE/briefs/nirmana/
+> NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` (doctrine amendments in
+> `NIRMANA_ELEVATION_PLAN_v6_1_AMENDMENT.md`, same directory). P1 (revert PR #1673 to restore
+> deployability — migration 639 lacked the `nirmana_evidence` schema grant, breaking every deploy
+> since 2026-08-30T07:58) is in flight as PR #1674. State/progress tracked in
+> `00_ARCHITECTURE/briefs/nirmana/CAMPAIGN_STATE.md`, updated at least daily — that file, not this
+> banner, is authoritative for phase/asset-level status. This banner is a pointer only.
+
+> 🟢 **PARIPRAŚNA EXPERIENCE ASSURANCE PROGRAMME v3.0 — SEALED (2026-08-30).** All eight campaign
+> gates CG-0 … CG-7 are CLOSED; campaign completion 100.0%; control-plane replay integrity `ok: true`
+> at seal. **Native acceptance was fired by the native's own `native_acceptance` event**
+> (`949026fb-e2f2-412a-bc69-e826d4bb285e`, 2026-08-30T03:14:33Z, stream P6 seq 5) — the one gate the
+> control plane refuses to let any other actor close (`NATIVE_REQUIRED`). CG-7 closed by
+> ``fc190e0e-7f12-4a35-a17e-51418868ffad`` (`2026-08-30T03:23:25Z`). **Sealed record:
+> `00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md`**;
+> pre-acceptance decision packet: `CG6_NATIVE_ACCEPTANCE_PACKET_v1_0.md`; plan of record:
+> `PARIPRASHNA_AUTONOMOUS_CLOSEOUT_PLAN_v2_0.md`.
+>
+> **What it proved.** A live hash-chained, role-separated event ledger whose validator *rejects*
+> malformed ceremony (266 rejected writes: `SELF_VERIFICATION`, `FINDING_FREEZE`, `ROLE_FORBIDDEN`,
+> `DUPLICATE_SCENARIO`, 226 × `SEQUENCE_CONFLICT`) can hold an autonomous multi-session campaign to
+> honest accounting against its own sessions. Six assurance streams (S1 Navigation/Shell · S2
+> Conversation/Reading · S3 Answer Quality · S4 Pipeline/Door Parity · S5 Security/Privacy · S6
+> Performance/Resilience) closed with 73 findings recorded, 73 remediations `VERIFIED`, 124/124
+> independent verifications `ACCEPTED`, and 6/6 result packets. **The headline: V3-E-016**, a real
+> production privacy leak — the native's ~79 KB private chart corpus injected unscoped into the
+> synthesis prompt of 5 of 6 production charts, 4 belonging to other real people, live ~16+ hours —
+> found, root-caused, fixed (PR #1655, `native_corpus_scope.ts`), deployed, live-re-proofed, and
+> independently ratified twice. A DB forensic check found zero evidence any exposed content was ever
+> captured. The related red-team find **V3-E-061** (citation redaction failing *open*) was fixed to
+> fail closed architecturally (PR #1659).
+>
+> **Both native rulings recorded on the ledger (P6 seq 1–2), verbatim in substance:** (1) V3-E-016
+> disclosure — **NO DISCLOSURE required**, no follow-up actions; the exposed corpus was the native's
+> own data, transmission of chart data to the AI provider is inherent to the product, other subjects'
+> data was not exposed; CLOSED. (2) V3-E-054 `SUBJECT_CONSENT_ENFORCEMENT` — **stays OFF; confirmed as
+> the intended production posture**, `posture: OFF_BY_DESIGN`, no consent mechanism required, **no
+> trigger condition** (intended posture, not a deferral); CLOSED.
+>
+> **What it did NOT prove — residuals carried forward** (full table: final close report §5): **R-1**
+> the S6 §10.3 load/chaos/CWV harness does not exist anywhere in the repo (no load generator, fault
+> injector, or scriptable-reconnect SSE client), blocking 16 of S6's 31 scenarios — deferred per the
+> closeout plan's own instruction, spec written, **needs a named owner**; **R-2** the
+> conversation-replay re-hydration gap — `/consult/continue`, `/regenerate`, `/resume` replay
+> persisted content verbatim with no re-hydration or re-lint, so pre-fix leaked content *would* still
+> be served had any been captured (none was) — architecturally real, unfixed, **needs a named owner**;
+> **R-3** six cross-stream referrals re-opened by the Phase E audit after being marked "referral
+> filed = VERIFIED" without any target stream picking them up (V3-E-042→S1, V3-E-044→S5, V3-E-031→S6,
+> V3-E-053→S6, V3-E-014→S4, V3-E-021→S4); **R-4** the B-002 RLS gap, **accepted risk** by Surrogate
+> ruling (not exploitable as a cross-tenant leak per `B002_NARROWED_PROOF_v1_0.md`); **R-8** CI does
+> not run at all on stream-branch PRs unless retargeted to `main` or allowlisted in `ci.yml` — a PR
+> can read "green" having had no checks; plus R-5…R-7, R-9…R-12 (low/documentation/tooling).
+>
+> **Honest scenario accounting.** The tracker has no denominator-reduction event type, so genuinely
+> unreachable scenarios are recorded as `scenario_executed` with `outcome: STRUCTURALLY_EXCLUDED` and
+> a per-item reason. The projection therefore reads S3 60/60 and S6 31/31 where the truthful reading
+> is **S3 47 executed + 13 excluded** and **S6 14 measured + 17 excluded**. Likewise
+> `remediations[].status: VERIFIED` covers both real code fixes and honestly-verified "no fix,
+> deferred" dispositions — roughly half of the 73 are the latter, so **"73 VERIFIED" is not "73
+> fixed."** Both caveats are stated in the close report rather than left to a dashboard read.
+>
+> **Process lessons (close report §6).** (a) The v1.0 run **stalled silently** ~12h, then again ~16h
+> with the CRITICAL fix merged-ready but unmerged — nobody knew until the native asked; the
+> Anti-Stall/Liveness Protocol (plan v2.0 §1) makes a stall a first-class failure, not silence. This
+> is §N.8's Earned-Signal Principle at campaign scale: liveness was being inferred from the absence of
+> an error. (b) A **concurrent-writer/false-count defect** — two sessions wrote S5 as the same actor
+> within ten minutes, both allocating `S5-SC-14..21`, together producing a perfect-looking 45/45 by
+> collision; both self-disclosed independently, and the control plane now dedups by canonical numeric
+> slot (`scenario_slot()`, `DUPLICATE_SCENARIO`). (c) A **phantom event type** — v1.0's runbook told
+> streams to emit `remediation_verified`, which does not exist; **S4 correctly refused** rather than
+> improvising a nearby event that did. (d) **Verify before trust** — self-reports were wrong
+> repeatedly (a PR claimed merged that was open, a referral justification copy-pasted from a different
+> finding, a stale `deployed_revision`, an over-claimed evidence rung) and independent verification
+> caught every one.
+>
+> **What this unblocks.** The Paripraśna product surface is released and closed; the assurance
+> instrument (control plane, EDIR register, stream charters, closure runbook) is now a reusable
+> campaign harness rather than a one-off. Next work is picked from the residual table above — R-1 and
+> R-2 are the two that need named owners before they age. This entry is scoped strictly to the
+> Paripraśna v3 arc and does not backfill any other campaign's activity; the concurrent Nirmana
+> campaign's own surfaces remain authoritative for its state.
+
+> 🟢 **PARIPRASHNA-P3-PREFLIGHT (Parts A–H) close (2026-08-22) — the pre-flight queue standing
+> in front of P3 (ONE ENGINE, ONE DOOR) is drained.** Full campaign ledger:
+> `00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md`; per-part evidence and the full DD register:
+> `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md`;
+> the executed plan: `00_ARCHITECTURE/briefs/pariprashna_swarm/PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`.
+> **This §2 entry is scoped strictly to the Paripraśna arc — it does not attempt to backfill any
+> other campaign's activity in the days since the prior entry below (GOCHARA-UTKARSA, 2026-08-10);
+> those campaigns' own state surfaces (`campaign-coordination`, their own briefs) remain
+> authoritative for their own history.** Parts A (adapter parameter-surface audit — found and
+> fixed a deeper adapter-wiring defect than DD-20's original symptom-layer fix reached: Gemini
+> `responseFormat`/schema was being silently dropped by the pinned AI SDK across every live
+> structured-output call site, plus a separate `thinking_level` wiring gap), B (model moves —
+> `gemini-3.1-pro-preview`/`gemini-3.7-flash` live for synthesis/interpretation_sets and
+> planner/summarizer respectively, GA fallbacks), C (DD-22 — table-in-prose rendering, approach
+> (c), live-verified against real production including direct DB reads), D (DD-25 — root-caused
+> and fixed `computed_cost_usd` reading null on every `llm_usage_events` row project-wide; the
+> NCD-8 spend ceiling's read-path is no longer structurally inert), E (DD-19 — `interpretation_sets`
+> cost logging), F (DD-13 — mortality phrasing-scan residuals; residual (a) code-fixed, residual
+> (b) closed 2026-08-22 by direct native ruling: status quo, three stated reasons, a standing
+> population-change review trigger, not an open obligation), G (hygiene: missing lease-closing
+> entry appended, the master prompt itself committed to the repo, DD-27 filed for an observed
+> deploy-pipeline over-triggering on docs-only changes), and H (this entry, plus the DD-19/20/22/25
+> register-accuracy pass and a Baseline v1.3 regen) all closed, each with real production
+> deploys and DD-21 observed-delivery evidence (probe transcripts, live DB reads, or direct
+> `gcloud`/`git` verification) — never CI-green or code inspection alone. **P3 (ONE ENGINE, ONE
+> DOOR) has not yet opened** — it opens once this close's tag lands, per the master prompt's own
+> §9. Two real operational incidents surfaced and were fixed in-flight, not glossed over: a
+> `drift_detector` CI-baseline-ceiling trip (79→80 findings) from registering a new file as a
+> canonical manifest entry, fixed by not registering it rather than raising the ceiling (matching
+> the PURNATA/SAMĀPTI/NIḤŚEṢA precedent); and four DD register entries (DD-19/20/22/25) that had
+> already closed live in earlier Parts but whose register status lines were never updated to say
+> so — the same staleness pattern DD-13's own top-line status had before this arc's Part G fixed
+> it, now fixed for all four. This repo is shared with a second live autonomous campaign
+> (PARIŚEṢA-RĀTRI-V4, running in Codex) plus a standing tracker process; every merge this arc made
+> queued normally behind that campaign's own PRs with zero collision, per the cross-campaign
+> lease discipline in `CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md` §7 (rules X-1..X-7).
+
 > **GOCHARA-UTKARSA Wave 5 IN PROGRESS (2026-08-10) — serving elevation, DAG integration,
 > writer repoint, docs-of-record. Campaign ledger:
 > `00_ARCHITECTURE/llm_consumption_audit/briefs/gochara_elevation/GOCHARA_UTKARSHA_CAMPAIGN_PLAN_v1_0.md`.
@@ -9004,11 +9276,40 @@ current_state:
     This block is transient and may be removed at the next steady-state
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
+  # Current close pointer. Kept here to override the historical embedded value above.
+  last_session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z-CLOSE
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22**, a fresh Claude Code session with
+no memory of any prior conversation was handed a native ruling ("CONTINUE INTO PARTS G AND H
+NOW") referencing Parts of a plan it had never seen. Rather than guess at what "Parts G and H"
+meant, the session searched the whole repository and every relevant worktree, found nothing, and
+asked the native directly for the source document — which turned out to be
+`PARIPRASHNA_P3_PREFLIGHT_MASTER_PROMPT_v2_0.md`, authored outside the repo and never yet
+committed. Verified the plan's own factual claims (a specific commit hash, specific PR numbers,
+specific evidence) against real git/gh/gcloud state before acting on any of it. Part G: closed
+DD-13 per the native's own stated ruling on residual (b) (option (i), status quo, three reasons,
+a population-change review trigger); filed DD-27 after the native flagged that a docs-only PR had
+been observed triggering a full `Build & Deploy Web` job, and that Part H's own governance-write
+must therefore be treated as a real deploy; committed the master prompt into the repo. Hit a real
+CI trap doing so — registering the new file as a `CAPABILITY_MANIFEST` canonical entry tripped
+`drift_detector`'s CI-enforced baseline ceiling (79→80) — fixed by not registering it, matching
+the documented PURNATA/SAMĀPTI/NIḤŚEṢA precedent rather than raising the ceiling. Part H: found,
+while reading the DD register fresh rather than trusting the master prompt's own summary, that
+four entries (DD-19, DD-20, DD-22, DD-25) had already closed live in earlier Parts but never had
+their register status lines updated — traced each claim back to its real evidence in
+`campaign-coordination` before writing anything, and corrected all four. Regenerated the Baseline
+to v1.3 with a §8 addendum scoped honestly to what this gate actually touched (GAP-6's `table`
+sub-case closed at the data layer with the client-rendering caveat disclosed, not silently
+dropped; GAP-14 further narrowed, not closed). Every merge this arc made — including the
+docs-only ones — deployed for real, was checked against the live Cloud Run revision, and queued
+normally behind the sibling PARIŚEṢA-RĀTRI-V4 campaign's own concurrent PRs with zero collision.
+Full account: `campaign-coordination`'s own per-part entries; the DD register's amended DD-13/19/
+20/22/25/27 entries; `PARIPRASHNA_ASBUILT_BASELINE_v1_0.md` §8.
 
 At the close of **C4-CLOSE-2026-08-01 — the one item PŪRṆATĀ left open, closed**, this session
 picked up exactly where PŪRṆATĀ paused: a suspicious fragment (`⟐ injected`) inside a minted
@@ -9670,3 +9971,23 @@ aiops_phase_1:
 *v5.70 2026-06-09: Gaṇita (L1) naming reconciliation COMPLETE. Migration 195 relabels all 8 `ganita.*` asset_registry ids → `ga_*` (ga_positions, ga_vargas, ga_dashas, ga_strength, ga_sensitive, ga_panchanga, ga_sade_sati, ga_tajaka). Physical tables unchanged. Cross-layer depends_on in kala.kalasutra / kala.vighnakara / phala.muhurta updated. Seed + 2 TS retrieve consumers + Python writer (graha_sthana_writer.py) + brahma_pipeline.py updated. L1_GANITA_BUILD_CAMPAIGN_HANDOFF_v1_0.md updated. Verified on prod: 8 ga_* rows, 0 ganita.* rows. Commit d0de442b (Phase 1); governance docs in Phase 2 commit on feature/ganita-naming-reconciliation. CLAUDE.md bumped v5.0 → v5.1.*
 
 *v5.71 2026-06-09: Panchanga Service and Registry (3-phase brief execution on `feature/panchanga-service-registry`). **P1** — asset_registry schema upgrade: migration 202 adds asset_type/layer_name/layer_index/provides_apis/health_probe/catalog_status columns + storage_type='service' CHECK; orchestrator service-health dispatch path; cockpit ServiceHealthPill + catalog_status badge; seed AssetDef interface upgraded. **P2** — panchanga engine re-arch: `panchanga_instant(instant,lat,lon,tz_offset)→PanchangaInstant` + `panchanga_day(date,lat,lon,tz_offset)→Panchang` APIs added to panchang_engine (version 2.0.0-P2); `muhurat/` sibling package created (finder.py + __init__.py); panchang_engine/muhurat.py converted to backward-compat shim; tz_offset_minutes default stripped from core; pyjhora_adapter/panchanga.py retired (single-engine rule); README relabelled L1.5→L0 Brahmagyan service. FORENSIC gate: `panchanga_instant(datetime(1984,2,5,10,43), 20.27, 85.84, 330)` → Shukla Tritiya/Purva Bhadrapada/Shiva/Garaja/Ravivara — PASS (test_native_panchanga_values). **P3** — L0 service asset registration (deliberate L0 seal reopen): migrations 202+203 author two new L0 service rows — `bg_panchanga` (sort_order=13) + `bg_ephemeris_engine` (sort_order=14); both added to seed + CAPABILITY_MANIFEST.json (entry_count 117→119); health-probe runners wired in service_probes.py; L0 Vimarśaka over both assets (see below). **L0 Vimarśaka (bg_panchanga):** (V1) Single canonical engine — confirmed: panchang_engine/ is the only panchang computation path; pyjhora_adapter/panchanga.py deleted; no duplicate path exists. (V2) Deterministic smoke — FORENSIC gate PASS 5/5 under Lahiri/swisseph. (V3) FORENSIC-consistent — test_native_panchanga_values green. (V4) Zero LLM — confirmed: panchang_engine/ imports only swisseph, not any LLM client. (V5) Supported domain declared — provides_apis JSON lists panchanga_instant + panchanga_day. VERDICT: GREEN. **L0 Vimarśaka (bg_ephemeris_engine):** (V1) Single canonical impl — pyswisseph with DE441; no duplicate ephemeris. (V2) Probe defined — probe_type=ephemeris_engine; 3 checks (swisseph import, DE441 position query, MEAN_NODE-Rahu invariant). (V3) FORENSIC-consistent — forensic_jd=2445701.948264; Sun in Makara (sign 10) sidereal Lahiri. (V4) Zero LLM — confirmed. (V5) Domain declared — swisseph.calc_ut + swisseph.houses_ex. VERDICT: GREEN. L0 Brahmagyan count: 12 data assets (CURRENT) → 12 data + 2 service = 14 total L0 assets. Branch feature/panchanga-service-registry; P1 commit 7f27c330; P2 commit 19903b8c; P3 commit pending. Operator pending: apply migrations 202+203 to prod via Cloud Console; re-seed; smoke cockpit service-health tiles.*
+
+*v6.65 2026-08-22: PARIPRASHNA-P3-PREFLIGHT (Parts A-H) close. New §2 top entry + §3 narrative
+entry, scoped strictly to the Paripraśna arc (not a backfill of other campaigns' activity since
+the prior §2 entry, 2026-08-10). DD-13 closed by direct native ruling; DD-27 filed; DD-19/20/22/25
+register-accuracy pass; Baseline v1.2->v1.3. Full account: campaign-coordination's per-part
+entries; PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md's amended DD entries. See §2/§3 above for
+the full close summary this footer line points to, not duplicates.*
+
+*v6.66 2026-08-30: Paripraśna Experience Assurance Programme v3.0 **SEALED**. All 8 gates CG-0…CG-7
+CLOSED, campaign 100.0%, tracker replay integrity `ok: true`. Native acceptance fired by the native's
+own `native_acceptance` event (`949026fb`, P6 seq 5). Headline: V3-E-016 real-chart context leak
+(~79 KB native corpus into 5 of 6 production charts, 4 belonging to other real people, ~16+h live) —
+fixed (PR #1655), deployed, live-re-proofed, twice ratified; zero evidence any exposed content was
+ever captured. Both native rulings on the ledger (no disclosure; `SUBJECT_CONSENT_ENFORCEMENT` stays
+OFF by design, no trigger condition). Residuals carried forward with owners or accepted-risk notes —
+R-1 (absent S6 load/chaos/CWV harness) and R-2 (conversation-replay re-hydration gap) both still need
+named owners. Honest accounting stated rather than rounded: S3 47 executed + 13 structurally excluded,
+S6 14 measured + 17 excluded, and "73 VERIFIED remediations" is not "73 defects fixed". Seal artifact:
+`00_ARCHITECTURE/briefs/pariprashna_assurance/PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md`. See §2 above
+for the full close summary this footer line points to, not duplicates.*

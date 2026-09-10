@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-116",
+  "outcome": "ALREADY_LANDED_NO_PR_NEEDED",
+  "pr_url": null,
+  "branch": null,
+  "test_results": "3/3 non-DB unit tests pass on current origin/main (test_strip_removes_stotra_preamble_sun, test_strip_removes_stotra_preamble_jupiter, test_strip_leaves_unconditional_text, from platform/python-sidecar/tests/l2/test_bo_upaya_preamble_strip.py). 2 DB-integration tests in the same file (test_live_corpus_rows_are_strippable, test_stored_remedy_label_human_has_no_conditional_preamble) not run -- no DATABASE_URL available this session (PARKED-BY-AUTH per campaign auth status).",
+  "review_notes": "The corpus (closure-matrix.json) claims F-116 needs a fresh writer-local repair (current_disposition: 'fresh-writer-repair-and-governed-prescription-revalidation-required', evidence.commits: []) -- this is stale/wrong, same pattern as F-120 in round 1. The actual fix (_strip_conditional_preamble helper in bo_upaya.py, stripping 'For <condition>: ' preambles from remedy_label_human) is already on origin/main via PR #1316 (merge commit f003bf3af, confirmed ancestor via git merge-base --is-ancestor), the same PR that also closed F-120/F-35/F-63/F-37 in one batch. The stranded sibling branch origin/par/night-F-116 (commit 48c83cfdd, NOT an ancestor of origin/main) appears to be an earlier/different draft of the same fix that was superseded by what actually landed in #1316 -- did not attempt to rebase it since the functional fix is already present and passing tests. No new PR opened; opening one would duplicate already-merged work.",
+  "next_action": "Same as other LANDED-not-yet-terminal findings: needs a live-DB proof pass (test_stored_remedy_label_human_has_no_conditional_preamble against the canonical chart, or a direct-MCP kala_upaya_get / phala_mitigation_get spot check) to close CONTROL_CLOSED/SERVICE_CLOSED terminal. Corrects Phase 0 classification: STRANDED -> LANDED (same correction pattern as F-120)."
+}

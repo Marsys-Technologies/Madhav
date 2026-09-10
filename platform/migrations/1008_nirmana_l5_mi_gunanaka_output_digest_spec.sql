@@ -1,0 +1,140 @@
+-- 1008_nirmana_l5_mi_gunanaka_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L5 (Mimamsa). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v6 priority 2 (grant/contract pre-flight
+-- sweep, output_digest_spec dimension). `mi_gunanaka`
+-- (pipeline/orchestrator/writers/mi_gunanaka.py, ~17KB, LIGHT writer) is
+-- the smallest of the 11 real-gap candidates remaining after the prior
+-- cycle's mi_sankalpa audit came back clean.
+--
+-- CORRECTING A STALE FINDING. A prior read-only inspection (claude-mem
+-- observation id 87582, 2026-09-08) flagged mi_gunanaka as BLOCKED on
+-- "co-writer contamination" of mimamsa_multipliers, citing mi_adhilepa.py
+-- and mi_seva.py as co-writers. Re-verified this cycle via a tree-wide
+-- grep for INSERT/UPDATE/DELETE against mimamsa_multipliers across
+-- pipeline/orchestrator/writers/*.py: mi_adhilepa.py's only reference
+-- (line 145, `_load_multipliers`) and mi_seva.py's only reference (line 40,
+-- a `tables_required` existence probe) are both reads. mi_gunanaka.py is
+-- the SOLE writer (DELETE at line 300, INSERT at lines 303-312) -- the
+-- "co-writer" framing was a false positive from a name-match without
+-- verifying read-vs-write, exactly the trap the campaign's own regex+
+-- manual-read grant-gap methodology exists to avoid. No adjudication
+-- issue needed -- the finding is corrected in place by this migration's
+-- own live-verified account, per the §N.7/§N.8 standard of a real
+-- detector (grep + line-level read) behind every claim.
+--
+-- SCOPE: mi_gunanaka owns TWO tables. This spec covers ONLY
+-- mimamsa_multipliers (chart-scoped, delete-then-insert, §N.3-conformant).
+-- mimamsa_calibration_snapshot is DELIBERATELY EXCLUDED: it is a RATIFIED
+-- exception to §N.3 (F-188, see mi_gunanaka.py::_publish_snapshot's own
+-- docstring and 00_ARCHITECTURE/briefs/parisesa/F188_ACCRETION_EXCEPTION_
+-- v1_0.md) -- an append-only historical record that accretes a NEW row
+-- every rebuild (snapshot_id embeds int(time.time())), by design never
+-- idempotent. A reviewed-content digest presumes stable, reproducible
+-- output on rebuild; an intentionally-accreting table cannot satisfy that
+-- without changing its own ratified semantics, so it is out of scope for
+-- this spec rather than carved out as an oversight. asset_registry.
+-- count_sql (migration 585, F-188) already counts both tables for the
+-- separate row-count/cockpit-truth purpose -- that is orthogonal to this
+-- digest, which asserts REPRODUCIBLE content, not total row count.
+--
+-- Non-determinism check (full source read of mi_gunanaka.py, applying the
+-- ka_taranga/ka_avadhi/ka_kalasutra-cycle lesson that "small and
+-- simple-looking" is not "automatically clean" -- audited in full):
+--   * Calibration-row fetch (`SELECT ... FROM mimamsa_calibration c LEFT
+--     JOIN mimamsa_predictions p ...`) has NO ORDER BY. Feeds
+--     `evidence[family_id]` score lists via `.append()`. Every downstream
+--     use of these lists is an ORDER-INDEPENDENT reduction (`sum(scores)
+--     / len(scores)` for cell_likelihood, family_likelihoods,
+--     global_likelihood, family_mean_likelihood) -- no max/first-wins/
+--     top-N cut ever applied to this list. Row-fetch order therefore
+--     cannot change any computed value.
+--   * `_load_constants` fetch (`brahma_formula_constants`, 2-row IN
+--     clause) has no ORDER BY, but assigns via `if cid == '...'` matching,
+--     not positional/first-wins -- order-independent by construction.
+--   * `mimamsa_signal_families` fetch has no ORDER BY, feeding a dict
+--     keyed on the table's own PK (`family_id`) -- dict VALUES are
+--     order-independent; iteration order over `families.items()` only
+--     affects INSERT sequencing (via executemany), never final row
+--     CONTENT, since each inserted row's columns are a pure function of
+--     that row's own family_id/scores, not of iteration position.
+--   * `audit_trail` (the one JSONB value column) is a flat dict with no
+--     nested list/array -- provenance.py::_normalise sorts dict keys, so
+--     this column carries no order-sensitivity risk (the STATE-documented
+--     "_normalise does not sort list/array order" risk class does not
+--     apply here; there is no list-typed persisted column on this table).
+--   * `promotion_status` ("promoted" if n>=3 else "earning"),
+--     `kill_switch_state` ("suspended_divergence"/"active"), `divergence_
+--     from_classical` -- all pure functions of the already-order-
+--     independent aggregates above plus the two registry constants.
+--   * `weight_id = f"LL1:{family_id}"` is unique per family_id in both the
+--     evidence loop and the no-evidence seed loop (`if family_id in
+--     seen_families: continue` guards against double-insert) -- no
+--     natural-key collision risk within one run.
+--   No tie-prone ORDER BY/LIMIT cutoff, no wall-clock read back into
+--   persisted business content (`updated_at` is a plain DEFAULT now()
+--   write-time stamp, excluded from value_columns below, same exclusion
+--   class as every prior spec this campaign), no cross-chart leakage
+--   (every read is chart_id-scoped via `c.chart_id = %s`).
+--
+-- Natural key: mimamsa_multipliers (chart_id, weight_id) -- matches the
+-- table's own live PRIMARY KEY exactly (confirmed via \d against prod).
+--
+-- Excluded from value_columns (surrogate/non-owned/per-run columns, same
+-- exclusion class as every prior spec this campaign):
+--   * updated_at -- plain wall-clock DEFAULT now() write-time stamp.
+--
+-- Live checks against prod (both charts with data checked, not just
+-- canonical -- per the ka_kalasutra-cycle lesson that a source table being
+-- empty for the canonical chart is not evidence of safety elsewhere):
+-- mimamsa_multipliers has 9 rows for the canonical chart (482012f1) and 9
+-- for the Abhinandan operator-E2E chart (1c826d5a) -- 18 rows total across
+-- all built charts. 0 duplicate (chart_id, weight_id) groups, 0 NULL keys,
+-- checked across ALL charts, not just canonical.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                   # == literal below
+--   print(_validate_spec('mi_gunanaka', spec, sha).asset_id)         # passes server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): inserted this exact
+-- spec row into asset_output_digest_specs (uncommitted), then called the
+-- REAL `compute_output_digest(cur, asset_id='mi_gunanaka')` -- got back a
+-- clean 64-hex digest
+-- (d5648459b54784236de53266d0f7fcf47ac8caa8835aacf6ea48bdac26fc3525, no
+-- exception, key-preflight passed, 9 rows over the canonical-chart
+-- component) -> rolled back -> re-queried asset_output_digest_specs from
+-- a fresh cursor afterward and confirmed 0 rows for mi_gunanaka, i.e.
+-- genuinely rolled back, nothing persisted by the rehearsal.
+--
+-- Numbering note: origin/main highest applied migration file at cycle
+-- start was 1006 (`git ls-tree -r --name-only origin/main` against this
+-- worktree's actual git root, which maps repo-root to `platform/` --
+-- confirmed via `git ls-tree origin/main` directly, not a `platform/
+-- migrations/` prefix which returns empty in this worktree's tree
+-- layout). Local dir highest was 1007 (mi_sankalpa, this lane's own
+-- currently-queued PR #2520 branch, not yet merged to main). 1008
+-- confirmed free against origin/main, the local dir, and the one other
+-- open PR claiming a migration file (#2520 claims 1007 only) as of this
+-- cycle. Authored on a FRESH branch off origin/main per STATE precedent
+-- (this lane's 1007 branch was already checked out at cycle start).
+--
+-- Post-apply verification (§N.8 -- never trust a silent no-op): expect
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'mi_gunanaka' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'mi_gunanaka',
+  '6790e46d416a5ecf249fdc25ca157f031d20da5528b659db99739e0223642bb5',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"mimamsa_multipliers","relation":"mimamsa_multipliers","key_columns":["chart_id","weight_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"value_columns":["chart_id","weight_id","mechanism","target_kind","target_ref","domain","raw_multiplier","evidence_factor","applied_multiplier","n_observations","held_out_validity","promotion_status","gate_passed","confidence_high","neg_control_clear","kill_switch_state","divergence_from_classical","audit_trail","weight_formula_version"]}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

@@ -20,7 +20,11 @@ Algorithm:
 Idempotency: L1 pattern — DELETE WHERE (chart_id, ayanamsha_id) then INSERT.
 
 FORENSIC guard (canonical chart 482012f1-710e-4a25-994a-93821f5871aa):
-  Sun  = Capricorn (debilitated)  → condition_score expected low  → 'strong'
+  Sun  = Capricorn (Saturn's sign — classical enemy_sign, NOT debilitation;
+         Sun debilitates in Libra) → condition_score expected moderately low
+         (measured 0.26) → 'strong'. Non-fatal: logged, not build-halting
+         (F-E5 — the prior "debilitated" rationale was factually wrong, even
+         though the threshold check it gated happened to still hold).
   Moon = Purva Bhadrapada         → nakshatra_body_part = 'left_side'
   Saturn = Libra (exalted)        → condition_score expected high → 'mild'
 
@@ -92,6 +96,32 @@ def indication_strength_from_score(condition_score: Optional[float]) -> str:
     if condition_score <= 0.6:
         return "moderate"
     return "mild"
+
+
+def sun_forensic_guard_warning(sun_score: Optional[float]) -> Optional[str]:
+    """F-E5: Sun's FORENSIC check for the canonical native, non-fatal.
+
+    The prior version raised a build-halting AssertionError on this check
+    with the stated ground "Sun debilitated in Capricorn" — Sun's actual
+    debilitation sign is Libra; Capricorn (Saturn's sign) is merely Sun's
+    classical enemy_sign, a weaker relationship. The check passed today only
+    because enemy_sign's score (0.26) happens to also fall under the 0.4
+    threshold a genuinely debilitated Sun (score 0.0) would produce — the
+    assertion's own stated claim was never what the code actually measured
+    (§N.8). Downgraded to a warning (§N.4 S7 precedent: an honest, correctly-
+    reasoned signal beats a build-fatal one resting on a false premise).
+
+    Returns a warning message when the expected 'strong' tier does not hold,
+    or None when it does.
+    """
+    sun_strength = indication_strength_from_score(sun_score)
+    if sun_strength == "strong":
+        return None
+    return (
+        f"FORENSIC ADVISORY: Sun indication_strength={sun_strength!r} but expected "
+        f"'strong' (Sun sits in Capricorn — Saturn's sign, Sun's classical enemy_sign, "
+        f"NOT debilitation; Sun debilitates in Libra), score={sun_score!r}"
+    )
 
 
 # ── DB helpers ────────────────────────────────────────────────────────────────
@@ -271,7 +301,9 @@ def build_ga_medical_substep(
     medical_mappings = _load_medical_mappings(conn)
     positions        = _load_graha_positions(conn, chart_id, ayanamsha_id)
 
-    # FORENSIC guard for canonical chart — assert-and-halt, not log-only
+    # FORENSIC guard for canonical chart. Saturn: assert-and-halt (the claim is
+    # classically correct). Sun: non-fatal advisory only (F-E5) — see
+    # sun_forensic_guard_warning's docstring for why.
     if chart_id == CANONICAL_CHART_ID and ayanamsha_id == "lahiri_chitrapaksha":
         sun_score = condition_scores.get("Sun")
         saturn_score = condition_scores.get("Saturn")
@@ -283,13 +315,13 @@ def build_ga_medical_substep(
             "Moon nakshatra=%s (expected Purva Bhadrapada)",
             chart_id, ayanamsha_id, sun_score, saturn_score, moon_nak,
         )
-        # Sun = Capricorn (debilitated) → condition_score must be < 0.4 → 'strong'
-        sun_strength = indication_strength_from_score(sun_score)
-        if sun_strength != "strong":
-            raise AssertionError(
-                f"FORENSIC VIOLATION: Sun indication_strength={sun_strength!r} "
-                f"but expected 'strong' (Sun debilitated in Capricorn, score={sun_score!r}) "
-                f"for chart_id={CANONICAL_CHART_ID} ayanamsha={ayanamsha_id}"
+        # F-E5: Sun in Capricorn is enemy_sign, not debilitation (Sun debilitates
+        # in Libra) — non-fatal advisory, not a build-halting assertion.
+        sun_warning = sun_forensic_guard_warning(sun_score)
+        if sun_warning:
+            logger.warning(
+                "[ga_medical_writer] %s for chart_id=%s ayanamsha=%s",
+                sun_warning, CANONICAL_CHART_ID, ayanamsha_id,
             )
         # Saturn = Libra (exalted) → condition_score must be > 0.6 → 'mild'
         sat_strength = indication_strength_from_score(saturn_score)

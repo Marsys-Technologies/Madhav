@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-133",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Ledger's cited commit a61d451642e863155050d3ae5cee61c1f470e240 ('fix(parisesa): filter outlook mitigations by horizon', #1321) confirmed ancestor of origin/main. Went beyond ancestry: read the actual diff to platform/python-sidecar/brahmagyan/phala/mitigation.py -- adds a `date_range` param to mitigation_map() that excludes rows whose finite windows don't overlap the requested horizon (NULL-bound rows excluded only when date_range is supplied; legacy unfiltered behavior preserved otherwise), plus strict ISO-date + start<=end validation. Confirmed via git show that test_phala_mitigation.py's added tests are real and specific: test_mitigation_map_excludes_past_windows_when_date_range_is_requested ('The SQL must reject a 1966-1968 row for a 2026-2028 outlook horizon'), test_mitigation_map_rejects_invalid_or_reversed_date_ranges, test_mitigation_map_date_range_includes_rows_touching_either_boundary, test_mitigation_map_without_date_range_preserves_unfiltered_null_bound_rows -- this is a genuine, deployed, tested horizon-scoping fix in exactly the module class the finding's evidence trail points to. No original finding-claim text was recoverable anywhere in the corpus (checked ledger.json, journal.ndjson full history, all phase0/*.json batches, RESUME.md) to confirm exact wording match, so confidence is MEDIUM rather than HIGH despite the strong content match.",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-137",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Live MCP call graha_portrait(chart=482012f1, graha=Saturn, include=[position]) succeeded and returned a populated v3 envelope with `register` (token/label glossary array) and `reading_contract` ('This response is graded structural_prior... Internal tokens in this envelope... each have a plain-language label in the register block') both present and non-empty -- the exact positive-control mechanism the finding asserts must remain available. This is a falsifiable, content-specific live check (not just 'no error'): reading_contract and register are real fields with real content, not stubs.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-138",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Live MCP call kala_ahead_get(chart=482012f1, horizon_years=3) succeeded and returned a `period_echo` array with exactly the claimed mechanism: Mahadasha-level entry with status='insufficient_data', same_lord_past_occurrence_count=0, confidence_basis='N=0 same-lord prior occurrences...'; Antardasha-level entry (Saturn) with status='hypothesis_served', same_lord_past_occurrence_count=1, lel_corroborated_occurrence_count=1, a real hypothesis string citing 1991-1994 prior Saturn Antardasha with 2 LEL-logged events, confidence_basis='N=1 same-lord prior Antardasha occurrence(s)...', and an explicit falsifier tied to mimamsa_outcome_record. provenance_envelope.period_echo_reachable=true. This is a specific, falsifiable content match to the claimed defect fix, not a bare success response.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-139",
+    "verdict": "UNKNOWN",
+    "terminal_status": null,
+    "evidence": "Could not isolate the specific sub-commit within 967f08da3 matching F-139's exact claim, as the reviewer's next_action requires. 967f08da3 (#1319) is a 9-sub-commit squash ('close D-08 pointer integrity gate', 'normalize assessment composition payloads', 'route calibration maturity through shared authority', 'pin ganita fact-category reductions', 'pin yoga verdict labels', 'centralize graha aspect authority', 'retire migrated aspect allowlists', 'close assessment drill pointer seam') touching 20+ files across kala_views, register_p1_aliases.ts, registry_bridge.ts, aspects.py, ga_structural_writer.py, ga_yoga_writer.py, bo_pratijna_v4_engine.py. One sub-part ('close D-08 pointer integrity gate' -> dualOutput 'bodha_graph_traverse_get' fix) is already independently confirmed as F-18's fix. Checked CROSS_CUTTING_DECISION_REGISTER_v1_0.md's diff in this commit for an F-139-specific note -- none found. Exhaustively searched the whole repo (ledger.json, journal.ndjson full history, all phase0/*.json batches, RESUME.md, PARIPRASHNA_VERIFICATION_MATRIX) for F-139's original claim/classification text -- it does not exist anywhere in this worktree, so there is no independent description to match any of the 8 sub-commits against. Per the campaign's own skepticism standard, guessing which sub-part is F-139's fix without the original claim would repeat the exact IF-001/IF-002 mis-citation pattern this round is meant to catch.",
+    "confidence": "LOW"
+  },
+  {
+    "finding_id": "F-16",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit 12cbf5e14dd26b4a36ac44ffbe88efec67674f06 ('ekv(a-03): F-16/F-128 -- unwrapCapabilityResult helper + fix bodha_discoveries_get', #1293) confirmed ancestor of origin/main; commit message explicitly names F-16 and describes exactly the claimed defect (callRegistryCapability's ToolResult wrapper being read directly, so content['rows'] always resolved undefined). Live MCP call bodha_discoveries_get(chart=482012f1, limit=3) confirms the fix in production: returned 3 real rows with total_matching=856 (not an empty array), full discovery_id/hypothesis_text/discovery_families content -- the exact double-enveloping defect this finding describes is not reproducible live.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-18",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit 967f08da33cedf622fdc37dc6a9f7aee52bf8806 (#1319) confirmed ancestor of origin/main. Verified via git show that its diff to platform-mcp/src/tools/register_p1_aliases.ts changes `return dualOutput(data)` to `return dualOutput(data, 'bodha_graph_traverse_get')` at the bodha_graph_traverse_get call site -- exactly the missing-toolName root cause the finding describes (trim_report/drill_pointers.recover_via.instrument serving the literal placeholder 'unknown_tool'). Confirmed this diff is present in the current working tree at the same location.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-19",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Read platform/python-sidecar/brahmagyan/aspects.py directly on current main: line 29 defines `NODE_PARASHARI_ASPECTS: Mapping[int, float] = _immutable_aspects({5: 1.0, 7: 1.0, 9: 1.0})` and lines 35-36 assign it to both 'rahu' and 'ketu' -- confirms Rahu/Ketu cast 5th/7th/9th aspects, not truncated to the universal 7th. Also confirmed platform/scripts/governance/check_no_local_aspect_dict.py exists (the governance lint preventing reintroduction of a local truncated aspect table).",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-20",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Same underlying content as F-19 (nodal special-aspect truncation to the universal 7th) -- confirmed on current main via the same aspects.py read: NODE_PARASHARI_ASPECTS={5,7,9} for rahu/ketu is live, not truncated. This is the classical-mechanism-level fix F-20 describes; F-19 and F-20 appear to be the same underlying defect surfaced by two different audit passes, both now fixed by the same canonical aspects.py.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-22",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit f35debaabcdff9fe8344b9472c64286ee0a76603 ('fix(parisesa): serve dasha systems catalog', #1325) confirmed ancestor of origin/main; adds dedicated test f22_ref_dasha_systems_catalog.test.ts (133 lines) plus a real diff to register_p1_reference.ts -- the test filename itself names F-22. Live MCP call ref_dasha_systems_get(limit=10) confirms the fix in production: returned a real structured catalog (total=20 dasha systems, 10 rows served: ashtottari, brahma_dasha, chara_jaimini, chaturashiti_sama, dwadashottari, dwisaptati_sama, kalachakra, kp, narayana, niryana_shoola), each with sequence_jsonb, computation_method, classical_citations -- not an empty/broken catalog.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-24",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit fb6e4185b197c248a460d259075c8a187c039e32 ('fix(a-16): DOMAIN_RULES plural-safe vocab sync with DEEP_DOMAIN_WORD (F-24)', #1308) confirmed ancestor of origin/main; commit message explicitly names F-24 and describes 'When will I get married?' as a previously-failing example. Live MCP call intent_classify(query=\\\"When will I get married?\\\") confirms the fix: scope_tuple.domains=['marriage'] (not falling back to general/unknown domain), matched_rules includes 'domain:marriage'.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-28",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit 6d1c4f1b685377166e123eec0883a73e81dbfc96 ('fix(mcp): keep calibration payload recoverable', #1335) confirmed ancestor of origin/main; adds dedicated test f28_calibration_toolbundle_budget.test.ts (224 lines, test filename names F-28) plus a real diff to register_p1_aliases.ts. Live MCP call mimamsa_calibration_get(chart=482012f1, budget_kb=200) confirms the fix in production: qa_summary shows total=168, fail_count=0, with the full 168-row qa_results array actually served in the response body (not trimmed to 84 as the pre-fix behavior would produce) -- matches the corpus's own prior canary evidence ('84/168 default, 168/168 at budget_kb=200').",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-29",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit 3deb54180 ('ekv(a-05): F-29 -- fix enum case mismatch in query_insights (CONFIRMED/PARTIAL/REFUTED/UNRESOLVED)', #1290) confirmed ancestor of origin/main, commit message explicitly names F-29. Live MCP call mimamsa_insight_get(chart=482012f1, top_k=2) confirms the fix in production: calibration_summary reports real non-zero counts (confirmed:'2', partial:'23', refuted:'7', unresolved:'25', total_matches:57, mean_composite_score:0.495) -- not the claimed 0/0/0 that the case-sensitivity FILTER-clause mismatch used to produce.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-30",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Commit c75400b23 ('ekv(a-11): F-30/74/127 -- bundle principal propagation + real upstream_status surfaced', #1302) confirmed ancestor of origin/main, commit message explicitly names F-30. Read platform/src/lib/mcp/bundle_adapters.ts on current main directly: line 134 comment reads '* F-30/F-74: `upstream_status` is always present so bundle consumers can...', and the PrimitiveResult type (line 146) + the actual call sites (lines 180/195/199) confirm upstream_status is populated on every path (success, HTTP error, timeout) -- exactly the entitlement-boundary/opaque-error-collapsing defect the finding describes, now fixed with the code itself citing F-30 by name.",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-34",
+    "verdict": "TERMINAL",
+    "terminal_status": "SERVICE_CLOSED",
+    "evidence": "Ledger's cited commit 40d0081256ad41e78fea35552ba9fc0e38153cb0 ('F-34: gochara_forecast_get/election_avoidance_get partial-horizon truncation disclosure') is itself not a direct ancestor of origin/main, but its content is squash-merged into 7bf1bec1b11e3008e301d48043dfdbe73c22d0e0 ('batch-3 (night): F-09 hint + F-44 null-recover + F-36 offset-clamp + F-11 whitelist + F-34 horizon-disclose', #1315), which IS confirmed ancestor of origin/main and whose commit body explicitly includes the same 'F-34: gochara_forecast_get/election_avoidance_get partial-horizon truncation disclosure' sub-commit message verbatim. Confirmed the exact diff (coverage_disclosure block with materialized_through/partial_truncation/truncation_note) is present at platform-mcp/src/tools/retrieval/register_gochara_windows.ts on current main. Live MCP call gochara_forecast_get(chart=482012f1, date_range=2026-08-01..2030-08-01) confirms the mechanism is genuinely live and computes a real, specific, falsifiable value: coverage_disclosure.materialized_through='2084-01-31', partial_truncation=false (correctly false since materialized data extends past the requested range) -- a real SQL-derived date, not a static placeholder.",
+    "confidence": "HIGH"
+  }
+]

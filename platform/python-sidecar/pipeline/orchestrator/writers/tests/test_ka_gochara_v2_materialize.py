@@ -35,11 +35,14 @@ from datetime import date
 
 import pytest
 
-import pipeline.orchestrator.writers.ka_gochara_v2_materialize as mod
+import pipeline.orchestrator.writers.ka_gochara as mod
 import services.w2g.materialize as materialize_mod
-from pipeline.orchestrator.writers import ContextSpec
-from pipeline.orchestrator.writers.ka_gochara_v2_materialize import GocharaV2MaterializeWriter
+from pipeline.orchestrator.writers import ContextSpec, SubStep
+from pipeline.orchestrator.writers.ka_gochara import KaGocharaWriter
 from services.w2g.materialize import GENERATION_V2, HORIZON_STATUS_PROGRESSIVE, MaterializeResult
+
+# Alias for backward-compatibility with test assertions that reference the old class name
+GocharaV2MaterializeWriter = KaGocharaWriter
 
 # Word-boundary regex: matches the bare v1 table name but NOT as a prefix of
 # `kala_gochara_windows_v2` (there is no \b between "s" and "_", both \w).
@@ -143,7 +146,7 @@ def _responder(*, event_classes=("marriage",), stored_fingerprint=None):
 
 def _ctx(conn, **config) -> ContextSpec:
     return ContextSpec(
-        asset_id="ka_gochara_v2_materialize",
+        asset_id="ka_gochara",
         build_id="00000000-0000-0000-0000-0000000000v2",
         db_conn=conn,
         config={"chart_id": "c1", "now_date": "2026-08-06", **config},
@@ -178,11 +181,11 @@ def _served_row(peak_date=date(2026, 9, 1)):
 
 def test_writer_is_registered_under_its_asset_id():
     from pipeline.orchestrator.writers import get_writer
-    assert get_writer("ka_gochara_v2_materialize") is not None
+    assert get_writer("ka_gochara") is not None
 
 
 def test_asset_id_matches_registration():
-    assert GocharaV2MaterializeWriter.asset_id == "ka_gochara_v2_materialize"
+    assert GocharaV2MaterializeWriter.asset_id == "ka_gochara"
 
 
 def test_asset_id_is_not_the_superseded_name():
@@ -197,7 +200,8 @@ def test_declares_itself_a_heavy_writer():
     assert GocharaV2MaterializeWriter.has_substeps is True
 
 
-def test_plans_one_substep_per_populated_event_class():
+def test_plans_one_substep_per_populated_event_class(monkeypatch):
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
     conn = _FakeConn(_responder(event_classes=("marriage", "major_gain")))
     steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
     assert [s.key for s in steps] == ["marriage", "major_gain"]
@@ -248,7 +252,7 @@ def test_writer_source_never_references_the_protected_table():
     source = _source_excluding_module_docstring(mod)
     matches = PROTECTED_TABLE_RE.findall(source)
     assert matches == [], (
-        f"ka_gochara_v2_materialize.py must never reference the protected "
+        f"ka_gochara.py must never reference the protected "
         f"kala_gochara_windows table (found {len(matches)} occurrence(s)) — "
         f"native ruling point 2"
     )
@@ -273,7 +277,7 @@ def test_writer_source_never_references_the_override_setting():
     statements issued in one test run."""
     source = _source_excluding_module_docstring(mod)
     assert OVERRIDE_SETTING not in source, (
-        f"ka_gochara_v2_materialize.py must never reference "
+        f"ka_gochara.py must never reference "
         f"app.{OVERRIDE_SETTING} — native ruling point 1 is a hard rule, "
         f"not a style preference"
     )
@@ -388,7 +392,12 @@ def test_unchanged_fingerprint_skip_with_real_targets(monkeypatch):
 
     conn = _FakeConn(_responder(stored_fingerprint=fp))
     ctx = _ctx(conn)
-    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    # NOT derived from plan_substeps(ctx): plan_substeps now correctly
+    # EXCLUDES this exact class from the plan (see
+    # test_plan_substeps_excludes_class_with_matching_fingerprint below) --
+    # this test targets run_substep's own inline skip, its defense-in-depth
+    # twin of that same check.
+    step = SubStep(key="marriage", label="W2G materialize: marriage")
     result = GocharaV2MaterializeWriter().run_substep(ctx, step)
 
     assert materialize_called == [], "an unchanged fingerprint must short-circuit BEFORE materialize is even called"
@@ -430,7 +439,11 @@ def test_no_targets_for_event_class_is_honest_empty_not_fatal(monkeypatch):
     monkeypatch.setattr(mod.RM, "fetch_resonance_targets", lambda *a, **k: [])
     conn = _FakeConn(_responder())
     ctx = _ctx(conn)
-    step = GocharaV2MaterializeWriter().plan_substeps(ctx)[0]
+    # NOT derived from plan_substeps(ctx): plan_substeps now correctly
+    # EXCLUDES a class with zero targets from the plan (see
+    # test_plan_substeps_excludes_class_with_no_targets below) -- this test
+    # targets run_substep's own inline honest-empty path directly.
+    step = SubStep(key="marriage", label="W2G materialize: marriage")
     result = GocharaV2MaterializeWriter().run_substep(ctx, step)
     assert result.rows_inserted == 0
     assert "empty" in result.notes.lower()
@@ -454,6 +467,119 @@ def test_dry_run_writes_nothing(monkeypatch):
     assert result.rows_inserted == 0
     assert not [s for s, _ in conn.statements
                 if "kala_gochara_windows_v2" in s.lower() and s.strip().upper().startswith(("DELETE", "INSERT"))]
+
+
+# ── Cross-attempt substep resumption (plan_substeps remaining-work filter) ────
+# The D-1.6/SATYA-DIPA no-op-completion re-probe (asset_runner.py) calls
+# `writer.plan_substeps(ctx)` after a 0-row run and treats a non-empty result
+# as "genuine work remains" -- exactly the ka_sangam (migration 436) contract.
+# Before this fix, ka_gochara's plan_substeps always returned every populated
+# event_class regardless of build state, so that re-probe could never see an
+# empty plan for a chart that was already fully and correctly built.
+
+
+def test_plan_substeps_excludes_class_with_matching_fingerprint(monkeypatch):
+    from dataclasses import dataclass
+
+    @dataclass
+    class _T:
+        target_ref: str
+
+    targets = [_T(target_ref="Venus"), _T(target_ref="Jupiter")]
+
+    from services.w2g.fingerprint import class_fingerprint
+    from services.w2g.materialize import GRAMMAR_VERSION
+    arc_fps = {row["body"]: row["arc_fingerprint"] for row in ARC_FP_ROWS}
+    fp = class_fingerprint("marriage", GRAMMAR_VERSION, [t.target_ref for t in targets], mod.BODIES, arc_fps)
+
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", lambda *a, **k: targets)
+    conn = _FakeConn(_responder(event_classes=("marriage",), stored_fingerprint=fp))
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
+
+    assert steps == [], (
+        "a class whose stored fingerprint already matches the freshly "
+        "computed one has nothing remaining -- it must not appear in the plan"
+    )
+
+
+def test_plan_substeps_keeps_class_with_changed_fingerprint(monkeypatch):
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", _fake_targets)
+    conn = _FakeConn(_responder(event_classes=("marriage",), stored_fingerprint="stale_fingerprint_value"))
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
+    assert [s.key for s in steps] == ["marriage"]
+
+
+def test_plan_substeps_excludes_class_with_no_targets(monkeypatch):
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", lambda *a, **k: [])
+    conn = _FakeConn(_responder(event_classes=("marriage",)))
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
+    assert steps == [], (
+        "run_substep's own honest-empty path agrees this class has nothing "
+        "to do -- it must not appear as 'remaining'"
+    )
+
+
+def test_plan_substeps_mixed_classes_only_remaining_survive(monkeypatch):
+    from dataclasses import dataclass
+
+    @dataclass
+    class _T:
+        target_ref: str
+
+    targets = [_T(target_ref="Venus")]
+
+    from services.w2g.fingerprint import class_fingerprint
+    from services.w2g.materialize import GRAMMAR_VERSION
+    arc_fps = {row["body"]: row["arc_fingerprint"] for row in ARC_FP_ROWS}
+    done_fp = class_fingerprint("marriage", GRAMMAR_VERSION, [t.target_ref for t in targets], mod.BODIES, arc_fps)
+
+    def fetch(conn, chart_id, event_class):
+        return [] if event_class == "no_targets" else targets
+
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", fetch)
+
+    def responder(sql, params=None):
+        s = sql.lower()
+        if "gochara_resonance_map" in s and "distinct event_class" in s:
+            return [{"event_class": ec} for ec in ("marriage", "no_targets", "major_gain")]
+        if "bg_gochara_arcs" in s:
+            return ARC_FP_ROWS
+        if "kala_gochara_v2_build_state" in s and sql.strip().upper().startswith("SELECT"):
+            ec = params[1]
+            return [{"class_fingerprint": done_fp}] if ec == "marriage" else []
+        return []
+
+    conn = _FakeConn(responder)
+    steps = GocharaV2MaterializeWriter().plan_substeps(_ctx(conn))
+    assert [s.key for s in steps] == ["major_gain"], (
+        "marriage is done (matching fingerprint), no_targets has nothing to "
+        "do, major_gain has a real, unfingerprinted target -- only it remains"
+    )
+
+
+def test_plan_substeps_dry_run_returns_full_unfiltered_plan(monkeypatch):
+    """Dry runs never delete data or touch the ledger (mirrors ka_sangam's own
+    dry-run early-return) -- the plan must show every populated class, not
+    the filtered remaining-work view, so a dry-run preview isn't silently
+    truncated by build-state it will never act on."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class _T:
+        target_ref: str
+
+    targets = [_T(target_ref="Venus")]
+    from services.w2g.fingerprint import class_fingerprint
+    from services.w2g.materialize import GRAMMAR_VERSION
+    arc_fps = {row["body"]: row["arc_fingerprint"] for row in ARC_FP_ROWS}
+    fp = class_fingerprint("marriage", GRAMMAR_VERSION, [t.target_ref for t in targets], mod.BODIES, arc_fps)
+
+    monkeypatch.setattr(mod.RM, "fetch_resonance_targets", lambda *a, **k: targets)
+    conn = _FakeConn(_responder(event_classes=("marriage",), stored_fingerprint=fp))
+    ctx = _ctx(conn)
+    ctx.dry_run = True
+    steps = GocharaV2MaterializeWriter().plan_substeps(ctx)
+    assert [s.key for s in steps] == ["marriage"]
 
 
 def test_horizon_is_progressive_partial_by_default():

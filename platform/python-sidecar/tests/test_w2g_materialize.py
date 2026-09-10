@@ -41,6 +41,7 @@ from services.w2g.solver import InMemoryArcSource
 from services.w2g.materialize import (
     CANDIDATE_NET_ORB_DEG,
     GENERATION_V2,
+    GRAMMAR_VERSION,
     HORIZON_STATUS_FULL,
     HORIZON_STATUS_PROGRESSIVE,
     PEAK_BASIS_V2,
@@ -285,3 +286,22 @@ def test_materialize_event_class_honest_empty_when_all_candidates_inactive():
 
 def test_generation_stamp_is_2_0():
     assert GENERATION_V2 == "2.0"
+
+
+# ── GRAMMAR_VERSION (PK-R-9 IR-10, 2026-08-11) ──────────────────────────────
+#
+# GRAMMAR_VERSION feeds class_fingerprint's grammar_version input -- it must
+# invalidate any stored fingerprint computed under this module's pre-MR-41
+# behavior. MR-41(a)/(b) changed the underlying v1 callees this module
+# reuses unchanged at the call site (gochara_grammar.primitives.
+# gochara_vedha_pair's fetch predicate; gochara_intensity.enrichment.
+# enrich_targets's target_nakshatra_id resolution) -- the "frozen" claim the
+# old constant name made is no longer accurate, so the constant must not
+# read as the pre-MR-41 value.
+
+def test_grammar_version_is_not_the_pre_mr41_frozen_value():
+    assert GRAMMAR_VERSION != "v1_frozen_2026_08"
+
+
+def test_grammar_version_is_the_mr41_value():
+    assert GRAMMAR_VERSION == "v1_mr41_2026_08"

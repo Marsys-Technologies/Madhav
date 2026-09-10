@@ -129,6 +129,13 @@ export const MalformedSentinelReasonSchema = z.enum([
   'byte_limit', // held bytes exceeded MAX_HOLDBACK without a close
   'timeout', // TIMEOUT ms elapsed while holding without a close
   'eof_unclosed', // stream ended mid-sentinel
+  // A CLOSED canonical `⟦…⟧` sentinel whose body failed to parse as a
+  // citation (e.g. an empty ref, `⟦cite: ⟧`) — V3-E-061 fix, 2026-08-30.
+  // The tolerant `[[…]]` form is NOT covered by this reason: an unparseable
+  // `[[…]]` is genuinely ambiguous with reader-facing prose (a wiki-style
+  // link) and is still emitted as plain text — see `rewriter.ts`
+  // `resolveSentinel`.
+  'parse_failed',
 ])
 export type MalformedSentinelReason = z.infer<typeof MalformedSentinelReasonSchema>
 
@@ -136,7 +143,19 @@ export const MalformedSentinelFlagSchema = z.object({
   type: z.literal('flag'),
   flag: z.literal('malformed_sentinel'),
   reason: MalformedSentinelReasonSchema,
-  /** The held bytes that were flushed as plain text (already lint-cleaned). */
+  /**
+   * The held/candidate bytes, lint-cleaned, retained for audit/telemetry
+   * ONLY. `protocol_adapter.ts` never forwards this field onto the client
+   * wire (see its wire-safety invariant note) — and as of the V3-E-061 fix
+   * (2026-08-30) `rewriter.ts` itself never appends any part of these bytes
+   * to reader-visible `out.text` either: a malformed/unparseable sentinel is
+   * dropped in its entirety, fail-closed rather than fail-open. Do not treat
+   * this field as reader-safe merely because it has been lint-cleaned — the
+   * lint's pattern list is a known-shape backstop, not a structural
+   * guarantee, which is exactly what let the pre-fix code forward raw
+   * sentinel markup (and would have forwarded unrecognized internal content)
+   * straight into prose.
+   */
   raw: z.string(),
 })
 export type MalformedSentinelFlag = z.infer<typeof MalformedSentinelFlagSchema>

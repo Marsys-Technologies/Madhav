@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { getServerUser } from '@/lib/firebase/server'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { deriveState } from './deriveState'
 import type { AssetState } from './deriveState'
 
@@ -11,6 +13,11 @@ export interface AssetStats {
   actual_rows: number | null
   volume: number | null          // alias for actual_rows (canonical name)
   size_bytes: number | null
+  // True when size_sql is chart-scoped (binds $1) and therefore an ESTIMATE — Postgres has
+  // no cheap way to measure one chart's exact physical bytes out of a shared table, so a
+  // scoped size_sql computes a proportional-share estimate rather than a real measurement
+  // (adjudication #1956). Undefined/false means size_bytes is the whole relation's exact size.
+  size_is_estimate?: boolean
   last_updated: string
   error: string | null
   // 'dataplane' = Cloud SQL proxy / connection-level failure (transient).
@@ -34,6 +41,7 @@ export interface AssetStats {
   // Service-asset health fields (populated for asset_type='service'; null for data assets)
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  last_selftest_at?: string | null
   // Populated when state === 'partial' OR state === 'incomplete': real, honest progress
   // sourced from the cross-attempt substep-resumption ledger (build_substep_progress).
   // `total` is null unless the asset's own registry row declares a computable expected
@@ -54,6 +62,7 @@ interface RegistryAsset {
   health_probe: Record<string, unknown> | null
   service_health: 'healthy' | 'degraded' | 'unhealthy' | 'unknown' | null
   last_invoked_at: string | null
+  last_selftest_at: string | null
   has_substeps: boolean
 }
 
@@ -81,11 +90,14 @@ async function fetchAllCounts(
         size_bytes: null,
         last_updated: now,
         error: null,
-        state: 'service_ok' as const,
+        // The final state is derived below from registry health evidence plus
+        // asset_throughput; this raw placeholder must never self-promote a service.
+        state: 'dormant' as const,
         last_built_at: null,
         build_state_stale: false,
         service_health: asset.service_health ?? null,
         last_invoked_at: asset.last_invoked_at ?? null,
+        last_selftest_at: asset.last_selftest_at ?? null,
       }
     }
 
@@ -140,8 +152,11 @@ async function fetchAllCounts(
       const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
 
       let size_bytes: number | null = null
+      let size_is_estimate = false
       if (asset.size_sql) {
-        const sizeResult = await query<{ size: string }>(asset.size_sql)
+        size_is_estimate = /\$1/.test(asset.size_sql)
+        const sizeParams = size_is_estimate ? [chartId] : []
+        const sizeResult = await query<{ size: string }>(asset.size_sql, sizeParams)
         const raw = sizeResult.rows[0]?.size
         size_bytes = raw != null ? parseInt(raw, 10) : null
       }
@@ -151,6 +166,7 @@ async function fetchAllCounts(
         actual_rows,
         volume: actual_rows,
         size_bytes,
+        size_is_estimate,
         last_updated: now,
         error: null,
         state: 'dormant' as const,
@@ -204,11 +220,38 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['aborted'] })
   }
 
+  // P2-B-008: this route had NO authentication — zero getServerUser() calls —
+  // and, given a caller-supplied chart_id, returned that chart's real per-asset
+  // row counts, build states, last_built_at, live rows_written, and committed
+  // substep progress to anyone on the internet holding a chart UUID.
+  //
+  // Two gates: authentication always; ownership whenever a chart_id narrows the
+  // response to one chart. 'read' level — stats are a read, so a chart_grants
+  // 'view' grantee legitimately passes. With no chart_id the response is
+  // registry-wide with no chart scope, so there is no owner to check.
+  const user = await getServerUser()
+  if (!user) {
+    return NextResponse.json(
+      { data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['authentication required'] },
+      { status: 401 }
+    )
+  }
+  if (chartId) {
+    const denied = await requireChartPermission({ uid: user.uid, chartId, access: 'read' })
+    if (denied) {
+      return NextResponse.json(
+        { data: { assets: [] }, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors: ['forbidden'] },
+        { status: 403 }
+      )
+    }
+  }
+
   try {
     // Load active assets that have count_sql
     const registryResult = await query<RegistryAsset>(`
       SELECT asset_id, count_sql, size_sql, scope, is_active, target_floor,
              asset_type, asset_kind, health_probe, service_health, last_invoked_at,
+             last_selftest_at,
              COALESCE(has_substeps, false) AS has_substeps
       FROM asset_registry
       WHERE is_active = true
@@ -267,6 +310,7 @@ export async function GET(req: NextRequest) {
         build_state_stale: false,
         service_health: null,
         last_invoked_at: null,
+        last_selftest_at: null,
       }
       const substepsCommitted = substepCountMap.get(asset.asset_id) ?? null
       const derivedState = deriveState(asset, base.actual_rows, base.error, tp?.state ?? null, substepsCommitted)

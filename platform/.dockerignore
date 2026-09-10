@@ -7,3 +7,15 @@ README.md
 .gitignore
 Dockerfile
 .dockerignore
+
+# platform/python-sidecar/Dockerfile now also builds from this context root
+# (#2096 fix, widened from ./platform/python-sidecar so it can reach the
+# sibling scripts/temporal package) -- merging in its own .dockerignore
+# patterns so this root's ignore rules cover both Dockerfiles' builds.
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+*.egg-info
+venv/
+.venv/

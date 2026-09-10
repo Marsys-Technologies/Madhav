@@ -1,0 +1,9 @@
+{
+  "finding_id": "F-26",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1370",
+  "branch": "parisesa/repair-F26-lel-honest-disclosure",
+  "test_results": "register_p1_synthesis_life_arc_lel_noop.test.ts 2/2 passing; tsc --noEmit clean; confirmed no other test references kala_life_arc_get or include_lel_events",
+  "review_notes": "Original branch codex/v4-f26-life-arc-contract no longer exists on origin (deleted/cleaned up) -- NOT a rebase, implemented fresh from a complete, independently-reviewed-and-ratified spec found under results/ingested/F-26.{spec_writer,ratifier,reviewer}.json. Verified root cause still present on current origin/main before implementing. Fixed a real spec inconsistency along the way: section 5's recommended recurrence-guard comment contained the literal string 'include_lel_events', which broke section 3's own exit test (which asserts that exact string is absent from the block) -- reworded the comment to preserve the same guard intent without the literal substring. Confirmed sibling sites (ahead.ts, story.ts) already hardcode false and are unaffected. Confirmed cfb6444c8 (this session's known bad-citation commit, see IF-001) is the most recent touch to this file but at an unrelated line region -- independent corroboration of IF-001's finding.",
+  "next_action": "owner reviews and merges PR #1370 at morning checkpoint"
+}

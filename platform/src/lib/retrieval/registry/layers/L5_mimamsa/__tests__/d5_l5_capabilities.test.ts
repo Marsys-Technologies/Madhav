@@ -81,8 +81,15 @@ describe('D5 L5 Mīmāṃsā — specific properties', () => {
     expect(queryPredictionsCapability.emits_references).toBe(true)
   })
 
-  it('query_predictions: description mentions sparse rows', () => {
-    expect(queryPredictionsCapability.description).toContain('50 rows')
+  // NIRMĀṆA L5 W3-3: this used to assert the description contained the literal '50 rows'.
+  // That count was a wrapper-local constant shadowing a live value (§N.7 item 3) and had
+  // drifted (live 2026-09-05: 139 canonical / 56 Abhinandan). The assertion now pins the
+  // SHAPE claim the description is actually responsible for, and forbids the regression:
+  // any hardcoded row count coming back into this prose.
+  it('query_predictions: description describes sparsity by shape, not by a pinned row count', () => {
+    expect(queryPredictionsCapability.description).toContain('sparse')
+    expect(queryPredictionsCapability.description).toContain('total_matching')
+    expect(queryPredictionsCapability.description).not.toMatch(/\b\d+ rows per chart\b/)
   })
 
   it('query_signal_families: emits_references = false (global catalog)', () => {

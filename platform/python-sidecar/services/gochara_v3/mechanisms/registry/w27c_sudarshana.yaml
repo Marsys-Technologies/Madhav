@@ -15,7 +15,7 @@ admission_state: candidate
 ablation_evidence_link: null
 admission_ruling_id: null
 toggle_key: w27c_sudarshana
-data_source: "ClassContext.sudarshana_rows (from kala_sudarshana / bo_sudarshana, Sudarshana varsha tables — W0.2)"
+data_source: "ClassContext.sudarshana_rows (from kala_sudarshana_varsha / bo_sudarshana, Sudarshana varsha tables — W0.2)"
 modifier_schedule:
   house_1: 1.30
   house_2: 1.10

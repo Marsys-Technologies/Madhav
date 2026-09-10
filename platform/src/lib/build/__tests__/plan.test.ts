@@ -115,19 +115,17 @@ describe('resolveBuildPlan — action:update (stale + dormant transitive)', () =
 })
 
 describe('resolveBuildPlan — action:cascade', () => {
-  it('includes only downstream-stale assets', () => {
+  it('fails closed when a cascade candidate would consume the stale root outside its plan', () => {
     const throughput = new Map([tp('root', 'stale'), tp('left', 'lit'), tp('right', 'lit'), tp('merge', 'lit')])
     const result = resolveBuildPlan({
       scope: 'global', scope_target: null, action: 'cascade',
       registry: BRANCHING, throughput,
     })
-    expect(result.status).toBe('ok')
-    const plan = result.plan_waves.flat()
-    // left, right, and merge are downstream of stale root
-    expect(plan).toContain('left')
-    expect(plan).toContain('right')
-    expect(plan).toContain('merge')
-    expect(plan).not.toContain('root')
+    expect(result.status).toBe('blocked')
+    expect(result.plan_waves).toEqual([])
+    expect(result.blockers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dep_asset_id: 'root', dep_state: 'stale' }),
+    ]))
   })
 })
 

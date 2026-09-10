@@ -1,0 +1,249 @@
+// @vitest-environment node
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+const clientQuery = vi.fn()
+const release = vi.fn()
+vi.mock('@/lib/db/client', () => ({
+  getPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
+}))
+vi.mock('../campaign-control-writer', () => ({
+  getNirmanaCampaignControlWriterPool: async () => ({ connect: async () => ({ query: clientQuery, release }) }),
+}))
+
+import {
+  canonicalLabelCatalogueDigest,
+  recordNirmanaElevationLabelCatalogue,
+} from '../labels'
+
+const input = {
+  campaign_id: 'nirmana-elevation' as const,
+  definition_revision: 'r1',
+  catalogue_revision: 'labels-v1',
+  labels: [{
+    asset_id: 'ka_smriti',
+    sanskrit_name: 'Kala Smriti',
+    english_name: 'Per-varsha digest',
+    description: 'Produces a year-by-year digest of annual chart features.',
+    legacy_aliases: [{ asset_id: 'A22', sanskrit_name: 'Varsha-Darshan', english_name: 'Yearly Vision' }],
+    source_ref: 'PARIKSHA/ASSET_REGISTRY.md#kala-smriti',
+  }],
+  catalogue_sha256: '',
+  recorded_by: 'admin-1',
+}
+
+describe('Nirmana label catalogue', () => {
+  beforeEach(() => { clientQuery.mockReset(); release.mockReset() })
+
+  it('has an order-independent canonical digest', () => {
+    const second = { ...input.labels[0], asset_id: 'sphurana', legacy_aliases: [] }
+    expect(canonicalLabelCatalogueDigest([input.labels[0], second]))
+      .toBe(canonicalLabelCatalogueDigest([second, input.labels[0]]))
+  })
+
+  it('records labels and the acceptance receipt in one transaction', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 0, digest_matches: false }] })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce({ rowCount: 1 })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .resolves.toBe('created')
+    expect(clientQuery).toHaveBeenNthCalledWith(1, 'BEGIN')
+    expect(clientQuery).toHaveBeenNthCalledWith(2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      ['nirmana-elevation:r1:labels-v1'])
+    // nirmana_campaign_control_writer is deliberately SELECT+INSERT only (no
+    // UPDATE) on nirmana_elevation_campaign_events; FOR SHARE requires
+    // UPDATE privilege in Postgres and fails closed for this role in
+    // production (confirmed live before this fix landed) -- guard against
+    // reintroducing it on the existing-receipt read.
+    const existingReceiptSelect = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('SELECT event_type') && String(sql).includes('FROM nirmana_evidence.nirmana_elevation_campaign_events'))
+    expect(existingReceiptSelect?.[0]).not.toContain('FOR SHARE')
+    const receiptCall = clientQuery.mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))
+    expect(receiptCall).toBeDefined()
+    expect(JSON.parse(receiptCall![1][4])).toEqual({
+      catalogue_sha256: digest,
+      asset_count: 1,
+      audit_provenance: 'normative',
+    })
+    expect(receiptCall![1][6]).toBe('admin-1')
+    expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('treats a sequential retry with the same revision digest and count as idempotent', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1, audit_provenance: 'normative' },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .resolves.toBe('idempotent')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('treats an exact pre-provenance receipt with matching persisted label digests as idempotent', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: true }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .resolves.toBe('idempotent')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('COMMIT')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('rejects an exact pre-provenance receipt when its persisted label digests do not match', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{
+        event_type: 'asset_label_catalogue_accepted', entity_type: 'label_catalogue',
+        entity_id: 'labels-v1', layer: null,
+        evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+        source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+      }] })
+      .mockResolvedValueOnce({ rows: [{ label_count: 1, digest_matches: false }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+  })
+
+  it('rejects a matching payload and key owned by a different immutable event type', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery.mockImplementation((sql: string) => {
+      const statement = String(sql)
+      if (['BEGIN', 'COMMIT', 'ROLLBACK'].includes(statement)
+        || statement.includes('pg_advisory_xact_lock')) return Promise.resolve({ rows: [] })
+      if (statement.includes('nirmana_elevation_campaign_definitions')) {
+        return Promise.resolve({
+          rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+        })
+      }
+      if (statement.includes('nirmana_elevation_campaign_events')) {
+        return Promise.resolve({ rows: [{
+          event_type: 'asset_frozen', entity_type: 'label_catalogue', entity_id: 'labels-v1', layer: null,
+          evidence_payload: { catalogue_sha256: digest, asset_count: 1 },
+          source_kind: 'governed_catalogue', source_ref: 'label_catalogue:labels-v1',
+        }] })
+      }
+      if (statement.includes('nirmana_elevation_asset_labels')) {
+        return Promise.resolve({ rows: [{ label_count: 1, digest_matches: true }] })
+      }
+      throw new Error(`Unexpected SQL: ${statement}`)
+    })
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+  })
+
+  it('takes a revision transaction lock before rejecting a concurrent-shape digest conflict without inserts', async () => {
+    const secondLabel = { ...input.labels[0], asset_id: 'sphurana', legacy_aliases: [] }
+    const digest = canonicalLabelCatalogueDigest([secondLabel])
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'sphurana' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: canonicalLabelCatalogueDigest(input.labels), asset_count: 1 } }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, labels: [secondLabel], catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery).toHaveBeenNthCalledWith(2,
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      ['nirmana-elevation:r1:labels-v1'])
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+  })
+
+  it('rejects a same-digest revision receipt with a different asset count before either insert', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({
+        rowCount: 1,
+        rows: [{ definition_status: 'frozen', manifest: { assets: [{ asset_id: 'ka_smriti' }] } }],
+      })
+      .mockResolvedValueOnce({ rows: [{ evidence_payload: { catalogue_sha256: digest, asset_count: 2 } }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue revision conflicts with an existing receipt.')
+    expect(clientQuery).toHaveBeenNthCalledWith(4, expect.stringContaining('nirmana_elevation_campaign_events'), [
+      'nirmana-elevation', 'r1', 'asset-label-catalogue:labels-v1',
+    ])
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_asset_labels'))).toBe(false)
+    expect(clientQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO nirmana_evidence.nirmana_elevation_campaign_events'))).toBe(false)
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+    expect(release).toHaveBeenCalledOnce()
+  })
+
+  it('rolls back labels absent from the frozen definition manifest', async () => {
+    const digest = canonicalLabelCatalogueDigest(input.labels)
+    clientQuery
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ rowCount: 1, rows: [{ definition_status: 'frozen', manifest: { assets: [] } }] })
+      .mockResolvedValueOnce(undefined)
+
+    await expect(recordNirmanaElevationLabelCatalogue({ ...input, catalogue_sha256: digest }))
+      .rejects.toThrow('Label catalogue contains an asset absent from the frozen definition.')
+    expect(clientQuery).toHaveBeenLastCalledWith('ROLLBACK')
+    expect(release).toHaveBeenCalledOnce()
+  })
+})

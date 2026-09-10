@@ -25,6 +25,17 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 
 logger = logging.getLogger(__name__)
 
+# F-PARVA-1 (migration 679): the real level discriminator this table lacked — before this,
+# MD/AD/PD rows were mixed in one flat table with no served column saying which level each
+# row is, recoverable only by string-parsing `source_citation`. Values match migration
+# 679's own CHECK constraint (`kala_jivana_parva_parva_level_check`, 1/2/3) and its
+# `source_citation`-based backfill rule for pre-existing rows (`:PD=` -> 3, `:AD=` -> 2,
+# else -> 1) — kept as named constants here, never a bare literal, so the writer and the
+# migration's backfill logic stay visibly in sync.
+_PARVA_LEVEL_MD = 1
+_PARVA_LEVEL_AD = 2
+_PARVA_LEVEL_PD = 3
+
 
 def _parse_birth_date(birth_params) -> date | None:
     """Native birth date from ctx.config['birth_params']['datetime_iso']."""
@@ -177,6 +188,7 @@ class KaJivanaParvaWriter(WriterBase):
             rows.append((
                 chart_id,
                 parva_index,
+                _PARVA_LEVEL_MD,
                 served_md_start_y,
                 md_end_y,
                 str(md_planet),
@@ -238,6 +250,7 @@ class KaJivanaParvaWriter(WriterBase):
                 rows.append((
                     chart_id,
                     parva_index,
+                    _PARVA_LEVEL_AD,
                     served_ad_start_y,
                     ad_end_y,
                     str(ad_planet),
@@ -313,6 +326,7 @@ class KaJivanaParvaWriter(WriterBase):
                 rows.append((
                     chart_id,
                     parva_index,
+                    _PARVA_LEVEL_PD,
                     pd_start_y,
                     pd_end_y,
                     str(pd_planet),
@@ -329,11 +343,11 @@ class KaJivanaParvaWriter(WriterBase):
             with conn.cursor() as cur:
                 cur.executemany("""
                     INSERT INTO kala_jivana_parva (
-                        chart_id, parva_index, start_year, end_year, dasha_planet,
+                        chart_id, parva_index, parva_level, start_year, end_year, dasha_planet,
                         dominant_signal_class, parva_quality, theme_keywords,
                         narrative, high_convergence_count, avg_effective_score,
                         source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, rows)
 
         return WriterResult(asset_id='ka_jivana_parva', rows_inserted=len(rows))
@@ -356,10 +370,28 @@ def _assign_quality(idx: int, total: int, high_count: int, avg_score: float | No
     is_ongoing = end_y is None or (end_y >= today_y)
     is_past = end_y is not None and end_y < today_y
 
-    if is_ongoing and avg_score and avg_score >= 0.55:
-        return 'peak'
+    # F-PARVA-3/F-PARVA-4 (§N.8, §N.7 item 6): this used to be
+    # `if is_ongoing and avg_score and avg_score >= 0.55: return 'peak'` /
+    # `if is_ongoing: return 'building'` — EVERY ongoing period got 'building'
+    # regardless of evidence, with no detector distinguishing "genuinely building"
+    # (some real convergence activity measured, just not peak-level yet) from "no
+    # evidence at all" (zero convergence windows fell in this period's span at all).
+    # Measured on the native chart: 52 of 100 rows were 'building' with
+    # avg_effective_score IS NULL — a label asserting momentum with nothing behind
+    # it. `avg_score and ...` was also a truthiness short-circuit (F-PARVA-4) that
+    # happened to be behaviorally inert against the 0.55 threshold (0.0 can never
+    # clear 0.55 either way) but is fixed here too, on the same principle, rather
+    # than left as a latent trap for a future threshold change.
+    # Deliberately NOT lowering the 0.55/0.60 thresholds to make 'peak' reachable —
+    # the root cause (kala_convergence's structurally low score ceiling) is upstream
+    # (F-SANGAM-1) and curve-fitting a threshold to this chart's own measured max
+    # would be exactly the invented-judgment defect this doctrine forbids.
     if is_ongoing:
-        return 'building'
+        if avg_score is not None and avg_score >= 0.55:
+            return 'peak'
+        if avg_score is not None:
+            return 'building'
+        return 'transitional'
 
     if avg_score is None:
         return 'transitional'

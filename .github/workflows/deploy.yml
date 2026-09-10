@@ -59,6 +59,10 @@ env:
   GCP_REGION: asia-south1
   WIF_PROVIDER: projects/938361928218/locations/global/workloadIdentityPools/github/providers/github-actions
   WIF_SERVICE_ACCOUNT: github-actions@madhav-astrology.iam.gserviceaccount.com
+  # A workflow_run executes from the default branch by default, which may have
+  # advanced after the CI run that authorized this deploy. Pin every deploy
+  # checkout and immutable image tag to that CI run's exact head instead.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
   # ── PR build-check: build without push to catch Dockerfile/Next.js failures pre-merge ──
@@ -116,6 +120,27 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_PARIPRASHNA_LIVE=1
+
+      # The regular serving image is distinct from Dockerfile.pipeline. Building it
+      # on every PR that reaches this protected check prevents a sidecar-only change
+      # from first discovering packaging/import failures after merge.
+      - name: Build regular sidecar image (load, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
+          file: ./platform/python-sidecar/Dockerfile
+          push: false
+          load: true
+          tags: amjis-sidecar:pr-check
+          cache-from: type=gha,scope=amjis-sidecar
+
+      - name: Verify Nirmana route and release smoke are packaged
+        run: |
+          docker run --rm --entrypoint python amjis-sidecar:pr-check -c \
+            "from main import app; assert any(r.path == '/internal/nirmana/probe' for r in app.routes)"
+          docker run --rm --entrypoint python amjis-sidecar:pr-check -c \
+            "from pathlib import Path; assert Path('scripts/nirmana_probe_release_smoke.py').is_file(); assert Path('scripts/nirmana_probe_contracts.json').is_file()"
 
       # Build the orchestrator job image (no push) so a broken Dockerfile.pipeline
       # — e.g. a missing COPY for ga_writers/ — is caught at PR time. Context is the
@@ -152,6 +177,7 @@ jobs:
     permissions:
       contents: read
       actions: read # read the CI workflow's conclusion for this SHA
+      id-token: write # WIF auth: the gate reads each component's DEPLOYED commit from Cloud Run (#2169)
     outputs:
       sidecar: ${{ steps.diff.outputs.sidecar }}
       mcp: ${{ steps.diff.outputs.mcp }}
@@ -161,6 +187,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ env.DEPLOY_SHA }}
           fetch-depth: 2
 
       # ── SAMĀPTI: close the workflow_dispatch CI-gate bypass ──────────────────
@@ -222,30 +249,96 @@ jobs:
             echo "force_all=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # The gate reads each component's DEPLOYED commit from Cloud Run itself
+      # (#2169) -- authenticate exactly the way the deploy jobs do.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
       - name: Detect changed paths
         id: diff
         run: |
-          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD)
-          echo "=== Changed files ==="
-          printf '%s\n' "$CHANGED"
-          echo "====================="
+          # #2169, three failures deep in one hazard class ("deploy reports
+          # green while silently doing less" -- DVA Ruling 58's class):
+          # (1) HEAD~1 diffing missed backlog commits under a fast-merging
+          # queue. (2) The #2172 fix diffed from the GitHub API's "most
+          # recent successful deploy run" head_sha -- a live, mutable view
+          # that under fast cadence resolved to this run's OWN sha: a
+          # self-diff, always empty, silently skipping every component
+          # rebuild (confirmed live 2026-09-07: pipeline image stale ~3.5h
+          # across 17 green deploy runs; a real W4 build failed on it).
+          # (3) This fix: the diff base is no longer any record ABOUT
+          # deploys -- it is read from PRODUCTION ITSELF, per component.
+          # Each deploy job stamps what it ships (revision label
+          # `commit-sha` for services, the `:<sha>` image tag for the
+          # pipeline job); that value changes only when a deploy genuinely
+          # completes, so the diff accumulates the whole undeployed backlog
+          # by construction and cannot wobble with API-view instability.
+          # Skip is only chosen when diff(<deployed-sha>..HEAD) touches
+          # none of the component's paths -- the gate itself is now the
+          # §N.8 detector for "production already contains every relevant
+          # commit"; there is no separate marker to forget to update.
+          # FAIL-OPEN: any failure to resolve or fetch a component's
+          # deployed sha deploys that component. The gate may only fail
+          # toward doing MORE work, never silently less (charter C12
+          # rewrite-floor test, applied to CI). All three resolution
+          # commands were dry-run verified live against this project's
+          # real Cloud Run surfaces before this landed.
 
-          sidecar=false
-          mcp=false
-          pipeline=false
+          SIDECAR_PATTERN='^platform/python-sidecar/'
+          MCP_PATTERN='^platform-mcp/'
+          PIPELINE_PATTERN='^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'
 
-          if printf '%s\n' "$CHANGED" | grep -q '^platform/python-sidecar/'; then
-            sidecar=true
-          fi
+          deployed_sha() {
+            # Prints the commit production reports for one component; empty on any failure.
+            case "$1" in
+              sidecar|mcp)
+                local rev
+                rev=$(gcloud run services describe "amjis-$1" --region "$GCP_REGION" \
+                  --format='value(status.latestReadyRevisionName)' 2>/dev/null) || return 0
+                [ -n "$rev" ] || return 0
+                gcloud run revisions describe "$rev" --region "$GCP_REGION" \
+                  --format="value(metadata.labels['commit-sha'])" 2>/dev/null || true
+                ;;
+              pipeline)
+                local img
+                img=$(gcloud run jobs describe brahma-build-pipeline-job --region "$GCP_REGION" \
+                  --format='value(spec.template.spec.template.spec.containers[0].image)' 2>/dev/null) || return 0
+                case "$img" in *:*) printf '%s' "${img##*:}" ;; esac
+                ;;
+            esac
+          }
 
-          if printf '%s\n' "$CHANGED" | grep -q '^platform-mcp/'; then
-            mcp=true
-          fi
+          decide() {
+            # $1 component, $2 grep -E path pattern -> echoes the true/false decision.
+            local component="$1" pattern="$2" sha changed
+            sha=$(deployed_sha "$component")
+            if [ -z "$sha" ]; then
+              echo "::warning::${component}: deployed commit-sha unresolvable -- FAIL-OPEN, deploying" 1>&2
+              echo true; return
+            fi
+            if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              git fetch --depth=1 origin "$sha" 1>&2 2>&1 || true
+            fi
+            if ! git cat-file -e "${sha}^{commit}" 2>/dev/null; then
+              echo "::warning::${component}: deployed sha ${sha} not fetchable -- FAIL-OPEN, deploying" 1>&2
+              echo true; return
+            fi
+            changed=$(git diff --name-only "$sha" HEAD)
+            echo "--- ${component}: deployed=${sha}" 1>&2
+            printf '%s\n' "$changed" | sed 's/^/    /' 1>&2
+            if printf '%s\n' "$changed" | grep -qE "$pattern"; then
+              echo true
+            else
+              echo false
+            fi
+          }
 
-          if printf '%s\n' "$CHANGED" | grep -qE \
-            '^(platform/python-sidecar/Dockerfile\.pipeline|platform/python-sidecar/ga_writers/|platform/python-sidecar/pipeline/|platform/python-sidecar/services/|platform/python-sidecar/brahmagyan/|platform/python-sidecar/pyjhora_adapter/|platform/python-sidecar/bodha_writers/|platform/python-sidecar/panchang_engine/|platform/python-sidecar/muhurat/|platform/python-sidecar/requirements|035_DISCOVERY_LAYER/)'; then
-            pipeline=true
-          fi
+          sidecar=$(decide sidecar "$SIDECAR_PATTERN")
+          mcp=$(decide mcp "$MCP_PATTERN")
+          pipeline=$(decide pipeline "$PIPELINE_PATTERN")
 
           {
             echo "sidecar=$sidecar"
@@ -257,12 +350,35 @@ jobs:
           echo "sidecar=$sidecar  mcp=$mcp  pipeline=$pipeline"
   # ── /Path-change detection ───────────────────────────────────────────────────
 
-  deploy-web:
-    name: Build & Deploy Web
-    # Only deploy on workflow_run (CI passed on main) or manual dispatch.
-    # pull_request events are handled by the build-check job above.
-    # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the manual-dispatch
-    # CI gate to this job — the one that runs migrations and promotes production traffic.
+  # ── Schema barrier (PARIŚEṢA-V4 / RATE-07, 2026-08-21) ──────────────────────
+  # Migrations used to run as four steps INSIDE `deploy-web`, which made
+  # `deploy-web` the de-facto schema barrier for the whole fleet. That was fine
+  # while nothing else needed to order against it — but RATE-07 ships a
+  # FAIL-CLOSED gate in `amjis-mcp` that queries a table created by migration
+  # 580. If the MCP revision starts serving before that migration applies, every
+  # OAuth mutation returns 503 until the migration lands. "The migration step
+  # runs early in deploy-web, so it usually wins" is not a detector, and
+  # CLAUDE.md §N.8 forbids resting a safety property on one.
+  #
+  # The migration is therefore its OWN job, and every service that ships code
+  # against the schema declares `needs: [migrate]`. This is the minimal barrier:
+  # ~1 minute of shared ordering (proxy + `migrate.ts`), NOT coupling to another
+  # service's full build/deploy/smoke/promote pipeline. In particular
+  # `deploy-mcp` does NOT depend on `deploy-web`: an unrelated web smoke flake
+  # must never block an urgent MCP deploy.
+  #
+  # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the
+  # manual-dispatch CI gate (SAMĀPTI / RULING 73-CLOSE) to the job that writes to
+  # the production database. Never let this job float free of `changes`.
+  #
+  # Runs unconditionally rather than behind a `platform/supabase/migrations/**`
+  # path filter: `migrate.ts` is idempotent and skips already-applied files, so
+  # the no-new-migration case is a fast no-op, whereas a path filter would have
+  # to correctly predict every way a migration can reach main (merge commits,
+  # squash, revert, force-push) to stay safe. A cheap always-run beats a clever
+  # filter for a barrier whose failure mode is a fail-closed production outage.
+  migrate:
+    name: Apply DB Migrations
     needs: [changes]
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
@@ -274,6 +390,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues (the triggering event's own reported head_sha can
+      # lag/misreport); deploy-web already guards against this (see its own
+      # "Verify deployment source provenance" step below) but this job never
+      # did, so a migration introduced by the very commit that triggered this
+      # run could silently never apply while the job still reports success.
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Migrating against immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -281,10 +414,7 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
 
-      - name: Configure Docker for Artifact Registry
-        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
-
-      # ── A-S8: Run idempotent migrations before deploying ─────────────────────
+      # ── A-S8: Run idempotent migrations before any service deploys ───────────
       - name: Start Cloud SQL Auth Proxy
         run: |
           curl -fsSL \
@@ -302,17 +432,110 @@ jobs:
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
-      - name: Run database migrations
+      - name: Inspect Nirmana evidence ownership handoff marker
+        id: nirmana-ownership
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
           if [ -z "$DATABASE_URL" ]; then
-            echo "::error::PROD_DATABASE_URL secret not set — migrations NOT applied. Failing build."
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the Nirmana ownership marker."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected Nirmana ownership marker state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
+      - name: One-shot Nirmana evidence ownership preflight
+        if: steps.nirmana-ownership.outputs.state == 'unmarked'
+        env:
+          NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
+          NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
+            exit 1
+          fi
+          if [ -z "$NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL secret not set — cannot prove the preprovisioned control writer before handoff."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
+
+      - name: Attest Nirmana ownership handoff as deployment-only migrator
+        env:
+          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migration 633 cannot be attested. This credential is deployment-only and must never be mounted in Cloud Run."
+            exit 1
+          else
+            cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
+          fi
+
+      - name: Run general database migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — general migrations NOT applied. Failing build."
             exit 1
           else
             cd platform && npx tsx scripts/migrate.ts
           fi
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
+  # ── /Schema barrier ─────────────────────────────────────────────────────────
+
+  deploy-web:
+    name: Build & Deploy Web
+    # Only deploy on workflow_run (CI passed on main) or manual dispatch.
+    # pull_request events are handled by the build-check job above.
+    # `needs: [changes]` is load-bearing, not cosmetic: it is what binds the manual-dispatch
+    # CI gate to this job — the one that promotes production traffic.
+    # `needs: [migrate]` replaces the four migration steps this job used to run inline
+    # (see the `migrate` job above); the ordering guarantee is unchanged for web —
+    # migrations still complete before this job's image build — it is simply now a
+    # barrier other services can also order against.
+    needs: [changes, migrate]
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
+
+      # NOTE: migrations no longer run here. They ran as four inline steps at this
+      # point until 2026-08-21 and now live in the dedicated `migrate` job, which
+      # this job declares in `needs:`. Ordering for web is unchanged (migrations
+      # still complete before the image build below); the extraction is what lets
+      # `deploy-mcp` order against the schema WITHOUT ordering against this entire
+      # job. Do not re-inline them.
 
       - name: Copy governance files into platform build context
         run: |
@@ -334,7 +557,7 @@ jobs:
           file: ./platform/Dockerfile
           push: true
           tags: |
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ env.DEPLOY_SHA }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:latest
           cache-from: type=gha,scope=amjis-web
           cache-to: type=gha,mode=max,scope=amjis-web
@@ -361,6 +584,7 @@ jobs:
             NEXT_PUBLIC_MARSYS_FLAG_R9_TOOL_FLOW=true
             NEXT_PUBLIC_MARSYS_FLAG_R11B_LOOK_AND_FEEL=true
             NEXT_PUBLIC_MARSYS_FLAG_R11V2_MULTI_PROVIDER_PARITY=true
+            NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
       - name: Deploy web to Cloud Run (no traffic)
@@ -369,7 +593,12 @@ jobs:
         with:
           service: amjis-web
           region: ${{ env.GCP_REGION }}
-          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ github.sha }}
+          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ env.DEPLOY_SHA }}
+          # deploy-cloudrun otherwise uses github.sha for commit-sha, which is
+          # the default-branch tip for workflow_run rather than the CI head.
+          labels: |
+            managed-by=github-actions
+            commit-sha=${{ env.DEPLOY_SHA }}
           # Per-service least-priv runtime SA; no-traffic for pre-smoke safety.
           flags: >-
             --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
@@ -377,15 +606,29 @@ jobs:
             --min-instances=1
           env_vars: |
             NODE_ENV=production
+            NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
+            # Campaign definitions, labels, and non-server receipts use this
+            # distinct Cloud-SQL principal.  Its absent secret fails those
+            # writes closed; neither the migrator nor legacy-owner credential
+            # is ever present in the serving revision.
+            NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
+            # Server-reconstructed evidence (probe_accepted, integrity_verified,
+            # asset_frozen, stage_transition_accepted, foundation_lane_accepted)
+            # uses this distinct Cloud-SQL principal instead. Its absent secret
+            # fails those writes closed the same way -- this was missing from
+            # the serving revision from when the ingress writer role and its
+            # secret were first provisioned (2026-08-27) until this line.
+            NIRMANA_EVIDENCE_INGRESS_DB_USER=nirmana_evidence_ingress_writer
             GCP_PROJECT=madhav-astrology
             GOOGLE_CLOUD_PROJECT=madhav-astrology
             GCS_BUCKET_CHAT_ATTACHMENTS=madhav-astrology-chat-attachments
             GCS_BUCKET_CHART_DOCUMENTS=madhav-astrology-chart-documents
             ASTROLOGER_EMAIL=mail.abhisek.mohanty@gmail.com
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
+            NIRMANA_PROBE_RUNNER_URL=https://amjis-sidecar-938361928218.asia-south1.run.app/internal/nirmana/probe
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
             BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
             VERTEX_AI_LOCATION=asia-south1
@@ -406,6 +649,8 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
+            NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
+            NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
             DEEPSEEK_API_KEY=DEEPSEEK_API_KEY:1
@@ -450,6 +695,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -466,21 +725,40 @@ jobs:
       - name: Build and push sidecar image
         uses: docker/build-push-action@v6
         with:
-          context: ./platform/python-sidecar
+          context: ./platform  # widened from ./platform/python-sidecar for #2096 (reach sibling scripts/temporal)
           file: ./platform/python-sidecar/Dockerfile
           push: true
           tags: |
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:latest
           cache-from: type=gha,scope=amjis-sidecar
           cache-to: type=gha,mode=max,scope=amjis-sidecar
 
-      - name: Deploy sidecar to Cloud Run
+      - name: Define zero-traffic candidate identity
+        id: sidecar-candidate
+        env:
+          RELEASE_SHA: ${{ env.DEPLOY_SHA }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          suffix="probe-${RELEASE_SHA:0:12}-${RELEASE_RUN_ID}-${RELEASE_ATTEMPT}"
+          {
+            echo "suffix=$suffix"
+            echo "tag=$suffix"
+            echo "revision=amjis-sidecar-$suffix"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Deploy sidecar candidate to Cloud Run (zero traffic)
+        id: deploy-sidecar
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: amjis-sidecar
           region: ${{ env.GCP_REGION }}
-          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ github.sha }}
+          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }}
+          suffix: ${{ steps.sidecar-candidate.outputs.suffix }}
+          labels: |
+            managed-by=github-actions
+            commit-sha=${{ env.DEPLOY_SHA }}
           # ── 4.edge_and_infra_hygiene ──
           # Per-service least-priv runtime SA (see infra/iam/main.tf).
           flags: >-
@@ -488,11 +766,67 @@ jobs:
             --cpu=2
             --memory=1Gi
             --min-instances=0
+            --no-traffic
+            --tag=${{ steps.sidecar-candidate.outputs.tag }}
             --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com
           # ── /4.edge_and_infra_hygiene ──
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
+
+      - name: Resolve candidate revision URL
+        id: sidecar-candidate-url
+        env:
+          CANDIDATE_TAG: ${{ steps.sidecar-candidate.outputs.tag }}
+        run: |
+          candidate_url=$(gcloud run services describe amjis-sidecar \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
+              '.status.traffic[] | select(.tag == $tag) | .url')
+          test -n "$candidate_url"
+          echo "url=$candidate_url/internal/nirmana/probe" >> "$GITHUB_OUTPUT"
+
+      # The Actions identity never reads PYTHON_SIDECAR_API_KEY. Secret Manager
+      # mounts it directly into this one-task Cloud Run Job under the existing
+      # sidecar runtime service account, which already has secretAccessor.
+      - name: Configure authenticated candidate smoke job
+        env:
+          CANDIDATE_URL: ${{ steps.sidecar-candidate-url.outputs.url }}
+          EXPECTED_REVISION: ${{ steps.sidecar-candidate.outputs.revision }}
+        run: |
+          gcloud run jobs deploy amjis-sidecar-release-smoke \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-sidecar:${{ env.DEPLOY_SHA }} \
+            --service-account=amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com \
+            --set-secrets=PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1 \
+            --set-env-vars=NIRMANA_PROBE_CANDIDATE_URL="$CANDIDATE_URL",NIRMANA_PROBE_EXPECTED_REVISION="$EXPECTED_REVISION" \
+            --command=python \
+            --args=scripts/nirmana_probe_release_smoke.py \
+            --task-timeout=300 \
+            --max-retries=0 \
+            --quiet
+
+      - name: Run authenticated real probes against candidate
+        run: |
+          gcloud run jobs execute amjis-sidecar-release-smoke \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --wait \
+            --quiet
+
+      # No earlier step changes service traffic. Any build, deploy, job setup, or
+      # real-probe failure stops here and leaves the previously serving revision.
+      - name: Promote verified sidecar candidate
+        env:
+          EXPECTED_REVISION: ${{ steps.sidecar-candidate.outputs.revision }}
+        run: |
+          gcloud run services update-traffic amjis-sidecar \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --to-revisions="$EXPECTED_REVISION=100" \
+            --quiet
 
   # ── 4.edge_and_infra_hygiene ──
   # MCP deploy moved off the legacy Cloud Build trigger into GH Actions WIF
@@ -500,7 +834,37 @@ jobs:
   # here; trigger is GH Actions only. Image is pinned to Artifact Registry
   # (asia-south1-docker.pkg.dev/...), not legacy gcr.io.
   deploy-mcp:
-    needs: [changes]
+    # ORDERING (PARIŚEṢA-V4 / RATE-07, 2026-08-21): `migrate` is now a dependency,
+    # where before this job needed only `changes` and ran CONCURRENTLY with the
+    # migration step.
+    #
+    # WHY: RATE-07's OAuth rate-limit gate is FAIL-CLOSED by design, so an MCP
+    # revision serving before migration 580 creates `mcp_rate_buckets` returns 503
+    # on every OAuth mutation until the migration lands. "The migration usually
+    # finishes first" is not a detector, and CLAUDE.md §N.8 forbids resting a
+    # safety property on one.
+    #
+    # WHAT THIS DOES *NOT* DO — and an earlier revision of this PR got wrong:
+    # this job does NOT depend on `deploy-web`. A first attempt used
+    # `needs: [changes, deploy-web]` on the stated premise that "when platform/**
+    # is unchanged deploy-web is SKIPPED, so the coupling is conditional". That
+    # premise was FALSE: `deploy-web` carries no path filter — its `if:` is
+    # identical to `changes`'s own trigger gate — so it runs on every
+    # deploy-triggering event and the `skipped` branch was unreachable. The real
+    # effect would have been permanent serialisation of every MCP deploy behind
+    # the entire web pipeline (Cloud SQL proxy → migrations → Next build/push →
+    # Cloud Run deploy → smoke → traffic promotion), with any unrelated web smoke
+    # flake blocking all MCP deploys — including urgent security fixes.
+    # `needs: [migrate]` closes the identical ordering race at ~1 minute of
+    # shared barrier instead. Do not reintroduce a `deploy-web` dependency here.
+    #
+    # No `always()` guard: default `needs` semantics are exactly right. `migrate`
+    # shares this job's trigger `if:`, so it never skips on a deploy-triggering
+    # event — it succeeds (schema current → deploy) or fails (schema state
+    # unknown → MCP correctly held rather than shipping dependent code against
+    # unknown schema). The `always()` in the earlier revision existed only to
+    # service the unreachable `skipped` branch described above.
+    needs: [changes, migrate]
     if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.mcp == 'true')
     name: Build & Deploy MCP
     runs-on: ubuntu-latest
@@ -510,6 +874,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -536,7 +914,7 @@ jobs:
           file: ./platform-mcp/Dockerfile
           push: true
           tags: |
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ env.DEPLOY_SHA }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:latest
           cache-from: type=gha,scope=amjis-mcp
           cache-to: type=gha,mode=max,scope=amjis-mcp
@@ -555,7 +933,10 @@ jobs:
         with:
           service: amjis-mcp
           region: ${{ env.GCP_REGION }}
-          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ github.sha }}
+          image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ env.DEPLOY_SHA }}
+          labels: |
+            managed-by=github-actions
+            commit-sha=${{ env.DEPLOY_SHA }}
           # amjis-mcp is publicly invokable (allUsers:roles/run.invoker). The app-level
           # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
           # F3 posture correction: --no-allow-unauthenticated was stale; removed.
@@ -568,6 +949,75 @@ jobs:
             # Firebase session verification is delegated to amjis-web (no firebase-admin
             # credentials needed in amjis-mcp — platform does the verifySessionCookie call).
             MCP_BASE_URL=https://madhav.marsys.in/mcp
+            # SM-γ C4/C5 (SAMPŪRTI P3 FIELD-INTEGRATED activation, 2026-08-13):
+            # C4: adds gochara_narrative to kala_now_get + a5_gochara_agreement to
+            #     kala_explain_get. Flag-off = key entirely absent (§N.8 byte-identical).
+            # C5: enriches ahead_autofile authority_basis with field_window/<id>@<peak>
+            #     when a kala_field_window overlaps the filed prediction (v2 citation).
+            SM_GAMMA_C4_ENABLED=true
+            SM_GAMMA_C5_ENABLED=true
+            # RATE-07 (PARIŚEṢA-V4): how many hops in front of amjis-mcp are trusted to
+            # have APPENDED to X-Forwarded-For. The OAuth rate limiter reads the client
+            # identity from the RIGHT, this many entries in; the leftmost entry is fully
+            # caller-controlled and is never read. Set EXPLICITLY here — equal to the
+            # code default (trustedProxyHops(), platform-mcp/src/lib/oauth_rate_limit.ts),
+            # so this line changes no behaviour — because this file is where the ingress
+            # topology is actually configured, and an unset variable is an operator
+            # obligation nobody can see. THE RULE: add a GCLB / Cloud Armor / any further
+            # reverse proxy in front of this service and you MUST raise this to match, in
+            # the same PR. Getting it wrong is conservative, not permissive (identities
+            # COLLAPSE into one over-restrictive bucket; an attacker cannot steer the
+            # collapse onto a chosen third party), and the per-route global ceiling keeps
+            # the endpoint protected regardless — but it degrades per-IP attribution.
+            # OPEN ITEM for whoever owns the front door: MCP_BASE_URL above is the custom
+            # domain https://madhav.marsys.in/mcp, while `1` is correct for DIRECT
+            # *.run.app ingress (the path deploy.yml smoke-tests). If the custom domain
+            # routes through an additional appending hop, this value is low by that hop
+            # count. Disclosed, not silently guessed: raising it without confirming the
+            # real chain would trust a header segment a caller can forge, which is the
+            # permissive direction. Verify the live XFF chain, then set this deliberately.
+            # Full analysis: ruling §3.2 (DISCLOSED AMBIGUITY — client-IP derivation).
+            MCP_TRUSTED_PROXY_HOPS=1
+            # RATE-07 SHIPS DISABLED IN THIS PR — AND MUST BE FLIPPED TO `true`
+            # IN A ONE-LINE FOLLOW-UP. Tracked as follow-up item RATE-07-ENABLE;
+            # this line is the whole change.
+            #
+            # WHY DISABLED: `consumeBuckets()` (platform-mcp/src/lib/oauth_rate_limit.ts)
+            # POSTs to ${PLATFORM_URL}/api/mcp/rate-limit/check — a route THIS PR
+            # creates, served by amjis-web. `deploy-mcp` and `deploy-web` both declare
+            # `needs: [migrate]` and therefore run in PARALLEL (deliberately — see the
+            # ordering comment at the top of this job; re-coupling them is a known
+            # worse outcome, not an option). deploy-mcp is a small TS build and
+            # normally promotes traffic BEFORE deploy-web finishes its Next build →
+            # push → deploy → smoke → promote. In that window the new MCP revision
+            # would be calling a route that does not exist on the OLD web revision:
+            # 404 → RateLimitStoreUnavailable → the gate does exactly what it is
+            # designed to do and answers 503 on ALL FIVE OAuth mutation endpoints.
+            # `mcp_end_to_end_smoke.sh` probes no OAuth route, so nothing would catch
+            # it before traffic promotion.
+            #
+            # Shipping disabled removes the window rather than racing it: with this
+            # set, `rateLimitEnabled()` returns false and BOTH entrypoints
+            # (`oauthRateLimit` middleware and `chargeValidatedSubject`) short-circuit
+            # on their FIRST statement — no fetch, no response written, no process
+            # state touched, control straight to the handler. The five endpoints
+            # behave byte-for-byte as they did before this PR (§N.8: proved by the
+            # "DISABLED PATH IS A TRUE NO-OP" tests in
+            # platform-mcp/src/__tests__/rate07_oauth_rate_limit.test.ts, not asserted
+            # here). The honest cost: they are also not yet PROTECTED by the limiter.
+            #
+            # HOW TO ENABLE (the follow-up PR, in full):
+            #   1. Confirm https://amjis-web-…run.app/api/mcp/rate-limit/check is live
+            #      on the CURRENT web revision — i.e. this PR's own deploy-web run has
+            #      completed at least once and promoted traffic. A POST with a valid
+            #      X-MCP-Internal-Token must return 200 with an `allowed` field (a 404
+            #      means the route is not deployed yet — do not proceed).
+            #   2. Change the line below to `MCP_OAUTH_RATE_LIMIT_ENABLED=true`, or
+            #      delete it (the code default is ON — see rateLimitEnabled()).
+            #   3. Merge. No code change, no migration, nothing else.
+            # Rollback is this same line back to `false`; note migration 580's DOWN
+            # section — turn the flag off BEFORE dropping mcp_rate_buckets.
+            MCP_OAUTH_RATE_LIMIT_ENABLED=false
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
@@ -647,6 +1097,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      # #2159: workflow_run.head_sha can resolve to a stale commit under
+      # fast-merging queues -- guard against silently building/deploying
+      # from the wrong source (see migrate/deploy-web's identical step).
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Deploying immutable source SHA $ACTUAL_SHA"
 
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -667,25 +1131,35 @@ jobs:
           file: ./platform/python-sidecar/Dockerfile.pipeline
           push: true
           tags: |
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }}
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }}
             asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:latest
           cache-from: type=gha,scope=brahma-pipeline
           cache-to: type=gha,mode=max,scope=brahma-pipeline
 
       - name: Re-point Cloud Run Job at the new image
         run: |
+          # F-185: KA_KSHETRA_HASH_SPILL_DIR was unconfigured, so the writer
+          # silently fell back to TMPDIR (`/tmp`), which is RAM-backed tmpfs on
+          # Cloud Run — no volume mount exists anywhere in this repo's infra to
+          # give it a real disk. Interim disposition: pin it to `/tmp`
+          # explicitly (so the choice is observable, not an implicit fallback —
+          # the writer now logs the resolved path and filesystem kind at
+          # startup) and raise --memory to cover the ~3-4.2GB RAM-backed spill
+          # at the native chart's 10.5M-row scale on top of the job's existing
+          # working set. Provisioning a disk-backed volume mount is out of
+          # scope for this fix; see F-185 in the PARISESA-V4 findings.
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.GCP_REGION }} \
-            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
+            --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             --task-timeout=86400 \
-            --memory=4Gi \
-            --cpu=2 \
-            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events \
+            --memory=16Gi \
+            --cpu=4 \
+            --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
 
       - name: Verify ga_writers is importable in the pushed image
         run: |
           docker run --rm --entrypoint python \
-            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ github.sha }} \
+            asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
             -c "import ga_writers; print('ga_writers OK:', ga_writers.__file__)"
   # ── /Orchestrator Convergence Phase 1 ──

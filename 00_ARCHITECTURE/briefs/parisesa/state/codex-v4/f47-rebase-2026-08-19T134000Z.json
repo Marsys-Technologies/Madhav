@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T13:40:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-47",
+  "rebased_head": "404030993ba6a8ad5cdc970d8843c5c302d37b33",
+  "direct_parent": "bb973d82e3ef714f7f8dd0ff92422832e748bc60",
+  "origin_main": "a7136b467af204767a6f9b403785b84967136a84",
+  "ancestry": "origin/main is an ancestor of the rebased head; parent bb973d retains the independently reviewed action-sensitive scoring patch and the head retains the independently reviewed per-window dasha-boundary correction.",
+  "scope": [
+    "platform/python-sidecar/brahmagyan/phala/muhurta.py",
+    "platform/python-sidecar/tests/test_phala_muhurta.py"
+  ],
+  "verification": {
+    "focused": "42 passed",
+    "py_compile": "PASS",
+    "diff_check": "PASS",
+    "independent_reviews": ["action-sensitive scoring PASS", "per-window dasha-boundary PASS"]
+  },
+  "next_action": "force-with-lease update PR #1343 to the exact rebased head, await new required PR contexts, then admit normally only if all are green."
+}

@@ -1,0 +1,16 @@
+{
+  "_note": "Post-deploy probe evidence for B-05 deploy (run 31910024692, headSha=0a056aec8). B-05: Classical Spec Pack — 7th-house join spec, signal glossary, F-107/F-108 checklist units.",
+  "probe_time_utc": "2026-08-15T21:45:00Z",
+  "deployed_main_sha_at_probe": "0a056aec841ad4be65714d1c2d2e3793a63861a3",
+  "deploy_run_id": "31910024692",
+  "deploy_head_sha": "0a056aec841ad4be65714d1c2d2e3793a63861a3",
+  "deploy_conclusion": "success",
+  "deploy_jobs": {
+    "deploy-web": "success",
+    "deploy-sidecar": "success",
+    "deploy-pipeline-job": "success",
+    "deploy-mcp": "skipped"
+  },
+  "lanes_in_batch": ["B-05 (0a056aec8)"],
+  "note_catalog_unchanged": "B-05 adds spec docs + glossary entries; no MCP tool additions/removals so catalog_version unchanged expected."
+}

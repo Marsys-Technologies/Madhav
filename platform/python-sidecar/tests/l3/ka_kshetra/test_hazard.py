@@ -27,8 +27,13 @@ from services.ka_kshetra import hazard  # noqa: E402
 class TestBaseline:
     def test_baseline_rate_is_lifetime_count_over_a_century_of_days(self):
         # N_e events per 100 years -> events per day. 36525 = 100 Julian years.
-        assert hazard.baseline_rate(1.0) == pytest.approx(1.0 / 36525.0, rel=1e-15)
-        assert hazard.baseline_rate(3.0) == pytest.approx(3.0 / 36525.0, rel=1e-15)
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack for assertion.
+        rate1, synth1 = hazard.baseline_rate(1.0)
+        assert rate1 == pytest.approx(1.0 / 36525.0, rel=1e-15)
+        assert synth1 is False
+        rate3, synth3 = hazard.baseline_rate(3.0)
+        assert rate3 == pytest.approx(3.0 / 36525.0, rel=1e-15)
+        assert synth3 is False
 
     def test_zero_or_negative_lifetime_count_is_rejected_not_floored(self):
         # B.10 / LAW ZERO: a class with no usable prior is SKIPPED entirely

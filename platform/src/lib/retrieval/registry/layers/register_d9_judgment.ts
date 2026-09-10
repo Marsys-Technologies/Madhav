@@ -65,16 +65,56 @@ import { DEFAULT_AYANAMSHA } from '../constants'
 import type { DrillPointerType, JudgmentFlagEntry } from '../../envelope'
 import { judgmentFlag } from '../../envelope'
 import { derivedHouses } from '@/lib/jyotish/bhavat_bhavam_map'
+// F-57 (PARIŚEṢA-V4): the canonical 13-domain vocabulary — the SSoT every downstream
+// store (bodha_msr_signals.domains_affected_array, bodha_mechanisms.domains_affected_array,
+// brahma_event_ontology.domain) is actually keyed by. SHASTRA_MAP.signal_domain is now
+// typed to it so a non-vocabulary literal cannot be reintroduced silently.
+import { isCanonicalDomain, type CanonicalDomain } from '@/lib/domain_vocabulary'
 // ŚODHANA T5 (PŪRTI) — the three computed-but-never-joined classical legs + the
 // served reading_checklist receipt (MC-030/031/033 + the Offer-Law completeness fix).
 import {
   fetchSensitiveDegreeFirings,
   fetchKpCuspChain,
   fetchGocharaSweep,
+  fetchDomainStructuralCoverage,
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
+  DOMAIN_INDU_LAGNA,
+  corroboratingVargasNotWeighted,
+  ensureDomainDirectVargasLoaded,
+  getOperativeVargaConstants,
+  fetchVargaRatification,
+  vargaConfirmedMark,
   type ChecklistUnit,
+  type GocharaSweepWindow,
 } from './reading_checklist'
+
+// F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows.
+// Mirrors the same helper in register_d8_assess_domain.ts — see that file for the
+// full rationale. GocharaSweepWindow has only temporal_shape + peak_date to work
+// from; the full deriveResolutionDisclosure() (register_gochara_windows.ts) is not
+// reachable from this package.
+interface SweepWindowDisclosure {
+  is_timing_window: boolean
+  timing_window_blocked_reason: 'era_scale_context' | 'bare_point_no_date' | null
+}
+
+function withSweepDisclosure(
+  rows: GocharaSweepWindow[]
+): Array<GocharaSweepWindow & { resolution_disclosure: SweepWindowDisclosure }> {
+  const retained = rows.filter(
+    (r) => !(r.temporal_shape === 'point' && r.peak_date == null)
+  )
+  return retained.map((row) => {
+    const isPoint = row.temporal_shape === 'point'
+    return {
+      ...row,
+      resolution_disclosure: isPoint
+        ? { is_timing_window: true, timing_window_blocked_reason: null }
+        : { is_timing_window: false, timing_window_blocked_reason: 'era_scale_context' },
+    }
+  })
+}
 
 // ── The Shastra Map (design §28.5) ───────────────────────────────────────────────
 
@@ -87,9 +127,24 @@ interface DomainSpec {
   /** Operative varga for confirmation (design §28.1 "operative-varga confirmation"). */
   varga: string
   label: string
-  /** Maps onto bodha_msr_signals.domain (query_signals.ts) — 'other' where no exact
-   *  domain tag exists yet in the signal store. */
-  signal_domain: string
+  /** Maps onto the CANONICAL 13-domain vocabulary (`@/lib/domain_vocabulary`, mirroring
+   *  `brahmagyan/domain_vocabulary.py` and the migration-386 DB CHECK constraints) — the
+   *  tag every downstream store is actually keyed by: `bodha_msr_signals.
+   *  domains_affected_array`, `bodha_mechanisms.domains_affected_array`, and (via
+   *  `fetchGocharaSweep`) `brahma_event_ontology.domain`.
+   *
+   *  F-57 (PARIŚEṢA-V4): this field used to carry the literal `'other'` for eleven
+   *  domains, on the stale premise that "no exact domain tag exists yet in the signal
+   *  store". That premise is false and `'other'` is not a member of ANY of those three
+   *  vocabularies — so every leg keyed off it returned a structural zero. On the canonical
+   *  chart that silently hid 1,126 progeny signals (347 adverse) / 850 education (351
+   *  adverse) / 510 residence (220 adverse) plus 10/50/80 gochara windows respectively,
+   *  and — worse — served the `afflictions_empty` flag as an all-clear over them (§N.8:
+   *  a signal whose detector cannot ever read false). Every value here MUST now be a
+   *  member of CANONICAL_DOMAINS; `register_d9_judgment.f57_domain_vocabulary.test.ts:40-44/
+   *  81-84` asserts it (F-166b: repointed from a stale filename that did not exist anywhere
+   *  in the repo — see the F-166 PR for the prior dead pointer). */
+  signal_domain: CanonicalDomain
   /** D-1.5b Lane B-4 (CR-97) — Bhavat-Bhavam "house of the house" derivation, backfilled
    *  from the shared registry (`bhavat_bhavam_map.ts`) right after SHASTRA_MAP below is
    *  declared. Optional in the type only because it is populated post-construction, not
@@ -110,14 +165,14 @@ export const SHASTRA_MAP: Record<string, DomainSpec> = {
   finance:      { bhava: 2,  karakas: ['Jupiter'],                   varga: 'D2',  label: 'Wealth / Prosperity',    signal_domain: 'wealth' },
   health:       { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
   vitality:     { bhava: 1,  karakas: ['Sun'],                       varga: 'D6',  label: 'Health / Vitality',      signal_domain: 'health' },
-  progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
-  children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'other' },
+  progeny:      { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'progeny' },
+  children:     { bhava: 5,  karakas: ['Jupiter'],                   varga: 'D7',  label: 'Progeny / Children',     signal_domain: 'progeny' },
   // F-0756 fix: bhāva-4 is NOT "education" — its primary significations are mother/home/
   // property/happiness. Vidyā's operative bhāva for the recipe is the 4th vidyā-sthāna (BPHS)
   // but it is judged as ONE leg of a 2/4/5/9 set; karakas are Mercury (learning), Jupiter
   // (jñāna), Ketu (deep insight/research). D24 (siddhāṃśa) is the education varga.
-  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
-  vidya:        { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'other' },
+  education:    { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'education' },
+  vidya:        { bhava: 4,  karakas: ['Mercury', 'Jupiter', 'Ketu'], varga: 'D24', label: 'Education / Vidyā',      signal_domain: 'education' },
   // Spirituality = DHARMA (9th house) — Jupiter/Ketu, D20. Distinct from moksha below.
   spirituality: { bhava: 9,  karakas: ['Jupiter', 'Ketu'],           varga: 'D20', label: 'Spirituality / Dharma',  signal_domain: 'spirituality' },
   // Moksha = the 4-8-12 mokṣa-trikoṇa + Ketu axis (F-0973/0974) — NOT a 9th-house/dharma alias.
@@ -133,9 +188,25 @@ export const SHASTRA_MAP: Record<string, DomainSpec> = {
   buddhi:       { bhava: 1,  karakas: ['Moon', 'Mercury'],           varga: 'D1',  label: 'Character / Buddhi',     signal_domain: 'character' },
   // Home / residence / immovable property — 4th sukha-bhāva; Moon (home/mother), Mars
   // (land/immovables); D4 (caturthāṃśa). This is bhāva-4's REAL domain (F-0756), not education.
-  residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
-  property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
-  home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'other' },
+  residence:    { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
+  property:     { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
+  home:         { bhava: 4,  karakas: ['Moon', 'Mars'],              varga: 'D4',  label: 'Home / Residence / Property', signal_domain: 'residence' },
+  // F-55: 4 canonical domains absent from SHASTRA_MAP — reconcile CANONICAL_DOMAINS 1:1.
+  // Family / kutumba — 2nd house (kutumba-sthāna, family lineage, speech); karakas Jupiter
+  // (family prosperity, sons) + Moon (nurturing/maternal bond); D12 (dvādaśāṃśa, lineage/ancestry).
+  // Bhavat-Bhavam: bhava 2 is EVEN → derived_bhavas: [] (even houses receive nothing — doctrine).
+  family:     { bhava: 2,  karakas: ['Jupiter', 'Moon'],              varga: 'D12', label: 'Family / Kutumba',            signal_domain: 'family' },
+  // General / overall life pattern — lagna (1st house) as the catch-all life lens; karakas Sun
+  // (ātmakāraka/soul) + Moon (manas/mind); D1 (natal chart, full-chart read).
+  general:    { bhava: 1,  karakas: ['Sun', 'Moon'],                  varga: 'D1',  label: 'General / Life Pattern',      signal_domain: 'general' },
+  // Transition / transformation — 8th house (āyu-sthāna, sudden change, parivartan, hidden matters);
+  // karakas Saturn (delay/vairāgya), Rahu (unexpected upheaval/foreign), Mars (acute crisis);
+  // D8 (ashtamsha, transformative varga). Bhavat-Bhavam: bhava 8 EVEN → derived_bhavas: [].
+  transition: { bhava: 8,  karakas: ['Saturn', 'Rahu', 'Mars'],       varga: 'D8',  label: 'Transition / Transformation', signal_domain: 'transition' },
+  // Travel / foreign — 9th house (dharma-sthāna, long journeys, fortune, foreign connections);
+  // karakas Jupiter (long-distance dharma travel) + Rahu (foreign settlement, ativāsa);
+  // D9 (navamsha, dharma/fortune varga). Bhavat-Bhavam: bhava 9 ODD → derived_bhavas: [5, 11].
+  travel:     { bhava: 9,  karakas: ['Jupiter', 'Rahu'],              varga: 'D9',  label: 'Travel / Foreign',            signal_domain: 'travel' },
 }
 
 // D-1.5b Lane B-4 (CR-97): extend every SHASTRA_MAP domain with its Bhavat-Bhavam derived
@@ -176,14 +247,22 @@ const BHAVA_TO_DOMAIN: Record<number, string> = {
 
 // Simple, deterministic, classically-uncontested dignity/benefic weighting — never an LLM
 // judgment, never a fabricated probability. Design §28.1 "graded (epistemic + strength)".
-const DIGNITY_WEIGHT: Record<string, number> = {
-  exalted: 2, own: 1.5, moolatrikona: 1.5, great_friend: 1, friend: 0.5,
+// F-153: moolatrikona (45 ṣaṣṭyaṃśa, BPHS Ch.27 Saptavargaja/Sthāna Bala) is strictly
+// stronger than own (30 ṣaṣṭyaṃśa) — never equal. Python source of truth for the
+// differential: `platform/python-sidecar/ga_writers/ga_vargas_writer.py:1774-1786`
+// (saptavargaja_score 45.0 MT vs 30.0 own); ordering mirrored (not value-copied, the
+// scales differ) by `ga_condition_writer.DIGNITY_SCORES` (1.0/0.9/0.8) and
+// `priors_config.ts` (exalted 1.00 / moolatrikona 0.90 / own 0.80). This TS scale keeps
+// own == 1.5 (the ±1.5 band `significator_condition.ts`'s isDignityExtreme() gates on —
+// do NOT lower it) and raises moolatrikona one step above it, one step below exalted.
+export const DIGNITY_WEIGHT: Record<string, number> = {
+  exalted: 2, moolatrikona: 1.75, own: 1.5, great_friend: 1, friend: 0.5,
   neutral: 0, enemy: -0.5, great_enemy: -1, debilitated: -2,
 }
 const NATURAL_BENEFICS = new Set(['Jupiter', 'Venus', 'Mercury', 'Moon'])
 const NATURAL_MALEFICS = new Set(['Saturn', 'Mars', 'Rahu', 'Ketu', 'Sun'])
 
-interface GrahaCondition {
+export interface GrahaCondition {
   graha: string
   graha_code: string
   house: number | null
@@ -272,7 +351,7 @@ async function vargaDignity(
 
 /** D1 dignity + shadbala for one already-resolved graha entity. Never recomputes either —
  *  both are frozen build-time formula output (must_not_touch, R5 brief). */
-async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
+export async function gradeGraha(chartId: string, ayanamshaId: string, g: ResolvedGraha): Promise<GrahaCondition> {
   const fact_ids = [...g.fact_ids]
   let dignity_state: string | null = null
   let shadbala_rupa: number | null = null
@@ -385,7 +464,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         'progeny/children (bhava 5, Jupiter, D7), education/vidya (bhava 4, Mercury+Jupiter+Ketu, D24), ' +
         'residence/property/home (bhava 4, Moon+Mars, D4), character/buddhi (bhava 1, Moon+Mercury, D1), ' +
         'spirituality (bhava 9 dharma, Jupiter+Ketu, D20), moksha/liberation (bhava 12 mokṣa-trikoṇa, ' +
-        'Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th). Takes precedence over `bhava` if both given.',
+        'Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th), family (bhava 2, Jupiter+Moon, D12), ' +
+        'travel (bhava 9, Jupiter+Rahu, D9), transition (bhava 8, Saturn+Rahu+Mars, D8), ' +
+        'general (bhava 1, Sun+Moon, D1). Takes precedence over `bhava` if both given. ' +
+        'The response\'s `domain_resolution` block states which CANONICAL domain tag the ' +
+        'domain-scoped legs (MSR signals / afflictions / mechanisms / gochara sweep) were ' +
+        'actually queried with — e.g. `marriage` reads `relationship`, `moksha` reads ' +
+        '`spirituality` — so an empty domain-scoped leg is always readable against a named tag (F-57).',
     },
     bhava: {
       type: 'number',
@@ -456,8 +541,24 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
     // chain instead of a hardcoded `today` — see Step 9 below.
     const as_of_date = (args['as_of_date'] as string | undefined) ?? new Date().toISOString().slice(0, 10)
 
+    // F-41: reject unknown domain before any DB work so callers get a typed error, not a silent
+    // orientation-context flood. A truthy domainInput that is absent from SHASTRA_MAP is always
+    // a caller mistake — reject explicitly with the live key list (never stale).
+    if (domainInput && !SHASTRA_MAP[domainInput]) {
+      return {
+        content: {
+          error:
+            `judgment_query: unrecognized domain '${domainInput}'. ` +
+            `Recognized domains: ${Object.keys(SHASTRA_MAP).sort().join(', ')}. ` +
+            `Pass \`bhava\` (1-12) for any unlisted house question.`,
+        },
+        is_error: true,
+      }
+    }
     let spec: DomainSpec
     let domainKey: string | null = null
+    // F-57: true when the caller gave a bare bhāva that no canonical domain covers.
+    let bareBhavaNoCanonicalDomain = false
     if (domainInput && SHASTRA_MAP[domainInput]) {
       domainKey = domainInput
       spec = SHASTRA_MAP[domainInput]
@@ -478,13 +579,22 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           label: `Bhava ${bhavaInput} — ${enrich.label}`,
         }
       } else {
-        spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'other' }
+        // F-57: `signal_domain: 'other'` here was a dead literal — 'other' is not a member
+        // of the canonical vocabulary any downstream store is keyed by, so every domain-scoped
+        // leg returned a structural zero that then got SERVED as an honest-looking empty.
+        // Bhāva 3 (parākrama/siblings) genuinely has no dedicated canonical domain — the
+        // 13-domain vocabulary has no 'siblings' member — so this really is a fallback, and it
+        // is now a REAL bucket ('general') carrying an explicit disclosure (see
+        // `domain_resolution` / the `domain_resolution_fallback` flag below) instead of a
+        // silent one.
+        spec = { bhava: bhavaInput as HouseNumber, karakas: [], varga: 'D1', label: `Bhava ${bhavaInput}`, signal_domain: 'general' }
+        bareBhavaNoCanonicalDomain = true
       }
     } else {
       return {
         content: {
           error:
-            'judgment_query requires either `domain` (marriage/career/wealth/health/progeny/education/spirituality) ' +
+            'judgment_query requires either `domain` (see recognized domain list) ' +
             'or `bhava` (1-12).',
         },
         is_error: true,
@@ -493,6 +603,143 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
 
     const judgment_flags: JudgmentFlagEntry[] = []
     const fact_ids = new Set<string>()
+
+    // ── F-57: domain-resolution disclosure (§N.6 pt 3 / §N.7 pt 6 / §N.8) ──────────────
+    // The requested domain KEY and the canonical domain the domain-scoped legs actually
+    // read are two different things (`marriage` reads `relationship`; `moksha` reads
+    // `spirituality`; a bare bhāva-3 has no canonical domain at all). Before this fix the
+    // difference was invisible on the wire AND — for eleven domains — resolved to the dead
+    // literal `'other'`, so an empty result was indistinguishable from a genuinely clean
+    // chart. Every response now states the resolution, and flags it whenever the resolved
+    // domain is not the requested one.
+    const requestedDomainKey = domainKey ?? (domainInput ?? null)
+    // F-165: filled in below (Step "afflictions/mechanisms") from a REAL live count against
+    // bodha_msr_signals/bodha_mechanisms — never a hardcoded list of known-empty domains
+    // (§N.7 item 3 / §N.8). null until that query runs; distinguishes "not yet measured" from
+    // "measured zero" for any caller reading this object before the coverage query executes.
+    let signal_domain_row_coverage: { msr_signals: number; mechanisms: number } | null = null
+    const domain_resolution = {
+      requested: requestedDomainKey,
+      requested_bhava: domainInput ? null : spec.bhava,
+      resolved_signal_domain: spec.signal_domain,
+      is_exact: requestedDomainKey === spec.signal_domain,
+      is_canonical: isCanonicalDomain(spec.signal_domain),
+      // F-165: population, NOT vocabulary. is_exact/is_canonical above are correct about
+      // whether `resolved_signal_domain` is a real member of the 13-domain vocabulary — they
+      // say nothing about whether either source table has ever carried a row tagged with it.
+      // 'general' is vocabulary-exact AND canonical AND (on the canonical chart) carries ZERO
+      // bodha_msr_signals rows — a different axis entirely; conflating the two is the defect
+      // this finding closes (§N.6). get signal_domain_row_coverage.
+      get signal_domain_row_coverage() {
+        return signal_domain_row_coverage
+      },
+      applies_to: [
+        'bearing_yogas_corroboration (bodha_msr_signals.domains_affected_array)',
+        'bearing_afflictions (bodha_msr_signals.domains_affected_array)',
+        'affliction_mechanisms (bodha_mechanisms.domains_affected_array)',
+        'gochara_sweep (brahma_event_ontology.domain)',
+        'the bodha_signals_get / gochara_forecast_get drill pointers',
+      ],
+      note:
+        'The domain-scoped legs listed in applies_to are keyed by the CANONICAL 13-domain ' +
+        'vocabulary (brahmagyan/domain_vocabulary.py), not by the shastra-map domain key. ' +
+        'resolved_signal_domain is the tag those legs were actually queried with — read any ' +
+        'empty domain-scoped leg against THIS value, not against `requested` (F-57). ' +
+        'signal_domain_row_coverage (F-165) is the separate population axis: {msr_signals, ' +
+        'mechanisms} total row counts (any valence) for resolved_signal_domain, measured live ' +
+        'per call — a domain can be vocabulary-exact/canonical (is_exact/is_canonical true) ' +
+        'and still carry zero rows in either or both source tables, which the ' +
+        '`domain_structurally_unpopulated` judgment_flag discloses (see afflictions_empty).',
+    }
+    if (bareBhavaNoCanonicalDomain) {
+      judgment_flags.push(judgmentFlag(
+        'domain_resolution_fallback',
+        `bhāva ${spec.bhava} has no dedicated domain in the canonical 13-domain vocabulary ` +
+        `(there is no 'siblings'/'parākrama' member) — the domain-scoped legs ` +
+        `(${domain_resolution.applies_to.join('; ')}) were read against the fallback bucket ` +
+        `'${spec.signal_domain}', NOT against bhāva ${spec.bhava}'s own significations. ` +
+        'Their silence is therefore not an all-clear for this bhāva (S4-05 discipline); ' +
+        'the bhāva/bhāveśa/kāraka/varga legs above ARE bhāva-specific and stand on their own.',
+      ))
+    } else if (!domain_resolution.is_exact) {
+      judgment_flags.push(judgmentFlag(
+        'domain_resolution_aliased',
+        `domain '${requestedDomainKey}' resolves to the canonical signal domain ` +
+        `'${spec.signal_domain}' for the domain-scoped legs ` +
+        `(${domain_resolution.applies_to.join('; ')}) — a deliberate vocabulary mapping, ` +
+        'disclosed rather than applied silently (F-57). The bhāva/kāraka/varga legs remain ' +
+        `specific to '${requestedDomainKey}'.`,
+      ))
+    }
+
+    // ── F-107 (PARIŚEṢA-V4, CL-20): cross-varga scope disclosure ──────────────────
+    // SHASTRA_MAP assigns each domain exactly ONE operative varga, and only that varga's
+    // bhāveśa/kāraka dignity enters the verdict (the R-46/WP-1.8 varga term). Some domains
+    // classically carry more than one: wealth is the load-bearing case — BPHS Ch.6-7 splits
+    // dhana (accumulated wealth, D2 Horā) from lābha (gains/income, D11 Rudrāṃśa/
+    // Ekādaśāṃśa). judgment_query weights D2 alone.
+    //
+    // That narrower scope is a defensible choice; presenting it WITHOUT SAYING SO was not.
+    // A caller asking "what converges across my D1, D2, D11 and Indu Lagna on wealth?" got a
+    // D1+D2 verdict with no field anywhere naming D11 or Indu Lagna as unconsulted — a silent
+    // substitution of the narrower answer for the one asked (CLAUDE.md §N.7 item 6 / §N.8).
+    //
+    // This flag does NOT fold D11/Indu Lagna into the verdict. Doing so would mean inventing
+    // a cross-varga convergence weighting for which no ratified methodology exists in this
+    // instrument — see 00_ARCHITECTURE/briefs/parisesa/
+    // F107_DIVISIONAL_MECHANISM_DESIGN_CONTRACT_v1_0.md. It states the real scope and hands
+    // over live drill handles to the surfaces that DO serve those legs today.
+    // F-164: DOMAIN_DIRECT_VARGAS is now a live read of brahma_vichara_constants — hydrate it
+    // before the synchronous corroboratingVargasNotWeighted() call below (and before the
+    // reading_checklist_units block further down, which reads `crossVarga` computed here).
+    // Fails loudly (throws, caught nowhere in this handler — an honest 500) if the constants
+    // row is missing; never silently falls back to a stale literal (§N.7 item 3).
+    await ensureDomainDirectVargasLoaded()
+    const crossVarga = corroboratingVargasNotWeighted(spec.signal_domain, spec.varga)
+    const induLagnaUnjoined = DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+    if (crossVarga.length > 0 || induLagnaUnjoined) {
+      const missing = [
+        ...crossVarga.map(v => `${v} (divisional)`),
+        ...(induLagnaUnjoined ? ['Indu Lagna (special_lagna)'] : []),
+      ]
+      // F-164: the wealth-set example quoted below used to be a hardcoded literal
+      // (['D1','D2','D9','D11']) — read live instead (§N.7 item 3). Degrades to an honest
+      // "(unavailable)" phrase rather than failing this orientation note specifically, since
+      // ensureDomainDirectVargasLoaded() above already failed loudly if the row were
+      // genuinely missing — this second read only ever fails on a transient error.
+      let wealthSetDisplay = "(unavailable — brahma_vichara_constants has no 'wealth' entry)"
+      try {
+        const constants = await getOperativeVargaConstants()
+        const wealthEntry = constants['wealth']
+        if (wealthEntry) {
+          wealthSetDisplay = `[${wealthEntry.vargas.map(v => `'${v}'`).join(',')}], domain_provisional=${wealthEntry.provisional}`
+        }
+      } catch {
+        // leave the honest "(unavailable)" phrase in place
+      }
+      judgment_flags.push(
+        judgmentFlag(
+          'cross_varga_convergence_not_computed',
+          `This verdict weights the operative varga ${spec.varga} ONLY. Classical for ` +
+            `'${spec.signal_domain}' but NOT consulted here: ${missing.join(', ')}. ` +
+            'Do NOT read this D1+' + spec.varga + ' verdict as a cross-varga convergence ' +
+            'finding. Where to get the real thing: (1) ganita_vichara_get ' +
+            `(family='varga_ratification', domain='${spec.signal_domain}') — a per-graha ` +
+            'agree/oppose vote of the domain\'s RATIFIED operative-varga set against the D1 ' +
+            'dignity direction, the one genuine cross-varga convergence primitive built here ' +
+            `(wealth's set is ${wealthSetDisplay}); add ` +
+            "family='varga_ratification_divergence' for the vargas that CONTRADICT D1. " +
+            `(2) assess_${spec.signal_domain} (varga_analysis.per_varga` +
+            (induLagnaUnjoined ? ' + varga_analysis.indu_lagna' : '') + ') for the raw per-varga ' +
+            'legs side by side. (3) ganita_chart_facts_get (divisional_chart=…)' +
+            (induLagnaUnjoined ? ', ganita_special_lagnas_get' : '') + ' for full placements. ' +
+            'Caveats that remain honest gaps: varga_ratification votes on GRAHAS, not on bhāvas, ' +
+            'and covers vargas only — no special lagna (Indu included) takes part in any ' +
+            'ratification vote; and NO named multi-node MECHANISM spanning divisional charts is ' +
+            'computed anywhere (bodha_mechanisms_get is rāśi-D1-only). See F-107.',
+        ),
+      )
+    }
 
     try {
       // ── Step 1+2 (lagna frame): bhava condition, bhāveśa condition, occupants, aspects ──
@@ -540,19 +787,35 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         bhavaSignMoon.fact_ids.forEach(f => fact_ids.add(f))
         occupantsMoon.fact_ids.forEach(f => fact_ids.add(f))
         lordConditionMoon.fact_ids.forEach(f => fact_ids.add(f))
+        // F-159 (PARIŚEṢA-V4): the chandra frame's own frame-determining fact (the Moon's sign)
+        // can disagree across the 5 real ayanamshas — disclose it, never silently pick one.
+        // Fires ONLY on a genuine observed disagreement (never on missing-data alone — see
+        // AyanamshaFrameSensitivity's `null` case, an honest "insufficient data" that this flag
+        // deliberately does NOT surface as either sensitive or stable).
+        const sensitivity = bhavaSignMoon.ayanamsha_frame_sensitivity
+        if (sensitivity?.frame_sensitivity_class === 'ayanamsha_sensitive') {
+          judgment_flags.push(judgmentFlag(
+            'moon_frame_ayanamsha_sensitive',
+            `the chandra (from-Moon) frame used for this bhāva's Sudarshana leg is itself ` +
+            `ayanamsha-sensitive: the Moon's sign agrees on only ${sensitivity.variation.ayanamsha_agreement} ` +
+            `across the 5 real ayanamshas (divergent: ${sensitivity.variation.divergent_ayanamshas.join(', ')}). ` +
+            'A disclosure of frame instability, not a ruling on which ayanamsha is correct.',
+            'info',
+          ))
+        }
       } catch (e) {
         judgment_flags.push(judgmentFlag('from_moon_resolution_failed', String(e)))
       }
 
       // ── Step 6: operative-varga confirmation (reuses get_divisionals — no parallel query) ──
       const vargaConfirmation: Record<string, unknown>[] = []
-      let vargaConfirmed = false
+      let vargaPlacementsPresent = false
+      const grahasToConfirm = [
+        { role: 'bhavesha' as const, name: lordCondition.graha, code: lordCondition.graha_code },
+        ...karakaConditions.map(k => ({ role: 'karaka' as const, name: k.graha, code: k.graha_code })),
+      ]
       try {
         const { getDivisionalsCapability } = await import('./L1_ganita/get_divisionals')
-        const grahasToConfirm = [
-          { role: 'bhavesha', name: lordCondition.graha },
-          ...karakaConditions.map(k => ({ role: 'karaka', name: k.graha })),
-        ]
         for (const { role, name } of grahasToConfirm) {
           // chart_divisionals.graha stores the classical display name ("Venus"), NOT a
           // 2-letter code — verified against both canonical charts before wiring this call
@@ -565,12 +828,47 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             const c = res.content as Record<string, unknown>
             const rows = (c['rows'] as Record<string, unknown>[]) ?? []
             for (const r of rows) vargaConfirmation.push({ role, ...r })
-            if (rows.length > 0) vargaConfirmed = true
+            if (rows.length > 0) vargaPlacementsPresent = true
           }
         }
       } catch (e) {
         judgment_flags.push(judgmentFlag('varga_confirmation_failed', String(e)))
       }
+
+      // ── F-160: varga_confirmed's REAL tri-state, from chart_vichara.varga_ratification ──
+      // The old `varga_confirmed` was a bare `vargaConfirmation.rows.length > 0` — "a
+      // placement row exists" against a near-always-populated table, never "the varga
+      // ratifies the D1 direction" (textbook §N.8: a signal with no real detector behind the
+      // claim it makes is null, not green). The real detector is the agree/oppose vote
+      // ga_vichara_writer.py already computes per (subject, domain) — fetchVargaRatification
+      // (reading_checklist.ts) reads it; extracted there so it is unit-testable against one
+      // mocked query, independent of this handler's dozen other DB calls.
+      const vargaRatification = await fetchVargaRatification(
+        chart_id, ayanamsha_id, spec.signal_domain, spec.varga,
+        grahasToConfirm.map(({ role, code }) => ({ role, code })),
+      )
+      if (!vargaRatification.ok) {
+        judgment_flags.push(judgmentFlag(
+          'varga_ratification_lookup_failed',
+          'the chart_vichara.varga_ratification lookup threw — varga_confirmed falls back to ' +
+          'the honest "did not vote" (?) state rather than a silently-wrong ✓/✗.',
+        ))
+      } else if (vargaRatification.relation === 'no_row' || vargaRatification.relation === 'abstain_missing') {
+        judgment_flags.push(judgmentFlag(
+          'varga_ratification_unavailable',
+          `no chart_vichara.varga_ratification row for domain '${spec.signal_domain}', varga ` +
+          `${spec.varga}, subject(s) ${grahasToConfirm.map(g => g.code).join('/')} — either this ` +
+          'domain is outside brahma_vichara_constants.operative_vargas\' scope, or ga_vichara has ' +
+          'not been built for this chart yet. An honest unknown, not an implicit ✓ or ✗.',
+        ))
+      }
+      const vargaRatificationRelation = vargaRatification.relation
+      const vargaRatificationPerSubject = vargaRatification.per_subject
+      const vargaRatificationDomainProvisional = vargaRatification.domain_provisional
+      // The served mark. 'oppose' gets a mark DISTINCT from a bare ✗ — it is itself a finding
+      // (the varga actively contradicts D1), not an absence of evidence. 'abstain'/
+      // 'abstain_missing'/'no_row' are an honest unknown, never defaulted to ✓ or ✗.
+      const vargaConfirmedMarkValue = vargaConfirmedMark(spec.varga, vargaRatificationRelation)
 
       // ── Step 7: bearing yogas/doshas (formed) — notably-absent is an honest gap (D3 unbuilt) ──
       // A3 (CR-92 residue, R-3): firings-authoritative source is ga_yoga_firings (real strength +
@@ -763,30 +1061,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // drill tool), and dedupe by distinct activation window — keeping the highest
             // convergence per window, capped at 6.
             const rawActivations = (Array.isArray(c['activations']) ? c['activations'] : []) as Array<Record<string, unknown>>
-            const byWindow = new Map<string, Record<string, unknown>>()
-            for (const a of rawActivations) {
-              const compact = {
-                id: a['id'],
-                signal_id: a['signal_id'],
-                signature_class: a['signature_class'],
-                activation_start: a['activation_start'],
-                activation_peak_date: a['activation_peak_date'],
-                activation_end: a['activation_end'],
-                convergence_score: a['convergence_score'],
-                dasha_activation_proximity_score: a['dasha_activation_proximity_score'],
-                orb_strength: a['orb_strength'],
-                domains_affected_array: a['domains_affected_array'],
-                source_citation: a['source_citation'],
-              }
-              const key = `${String(a['activation_start'] ?? '')}|${String(a['activation_peak_date'] ?? '')}|${String(a['activation_end'] ?? '')}|${String(a['signature_class'] ?? '')}`
-              const prev = byWindow.get(key)
-              const prevConv = prev ? Number(prev['convergence_score'] ?? -Infinity) : -Infinity
-              const curConv = Number(a['convergence_score'] ?? -Infinity)
-              if (!prev || curConv > prevConv) byWindow.set(key, compact)
-            }
-            const trimmedActivations = [...byWindow.values()]
-              .sort((x, y) => Number(y['convergence_score'] ?? 0) - Number(x['convergence_score'] ?? 0))
-              .slice(0, 6)
+            const trimmedActivations = pickTopKalaActivations(rawActivations, 6)
             timing['kala_activations'] = trimmedActivations
             if (rawActivations.length > trimmedActivations.length) {
               judgment_flags.push(judgmentFlag(
@@ -954,7 +1229,19 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         bhavesha: true,
         karaka: karakaConditions.length > 0,
         from_moon: bhavaSignMoon !== null && lordConditionMoon !== null,
-        varga_confirmed: vargaConfirmed ? `${spec.varga}✓` : `${spec.varga}✗ (no divisional row found)`,
+        // F-160: varga_confirmed is now a REAL tri-state derived from chart_vichara.
+        // varga_ratification's agree/oppose vote — not a bare "a placement row exists" check.
+        varga_confirmed: vargaConfirmedMarkValue,
+        // F-160: kept as its OWN, honestly-labelled field — the OLD (defective) signal, never
+        // flattened into varga_confirmed above (§N.6 item 1: that flattening was the defect).
+        varga_placements_present: vargaPlacementsPresent,
+        // F-160: the raw per-subject (bhāveśa/kāraka) relation this call's varga_confirmed
+        // was aggregated from, plus whether the domain's operative-varga set is itself
+        // design-ratified (F-107/F-158) or still provisional — surfaced per the finding's
+        // "surface value_jsonb.domain_provisional" requirement.
+        varga_ratification_relation: vargaRatificationRelation,
+        varga_ratification_per_subject: vargaRatificationPerSubject,
+        varga_ratification_domain_provisional: vargaRatificationDomainProvisional,
         // R-46 (WP-1.8): distinct from varga_confirmed (placement rows exist) — this asserts the
         // operative-varga dignity actually ENTERED the verdict composite as a weighted term.
         varga_weighted_into_verdict: vargaTermApplied,
@@ -979,6 +1266,15 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       // composite; supporting and threatening layers are served SEPARATELY.
       let bearing_afflictions: Record<string, unknown>[] = []
       let affliction_mechanisms: Record<string, unknown>[] = []
+      // F-165: the mechanisms store's actual domain coverage — reported on EVERY call,
+      // populated or not (§N.8: "nothing excluded" must not read as "never evaluated"). Never
+      // a hardcoded list of covered/uncovered domains; always a live count against
+      // bodha_mechanisms for THIS chart/ayanamsha (see fetchDomainStructuralCoverage below).
+      let affliction_mechanisms_coverage: {
+        covered_domains: number
+        total_canonical_domains: number
+        this_domain_covered: boolean
+      } | null = null
       try {
         const advRes = await query<{
           signal_id: string; signal_type_id: string; signal_summary_text: string | null
@@ -1024,12 +1320,50 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       } catch (e) {
         judgment_flags.push(judgmentFlag('afflictions_fetch_failed', String(e)))
       }
+
+      // F-165: structural-population coverage, ANY valence — a real live count each call,
+      // never a hardcoded list of known-empty domains (§N.7 item 3 / §N.8). Distinct from the
+      // malefic/mixed-only afflictions fetch above: this measures whether the source tables
+      // have EVER carried a row tagged with resolved_signal_domain at all, so a zero here
+      // cannot be read as "chart is clean" — it means the domain was never populated in this
+      // store. Runs independently of the afflictions fetch's own try/catch so a coverage-query
+      // failure never masks an otherwise-successful afflictions result (or vice versa).
+      const coverage = await fetchDomainStructuralCoverage(chart_id, ayanamsha_id, spec.signal_domain)
+      if (coverage.available) {
+        signal_domain_row_coverage = { msr_signals: coverage.msr_signals, mechanisms: coverage.mechanisms }
+        affliction_mechanisms_coverage = {
+          covered_domains: coverage.mechanisms_domain_coverage,
+          total_canonical_domains: coverage.total_canonical_domains,
+          this_domain_covered: coverage.mechanisms > 0,
+        }
+        if (coverage.structurally_unpopulated) {
+          judgment_flags.push(judgmentFlag(
+            'domain_structurally_unpopulated',
+            `canonical domain '${spec.signal_domain}' carries ZERO rows (any valence) in both ` +
+            'bodha_msr_signals and bodha_mechanisms for this chart — this is a DIFFERENT axis ' +
+            "from domain_resolution.is_exact/is_canonical (vocabulary correctness): 'general' " +
+            'IS a canonical, vocabulary-exact tag, but nothing in these stores has ever been ' +
+            `tagged with it (mechanisms store covers ${coverage.mechanisms_domain_coverage} of ` +
+            `${coverage.total_canonical_domains} canonical domains total). Read the ` +
+            'afflictions_empty flag below (if present) against THIS structural-emptiness, not ' +
+            'as a clean-chart finding (F-165) — measured live, never from a hardcoded ' +
+            'known-empty-domain list.',
+          ))
+        }
+      }
       if (bearing_afflictions.length === 0 && affliction_mechanisms.length === 0) {
         judgment_flags.push(judgmentFlag(
           'afflictions_empty',
-          'no adverse-valence (malefic/mixed) signal or affliction mechanism ' +
-          'bears on this domain — reported honestly (DR-9 Part B partitioned serve; an honest ' +
-          'empty threat layer, not an omission).',
+          `no adverse-valence (malefic/mixed) signal or affliction mechanism is tagged with ` +
+          `canonical domain '${spec.signal_domain}' on this chart — reported honestly (DR-9 Part B ` +
+          'partitioned serve; an honest empty threat layer, not an omission). ' +
+          'F-57: this flag names the CANONICAL domain the threat layer was queried with, not the ' +
+          'requested key — an empty threat layer is only an all-clear for that tag (see ' +
+          '`domain_resolution`). Prior to F-57 eleven domains queried the dead literal ' +
+          "'other', which matches nothing, so this flag could not ever read false for them. " +
+          'F-165: if `domain_structurally_unpopulated` is ALSO present above, this emptiness is ' +
+          'structural non-coverage, not a clean-chart signal — see domain_resolution.' +
+          'signal_domain_row_coverage.',
         ))
       } else {
         judgment_flags.push(judgmentFlag(
@@ -1093,8 +1427,21 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       if (gochara.available && !gochara.domain_covered) {
         judgment_flags.push(judgmentFlag(
           'gochara_domain_not_covered',
-          `the gochara sweep does not cover the '${spec.signal_domain}' domain ` +
-          'for this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get.',
+          `the gochara sweep carries no windows for canonical domain '${spec.signal_domain}' ` +
+          `(requested: ${requestedDomainKey ? `'${requestedDomainKey}'` : `bhāva ${spec.bhava}`}) ` +
+          'on this chart — its silence here is NOT an all-clear (S4-05 discipline); drill kala_windows_get. ' +
+          'See `domain_resolution` for how the requested domain mapped to the queried one (F-57).',
+        ))
+      }
+      if (gochara.windows[0]?.is_past_peak === true) {
+        judgment_flags.push(judgmentFlag(
+          'gochara_top_window_already_peaked',
+          `the top-ranked (highest |intensity|) window in gochara_sweep.top_windows ` +
+          `('${gochara.windows[0].event_class}', peak_date=${gochara.windows[0].peak_date}) ` +
+          `already peaked before as_of_date=${as_of_date} — served for context (it is still ` +
+          `inside the query's date-overlap horizon), but its intensity ranking should not be ` +
+          `read as a forward-looking signal. See top_windows[].is_past_peak for the full set.`,
+          'info',
         ))
       }
 
@@ -1108,14 +1455,41 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         { unit: 'bhava_bhavesha_from_lagna', state: 'served', detail: `bhāva ${spec.bhava} sign + lord + occupants + aspects (lagna frame)` },
         { unit: 'bhava_bhavesha_from_chandra', state: bhavaSignMoon !== null && lordConditionMoon !== null ? 'served' : 'not_computed', detail: 'Sudarshana (Moon-frame) leg' },
         { unit: 'karakas', state: karakaConditions.length > 0 ? 'served' : 'not_joined', count: karakaConditions.length, detail: karakaConditions.length > 0 ? spec.karakas.join(', ') : 'no kāraka defined for a bare-bhāva query', ...(karakaConditions.length === 0 ? { drill: 'ganita_chart_facts_get' } : {}) },
-        { unit: 'operative_varga', state: vargaConfirmed ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
+        { unit: 'operative_varga', state: vargaPlacementsPresent ? 'served' : 'empty_for_this_chart', detail: `${spec.varga} confirmation of bhāveśa/kāraka` },
+        // F-107: the domain's OTHER classical vargas. SHASTRA_MAP weights exactly one
+        // operative varga into the verdict; a domain like wealth classically carries two
+        // (D2 dhana + D11 lābha). Named here as not_joined with a live drill rather than
+        // left invisible behind an `operative_varga: served` box that reads as complete.
+        ...(crossVarga.length > 0
+          ? [{
+              unit: 'corroborating_vargas',
+              state: 'not_joined' as const,
+              count: crossVarga.length,
+              detail:
+                `${crossVarga.join('+')} — classical for '${spec.signal_domain}' but NOT weighted into this verdict ` +
+                `(only the operative varga ${spec.varga} is). No cross-varga convergence is computed here.`,
+              drill: `ganita_vichara_get (family='varga_ratification', domain='${spec.signal_domain}') / assess_${spec.signal_domain} (varga_analysis.per_varga) / ganita_chart_facts_get (divisional_chart=${crossVarga[0]})`,
+            }]
+          : []),
         { unit: 'ashtakavarga', state: 'not_joined', detail: 'bhāva AV bindus not folded into judgment_query', drill: 'ganita_chart_facts_get (category=ashtakavarga_*) / assess_* (varga_analysis)' },
-        { unit: 'special_lagnas', state: 'not_joined', detail: 'Indu/Ārūḍha/Hora lagnas not folded here', drill: 'ganita_special_lagnas_get' },
+        {
+          unit: 'special_lagnas',
+          state: 'not_joined',
+          detail: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+            // F-107: for wealth, Indu Lagna is not a generic "some lagna we skipped" — it is
+            // THE Jaimini wealth-strength lagna, stored two_pass_verified, and served by
+            // assess_wealth. Name it and where it is, so the gap is actionable.
+            ? 'Indu Lagna (Jaimini wealth-strength lagna) is computed + two_pass_verified for this chart but NOT folded into this verdict; Ārūḍha/Horā lagnas likewise'
+            : 'Indu/Ārūḍha/Hora lagnas not folded here',
+          drill: DOMAIN_INDU_LAGNA.has(spec.signal_domain)
+            ? `ganita_special_lagnas_get (categories=["special_lagna"]) / assess_${spec.signal_domain} (varga_analysis.indu_lagna)`
+            : 'ganita_special_lagnas_get',
+        },
         { unit: 'sensitive_degree_firings', state: sensitive.firings.length > 0 ? 'served' : (sensitive.available ? 'empty_for_this_chart' : 'not_computed'), count: sensitive.firings.length, detail: 'puṣkara/gaṇḍānta/mṛtyu-bhāga/kartari fired-state (MC-030)' },
         { unit: 'kp_cusp_chain', state: kp.cusps.length > 0 ? 'served' : 'not_computed', count: kp.cusps.length, detail: `KP sub-lord chain for cusp(s) ${kpCusps.join('/')} (MC-031)` },
         { unit: 'yogi_avayogi', state: 'not_joined', detail: 'yogi/avayogi/duplicate-yogi/sahayogi now computed (T6 / MC-029, fact_category sensitive_point_yogi) but not yet folded into this judgment', drill: 'ganita_sensitive_degrees_get' },
         { unit: 'dasha_levels', state: timingAnchored ? 'served' : 'empty_for_this_chart', detail: 'Vimśottarī current + lord/kāraka mahādaśā windows + kala activation' },
-        { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, domain='${spec.signal_domain}' (MC-033)` },
+        { unit: 'gochara_sweep', state: gochara.domain_covered ? 'served' : (gochara.available ? 'empty_for_this_chart' : 'not_computed'), count: gochara.upcoming_window_count, detail: `forward transit windows, canonical domain='${spec.signal_domain}'${domain_resolution.is_exact ? '' : ` (requested '${requestedDomainKey ?? `bhāva ${spec.bhava}`}' — see domain_resolution, F-57)`} (MC-033)` },
         { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal judgment', drill: 'ganita_tajaka_get' },
       ]
       const exhaustiveness = checklistExhaustiveness(reading_checklist_units)
@@ -1140,7 +1514,7 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
         // drill pointer follows suit. get_signals remains for the demoted bearing_yogas_corroboration
         // (MSR) leg, distinct from this.
         { instrument: 'ganita_yoga_firings_get', hint: 'full fired-yoga detail (strength, bhaṅga/cancellation, partial-formation %, dāśā-activation) beyond the domain-bearing subset shown in bearing_yogas here.', pointer_type: 'opposing_yoga' },
-        { instrument: 'bodha_signals_get', hint: `domain=${spec.signal_domain}, full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
+        { instrument: 'bodha_signals_get', hint: `domain=${spec.signal_domain} (the canonical tag this domain resolves to — F-57), full yoga+dosha+karaka_alignment MSR signal set beyond bearing_yogas_corroboration's top ${max_signals} shown here — secondary/corroboration only (A3/R-3). (SC-18: was 'query_signals', a non-existent MCP tool name.)`, pointer_type: 'opposing_yoga' },
         { instrument: 'ganita_dashas_get', hint: 'full multi-level dasha timeline beyond the current + mahadasha-window slice shown here.', pointer_type: 'dasha_of_promise' },
         { instrument: 'bodha_graph_traverse_get', hint: `about:lord_of(bhava ${spec.bhava}) — causal graph context for the bhāveśa.`, pointer_type: 'dispositor_chain' },
         { instrument: 'ref_rules_search', hint: `verse citations for ${spec.label.toLowerCase()} judgment (BPHS/Phaladeepika bhava-adhyaya). (RC-04: was 'query_classical_texts', the internal registry capability name (marsys://tool/L0/query_classical_texts), not a live MCP tool name — same SC-18 dead-pointer class as the two siblings above; ref_rules_search is one of the tool's live MCP aliases per mcp_capability_bridge.ts.)`, pointer_type: 'other' },
@@ -1156,10 +1530,17 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
           chart_id,
           ayanamsha_id,
           about: { domain: domainKey, bhava: spec.bhava, label: spec.label, karakas: spec.karakas, operative_varga: spec.varga },
+          // F-57: which canonical domain the domain-scoped legs were ACTUALLY queried with.
+          domain_resolution,
           checklist: {
             bhava_condition: {
               from_lagna: { sign: bhavaSignLagna.sign, house_number: bhavaSignLagna.house_number, frame: 'lagna' },
-              from_chandra: bhavaSignMoon ? { sign: bhavaSignMoon.sign, house_number: bhavaSignMoon.house_number, frame: 'chandra' } : null,
+              from_chandra: bhavaSignMoon ? {
+                sign: bhavaSignMoon.sign, house_number: bhavaSignMoon.house_number, frame: 'chandra',
+                // F-159: disclosure-only (never a correctness ruling) — null when the cross-
+                // ayanamsha Moon-sign read itself failed (additive; never blocks this leg).
+                ayanamsha_frame_sensitivity: bhavaSignMoon.ayanamsha_frame_sensitivity ?? null,
+              } : null,
             },
             bhavesha_condition: { from_lagna: lordCondition, from_chandra: lordConditionMoon },
             karaka_condition: karakaConditions,
@@ -1179,6 +1560,10 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
             // DR-9 Part B: the threatening layer (signed partitioned serve).
             bearing_afflictions,
             affliction_mechanisms,
+            // F-165: the store's own coverage, always present (populated or not) — so a 0-row
+            // leg reads as "this store covers N of 13 canonical domains and not this one" when
+            // that is the truth, never as a clean-chart finding (§N.8).
+            affliction_mechanisms_coverage,
             timing_hooks: timing,
             // T5 (PŪRTI): the three computed-but-never-joined classical legs, now served inline.
             sensitive_degree_firings: sensitive.firings,
@@ -1187,9 +1572,13 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
               domain: spec.signal_domain,
               domain_covered: gochara.domain_covered,
               upcoming_window_count: gochara.upcoming_window_count,
+              past_peak_window_count: gochara.past_peak_window_count,
               valence_breakdown: gochara.valence_breakdown,
               window_range: gochara.window_range,
-              top_windows: gochara.windows,
+              // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
+              // distinguish genuine timing windows from era-scale context rows.
+              // Bare point rows (point-shaped, no peak_date) are suppressed per §N.6.
+              top_windows: withSweepDisclosure(gochara.windows ?? []),
               note: gochara.note,
             },
           },
@@ -1216,6 +1605,79 @@ export const judgmentQueryCapability: CapabilityDescriptor = {
       return { content: { error: String(err), chart_id }, is_error: true }
     }
   },
+}
+
+/**
+ * F-KALA-1 (L3_W1_ANALYSIS_BATCH_E.md, ka_kalasutra finding 1): `kala_activation`'s
+ * `convergence_score`/`orb_strength` are 99.6% NULL (measured) — `ka_sangam` only ever
+ * produces windows for ≤260 of ~50,104 activation predicates. Ranking on either column
+ * here (as this used to) made "best row per window" and "top 6 overall" both effectively
+ * arbitrary for 99.6% of rows: a `?? -Infinity`/`?? 0` default never resolves a real
+ * ordering when almost every candidate carries that same default, so whichever row the
+ * fetch happened to return first silently won.
+ *
+ * `dasha_activation_proximity_score` is 0% NULL on the same rows (measured) and is the
+ * row's own strength-like measure (dignity × non-affliction, range [0,1], higher =
+ * stronger) — the honest primary rank key. `convergence_score`/`orb_strength` are kept as
+ * SECONDARY tiebreaks (real signal for the small fraction of rows `ka_sangam` does cover),
+ * then `id` as the final deterministic tiebreak (§N.7 item 2: a selection reducing a set
+ * to one row needs a TOTAL order, not a partial one that silently degrades to "first
+ * fetched" the instant every candidate ties on the primary key).
+ */
+function kalaActivationRankKey(row: Record<string, unknown>): [number, number, number] {
+  const proximity = Number(row['dasha_activation_proximity_score'])
+  const convergence = Number(row['convergence_score'])
+  const orb = Number(row['orb_strength'])
+  return [
+    Number.isFinite(proximity) ? proximity : -Infinity,
+    Number.isFinite(convergence) ? convergence : -Infinity,
+    Number.isFinite(orb) ? orb : -Infinity,
+  ]
+}
+
+/** Descending rank comparator over `kalaActivationRankKey`, id as the final total-order
+ *  tiebreak. Exported so a caller wanting the same ranking discipline elsewhere (e.g. a
+ *  future ahead.ts/assess_domain.ts fix per F-KALA-1's other named call sites) can reuse
+ *  it rather than re-deriving a parallel, potentially-drifting copy. */
+export function compareKalaActivationRank(a: Record<string, unknown>, b: Record<string, unknown>): number {
+  const [ap, ac, ao] = kalaActivationRankKey(a)
+  const [bp, bc, bo] = kalaActivationRankKey(b)
+  if (bp !== ap) return bp - ap
+  if (bc !== ac) return bc - ac
+  if (bo !== ao) return bo - ao
+  return String(a['id'] ?? '').localeCompare(String(b['id'] ?? ''))
+}
+
+/**
+ * Dedupes raw `kala_activation` rows by distinct window (start|peak|end|signature_class),
+ * keeping the highest-ranked row per window per `compareKalaActivationRank`, then returns
+ * the top `cap` compact rows overall by the same ranking. Pure — no I/O, no mutation of
+ * `rawActivations`.
+ */
+export function pickTopKalaActivations(
+  rawActivations: Array<Record<string, unknown>>,
+  cap: number,
+): Array<Record<string, unknown>> {
+  const byWindow = new Map<string, Record<string, unknown>>()
+  for (const a of rawActivations) {
+    const compact = {
+      id: a['id'],
+      signal_id: a['signal_id'],
+      signature_class: a['signature_class'],
+      activation_start: a['activation_start'],
+      activation_peak_date: a['activation_peak_date'],
+      activation_end: a['activation_end'],
+      convergence_score: a['convergence_score'],
+      dasha_activation_proximity_score: a['dasha_activation_proximity_score'],
+      orb_strength: a['orb_strength'],
+      domains_affected_array: a['domains_affected_array'],
+      source_citation: a['source_citation'],
+    }
+    const key = `${String(a['activation_start'] ?? '')}|${String(a['activation_peak_date'] ?? '')}|${String(a['activation_end'] ?? '')}|${String(a['signature_class'] ?? '')}`
+    const prev = byWindow.get(key)
+    if (!prev || compareKalaActivationRank(compact, prev) < 0) byWindow.set(key, compact)
+  }
+  return [...byWindow.values()].sort(compareKalaActivationRank).slice(0, cap)
 }
 
 /**

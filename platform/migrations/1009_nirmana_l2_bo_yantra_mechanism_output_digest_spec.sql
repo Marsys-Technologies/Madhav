@@ -1,0 +1,118 @@
+-- 1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L2 (Bodha). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Conductor ruling on #1770 w406 (2026-09-09T16:05:21Z, full overnight
+-- authority per D-NATIVE-12): "L2 (Bodha) -- bo_yantra_mechanism,
+-- bo_anveshana, bo_upaya, bo_cdlm_summary's 2 excluded tables: standing
+-- backlog for the L2 lane... w406 itself notes L2 already proved this
+-- class fixable (bo_sangati, bo_cgm_motifs)." This migration closes the
+-- bo_yantra_mechanism item of that backlog.
+--
+-- bo_yantra_mechanism was RULED OUT of the fleet-wide determinism-review
+-- sweep on 2026-09-09 (#1770 w392 comment): `_detect_dispositor_cycles_and_
+-- chains`'s `disp_edges` SELECT (BoYantraMechanismWriter,
+-- pipeline/orchestrator/writers/bo_yantra_mechanism.py) had no ORDER BY.
+-- When the sign-dispositor graph has no closed cycle (true on all 3 live
+-- charts), `_find_convergent_chains` builds its `terminals` map by
+-- iterating `adj_subject` -- a dict built straight from that unordered
+-- fetch, so dict insertion order = row fetch order. That order directly
+-- determined the byte-order of the STORED `member_node_ids_array` and the
+-- `mechanism_name` string for every `convergent_dispositor_chain` row --
+-- fetch-order-dependent, not deterministic; PostgreSQL gives no ordering
+-- guarantee for a SELECT with no ORDER BY.
+--
+-- Fixed at the source (this cycle, same worktree): added an explicit
+-- `ORDER BY n1.node_subject` to the `disp_edges` SELECT, and an explicit
+-- `sorted(adj)` in `_find_convergent_chains`'s own iteration (belt-and-
+-- suspenders -- makes the `starts` list order reproducible even if the
+-- upstream fetch order changes, rather than leaning on incidental
+-- dict-insertion stability, matching the `_detect_mutual_aspects` fix
+-- precedent for `bo_cgm_motifs`, PR #2512).
+--
+-- Live-verified `n1.node_subject` (from_subject) is a genuine tie-free key
+-- for this ordering: `SELECT chart_id, ayanamsha_id, from_subject,
+-- count(*) FROM bodha_cgm_edges e JOIN bodha_cgm_nodes n1 ON n1.node_id =
+-- e.from_node_id WHERE e.edge_type = 'dispositor' GROUP BY chart_id,
+-- ayanamsha_id, from_subject HAVING count(*) > 1` -- ZERO rows, fleet-wide
+-- (all 3 charts, all 5 ayanamshas: 8 dispositor edges per chart x
+-- ayanamsha, 1 per graha, live sign-dispositor structure).
+--
+-- Rehearsed the fix directly against live prod (read-only -- this
+-- function only SELECTs): called `_detect_dispositor_cycles_and_chains`
+-- 4x per (chart, ayanamsha) across all 3 charts x all 5 ayanamshas (15
+-- combinations, 60 calls total), diffing a canonical-JSON digest of each
+-- result with the random `mechanism_id` surrogate PK excluded (the same
+-- exclusion class every prior spec in this campaign applies) -- 1 distinct
+-- digest per combination, i.e. fully stable post-fix. Loaded the pre-fix
+-- (origin/main HEAD) writer version in the same session for contrast; it
+-- also returned a stable digest across 8 repeated calls on this
+-- unchanged live dataset and query plan -- consistent with this defect
+-- class being a genuine SQL-semantics risk (PostgreSQL never promises
+-- order without ORDER BY) rather than one that flips on every call in a
+-- single stable session/plan, the same characterization used for the
+-- `bo_chart_gestalt` (985) and other same-shape fixes in this campaign.
+--
+-- `BoYantraMechanismWriter` (`@register('bo_yantra_mechanism')`) confirmed
+-- the SOLE live writer of `bodha_mechanisms`: tree-wide grep for
+-- `bodha_mechanisms` across the whole `platform/` tree found it referenced
+-- in `routers/taranga.py`, `services/taranga_service.py`, and
+-- `bg_vidhi_primitives.py` -- all read-only (no INSERT/DELETE/UPDATE) --
+-- plus two test files. The writer's own `run()` issues an idempotent
+-- `DELETE FROM bodha_mechanisms WHERE chart_id = %s` before its per-
+-- ayanamsha inserts (CLAUDE.md §N.3 per-chart delete-then-insert).
+--
+-- Natural key: the table's own live UNIQUE CONSTRAINT is
+-- `bodha_mechanisms_chart_id_ayanamsha_id_build_id_mechanism_c_key`
+-- `(chart_id, ayanamsha_id, build_id, mechanism_class, fingerprint_hash)`
+-- -- `build_id` excluded from the digest's declared key per the standing
+-- DEP-ASSERT precedent (the writer's own idempotent per-chart delete means
+-- exactly one `build_id` generation exists per chart at any time; live-
+-- verified `SELECT chart_id, count(DISTINCT build_id) FROM
+-- bodha_mechanisms GROUP BY chart_id` -> exactly 1 for all 3 charts).
+-- `(ayanamsha_id, mechanism_class, fingerprint_hash)` (chart_id scoped via
+-- `where_equals`) live-verified 0 duplicate-key groups across all 3 charts
+-- x 5 ayanamshas (1,868 live rows fleet-wide).
+--
+-- `mechanism_id` excluded from value_columns (surrogate PK, `uuid.uuid4()`
+-- per row, standard random-PK-exclusion rule). `build_id`/`computed_at`
+-- excluded per the standard table-invariant exclusion class used
+-- throughout this campaign. All other 21 live columns checked for a
+-- 100%-NULL case on the canonical chart (the pgvector-exclusion
+-- precedent): none are -- `domains_affected_array` is the closest at
+-- 610/615 NULL, still short of 100%, kept per the `bo_pratijna`
+-- precedent (944) for a partially-NULL value column.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                    # == the literal below
+--   print(_validate_spec('bo_yantra_mechanism', spec, sha).asset_id)  # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, dict_row): INSERT this exact spec row ->
+-- call the REAL `compute_output_digest(cur, asset_id='bo_yantra_mechanism')`
+-- -> got back a clean digest hex
+-- (444c53ec935b376ebfddf6e5745593278039f97abca3ac9737ebe7113e69a877, no
+-- exception, key-preflight passed) -> conn.rollback() -> re-queried
+-- `asset_output_digest_specs` from a FRESH connection afterward and
+-- confirmed 0 rows for `bo_yantra_mechanism`, i.e. genuinely rolled back,
+-- nothing persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'bo_yantra_mechanism' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'bo_yantra_mechanism',
+  'b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"bodha_mechanisms","relation":"bodha_mechanisms","key_columns":["ayanamsha_id","mechanism_class","fingerprint_hash"],"value_columns":["chart_id","ayanamsha_id","snapshot_type","mechanism_name","mechanism_class","valence","member_node_ids_array","member_edge_ids_array","domains_affected_array","edge_strength_avg","edge_strength_min","edge_strength_max","edge_strength_formula_version","constituent_ga_vichara_ids_array","centrality_summary_jsonb","source_motif_id","fingerprint_hash","verification_pass_status","citation_ref","citation_human","engine_version"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

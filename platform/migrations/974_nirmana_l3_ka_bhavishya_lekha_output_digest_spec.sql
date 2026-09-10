@@ -1,0 +1,236 @@
+-- 974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L3 (Kala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear, widened
+-- fleet-wide audit). Fresh fleet-wide audit at cycle start (unchanged
+-- query, re-run): ~38 rows in the missing-spec set after #2493
+-- (ka_kala_darshana) merges.
+--
+-- Re-screened `bo_karanajala` fresh this cycle per standing next-cycle
+-- notes item 5, since L2's #2482 merged an edge/contradiction/node
+-- identity fix (the exact #1888/D-CND-29-class uuid4() defect this
+-- lane's prior ruled-out disposition was based on). Confirmed the
+-- specific defect IS fixed: grepped the live writer for
+-- uuid\.|uuid4|random\.|datetime.now -- the only hits remaining are
+-- comments referencing the OLD (now-removed) behaviour and a
+-- `computed_at = datetime.now(timezone.utc).isoformat()` per-row
+-- timestamp (same exclusion class as every other spec in this campaign).
+-- However bo_karanajala.py is 1943 lines -- by a wide margin the largest
+-- self-contained (non-services/-package) writer screened in this
+-- campaign so far (previous largest: ph_muhurta at 730+299=1029 lines
+-- writer+engine combined) -- with a genuinely complex edge_strength_v1
+-- formula pulling THREE separate ga_vichara-sourced lookups
+-- (valence_pass / varga_consistency / varga_ratification), a dasha
+-- temporal overlay via services.ka_temporal, argala logic, and TWO
+-- target tables (bodha_cgm_edges + bodha_contradictions). Screening it
+-- properly (full read + co-writer grep across both tables + a
+-- non-determinism audit of the vichara-lookup joins) will not fit in
+-- one bounded cycle unit at this campaign's established "read the
+-- writer in full" discipline -- same class of deferral as ka_kshetra's
+-- 19,016-line services package. DEFERRED (not ruled out, not picked)
+-- for a future cycle with a dedicated wider budget; flagged on #1770.
+-- Do not keep re-deriving this each cycle -- the identity defect is
+-- fixed, what remains is the full determinism/contamination screen.
+--
+-- Screened `ka_graha_sancara` next (per standing next-cycle notes item
+-- 4a) -- its 268-line shim IS self-contained (no services/ package logic
+-- feeds its run()), but reading it in full showed it is ANOTHER
+-- service-handler-class asset: its own docstring states "This is a
+-- SERVICE-KIND asset. The writer does NOT insert domain rows" (FORENSIC
+-- self-test against the 1984-02-05 birth chart + a service_health write
+-- to asset_registry only). Grepped for INSERT INTO / rows_inserted:
+-- BOTH return paths in run() return WriterResult(rows_inserted=0); zero
+-- INSERT statements anywhere in the file. Same ratified category as
+-- bo_samvada/mi_sankalpa/mi_abhilekha/mi_seva/ka_dasha_kala/ka_tulana/
+-- ka_muhurta_seva -- applied directly per D-NATIVE-12 overnight
+-- authority, not re-litigated.
+--
+-- Screened `ka_avadhi` (302 lines, confirmed self-contained -- no
+-- services/ka_avadhi/ package) and RULED IT OUT: its
+-- _FETCH_PRATIJNA_SQL has `ORDER BY bp.grade DESC` with no tiebreak.
+-- Live-verified NOT theoretical: for the canonical chart,
+-- `GROUP BY domain, grade HAVING count(*) > 1` returns health=2 rows
+-- BOTH at grade 4.710. That tie's fetch order feeds directly into the
+-- `activated_pratijna_ids` array order inside the persisted `dossier`
+-- jsonb column (truncation itself never engages -- max combined
+-- candidate count per lord is 8, under the [:10] cap -- but ties DO
+-- exist within the untruncated set, so a rebuild could reorder that
+-- array with zero substantive change). Same missing-total-ORDER-BY
+-- defect class as the historical ph_nimitta ruling. Flagged on #1770;
+-- needs `ORDER BY bp.grade DESC, bp.pratijna_id` before it is spec-safe.
+--
+-- Screened `ka_kalasutra` (285 lines, imports the shared
+-- services.ka_temporal helper -- used elsewhere in this campaign,
+-- e.g. bo_karanajala, not a per-asset package) and RULED IT OUT for TWO
+-- independent reasons:
+--   (1) its `kala_convergence` fetch (feeding a signal_id -> best-window
+--       `convergence_map`) has NO ORDER BY at all, and the reduction is
+--       a strict `>` (not `>=`) first-wins max-pick on convergence_score.
+--       Live-verified on chart 1c826d5a-41cb-4450-b4dc-59d440e5f75a (the
+--       only chart with kala_activation data today -- canonical chart
+--       482012f1 has zero rows in this table): 60 signal_ids have 6-79
+--       rows TIED at that signal's own max convergence_score. The winner
+--       among ties determines the persisted `activation_peak_date`,
+--       `orb_strength`, and `convergence_score` columns -- a real, live,
+--       non-dormant defect (unlike the ka_kala_darshana conv_score
+--       precedent, where 0 NULLs meant the risk path could never fire;
+--       here the ties are actually present in live data).
+--   (2) independently, `kala_activation` is NOT a clean sole-writer
+--       table: `services/taranga_service.py` was grepped as a co-writer
+--       hit for the SIBLING `kala_taranga` table (see the ka_taranga
+--       finding below), and that same grep pattern makes clear this
+--       campaign's co-writer check must always run before picking any
+--       kala_* table -- ka_kalasutra itself passed this specific check
+--       (kala_activation has no second writer), noted here only to
+--       record that the check was actually run, not skipped.
+-- Flagged on #1770; needs an `ORDER BY` (e.g. convergence_score DESC,
+-- window_start, chart_id) added to the kala_convergence fetch, and the
+-- max-pick changed to a stable reduction, before it is spec-safe.
+--
+-- Screened `ka_taranga` (257 lines writer + services/taranga_kernel/
+-- kernel.py, a shared PURE-function module -- harmonic_mean/month_range
+-- verified to contain no random/wall-clock primitives) and RULED IT OUT
+-- for a genuine co-writer contamination, not just a determinism defect:
+-- `services/taranga_service.py::record_evidence()` (line ~773) is a
+-- live, reachable, EXPLICIT opt-in write-through that INSERTs/
+-- ON-CONFLICT-UPDATEs directly into `kala_taranga`, called whenever an
+-- `activation()`/`curve()` result is cited by a reading or consumed by
+-- L5 -- entirely OUTSIDE the orchestrator's build-time transaction and
+-- NOT gated by ka_taranga's own per-chart DELETE-then-INSERT. This means
+-- `kala_taranga` rows can be silently mutated between builds by a code
+-- path this writer has no knowledge of -- the same class of problem as
+-- the ratified mi_bhavisya subset-of-tables complication, but on the
+-- SAME rows rather than a different table. Separately (not the primary
+-- disposition reason, but worth recording): `ka_taranga`'s own
+-- vimshottari MD fetch has NO `ayanamsha_id` filter at all --
+-- live-verified on chart 1c826d5a to produce genuinely OVERLAPPING
+-- dasha-lord periods (e.g. two different Jupiter MD ranges and a Rahu
+-- MD range all overlapping each other), the same CR-110 double
+-- dasha-spine bug class that ka_avadhi's own code comments document as
+-- ALREADY FIXED there -- the identical fix was evidently never ported
+-- to ka_taranga. Both findings flagged on #1770.
+--
+-- Picked instead: `ka_bhavishya_lekha` (366 lines, confirmed
+-- self-contained -- imports only brahmagyan.domain_vocabulary, the L0
+-- canonical-domain SSoT, no per-asset services/ package). Read in full.
+--
+-- Co-writer investigation (grepped `kala_bhavishya` tree-wide, excluding
+-- __pycache__/tests):
+--   (1) pipeline/orchestrator/kala_derivation_completeness_guard.py --
+--       config/prose only (declares the derivation-completeness edge
+--       kala_convergence -> kala_bhavishya -> ka_bhavishya_lekha for its
+--       own audit; does not write).
+--   (2) pipeline/orchestrator/writers/ph_nimitta.py +
+--       services/ph_nimitta/engine.py -- read-only (SELECT FROM
+--       kala_bhavishya; D37 "inherit kala_bhavishya projection as an
+--       anchor" into phala_anchors, an entirely different table).
+--   (3) bodha_writers/_idempotency.py -- a code-comment table-size
+--       reference only.
+-- KaBhavishyaLekhaWriter (this migration's asset) is the confirmed sole
+-- writer of `kala_bhavishya`.
+--
+-- Non-determinism check: the writer already carries its OWN documented
+-- fix for exactly this campaign's most common defect class (F-BHAV-3,
+-- SS N.7 item 2, cited in-line in the writer's own comments): the
+-- `kala_darshana`/`kala_convergence` join's ORDER BY used to have no
+-- tiebreak, so which 100 of the eligible windows survived `LIMIT 100`
+-- varied build-to-build whenever `effective_score` ties (documented and
+-- independently re-verified live: 100/100 rows tied at exactly 0.700 on
+-- chart 1c826d5a). The CURRENT query already carries a genuine total
+-- order: `ORDER BY kd.effective_score DESC NULLS LAST, kd.peak_date,
+-- kd.convergence_id` -- convergence_id is kala_convergence's own unique
+-- bigint PK, so this tiebreak cannot itself tie. The one remaining
+-- outcome-preservation mechanism (`_reattach_outcome`, carrying
+-- `outcome_recorded`/`outcome_notes` across a rebuild -- the one
+-- genuinely non-regenerable pair of columns on this table, an
+-- observation of the world rather than a derivation) is a plain dict
+-- keyed by `(signal_id, peak_date)`, entirely order-independent, and
+-- raises loudly (RuntimeError) rather than silently dropping data if a
+-- preserved outcome cannot be re-attached -- verified this path cannot
+-- fire spuriously today (0/100 rows carry any outcome on the chart with
+-- data). `_infer_domain`/`_build_falsifiability`/
+-- `_build_projection_narrative` are pure functions of a single row's own
+-- already-fetched fields (tier/domain/peak_date/eff_score/conf_label/
+-- rarity/net_label/tier_basis/conv_id/mode) via fixed string templates
+-- -- no wall-clock, random, or uuid primitive anywhere in the file. The
+-- one wall-clock read in the writer, `today = date.today()`, is used
+-- ONLY to bound the forward-looking `peak_date` WHERE-clause window (the
+-- SET of eligible rows for a genuinely rolling 5-year projection, an
+-- intentional design property of this asset, not a defect) -- it is
+-- never embedded into any persisted column's VALUE, so it does not
+-- affect same-day rehearsal/rebuild determinism, only the legitimate
+-- day-to-day drift of which projections are in scope, which is the
+-- asset's documented purpose.
+--
+-- Surrogate/non-owned columns excluded from the digest value columns
+-- (same exclusion class as every prior spec in this campaign):
+-- kala_bhavishya.id (surrogate PK, bigint sequence, NOT in the writer's
+-- own INSERT column list) and kala_bhavishya.computed_at (DEFAULT
+-- now(), also not in the writer's own INSERT column list -- confirmed
+-- by reading the INSERT statement's column list in full).
+--
+-- Natural key: kala_bhavishya carries NO unique constraint beyond its
+-- surrogate `id` PK (idx_kala_bhavishya_rank is a plain, non-unique
+-- btree). Declared here as (chart_id, projection_rank): `projection_rank`
+-- is assigned via `enumerate(darshana_rows, start=1)` over the writer's
+-- own now-total-order query, so it is unique per chart BY CONSTRUCTION
+-- within a single build's INSERT batch (1..len(rows), no duplicates
+-- possible). Live-verified on chart 1c826d5a (the only chart with data
+-- today -- canonical chart 482012f1 has zero rows in kala_bhavishya, the
+-- asset has not yet been built for it): 100 total rows, 0 NULLs on
+-- projection_rank or domain, 0 duplicate-key groups on
+-- (chart_id, projection_rank).
+--
+-- spec_sha256 computed and independently re-verified via the REAL
+-- server functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                                       # == the literal below
+--   print(_validate_spec('ka_bhavishya_lekha', spec, sha).asset_id)      # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK
+-- transaction (psycopg3, autocommit=False, row_factory=dict_row).
+-- Because the canonical chart (482012f1) has zero rows in kala_bhavishya
+-- today, the REHEARSAL spec's `where_equals.chart_id` was temporarily
+-- pointed at 1c826d5a-41cb-4450-b4dc-59d440e5f75a (the chart this asset
+-- HAS been built for) so the REAL compute_output_digest(cur,
+-- asset_id='ka_bhavishya_lekha') call would genuinely execute the query
+-- against real, non-empty rows rather than trivially succeeding over an
+-- empty set -- got back a clean 65-hex digest
+-- (f2cdc091b74fe853aadc2520e632c32cf7a9ccd2faa30d7c8f30fbe78c0a31cc, no
+-- exception, key-preflight passed over all 100 live rows) -> rolled
+-- back -> re-queried asset_output_digest_specs from a FRESH connection
+-- afterward and confirmed 0 rows for ka_bhavishya_lekha, i.e. genuinely
+-- rolled back, nothing persisted by the rehearsal. The spec ACTUALLY
+-- APPLIED below keeps `where_equals.chart_id` pinned to the canonical
+-- chart 482012f1 per this campaign's universal convention (every other
+-- chart-scoped spec in `asset_output_digest_specs` pins the same
+-- literal) -- its live digest will compute over zero rows until
+-- ka_bhavishya_lekha is actually built for that chart, which is honest
+-- and expected, not a defect in the spec itself.
+--
+-- Numbering note: origin/main's highest applied migration is 971
+-- (ph_rectification, #2492, merged this cycle). Highest RESERVED across
+-- every other open PR branch (l1-w383-ka-kala-darshana-output-digest-
+-- spec at 972/973, still unmerged; pariprashna/p4-g at 587;
+-- gochara3/w61 at 546; preserve/parishodhana-20260730 and
+-- preserve/unknown-provenance-20260730 both at 474) is 973 --
+-- 974/975 confirmed free against all of them.
+--
+-- Post-apply verification (SS N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ka_bhavishya_lekha' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ka_bhavishya_lekha',
+  'a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"kala_bhavishya","relation":"kala_bhavishya","key_columns":["chart_id","projection_rank"],"value_columns":["chart_id","projection_rank","probability_tier","domain","peak_date","window_start","window_end","convergence_id","signal_id","effective_score","falsifiability","source_chain","narrative","outcome_recorded","outcome_notes","source_citation"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

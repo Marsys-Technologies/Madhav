@@ -159,7 +159,8 @@ def test_build_projection_narrative_has_required_keys():
     """Must have headline, probability_statement, domain_context, caveat"""
     result = _build_projection_narrative(
         tier='tier_1_high', domain='career', peak_date=date(2026, 9, 1),
-        eff_score=0.75, conf_label='high', rarity=12.0, net_label='auspicious_strong'
+        eff_score=0.75, conf_label='high', rarity=12.0, net_label='auspicious_strong',
+        tier_basis='relative_uncalibrated',
     )
     assert 'headline' in result
     assert 'probability_statement' in result
@@ -168,37 +169,84 @@ def test_build_projection_narrative_has_required_keys():
 
 
 def test_build_projection_narrative_tier_in_prob_stmt():
-    """probability_statement should mention the tier label text"""
+    """probability_statement should mention the tier label text. F-BHAV-2: the label no
+    longer says 'probability'/'%' — a [0,1] structural score is not a calibrated
+    percentage — it names the score as structural convergence strength instead."""
     result = _build_projection_narrative(
         tier='tier_1_high', domain='finance', peak_date=date(2026, 8, 1),
-        eff_score=0.80, conf_label='high', rarity=8.0, net_label='auspicious'
+        eff_score=0.80, conf_label='high', rarity=8.0, net_label='auspicious',
+        tier_basis='relative_uncalibrated',
     )
-    assert 'High probability' in result['probability_statement']
+    assert 'High structural convergence' in result['probability_statement']
+    assert 'probability' not in result['probability_statement'].lower()
+    assert '%' not in result['probability_statement']
 
 
 def test_build_projection_narrative_domain_in_headline():
     """headline must contain the domain name"""
     result = _build_projection_narrative(
         tier='tier_2_moderate', domain='relationship', peak_date=date(2027, 1, 1),
-        eff_score=0.55, conf_label='medium', rarity=7.0, net_label='auspicious'
+        eff_score=0.55, conf_label='medium', rarity=7.0, net_label='auspicious',
+        tier_basis='relative_uncalibrated',
     )
     assert 'relationship' in result['headline'].lower()
 
 
-def test_build_projection_narrative_calibration_caveat():
-    """caveat must contain 'calibrated' or 'probabilistic'"""
+def test_build_projection_narrative_uncalibrated_caveat_is_honest():
+    """F-BHAV-2 (§N.7 items 5/6, MACRO_PLAN Ethical Framework): when tier_basis is
+    'relative_uncalibrated' (100% of production rows, measured) the caveat must NOT claim
+    a calibrated probability estimate — it must name the real basis and call the score
+    structural/uncalibrated instead."""
     result = _build_projection_narrative(
         tier='tier_3_speculative', domain='general', peak_date=None,
-        eff_score=0.30, conf_label='low', rarity=None, net_label='neutral'
+        eff_score=0.30, conf_label='low', rarity=None, net_label='neutral',
+        tier_basis='relative_uncalibrated',
     )
-    assert 'calibrated' in result['caveat'] or 'probabilistic' in result['caveat']
+    assert 'uncalibrated' in result['caveat'].lower()
+    assert 'reflects a calibrated probability estimate' not in result['caveat']
+    assert 'relative_uncalibrated' in result['caveat']
+
+
+def test_build_projection_narrative_calibrated_basis_gets_calibrated_language():
+    """The one tier_basis value that WOULD license calibrated-probability language (none
+    observed in production today) is still handled correctly, not hardcoded away."""
+    result = _build_projection_narrative(
+        tier='tier_1_high', domain='career', peak_date=date(2026, 9, 1),
+        eff_score=0.75, conf_label='high', rarity=None, net_label='auspicious_strong',
+        tier_basis='calibrated',
+    )
+    assert 'calibrated probability estimate' in result['caveat']
+
+
+def test_build_projection_narrative_unrecognized_tier_basis_defaults_to_uncalibrated_wording():
+    """§N.7 item 6: an unrecognized tier_basis must default to the SAFER, less-confident
+    wording, never silently read as calibrated."""
+    result = _build_projection_narrative(
+        tier='tier_2_moderate', domain='career', peak_date=date(2026, 9, 1),
+        eff_score=0.55, conf_label='medium', rarity=None, net_label='auspicious',
+        tier_basis='some_future_basis_value',
+    )
+    assert 'reflects a calibrated probability estimate' not in result['caveat']
+    assert 'some_future_basis_value' in result['caveat']
+
+
+def test_build_projection_narrative_none_tier_basis_defaults_to_uncalibrated_wording():
+    """A NULL tier_basis (e.g. an older row predating the column) must also default to the
+    honest, uncalibrated wording — never silently upgraded to 'calibrated'."""
+    result = _build_projection_narrative(
+        tier='tier_2_moderate', domain='career', peak_date=date(2026, 9, 1),
+        eff_score=0.55, conf_label='medium', rarity=None, net_label='auspicious',
+        tier_basis=None,
+    )
+    assert 'reflects a calibrated probability estimate' not in result['caveat']
 
 
 def test_build_projection_narrative_none_peak():
     """None peak_date should not crash; headline uses 'unknown date'"""
     result = _build_projection_narrative(
         tier='tier_3_speculative', domain='health', peak_date=None,
-        eff_score=0.25, conf_label=None, rarity=None, net_label='neutral'
+        eff_score=0.25, conf_label=None, rarity=None, net_label='neutral',
+        tier_basis='relative_uncalibrated',
     )
     assert 'headline' in result
     assert 'unknown date' in result['headline']
@@ -208,7 +256,8 @@ def test_build_projection_narrative_none_rarity():
     """rarity=None should not crash; domain_context still present"""
     result = _build_projection_narrative(
         tier='tier_2_moderate', domain='education', peak_date=date(2027, 6, 1),
-        eff_score=0.50, conf_label='medium', rarity=None, net_label='auspicious'
+        eff_score=0.50, conf_label='medium', rarity=None, net_label='auspicious',
+        tier_basis='relative_uncalibrated',
     )
     assert 'domain_context' in result
 
@@ -278,3 +327,19 @@ def test_outcome_recorded_defaults_false():
     src = inspect.getsource(mod)
     # The writer explicitly appends False for outcome_recorded
     assert 'False' in src and 'outcome_recorded' in src
+
+
+def test_f_bhav_3_intake_order_by_has_a_total_tiebreak():
+    """F-BHAV-3 (§N.7 item 2): the old `ORDER BY kd.effective_score DESC NULLS LAST` had no
+    tiebreak, so which 100 of the eligible windows survived LIMIT 100 (not just their
+    display order) varied build-to-build whenever effective_score ties — measured 100/100
+    rows tied at 0.700 on the canonical chart. Pins the ORDER BY clause text directly."""
+    import inspect
+    import pipeline.orchestrator.writers.ka_bhavishya_lekha as mod
+    src = inspect.getsource(mod)
+    m = re.search(r'ORDER BY\s+([^\n]*)\s*\n\s*LIMIT 100', src)
+    assert m, "could not find the intake query's ORDER BY ... LIMIT 100 clause"
+    order_by_clause = m.group(1)
+    assert 'kd.effective_score DESC NULLS LAST' in order_by_clause
+    assert 'kd.peak_date' in order_by_clause
+    assert 'kd.convergence_id' in order_by_clause

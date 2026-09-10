@@ -39,7 +39,7 @@ import json
 import uuid
 from typing import Any
 
-from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2
+from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSION_SALIENCE_FORMULA_V2
 from bodha_writers.sudarshana_emitter import GRAHAS, SIGNS, sign_index
 from brahmagyan import valence_doctrine as _vd
 from brahmagyan.graha_vocabulary import to_title
@@ -200,7 +200,12 @@ def _make_row(
         "cancellation_modifier": inputs.cancellation_modifier,
         "computed_salience": computed_salience,
         "salience_pctl_in_class": None,
-        "salience_formula_version": "v2",
+        # NIRMĀṆA L2-W3 (L1 handoff #1750 item 3). This was the bare literal "v2",
+        # which had drifted from formulas.VERSION_SALIENCE_FORMULA_V2 = "v2.0" — the
+        # constant for the very formula these rows are computed by. Same formula, two
+        # spellings, 444 rows carrying the odd one. A version label read as provenance
+        # must come from the version constant, not from a string re-typed beside it.
+        "salience_formula_version": VERSION_SALIENCE_FORMULA_V2,
         "salience_confidence_interval_jsonb": None,
         "domains_affected_array": domains,
         "domain_salience_jsonb": json.dumps({d: computed_salience for d in domains}),
@@ -269,7 +274,7 @@ def build_vargottama_rows(
             graha_code, contact_type="occupancy", target_house=house_d1,
             graha_sign=sign)
 
-        rows.append(_make_row(
+        row = _make_row(
             chart_id=chart_id, ayanamsha_id=ayanamsha_id, build_id=build_id,
             signal_type_class=VARGOTTAMA_AMPLIFICATION_SIGNAL_TYPE_CLASS,
             subsystem=VARGOTTAMA_AMPLIFICATION_SUBSYSTEM,
@@ -291,7 +296,21 @@ def build_vargottama_rows(
             relationship_classification="vargottama_confirmed",
             varga_id="D9",
             now=now,
-        ))
+        )
+        # D5/§N.7 item 3: this row's OWN signal_type_class is "vargottama_amplification",
+        # yet _base_inputs feeds the shared salience formula a hardcoded 0.0 for that
+        # term — correctly, per DR-6/DIS.019: the amplification is ratified to enter
+        # computed_salience via class_prior=1.15 alone, and also feeding a nonzero
+        # vargottama_amplification here would double-count it (1.15 * 1.25 territory)
+        # without a new DR-n ruling. But storing that same 0.0 in the row's OWN
+        # vargottama_amplification column reads as "measured, no amplification" on a
+        # row whose entire reason for existing is that amplification fired — the
+        # column, not the formula input, was the defect. NULL here means "not computed
+        # via this field for this row; see class_prior" — never a claim of zero effect.
+        # The formula input above is untouched (still 0.0 via _base_inputs), so
+        # computed_salience does not change.
+        row["vargottama_amplification"] = None
+        rows.append(row)
     return rows
 
 

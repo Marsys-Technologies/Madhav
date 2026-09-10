@@ -131,7 +131,7 @@ mechanisms:
     lane: kota_chakra
     description: >-
       Kota Chakra ring modifier — malefic siege intensity for adverse event classes.
-      Concentric ring multipliers: stambha(1.30), madhya(1.15), pragara(1.08), bahya(1.04).
+      Concentric ring multipliers: stambha(1.30), durgantara(1.15), prakara(1.08), bahya(1.04).
       Only fires for adverse event classes; neutral/gain classes get modifier=1.0.
     citation_status: classically_cited
     classical_citation: >-
@@ -214,7 +214,7 @@ mechanisms:
         data_source: "ClassContext.tithi_pravesha_rows (from kala_tithi_pravesha)"
       - mechanism_id: w27c_sudarshana
         toggle_key: w27c_sudarshana
-        data_source: "ClassContext.sudarshana_rows (from kala_sudarshana / bo_sudarshana)"
+        data_source: "ClassContext.sudarshana_rows (from kala_sudarshana_varsha / bo_sudarshana)"
 
   - mechanism_id: w28_bhava_degrees
     wave: "W2.8"

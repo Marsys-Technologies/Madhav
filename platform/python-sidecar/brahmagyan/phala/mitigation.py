@@ -43,7 +43,7 @@ import json
 import os
 import sys
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Optional
 
 try:
@@ -703,6 +703,7 @@ def mitigation_map(
     anchor_id: Optional[str] = None,
     mitigation_type: Optional[str] = None,  # ACCEPTED BUT NOT APPLIED — see docstring (P5 fix)
     limit: int = 100,
+    date_range: Optional[dict[str, str]] = None,
 ) -> dict:
     """
     Query phala_mitigation for a chart.
@@ -724,6 +725,11 @@ def mitigation_map(
     intensive) is a different axis entirely. The parameter is accepted for input-
     contract compatibility but is a documented no-op here (no fabricated column
     substitute served) — matching the anchors.py prediction_state precedent.
+
+    When `date_range` is supplied, only mitigations whose finite windows overlap
+    the inclusive range are returned. Rows with a NULL start or end are excluded
+    from a horizon-scoped result because their overlap cannot be established;
+    calls without `date_range` retain the legacy unfiltered behavior.
 
     Returns {mitigations: [...], provenance_envelope}.
     Each mitigation carries source_citation + classical_citation tracing to BPHS.
@@ -759,6 +765,39 @@ def mitigation_map(
     if anchor_id:
         conditions.append("linked_anchor_id = %s")
         params.append(anchor_id)
+
+    range_start: Optional[str] = None
+    range_end: Optional[str] = None
+    if date_range is not None:
+        range_start = str(date_range.get("start") or "")
+        range_end = str(date_range.get("end") or "")
+        try:
+            start_date = date.fromisoformat(range_start)
+            if start_date.isoformat() != range_start:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError(
+                f"date_range.start must be a valid ISO date (YYYY-MM-DD): {range_start!r}"
+            ) from exc
+        try:
+            end_date = date.fromisoformat(range_end)
+            if end_date.isoformat() != range_end:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError(
+                f"date_range.end must be a valid ISO date (YYYY-MM-DD): {range_end!r}"
+            ) from exc
+        if start_date > end_date:
+            raise ValueError("date_range.start must be on or before date_range.end")
+
+        # Standard inclusive overlap: a row must begin no later than the
+        # horizon end and finish no earlier than the horizon start. PostgreSQL
+        # excludes NULL bounds here, our explicit contract for horizon calls.
+        conditions.extend([
+            "window_start <= %s::date",
+            "window_end >= %s::date",
+        ])
+        params.extend([range_end, range_start])
 
     where = " AND ".join(conditions)
 
@@ -840,6 +879,16 @@ def mitigation_map(
                 "schema (migration 332) — the filter is accepted but NOT applied. "
                 "See mitigation_map() docstring (R5 W0a punch-list, P5)."
             ) if mitigation_type else None,
+            "date_range_filter_applied": date_range is not None,
+            "date_range": (
+                {"start": range_start, "end": range_end}
+                if date_range is not None else None
+            ),
+            "date_range_filter_note": (
+                "Inclusive overlap filter applied; rows with a NULL window_start "
+                "or window_end are excluded because overlap cannot be established."
+                if date_range is not None else None
+            ),
             "asset": ASSET_ID,
             "asset_version": ASSET_VERSION,
             "build_tag": BUILD_TAG,

@@ -44,7 +44,7 @@ class _FakeCursor:
         elif "FROM mimamsa_manifestation_grammar" in s:
             self._result = list(self._conn.grammar_rows)
         elif "FROM mimamsa_discoveries" in s:
-            self._result = []
+            self._result = list(self._conn.discovery_rows)
         elif "FROM mimamsa_load_bearing" in s:
             self._result = []
         elif "JOIN brahma_event_ontology" in s:
@@ -75,6 +75,7 @@ class _FakeConn:
     def __init__(self, reliability_rows):
         self.reliability_rows = list(reliability_rows)
         self.grammar_rows: list[dict] = []
+        self.discovery_rows: list[dict] = []
         self.inserted_rows: list[tuple] = []
         # Section-5 (bodha_pratijna verdict_object) fakes — opt-in per test.
         self.existing_tables: set[str] = set()
@@ -109,14 +110,16 @@ def _pratijna_row(event_class_id, grade, status="conditional", domain="career",
     }
 
 
-def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10):
+def _grammar_row(channel_propensity, prior_propensity, channel_id="ch1", domain="career", n=10,
+                  evidence_grade="empirical", scored_count=0):
     return {
         "channel_id": channel_id,
         "domain": domain,
         "channel_propensity": channel_propensity,
         "prior_propensity": prior_propensity,
         "n_support": n,
-        "evidence_grade": "empirical",
+        "scored_count": scored_count,
+        "evidence_grade": evidence_grade,
     }
 
 
@@ -146,6 +149,7 @@ def _run_verdict(pratijna_rows, triangulation_rows=None):
 # Insert-tuple column offsets (mirror the INSERT column list in the writer).
 STATEMENT, RANK_CONSEQUENCE, CONFIDENCE_BAND = 6, 7, 8
 PROVENANCE_CHAIN = 14
+EVIDENCE_GRADE = 11  # mirror the INSERT column list in mi_darshana.py (unaffected by §2c)
 
 
 def _calibrated_row(observed, brier, n=5):
@@ -292,6 +296,85 @@ def test_channel_propensity_missing_falls_back_to_prior():
     assert result.rows_inserted == 1
     row = conn.inserted_rows[0]
     assert row[RANK_CONSEQUENCE] == 0.35
+
+
+# ── F-147 addendum (GA-5 review of PR #1439) ─────────────────────────────────
+#
+# mi_sambandha now emits channel_propensity = NULL when no outcome in the group
+# ever recorded a manifestation_channel (the live shape: 57/57 calibration rows
+# NULL, because mi_pramana._score_manifestation() is a B.10 stub). Such a row
+# can still be graded 'empirical' on scored_count alone. The narration branch
+# below would then have printed the PRIOR fallback under the words "empirical
+# learning" — presenting an unmeasured prior as a learned rate (§N.7 item 6).
+
+def test_empirical_grade_with_null_propensity_narrates_unmeasured_not_the_prior():
+    """An 'empirical'-graded row whose channel_propensity is NULL must say the
+    propensity is unmeasured — never dress the prior up as a learned rate."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=None, prior_propensity=0.45,
+                     channel_id="ch_relationship_verbal", domain="relationship",
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    statement = row[STATEMENT]
+    assert "UNMEASURED" in statement
+    assert "32 predictions" in statement, "the real scored count is still reported"
+    assert "fires with 45% propensity" not in statement, (
+        "the prior must never be narrated as the empirically-learned firing rate"
+    )
+    assert "empirical learning" not in statement
+    # rank_consequence is NOT NULL, so the prior still fills it — but provenance
+    # must make it unmistakable that this is a fallback, not a measurement.
+    assert row[RANK_CONSEQUENCE] == 0.45
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["propensity"] is None
+    assert prov["propensity_source"] == "prior_fallback"
+
+
+def test_empirical_grade_with_measured_zero_still_narrates_a_real_zero():
+    """The other half of the distinction: a genuinely measured 0.0 is a finding
+    and must keep the empirical-learning narration."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.0, prior_propensity=0.45,
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    row = conn.inserted_rows[0]
+    statement = row[STATEMENT]
+    assert "fires with 0% propensity" in statement
+    assert "empirical learning" in statement
+    assert "UNMEASURED" not in statement
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert prov["propensity"] == 0.0
+    assert prov["propensity_source"] == "measured"
+
+
+# F-147 GA-5 review finding on #1439: the manifestation_grammar provenance dict used to
+# also embed a "rank_consequence" key duplicating the same value carried by the top-level
+# rank_consequence column and by propensity/propensity_source above — the third instance of
+# the P3-b duplicate-key leak past query_insights.ts's suppressIfNotCalibrated (which only
+# nulled provenance_chain.grade + .propensity, not this key). propensity_source already
+# carries the disclosure the key was redundant with; the field is dropped, not renamed.
+def test_manifestation_grammar_provenance_has_no_rank_consequence_key():
+    """The manifestation_grammar provenance dict must never carry a
+    'rank_consequence' key — it would leak the suppressed value past the
+    query_insights.ts suppressor's provenance_chain.grade/.propensity nulling."""
+    import json
+
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.42, prior_propensity=0.45,
+                     n=53, scored_count=32, evidence_grade="empirical")
+    ])
+
+    row = conn.inserted_rows[0]
+    prov = json.loads(row[PROVENANCE_CHAIN])
+    assert "rank_consequence" not in prov
 
 
 # ── SV-5 — `verdict_note` tradition-blindness (ŚUDDHA-VĀCA parked finding,
@@ -472,3 +555,204 @@ def test_msr_signal_evidence_still_preferred_when_present():
     evidence = prov["ranked_evidence"]
     assert len(evidence) == 1
     assert evidence[0]["signal_id"] == "sig-1", "MSR-signal evidence must win when it exists"
+
+
+# ── F-35 §3b — assignment_only grade pass-through ────────────────────────────
+
+def test_assignment_only_grade_passed_through_not_hardcoded_empirical():
+    """FAILS TODAY: mi_darshana.py:184 hardcodes 'empirical' regardless of the
+    source row's own evidence_grade. AFTER FIX: an 'assignment_only'-graded
+    grammar row must surface as 'assignment_only' in mimamsa_insight_units, not
+    be silently promoted to 'empirical'."""
+    conn, result = _run_grammar([
+        _grammar_row(channel_propensity=0.0, prior_propensity=0.4, evidence_grade="assignment_only")
+    ])
+
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "assignment_only"
+    assert "empirical learning" not in row[STATEMENT]
+
+
+# ── F-143 — discovery evidence grading is per discovery_class ────────────────
+#
+# `"empirical" if n >= 5 else "prior_only"` read mimamsa_discoveries.n_support as a
+# count of scored outcomes for every class alike. It is not:
+#   emergent_law — attribution ASSIGNMENTS (incl. UNRESOLVED / FALSE_ALARM matches)
+#   retrodiction — matched anchors, capped at 3 by the source query's LIMIT 3
+# Confirmed live before the fix: 20 emergent_law rows on the canonical chart graded
+# 'empirical' off assignment volume alone (n_support 9..41), and all 51 retrodiction
+# rows graded 'prior_only' on a threshold their capped count can never reach.
+
+def _discovery_row(discovery_class="emergent_law", n_support=41, evidence_refs=None,
+                   discovery_id="disc_sig1_timing", strength=0.27, statement=None):
+    return {
+        "discovery_id": discovery_id,
+        "discovery_class": discovery_class,
+        "statement": statement or f"{discovery_class} test statement",
+        "strength": strength,
+        "n_support": n_support,
+        "confidence_band": "[0.12,0.42)",
+        "activation_status": "candidate",
+        "evidence_refs": evidence_refs,
+    }
+
+
+def _run_discoveries(discovery_rows):
+    conn = _FakeConn([])
+    conn.discovery_rows = discovery_rows
+    writer = MiDarshanaWriter()
+    result = writer._substep_insight_units(conn, NATIVE_CHART_ID, t0=0.0)
+    return conn, result
+
+
+def _basis(row):
+    return json.loads(row[PROVENANCE_CHAIN])["grade_basis"]
+
+
+def test_emergent_law_assignment_count_alone_never_grades_empirical():
+    """FAILS PRE-FIX: n_support=41 attribution ASSIGNMENTS graded 'empirical'.
+    A legacy row (evidence_refs with no n_scored_matches — every row in prod
+    until mi_pariksha v2.1 re-runs) must grade down, never up."""
+    conn, result = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"signal_id": "sig1", "dimension": "timing", "n": 41})
+    ])
+    assert result.rows_inserted == 1
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "assignment_only"
+    assert _basis(row)["rule"] == "no_scored_count_available"
+    assert _basis(row)["n_scored_matches"] is None
+
+
+def test_emergent_law_earns_empirical_only_from_adjudicated_matches():
+    """The tier is reachable — but only on the scored-match axis (>= 5), mirroring
+    F-35 / migration 573."""
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"n": 41, "n_distinct_matches": 20, "n_scored_matches": 6})
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "empirical"
+    assert _basis(row) == {
+        "rule": "scored_matches_threshold", "n_support": 41,
+        "n_scored_matches": 6, "empirical_min": 5,
+    }
+
+
+def test_emergent_law_many_assignments_few_scored_is_assignment_only():
+    """The exact production shape: plenty of assignments, most of them from
+    UNRESOLVED matches whose adjudication can still flip."""
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=41, evidence_refs={"n": 41, "n_distinct_matches": 20, "n_scored_matches": 2})
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "assignment_only"
+
+
+def test_emergent_law_below_both_thresholds_is_prior_only():
+    conn, _ = _run_discoveries([
+        _discovery_row(n_support=3, evidence_refs={"n": 3, "n_scored_matches": 0})
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "prior_only"
+
+
+def test_retrodiction_graded_structural_not_prior_only():
+    """Retrodiction rows are chart-specific deterministic probes, not prior-derived —
+    and the n>=5 gate they used to face is unreachable behind the source query's
+    LIMIT 3, so it was never doing any grading work."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=3, discovery_id="retro_ev1")
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "structural"
+    assert _basis(row)["rule"] == "retrodiction_never_empirical"
+    assert _basis(row)["anchors_matched"] == 3
+
+
+def test_retrodiction_never_empirical_even_above_any_count_threshold():
+    """Guard against a future 'just lower the bar' fix: the class cannot earn
+    'empirical' at ANY count while the blinding is unenforced and the anchor match
+    is unadjudicated — not even if the LIMIT 3 cap were lifted, and not even if a
+    scored count were somehow attached."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=99,
+                       evidence_refs={"n_scored_matches": 50}, discovery_id="retro_ev2")
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "structural"
+
+
+def test_unknown_discovery_class_fails_closed_to_prior_only():
+    """A class whose n_support semantics nothing has established must not inherit
+    emergent_law's assignment tier."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="temporal_rhythm", n_support=40, evidence_refs=None,
+                       discovery_id="tr_1")
+    ])
+    assert conn.inserted_rows[0][EVIDENCE_GRADE] == "prior_only"
+
+
+def test_discovery_provenance_is_json_serializable_and_carries_class():
+    conn, _ = _run_discoveries([
+        _discovery_row(evidence_refs={"n_scored_matches": 6}),
+        _discovery_row(discovery_class="retrodiction", n_support=0, discovery_id="retro_ev3"),
+    ])
+    for row in conn.inserted_rows:
+        prov = json.loads(row[PROVENANCE_CHAIN])
+        assert prov["discovery_class"] in ("emergent_law", "retrodiction")
+        assert isinstance(prov["grade_basis"], dict)
+        assert "rule" in prov["grade_basis"]
+
+
+def test_malformed_evidence_refs_does_not_crash_and_grades_down():
+    """evidence_refs is jsonb — a list, a string, or None must all be tolerated
+    without promoting the row. (Retrodiction's own shape was a bare list before
+    F-148 pt.1; it is now a dict carrying disclosure flags — see
+    test_retrodiction_grade_basis_echoes_disclosure_flags_from_evidence_refs
+    below — but malformed/legacy shapes must still fail safe.)"""
+    for refs in (None, [], ["not", "a", "dict"], "{}", {"n_scored_matches": "6"},
+                 {"n_scored_matches": True}):
+        conn, _ = _run_discoveries([_discovery_row(n_support=41, evidence_refs=refs)])
+        assert conn.inserted_rows[0][EVIDENCE_GRADE] == "assignment_only", refs
+
+
+def test_retrodiction_grade_basis_echoes_disclosure_flags_from_evidence_refs():
+    """F-148 pt.1: cutoff_enforced / window_containment_checked / event_type_compared /
+    n_adjudicated_hits must be ECHOED from evidence_refs (mi_pariksha's own write),
+    never a second hardcoded copy in mi_darshana — that duplication is exactly how
+    the two would drift (§N.7 item 3). Proven by echoing a value mi_pariksha would
+    never actually write (True) and observing it survive unchanged: a hardcoded
+    `False` in _discovery_evidence_grade would fail this test."""
+    conn, _ = _run_discoveries([
+        _discovery_row(
+            discovery_class="retrodiction",
+            n_support=2,
+            discovery_id="retro_ev_echo",
+            evidence_refs={
+                "top_k": [],
+                "cutoff_enforced": True,
+                "window_containment_checked": True,
+                "event_type_compared": True,
+                "n_adjudicated_hits": 2,
+                "n_support_semantics": "test sentinel",
+            },
+        )
+    ])
+    row = conn.inserted_rows[0]
+    assert row[EVIDENCE_GRADE] == "structural"
+    basis = _basis(row)
+    assert basis["cutoff_enforced"] is True
+    assert basis["window_containment_checked"] is True
+    assert basis["event_type_compared"] is True
+    assert basis["n_adjudicated_hits"] == 2
+
+
+def test_retrodiction_grade_basis_disclosure_flags_null_when_refs_missing_them():
+    """The honest default (evidence_refs absent or pre-F-148 shape): the echoed
+    keys must be None, never silently defaulted to a value that looks verified."""
+    conn, _ = _run_discoveries([
+        _discovery_row(discovery_class="retrodiction", n_support=0,
+                       discovery_id="retro_ev_legacy", evidence_refs=None)
+    ])
+    basis = _basis(conn.inserted_rows[0])
+    assert basis["cutoff_enforced"] is None
+    assert basis["window_containment_checked"] is None
+    assert basis["event_type_compared"] is None
+    assert basis["n_adjudicated_hits"] is None

@@ -43,6 +43,10 @@ function makeReq(body: object): NextRequest {
 function seedRole(role: string) {
   mockGetServerUser.mockResolvedValue(USER)
   mockQuery.mockResolvedValueOnce({ rows: [{ role }], rowCount: 1 }) // getUserRole
+  // P2-B-007: the route now gates on authorizeChartAccess before touching the
+  // registry. USER owns chart c1, so Rule 2 returns 'all' on the first query
+  // and chart_grants is never consulted — one extra queued response, no more.
+  mockQuery.mockResolvedValueOnce({ rows: [{ owner_id: USER.uid }], rowCount: 1 }) // SELECT owner_id FROM charts
 }
 
 beforeEach(() => {

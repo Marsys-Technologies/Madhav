@@ -452,18 +452,6 @@ class TextIndexWriter(WriterBase):
         t0 = time.time()
         conn = ctx.db_conn
 
-        if ctx.dry_run:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NULL"
-                )
-                unclassified = cur.fetchone()["count"]
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes=f"dry_run=True; {unclassified} unclassified embedded chunks would be classified",
-            )
-
         # ── Step 1: Load vocabulary from reference_topic_tags ─────────────────
         with conn.cursor() as cur:
             cur.execute("SELECT canonical_id FROM reference_topic_tags")
@@ -502,82 +490,64 @@ class TextIndexWriter(WriterBase):
                 notes="upstream empty: 0 embedded chunks; floor=0; rerun after bg_texts pipeline completes",
             )
 
-        if unclassified_count == 0:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(DISTINCT topic_tag) AS count FROM classical_text_chunks "
-                    "WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL"
-                )
-                distinct_tags = cur.fetchone()["count"]
-            logger.info(
-                "[bg_text_index] all chunks already classified; distinct_tags=%d (idempotent)", distinct_tags
-            )
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes=f"idempotent: all {embedded_count} embedded chunks already classified; distinct_tags={distinct_tags}",
-            )
-
-        # ── Step 3: Load unclassified embedded chunks ─────────────────────────
+        # ── Step 3: Load the complete owned partition ─────────────────────────
+        # A non-null topic_tag is not evidence that the current deterministic
+        # classifier still agrees with it. Recompute every embedded row so a
+        # rebuild repairs wrong non-null tags as well as filling nulls.
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chunk_id, content_en FROM classical_text_chunks "
-                "WHERE embedding IS NOT NULL AND topic_tag IS NULL"
+                "SELECT chunk_id, content_en, topic_tag FROM classical_text_chunks "
+                "WHERE embedding IS NOT NULL"
             )
             chunk_rows = cur.fetchall()
 
-        logger.info("[bg_text_index] classifying %d chunks...", len(chunk_rows))
+        logger.info("[bg_text_index] reconciling %d chunks...", len(chunk_rows))
 
-        # ── Step 4: Classify + batch UPDATE ──────────────────────────────────
-        tagged = 0
+        # ── Step 4: Classify + update only semantic differences ───────────────
         skipped_no_match = 0
         skipped_invalid_tag = 0
-        batch: list[tuple[str, str]] = []  # (tag, chunk_id)
-        BATCH_SIZE = 500
+        unchanged = 0
+        changes: list[tuple[str | None, str, str | None]] = []
 
-        def _flush(b: list[tuple[str, str]]) -> int:
-            if not b:
-                return 0
-            with conn.cursor() as cur:
-                cur.executemany(
-                    "UPDATE classical_text_chunks SET topic_tag = %s WHERE chunk_id = %s AND topic_tag IS NULL",
-                    b,
-                )
-                return cur.rowcount
+        for row in chunk_rows:
+            desired_tag = classify_chunk(row["content_en"], valid_tags) if row["content_en"] else None
 
-        for i, row in enumerate(chunk_rows):
-            chunk_id, content_en = row["chunk_id"], row["content_en"]
-            if not content_en:
+            if desired_tag is None:
                 skipped_no_match += 1
-                continue
-
-            tag = classify_chunk(content_en, valid_tags)
-
-            if tag is None:
-                skipped_no_match += 1
-                continue
-
-            if tag not in valid_tags:
+            elif desired_tag not in valid_tags:
                 logger.warning(
                     "[bg_text_index] SKIP chunk_id=%s: tag '%s' not in reference_topic_tags",
-                    chunk_id, tag,
+                    row["chunk_id"], desired_tag,
                 )
                 skipped_invalid_tag += 1
                 continue
 
-            batch.append((tag, chunk_id))
+            if row["topic_tag"] == desired_tag:
+                unchanged += 1
+            else:
+                changes.append((desired_tag, row["chunk_id"], desired_tag))
 
-            if len(batch) >= BATCH_SIZE:
-                n = _flush(batch)
-                tagged += n
-                batch.clear()
-                logger.info(
-                    "[bg_text_index] progress: tagged %d / %d chunks...", tagged + skipped_no_match, len(chunk_rows)
+        if ctx.dry_run:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    f"dry_run=True; would_change={len(changes)}; unchanged={unchanged}; "
+                    f"no_match={skipped_no_match}; embedded_chunks={embedded_count}"
+                ),
+            )
+
+        changed = 0
+        batch_size = 500
+        for offset in range(0, len(changes), batch_size):
+            batch = changes[offset:offset + batch_size]
+            with conn.cursor() as cur:
+                cur.executemany(
+                    "UPDATE classical_text_chunks SET topic_tag = %s "
+                    "WHERE chunk_id = %s AND topic_tag IS DISTINCT FROM %s",
+                    batch,
                 )
-
-        if batch:
-            n = _flush(batch)
-            tagged += n
+                changed += cur.rowcount
 
         # ── Step 5: Measure cockpit metric ───────────────────────────────────
         with conn.cursor() as cur:
@@ -589,17 +559,17 @@ class TextIndexWriter(WriterBase):
 
         duration = time.time() - t0
         logger.info(
-            "[bg_text_index] COMPLETE: tagged=%d, distinct_tags=%d, skipped_no_match=%d, "
-            "skipped_invalid_tag=%d, duration=%.1fs",
-            tagged, distinct_tags, skipped_no_match, skipped_invalid_tag, duration,
+            "[bg_text_index] COMPLETE: changed=%d, unchanged=%d, distinct_tags=%d, "
+            "skipped_no_match=%d, skipped_invalid_tag=%d, duration=%.1fs",
+            changed, unchanged, distinct_tags, skipped_no_match, skipped_invalid_tag, duration,
         )
 
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=tagged,
+            rows_inserted=changed,
             duration_seconds=duration,
             notes=(
-                f"tagged={tagged}; distinct_topic_tags={distinct_tags}; "
+                f"changed={changed}; unchanged={unchanged}; distinct_topic_tags={distinct_tags}; "
                 f"skipped_no_match={skipped_no_match}; skipped_invalid_tag={skipped_invalid_tag}; "
                 f"embedded_chunks={embedded_count}; unclassified_before={unclassified_count}"
             ),

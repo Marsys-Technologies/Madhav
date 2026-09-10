@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import numpy as np
 
@@ -55,12 +55,36 @@ class IntervalBoundary:
     peak_jd         JD of lambda_v3 maximum within [enter_jd, exit_jd].
     peak_lambda     lambda_v3 value at peak_jd.
     era_slice_key   Generation-scoping key (always ERA_SLICE_KEY_V3 for v3 rows).
+    term_breakdown  PARIṢKĀRA MR-14 fix: the full W1.5 per-mechanism λ_v3
+                    decomposition ({promise, permission, activity,
+                    quality_gates, lambda_v3, activity_terms, formula}) at
+                    peak_jd -- the single most representative instant for
+                    this window (mirrors peak_basis='gochara_lambda_v3').
+                    `evaluate_lambda_vector`/`_evaluate_single_from_context`
+                    (gochara_v3.engine) already computes this correctly on
+                    every IntensityResult; prior to this fix, this module
+                    discarded it by only ever reading `.raw_lambda` via
+                    `_eval_single` during the coarse sweep/bisection/peak
+                    search. None ONLY on an honest evaluation failure at
+                    peak_jd (I4) -- never silently dropped when the peak
+                    evaluation succeeds.
+    lambda_v3_ci_low   80% credible-interval lower bound at peak_jd (structural
+                       prior band; see IntensityResult docstring). None on I4
+                       degrade, matching term_breakdown.
+    lambda_v3_ci_high  80% credible-interval upper bound at peak_jd. None on
+                       I4 degrade.
+    ci_source          'structural_prior' | 'fitted_posterior' disclosure tag
+                       from the peak IntensityResult. None on I4 degrade.
     """
     enter_jd: float
     exit_jd: float
     peak_jd: float
     peak_lambda: float
     era_slice_key: str
+    term_breakdown: Optional[dict] = None
+    lambda_v3_ci_low: Optional[float] = None
+    lambda_v3_ci_high: Optional[float] = None
+    ci_source: Optional[str] = None
 
 
 @dataclass
@@ -184,7 +208,8 @@ def find_threshold_crossings(
     *,
     coarse_step_days: float = 7.0,
     bisect_tol_days: float = _BISECT_TOL_DAYS,
-) -> list[IntervalBoundary]:
+    return_series: bool = False,
+):
     """Find all intervals where lambda_v3 is above the activation threshold.
 
     Algorithm
@@ -209,22 +234,43 @@ def find_threshold_crossings(
     threshold_config  ThresholdConfig from W1.4 (carries lambda_thresh).
     coarse_step_days  Coarse grid spacing in days (default 7 = weekly).
     bisect_tol_days   Bisection convergence tolerance in days (default 0.1).
+    return_series     PARIṢKĀRA MR-11(b)/PK-R-8 (R8.2): when True, ALSO
+                      return the (jd_series, lambdas) coarse-sweep arrays
+                      this function already computes in step 1 below, as
+                      `(intervals, jd_series, lambdas)`. Default False
+                      preserves the original `list[IntervalBoundary]`-only
+                      return for every pre-existing caller (test_w32/mr14/
+                      mr23 and others call this positionally/without this
+                      kwarg and must see byte-identical behavior). This flag
+                      exists so `resolution_hierarchy.build_resolution_
+                      hierarchy` can REUSE this exact coarse sweep for its
+                      peak-anchoring scan (R8.2) instead of re-sweeping —
+                      the series is computed once, here, regardless of which
+                      return shape the caller asked for.
 
     Returns
     -------
-    list[IntervalBoundary] — one entry per detected above-threshold interval,
-    sorted by enter_jd. Empty list when lambda is always below the threshold.
+    If return_series is False (default): list[IntervalBoundary] — one entry
+    per detected above-threshold interval, sorted by enter_jd. Empty list
+    when lambda is always below the threshold.
+    If return_series is True: (intervals, jd_series, lambdas) — the same
+    list plus the raw numpy coarse-sweep arrays (both empty arrays if the
+    range/step produced no samples).
     """
     if end_jd <= start_jd:
         logger.debug(
             "[gochara_v3.interval_solver] find_threshold_crossings: "
             "end_jd (%.4f) <= start_jd (%.4f) — returning []", end_jd, start_jd,
         )
+        if return_series:
+            return [], np.array([]), np.array([])
         return []
 
     # 1. Coarse sweep
     jd_series = np.arange(start_jd, end_jd, coarse_step_days)
     if len(jd_series) == 0:
+        if return_series:
+            return [], jd_series, np.array([])
         return []
 
     # Evaluate lambda at all coarse points
@@ -285,16 +331,41 @@ def find_threshold_crossings(
             sample_count=_PEAK_SAMPLE_COUNT,
         )
 
+        # PARIṢKĀRA MR-14 fix: capture the full W1.5 per-mechanism decomposition
+        # at peak_jd -- one extra evaluate_lambda_vector call per DETECTED
+        # interval (not per coarse/bisection/dense-sampling point), using
+        # _eval_single_full so the IntensityResult's term_breakdown/CI fields
+        # survive instead of being discarded (the prior defect: every call
+        # site in this function used _eval_single, which returns only a bare
+        # float). Honest None on evaluation failure (I4) -- never fabricated.
+        peak_result = _eval_single_full(swe, context, peak_jd)
+        if peak_result is not None:
+            term_breakdown = peak_result.term_breakdown
+            lambda_v3_ci_low = peak_result.lambda_v3_ci_low
+            lambda_v3_ci_high = peak_result.lambda_v3_ci_high
+            ci_source = peak_result.ci_source
+        else:
+            term_breakdown = None
+            lambda_v3_ci_low = None
+            lambda_v3_ci_high = None
+            ci_source = None
+
         intervals.append(IntervalBoundary(
             enter_jd=enter_jd,
             exit_jd=exit_jd,
             peak_jd=peak_jd,
             peak_lambda=peak_lambda,
             era_slice_key=ERA_SLICE_KEY_V3,
+            term_breakdown=term_breakdown,
+            lambda_v3_ci_low=lambda_v3_ci_low,
+            lambda_v3_ci_high=lambda_v3_ci_high,
+            ci_source=ci_source,
         ))
 
         i = j  # continue scanning after this segment
 
+    if return_series:
+        return intervals, jd_series, lambdas
     return intervals
 
 

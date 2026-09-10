@@ -129,6 +129,9 @@ class TestClassifyEvidenceStrength:
     def test_life_event_miss_same_domain_is_direct(self):
         assert classify_evidence_strength('life_event_miss', 'career', 'career') == 'direct'
 
+    def test_detector_unavailable_is_proxy(self):
+        assert classify_evidence_strength('detector_unavailable', None, 'career') == 'proxy'
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # DERIVE PRAMANA RECORDS
@@ -143,13 +146,37 @@ class TestDerivePramanaRecords:
         assert recs[0].evidence_type == 'pending_observation'
         assert recs[0].window_status == 'open'
 
-    def test_past_window_no_lel_is_miss(self):
+    def test_past_window_no_lel_at_all_is_detector_unavailable(self):
+        # F2: zero LEL entries anywhere means the detector had no visibility into
+        # this (or any) domain -- "no match found" proves nothing, so this must NOT
+        # be an earned refutation. Was 'life_event_miss' before the F2 fix.
         a = _anchor(window_start=date(2024, 1, 1), window_end=date(2025, 1, 1))
         ctx = PramanaContext(chart_id='cid', today=date(2026, 6, 22),
                              anchors=[a], lel_entries=[])
         recs = derive_pramana_records(ctx)
-        assert recs[0].evidence_type == 'life_event_miss'
+        assert recs[0].evidence_type == 'detector_unavailable'
         assert recs[0].window_status == 'past_window'
+
+    def test_past_window_lel_in_domain_but_not_in_window_is_genuine_miss(self):
+        # The detector DID have visibility into this domain (a career LEL entry
+        # exists) -- it just didn't fall in the anchor's window. That is an earned
+        # refutation, unlike the no-data-at-all case above.
+        a = _anchor(window_start=date(2024, 1, 1), window_end=date(2025, 1, 1))
+        lel = _lel(domain='career', event_date=date(2020, 1, 1))  # same domain, outside window
+        ctx = PramanaContext(chart_id='cid', today=date(2026, 6, 22),
+                             anchors=[a], lel_entries=[lel])
+        recs = derive_pramana_records(ctx)
+        assert recs[0].evidence_type == 'life_event_miss'
+
+    def test_past_window_lel_only_in_other_domain_is_detector_unavailable(self):
+        # LEL data exists, but none of it is in THIS anchor's domain -- still no
+        # basis for a refutation about this domain specifically.
+        a = _anchor(domain='career', window_start=date(2024, 1, 1), window_end=date(2025, 1, 1))
+        lel = _lel(domain='health', event_date=date(2024, 6, 1))
+        ctx = PramanaContext(chart_id='cid', today=date(2026, 6, 22),
+                             anchors=[a], lel_entries=[lel])
+        recs = derive_pramana_records(ctx)
+        assert recs[0].evidence_type == 'detector_unavailable'
 
     def test_lel_match_in_window(self):
         ctx = PramanaContext(chart_id='cid', today=date(2027, 6, 1),
@@ -157,6 +184,17 @@ class TestDerivePramanaRecords:
         recs = derive_pramana_records(ctx)
         assert recs[0].evidence_type == 'life_event_match'
         assert recs[0].lel_entry_id == 101
+
+    def test_lel_matches_via_domain_synonym(self):
+        # F2: life_events.category can be a legacy/alternate term (e.g. 'financial')
+        # for a canonical domain (anchor domain 'wealth') -- the shared synonym map
+        # (brahmagyan.domain_vocabulary) must resolve this, not just exact-match.
+        a = _anchor(domain='wealth')
+        lel = _lel(domain='financial')
+        ctx = PramanaContext(chart_id='cid', today=date(2027, 6, 1),
+                             anchors=[a], lel_entries=[lel])
+        recs = derive_pramana_records(ctx)
+        assert recs[0].evidence_type == 'life_event_match'
 
     def test_lel_outside_window_not_matched(self):
         a = _anchor(window_end=date(2026, 12, 31))
@@ -172,6 +210,20 @@ class TestDerivePramanaRecords:
                              anchors=[_anchor()], lel_entries=[lel])
         recs = derive_pramana_records(ctx)
         assert recs[0].lel_entry_id is None
+
+    def test_lel_unmappable_category_never_silently_matches(self):
+        # F2's own warning: "do not ship a fix that turns 0 misses into 0 matches
+        # silently". An LEL category the synonym map genuinely cannot resolve
+        # (e.g. 'other', the real life_events.category value for unclassifiable
+        # entries) must never be forced into a match by a looser comparison.
+        a = _anchor(domain='career', window_start=date(2024, 1, 1), window_end=date(2025, 1, 1))
+        lel = _lel(domain='other', event_date=date(2024, 6, 1))
+        ctx = PramanaContext(chart_id='cid', today=date(2026, 6, 22),
+                             anchors=[a], lel_entries=[lel])
+        recs = derive_pramana_records(ctx)
+        assert recs[0].lel_entry_id is None
+        # an unmappable category also carries no relevant-domain evidence
+        assert recs[0].evidence_type == 'detector_unavailable'
 
     def test_observable_criteria_always_populated(self):
         ctx = PramanaContext(chart_id='cid', today=date(2026, 10, 1),

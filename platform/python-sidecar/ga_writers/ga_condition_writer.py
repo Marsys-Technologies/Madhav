@@ -826,10 +826,17 @@ def _compute_varga_composite(spread: Optional[dict]) -> Optional[float]:
     for varga, data in spread.items():
         score = data.get("score")
         if score is None:
-            # Derive score from dignity label if available
+            # Derive score from dignity label if available. The stored label is
+            # Title-Case bare (F-C8: "Enemy", not "enemy_sign") — normalize
+            # through _DIVISIONAL_DIGNITY_NORMALIZE (this file's own existing
+            # chart_divisionals-label-to-DIGNITY_SCORES-key map, already used
+            # for the same rows' deeptaadi avastha and imported by
+            # ga_dashas_writer) rather than a second, drifting copy of it.
             dignity = data.get("dignity")
             if dignity:
-                score = DIGNITY_SCORES.get(dignity)
+                score_key = _DIVISIONAL_DIGNITY_NORMALIZE.get(dignity)
+                if score_key:
+                    score = DIGNITY_SCORES.get(score_key)
         if score is not None:
             w = _VARGA_WEIGHTS.get(varga, 0.25)
             total_w += w

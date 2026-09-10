@@ -249,15 +249,23 @@ def _l4_phala(build_id: str, chart_id: str) -> dict:
     counts: dict = {}
     _emit(build_id, chart_id, "phala.layer", "build", "started", "L4 Phala starting")
 
-    try:
-        from brahmagyan.phala.anchors import seed_native_anchors
-        result = seed_native_anchors(chart_id)
-        n = result.get("seeded", 0) if isinstance(result, dict) else 0
-        counts["phala_anchors"] = n
-        _emit(build_id, chart_id, "phala.anchors", "seed", "complete",
-              f"phala_anchors: {n} rows", metadata={"rows": n})
-    except Exception as exc:
-        logger.warning("[L4] phala.anchors failed (non-fatal): %s", exc)
+    # phala.anchors seed step REMOVED -- CONDUCTOR ruling on adjudication #1739 (D-CND-08).
+    #
+    # This called seed_native_anchors(), which writes HAND-AUTHORED predictions with
+    # HAND-ASSIGNED confidence values into phala_anchors. It was a third call site the
+    # ruling did not name -- found by grepping for every caller before severing the two it
+    # did -- and it was the worst of the three in shape: inside a build path, wrapped in
+    # `except Exception -> non-fatal warning`, so a fabricated-anchor write would have been
+    # reported as a build that merely skipped a step.
+    #
+    # It could not actually succeed (the SQL function raises UndefinedColumn since migration
+    # 330) and this legacy pipeline has no live importer -- the FROZEN orchestrator
+    # superseded it. Both of those are accidents, not controls, which is the whole of
+    # D-CND-08. Predictive anchors come from ph_nimitta via the orchestrator.
+    #
+    # Note the second defect, recorded rather than fixed: it read result["seeded"] while the
+    # function returns "rows_inserted", so `n` was 0 on every path anyway and the emitted
+    # "phala_anchors: 0 rows" event would have been wrong even had the call worked.
 
     try:
         from brahmagyan.phala.mitigation import seed_mitigation

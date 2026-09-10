@@ -1,0 +1,3510 @@
+{
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "assets": [
+    {
+      "asset_id": "bg_sign_medical",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "producer_covered",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 0,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_sign_medical",
+        "count_sql": "SELECT COUNT(*) FROM bg_sign_medical",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 12 FROM bg_sign_medical)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(sign_number,sign_name,body_part,organ_systems,element,\n      dosha,classical_citation)::text,\n    E'\\n' ORDER BY sign_number\n  ),''),'UTF8')),'hex') =\n    'fc143d3109d4ffc20e1c78d952581d1b01ac7c4653f4a29ffc46396fa751769f'\n  FROM bg_sign_medical)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a638fdd3d267a5ed7231a0662eb55ecc8fef22802d4f35fabedf315d6070097c",
+      "producer_id": "bg_medical_mappings"
+    },
+    {
+      "asset_id": "bg_ephemeris",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ephemeris_daily",
+        "count_sql": "SELECT count(*) FROM ephemeris_daily",
+        "integrity_check_sql": "\nSELECT\n  (SELECT COUNT(*) = 825084 AND MIN(date) = DATE '1900-01-01' AND MAX(date) = DATE '2150-12-31'\n     AND COUNT(DISTINCT body) = 9 AND COUNT(DISTINCT ayanamsha_id) = 1\n   FROM ephemeris_daily)\n  AND (SELECT MIN(ayanamsha_id) = 'tropical' FROM ephemeris_daily)\n  AND (SELECT ARRAY_AGG(DISTINCT body ORDER BY body) = ARRAY['Jupiter','Ketu','Mars','Mercury','Moon','Rahu','Saturn','Sun','Venus']::text[] FROM ephemeris_daily)\n  AND NOT EXISTS (\n    SELECT 1 FROM ephemeris_daily GROUP BY date HAVING COUNT(*) <> 9 OR COUNT(DISTINCT body) <> 9\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM ephemeris_daily\n    WHERE tropical_longitude IS NULL OR tropical_longitude < 0 OR tropical_longitude >= 360\n  )\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "1a8561db46498a3dbdc9db59224b1bdf1bee75a5e1f035108117c82a13592186"
+    },
+    {
+      "asset_id": "bg_reference",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ontology"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "reference_planets",
+        "count_sql": "SELECT (SELECT count(*) FROM reference_planets) + (SELECT count(*) FROM reference_signs) + (SELECT count(*) FROM reference_aspects) + (SELECT count(*) FROM reference_vargas) + (SELECT count(*) FROM reference_houses) + (SELECT count(*) FROM reference_strength_systems) + (SELECT count(*) FROM reference_karakas) + (SELECT count(*) FROM reference_upagrahas) + (SELECT count(*) FROM reference_constants) + (SELECT count(*) FROM reference_topic_tags) + (SELECT count(*) FROM reference_glossary) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT COUNT(*) = 11 AND COUNT(DISTINCT planet_id) = 11 FROM reference_planets)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(planet_id,canonical_name_en,canonical_name_sa,exaltation_sign,exaltation_degree,debilitation_sign,mooltrikona_sign,own_signs,natural_benefic,karak_domains,dasha_years,source_citation)::text, E'\\n' ORDER BY planet_id),'')) = '2a24fff91ac1c6fe56410769461c797d' FROM reference_planets)\n  AND (SELECT ARRAY_AGG(planet_id ORDER BY planet_id) = ARRAY[\n    'ascendant','jupiter','ketu','mars','mercury','midheaven','moon','rahu','saturn','sun','venus'\n  ]::text[] FROM reference_planets)\n  AND (SELECT COUNT(*) = 12 AND COUNT(DISTINCT sign_id) = 12 FROM reference_signs)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(sign_id,canonical_name_en,canonical_name_sa,lord,element,modality,natural_house,is_odd,is_biped,significations,source_citation)::text, E'\\n' ORDER BY sign_id),'')) = 'd8384f552b0f9bd507fe1ac83fa8d5a0' FROM reference_signs)\n  AND (SELECT ARRAY_AGG(sign_id ORDER BY sign_id) = ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]::smallint[] FROM reference_signs)\n  AND (SELECT COUNT(*) = 19 AND COUNT(DISTINCT (planet_id, aspect_house)) = 19 FROM reference_aspects)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(planet_id,aspect_house,aspect_strength,strength_value,is_special,notes,source_citation)::text, E'\\n' ORDER BY planet_id,aspect_house),'')) = 'c92a24b7eda3fe2382bf3943a95ae900' FROM reference_aspects)\n  AND (SELECT COUNT(*) = 19 AND COUNT(DISTINCT varga_id) = 19 FROM reference_vargas)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(varga_id,varga_number,canonical_name_en,canonical_name_sa,division_count,primary_signification,secondary_signification,source_citation)::text, E'\\n' ORDER BY varga_id),'')) = '6ea911e25c1592f24b7383e8c8ec5f16' FROM reference_vargas)\n  AND (SELECT ARRAY_AGG(varga_id ORDER BY varga_id) = ARRAY[\n    'D1','D10','D12','D16','D2','D20','D24','D27','D3','D30','D4','D40','D45','D5','D6','D60','D7','D8','D9'\n  ]::text[] FROM reference_vargas)\n  AND (SELECT COUNT(*) = 12 AND COUNT(DISTINCT house_num) = 12 FROM reference_houses)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(house_num,name_sa,name_en,category,natural_significations,karakas,classical_doctrine_jsonb,source_citation)::text, E'\\n' ORDER BY house_num),'')) = 'ba0be72447cf4e69ec249f7682fc6044' FROM reference_houses)\n  AND (SELECT ARRAY_AGG(house_num ORDER BY house_num) = ARRAY[1,2,3,4,5,6,7,8,9,10,11,12]::integer[] FROM reference_houses)\n  AND (SELECT COUNT(*) = 33 AND COUNT(DISTINCT strength_id) = 33 FROM reference_strength_systems)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(strength_id,name_sa,name_en,category,formula_text,max_value,units,classical_interpretation,source_citation)::text, E'\\n' ORDER BY strength_id),'')) = 'a62ee26273919321094aa3a9cc53b0cf' FROM reference_strength_systems)\n  AND (SELECT COUNT(*) = 77 AND COUNT(DISTINCT karaka_id) = 77 FROM reference_karakas)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(karaka_id,name_sa,name_en,karaka_type,applies_to,classical_significations,source_citation)::text, E'\\n' ORDER BY karaka_id),'')) = 'd5b06b1bd27fd7e9e853621b9779a964' FROM reference_karakas)\n  AND (SELECT COUNT(*) = 11 AND COUNT(DISTINCT upagraha_id) = 11 FROM reference_upagrahas)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(upagraha_id,name_sa,name_en,parent_planet,computation_method,significations,source_citation)::text, E'\\n' ORDER BY upagraha_id),'')) = '3e089533a087c7540fcdde628524a27a' FROM reference_upagrahas)\n  AND (SELECT COUNT(*) = 203 AND COUNT(DISTINCT constant_id) = 203 FROM reference_constants)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(constant_id,name,value_numeric,value_text,unit,category,source_citation,classical_context)::text, E'\\n' ORDER BY constant_id),'')) = 'ff504cadcd864211bf258b39eee2154b' FROM reference_constants)\n  AND (SELECT COUNT(*) = 481 AND COUNT(DISTINCT canonical_id) = 481 FROM reference_topic_tags)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(canonical_id,name,category,description,example_chunks)::text, E'\\n' ORDER BY canonical_id),'')) = '7ad2a364dc208f9f8b9f2e131bbf8514' FROM reference_topic_tags)\n  AND (SELECT COUNT(*) = 364 AND COUNT(DISTINCT term_id) = 364 FROM reference_glossary)\n  AND (SELECT md5(COALESCE(string_agg(jsonb_build_array(term_id,term_sa,term_en,definition,category,classical_citation,related_concepts)::text, E'\\n' ORDER BY term_id),'')) = '384e62806770d312773a70e6e91ad768' FROM reference_glossary)\n  AND NOT EXISTS (SELECT 1 FROM reference_planets WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_signs WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_aspects WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_vargas WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_houses WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_strength_systems WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_karakas WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_upagrahas WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (SELECT 1 FROM reference_constants WHERE COALESCE(btrim(source_citation), '') = '')\n  AND NOT EXISTS (\n    SELECT 1 FROM reference_topic_tags\n    WHERE COALESCE(btrim(canonical_id), '') = ''\n       OR COALESCE(btrim(name), '') = ''\n       OR COALESCE(btrim(category), '') = ''\n  )\n  AND NOT EXISTS (SELECT 1 FROM reference_glossary WHERE COALESCE(btrim(classical_citation), '') = '')\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8d1ea17b52adbffdd3ce0db3e1492eb5e7562234e82616bd9a8f4fb60315c784"
+    },
+    {
+      "asset_id": "bg_texts",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "classical_text_chunks",
+        "count_sql": "SELECT count(*) FROM classical_text_chunks",
+        "integrity_check_sql": "\nWITH metadata_summary AS (\n  SELECT\n    count(*) AS total,\n    count(DISTINCT text_id) AS distinct_ids,\n    array_agg(text_id ORDER BY text_id COLLATE \"C\") AS text_ids,\n    md5(COALESCE(string_agg(\n      jsonb_build_array(\n        text_id, title_en, title_sa, author, school, tradition, tier, license,\n        license_cleared, total_chapters, total_verses, source_edition\n      )::text,\n      E'\\n' ORDER BY text_id COLLATE \"C\"\n    ), '')) AS metadata_md5\n  FROM classical_texts\n  WHERE text_id IN (\n    'bhrigu_nandi_nadi','bphs','bphs_jaimini','brihat_jataka',\n    'brihat_samhita','hora_sara','jataka_parijata','muhurta_chintamani',\n    'nadi_navamsa_patel','phaladeepika','saravali','sarvartha_chintamani',\n    'tajaka_neelakanthi','uttara_kalamrita','yavana_jataka'\n  )\n), chunk_facts AS (\n  SELECT\n    chunk.*,\n    content_sha256 = encode(\n      sha256(convert_to(text_id || '::' || content_en, 'UTF8')),\n      'hex'\n    ) AS hash_matches\n  FROM classical_text_chunks AS chunk\n), chunk_summary AS (\n  SELECT\n    count(*) AS total,\n    count(DISTINCT chunk_id) AS distinct_ids,\n    count(DISTINCT text_id) AS text_ids,\n    count(*) FILTER (WHERE hash_matches IS TRUE) AS matching_hashes,\n    count(*) FILTER (WHERE hash_matches IS NOT TRUE) AS mismatching_hashes,\n    count(*) FILTER (\n      WHERE hash_matches IS NOT TRUE\n        AND text_id = 'muhurta_chintamani'\n        AND translation_status = 'machine_translated_supervised'\n        AND translation_provenance = 'machine_translation_supervised_2026-08; commissioned per SHAD_DARSHANA_ADJUDICATIONS_NIGHT3_v1_0.md §NATIVE CONFIRMATIONS; source edition per translator field'\n    ) AS accepted_supervised_mismatches,\n    count(*) FILTER (\n      WHERE hash_matches IS NOT TRUE AND low_confidence_flag IS TRUE\n    ) AS mismatch_low_confidence,\n    count(*) FILTER (\n      WHERE hash_matches IS NOT TRUE AND low_confidence_flag IS FALSE\n    ) AS mismatch_not_low_confidence\n  FROM chunk_facts\n), text_counts AS (\n  SELECT COALESCE(jsonb_object_agg(text_id, row_count), '{}'::jsonb) AS value\n  FROM (\n    SELECT text_id, count(*) AS row_count\n    FROM classical_text_chunks\n    GROUP BY text_id\n  ) AS counted\n), exact_digests AS (\n  SELECT\n    encode(sha256(convert_to(COALESCE(string_agg(\n      jsonb_build_array(\n        text_id, chunk_id, verse_ref, chapter, verse_start, verse_end\n      )::text,\n      E'\\n' ORDER BY text_id COLLATE \"C\", chunk_id COLLATE \"C\"\n    ), ''), 'UTF8')), 'hex') AS identity_sha256,\n    encode(sha256(convert_to(COALESCE(string_agg(\n      jsonb_build_array(\n        text_id, chunk_id, content_sa, content_en, source_citation, translator,\n        tradition_school, content_sha256, md5(embedding::text),\n        translation_status, translation_provenance, low_confidence_flag\n      )::text,\n      E'\\n' ORDER BY text_id COLLATE \"C\", chunk_id COLLATE \"C\"\n    ), ''), 'UTF8')), 'hex') AS content_sha256\n  FROM classical_text_chunks\n), baseline AS (\n  SELECT identity_sha256, content_sha256, row_count\n  FROM nirmana_bg_texts_integrity_baselines\n  WHERE contract_revision = 'bg-texts-integrity-v1'\n)\nSELECT (\n  metadata_summary.total = 15\n  AND metadata_summary.distinct_ids = 15\n  AND metadata_summary.text_ids = ARRAY[\n    'bhrigu_nandi_nadi','bphs','bphs_jaimini','brihat_jataka',\n    'brihat_samhita','hora_sara','jataka_parijata','muhurta_chintamani',\n    'nadi_navamsa_patel','phaladeepika','saravali','sarvartha_chintamani',\n    'tajaka_neelakanthi','uttara_kalamrita','yavana_jataka'\n  ]::text[]\n  AND metadata_summary.metadata_md5 = '0d6618a39632bd560741782f84415210'\n  AND chunk_summary.total = 10651\n  AND chunk_summary.distinct_ids = 10651\n  AND chunk_summary.text_ids = 15\n  AND text_counts.value = '{\n    \"bhrigu_nandi_nadi\":608,\n    \"bphs\":1459,\n    \"bphs_jaimini\":264,\n    \"brihat_jataka\":607,\n    \"brihat_samhita\":1171,\n    \"hora_sara\":460,\n    \"jataka_parijata\":704,\n    \"muhurta_chintamani\":274,\n    \"nadi_navamsa_patel\":1850,\n    \"phaladeepika\":564,\n    \"saravali\":471,\n    \"sarvartha_chintamani\":342,\n    \"tajaka_neelakanthi\":290,\n    \"uttara_kalamrita\":289,\n    \"yavana_jataka\":1298\n  }'::jsonb\n  AND chunk_summary.matching_hashes = 10563\n  AND chunk_summary.mismatching_hashes = 88\n  AND chunk_summary.accepted_supervised_mismatches = 88\n  AND chunk_summary.mismatch_low_confidence = 78\n  AND chunk_summary.mismatch_not_low_confidence = 10\n  AND (SELECT count(*) = 1 FROM baseline)\n  AND exact_digests.identity_sha256 = (SELECT identity_sha256 FROM baseline)\n  AND exact_digests.content_sha256 = (SELECT content_sha256 FROM baseline)\n  AND (SELECT row_count = 10651 FROM baseline)\n  AND NOT EXISTS (\n    SELECT 1\n    FROM classical_text_chunks\n    WHERE COALESCE(btrim(text_id), '') = ''\n       OR COALESCE(btrim(chunk_id), '') = ''\n       OR chunk_id <> text_id || '_pg' || lpad(chapter::text, 4, '0') || '_c'\n            || CASE WHEN verse_start < 10\n                    THEN '0' || verse_start::text\n                    ELSE verse_start::text END\n       OR COALESCE(btrim(verse_ref), '') = ''\n       OR chapter IS NULL OR chapter < 1\n       OR verse_start IS NULL OR verse_start < 1\n       OR verse_end IS NULL OR verse_end < verse_start\n       OR COALESCE(btrim(content_en), '') = ''\n       OR COALESCE(btrim(source_citation), '') = ''\n       OR COALESCE(btrim(translator), '') = ''\n       OR COALESCE(btrim(tradition_school), '') = ''\n       OR embedding IS NULL\n       OR content_sha256 IS NULL\n       OR content_sha256 !~ '^[0-9a-f]{64}$'\n  )\n) AS bg_texts_integrity\nFROM metadata_summary, chunk_summary, text_counts, exact_digests\n",
+        "health_probe": null,
+        "natural_key_partition": "canonical text_id set (15); chunk_id",
+        "superseded_by": null,
+        "data_disposition": "RETAINED_AS_CAPITAL",
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "804bdc8bd1350c95139445b24565c3cf65c3aa1d9d86f4b1a37bcb0c3099e5c9"
+    },
+    {
+      "asset_id": "bg_ontology",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 4,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_ontology",
+        "count_sql": "SELECT count(*) FROM brahma_ontology",
+        "integrity_check_sql": "\nSELECT\n  (SELECT COUNT(*) >= 737 FROM brahma_ontology)\n  AND (SELECT ARRAY_AGG(canonical_id ORDER BY canonical_id) = ARRAY[\n    'nak_01_ashwini','nak_02_bharani','nak_03_krittika','nak_04_rohini','nak_05_mrigasira',\n    'nak_06_ardra','nak_07_punarvasu','nak_08_pushya','nak_09_ashlesha','nak_10_magha',\n    'nak_11_purva_phalguni','nak_12_uttara_phalguni','nak_13_hasta','nak_14_chitra',\n    'nak_15_swati','nak_16_vishakha','nak_17_anuradha','nak_18_jyeshtha','nak_19_moola',\n    'nak_20_purva_ashadha','nak_21_uttara_ashadha','nak_22_shravana','nak_23_dhanishtha',\n    'nak_24_shatabhisha','nak_25_purva_bhadrapada','nak_26_uttara_bhadrapada','nak_27_revati'\n  ]::text[] FROM brahma_ontology WHERE entity_class='nakshatra')\n  AND (SELECT ARRAY_AGG(canonical_id ORDER BY canonical_id) = ARRAY[\n    'aquarius','aries','cancer','capricorn','gemini','leo','libra','pisces','sagittarius','scorpio','taurus','virgo'\n  ]::text[] FROM brahma_ontology WHERE entity_class='sign')\n  AND (SELECT ARRAY_AGG(canonical_id ORDER BY canonical_id) = ARRAY[\n    'house_01','house_02','house_03','house_04','house_05','house_06',\n    'house_07','house_08','house_09','house_10','house_11','house_12'\n  ]::text[] FROM brahma_ontology WHERE entity_class='house')\n  AND (SELECT ARRAY_AGG(canonical_id ORDER BY canonical_id) = ARRAY[\n    'ascendant','jupiter','ketu','mars','mercury','midheaven','moon','rahu','saturn','sun','venus'\n  ]::text[] FROM brahma_ontology WHERE entity_class='planet')\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_ontology\n    WHERE canonical_id IS NULL OR canonical_name_en IS NULL OR entity_class IS NULL OR source_citation IS NULL\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_ontology GROUP BY entity_class, canonical_id HAVING COUNT(*) > 1\n  )\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "49ab016150e102ba97d5008b71c6381a13d85ccb0c8ee772fde6b4170334e6a4"
+    },
+    {
+      "asset_id": "bg_remedies",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_texts"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_remedy_corpus",
+        "count_sql": "SELECT count(*) FROM brahma_remedy_corpus",
+        "integrity_check_sql": "\nWITH summary AS (\n  SELECT\n    count(*) AS total,\n    count(DISTINCT remedy_id) AS distinct_ids,\n    md5(string_agg(remedy_id, E'\\n' ORDER BY remedy_id COLLATE \"C\")) AS id_md5,\n    array_agg(DISTINCT planet ORDER BY planet) AS planets,\n    array_agg(DISTINCT domain ORDER BY domain) AS domains,\n    array_agg(DISTINCT remedy_type ORDER BY remedy_type) AS remedy_types,\n    count(*) FILTER (WHERE category IS NULL) AS uncategorized_rows,\n    count(*) FILTER (WHERE category = 'corpus_sweep') AS sweep_rows,\n    count(*) FILTER (WHERE category = 'corpus_sweep' AND scaffold_status = 'live') AS sweep_live,\n    count(*) FILTER (WHERE category = 'corpus_sweep' AND scaffold_status = 'review') AS sweep_review,\n    count(*) FILTER (WHERE category = 'tantric') AS tantric_rows,\n    count(*) FILTER (WHERE category = 'nakshatra_shanti') AS nakshatra_rows,\n    count(*) FILTER (WHERE scaffold_status = 'live') AS live_rows,\n    count(*) FILTER (WHERE scaffold_status = 'review') AS review_rows\n  FROM brahma_remedy_corpus\n), planet_counts AS (\n  SELECT coalesce(jsonb_object_agg(planet, row_count), '{}'::jsonb) AS value\n  FROM (\n    SELECT planet, count(*) AS row_count\n    FROM brahma_remedy_corpus WHERE planet IS NOT NULL GROUP BY planet\n  ) counted\n), domain_counts AS (\n  SELECT coalesce(jsonb_object_agg(domain, row_count), '{}'::jsonb) AS value\n  FROM (\n    SELECT domain, count(*) AS row_count\n    FROM brahma_remedy_corpus WHERE domain IS NOT NULL GROUP BY domain\n  ) counted\n), type_counts AS (\n  SELECT coalesce(jsonb_object_agg(remedy_type, row_count), '{}'::jsonb) AS value\n  FROM (\n    SELECT remedy_type, count(*) AS row_count\n    FROM brahma_remedy_corpus WHERE remedy_type IS NOT NULL GROUP BY remedy_type\n  ) counted\n)\nSELECT (\n  summary.total = 341\n  AND summary.distinct_ids = 341\n  AND summary.id_md5 = '8bac868a1b9708eedee44a7266237d08'\n  AND summary.planets = ARRAY['jupiter','ketu','mars','mercury','moon','rahu','saturn','sun','venus']::text[]\n  AND summary.domains = ARRAY['career','education','general','health','marriage','spirituality','wealth']::text[]\n  AND summary.remedy_types = ARRAY['ayurvedic','behavioral','charity','gemstone','homa','japa','mantra','puja','tantric','vrata','yantra']::text[]\n  AND planet_counts.value = '{\"jupiter\":40,\"ketu\":26,\"mars\":33,\"mercury\":26,\"moon\":50,\"rahu\":42,\"saturn\":39,\"sun\":53,\"venus\":32}'::jsonb\n  AND domain_counts.value = '{\"career\":12,\"education\":5,\"general\":260,\"health\":18,\"marriage\":29,\"spirituality\":6,\"wealth\":11}'::jsonb\n  AND type_counts.value = '{\"ayurvedic\":1,\"behavioral\":9,\"charity\":67,\"gemstone\":22,\"homa\":10,\"japa\":26,\"mantra\":68,\"puja\":76,\"tantric\":4,\"vrata\":35,\"yantra\":23}'::jsonb\n  AND summary.uncategorized_rows = 256\n  AND summary.sweep_rows = 54\n  AND summary.sweep_live = 15\n  AND summary.sweep_review = 39\n  AND summary.tantric_rows = 4\n  AND summary.nakshatra_rows = 27\n  AND summary.live_rows = 302\n  AND summary.review_rows = 39\n  AND NOT EXISTS (\n    SELECT 1\n    FROM brahma_remedy_corpus\n    WHERE remedy_id IS NULL OR btrim(remedy_id) = ''\n       OR planet IS NULL OR btrim(planet) = ''\n       OR domain IS NULL OR btrim(domain) = ''\n       OR remedy_type IS NULL OR btrim(remedy_type) = ''\n       OR prescription_text IS NULL OR btrim(prescription_text) = ''\n       OR source_canonical_id IS NULL OR btrim(source_canonical_id) = ''\n       OR source_citation IS NULL OR btrim(source_citation) = ''\n       OR classical_ref IS NULL OR btrim(classical_ref) = ''\n       OR confidence IS NULL OR confidence < 0 OR confidence > 1\n       OR scaffold_status IS NULL OR scaffold_status NOT IN ('live', 'review')\n       OR (category IS DISTINCT FROM 'corpus_sweep'\n           AND scaffold_status IS DISTINCT FROM 'live')\n       OR ((left(remedy_id, 6) = 'sweep_') IS DISTINCT FROM\n           coalesce(category = 'corpus_sweep', false))\n       OR ((left(remedy_id, 10) = 'nakshatra_') IS DISTINCT FROM\n           coalesce(category = 'nakshatra_shanti', false))\n       OR ((left(remedy_id, 4) = 'tan_') IS DISTINCT FROM\n           coalesce(category = 'tantric', false))\n       OR (category = 'tantric' AND (\n           remedy_type IS DISTINCT FROM 'tantric'\n           OR classical_attestation_text IS NULL\n           OR btrim(classical_attestation_text) = ''\n           OR jsonb_typeof(ingredients_jsonb) IS DISTINCT FROM 'object'\n           OR ingredients_jsonb = '{}'::jsonb\n           OR jsonb_typeof(timing_rules_jsonb) IS DISTINCT FROM 'object'\n           OR timing_rules_jsonb = '{}'::jsonb\n       ))\n  )\n) AS integrity_ok\nFROM summary CROSS JOIN planet_counts CROSS JOIN domain_counts CROSS JOIN type_counts\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "0bb2b9e8276fb7dc63e7248037d7451c0b7efa63db6b632f07062deadc3ae6c5"
+    },
+    {
+      "asset_id": "bg_panchanga",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "probe",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 13,
+        "scope": "global",
+        "asset_kind": "service",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": {
+          "probe_type": "panchanga_engine",
+          "forensic_lat": 20.27,
+          "forensic_lon": 85.84,
+          "forensic_instant": "1984-02-05T10:43:00",
+          "forensic_expected": {
+            "vara": "Ravivara",
+            "yoga": "Shiva",
+            "tithi": "Shukla Tritiya",
+            "karana": "Garaja",
+            "nakshatra": "Purva Bhadrapada"
+          },
+          "forensic_tz_offset": 330
+        },
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "877158f38683d2259a9d2ec91a727f1fd2a1f11c7fc20fb7cc5bbe4490a6c3a0"
+    },
+    {
+      "asset_id": "bg_ephemeris_engine",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "probe",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 14,
+        "scope": "global",
+        "asset_kind": "service",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": {
+          "note": "JD = 1984-02-05 10:43 IST = 05:13 UTC. Sun in Makara; mean-node Rahu in Vrishabha under sidereal Lahiri.",
+          "ayanamsha": "lahiri",
+          "node_mode": "mean",
+          "probe_type": "ephemeris_engine",
+          "forensic_jd": 2445735.717361111,
+          "expected_sun_sign": 10,
+          "ephemeris_file_sha256": {
+            "seas_18.se1": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2",
+            "semo_18.se1": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7",
+            "sepl_18.se1": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66"
+          },
+          "allowed_ephemeris_backends": [
+            "swiss_ephemeris_file"
+          ],
+          "expected_mean_node_rahu_sign": 2
+        },
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "01bffc3404c3be08176d8ef80f9f5d07ee02dbcda7a10bf23af111cdc901e308"
+    },
+    {
+      "asset_id": "bg_nakshatra",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 15,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "reference_nakshatra",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM reference_nakshatra) + (SELECT COUNT(*) FROM reference_nakshatra_pada) + (SELECT COUNT(*) FROM reference_nakshatra_matrix) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 28 FROM reference_nakshatra)\n  AND (SELECT count(*) = 108 FROM reference_nakshatra_pada)\n  AND (SELECT count(*) = 2721 FROM reference_nakshatra_matrix)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(\n      nakshatra_id,name_sa_iast,name_sa_devanagari,name_en,alt_names,\n      start_longitude,end_longitude,span_degrees,rashis_spanned,\n      degree_in_rashi_ranges,vimshottari_lord,presiding_deity,\n      secondary_deities,ruling_planet,gana,nadi,yoni_en,yoni_sa,yoni_sex,\n      varna,tatva,guna,pakshi,nakshatra_gender,muhurta_type,disha,\n      favorable_acts,prohibited_acts,symbol,shakti,basis_above,basis_below,\n      net_result,motivation,body_part,paramayus,naisargika_maturity_age,\n      deity_domain,is_gandanta,is_mula_sangya,is_panchaka,is_abhijit,\n      tradition_scope,classical_source\n    )::text,E'\\n' ORDER BY nakshatra_id),''),'UTF8')),'hex') =\n    'bbbf686205c208efe0a7f6dbd192b27e63931a9b37f442d194d8d17b72ee3fde'\n   FROM reference_nakshatra)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(\n      pada_id,nakshatra_id,pada_number,absolute_pada,start_longitude,\n      end_longitude,pada_navamsa_sign,pada_lord,pada_akshara,bija_sound,\n      mantra_prefix,pada_deity_nuance,element_shading,dosha_shading,\n      tradition_scope,classical_source\n    )::text,E'\\n' ORDER BY nakshatra_id,pada_number),''),'UTF8')),'hex') =\n    '09eeb0e2027486201274b36427a17cee7eb1c60eceb3c3bf334c53b6fbc990a9'\n   FROM reference_nakshatra_pada)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(\n      matrix_type,from_key,to_key,relation_value,guna_points,max_points,notes,\n      tradition_scope,classical_source\n    )::text,E'\\n' ORDER BY matrix_type COLLATE \"C\",from_key COLLATE \"C\",to_key COLLATE \"C\"),''),'UTF8')),'hex') =\n    '143ce4a335d0cc7fac4b7bb3137c713c238e7f6b06f2477d7ecf7aa14d88d9bb'\n   FROM reference_nakshatra_matrix)\n",
+        "health_probe": null,
+        "natural_key_partition": "reference_nakshatra.nakshatra_id; reference_nakshatra_pada.(nakshatra_id,pada_number); reference_nakshatra_matrix.(matrix_type,from_key,to_key)",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "540fa5fc364e5abb245f2d5aa98890083004e84511d26f5945c78de45fde7fe5"
+    },
+    {
+      "asset_id": "bg_class_priors",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 67,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_class_priors",
+        "count_sql": "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='1.0'",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 171\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(prior_version,signal_type_class,fact_kind,source_subsystem,\n      signal_tradition,class_prior,varga_weights,contested,citation,ratified_by,\n      prior_basis,source_ref)::text,E'\\n'\n    ORDER BY prior_version COLLATE \"C\",signal_type_class COLLATE \"C\",\n      fact_kind COLLATE \"C\",source_subsystem COLLATE \"C\",signal_tradition COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'a12fd986e469d417ff2ff54d3902b69809d40be42cc2228854220bb63f7139b2'\nFROM brahma_class_priors WHERE prior_version='1.0'\n",
+        "health_probe": null,
+        "natural_key_partition": "prior_version=1.0; (signal_type_class,fact_kind,source_subsystem,signal_tradition)",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a0d9c6bc3493dac5c9fe5442f4b5986f92f8544ae57b1b51b217750299692830"
+    },
+    {
+      "asset_id": "bg_ghatana",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 16,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_event_ontology",
+        "count_sql": "SELECT (SELECT count(*) FROM brahma_event_ontology) + (SELECT count(*) FROM brahma_activity_ontology) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 27 FROM brahma_event_ontology)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(event_class_id,name_en,domain,lel_category,\n      signature_model,magnitude_floor,adjacency,base_rate_by_age,\n      matching_rules,citations,version,temporal_shape,duration_prior,\n      milestone_template,irreversibility_milestone,evidence_requirements,\n      self_report_non_discriminating,kill_switch_criteria)::text,\n    E'\\n' ORDER BY event_class_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'ec13daa39559ddbed5556bde597f16514cc815287c094d92b011957d246398c3'\n  FROM brahma_event_ontology)\n  AND (SELECT count(*) = 12 FROM brahma_activity_ontology)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(activity_class_id,name_en,significators,\n      fructification_rules,related_event_class,citations,version)::text,\n    E'\\n' ORDER BY activity_class_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '261576cc17c10d69d856d74b82f2987094a981a0d58c564294a5bbebd4d70210'\n  FROM brahma_activity_ontology)\n",
+        "health_probe": null,
+        "natural_key_partition": "brahma_event_ontology.event_class_id; brahma_activity_ontology.activity_class_id",
+        "superseded_by": null,
+        "data_disposition": "RETAINED_AS_CAPITAL",
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "53aeff7a13d1c57a5e1bf51b9e8f6f3b2fa6701bbb96c61912b5f0aceb3277a9"
+    },
+    {
+      "asset_id": "bg_formula_constants",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 68,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_formula_constants",
+        "count_sql": "SELECT count(*) FROM brahma_formula_constants",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 17\n  AND count(*) FILTER (WHERE class='conflation_bug') = 0\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(constant_id,value_jsonb,class,consumer_assets,\n      citation_or_ratification,calibratable,bounds,version)::text,E'\\n'\n    ORDER BY constant_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '14a06b00379e0fc23f00e87984a8e58bc962a1c44849045ff6ac354431576f33'\nFROM brahma_formula_constants\n",
+        "health_probe": null,
+        "natural_key_partition": "constant_id",
+        "superseded_by": null,
+        "data_disposition": "RETAINED_AS_CAPITAL",
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "f1c669bd887e84980be715c75726033823af7c54bad0eeb7029c1d33c323cbcf"
+    },
+    {
+      "asset_id": "bg_cohort",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ephemeris_engine"
+      ],
+      "registry_contract": {
+        "sort_order": 20,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_synthetic_cohort",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM bg_synthetic_cohort) + (SELECT COUNT(*) FROM bg_synthetic_cohort_md) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 10000\n      AND count(DISTINCT synthetic_id) = 10000\n      AND min(synthetic_id) = 1\n      AND max(synthetic_id) = 10000\n   FROM bg_synthetic_cohort)\n  AND (SELECT count(*) = 100000\n      AND count(DISTINCT (synthetic_id,md_index)) = 100000\n      AND min(synthetic_id) = 1\n      AND max(synthetic_id) = 10000\n      AND min(md_index) = 1\n      AND max(md_index) = 10\n   FROM bg_synthetic_cohort_md)\n  AND NOT EXISTS (\n    SELECT 1\n    FROM bg_synthetic_cohort parent\n    LEFT JOIN bg_synthetic_cohort_md md\n      ON md.synthetic_id = parent.synthetic_id\n    GROUP BY parent.synthetic_id\n    HAVING count(md.synthetic_id) <> 10\n       OR min(md.md_index) <> 1\n       OR max(md.md_index) <> 10\n       OR abs(min(md.start_age_years)) > 0.000001\n       OR abs(max(md.end_age_years) - 120.0) > 0.000001\n  )\n  AND NOT EXISTS (\n    SELECT 1\n    FROM (\n      SELECT synthetic_id,md_index,start_age_years,end_age_years,\n        lag(end_age_years) OVER (\n          PARTITION BY synthetic_id ORDER BY md_index\n        ) AS previous_end\n      FROM bg_synthetic_cohort_md\n    ) chain\n    WHERE end_age_years <= start_age_years\n       OR (md_index > 1 AND abs(start_age_years - previous_end) > 0.000001)\n  )\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(\n      synthetic_id,birth_datetime_utc,birth_lat,birth_lon,ayanamsha_key,\n      positions,sampling_method,source_citation\n    )::text,E'\\n' ORDER BY synthetic_id),''),'UTF8')),'hex') =\n    '921b0f62ca118932608ea3d3da89e8757ba7c6fbb64c41c2bbdc6b1f99e0c5fa'\n   FROM bg_synthetic_cohort)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(\n      synthetic_id,md_index,md_lord,start_age_years,end_age_years,\n      md_full_years,is_partial,chain_version\n    )::text,E'\\n' ORDER BY synthetic_id,md_index),''),'UTF8')),'hex') =\n    '1f9e7fcf96941e891462ba1acd46b6c053f58d72d0dcb243a65d16a818c4decd'\n   FROM bg_synthetic_cohort_md)\n",
+        "health_probe": null,
+        "natural_key_partition": "bg_synthetic_cohort.synthetic_id; bg_synthetic_cohort_md.(synthetic_id,md_index)",
+        "superseded_by": null,
+        "data_disposition": "RETAINED_AS_CAPITAL",
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "dbfd673c9743c5f8e27c5bb1a18c450d41dad7600674c7f512a7426b7be8fd9e"
+    },
+    {
+      "asset_id": "bg_class_lifetime_counts",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 21,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_class_priors",
+        "count_sql": "SELECT COUNT(*) FROM brahma_class_priors WHERE prior_version='ne_v01' AND fact_kind='lifetime_count_per_100y'",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 6\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(prior_version,signal_type_class,fact_kind,source_subsystem,\n      signal_tradition,class_prior,varga_weights,contested,citation,ratified_by,\n      prior_basis,source_ref)::text,E'\\n'\n    ORDER BY prior_version COLLATE \"C\",signal_type_class COLLATE \"C\",\n      fact_kind COLLATE \"C\",source_subsystem COLLATE \"C\",signal_tradition COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '0a7b3be21e8b20a96f5d2a7a820cb1492c9e2e5ed889ff7bfcceec2bb4808800'\nFROM brahma_class_priors\nWHERE prior_version='ne_v01' AND fact_kind='lifetime_count_per_100y'\n",
+        "health_probe": null,
+        "natural_key_partition": "prior_version=ne_v01 AND fact_kind=lifetime_count_per_100y; signal_type_class",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "3b58f91fb0de5f22a11f7ae50597bf0086e46f7fcc0d952fecb503ca6fbee166"
+    },
+    {
+      "asset_id": "bg_sky_calendar",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 21,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_sky_calendar",
+        "count_sql": "SELECT COUNT(*) FROM bg_sky_calendar",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "e3c75e073e701c7a5d43fea015e140ac2748e6c64a067ddd0ee0074ad1da120d"
+    },
+    {
+      "asset_id": "bg_prashna_rules",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 55,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "SELECT (SELECT COUNT(*) FROM bg_prashna_lagna_methods) + (SELECT COUNT(*) FROM bg_prashna_tajik_yogas) + (SELECT COUNT(*) FROM bg_prashna_significators) + (SELECT COUNT(*) FROM bg_prashna_fructification_rules) + (SELECT COUNT(*) FROM bg_prashna_special_techniques) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 5 FROM bg_prashna_lagna_methods)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(method_id,method_name,method_name_sa,derivation_rule,\n      derivation_rule_jsonb,classical_citation,is_primary,tradition)::text,\n    E'\\n' ORDER BY method_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '1fcf4a29aada13aeb3458a601f42206111cdd0e7132f1d3973f49b65de239b11'\n  FROM bg_prashna_lagna_methods)\n  AND (SELECT count(*) = 16 FROM bg_prashna_tajik_yogas)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(yoga_id,yoga_name,yoga_name_sa,judgment_meaning,\n      formation_rule,formation_rule_jsonb,classical_citation,\n      is_fructification_indicator)::text,\n    E'\\n' ORDER BY yoga_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'd67e84e57e5c616f132929e845dec3ee8d5fccd4d9530d9c5c90b0a275662638'\n  FROM bg_prashna_tajik_yogas)\n  AND (SELECT count(*) = 12 FROM bg_prashna_significators)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(question_class,querent_house,querent_planet,\n      quesited_house,quesited_planet,significator_rule,classical_citation)::text,\n    E'\\n' ORDER BY question_class COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '8a02f4bd19ad23ab67ec1b7354d6c537e0c54453d4a6c405caf033c630879427'\n  FROM bg_prashna_significators)\n  AND (SELECT count(*) = 5 FROM bg_prashna_fructification_rules)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(rule_id,time_unit,degree_conversion_rule,applicable_when,\n      classical_citation)::text,E'\\n' ORDER BY rule_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '96ac27661e071bac4e372272f4eea1472cca37c0b47dbd7d9f07b37f159a99a0'\n  FROM bg_prashna_fructification_rules)\n  AND (SELECT count(*) = 3 FROM bg_prashna_special_techniques)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(technique_id,technique_name,technique_name_sa,\n      application_rule,classical_citation)::text,\n    E'\\n' ORDER BY technique_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '065791ee29ce9a1c6b98ed9d356151b06e0a463b1bcb02c9904ea160846488cd'\n  FROM bg_prashna_special_techniques)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "5c635df7ec32fcc8f57ffc27f268760db2c417a4b3ee06a8299eb2e7c83aadc0"
+    },
+    {
+      "asset_id": "bg_vastu_directions",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 56,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_vastu_directions",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM bg_vastu_directions) + (SELECT COUNT(*) FROM bg_vastu_direction_remedials) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 8 FROM bg_vastu_directions)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(direction,direction_deg,ruling_graha,secondary_graha,\n      favorable_color,element,classical_citation)::text,\n    E'\\n' ORDER BY direction COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '1d18e307f87fa65932cb96ea4cff1dc8487262986ff5de4c969ab0b48497bb07'\n  FROM bg_vastu_directions)\n  AND (SELECT count(*) = 24 FROM bg_vastu_direction_remedials)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(direction,remedy_type,remedy_description,\n      classical_citation)::text,\n    E'\\n' ORDER BY direction COLLATE \"C\",remedy_type COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '0c9c3378e7f7ddb5205996d6f1d0a1b9ef5e47b7334f65d0225c5c88f2cbffe7'\n  FROM bg_vastu_direction_remedials)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "bbbfdcdcf462222c1b2be6463875d7641b1e41d188912645882ac60ed8dcb2b5"
+    },
+    {
+      "asset_id": "bg_transit_engine",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "producer_covered",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 61,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": "bg_transit_engine",
+        "count_sql": "SELECT COUNT(*) FROM bg_transit_engine",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 9 FROM bg_transit_engine)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(graha,avg_daily_motion_deg,zodiac_period_days,\n      sign_residence_days,classical_citation)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b'\n  FROM bg_transit_engine)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "9e6b8b92cfb2e4c4f3b2134c2fdce9eba01aea7ac78818dc619c8c235962ae74",
+      "producer_id": "bg_transit_rules"
+    },
+    {
+      "asset_id": "bg_transit_rules",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 62,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_transit_rules",
+        "count_sql": "SELECT COUNT(*) FROM bg_transit_rules",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 9 FROM bg_transit_engine)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(graha,avg_daily_motion_deg,zodiac_period_days,\n      sign_residence_days,classical_citation)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'e2dafc84d7fef9b8a05ad01b98b036686e8ec0af9694a4d43ac4b2b8c425797b'\n  FROM bg_transit_engine)\n  AND (SELECT count(*) = 75 FROM bg_transit_rules)\n  AND (SELECT count(*) FILTER (WHERE rule_type = 'favourable') = 42\n       AND count(*) FILTER (WHERE rule_type = 'unfavourable') = 26\n       AND count(*) FILTER (WHERE rule_type = 'double_transit') = 7\n       FROM bg_transit_rules)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(rule_type,graha,primary_house,vedha_house,phala,\n      classical_citation,rule_notes)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\",rule_type COLLATE \"C\",primary_house\n  ),''),'UTF8')),'hex') =\n    '13616890d782a47cf667a4b1d3c52d2be08408a80f647d0e4aed4fc38cae3e54'\n  FROM bg_transit_rules)\n  AND (SELECT count(*) = 27 FROM bg_transit_moorti)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(nakshatra_offset,moorti_name,quality_tier,phala_brief,\n      classical_citation,rule_notes)::text,\n    E'\\n' ORDER BY nakshatra_offset\n  ),''),'UTF8')),'hex') =\n    'b411c02abb7fec89c971353190f1ebe117a31a85e1bba06aeadc6509d0256450'\n  FROM bg_transit_moorti)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "5e056b61917a37e93e1e2558716106bfb24c576d93cc4f8dc2e8ea1e9d369fa4",
+      "covered_asset_ids": [
+        "bg_transit_engine"
+      ]
+    },
+    {
+      "asset_id": "bg_medical_mappings",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 64,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_medical_mappings",
+        "count_sql": "SELECT COUNT(*) FROM bg_medical_mappings",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 21 FROM bg_medical_mappings)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(graha,dosha,dhatu,organ_systems,body_part,\n      disease_tendency,classical_citation)::text,\n    E'\\n' ORDER BY graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    'b28082a5c41537272e5b7f31a0b8ccd3581fb5d7cf931d265ff20cc2c6879aea'\n  FROM bg_medical_mappings)\n  AND (SELECT count(*) = 27 FROM bg_nakshatra_medical)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(nakshatra_name,nakshatra_number,body_part,\n      classical_citation,dosha)::text,\n    E'\\n' ORDER BY nakshatra_number\n  ),''),'UTF8')),'hex') =\n    '52b968862b08590761b6fa6e3adef72e598965965f33694f4731e5d21c6e1ca9'\n  FROM bg_nakshatra_medical)\n  AND (SELECT count(*) = 12 FROM bg_sign_medical)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(sign_number,sign_name,body_part,organ_systems,element,\n      dosha,classical_citation)::text,\n    E'\\n' ORDER BY sign_number\n  ),''),'UTF8')),'hex') =\n    'fc143d3109d4ffc20e1c78d952581d1b01ac7c4653f4a29ffc46396fa751769f'\n  FROM bg_sign_medical)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "525b39c06c601c1651add5dd311420edb28bb449409f9552880c1f9fe20885f1",
+      "covered_asset_ids": [
+        "bg_nakshatra_medical",
+        "bg_sign_medical"
+      ]
+    },
+    {
+      "asset_id": "bg_nakshatra_medical",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "producer_covered",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 65,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": "bg_nakshatra_medical",
+        "count_sql": "SELECT COUNT(*) FROM bg_nakshatra_medical",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 27 FROM bg_nakshatra_medical)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(nakshatra_name,nakshatra_number,body_part,\n      classical_citation,dosha)::text,\n    E'\\n' ORDER BY nakshatra_number\n  ),''),'UTF8')),'hex') =\n    '52b968862b08590761b6fa6e3adef72e598965965f33694f4731e5d21c6e1ca9'\n  FROM bg_nakshatra_medical)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "27b472cf22e35c01de72b85c63d7234bfd28d019d4359d32e5d05d9cd2ec1650",
+      "producer_id": "bg_medical_mappings"
+    },
+    {
+      "asset_id": "bg_dignity_reference",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 66,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_dignity_reference",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM bg_dignity_reference) + (SELECT COUNT(*) FROM bg_avastha_schemes) + (SELECT COUNT(*) FROM bg_combustion_orbs) + (SELECT COUNT(*) FROM bg_graha_naisargika_friendship) + (SELECT COUNT(*) FROM bg_motion_state_thresholds) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT ARRAY_AGG(graha ORDER BY graha) = ARRAY['Jupiter','Ketu','Mars','Mercury','Moon','Rahu','Saturn','Sun','Venus']::text[] FROM bg_dignity_reference)\n  AND (SELECT COUNT(*) = 72 FROM bg_graha_naisargika_friendship)\n  AND (SELECT ARRAY_AGG(DISTINCT graha ORDER BY graha) = ARRAY['Jupiter','Ketu','Mars','Mercury','Moon','Rahu','Saturn','Sun','Venus']::text[] FROM bg_graha_naisargika_friendship)\n  AND (SELECT ARRAY_AGG(DISTINCT other_graha ORDER BY other_graha) = ARRAY['Jupiter','Ketu','Mars','Mercury','Moon','Rahu','Saturn','Sun','Venus']::text[] FROM bg_graha_naisargika_friendship)\n  AND NOT EXISTS (\n    SELECT 1 FROM bg_graha_naisargika_friendship\n    WHERE graha = other_graha OR relation NOT IN ('friend','neutral','enemy')\n  )\n  AND NOT EXISTS (\n    SELECT 1 FROM bg_graha_naisargika_friendship GROUP BY graha\n    HAVING COUNT(*) <> 8 OR COUNT(DISTINCT other_graha) <> 8\n  )\n  AND (SELECT COUNT(*) = 35 FROM bg_avastha_schemes)\n  AND (SELECT STRING_AGG(scheme_name || ':' || state_name, ',' ORDER BY scheme_name,state_name) =\n    'baladi:bala,baladi:kumara,baladi:mrita,baladi:vriddha,baladi:yuva,deeptaadi:deepta,deeptaadi:dina,deeptaadi:khala,deeptaadi:mudita,deeptaadi:peedit,deeptaadi:shakta,deeptaadi:shanta,deeptaadi:swastha,deeptaadi:vikala,jagradadi:jagrata,jagradadi:sushupti,jagradadi:svapna,lajjitaadi:garvita,lajjitaadi:kshobhita,lajjitaadi:kshudhita,lajjitaadi:lajjita,lajjitaadi:mudita,lajjitaadi:trishita,sayanadi:agama,sayanadi:agamana,sayanadi:bhojanaprapta,sayanadi:deeptamsa,sayanadi:gamana,sayanadi:kautuka,sayanadi:netrapani,sayanadi:nidraksita,sayanadi:prakasana,sayanadi:sabha,sayanadi:sayana,sayanadi:upavesana'\n    FROM bg_avastha_schemes)\n  AND (SELECT STRING_AGG(graha || ':' || motion_state, ',' ORDER BY graha,motion_state) =\n    'Jupiter:anuvakra,Jupiter:atichara,Jupiter:sama,Jupiter:vakra,Ketu:vakra,Mars:anuvakra,Mars:atichara,Mars:manda,Mars:sama,Mars:vakra,Mercury:anuvakra,Mercury:atichara,Mercury:sama,Mercury:vakra,Moon:atichara,Moon:sama,Rahu:vakra,Saturn:anuvakra,Saturn:atichara,Saturn:sama,Saturn:vakra,Sun:atichara,Sun:sama,Venus:anuvakra,Venus:atichara,Venus:sama,Venus:vakra'\n    FROM bg_motion_state_thresholds)\n  AND (SELECT ARRAY_AGG(graha ORDER BY graha) = ARRAY['Jupiter','Ketu','Mars','Mercury','Moon','Rahu','Saturn','Venus']::text[] FROM bg_combustion_orbs)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "f020280ceeeb2ccc388bfa590433944a2f63a0004d168992ed4ebc07c9977aac"
+    },
+    {
+      "asset_id": "bg_vidhi_primitives",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 68,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "vidhi_primitives",
+        "count_sql": "(SELECT COUNT(*) FROM vidhi_primitives)",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8a18843f8b245fc5c3652962558df731aa9f86c8a6465dbf15cee39cd3aa43eb"
+    },
+    {
+      "asset_id": "bg_muhurta_lattice",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 70,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_muhurta_lattice",
+        "count_sql": "SELECT COUNT(*) FROM bg_muhurta_lattice",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "b50bdd5cf93ecc1b944f1a1953365d810a25def8f60d6c27ffddc0d249a0c12a"
+    },
+    {
+      "asset_id": "bg_parihara_rules",
+      "layer": "L0",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_doshas",
+        "bg_texts"
+      ],
+      "registry_contract": {
+        "sort_order": 71,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_parihara_rules",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM bg_parihara_rules) + (SELECT COUNT(*) FROM bg_muhurta_activity_rules) + (SELECT COUNT(*) FROM bg_muhurta_factor_census)",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "527a9ec99137fd2eaa3fc06d45ee956d638c99d5bf3b9895a6074250ba6a17bc"
+    },
+    {
+      "asset_id": "bg_kota_chakra_rings",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 72,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_kota_chakra_rings",
+        "count_sql": "SELECT COUNT(*) FROM bg_kota_chakra_rings",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 27 FROM bg_kota_chakra_rings)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(table_version,ring_position,ring_name,ring_index,\n      dvara_assignment,citation,corpus_status,ratified_by)::text,\n    E'\\n' ORDER BY table_version COLLATE \"C\",ring_position\n  ),''),'UTF8')),'hex') =\n    'ec9c877dd2c143d4deb7a74dc490ced4761a90b61e0e23e7aa7589a40cc91bf7'\n  FROM bg_kota_chakra_rings)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "d95b9cd71f4d62369d400a47701447f7ba29466ece91572effcc90376bb667ae"
+    },
+    {
+      "asset_id": "bg_sarvatobhadra_grid",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "empty_acceptance",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 73,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": "bg_sarvatobhadra_grid",
+        "count_sql": "SELECT COUNT(*) FROM bg_sarvatobhadra_grid",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "1092c41d6d3f17b6ba5141dbcf6a982853090a6af1946c018a16a3bff7e30025"
+    },
+    {
+      "asset_id": "bg_vedha_malefic_scale",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 74,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_vedha_malefic_scale",
+        "count_sql": "SELECT COUNT(*) FROM bg_vedha_malefic_scale",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 5 FROM bg_vedha_malefic_scale)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(table_version,malefic_count,effect_grade,\n      effect_description,source_citation,verse_ref)::text,\n    E'\\n' ORDER BY table_version COLLATE \"C\",malefic_count\n  ),''),'UTF8')),'hex') =\n    '9ee5d8436059fa96d5fa60d8be6d0cc25cc8865e1013ef1bed8ff6810342ff1c'\n  FROM bg_vedha_malefic_scale)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6c8576e87bde4588dd016955feb2db9eddcc1a45ac75908dc21d9e4bbe202cfa"
+    },
+    {
+      "asset_id": "bg_phaladeepika_latta",
+      "layer": "L0",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 75,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_phaladeepika_latta",
+        "count_sql": "SELECT COUNT(*) FROM bg_phaladeepika_latta",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 8 FROM bg_phaladeepika_latta)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(table_version,graha,count_from_graha,direction,\n      effect_description,affliction_condition,source_citation,verse_ref)::text,\n    E'\\n' ORDER BY table_version COLLATE \"C\",graha COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '11fdcce56802e2fd5aab056b426cb6eb2a75cb6c2b1fd705df52113b44010e88'\n  FROM bg_phaladeepika_latta)\n",
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "ff69380ce5f21b62d48206ea5fceb48576983c3cf3c6d5a6494a8c429a1d323f"
+    },
+    {
+      "asset_id": "bg_kp_sublord_division",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_nakshatra"
+      ],
+      "registry_contract": {
+        "sort_order": 76,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_kp_sublord_division",
+        "count_sql": "SELECT COUNT(*) FROM bg_kp_sublord_division",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8d01b7abd8c28db4e668a9b54e87145819c48d5244adbd7ba7f7866e58261058"
+    },
+    {
+      "asset_id": "bg_gochara_arcs",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ephemeris"
+      ],
+      "registry_contract": {
+        "sort_order": 77,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bg_gochara_arcs",
+        "count_sql": "SELECT COUNT(*) FROM bg_gochara_arcs",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "eb22d69f9d60347f029672bcddf3a982a3b08b258101b5f343d517a2898fd3e2"
+    },
+    {
+      "asset_id": "bg_text_index",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_texts"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "classical_text_chunks",
+        "count_sql": "SELECT count(DISTINCT topic_tag) AS count FROM classical_text_chunks WHERE embedding IS NOT NULL AND topic_tag IS NOT NULL",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 10651\n  AND count(*) FILTER (WHERE embedding IS NOT NULL) = 10651\n  AND count(*) FILTER (WHERE topic_tag IS NOT NULL) = 7010\n  AND count(*) FILTER (WHERE topic_tag IS NULL) = 3641\n  AND count(DISTINCT topic_tag) = 361\n  AND NOT EXISTS (\n    SELECT 1 FROM classical_text_chunks AS chunk\n    WHERE chunk.topic_tag IS NOT NULL\n      AND NOT EXISTS (\n        SELECT 1 FROM reference_topic_tags AS topic\n        WHERE topic.canonical_id = chunk.topic_tag\n      )\n  )\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(chunk_id,topic_tag)::text,\n    E'\\n' ORDER BY chunk_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '19964c1f91e149f4a136632af0f1e3c88b28e213f1bb4e45de98fcf395a94e21'\nFROM classical_text_chunks\n",
+        "health_probe": null,
+        "natural_key_partition": "classical_text_chunks.chunk_id; value=topic_tag",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "df702c61dfe94b4ccdab84a00f34d9da84e86202bd076bfa13423105c8e7a192"
+    },
+    {
+      "asset_id": "bg_rules",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_texts"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "sutravali_rules",
+        "count_sql": "SELECT count(*) FROM sutravali_rules",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 3002\n  AND count(DISTINCT rule_id) = 3002\n  AND count(*) FILTER (WHERE extracted_by = 'python_regex_v2') = 3002\n  AND count(*) FILTER (WHERE confidence < 0.600 OR quality_score < 0.600) = 0\n  AND count(*) FILTER (WHERE confidence IS DISTINCT FROM quality_score) = 0\n  AND count(*) FILTER (WHERE yoga_canonical_id IS NOT NULL) = 17\n  AND count(*) FILTER (WHERE dasha_system_id IS NOT NULL) = 0\n  AND count(*) FILTER (WHERE transit_marker IS TRUE) = 25\n  AND NOT EXISTS (\n    SELECT 1 FROM sutravali_rules AS rule\n    WHERE NOT EXISTS (\n      SELECT 1 FROM classical_text_chunks AS chunk\n      WHERE chunk.text_id = rule.text_id\n    )\n       OR (rule.yoga_canonical_id IS NOT NULL AND NOT EXISTS (\n         SELECT 1 FROM brahma_yoga_catalog AS yoga\n         WHERE yoga.canonical_id = rule.yoga_canonical_id\n       ))\n       OR (rule.dasha_system_id IS NOT NULL AND NOT EXISTS (\n         SELECT 1 FROM brahma_dasha_systems AS dasha\n         WHERE dasha.canonical_id = rule.dasha_system_id\n       ))\n  )\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(rule_id,text_id,verse_ref,antecedent_jsonb,predicate_jsonb,\n      prediction_jsonb,confidence,extracted_by,extraction_pass_log,quality_score,\n      yoga_canonical_id,dasha_system_id,transit_marker)::text,\n    E'\\n' ORDER BY rule_id::text COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '87b697041c73359e12daf8258cfdd6e85a38eb5c63fa39865e42f5b46e610dbd'\nFROM sutravali_rules\n",
+        "health_probe": null,
+        "natural_key_partition": "sutravali_rules.rule_id",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "73d0c20ae35947f437ae64ba464149429eec9cda57bca4b7d8bfff77ae799a02"
+    },
+    {
+      "asset_id": "bg_yogas",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ontology"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_yoga_catalog",
+        "count_sql": "SELECT\n  (SELECT count(*) FROM brahma_yoga_catalog) +\n  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'yoga') +\n  (SELECT count(*) FROM reference_yogas) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 233 FROM brahma_yoga_catalog)\n  AND (SELECT count(*) = 233 FROM brahma_ontology WHERE entity_class = 'yoga')\n  AND (SELECT count(*) = 233 FROM reference_yogas)\n  AND (SELECT count(*) FILTER (WHERE cardinality(source_chunk_ids) = 0) = 233\n       FROM brahma_yoga_catalog)\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_yoga_catalog AS catalog\n    FULL JOIN brahma_ontology AS ontology\n      ON ontology.entity_class = 'yoga'\n     AND ontology.canonical_id = catalog.canonical_id\n    FULL JOIN reference_yogas AS reference\n      ON reference.canonical_id = COALESCE(catalog.canonical_id,ontology.canonical_id)\n    WHERE catalog.canonical_id IS NULL\n       OR ontology.canonical_id IS NULL\n       OR reference.canonical_id IS NULL\n       OR ontology.canonical_name_en IS DISTINCT FROM catalog.name_en\n       OR ontology.canonical_name_sa IS DISTINCT FROM catalog.name_sa\n       OR reference.name_en IS DISTINCT FROM catalog.name_en\n       OR reference.category IS DISTINCT FROM catalog.category\n  )\n  AND (SELECT count(*) = 4 FROM brahma_yoga_catalog\n       WHERE canonical_id IN (\n         'dhana_yoga_house_lords','raja_yoga_kendra_trikona',\n         'sarasvati_yoga','vipareeta_raja_yoga'\n       ))\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_sa,name_en,category,formation_rule_jsonb,\n      formation_text,significations_jsonb,significations_text,\n      cancellation_conditions,classical_citations,source_chunk_ids,school,rare,\n      computed_strength_formula,bhanga_rules_jsonb,partial_formation_threshold,\n      strength_formula_ref,result_class)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '4d4cd60f7cffe728f2d01c3146f9bf54279e5c747973ab60b2e69b7921023fa8'\n   FROM brahma_yoga_catalog)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(entity_class,canonical_id,canonical_name_en,\n      canonical_name_sa,synonyms,description,source_citation)::text,\n    E'\\n' ORDER BY entity_class COLLATE \"C\",canonical_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '7af1d138c492bd16bbca93b06faab6b3ff781d87aa91f8573fce6378f968fdab'\n   FROM brahma_ontology WHERE entity_class = 'yoga')\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_en,category)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '1c79af1127b8e624e12c95afecf09e73f23546fe87272f5dff8146ed30d6f564'\n   FROM reference_yogas)\n",
+        "health_probe": null,
+        "natural_key_partition": "brahma_yoga_catalog.canonical_id; brahma_ontology.(entity_class=yoga,canonical_id); reference_yogas.canonical_id",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "03d208b44052db475b1ac96ae76e39d6be6857ca6f66dded1ef2da2f715e52e0"
+    },
+    {
+      "asset_id": "bg_dasha_systems",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ontology"
+      ],
+      "registry_contract": {
+        "sort_order": 10,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_dasha_systems",
+        "count_sql": "SELECT\n  (SELECT count(*) FROM brahma_dasha_systems) +\n  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dasha_system') +\n  (SELECT count(*) FROM reference_dasha_systems) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 20 FROM brahma_dasha_systems)\n  AND (SELECT count(*) = 20 FROM brahma_ontology WHERE entity_class='dasha_system')\n  AND (SELECT count(*) = 20 FROM reference_dasha_systems)\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_dasha_systems AS catalog\n    FULL JOIN brahma_ontology AS ontology\n      ON ontology.entity_class='dasha_system'\n     AND ontology.canonical_id=catalog.canonical_id\n    FULL JOIN reference_dasha_systems AS reference\n      ON reference.canonical_id=COALESCE(catalog.canonical_id,ontology.canonical_id)\n    WHERE catalog.canonical_id IS NULL OR ontology.canonical_id IS NULL\n       OR reference.canonical_id IS NULL\n       OR ontology.canonical_name_en IS DISTINCT FROM catalog.name_en\n       OR ontology.canonical_name_sa IS DISTINCT FROM catalog.name_sa\n       OR reference.name_en IS DISTINCT FROM catalog.name_en\n       OR reference.school IS DISTINCT FROM catalog.school\n  )\n  AND EXISTS (SELECT 1 FROM brahma_dasha_systems WHERE canonical_id='kp')\n  AND NOT EXISTS (SELECT 1 FROM brahma_ontology\n                  WHERE entity_class='dasha_system' AND canonical_id='jaimini_chara')\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_sa,name_en,total_cycle_years,base_unit,\n      sequence_jsonb,computation_method,computation_pseudocode,conditions_for_use,\n      school,classical_citations,source_chunk_ids,python_impl_module)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    '30742da6005fc977124192ae27ee1ca0bb29dd5363267860dfd8260e8bb3173a'\n   FROM brahma_dasha_systems)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(entity_class,canonical_id,canonical_name_en,\n      canonical_name_sa,synonyms,description,source_citation)::text,\n    E'\\n' ORDER BY entity_class COLLATE \"C\",canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    '58a2b8b98dddcc6bb5dec73af8de386af3768457d2b3e2aea739bc435c83d4c9'\n   FROM brahma_ontology WHERE entity_class='dasha_system')\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_en,school)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    '46ec3fd9da97e6e91ec60acd34a1ece858f7e7adefecd7b6955620980f120a04'\n   FROM reference_dasha_systems)\n",
+        "health_probe": null,
+        "natural_key_partition": "brahma_dasha_systems.canonical_id; brahma_ontology.(entity_class=dasha_system,canonical_id); reference_dasha_systems.canonical_id",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "67cce361cc226e66225b25749c739ff7ec6fa6ad748df4f17ccfab3e33cb765f"
+    },
+    {
+      "asset_id": "bg_doshas",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ontology"
+      ],
+      "registry_contract": {
+        "sort_order": 11,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_dosha_catalog",
+        "count_sql": "SELECT\n  (SELECT count(*) FROM brahma_dosha_catalog) +\n  (SELECT count(*) FROM brahma_ontology WHERE entity_class = 'dosha') +\n  (SELECT count(*) FROM reference_doshas) AS count",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 79 FROM brahma_dosha_catalog)\n  AND (SELECT count(*) = 79 FROM brahma_ontology WHERE entity_class='dosha')\n  AND (SELECT count(*) = 79 FROM reference_doshas)\n  AND (SELECT count(*) FILTER (WHERE cardinality(source_chunk_ids)=0\n    AND cardinality(associated_remedies)=0) = 79 FROM brahma_dosha_catalog)\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_dosha_catalog AS catalog\n    FULL JOIN brahma_ontology AS ontology\n      ON ontology.entity_class='dosha' AND ontology.canonical_id=catalog.canonical_id\n    FULL JOIN reference_doshas AS reference\n      ON reference.canonical_id=COALESCE(catalog.canonical_id,ontology.canonical_id)\n    WHERE catalog.canonical_id IS NULL OR ontology.canonical_id IS NULL\n       OR reference.canonical_id IS NULL\n       OR ontology.canonical_name_en IS DISTINCT FROM catalog.name_en\n       OR ontology.canonical_name_sa IS DISTINCT FROM catalog.name_sa\n       OR reference.name_en IS DISTINCT FROM catalog.name_en\n       OR reference.category IS DISTINCT FROM catalog.category\n  )\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_sa,name_en,category,formation_rule_jsonb,\n      formation_text,effects_text,severity_grades,cancellation_conditions,\n      classical_citations,source_chunk_ids,associated_remedies,school)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    'cfb21a5342bda3a911f55597cac3367b727a79953ccef3349ad7f49c98acfcd4'\n   FROM brahma_dosha_catalog)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(entity_class,canonical_id,canonical_name_en,\n      canonical_name_sa,synonyms,description,source_citation)::text,\n    E'\\n' ORDER BY entity_class COLLATE \"C\",canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    'ee5dedf6e9934f42883ff268c3e485648577c6e528bfb76b7b839937b4572984'\n   FROM brahma_ontology WHERE entity_class='dosha')\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(canonical_id,name_en,category)::text,\n    E'\\n' ORDER BY canonical_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    '3fd442d6e8bfcb54fa5f4752907a2ef057ab1f49ec12aad9536a833b4e04d9a4'\n   FROM reference_doshas)\n",
+        "health_probe": null,
+        "natural_key_partition": "brahma_dosha_catalog.canonical_id; brahma_ontology.(entity_class=dosha,canonical_id); reference_doshas.canonical_id",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "073def4ad4ff1558f21b01720560332dfc21e3c0552795e6fbd2934387cffd21"
+    },
+    {
+      "asset_id": "bg_compendium_index",
+      "layer": "L0",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_texts",
+        "bg_reference"
+      ],
+      "registry_contract": {
+        "sort_order": 12,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "brahma_compendium_index",
+        "count_sql": "SELECT count(*) FROM brahma_compendium_index",
+        "integrity_check_sql": "\nSELECT\n  (SELECT count(*) = 9571 FROM brahma_compendium_index)\n  AND (SELECT count(*) = 7969 FROM brahma_compendium_index WHERE topic_id IS NULL)\n  AND (SELECT count(*) = 1602 FROM brahma_compendium_index WHERE chapter_num IS NULL)\n  AND NOT EXISTS (\n    SELECT 1 FROM brahma_compendium_index\n    WHERE (chapter_num IS NULL) = (topic_id IS NULL)\n  )\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(text_id,chapter_num,chapter_title_en,chapter_title_sa,\n      topic_id,verse_start,verse_end,chunk_ids,summary_text,significance,\n      classical_significance_score)::text,\n    E'\\n' ORDER BY text_id COLLATE \"C\",chapter_num),''),'UTF8')),'hex') =\n    '6994a142e5c6d1832cbeba82070ff444495dc83211d57331175505e74f70c2e9'\n   FROM brahma_compendium_index WHERE topic_id IS NULL)\n  AND (SELECT encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(text_id,chapter_num,chapter_title_en,chapter_title_sa,\n      topic_id,verse_start,verse_end,chunk_ids,summary_text,significance,\n      classical_significance_score)::text,\n    E'\\n' ORDER BY text_id COLLATE \"C\",topic_id COLLATE \"C\"),''),'UTF8')),'hex') =\n    '093884a730b1743cf6e04d9b838f7bacd6741ee7111daa6522c655e1fa0d4c19'\n   FROM brahma_compendium_index WHERE chapter_num IS NULL)\n",
+        "health_probe": null,
+        "natural_key_partition": "brahma_compendium_index.(text_id,chapter_num WHERE topic_id IS NULL; text_id,topic_id WHERE chapter_num IS NULL)",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "dbab10186295187a2d1f54bc7997ba6d22584426d67dade8c629ec36f6346240"
+    },
+    {
+      "asset_id": "bg_vidhi_floors",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_vidhi_primitives"
+      ],
+      "registry_contract": {
+        "sort_order": 69,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "vidhi_floor_items",
+        "count_sql": "(SELECT COUNT(*) FROM vidhi_floor_items)",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8a4865d55a9128decd6646bad290ee3b83fe5bf77d3fcd2082d82f8956c79bad"
+    },
+    {
+      "asset_id": "bg_gochara_citation_resolution",
+      "layer": "L0",
+      "wave_index": 1,
+      "execution_obligation": "static_acceptance",
+      "depends_on": [
+        "bg_texts"
+      ],
+      "registry_contract": {
+        "sort_order": 80,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": "bg_gochara_citation_resolution",
+        "count_sql": "SELECT COUNT(*) FROM bg_gochara_citation_resolution",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2d0b63205ff7a2b989495e64e16b98741584ac16e32de5bab93fc810f179e82c"
+    },
+    {
+      "asset_id": "bg_concordance",
+      "layer": "L0",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_texts",
+        "bg_text_index",
+        "bg_reference",
+        "bg_rules"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "classical_attributions",
+        "count_sql": "SELECT count(*) FROM classical_attributions",
+        "integrity_check_sql": "\nSELECT\n  count(*) = 721\n  AND count(DISTINCT topic_id) = 361\n  AND count(DISTINCT (topic_id,school)) = 721\n  AND array_agg(DISTINCT school ORDER BY school) =\n    ARRAY['jaimini','nadi','parashari','phaladeepika']::text[]\n  AND count(*) FILTER (WHERE cardinality(source_text_ids) > 0) = 721\n  AND count(*) FILTER (WHERE cardinality(source_chunk_ids) = 0) = 721\n  AND count(*) FILTER (WHERE cardinality(rule_ids) > 0) = 721\n  AND count(*) FILTER (WHERE match_method = 'topic_tag') = 721\n  AND count(*) FILTER (\n    WHERE match_confidence IN (0.200,0.400,0.600,0.800,1.000)\n  ) = 721\n  AND NOT EXISTS (\n    SELECT 1 FROM classical_attributions AS attribution\n    LEFT JOIN reference_topic_tags AS topic\n      ON topic.canonical_id = attribution.topic_id\n    WHERE topic.canonical_id IS NULL\n       OR topic.name IS DISTINCT FROM attribution.topic_canonical_name\n       OR topic.category IS DISTINCT FROM attribution.topic_category\n  )\n  AND NOT EXISTS (\n    SELECT 1\n    FROM classical_attributions AS attribution\n    CROSS JOIN LATERAL unnest(attribution.source_text_ids) AS source(text_id)\n    WHERE NOT EXISTS (\n      SELECT 1 FROM classical_text_chunks AS chunk\n      WHERE chunk.topic_tag = attribution.topic_id\n        AND chunk.text_id = source.text_id\n    )\n  )\n  AND NOT EXISTS (\n    SELECT 1\n    FROM classical_attributions AS attribution\n    CROSS JOIN LATERAL unnest(attribution.rule_ids) AS source(rule_id)\n    WHERE NOT EXISTS (\n      SELECT 1 FROM sutravali_rules AS rule\n      WHERE rule.rule_id = source.rule_id\n        AND rule.text_id = ANY(attribution.source_text_ids)\n    )\n  )\n  AND encode(sha256(convert_to(COALESCE(string_agg(\n    jsonb_build_array(topic_id,topic_canonical_name,topic_category,school,\n      source_text_ids,source_chunk_ids,rule_ids,match_method,match_confidence)::text,\n    E'\\n' ORDER BY topic_id COLLATE \"C\",school COLLATE \"C\"\n  ),''),'UTF8')),'hex') =\n    '9e2837388c783be0dc57361e52d8de344b2b041f9bb5e9eb39fa4b67412f5893'\nFROM classical_attributions\n",
+        "health_probe": null,
+        "natural_key_partition": "classical_attributions.(topic_id,school)",
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "7eee401d6dc6d78b916a5ccc6e828b4fe012fad030f02697b62603f8cced6ebd"
+    },
+    {
+      "asset_id": "ga_positions",
+      "layer": "L1",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_facts",
+        "count_sql": "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_position', 'graha_sign_attributes', 'bhava_cusps')",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6cca399a08180b3f7dd9f0c4382d24cd1425d0bab3a1f1179b02592b7814dd54"
+    },
+    {
+      "asset_id": "ga_vargas",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_divisionals",
+        "count_sql": "SELECT count(*) FROM chart_divisionals WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "5efeeda0dc5f3c80d8e6fd45c90c9f9f5aa791bb9df3860323c3824f74878231"
+    },
+    {
+      "asset_id": "ga_dashas",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_dashas",
+        "count_sql": "SELECT count(*) FROM chart_dashas WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6e3cb1b0fe3b477cab45fa3787b411fc19d57bb8313139a4b189c8e5d3fe55e4"
+    },
+    {
+      "asset_id": "ga_sensitive",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "bg_reference"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "\n  SELECT count(*) AS count FROM chart_facts\n  WHERE chart_id = $1\n    AND (\n      fact_category IN (\n        'upagraha_position', 'saturn_derived_point', 'saham_position',\n        'karaka_chara_position', 'karakamsa_position', 'swamsa_position',\n        'arudha_pada', 'midpoint', 'aprakasha_position',\n        'lal_kitab_special_point', 'maharsi_specific_point', 'bhrigu_nadi_point',\n        'sensitive_point_gulika_mandi', 'sun_derived_upagraha', 'special_lagna',\n        'nakshatra_pada_sensitive', 'kp_ruling_planets_natal', 'kp_cuspal_significators'\n      )\n      OR fact_category LIKE 'esoteric_point_%'\n      OR fact_category LIKE 'tajik_%'\n    )\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "e8c177fd99fc309e273ebdc5f1a03410ffef7c7b6ce8fe9aeeabeb265e028daa"
+    },
+    {
+      "asset_id": "ga_panchanga",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_facts",
+        "count_sql": "\nSELECT count(*) AS count\nFROM   chart_facts\nWHERE  chart_id = $1\n  AND  (\n         fact_category LIKE 'panchanga%'\n      OR fact_category = 'bhadra_flag'\n      OR fact_category = 'panchaka_flag'\n      OR fact_category = 'eclipse_proximity_natal'\n      OR fact_category = 'tara_bala_natal_baseline'\n      OR fact_category = 'chandra_bala_natal_baseline'\n       )\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "333954dadc785666ae1ea73cd8e08c9899ae470147dbc357127f2755f165bb5f"
+    },
+    {
+      "asset_id": "ga_prashna",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_prashna_judgment",
+        "count_sql": "\nSELECT (\n  (SELECT COUNT(*) FROM ga_prashna_lagna    WHERE chart_id = $1) +\n  (SELECT COUNT(*) FROM ga_prashna_judgment WHERE chart_id = $1)\n) AS count\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "5bb9056ea885cba5387dcf7ee7b5be6c99fe4e3bcaeb87e3fe6774cba574cdd5"
+    },
+    {
+      "asset_id": "ga_nakshatra",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_nakshatra",
+        "ga_positions",
+        "bg_kp_sublord_division"
+      ],
+      "registry_contract": {
+        "sort_order": 20,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_facts",
+        "count_sql": "SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','nakshatra_lord_placement','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha','kp_house_significators','kp_planet_significations')",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "b24c0c08fcc44a8b4e719e56ef3e9d3cace00221b79017454c1e03598bc7ca22"
+    },
+    {
+      "asset_id": "ga_transit_anchors",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 33,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_transit_anchors",
+        "count_sql": "SELECT COUNT(*) FROM ga_transit_anchors WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "78f7341b9b717e05fd1003a3065deefc2f24c82ed05a9888c01bc24d4f18f17e"
+    },
+    {
+      "asset_id": "ga_sensitive_degree",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 50,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_facts",
+        "count_sql": "SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='sensitive_degree_check'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "5170e893b034fd2c4b176d67a4f67464aa8d2b4a402d96c9fe4f2a97114b59d5"
+    },
+    {
+      "asset_id": "ga_ayurdaya",
+      "layer": "L1",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 51,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_facts",
+        "count_sql": "SELECT COUNT(*) FROM chart_facts WHERE chart_id=$1 AND fact_category='ayurdaya'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "3b7118c6c47e68809fe1a51b007e21ff7fa5cf0bc5380e62f6faacd509544fd4"
+    },
+    {
+      "asset_id": "ga_strength",
+      "layer": "L1",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "ga_vargas"
+      ],
+      "registry_contract": {
+        "sort_order": 4,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "\n  SELECT count(*) AS count FROM chart_facts\n  WHERE chart_id = $1\n    AND (\n      fact_category LIKE 'graha_shadbala_%'\n      OR fact_category IN ('graha_ishta_phala', 'graha_kashta_phala')\n      OR fact_category LIKE '%vimsopaka%'\n      OR fact_category LIKE 'ashtakavarga_%'\n      OR fact_category LIKE '%bhava_bala%'\n      OR fact_category = 'graha_saptavargaja_bala_component'\n      OR fact_category LIKE 'graha_%_bala_per_varga'\n    )\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "26b946d9d433e6842ba75b6b24112bd87d5cf72e886c5ac4a4f24467b8fa3f20"
+    },
+    {
+      "asset_id": "ga_tajaka",
+      "layer": "L1",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "ga_dashas",
+        "ga_sensitive"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "l1_tajik_varsha_year_lords",
+        "count_sql": "SELECT count(*) AS count FROM l1_tajik_varsha_year_lords WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "082a4f851df11c72cca92e7a9d6c5f1772b6a2536ee79df743a2ae588a8e03a5"
+    },
+    {
+      "asset_id": "ga_condition",
+      "layer": "L1",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "ga_vargas",
+        "ga_dashas"
+      ],
+      "registry_contract": {
+        "sort_order": 29,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_condition_composite",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM ga_condition_composite WHERE chart_id = $1)\n       + (SELECT count(*) FROM chart_facts\n          WHERE chart_id = $1\n            AND (fact_category LIKE 'graha_avastha_%_per_varga'\n                 OR fact_category = 'graha_avastha_sayanadi'\n                 OR fact_category = 'graha_avastha_lajjitadi'\n                 OR fact_category = 'graha_yuddha')) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "664ebc23cc4d42e6043ac1b68646968ac226b6008e81b6e8327192e58393cee8"
+    },
+    {
+      "asset_id": "ga_structural",
+      "layer": "L1",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_dashas",
+        "ga_nakshatra",
+        "ga_panchanga",
+        "ga_positions",
+        "ga_sensitive",
+        "ga_strength",
+        "ga_vargas"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "SELECT count(*) AS count FROM chart_facts cf\nJOIN fact_category_ownership fco ON fco.fact_category = cf.fact_category\nWHERE cf.chart_id = $1 AND fco.owning_asset_id = 'ga_structural'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "fcf88dd5c43c1b2d0d8bca32575c9bada96d5371dd5c8c72c52e93c480230711"
+    },
+    {
+      "asset_id": "ga_vastu",
+      "layer": "L1",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_condition"
+      ],
+      "registry_contract": {
+        "sort_order": 31,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_vastu_planet_direction_map",
+        "count_sql": "SELECT COUNT(*) FROM ga_vastu_planet_direction_map WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6f136820061666667d80071cd65b30bcae0d0c209bc61b56a2760420380ab4b3"
+    },
+    {
+      "asset_id": "ga_medical",
+      "layer": "L1",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_condition",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 32,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_medical",
+        "count_sql": "SELECT COUNT(*) FROM ga_medical WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "56385d4b46918a450d29fcbe93b01ccc9f4857037551d9e7864f41b4f6e07c66"
+    },
+    {
+      "asset_id": "ga_sade_sati",
+      "layer": "L1",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "ga_strength",
+        "ga_panchanga",
+        "ga_vargas",
+        "ga_dashas",
+        "ga_structural",
+        "ga_nakshatra"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "\n  SELECT count(*) AS count FROM chart_facts\n  WHERE chart_id = $1\n    AND fact_category IN (\n      'sade_sati_cycle', 'sade_sati_phase', 'sade_sati_phase_quarter',\n      'dhaiya_period', 'kantaka_shani_period', 'ashtama_shani_period',\n      'ardha_ashtama_shani_period', 'janma_shani_period',\n      'vishakha_shani_period', 'anumukha_shani_period',\n      'sade_sati_saturn_retrograde_subset', 'sade_sati_cancellation_check',\n      'sade_sati_modifier_overlay', 'sade_sati_concurrent_dasha_overlay',\n      'sade_sati_downstream_cross_reference'\n    )\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "4ac02728434c7ab78349b00bf5ec2c8d2fb6d8e4e3cd372e1340078b25cb92c4"
+    },
+    {
+      "asset_id": "ga_yoga",
+      "layer": "L1",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_structural",
+        "ga_dashas"
+      ],
+      "registry_contract": {
+        "sort_order": 30,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "ga_yoga_firings",
+        "count_sql": "SELECT COUNT(*) FROM ga_yoga_firings WHERE chart_id = $1::uuid",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "9964805d088f4bf15506773c0924756048af927892b0df4c24700b1af3af0b45"
+    },
+    {
+      "asset_id": "ga_vichara",
+      "layer": "L1",
+      "wave_index": 5,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_structural",
+        "ga_strength",
+        "ga_dashas",
+        "ga_yoga"
+      ],
+      "registry_contract": {
+        "sort_order": 29,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "chart_vichara",
+        "count_sql": "SELECT COUNT(*) FROM chart_vichara WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "74a6649129d653eb3b67af81b8a356b3783e17b3b5ac6451bb74050b96186696"
+    },
+    {
+      "asset_id": "bo_laksana",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_rules",
+        "ga_positions",
+        "ga_strength",
+        "ga_sensitive",
+        "ga_panchanga",
+        "ga_sade_sati",
+        "ga_structural",
+        "ga_nakshatra",
+        "ga_condition",
+        "ga_vargas",
+        "ga_vichara"
+      ],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = ANY(ARRAY[\n     'yoga','dosha','sade_sati','panchanga','karaka_alignment','tradition_specific',\n     'parivartana','configuration','varga_pattern','annual','medical','vastu',\n     'composite_state','varga_ratification_divergence','bhavat_bhavam_amplifier'\n   ])",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "dc728de81a01ea953e357f5e22f995b91ef8ba20203e286083b410c2bf9e3b5f"
+    },
+    {
+      "asset_id": "bo_sudarshana",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 19,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'sudarshana_agreement'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "85db75500f1c942428bba6167d9181b9362ef6cb70dad1ece5c410d6a9d9e673"
+    },
+    {
+      "asset_id": "bo_nakshatra_semantic",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "ga_nakshatra"
+      ],
+      "registry_contract": {
+        "sort_order": 20,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'nakshatra_semantic'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2ede837c5a4dc71a809df811993cbee32776d916bf28fa3e8b745fa9aceddb0c"
+    },
+    {
+      "asset_id": "bo_arudha",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_structural",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 21,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'arudha'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "ebdd74225748631ec55eba35d302f02c6eaf3febf7c052d8c1f89103d30f9af4"
+    },
+    {
+      "asset_id": "bo_special_lagna",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_sensitive"
+      ],
+      "registry_contract": {
+        "sort_order": 22,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = 'special_lagna'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "555cd0db96b6cfd6ac0c26f2fbfca82e726f26f5bf49aee5650d1637258379e3"
+    },
+    {
+      "asset_id": "bo_vargottama_dhana",
+      "layer": "L2",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_vargas",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 23,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND signal_type_class = ANY(ARRAY['vargottama_amplification', 'dhana_axis'])",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a161c0c8d2321c4c43b7c148931dfdc05691ec0c004278520409c912f91b57ed"
+    },
+    {
+      "asset_id": "bo_bimba",
+      "layer": "L2",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_cgm_nodes",
+        "count_sql": "SELECT count(*) FROM bodha_cgm_nodes WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "23ec1b7cc07ce021aa5f60920864e3542fa2ff79fc5ce86a03dcf1c62c3a0b41"
+    },
+    {
+      "asset_id": "bo_samskara",
+      "layer": "L2",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_signal_embeddings",
+        "count_sql": "SELECT count(*) FROM bodha_signal_embeddings WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "449c24c8d89a310eb4968c4393d9d35e98ffc9e0e030f4812540be5f02797e2c"
+    },
+    {
+      "asset_id": "bo_karanajala",
+      "layer": "L2",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_bimba",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_cgm_edges",
+        "count_sql": "SELECT count(*) FROM bodha_cgm_edges WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "7d236fc016ff7dcc29aeb0560dc277a329d544358f2994ad5c774d2033afbc2b"
+    },
+    {
+      "asset_id": "bo_cgm_motifs",
+      "layer": "L2",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_bimba",
+        "bo_karanajala"
+      ],
+      "registry_contract": {
+        "sort_order": 4,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_cgm_motifs",
+        "count_sql": "SELECT count(*) FROM bodha_cgm_motifs WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2427b99580c9d32c08b7162d92bd365d8e0af4388d03a416082f3f6a8e1b0852"
+    },
+    {
+      "asset_id": "bo_cgm_paths",
+      "layer": "L2",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_bimba",
+        "bo_karanajala"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_cgm_paths",
+        "count_sql": "SELECT count(*) FROM bodha_cgm_paths WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "155eaf08151688a3fc4bd441319cbd5941aa997ea7d03169bab806387fda7cc6"
+    },
+    {
+      "asset_id": "bo_sangati",
+      "layer": "L2",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_karanajala"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_cdlm_cells",
+        "count_sql": "SELECT count(*) FROM bodha_cdlm_cells WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "9cbcd018c7e635be7d8f2618cfea7644e3d62a9524395d8e5d3504e3630d340f"
+    },
+    {
+      "asset_id": "bo_laksana_rerank",
+      "layer": "L2",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_karanajala"
+      ],
+      "registry_contract": {
+        "sort_order": 21,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_msr_signals",
+        "count_sql": "SELECT count(*) FROM bodha_msr_signals WHERE chart_id = $1 AND graph_node_strength_contribution_jsonb IS NOT NULL",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8d855819a724006c8959cba8426a919f63095747a161087d6f70eede31735cd9"
+    },
+    {
+      "asset_id": "bo_cdlm_summary",
+      "layer": "L2",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_sangati"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "SELECT count(*) FROM bodha_cdlm_chart_summary WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "f88db720f7d1c60fa3333cf13bdcfc04425eb83c431b2722b1032a99277b3cc0"
+    },
+    {
+      "asset_id": "bo_drishti",
+      "layer": "L2",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_sangati",
+        "bo_karanajala"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_question_lenses",
+        "count_sql": "SELECT count(*) FROM bodha_question_lenses WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6760a65b39ff2bbdb16742ef4da96ec6c8f0ee2755ccc935406e884e4edb09e3"
+    },
+    {
+      "asset_id": "bo_upaya",
+      "layer": "L2",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_sangati",
+        "ga_structural",
+        "ga_dashas",
+        "bo_cgm_motifs"
+      ],
+      "registry_contract": {
+        "sort_order": 12,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_rm_resonances",
+        "count_sql": "\nSELECT (\n  (SELECT count(*) FROM bodha_rm_resonances           WHERE chart_id = $1) +\n  (SELECT count(*) FROM bodha_rm_remedy_prescriptions WHERE chart_id = $1)\n) AS count\n",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "9d4c28c47de27ad03f604f87bcc703926161dd8dc35d2eef5452701a8829cba7"
+    },
+    {
+      "asset_id": "bo_pratijna",
+      "layer": "L2",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_sangati"
+      ],
+      "registry_contract": {
+        "sort_order": 18,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_pratijna",
+        "count_sql": "SELECT COUNT(*) FROM bodha_pratijna WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "7c66a2f93dee71f0cd910de5088a34ed5bd5eddc889174e5ffc3cd3b428ce220"
+    },
+    {
+      "asset_id": "bo_yantra_mechanism",
+      "layer": "L2",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_karanajala",
+        "bo_cgm_motifs",
+        "bo_cgm_paths"
+      ],
+      "registry_contract": {
+        "sort_order": 20,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_mechanisms",
+        "count_sql": "SELECT count(*) FROM bodha_mechanisms WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "944f686faae7b6bd5bf1ef40f48f24ba06b2a6d4b3dec5e6bb6544b8756ff6b8"
+    },
+    {
+      "asset_id": "bo_anveshana",
+      "layer": "L2",
+      "wave_index": 5,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_sangati",
+        "bo_karanajala",
+        "bo_samskara",
+        "bo_drishti",
+        "bo_bimba",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 10,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "bodha_discoveries",
+        "count_sql": "SELECT (SELECT count(*) FROM bodha_discoveries WHERE chart_id = $1) + (SELECT count(*) FROM bodha_anomalies WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6e0e027359061fe563b8d3d2d0aa43618bdb9f09d3886359a86c41630121376a"
+    },
+    {
+      "asset_id": "bo_chart_gestalt",
+      "layer": "L2",
+      "wave_index": 6,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_sangati",
+        "bo_bimba",
+        "bo_cgm_paths",
+        "bo_anveshana"
+      ],
+      "registry_contract": {
+        "sort_order": 11,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": "SELECT count(*) FROM bodha_chart_gestalt WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "3947a4a1b9233fc1891911e837ab8d44789082f9276148255ae0ec509959f862"
+    },
+    {
+      "asset_id": "bo_pramana_mapa",
+      "layer": "L2",
+      "wave_index": 6,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_upaya",
+        "bo_drishti",
+        "bo_anveshana",
+        "bo_laksana",
+        "bo_sangati",
+        "bo_bimba",
+        "bo_karanajala",
+        "bo_samskara"
+      ],
+      "registry_contract": {
+        "sort_order": 13,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "synthesis_quality_scorecard",
+        "count_sql": "SELECT count(*) FROM synthesis_quality_scorecard WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "fc67f971d05f3acf522cd7d0d9144d2dae95fc0a3c0e917b4519003f36d3620b"
+    },
+    {
+      "asset_id": "bo_samvada",
+      "layer": "L2",
+      "wave_index": 7,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bo_karanajala",
+        "bo_upaya",
+        "bo_sangati",
+        "bo_pramana_mapa"
+      ],
+      "registry_contract": {
+        "sort_order": 14,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "vw_chart_digest",
+        "count_sql": "SELECT count(*) FROM vw_chart_digest WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "eae891aff678ce0111235b87d61abd262a52d2c573b3baa4fddca5ddbe43ce54"
+    },
+    {
+      "asset_id": "ka_yojaka",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bo_laksana",
+        "bg_transit_rules",
+        "ga_dashas",
+        "bo_bimba",
+        "bo_sangati",
+        "bo_pratijna",
+        "bg_ghatana"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_activation_predicates",
+        "count_sql": "SELECT count(*) FROM kala_activation_predicates WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "86ce3549ae4ae3d99fecadd05196441e0781bd0f198c089532b0cf76fc1622e4"
+    },
+    {
+      "asset_id": "ka_avadhi",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_dashas",
+        "bo_pratijna",
+        "bg_ghatana"
+      ],
+      "registry_contract": {
+        "sort_order": 32,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_avadhi",
+        "count_sql": "SELECT COUNT(*) FROM kala_avadhi WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "429c1316d2c3bcd7fa6ca23b4e251b0e46f09095da08a5879a0c76d5d0209c10"
+    },
+    {
+      "asset_id": "ka_graha_sancara",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "bg_ephemeris"
+      ],
+      "registry_contract": {
+        "sort_order": 100,
+        "scope": "global",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "d2095b237d71b425ac9c1304f1c1e9261f09589487603380b92339f640b0bafe"
+    },
+    {
+      "asset_id": "ka_dasha_kala",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "ga_dashas"
+      ],
+      "registry_contract": {
+        "sort_order": 101,
+        "scope": "per_chart",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "acd411cb0a4a151f5ce4d9e5b2c064ee7cfc7acb8362cfa46541b10b5f0451bc"
+    },
+    {
+      "asset_id": "ka_gochara_resonance",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_transit_rules"
+      ],
+      "registry_contract": {
+        "sort_order": 104,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "gochara_resonance_map",
+        "count_sql": "SELECT COUNT(*) FROM gochara_resonance_map WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "d99e6774c3605fec2ea6b0898a0440637b3100970304fe5229fd775ec4df4e82"
+    },
+    {
+      "asset_id": "ka_kota_chakra",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_kota_chakra_rings"
+      ],
+      "registry_contract": {
+        "sort_order": 120,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_kota_chakra",
+        "count_sql": "SELECT COUNT(*) FROM kala_kota_chakra WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "b34a0e807da93d69c50c56dc192f333dd7421a331190712f8e80480bcba3c043"
+    },
+    {
+      "asset_id": "ka_sudarshana_varsha",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 121,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_sudarshana_varsha",
+        "count_sql": "SELECT COUNT(*) FROM kala_sudarshana_varsha WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "586602066d72386f6bb5f9a94c9b1d4fdaba6c5da51a5e11f9adeefef27514ea"
+    },
+    {
+      "asset_id": "ka_moorti_nirnaya",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_transit_rules"
+      ],
+      "registry_contract": {
+        "sort_order": 122,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_moorti_nirnaya",
+        "count_sql": "SELECT COUNT(*) FROM kala_moorti_nirnaya WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "1b149dbe78abf69b07b5c58f8da6db6dbc316d7bc16045e91d2bf98a2f6ef3bf"
+    },
+    {
+      "asset_id": "ka_vedha_gochara",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions",
+        "bg_ephemeris",
+        "bg_transit_rules",
+        "bg_sarvatobhadra_grid",
+        "bg_vedha_malefic_scale",
+        "bg_phaladeepika_latta"
+      ],
+      "registry_contract": {
+        "sort_order": 123,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_vedha_gochara",
+        "count_sql": "SELECT COUNT(*) FROM kala_vedha_gochara WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6c8700a51b0f3afc7abd321557fda67787ecedda5e9b6449bec240ccab6cc2f4"
+    },
+    {
+      "asset_id": "ka_tithi_pravesha",
+      "layer": "L3",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 124,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_tithi_pravesha",
+        "count_sql": "SELECT COUNT(*) FROM kala_tithi_pravesha WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "3424d50a6f0a017a1ee95d174bbc4836bd68ee0b63306b9bee4c7ec7d73d7760"
+    },
+    {
+      "asset_id": "ka_muhurta_seva",
+      "layer": "L3",
+      "wave_index": 1,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "ka_graha_sancara"
+      ],
+      "registry_contract": {
+        "sort_order": 102,
+        "scope": "global",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "4c0b3a52d0e613dfc22ee7fbe15da76b65696f5c79bee4dcfb32b0c429d4b8be"
+    },
+    {
+      "asset_id": "ka_gochara_sweep",
+      "layer": "L3",
+      "wave_index": 1,
+      "execution_obligation": "retired_with_disposition",
+      "depends_on": [
+        "ka_gochara_resonance"
+      ],
+      "registry_contract": {
+        "sort_order": 105,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "RETIRED",
+        "is_active": false,
+        "has_writer": true,
+        "target_table": "kala_gochara_windows",
+        "count_sql": "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='v1'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": "ka_gochara",
+        "data_disposition": "RETAINED_AS_CAPITAL",
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "cfc1491c5d4690b6590a507057671cc0442635e394b09df3e6a2f664719512df"
+    },
+    {
+      "asset_id": "ka_gochara",
+      "layer": "L3",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_gochara_arcs",
+        "ka_gochara_resonance"
+      ],
+      "registry_contract": {
+        "sort_order": 107,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_gochara_windows",
+        "count_sql": "SELECT COUNT(*) FROM kala_gochara_windows WHERE chart_id=$1 AND generation='3.0'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "d07ae705d5b55ed112ea3c766b2365232b330730f5d393c88d8712ac26de1e5d"
+    },
+    {
+      "asset_id": "ka_gochara_v3_century_materialize",
+      "layer": "L3",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_gochara_resonance",
+        "ka_vedha_gochara",
+        "ka_moorti_nirnaya",
+        "ka_kota_chakra",
+        "ka_tithi_pravesha",
+        "bg_sky_calendar"
+      ],
+      "registry_contract": {
+        "sort_order": 108,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_gochara_windows_v2",
+        "count_sql": "SELECT COUNT(*) FROM kala_gochara_windows_v2 WHERE chart_id=$1 AND generation LIKE 'g3_%'",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "45ae855458688921c1a5a58dc60db85bb8eab265c2289015ae293e11b3a83296"
+    },
+    {
+      "asset_id": "ka_kshetra",
+      "layer": "L3",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_dasha_kala",
+        "ka_gochara_resonance",
+        "ga_panchanga",
+        "bo_pratijna",
+        "bo_sangati",
+        "bo_upaya",
+        "bg_cohort",
+        "bg_class_lifetime_counts"
+      ],
+      "registry_contract": {
+        "sort_order": 110,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_field",
+        "count_sql": "SELECT COUNT(*) FROM kala_field WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "e617d5db4461a66425996180beeff3ac8210ea1af95cac00ee666a6d4a11a9f9"
+    },
+    {
+      "asset_id": "ka_sangam",
+      "layer": "L3",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_yojaka",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_muhurta_seva",
+        "bo_laksana",
+        "ga_dashas",
+        "ga_strength",
+        "ga_positions",
+        "ga_tajaka",
+        "bg_transit_rules"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_convergence",
+        "count_sql": "SELECT count(*) FROM kala_convergence WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "35d3b294c57577eb2db526bb94efe705222abc1ada0a663244a383cb5488ec1c"
+    },
+    {
+      "asset_id": "ka_kalasutra",
+      "layer": "L3",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_yojaka",
+        "ka_sangam",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_activation",
+        "count_sql": "SELECT count(*) FROM kala_activation WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "c8c2d209b21e2b5120c8c41286689dfbea7efc1ea7a7370bd4b51653278c96cc"
+    },
+    {
+      "asset_id": "ka_vighnakara",
+      "layer": "L3",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_sangam",
+        "ka_gochara",
+        "ka_muhurta_seva",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_obstruction",
+        "count_sql": "SELECT count(*) FROM kala_obstruction WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a35cf2b136100ba0bd65d58c546f6a3de0aad69bfa6652f1d2d6906cb2f2f329"
+    },
+    {
+      "asset_id": "ka_taranga",
+      "layer": "L3",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_avadhi",
+        "bo_pratijna",
+        "ka_sangam",
+        "ga_dashas",
+        "bg_ghatana"
+      ],
+      "registry_contract": {
+        "sort_order": 33,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "CURRENT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_taranga",
+        "count_sql": "SELECT COUNT(*) FROM kala_taranga WHERE chart_id=$1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6725d0a9c1be8e3c0da40d7e75c2527782e2da6bb979ce2c737b5006eed5a155"
+    },
+    {
+      "asset_id": "ka_kala_darshana",
+      "layer": "L3",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_sangam",
+        "ka_vighnakara",
+        "ka_kalasutra"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_darshana",
+        "count_sql": "SELECT count(*) FROM kala_darshana WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "aeedc9164ac7a822bdc32147564dad0bdad53e3224b63d065b7b67c1360b1cbe"
+    },
+    {
+      "asset_id": "ka_jivana_parva",
+      "layer": "L3",
+      "wave_index": 5,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_kala_darshana",
+        "ka_dasha_kala",
+        "ka_sangam",
+        "ka_yojaka",
+        "ga_dashas"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_jivana_parva",
+        "count_sql": "SELECT count(*) FROM kala_jivana_parva WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "046f89ff066135bdcb0d5f6baf24aa8fd09bd885ba4b75a704a246b99d336b5d"
+    },
+    {
+      "asset_id": "ka_bhavishya_lekha",
+      "layer": "L3",
+      "wave_index": 5,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_kala_darshana",
+        "ka_vighnakara",
+        "ka_sangam",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_bhavishya",
+        "count_sql": "SELECT count(*) FROM kala_bhavishya WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "e8ebbae43a7463ccb25a8181defb41fedb1e61d62b8a70167c03c971d63d5f16"
+    },
+    {
+      "asset_id": "ka_tulana",
+      "layer": "L3",
+      "wave_index": 5,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "ka_sangam",
+        "ka_vighnakara",
+        "ka_kala_darshana"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "per_chart",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": null,
+        "count_sql": null,
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2b900b6e5b7aa095cec199e4b703b6b419e3a4076cd0eca1b4d426a9402a12c5"
+    },
+    {
+      "asset_id": "ph_nimitta",
+      "layer": "L4",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_sangam",
+        "ka_bhavishya_lekha",
+        "bo_bimba",
+        "bo_samskara",
+        "bo_karanajala",
+        "bo_sangati",
+        "bo_anveshana",
+        "bo_cgm_paths",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_anchors",
+        "count_sql": "SELECT count(*) FROM phala_anchors WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2146344ce8dd6dd4eccf14d9be20a499dcf1e2a699dcfe562475cc6deea923bd"
+    },
+    {
+      "asset_id": "ph_muhurta",
+      "layer": "L4",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "ka_kalasutra",
+        "ga_panchanga",
+        "ka_vighnakara",
+        "ga_condition",
+        "ka_gochara",
+        "ga_positions",
+        "ka_sangam"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_muhurta",
+        "count_sql": "SELECT count(*) FROM phala_muhurta WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "b5c09400e55ad68486d31c197a4cd2f84583bd26081d6b34e70fc7e8d084a52a"
+    },
+    {
+      "asset_id": "ph_sodhana",
+      "layer": "L4",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_sodhana",
+        "count_sql": "SELECT count(*) FROM phala_sodhana WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "be4ea14fb83a9dcd10e4240a14c1e11d4aade693ca325fea348549f593229430"
+    },
+    {
+      "asset_id": "ph_pratikara",
+      "layer": "L4",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "bo_upaya",
+        "ka_vighnakara",
+        "ka_sangam"
+      ],
+      "registry_contract": {
+        "sort_order": 4,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_mitigation",
+        "count_sql": "SELECT count(*) FROM phala_mitigation WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "638c32e6b52717bfe13eac0ce3072d831dcb5f9079a5c7c1871bf36d34a08b94"
+    },
+    {
+      "asset_id": "ph_sankrama",
+      "layer": "L4",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "bo_sangati"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_sankrama",
+        "count_sql": "SELECT count(*) FROM phala_sankrama WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "8fb021a16452f3cfb69aa80516047b2dec233038ae1f7535b16675577f261eac"
+    },
+    {
+      "asset_id": "ph_rectification",
+      "layer": "L4",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_rectification",
+        "count_sql": "SELECT (SELECT count(*) FROM phala_rectification WHERE chart_id = $1) + (SELECT count(*) FROM phala_rectification_best WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2abc2e93929b2729e315e80cc2385ba056b4c02c7d8be91e54651668f3422cf9"
+    },
+    {
+      "asset_id": "ph_suddha_sodhana",
+      "layer": "L4",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_sodhana",
+        "ph_nimitta"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_suddha_sodhana",
+        "count_sql": "SELECT count(*) FROM phala_suddha_sodhana WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "ece86b2427e8498fd82764989ac1c3cee665b4f85f78a121b454053ff26d33f5"
+    },
+    {
+      "asset_id": "ph_pramana",
+      "layer": "L4",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "ph_sankrama",
+        "ph_muhurta",
+        "ph_pratikara",
+        "ph_sodhana",
+        "ph_suddha_sodhana"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_pramana",
+        "count_sql": "SELECT count(*) FROM phala_pramana WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "665e100910028162d5f9fa9bd9ba342f7969e1e44da81979d3dd3ca5852fbd69"
+    },
+    {
+      "asset_id": "ph_phaladesa",
+      "layer": "L4",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_nimitta",
+        "ph_muhurta",
+        "ph_pratikara",
+        "ph_suddha_sodhana",
+        "ph_sankrama",
+        "ph_pramana",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "per_chart",
+        "asset_kind": "artifact",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "phala_phaladesa",
+        "count_sql": "SELECT count(*) FROM phala_phaladesa WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "64d4c475c159d2194cb10c3e5c8700fcb0abc2c19c7c34af23c127f25a54bb4e"
+    },
+    {
+      "asset_id": "lel_events",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "source_acceptance",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 0,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": false,
+        "target_table": null,
+        "count_sql": "SELECT count(*) FROM life_events WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "e0e1c1b08d5a76a2cb86bbb38d8b1a8d4f919649974f4d37af1b4af254809ecc"
+    },
+    {
+      "asset_id": "mi_jivanaghatana",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_ghatana"
+      ],
+      "registry_contract": {
+        "sort_order": 1,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_event_provenance",
+        "count_sql": "SELECT count(*) FROM mimamsa_event_provenance WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "f4e48c40b458d9351e151a82b023014f6579a22994a8c18f5204902223ada4f0"
+    },
+    {
+      "asset_id": "mi_kula",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "bg_rules",
+        "bg_class_priors"
+      ],
+      "registry_contract": {
+        "sort_order": 2,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_signal_families",
+        "count_sql": "SELECT\n  (SELECT count(*) FROM mimamsa_signal_families) +\n  (SELECT count(*) FROM mimamsa_negative_controls) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "567a30560881b551014e17216413c86b39ac3dc4015d138f1ad4afa5574f6010"
+    },
+    {
+      "asset_id": "mi_vistara",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [],
+      "registry_contract": {
+        "sort_order": 10,
+        "scope": "global",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_export_log",
+        "count_sql": "SELECT count(*) FROM mimamsa_export_log",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "2c6d5f5240c3e55851ff8274cbfefcc064e4518d54019c7b22d993e8a41d091d"
+    },
+    {
+      "asset_id": "mi_bhara",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_kshetra"
+      ],
+      "registry_contract": {
+        "sort_order": 13,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "kala_field_weight_versions",
+        "count_sql": "SELECT COUNT(*) FROM kala_field_skill WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a5768344be717d2f94223362364f1f714b6ee3907c92a2673ca58dc4e7298800"
+    },
+    {
+      "asset_id": "mi_sankalpa",
+      "layer": "L5",
+      "wave_index": 0,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ka_kshetra"
+      ],
+      "registry_contract": {
+        "sort_order": 14,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_intervention_ledger",
+        "count_sql": "SELECT count(*) FROM mimamsa_intervention_ledger WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "df99368191e489b1e8097a5db4e957129ad35a963b74827fea10c33e57a8a473"
+    },
+    {
+      "asset_id": "mi_bhavisya",
+      "layer": "L5",
+      "wave_index": 1,
+      "execution_obligation": "build",
+      "depends_on": [
+        "ph_pramana",
+        "ph_nimitta",
+        "ph_phaladesa",
+        "mi_kula",
+        "mi_jivanaghatana",
+        "bo_laksana"
+      ],
+      "registry_contract": {
+        "sort_order": 3,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_predictions",
+        "count_sql": "SELECT (SELECT count(*) FROM mimamsa_predictions WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_manifestation_sets WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "28d95d13ea97eb1e4013ec2a19aab10b58a25599204d6d6d16d32ccd435d5f7d"
+    },
+    {
+      "asset_id": "mi_pramana",
+      "layer": "L5",
+      "wave_index": 2,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_bhavisya",
+        "mi_jivanaghatana",
+        "bg_ghatana",
+        "bg_formula_constants"
+      ],
+      "registry_contract": {
+        "sort_order": 4,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_calibration",
+        "count_sql": "SELECT (SELECT count(*) FROM mimamsa_calibration WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_reliability WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "b8f90b4a8d1e03450ebfc7b65893fe70bf5eff9757c834552aab81c8db79bcab"
+    },
+    {
+      "asset_id": "mi_abhilekha",
+      "layer": "L5",
+      "wave_index": 2,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "mi_bhavisya"
+      ],
+      "registry_contract": {
+        "sort_order": 12,
+        "scope": "per_chart",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_journal",
+        "count_sql": "SELECT count(*) FROM mimamsa_journal WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "a311daa5f4b6d162feb4a4e4bea4c16f511cfbff64dcc7bf83255df745aa8a1d"
+    },
+    {
+      "asset_id": "mi_gunanaka",
+      "layer": "L5",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_pramana",
+        "mi_kula",
+        "bg_formula_constants"
+      ],
+      "registry_contract": {
+        "sort_order": 5,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_multipliers",
+        "count_sql": "SELECT (SELECT COUNT(*) FROM mimamsa_multipliers WHERE chart_id = $1) + (SELECT COUNT(*) FROM mimamsa_calibration_snapshot WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "9c9735658cfcfd315372ce0acf8e2b8318d64b313b1eae0afd9decf296237986"
+    },
+    {
+      "asset_id": "mi_pariksha",
+      "layer": "L5",
+      "wave_index": 3,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_pramana",
+        "mi_kula",
+        "bg_formula_constants"
+      ],
+      "registry_contract": {
+        "sort_order": 7,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_qa_eval",
+        "count_sql": "SELECT (SELECT count(*) FROM mimamsa_qa_eval WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_attribution WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_discoveries WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "51bf133751b04821714c93911b6ae78b80a94cdeb299bea52b80e17ba453e23a"
+    },
+    {
+      "asset_id": "mi_adhilepa",
+      "layer": "L5",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_gunanaka",
+        "bo_laksana",
+        "ka_sangam",
+        "ph_nimitta",
+        "ga_positions"
+      ],
+      "registry_contract": {
+        "sort_order": 6,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_load_bearing",
+        "count_sql": "SELECT\n  (SELECT count(*) FROM mimamsa_load_bearing           WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_convergence_adjustment WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_anchor_adjustment      WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_signal_adjustment      WHERE chart_id = $1) +\n  (SELECT count(*) FROM mimamsa_fact_adjustment        WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6a863cbb90c60b4e01d8e8d6c15fda5d3f6034455461d857fb479cdf7ae4f3f0"
+    },
+    {
+      "asset_id": "mi_sambandha",
+      "layer": "L5",
+      "wave_index": 4,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_pramana",
+        "mi_pariksha",
+        "mi_bhavisya"
+      ],
+      "registry_contract": {
+        "sort_order": 8,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_manifestation_grammar",
+        "count_sql": "SELECT count(*) FROM mimamsa_manifestation_grammar WHERE chart_id = $1",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "3892947c2a5ee49518cc4d7a71c34dc9048dc1aeeb10c24fc371a24b204c4eab"
+    },
+    {
+      "asset_id": "mi_darshana",
+      "layer": "L5",
+      "wave_index": 5,
+      "execution_obligation": "build",
+      "depends_on": [
+        "mi_pramana",
+        "mi_adhilepa",
+        "mi_sambandha",
+        "mi_pariksha",
+        "mi_gunanaka",
+        "mi_kula",
+        "mi_jivanaghatana",
+        "bo_pratijna"
+      ],
+      "registry_contract": {
+        "sort_order": 9,
+        "scope": "per_chart",
+        "asset_kind": "data",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_insight_units",
+        "count_sql": "SELECT (SELECT count(*) FROM mimamsa_insight_units WHERE chart_id = $1) + (SELECT count(*) FROM mimamsa_insight_embeddings WHERE chart_id = $1) AS count",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "6d19ac1d139a1e62a1f59fd8757811eac72fe64b07f61e6026f37cba8227a10b"
+    },
+    {
+      "asset_id": "mi_seva",
+      "layer": "L5",
+      "wave_index": 5,
+      "execution_obligation": "probe",
+      "depends_on": [
+        "mi_adhilepa"
+      ],
+      "registry_contract": {
+        "sort_order": 11,
+        "scope": "per_chart",
+        "asset_kind": "service",
+        "catalog_status": "DRAFT",
+        "is_active": true,
+        "has_writer": true,
+        "target_table": "mimamsa_preferences",
+        "count_sql": "SELECT count(*) FROM mimamsa_preferences",
+        "integrity_check_sql": null,
+        "health_probe": null,
+        "natural_key_partition": null,
+        "superseded_by": null,
+        "data_disposition": null,
+        "dead_flag": null
+      },
+      "registry_fingerprint_sha256": "ed8de7505cafc42164fac4f105bbf6aca12cad26fdab9ebcd5904598b8c55f04"
+    }
+  ]
+}

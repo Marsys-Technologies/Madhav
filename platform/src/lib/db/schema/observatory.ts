@@ -88,6 +88,13 @@ export interface LlmUsageEventRow {
   feature_flag_state: unknown | null
   client_ip_hash: string | null
   created_at: string
+  /**
+   * Serving door this call came through — 'web' | 'mcp' | 'other'. Added by
+   * migration 574 (NCD-8) for per-(user_id, channel, model) cost attribution.
+   * NULL for every row written before the door was recorded, and for any call
+   * site that does not declare one.
+   */
+  channel: string | null
 }
 
 export interface LlmProviderCostReportRow {

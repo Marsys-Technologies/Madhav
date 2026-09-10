@@ -1,0 +1,110 @@
+-- 962_nirmana_l4_ph_pratikara_output_digest_spec.sql
+--
+-- NIRMANA v2.5 -- L4 (Phala). Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Continuation of RESOLUTION_L1 v5 priority 3 (chain pre-clear), widened
+-- fleet-wide audit. Fifth L4 pick this cycle after ph_sodhana (954/955),
+-- ph_suddha_sodhana (956/957), ph_pramana (958/959), ph_sankrama (960/961).
+-- Still no ruling on the deferred mi_bhavisya/bo_upaya/bo_cdlm_summary/
+-- mi_pariksha/mi_pramana/mi_adhilepa subset-of-tables question (re-raised
+-- on #1770 last cycle) -- continuing down the independent single-table
+-- `ph_*` work stream per standing next-cycle notes.
+--
+-- PhPratikaraWriter (pipeline/orchestrator/writers/ph_pratikara.py,
+-- @register("ph_pratikara")) is the SOLE writer of phala_mitigation --
+-- confirmed via grep across all .py files for the table name: only
+-- ph_pratikara.py does DELETE/INSERT; ph_phaladesa.py only SELECTs from it
+-- (read-only, covered-domains + spillover-bridge queries).
+--
+-- One additional writer FOUND, then RULED OUT as dead code, not a live
+-- co-writer: `brahmagyan/phala/mitigation.py::seed_mitigation` is called
+-- from the legacy `pipeline/brahma_pipeline.py::_l4_phala()`, but (a) that
+-- legacy pipeline's own in-file comment (a few lines above the mitigation
+-- call, on the sibling phala.anchors step) states outright "this legacy
+-- pipeline has no live importer -- the FROZEN orchestrator superseded it",
+-- confirmed independently: `brahma_pipeline` is imported nowhere outside
+-- itself (grepped the whole tree), and (b) even if it somehow ran, the
+-- call site itself is dead: `n = seed_mitigation(chart_id) if
+-- callable(globals().get('seed_mitigation')) else 0` checks the MODULE's
+-- own globals() for a name that was imported as a local inside the
+-- function (`from brahmagyan.phala.mitigation import seed_mitigation`),
+-- so `globals().get('seed_mitigation')` is always None and the guarded
+-- branch never executes -- seed_mitigation is imported but structurally
+-- never called. Also, that legacy module's own docstring describes a
+-- SCHEMA (anchor_id/mitigation_type/mitigation_text/source_l0_rule_id)
+-- that does not exist on the live table (verified via psql \d
+-- phala_mitigation) -- a second, independent confirmation this is a dead
+-- pre-migration-332 code path, not a live contamination risk.
+--
+-- LIGHT writer, single substep, PER-CHART scope. Idempotency: unconditional
+-- `DELETE FROM phala_mitigation WHERE chart_id = %s` immediately before the
+-- INSERT batch (delete-then-insert-per-chart, CLAUDE.md SS N.3). Every
+-- INSERT also carries ON CONFLICT DO NOTHING against the table's own live
+-- unique constraint (belt-and-suspenders, not the primary idempotency
+-- mechanism).
+--
+-- Natural key: (chart_id, obstruction_id, intensity_tier) -- this mirrors
+-- the table's own live UNIQUE constraint `phala_mitigation_natural_key`,
+-- which is `(chart_id, COALESCE(obstruction_id, -1), intensity_tier)`.
+-- The COALESCE exists in the DB constraint only to guard a hypothetical
+-- NULL obstruction_id (`output_digest_spec`'s key_columns mechanism
+-- REJECTS any row with a NULL key column outright -- same COALESCE-vs-
+-- plain-column distinction documented in migration 881's header for
+-- chart_dashas). Live-checked before authoring: `obstruction_id` is 0/536
+-- NULL for the canonical chart (writer always sets it from
+-- kala_obstruction.id, never optional in the row-construction loop), and
+-- the plain-column triple `(chart_id, obstruction_id, intensity_tier)` is
+-- already collision-free across the WHOLE live table (zero groups with
+-- count > 1) -- so the COALESCE wrapper is unnecessary for this data and
+-- the plain columns are a sufficient live natural key.
+--
+-- Contamination check (the class that ruled out bo_yantra_mechanism/
+-- bo_chart_gestalt/bo_anveshana/bo_cgm_paths/bo_karanajala/bo_samskara/
+-- bo_sangati/bo_cgm_motifs this campaign): grepped writer + engine.py for
+-- `cell_id`/`node_id`/`cgm_node`/`cdlm_cell`/`uuid4` -- zero hits. Writer
+-- inputs are kala_obstruction, kala_convergence (bridge), phala_anchors,
+-- and bodha_rm_remedy_prescriptions (bo_upaya, L2) -- all upstream reads,
+-- not the L2 contamination-list tables.
+--
+-- Engine (services/ph_pratikara/engine.py) confirmed fully DB-free and
+-- deterministic: grepped for `uuid4|uuid\.|random|time\.time|
+-- datetime.now|utcnow` across engine.py -- zero hits.
+--
+-- Excluded from spec: `mitigation_id` (surrogate PK, `gen_random_uuid()`
+-- default) and `computed_at` (DEFAULT now()) -- same exclusion class as
+-- every prior spec. 20 value_columns of 22 live columns.
+--
+-- spec_sha256 computed and independently re-verified via the REAL server
+-- functions, never hand-reimplemented:
+--   cd platform/python-sidecar && python3 -c "
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...}  # exact object below
+--   print(canonical_digest(spec))                              # == the literal below
+--   print(_validate_spec('ph_pratikara', spec, sha).asset_id)   # passes the server's own validator
+--   "
+--
+-- Rehearsed end-to-end against live prod inside a ROLLED-BACK transaction
+-- (psycopg3, autocommit=False, row_factory=dict_row): INSERT this exact
+-- spec row -> call the REAL compute_output_digest(cur,
+-- asset_id='ph_pratikara') -> got back a clean digest hex
+-- (b976ec0243b6da9d2a0f96d4e44de8d9e5603a618055dcd2c86036fa6d3ea34b, no
+-- exception, key-preflight passed over 536 live rows for the canonical
+-- chart, 0 NULLs across all 3 key columns) -> conn.rollback() -> re-queried
+-- asset_output_digest_specs from a FRESH connection afterward and
+-- confirmed 0 rows for ph_pratikara, i.e. genuinely rolled back, nothing
+-- persisted by the rehearsal.
+--
+-- Post-apply verification (N.4 -- never trust a silent no-op): expect
+-- INSERT 0 1, then
+--   SELECT asset_id FROM asset_output_digest_specs
+--    WHERE asset_id = 'ph_pratikara' AND retired_at IS NULL  -- expect 1 row
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ph_pratikara',
+  '430404d08ad7d9df7ad11beb0361d2f13b6e374f359c709114fecea8f8362a4f',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"phala_mitigation","relation":"phala_mitigation","key_columns":["chart_id","obstruction_id","intensity_tier"],"value_columns":["chart_id","obstruction_id","linked_anchor_id","afflicting_graha","obstruction_severity","program_jsonb","tradition_options_jsonb","cross_tradition_corroboration","recommended_tier_jsonb","intensity_tier","proportionality_basis","initiation_muhurta_ref","window_start","window_end","re_evaluation_date","outcome_hook_jsonb","classical_citation","derivation_ledger_jsonb","source_citation","source_id"],"where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"}}]}'::jsonb
+)
+ON CONFLICT (asset_id, spec_sha256) DO NOTHING;

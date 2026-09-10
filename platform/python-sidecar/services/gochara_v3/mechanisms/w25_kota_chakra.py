@@ -23,11 +23,19 @@ Reference: Kota Chakra tradition; bg_kota_chakra_rings (ADJUDICATION-9 tier-iii)
 
 Ring intensity mapping (innermost = most powerful)
 --------------------------------------------------
-  stambha  : 1.30  — siege fully established; innermost ring
-  madhya   : 1.15  — middle ring
-  pragara  : 1.08  — outer-middle ring
-  bahya    : 1.04  — outermost ring; siege barely begun
-  none     : 1.00  — not in siege; unit modifier (no effect)
+  stambha     : 1.30  — siege fully established; innermost ring
+  durgantara  : 1.15  — middle ring
+  prakara     : 1.08  — outer-middle ring
+  bahya       : 1.04  — outermost ring; siege barely begun
+  none        : 1.00  — not in siege; unit modifier (no effect)
+
+NIRMĀṆA L3-W3 (F-KOTA-3): the ring names above were previously "madhya"/"pragara", which do
+not exist in bg_kota_chakra_rings.ring_name or the kala_kota_chakra_kota_ring_check CHECK
+constraint — both use "durgantara"/"prakara" (measured: 27 rows total, stambha=4,
+durgantara=8, prakara=8, bahya=7). Wiring this DORMANT mechanism as originally written would
+have mapped 59.4% of rows (durgantara + prakara), including Saturn's current ring, to "none" —
+a clean-looking unit modifier silently discarding most of the input (§N.8). Corrected to the
+real vocabulary before any admission ruling, per F-KOTA-3's own recommendation.
 
 Scope
 -----
@@ -67,11 +75,11 @@ TOGGLE_KEY = "w25_kota_chakra"
 # Ring intensity (innermost = most powerful; bahya = outermost, barely siege).
 # Modifier is multiplicative: 1.0 = no effect, 1.30 = 30% amplification.
 RING_MODIFIERS: dict[str, float] = {
-    "stambha": 1.30,   # innermost — siege fully established
-    "madhya": 1.15,    # middle
-    "pragara": 1.08,   # outer-middle
-    "bahya": 1.04,     # outermost
-    "none": 1.00,      # not in siege — unit modifier
+    "stambha": 1.30,      # innermost — siege fully established
+    "durgantara": 1.15,   # middle
+    "prakara": 1.08,      # outer-middle
+    "bahya": 1.04,        # outermost
+    "none": 1.00,         # not in siege — unit modifier
 }
 
 # Valid ring names (RING_MODIFIERS keys excluding "none").
@@ -242,7 +250,7 @@ def _determine_ring(kota_data: dict) -> str:
       }
     """
     # Priority order: innermost rings first.
-    ring_priority = ("stambha", "madhya", "pragara", "bahya")
+    ring_priority = ("stambha", "durgantara", "prakara", "bahya")
 
     # Build a map of ring → True if any KOTA_MALEFIC is there.
     occupied: dict[str, bool] = {}

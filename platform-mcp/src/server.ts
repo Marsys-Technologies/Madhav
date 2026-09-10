@@ -26,6 +26,11 @@ import type { Principal } from './types.js'
 // M8: structured logging + request-ID + in-process rate limiting
 import { generateRequestId, log, logError } from './lib/logger.js'
 import { checkMcpRateLimit } from './lib/rate_limiter.js'
+// RATE-07: fleet-wide, Postgres-backed, fail-closed gate for the OAuth mutation
+// endpoints. NOT a replacement for checkMcpRateLimit above (which still guards
+// the authenticated POST /mcp tool path) — a different limiter with a different
+// contract; see lib/oauth_rate_limit.ts's header for the side-by-side.
+import { oauthRateLimit, chargeValidatedSubject } from './lib/oauth_rate_limit.js'
 // M6: surface spec for per-model declared profile
 import { callPlatformSurfaceSpec } from './client.js'
 // M5: DB-backed OAuth 2.0 endpoints
@@ -34,6 +39,7 @@ import { handleToken } from './oauth/token.js'
 import { handleOAuthDiscovery, handleOpenIDConfiguration } from './oauth/discovery.js'
 import { validateAccessToken } from './oauth/token_store.js'
 import { registerOAuthClient, validateOAuthClient } from './oauth/oauth_platform_client.js'
+import { isRegistrableRedirectUri } from './oauth/redirect_uri_policy.js'
 // W5 L2: per-family MCP surface profiles (full/compact≤20/consult), OAuth-scope-gated.
 import { resolveMcpProfile, applyProfileGate, type ToolRegisteringServer } from './lib/mcp_profile.js'
 import { applyDeprecatedToolGate } from './lib/deprecated_tool_gate.js'
@@ -156,12 +162,33 @@ app.use(cookieParser())
 
 // ── OAuth 2.0 endpoints (M5: DB-backed, real Firebase identity) ──────────────
 // Per MCP authorization spec + ChatGPT connector requirements
+//
+// RATE-07 (PARIŚEṢA-V4 GA-2 ruling, 2026-08-21): every one of the five OAuth
+// MUTATION endpoints below now carries `oauthRateLimit(<route>)` — a fleet-wide,
+// Postgres-backed, fail-closed gate that runs BEFORE the handler, i.e. before any
+// auth-code row is written and before any credential is examined. Previously
+// these five had no rate limiting whatsoever: the in-process `checkMcpRateLimit`
+// Map below is keyed on `key_id`, which OAuth mutations do not carry, and is
+// wired only to `POST /mcp`. See `./lib/oauth_rate_limit.ts` for the identity
+// derivation and its disclosed X-Forwarded-For ambiguity.
+//
+// The two `.well-known` discovery routes are deliberately NOT gated: they are
+// idempotent static reads that a connector fetches before it can do anything
+// else, and limiting them would break discovery for a shared-egress client
+// without protecting any mutable state.
 
-app.post('/mcp/oauth/authorize', (req, res) => void handleAuthorize(req, res))
+app.post('/mcp/oauth/authorize', oauthRateLimit('oauth_authorize'), (req, res) => void handleAuthorize(req, res))
 // GET /mcp/oauth/callback — Firebase auth callback (stamps uid onto auth code)
-app.get('/mcp/oauth/callback', (req, res) => void handleCallback(req, res))
-app.post('/mcp/oauth/token', (req, res) => void handleToken(req, res))
-app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
+app.get('/mcp/oauth/callback', oauthRateLimit('oauth_callback'), (req, res) => void handleCallback(req, res))
+app.post('/mcp/oauth/token', oauthRateLimit('oauth_token'), (req, res) => void handleToken(req, res))
+// RATE-07 (security review fix): gated with the 'oauth_token' key, NOT a
+// separate 'oauth_refresh' key. This route is a thin alias — it forces
+// grant_type=refresh_token and delegates to the very same handleToken that
+// POST /mcp/oauth/token serves. Two distinct bucket keys over one underlying
+// operation meant a refresh-token guessing attack got the per-IP budget TWICE
+// (once via /refresh, once via /token with grant_type=refresh_token). Sharing
+// the key makes the advertised limit the real limit.
+app.post('/mcp/oauth/refresh', oauthRateLimit('oauth_token'), async (req: Request, res: Response) => {
   // Redirect to token endpoint with grant_type=refresh_token
   req.body.grant_type = 'refresh_token'
   await handleToken(req, res)
@@ -169,7 +196,7 @@ app.post('/mcp/oauth/refresh', async (req: Request, res: Response) => {
 
 // M5: Dynamic client registration (RFC 7591 / MCP OAuth spec)
 // Writes to mcp_oauth_clients table via platform API.
-app.post('/mcp/oauth/register', async (req: Request, res: Response) => {
+app.post('/mcp/oauth/register', oauthRateLimit('oauth_register'), async (req: Request, res: Response) => {
   const authHeader = req.headers['authorization']
   // Registration requires a valid Bearer key to identify the registering user.
   const principal = await validateMcpKeyFromHeader(authHeader)
@@ -178,9 +205,31 @@ app.post('/mcp/oauth/register', async (req: Request, res: Response) => {
     return
   }
 
+  // RATE-07 layer 2: now — and only now — that the Bearer key has actually been
+  // validated, charge a per-principal bucket. Doing this BEFORE validation would
+  // let any anonymous caller spend a named user's registration quota by asserting
+  // their uid. `chargeValidatedSubject` writes the 429/503 itself when it denies.
+  if (!(await chargeValidatedSubject(res, 'oauth_register', 'principal', principal.user_uid))) {
+    return
+  }
+
   const body = req.body as { redirect_uris?: string[]; scope?: string }
   if (!Array.isArray(body.redirect_uris) || body.redirect_uris.length === 0) {
     res.status(400).json({ error: 'invalid_client_metadata', error_description: 'redirect_uris required' })
+    return
+  }
+
+  // SF-004 (PARIŚEṢA-V4): registration-time URI policy — require https:, or
+  // http: on a loopback host for dev; reject fragments and wildcards. See
+  // SF004_OAUTH_BINDING_CONTRACT_v1_0.md §5. Applied here (the public-facing
+  // RFC 7591 entry point) as well as at the platform API route this call
+  // proxies to, as defense in depth.
+  const badRedirectUri = body.redirect_uris.find(uri => !isRegistrableRedirectUri(uri))
+  if (badRedirectUri !== undefined) {
+    res.status(400).json({
+      error: 'invalid_redirect_uri',
+      error_description: 'redirect_uris must be https: (or http: on localhost/127.0.0.1/::1), with no fragment and no wildcard',
+    })
     return
   }
 

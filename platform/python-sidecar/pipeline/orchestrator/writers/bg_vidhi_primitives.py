@@ -75,7 +75,7 @@ PRIMITIVE_ROWS: list[tuple] = [
     ("divisional_facts", 1, "Divisional-chart (varga) fact set for a named varga, including D2 varga_hora_class (Surya/Chandra hora semantics).", "structural", "ganita_chart_facts_get", {"chart_id": "{chart_id}", "divisional_chart": "{varga}"}, None, None, ["varga_hora_class"], []),
     ("dosha_scan", 1, "Per-chart bespoke dosha detection with cancellation/bhaṅga checks.", "doctrine", "ref_doshas_get", {"chart_id": "{chart_id}"}, "bodha_signals_get(signal_type_class=dosha_label)", "CR-73", [], []),
     ("election_read", 1, "Gochara (D-5) election-avoidance view (gochara_election_avoidance_get): ADVERSE kala_gochara_windows to avoid for an undertaking, each carrying the full DR-16 payload (clarity_statement, probabilistic framing, falsifier, mitigation-paired BPHS remedy, confidence_disclosure). Bind when the question is an undertaking / timing / muhūrta ask.", "temporal", "gochara_election_avoidance_get", {"chart_id": "{chart_id}"}, "kala_muhurta_get", "CR-131", [], []),
-    ("from_moon_view", 1, "Chandra-lagna re-derivation of house/karaka reads (bhāva reckoned from Moon, not just Lagna).", "structural", "ganita_chart_facts_get", {"chart_id": "{chart_id}", "reference_point": "moon"}, "ganita_structural_get", None, [], []),
+    ("from_moon_view", 1, "Chandra-lagna re-derivation of house/karaka reads (bhāva reckoned from Moon, not just Lagna).", "structural", "ganita_transit_anchors_get", {"chart_id": "{chart_id}"}, "ganita_structural_get", None, [], []),
     ("full_domain_dossier", 1, "Whole-domain gather-then-compose sweep: pages the domain's ENTIRE concept slice (all Ω1-inventory concepts) in budget-capped pages via the Ω5 `dossier` engine, structurally withholding every interpretive surface until coverage is 100% accounted (synthesis_gate OPEN). The planner's guaranteed route to FULL domain coverage — the atom-by-atom floor reads single facts; this reads the whole territory. Call it FIRST; follow `cursor` to exhaustion before composing. Flagship slices: {wealth, career} × the two canonical charts.", "utility", "dossier", {"domain": "{domain}", "chart_id": "{chart_id}", "budget_kb": 24}, None, None, [], []),
     ("gochara_activation_read", 1, "Gochara (D-5) activation view (gochara_activation_get): kala_gochara_windows rows ACTIVE on the current date — \"is this event-class configuration firing right now?\" over the signed λ_e intensity field, carrying the DR-16 honest-clarity + structural_prior envelope. Bind at horizon=current in every deepdive machine band.", "temporal", "gochara_activation_get", {"chart_id": "{chart_id}"}, "kala_windows_get", "CR-131", [], []),
     ("gochara_forecast_read", 1, "Gochara (D-5) forecast view (gochara_forecast_get): kala_gochara_windows overlapping a forward date range (point/interval/chain shapes, is_irreversibility_milestone flagged) over the signed λ_e field, DR-16-enveloped — the forward temporal spine. Bind where horizon=multi_year.", "temporal", "gochara_forecast_get", {"chart_id": "{chart_id}"}, "kala_windows_get", "CR-131", [], []),
@@ -157,17 +157,48 @@ class VidhiPrimitivesWriter(WriterBase):
                         mandatory_tags  = EXCLUDED.mandatory_tags,
                         cr27_prevents   = EXCLUDED.cr27_prevents,
                         updated_at      = now()
+                    WHERE ROW(
+                        vidhi_primitives.version,
+                        vidhi_primitives.definition,
+                        vidhi_primitives.category,
+                        vidhi_primitives.live_tool,
+                        vidhi_primitives.tool_args,
+                        vidhi_primitives.fallback_face,
+                        vidhi_primitives.known_gap,
+                        vidhi_primitives.mandatory_tags,
+                        vidhi_primitives.cr27_prevents
+                    ) IS DISTINCT FROM ROW(
+                        EXCLUDED.version,
+                        EXCLUDED.definition,
+                        EXCLUDED.category,
+                        EXCLUDED.live_tool,
+                        EXCLUDED.tool_args,
+                        EXCLUDED.fallback_face,
+                        EXCLUDED.known_gap,
+                        EXCLUDED.mandatory_tags,
+                        EXCLUDED.cr27_prevents
+                    )
                     """,
                     (pid, version, definition, category, live_tool, json.dumps(tool_args),
                      fallback_face, known_gap, mandatory_tags, cr27_prevents),
                 )
-                upserted += 1
+                upserted += cur.rowcount
+
+            primitive_ids = [row[0] for row in PRIMITIVE_ROWS]
+            cur.execute(
+                "DELETE FROM vidhi_primitives WHERE NOT (primitive_id = ANY(%s))",
+                (primitive_ids,),
+            )
+            deleted = cur.rowcount
 
         return WriterResult(
             asset_id=self.asset_id,
-            rows_inserted=upserted,
+            rows_inserted=upserted + deleted,
             duration_seconds=time.time() - t0,
-            notes=f"vidhi_primitives: {upserted} rows ({len(PRIMITIVE_ROWS)} defined atoms)",
+            notes=(
+                f"vidhi_primitives: {upserted} inserted/updated, {deleted} stale deleted "
+                f"({len(PRIMITIVE_ROWS)} defined atoms)"
+            ),
         )
 
 

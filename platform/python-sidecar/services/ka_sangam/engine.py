@@ -67,10 +67,13 @@ class EnrichmentContext:
     ashtakavarga_bindu: {planet_name: {sign_number (1-12): bindu_count (0-8)}}
         Sourced from chart_facts (sarvashtakavarga) via ga_strength writer.
         Classical threshold: ≥ 5 bindus = strong; ≤ 3 = weak.
-    vedha_rules: list of dicts with keys {graha, transit_to_house, vedha_house}
-        Sourced from bg_transit_rules WHERE rule_type='vedha'.
-    tajika_year_lords: list of dicts with keys {varsha_year, varshesha, muntha}
-        Sourced from l1_tajik_varsha_year_lords for the current chart.
+    vedha_rules: list of dicts with keys {graha, window_start, window_end}
+        Sourced from kala_vedha_gochara WHERE vedha_kind='house_vedha', pinned to
+        ayanamsha_id='lahiri_chitrapaksha'.
+    tajika_year_lords: list of dicts with keys
+        {varsha_year, varshesha, muntha, varsha_start, varsha_end}
+        Sourced from l1_tajik_varsha_year_lords for the current chart, pinned to
+        ayanamsha_id='lahiri_chitrapaksha'.
     school_consensus_by_domain: {domain: schools_agreeing (0-7)}
         Sourced from convergence_scores (populated by POST /api/build/school-consensus).
         C13 score = schools_agreeing / 7.0.
@@ -99,7 +102,7 @@ def _c7_ashtakavarga_potency(
     planet: str,
     transit_sign: Optional[int],
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C7: ashtakavarga_transit_potency — does the transit DELIVER?
     Bindus ≥ 5 → strong (→ 1.0 scaled linearly). ≤ 2 → weak (→ 0.0).
@@ -107,10 +110,30 @@ def _c7_ashtakavarga_potency(
     Classical source: Parāśara, Ashtakavarga adhyāya.
     """
     if not ctx.ashtakavarga_bindu or transit_sign is None:
-        return 0.0
-    sign_map = ctx.ashtakavarga_bindu.get(planet, {})
-    bindus = sign_map.get(transit_sign, 0)
-    return min(1.0, bindus / 8.0)
+        return None
+
+    # NIRMĀṆA L3-W3 (§N.8). This lookup has NEVER matched: `ctx.ashtakavarga_bindu` is keyed by
+    # the stored L1 vocabulary — JUP / MAR / MER / MOON / SAT / SUN / VEN / SARVA — while `planet`
+    # arrives Title-case from `_resolve_transit_planet` ("Jupiter"). So `sign_map` is always {},
+    # bindus always 0, and the term has been 0.0 on **4,729 of 4,729** rows carrying the key.
+    #
+    # The vocabulary half is fixable here via the L0 SSoT. The SECOND half is NOT, and is why this
+    # returns an honest None rather than a repaired number:
+    #
+    #   the stored facts are keyed `<GRAHA>-HOUSE_<N>`, and this function looks up by
+    #   `transit_sign` (1-12 rāśi). HOUSE and SIGN are different frames. Classical ashtakavarga
+    #   counts bindus per RĀŚI, which suggests the lookup is right and the fact label is a
+    #   misnomer — but that is an inference about an L1 fact's meaning, not a fact.
+    #
+    # **Both canonical charts have Āries lagna**, where house N ≡ sign N, so the two frames are
+    # indistinguishable on every chart this campaign builds. A vocabulary-only fix would therefore
+    # look perfectly correct here and be silently wrong for any non-Āries-lagna chart. Guessing the
+    # frame to make a number appear is precisely the invented judgment §N.7 item 6 forbids.
+    #
+    # Held pending the frame adjudication. Until then the term is DROPPED, not scored zero —
+    # `sup.get(key, 0.0)` in the saturating combiner makes an absent key contribute nothing, which
+    # is arithmetically what it has always done, but now says so.
+    return None
 
 
 def _c8_eclipse_score(
@@ -124,29 +147,41 @@ def _c8_eclipse_score(
     """
     C8: eclipse_proximity — solar/lunar eclipse near the transit trigger point.
     Uses ka_gochara.find_eclipse_proximity over the window.
-    Score = max orb-strength across found events; 0.0 if none.
+    Score = max orb-strength across found events; 0.0 if none genuinely found.
+
+    NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This used to pass node_planet='TrueNode',
+    which is not a recognised planet name anywhere in this codebase — the real
+    vocabulary is 'Rahu'/'Ketu' (transit_search.PLANET_IDS; its own comment
+    notes 'Rahu' IS swe.TRUE_NODE under the hood). Every call raised ValueError
+    inside _get_planet_pos, silently swallowed by this function's blanket
+    except-Exception, so C8 was 0.0 on all 14,868 of 14,868 kala_convergence
+    rows for the canonical chart — not a real "no eclipse nearby" result on a
+    single one of them. Fixed by checking BOTH lunar nodes (an eclipse can
+    occur near either), matching the established
+    gochara_grammar.primitives.eclipse_degree pattern, which already
+    enumerates all four Rahu/Ketu × Sun/Moon node-luminary pairs.
     """
     if gochara_service is None:
         return 0.0
-    try:
-        events = gochara_service.find_eclipse_proximity(
-            node_planet='TrueNode',
-            luminary='Sun' if planet not in ('Moon',) else 'Moon',
-            orb=orb,
-            start_jd=window_start_jd,
-            end_jd=window_end_jd,
-        )
-        if not events:
-            return 0.0
-        max_score = 0.0
+    luminary = 'Sun' if planet not in ('Moon',) else 'Moon'
+    max_score = 0.0
+    for node_planet in ('Rahu', 'Ketu'):
+        try:
+            events = gochara_service.find_eclipse_proximity(
+                node_planet=node_planet,
+                luminary=luminary,
+                orb=orb,
+                start_jd=window_start_jd,
+                end_jd=window_end_jd,
+            )
+        except Exception as exc:
+            logger.debug("C8 eclipse_proximity failed (node=%s): %s", node_planet, exc)
+            continue
         for ev in events:
             orb_deg = getattr(ev, 'orb_at_event_deg', orb)
             s = orb_strength_score(orb_deg, orb, getattr(ev, 'applying_separating', 'applying'))
             max_score = max(max_score, s)
-        return min(1.0, max_score)
-    except Exception as exc:
-        logger.debug("C8 eclipse_proximity failed: %s", exc)
-        return 0.0
+    return min(1.0, max_score)
 
 
 def _c9_transit_to_transit_score(
@@ -213,37 +248,50 @@ def _c10_station_score(
 
 def _c11_vedha_factor(
     planet: str,
-    transit_house: Optional[int],
+    peak_date: Optional[Any],
     ctx: EnrichmentContext,
 ) -> float:
     """
     C11: vedha_cancellation — NECESSARY-SIDE modulator (not supporting).
-    Returns 0.0 when a vedha rule fully cancels this planet's transit,
-    0.5 when the vedha planet is present in the vedha house (partial),
-    1.0 (neutral) when no vedha applies (no cancellation).
+    Returns 0.3 when peak_date falls inside a real house-vedha window for
+    this planet, 1.0 (neutral) when no vedha applies (no cancellation).
 
     Enters necessary_conditions as (1 - 0.0) = 1.0 (no vedha) or lower.
-    Classical source: Phaladeepika Ch.26 Gochara Vedha.
+    Classical source: BPHS Ch.29 Gochara Phala (house vedha), matching
+    kala_vedha_gochara's own classical_citation.
 
-    CR-102 (2nd bug, T-6 fix): `bg_transit_rules.graha` is seeded lowercase
-    ("saturn", "jupiter", ...; see brahmagyan/l0_transit.py) while callers in
-    this module pass capitalized planet names ("Saturn", "Jupiter", ... —
-    see `_resolve_transit_planet`). The comparison below is case-normalized
-    so a real fetched vedha rule is never missed on case alone. `transit_house`
-    itself must ALSO be in the correct house-FROM-MOON reference frame — see
-    `_house_from_moon` below and its callers in mode_a_search/mode_b_sweep
-    (the CR-102 primary bug: both call sites used to pass the transiting
-    planet's raw rasi sign number here instead).
+    NIRMĀṆA L3-W3 (F-SANGAM-5, §N.8). This used to take an abstract
+    `transit_house` (a house-FROM-MOON number, CR-102) and match it against
+    house-rule tuples fetched from `bg_transit_rules WHERE rule_type='vedha'`
+    — a filter value that does not exist on that table, so this factor was
+    permanently 1.0 (neutral) on every window, on every chart: the
+    NECESSARY-side veto never fired at all. `kala_vedha_gochara` (the real,
+    populated, per-chart source) instead stores precomputed
+    [window_start, window_end) DATE ranges per graha where house-vedha
+    genuinely applies — an abstract house number is no longer the right
+    question; "does this transit's peak fall inside one of this planet's
+    real vedha windows" is. Fixed by switching to date-range containment
+    matching, the same pattern already used for C12 (_c12_tajika_score).
+
+    Case-normalized comparison retained defensively (kala_vedha_gochara.graha
+    is stored Title-case today, matching `_resolve_transit_planet`'s output,
+    but a case mismatch must never silently drop a real vedha window).
     """
-    if not ctx.vedha_rules or transit_house is None:
+    if not ctx.vedha_rules or peak_date is None:
         return 1.0  # no data → no vedha → neutral (1.0)
     planet_norm = (planet or '').strip().lower()
     for rule in ctx.vedha_rules:
         rule_planet = rule.get('graha') or rule.get('planet')
-        to_house = rule.get('transit_to_house') or rule.get('to_house')
-        vedha_h = rule.get('vedha_house')
         rule_planet_norm = (rule_planet or '').strip().lower()
-        if rule_planet_norm == planet_norm and to_house == transit_house and vedha_h:
+        if rule_planet_norm != planet_norm:
+            continue
+        window_start = rule.get('window_start')
+        window_end = rule.get('window_end')
+        if window_start is None or window_end is None:
+            continue
+        start_date = window_start.date() if hasattr(window_start, 'date') else window_start
+        end_date = window_end.date() if hasattr(window_end, 'date') else window_end
+        if start_date <= peak_date <= end_date:
             return 0.3  # vedha present → strongly damp
     return 1.0
 
@@ -433,61 +481,148 @@ def _c_benefic_dristi(
 
 # ── C6: cross_dasha_agreement helper ─────────────────────────────────────────
 
-def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> float:
+def _c_cross_dasha_agreement(peak_date: Any, eligible_windows: list) -> Optional[float]:
     """
     C6: cross_dasha_agreement — how many dasha systems agree at peak_date.
 
     Uses the cross_dasha_agreement.count on EligibleWindow (already computed
     by KaDashaKalaService across 7 dasha systems).
     Score = max(count across overlapping windows) / 7.0, capped at 1.0.
-    Mode B callers pass empty list → 0.0 (correct: no dasha prior in mode B).
+    Returns honest None when no eligible window covers peak_date — distinct
+    from a real 0.0, which means "a window covers this date, and its own
+    agreement count is genuinely zero".
+
+    NIRMĀṆA L3-W3 (§N.8). Measured live against the canonical chart: 95.7%
+    of Mode A rows (868/907 post-birth) score 0.0 here, and this is NOT the
+    same failure class as F-SANGAM-3/4/6/7 (fictional lookups/wrong columns)
+    — KaDashaKalaService itself works and returns real, non-degenerate
+    agreement data (verified directly: querying it for 20 sampled predicates
+    over the correct full-lifetime horizon returns real windows with
+    cross_dasha_agreement.count=1 every time). The root cause is
+    distributional: eligible windows (both dasha-eligible AND cross-system-
+    agreeing) are genuinely narrow and sparse across a century (as few as 61
+    short windows, days to weeks each), so most independently-found transit-
+    aspect peak_dates simply do not happen to fall inside one — verified on
+    a real zero row (peak_date=2026-11-25, ayanamsha=true_chitra,
+    lords={Saturn,Ketu}): 61 real eligible windows exist for that lord set,
+    zero of them cover that specific date. This was previously
+    indistinguishable from "a window covers this date and 0 systems agree"
+    (a real, meaningful disagreement answer) — this fix separates the two.
+    Old docstring here additionally claimed "Mode B callers pass empty list
+    -> 0.0" — false as written: mode_a_search is this function's only
+    caller (verified via grep); Mode B never calls it at all.
     """
     if not eligible_windows:
-        return 0.0
-    best = 0
+        return None
+    best: Optional[float] = None
     for ew in eligible_windows:
         if ew.start_date <= peak_date <= ew.end_date:
             agreement = getattr(ew, 'cross_dasha_agreement', None)
             count = agreement.count if agreement is not None else 0
-            best = max(best, count)
-    return min(1.0, best / 7.0)
+            score = min(1.0, count / 7.0)
+            best = score if best is None else max(best, score)
+    return best
 
 
 # ── C_panchanga_quality helper ────────────────────────────────────────────────
+
+_PANCHANGA_UNAVAILABLE_WARNED = False
+
 
 def _c_panchanga_quality(
     peak_date: Any,
     muhurta_service: Any,
     native_location: Optional[dict],
-) -> float:
+) -> Optional[float]:
     """
-    C_panchanga: muhurta score for peak_date at native's birth location.
-    Returns 0.0 if muhurta_service is None or location is unavailable.
-    Score normalized from 0-100 service scale to 0-1.
+    C_panchanga: muhurta score for peak_date at the native's birth location,
+    normalised from the service's 0-100 scale to [0,1].
+
+    Returns **None when the term could not be evaluated at all** — distinct from 0.0, which
+    means "evaluated, and the pāñcāṅga does not support this window".
+
+    NIRMĀṆA L3-W3 (§N.8, §N.7 item 6). This used to return 0.0 for every failure mode and
+    swallow the exception at DEBUG. It is called with ``event='general'``, which is **not in
+    ``muhurat.finder.EVENTS_MVP``** (a curated eight-event set, settled D2 2026-05-19), so
+    ``score()`` raises on every call and the term has been 0.0 on **4,729 of 4,729 Mode A/B
+    rows** — every row that carries the key at all. Nothing could ever have made it read
+    otherwise.
+
+    Two consequences, both silent:
+      * ``constituent_factors.currents.panchanga`` is derived as ``c_panchanga_quality > 0.0``,
+        so every row asserted *"pāñcāṅga did not support this window"* when the truth was
+        *"pāñcāṅga was never consulted"*;
+      * that current feeds ``independent_current_count`` (the I-22 coupling discount), so the
+        independence count is systematically understated by a term that was never evaluated.
+
+    **This function does not fix the underlying gap and must not pretend to.** Wiring the term
+    needs a general-purpose pāñcāṅga quality that ``ka_muhurta_seva`` deliberately does not
+    expose; substituting one of the eight curated events as a proxy would invent a semantic
+    (§N.7 item 6 — an honest null beats an invented judgment). What changes here is that the
+    absence becomes *reportable* instead of masquerading as a computed zero.
     """
+    global _PANCHANGA_UNAVAILABLE_WARNED
+
     if muhurta_service is None or native_location is None:
-        return 0.0
+        return None
     try:
         raw = muhurta_service.score(peak_date, native_location, event='general')
         return min(1.0, max(0.0, float(raw) / 100.0))
     except Exception as exc:
-        logger.debug("_c_panchanga_quality failed for %s: %s", peak_date, exc)
-        return 0.0
+        # Once per process, at WARNING: a per-row DEBUG line is how this stayed invisible.
+        if not _PANCHANGA_UNAVAILABLE_WARNED:
+            logger.warning(
+                "[ka_sangam] c_panchanga_quality is NOT COMPUTABLE and the term is being "
+                "dropped, not scored zero: %s: %s. event='general' is not in EVENTS_MVP, so "
+                "this affects every row. 0.070 of the supporting-weight budget is unreachable "
+                "until a general-purpose pāñcāṅga quality exists (L3-W3).",
+                type(exc).__name__, exc,
+            )
+            _PANCHANGA_UNAVAILABLE_WARNED = True
+        return None
 
 
 def _c13_school_consensus_score(
     signature_class: str,
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C13: school_consensus (U3 pass-2, post-U4) — 7-school inter-tradition agreement.
     Score = schools_agreeing / 7.0.  Floor 0.0, ceiling 1.0.
-    Domain inference: signature_class → domain (e.g. 'CAREER_PEAK' → 'CAREER').
-    Sourced from convergence_scores.schools_agreeing (populated by school-consensus build).
-    Returns 0.0 when school_consensus_by_domain is empty (pre-U4 safe default).
+
+    Returns **honest None when the term could not be evaluated at all** — distinct
+    from 0.0, which means "evaluated, and the schools disagree completely".
+
+    NIRMĀṆA L3-W3 (F-SANGAM-6, §N.8, §N.7 item 6). This used to return 0.0 for
+    every failure mode. Two independent defects, both measured live, neither
+    fixed here:
+
+      1. `ctx.school_consensus_by_domain` is never populated — the writer's own
+         comment says so verbatim ("pre-U4 default — not yet built; stays
+         empty"). The U4 school-consensus build simply does not exist yet.
+
+      2. Even once U4 lands, the domain-inference step below cannot work as
+         written: it maps `signature_class` prefixes to life-domain buckets
+         (CAREER / HEALTH / RELATIONSHIP / SPIRITUAL / PSYCHOLOGICAL), but
+         `signature_class` is a SIGNAL-TYPE taxonomy, not a life-domain one —
+         the live `kala_activation_predicates_signature_class_check` CHECK
+         vocabulary is `{YOGA, DOSHA, DIGNITY, DISPOSITOR_RELATIONAL,
+         SENSITIVE_POINT, CONJUNCTION_ASPECT, SUBSYSTEM, CLASSIFY_RESIDUAL}` —
+         measured live, 0 of these ever starts with any of the five hardcoded
+         prefixes. There is no honest way to derive "which life domain does a
+         DOSHA or a YOGA belong to" from the signal-type field alone; guessing
+         one to make the mechanism activate would be exactly the invented
+         judgment §N.7 item 6 forbids. This is a genuine open design question
+         for whoever builds U4 — not a gap this fix can close by inventing a
+         mapping.
+
+    Both defects mean the term is DROPPED from the saturating product (via the
+    caller's `if c13 is not None` guard), not scored zero — a real "the schools
+    disagree completely" 0.0 would look identical to "this was never
+    evaluated" otherwise, which is precisely the §N.8 defect this fix removes.
     """
     if not ctx.school_consensus_by_domain:
-        return 0.0
+        return None
     # Map signature_class prefix to domain
     domain: Optional[str] = None
     for prefix, mapped in (
@@ -501,7 +636,7 @@ def _c13_school_consensus_score(
             domain = mapped
             break
     if domain is None:
-        return 0.0
+        return None
     n_of_7 = ctx.school_consensus_by_domain.get(domain, 0)
     return min(1.0, max(0.0, n_of_7 / 7.0))
 
@@ -510,27 +645,47 @@ def _c12_tajika_score(
     window_start: date,
     domain_lord: Optional[str],
     ctx: EnrichmentContext,
-) -> float:
+) -> Optional[float]:
     """
     C12: tajika_annual_reinforcement — varṣa chart varṣeśa/muntha agrees with window.
-    Returns 1.0 if the year-lord for this window's year matches the domain's lord,
-    0.5 if muntha matches, 0.0 otherwise.
+    Returns 1.0 if the year-lord for the varṣa containing this window matches the
+    domain's lord, 0.5 if muntha matches, 0.0 if a covering varṣa was found but
+    neither matches. Returns honest **None** when no varṣa row covers this window
+    at all, or there is no domain_lord to compare against — distinct from a real
+    0.0, which means "evaluated, and disagrees".
     Source: l1_tajik_varsha_year_lords.
+
+    NIRMĀṆA L3-W3 (F-SANGAM-7, §N.8). This used to compare `row.get('varsha_year')`
+    (an age-indexed integer, 1..48 for a chart this old — NOT a calendar year)
+    against `window_start.year` (an actual calendar year, e.g. 2015) — two
+    incommensurable representations that could never be equal, so this branch
+    was unreachable on every real call regardless of the writer-side SQL bug
+    fixed alongside this (ka_sangam.py's tajika-year-lords fetch previously
+    selected nonexistent columns and silently returned nothing). Fixed by
+    matching on the varṣa's own [varsha_start, varsha_end) date range — which
+    `l1_tajik_varsha_year_lords` already stores per row — instead of re-deriving
+    a year index from the native's birth date (this function still has no
+    birth_year parameter, and does not need one now).
     """
     if not ctx.tajika_year_lords or domain_lord is None:
-        return 0.0
-    year = window_start.year
+        return None
     for row in ctx.tajika_year_lords:
-        row_year = row.get('varsha_year')
-        if row_year != year:
+        varsha_start = row.get('varsha_start')
+        varsha_end = row.get('varsha_end')
+        if varsha_start is None or varsha_end is None:
             continue
-        varshesha = row.get('varshesha') or row.get('varshesha_by_tajik_classical')
+        start_date = varsha_start.date() if hasattr(varsha_start, 'date') else varsha_start
+        end_date = varsha_end.date() if hasattr(varsha_end, 'date') else varsha_end
+        if not (start_date <= window_start <= end_date):
+            continue
+        varshesha = row.get('varshesha')
         muntha = row.get('muntha')
         if varshesha == domain_lord:
             return 1.0
         if muntha == domain_lord:
             return 0.5
-    return 0.0
+        return 0.0  # a covering varṣa was found and genuinely disagrees
+    return None  # no varṣa row covers this window at all
 
 
 # ── I-16: convergence_score ───────────────────────────────────────────────────
@@ -568,6 +723,34 @@ def convergence_score(
 
     result = necessary_product * supporting_sat
     return max(0.0, min(1.0, result))
+
+
+def _current_stance(value: Optional[float], empty_reason: Optional[str] = None) -> dict:
+    """
+    N1/N2 precursor (Temporal Concordance Contract, L3-W3). Surfaces, as an
+    explicit per-current testimony record, the honest-null distinction the
+    supporting dict already encodes structurally (an ABSENT key vs a present
+    0.0 — see the `**({k: v} if v is not None else {})` sites above). This is
+    the first concrete step toward the "stance vocabulary" F-SANGAM's own W1
+    analysis named as the layer's headline-mandate precondition (L3_W1_
+    ANALYSIS_BATCH_E.md §1.4): "Every current is [0,1] supporting. There is
+    no way to say 'this engine actively contradicts'. A dissent and an
+    absent engine are the same number."
+
+    Reuses the state vocabulary already established elsewhere in this
+    codebase (KpSchoolVoice.state, kala_now_get's `*_reachable` flags:
+    'computed'|'honest_empty') rather than inventing a fresh one — the same
+    W1 analysis flags "three implementations, one shape, three
+    vocabularies — unify" as the pattern to follow, not repeat.
+
+    Does NOT yet cover the 'this engine actively dissents' half of the
+    stance vocabulary (none of these currents are bipolar today — a
+    genuinely bipolar current is a design question for N1 proper, not this
+    additive step) and does NOT change convergence_score's math in any way.
+    """
+    if value is not None:
+        return {'state': 'computed'}
+    return {'state': 'honest_empty', 'empty_reason': empty_reason}
 
 
 # ── I-17: orb_strength_score ─────────────────────────────────────────────────
@@ -1011,14 +1194,16 @@ def mode_a_search(
         c8  = _c8_eclipse_score(planet, w_jd_start, w_jd_end, gochara_service, target_lon, orb_deg)
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
-        # C11 vedha: NECESSARY side, not supporting.
-        # CR-102 fix: transit_house must be house-FROM-MOON, not the raw rasi
-        # sign number (see _house_from_moon docstring). Falls back to the old
-        # (bugged) sign-number behavior only when moon_sign wasn't supplied.
+        # C11 vedha: NECESSARY side, not supporting. F-SANGAM-5 (L3-W3): now
+        # date-range matching on peak_dt against kala_vedha_gochara windows —
+        # no longer an abstract house number, so transit_house/_house_from_moon
+        # below are DEAD as of this fix (kept computed, not deleted, to avoid
+        # widening this fix's blast radius into moon_sign_idx/CR-102's other
+        # consumers — flagged as a follow-up cleanup, not silently left unexplained).
         transit_house = _house_from_moon(transit_sign, moon_sign_idx)
         if transit_house is None:
             transit_house = transit_sign
-        vedha_factor  = _c11_vedha_factor(planet, transit_house, ctx)
+        vedha_factor  = _c11_vedha_factor(planet, peak_dt, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
@@ -1033,17 +1218,21 @@ def mode_a_search(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    float(dasha_score),
-            'ashtakavarga_transit_potency': c7,
-            'cross_dasha_agreement':        c_cross,
+            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
+            **({'cross_dasha_agreement': c_cross} if c_cross is not None else {}),
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            c_pancha,
+            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
+            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
+            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
+            # from a real zero score.
+            **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
-            'tajika_annual_reinforcement':  c12,
-            'school_consensus':             c13,
+            **({'tajika_annual_reinforcement': c12} if c12 is not None else {}),
+            **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -1065,19 +1254,62 @@ def mode_a_search(
                 'dignity_score': dignity_score,
                 'signature_class': sig_class,
                 # U3 per-current breakdown (§3.5 — explainability)
-                'c7_ashtakavarga_potency': round(c7, 4),
+                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
+                   {'c7_ashtakavarga_potency_unavailable':
+                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
+                    'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
-                'c12_tajika_reinforcement': round(c12, 4),
-                'c13_school_consensus': round(c13, 4),
+                **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
+                   {'c12_tajika_reinforcement_unavailable':
+                    'no varṣa row covers this window, or no domain_lord to compare — '
+                    'term dropped, NOT scored zero (L3-W3, F-SANGAM-7)'}),
+                **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
+                   {'c13_school_consensus_unavailable':
+                    'no U4 school-consensus data yet AND signature_class is a signal-type '
+                    'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 # Newly wired currents
-                'c_cross_dasha_agreement': round(c_cross, 4),
+                **({'c_cross_dasha_agreement': round(c_cross, 4)} if c_cross is not None else
+                   {'c_cross_dasha_agreement_unavailable':
+                    'no eligible dasha window (dasha-eligible AND cross-system-agreeing) covers '
+                    'this peak_date — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
-                'c_panchanga_quality': round(c_pancha, 4),
+                # L3-W3: the key is present ONLY when the term was actually evaluated. Its
+                # absence is read downstream as "not consulted"; a 0.0 would be read as
+                # "consulted, and unsupportive" — which was false on every row.
+                **({'c_panchanga_quality': round(c_pancha, 4)}
+                   if c_pancha is not None
+                   else {'c_panchanga_quality_unavailable':
+                         "event='general' is not in muhurat EVENTS_MVP — term dropped from the "
+                         "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
+                # N1/N2 precursor (§ _current_stance docstring) — per-current
+                # testimony state, keyed the same as SUPPORTING_WEIGHTS.
+                'current_stances': {
+                    'constituent_lord_transit':     _current_stance(dasha_score),
+                    'ashtakavarga_transit_potency': _current_stance(
+                        c7, 'graha-vocabulary mismatch AND an unresolved '
+                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                    'cross_dasha_agreement':        _current_stance(c_cross),
+                    'benefic_dristi':                _current_stance(c_dristi),
+                    'transit_to_transit':            _current_stance(c9),
+                    'panchanga_quality':             _current_stance(
+                        c_pancha, "event='general' not in muhurat EVENTS_MVP (N4a)"),
+                    'tara_bala':                     _current_stance(c_tara),
+                    'eclipse_proximity':             _current_stance(c8),
+                    'nakshatra_subsystem':           _current_stance(c_nak),
+                    'station_retrograde':            _current_stance(c10),
+                    'tajika_annual_reinforcement':   _current_stance(
+                        c12, 'no varṣa row covers this window, or no domain_lord '
+                             'to compare (F-SANGAM-7)'),
+                    'school_consensus':              _current_stance(
+                        c13, 'school-consensus build does not exist yet; '
+                             'signature_class is a signal-TYPE taxonomy, not '
+                             'life-domain (F-SANGAM-6)'),
+                },
             },
             'source_citation': (
                 f"mode_a/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"
@@ -1189,10 +1421,12 @@ def mode_b_sweep(
         c9  = _c9_transit_to_transit_score(planet, w_jd_start, w_jd_end, gochara_service)
         c10 = _c10_station_score(planet, w_jd_start, w_jd_end, gochara_service)
         # CR-102 fix (see mode_a_search's identical fix + _house_from_moon docstring).
+        # F-SANGAM-5 (L3-W3): transit_house is now DEAD below — see mode_a_search's
+        # matching comment; kept computed, not deleted, same follow-up-cleanup reason.
         transit_house = _house_from_moon(transit_sign, moon_sign_idx)
         if transit_house is None:
             transit_house = transit_sign
-        vedha_factor = _c11_vedha_factor(planet, transit_house, ctx)
+        vedha_factor = _c11_vedha_factor(planet, peak_dt, ctx)
         c12 = _c12_tajika_score(ws, domain_lord, ctx)
         c13 = _c13_school_consensus_score(sig_class, ctx)
 
@@ -1205,17 +1439,21 @@ def mode_b_sweep(
         necessary = [dignity_score, orb_s, vedha_factor]
         supporting = {
             'constituent_lord_transit':    0.0,   # mode B has no dasha prior
-            'ashtakavarga_transit_potency': c7,
+            **({'ashtakavarga_transit_potency': c7} if c7 is not None else {}),
             'cross_dasha_agreement':        0.0,  # no dasha context in mode B
             'benefic_dristi':               c_dristi,
             'transit_to_transit':           c9,
-            'panchanga_quality':            c_pancha,
+            # L3-W3: omit rather than pass None. The combiner does `sup.get(key, 0.0)`, so an
+            # ABSENT key already means "contributes nothing" — which is the correct behaviour for
+            # a term that could not be evaluated. Passing 0.0 explicitly would be indistinguishable
+            # from a real zero score.
+            **({'panchanga_quality': c_pancha} if c_pancha is not None else {}),
             'tara_bala':                    c_tara,
             'eclipse_proximity':            c8,
             'nakshatra_subsystem':          c_nak,
             'station_retrograde':           c10,
-            'tajika_annual_reinforcement':  c12,
-            'school_consensus':             c13,
+            **({'tajika_annual_reinforcement': c12} if c12 is not None else {}),
+            **({'school_consensus': c13} if c13 is not None else {}),
         }
         cscore = convergence_score(necessary, supporting)
 
@@ -1236,17 +1474,62 @@ def mode_b_sweep(
                 'dignity_score': dignity_score,
                 'magnitude': round(magnitude, 4),
                 'signature_class': sig_class,
-                'c7_ashtakavarga_potency': round(c7, 4),
+                **({'c7_ashtakavarga_potency': round(c7, 4)} if c7 is not None else
+                   {'c7_ashtakavarga_potency_unavailable':
+                    'graha-vocabulary mismatch AND an unresolved HOUSE-vs-SIGN frame question — '
+                    'term dropped, NOT scored zero (L3-W3)'}),
                 'c8_eclipse_proximity': round(c8, 4),
                 'c9_transit_to_transit': round(c9, 4),
                 'c10_station_retrograde': round(c10, 4),
                 'c11_vedha_factor': round(vedha_factor, 4),
-                'c12_tajika_reinforcement': round(c12, 4),
-                'c13_school_consensus': round(c13, 4),
+                **({'c12_tajika_reinforcement': round(c12, 4)} if c12 is not None else
+                   {'c12_tajika_reinforcement_unavailable':
+                    'no varṣa row covers this window, or no domain_lord to compare — '
+                    'term dropped, NOT scored zero (L3-W3, F-SANGAM-7)'}),
+                **({'c13_school_consensus': round(c13, 4)} if c13 is not None else
+                   {'c13_school_consensus_unavailable':
+                    'no U4 school-consensus data yet AND signature_class is a signal-type '
+                    'taxonomy with no life-domain mapping — term dropped, NOT scored zero (L3-W3)'}),
                 'c_benefic_dristi': round(c_dristi, 4),
-                'c_panchanga_quality': round(c_pancha, 4),
+                # L3-W3: the key is present ONLY when the term was actually evaluated. Its
+                # absence is read downstream as "not consulted"; a 0.0 would be read as
+                # "consulted, and unsupportive" — which was false on every row.
+                **({'c_panchanga_quality': round(c_pancha, 4)}
+                   if c_pancha is not None
+                   else {'c_panchanga_quality_unavailable':
+                         "event='general' is not in muhurat EVENTS_MVP — term dropped from the "
+                         "supporting product and NOT scored zero (L3-W3)"}),
                 'c_tara_bala': round(c_tara, 4),
                 'c_nakshatra_subsystem': round(c_nak, 4),
+                # N1/N2 precursor — see _current_stance docstring (mode_a_search).
+                'current_stances': {
+                    'constituent_lord_transit': {
+                        'state': 'honest_empty',
+                        'empty_reason': 'mode B has no dasha prior — structural, not per-window',
+                    },
+                    'ashtakavarga_transit_potency': _current_stance(
+                        c7, 'graha-vocabulary mismatch AND an unresolved '
+                            'HOUSE-vs-SIGN frame question (L3-W3, HELD)'),
+                    'cross_dasha_agreement': {
+                        'state': 'honest_empty',
+                        'empty_reason': 'no dasha context in mode B — structural, not per-window',
+                    },
+                    'benefic_dristi':                _current_stance(c_dristi),
+                    'transit_to_transit':            _current_stance(c9),
+                    'panchanga_quality':             _current_stance(
+                        c_pancha, "event='general' not in muhurat EVENTS_MVP (N4a)"),
+                    'tara_bala':                     _current_stance(c_tara),
+                    'eclipse_proximity':             _current_stance(c8),
+                    'nakshatra_subsystem':           _current_stance(c_nak),
+                    'station_retrograde':            _current_stance(c10),
+                    'tajika_annual_reinforcement':   _current_stance(
+                        c12, 'no varṣa row covers this window, or no domain_lord '
+                             'to compare (F-SANGAM-7)'),
+                    'school_consensus':              _current_stance(
+                        c13, 'school-consensus build does not exist yet; '
+                             'signature_class is a signal-TYPE taxonomy, not '
+                             'life-domain (F-SANGAM-6)'),
+                },
             },
             'source_citation': (
                 f"mode_b/{sig_class}/{planet}@{ev.exact_longitude_deg:.1f}°"

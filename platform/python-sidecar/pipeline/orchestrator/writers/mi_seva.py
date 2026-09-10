@@ -54,14 +54,24 @@ class MiSevaWriter(WriterBase):
                     missing.append(tbl)
 
         if missing:
-            logger.warning(
-                "[mi_seva] missing service tables: %s — apply L5 migrations first", missing
-            )
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                duration_seconds=time.time() - t0,
-                notes=f"WARNING: missing tables {missing}; L5 migrations not fully applied",
+            # A1 (L5-W3, adjudication #1738).  This used to return a
+            # WriterResult carrying "WARNING: missing tables …" in `notes`.
+            # Nothing in pipeline/orchestrator/ outside writers/ ever reads
+            # `notes` -- asset_runner.py reads only rows_inserted and
+            # rows_updated -- and this asset has target_floor = 0, so
+            # zero_rows_is_complete promoted it to 'lit'.  A dropped
+            # mimamsa_journal produced a GREEN BUILD.
+            #
+            # This writer's entire job is verifying serve-time apply
+            # infrastructure.  A missing table means the verification could not
+            # RUN -- not that it passed.  Its sibling mi_vistara.py raises on
+            # the identical check against mimamsa_export_log; that is the
+            # correct precedent and this now matches it.
+            raise RuntimeError(
+                f"mi_seva: required service tables absent: {missing} — apply the "
+                "L5 migrations before building. This writer verifies serve-time "
+                "apply infrastructure; a missing table means the verification "
+                "could not run, not that it passed."
             )
 
         logger.info("[mi_seva] service infrastructure verified — all tables present")

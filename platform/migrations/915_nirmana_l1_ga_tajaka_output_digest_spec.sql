@@ -1,0 +1,120 @@
+-- 915_nirmana_l1_ga_tajaka_output_digest_spec.sql
+--
+-- NIRMĀṆA L1 Gaṇita — closes the fleet-wide `asset_output_digest_specs` gap for
+-- `ga_tajaka`. Confirmed via `SELECT * FROM asset_output_digest_specs WHERE
+-- asset_id = 'ga_tajaka'` returning ZERO rows before this migration. Without a
+-- spec row, `compute_output_digest()` (platform/python-sidecar/pipeline/
+-- orchestrator/output_digest.py) always returns `(None, None)` for this asset, so
+-- its provenance receipt (platform/python-sidecar/pipeline/orchestrator/
+-- provenance.py) can never leave `receipt_state = 'unknown'` -- no matter how
+-- clean the writer's data is (confirmed clean this campaign: build_run
+-- `dea203f3-9480-4e05-a5bc-6e890b4c4514` on chart `482012f1` completed with
+-- `last_error=NULL`, `build_run_authorized` already filed). Same defect class as
+-- migration 914 (`ga_structural`) and the wave-891/892/893/894/895 precedent; a
+-- direct query this campaign found the SAME gap on the entire remaining L1
+-- frontier (`ga_medical`, `ga_sade_sati`, `ga_tajaka`, `ga_vastu`, `ga_vichara`,
+-- `ga_yoga`) -- this migration closes it for `ga_tajaka` only; the other 5 are
+-- deliberately left for separate migrations rather than rushed into one batch.
+--
+-- ── relation + ownership (verified against writer source, not assumed) ──────────
+--
+-- `ga_tajaka`'s writer (`platform/python-sidecar/ga_writers/ga_tajaka_writer.py`)
+-- writes to exactly ONE relation, `l1_tajik_varsha_year_lords`, via `_insert_rows`
+-- (line 666) against the fixed `_COLUMNS` list (line 657) -- there is no
+-- `fact_category`-partitioned `chart_facts` write anywhere in this writer, unlike
+-- `ga_structural`/`ga_condition`'s sibling model.
+--
+-- Ownership cross-check: `grep -rl l1_tajik_varsha_year_lords platform/python-
+-- sidecar` finds two other referencing files --
+-- `pipeline/orchestrator/writers/ka_sangam.py` and `services/ka_sangam/engine.py`
+-- -- both are READS (`SELECT ... FROM l1_tajik_varsha_year_lords`, comments
+-- "Sourced from l1_tajik_varsha_year_lords"), never a write. The only WRITE path
+-- besides the writer's own `_insert_rows` is the shared idempotency helper
+-- (`ga_writers/_idempotency.py` line 117, a `DELETE FROM l1_tajik_varsha_year_
+-- lords` scoped to `(chart_id, ayanamsha_id)` before rebuild -- the standard
+-- delete-then-insert pattern, not a second writer). `ga_tajaka` is confirmed the
+-- sole writer.
+--
+-- ── key + value columns (verified against live data + DB schema) ────────────────
+--
+-- Table has 18 columns total (`\d l1_tajik_varsha_year_lords`): `varsha_id` (PK,
+-- uuid), `chart_id`, `ayanamsha_id`, `build_id`, `varsha_year`,
+-- `varsha_start_iso`, `varsha_end_iso`, `year_lord_method`, `year_lord`,
+-- `candidate_lord_jsonb`, `muntha_position_jsonb`,
+-- `applicable_tajik_yogas_array`, `classical_source_citation`,
+-- `ephemeris_audit_jsonb`, `verification_pass_status`, `citation_ref`,
+-- `citation_human`, `computed_at`.
+--
+-- Three columns are excluded from both `key_columns` and `value_columns`:
+--   * `build_id`, `computed_at` -- per-rebuild identifiers, not content (same
+--     rationale as every precedent migration, e.g. 894's `ga_condition`).
+--   * `varsha_id` -- NOT a stable content key. Confirmed in the writer source
+--     (line 630): `"varsha_id": str(uuid.uuid4())` -- a fresh random UUID
+--     generated on every single row write, every rebuild. Including it in
+--     `value_columns` would make the digest change on every rebuild even when
+--     the underlying astrological content is byte-identical, defeating the
+--     digest's purpose; using it as a `key_columns` ORDER BY anchor would make
+--     row ordering non-deterministic across rebuilds, which breaks digest
+--     stability just as badly (the digest concatenates ordered row JSON, so a
+--     shuffled order produces a different hash even for an identical row set).
+--     This is exactly the same class of exclusion 914 gives `chart_facts.build_id`
+--     and `computed_at` -- a real per-rebuild identifier, not a naming coincidence.
+--
+-- `key_columns = [chart_id, ayanamsha_id, varsha_year]` was chosen as the stable
+-- natural key: it is exactly the table's own DB UNIQUE CONSTRAINT
+-- (`l1_tajik_varsha_year_lords_chart_id_ayanamsha_id_build_id_v_key`) MINUS
+-- `build_id` (the one per-rebuild column in that constraint). Live-verified on
+-- the canonical chart (`482012f1`): `SELECT chart_id, ayanamsha_id, varsha_year,
+-- count(*) FROM l1_tajik_varsha_year_lords WHERE chart_id = '482012f1-...'
+-- GROUP BY 1,2,3 HAVING count(*) > 1` returns ZERO rows -- the natural key is
+-- genuinely unique with no collisions, confirmed against live data, not assumed
+-- from the DB constraint alone. Live row shape: 5 ayanamshas x 48 varsha_year
+-- values = 240 rows total for this chart, all accounted for.
+--
+-- `value_columns` is every remaining column (15 total): `chart_id`,
+-- `ayanamsha_id`, `varsha_year`, `varsha_start_iso`, `varsha_end_iso`,
+-- `year_lord_method`, `year_lord`, `candidate_lord_jsonb`,
+-- `muntha_position_jsonb`, `applicable_tajik_yogas_array`,
+-- `classical_source_citation`, `ephemeris_audit_jsonb`,
+-- `verification_pass_status`, `citation_ref`, `citation_human` -- matching
+-- precedent 894's pattern of including the key columns themselves in
+-- `value_columns` too (they are genuine content, not merely an index).
+--
+-- ── idempotency pattern ──────────────────────────────────────────────────────────
+-- Matches precedent 891/893/894/914: a plain INSERT with no ON CONFLICT clause.
+-- `asset_output_digest_specs`'s PRIMARY KEY is the composite `(asset_id,
+-- spec_sha256)`, so `ON CONFLICT (asset_id) DO UPDATE` is not a legal target
+-- (Postgres requires the conflict target to match a real unique/exclusion
+-- constraint). `ga_tajaka` has zero existing rows in this table (confirmed at
+-- the top of this file), so this plain INSERT cannot collide.
+--
+-- ── spec_sha256 computation (independently verified, not guessed) ────────────────
+-- `spec_sha256` MUST equal `canonical_digest(spec)` from
+-- platform/python-sidecar/pipeline/orchestrator/provenance.py (`json.dumps` with
+-- `sort_keys=True, separators=(",", ":"), ensure_ascii=True`, then `sha256().
+-- hexdigest()`). Produced by IMPORTING the real module and calling it directly:
+--
+--   cd platform/python-sidecar
+--   python3 -c "
+--   import sys; sys.path.insert(0, '.')
+--   from pipeline.orchestrator.provenance import canonical_digest
+--   from pipeline.orchestrator.output_digest import _validate_spec
+--   spec = {...the exact dict below...}
+--   sha = canonical_digest(spec)
+--   _validate_spec('ga_tajaka', spec, sha)   # raises on any malformed spec
+--   print(sha)
+--   "
+--
+-- `_validate_spec` raised nothing (spec accepted as well-formed) and printed:
+--   e4f2cbfcc1e1731faec4cd8a031ef2f5f67179a90d396803df5e089eb2a73d9a
+
+BEGIN;
+
+INSERT INTO asset_output_digest_specs (asset_id, spec_sha256, spec)
+VALUES (
+  'ga_tajaka',
+  'e4f2cbfcc1e1731faec4cd8a031ef2f5f67179a90d396803df5e089eb2a73d9a',
+  '{"version":"nirmana-output-digest-spec-v1","components":[{"name":"l1_tajik_varsha_year_lords","relation":"l1_tajik_varsha_year_lords","where_equals":{"chart_id":"482012f1-710e-4a25-994a-93821f5871aa"},"key_columns":["chart_id","ayanamsha_id","varsha_year"],"value_columns":["chart_id","ayanamsha_id","varsha_year","varsha_start_iso","varsha_end_iso","year_lord_method","year_lord","candidate_lord_jsonb","muntha_position_jsonb","applicable_tajik_yogas_array","classical_source_citation","ephemeris_audit_jsonb","verification_pass_status","citation_ref","citation_human"]}]}'::jsonb
+);
+
+COMMIT;

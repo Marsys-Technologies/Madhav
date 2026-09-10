@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "description": "Pre-existing file-local ayanamsha alias maps. Stream A (A-15) wires resolveChartFactsAyanamsha at all 11 sites. Remove entries as A-15 PRs land.",
+  "entries": [
+    {
+      "file": "platform-mcp/src/tools/kala_views/ahead.ts",
+      "line": 134,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/kala_views/explain.ts",
+      "line": 173,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/kala_views/now.ts",
+      "line": 100,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/kala_views/priority.ts",
+      "line": 223,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+      "line": 39,
+      "justification": "AYANAMSHA_ALIAS in register_p1_aliases.ts — F-59 primary defect site; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/register_p1_ganita.ts",
+      "line": 214,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
+      "line": 76,
+      "justification": "Local ayanamsha alias map — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/registry_bridge.ts",
+      "line": 98,
+      "justification": "Local ayanamsha alias map (1 of 2 in file) — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    },
+    {
+      "file": "platform-mcp/src/tools/registry_bridge.ts",
+      "line": 125,
+      "justification": "Local ayanamsha alias map (2 of 2 in file) — F-59 known defect; A-15 will replace with resolveChartFactsAyanamsha."
+    }
+  ]
+}

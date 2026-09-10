@@ -93,14 +93,6 @@ _ALL_OBSTRUCTION_TYPES = frozenset({
     'rashi_dristi_conflict', 'combustion', 'gandanta', 'papakartari',
 })
 
-# Proxy fallback: Saturn adversarial date windows (for unit tests without live swisseph).
-# These correspond to known harsh Saturn transits for this native (Aries lagna, Aquarius Moon).
-# The live swe path overrides these when swe is available.
-_SATURN_PROXY_WINDOWS: list[tuple] = [
-    (DateType(2025, 3, 1),  DateType(2027, 6, 30)),   # Saturn in Pisces (sade-sati close)
-    (DateType(2030, 4, 1),  DateType(2032, 6, 30)),   # Saturn in Gemini (3rd — upachaya/adversarial by proximity)
-]
-
 
 def _severity(score: float) -> str:
     for threshold, label in _SEVERITY_THRESHOLDS:
@@ -371,14 +363,30 @@ class KaVighnakaraWriter(WriterBase):
         return {'lat': float(lat), 'lon': float(lon), 'tz_offset_minutes': tz_offset_minutes}
 
     def _fetch_natal_lagna_lon(self, conn, chart_id: str) -> Optional[float]:
-        """Fetch natal lagna degree from chart_facts (fact_subject='LAGNA', fact_key='longitude')."""
+        """Fetch the natal lagna degree from chart_facts.
+
+        NIRMĀṆA L3-W3 (§N.5, §N.7 item 2), found by the L3 `depends_on` audit. This asked for
+        `fact_key='longitude'`, which **does not exist** — measured live, the query returned 0 rows
+        on every chart, and the writer then proceeded with `natal_lagna_lon=None` silently, because
+        the only failure path here is a `logger.debug`. The real fact is `longitude_sidereal` under
+        `fact_category='graha_position'` (value 12.4311° for the canonical chart).
+
+        Three corrections, not one:
+          * the key (`longitude` → `longitude_sidereal`);
+          * a `fact_category` pin — selecting on `fact_key` alone is the §N.7 item-2 defect class,
+            and `fact_subject='LAGNA'` genuinely appears under a dozen other categories here;
+          * a total `ORDER BY` so the `LIMIT 1` is deterministic rather than arbitrary.
+        """
         try:
             with conn.cursor() as cur:
                 cur.execute(
                     """
                     SELECT fact_value_num FROM chart_facts
-                    WHERE chart_id = %s AND fact_subject = 'LAGNA'
-                      AND fact_key = 'longitude' AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    WHERE chart_id = %s AND fact_category = 'graha_position'
+                      AND fact_subject = 'LAGNA'
+                      AND fact_key = 'longitude_sidereal'
+                      AND ayanamsha_id = 'lahiri_chitrapaksha'
+                    ORDER BY fact_id
                     LIMIT 1
                     """,
                     (chart_id,),
@@ -398,6 +406,17 @@ class KaVighnakaraWriter(WriterBase):
         helper) and returns a de-duplicated, capped list of (peak_date, signal_id)
         anchors — one representative signal per distinct peak date. Read-only;
         SAVEPOINT-guarded so a soft failure never aborts the writer's transaction.
+
+        F-VIGHNA-3 (§N.7 item 2): the predicate fetch carries `ORDER BY signal_id` —
+        a total order over the one real key this table exposes for the purpose
+        (`kala_activation_predicates` has no natural single-column key of its own,
+        but `signal_id` is stable and unique per predicate row for a chart, which is
+        all `setdefault`'s per-peak "first one wins" selection and the
+        `_MAX_DASHA_ANCHORS` cap need to be deterministic). Before this fix the query
+        had no ORDER BY at all, so which signal represented a given peak date, and
+        which peaks made it under the cap, could both vary build-to-build on
+        identical data — a live instance of the defect class this doctrine item
+        exists to close.
         """
         anchors: dict[DateType, str] = {}
         timeline_cache: dict = {}
@@ -413,6 +432,7 @@ class KaVighnakaraWriter(WriterBase):
                     SELECT signal_id, ayanamsha_id, dasha_eligibility_rule_jsonb
                     FROM kala_activation_predicates
                     WHERE chart_id = %s
+                    ORDER BY signal_id
                     """,
                     (chart_id,),
                 )
@@ -493,11 +513,20 @@ def _detect_all(
 # ── Detector 1: malefic transit ───────────────────────────────────────────────
 
 def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
-                           native_location=None, natal_lagna_lon=None) -> Optional[dict]:
+                           native_location=None, natal_lagna_lon=None,
+                           _test_proxy_windows: Optional[list] = None) -> Optional[dict]:
     """
     Live malefic transit: Saturn or Rahu in an adversarial sign at peak_date.
-    Uses swisseph sidereal (Lahiri) positions when swe is provided;
-    falls back to hardcoded proxy windows when called without swe (unit-test path).
+    Uses swisseph sidereal (Lahiri) positions when swe is provided.
+
+    F-VIGHNA-6 (CR-87 contamination pattern): the `swe is None` branch below is a
+    TEST-ONLY fallback — `run()` hard-raises `RuntimeError` before ever calling this
+    function without a real `swe` module, so this path is unreachable in production.
+    The proxy adversarial-window DATA used to live as a module-level constant right
+    here in the writer, hardcoded to this one native's own transits — moved out to the
+    test module entirely and injected explicitly via `_test_proxy_windows` so no
+    native-specific data lives in writer scope, and so this parameter's name makes the
+    test-only nature impossible to miss at the call site.
     Citation: Parāśara Gochara phala — Saturn/Rahu in dusthāna from lagna/moon.
     """
     peak_date = _coerce_date(peak_date)
@@ -505,8 +534,9 @@ def _check_malefic_transit(peak_date, jd=None, swe=None, muhurta_service=None,
         return None
 
     if swe is None:
-        # Proxy path: check hardcoded Saturn adversarial windows
-        for ws, we in _SATURN_PROXY_WINDOWS:
+        # Test-only proxy path — see the docstring above. `_test_proxy_windows` is never
+        # populated in production (see F-VIGHNA-6 note above).
+        for ws, we in (_test_proxy_windows or []):
             if ws <= peak_date <= we:
                 score = 0.45
                 return {

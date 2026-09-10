@@ -1,7 +1,7 @@
 ---
 artifact: ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md
 canonical_id: ORCHESTRATOR_CONVERGENCE_CLOSE
-version: 1.1
+version: 1.2
 status: CURRENT
 authored_by: Claude Code (Antigravity IDE) 2026-06-12
 seals: CLAUDECODE_BRIEF_ORCHESTRATOR_CONVERGENCE_v1_0.md
@@ -12,11 +12,19 @@ goal: >
   contract. Records the frozen contract, the per-phase deliverables, and the L2-readiness
   conformance checklist every future-layer writer brief embeds.
 changelog: >
-  v1.1 (2026-07-29, SATYA-DĪPA): added §7, the freeze's first authorized, dated exception —
-  the no-op-completion promotion predicate in asset_runner.py (`_run_data_writer`) now verifies
-  substep-plan completeness (has_substeps=true writers only) before reclassifying a 0-rows
-  'dormant' result to 'lit'. See SATYA_DIPA_REPORT_v1_0.md for full detail. The freeze itself
-  (§2) is otherwise untouched — no writer contract, WriterBase signature, or control-flow change.
+  v1.2 (2026-09-07, D-NATIVE-07, Conductor): added §7.2, the freeze's second authorized, dated
+  exception — `compute_upstream_hash`/`load_upstream_receipts` (asset_runner.py) now accept a
+  live-verified healthy service dependency's real, already-persisted probe `output_digest` as a
+  legitimate upstream contribution, without also requiring that dependency's own receipt to have
+  reached `receipt_state='proven'` (a bar a service can structurally never clear, since
+  `output_digest_spec` describes relational output a service doesn't have). Root-caused against
+  `bg_cohort`/`bg_ephemeris_engine` (the L0 40/40 residual); general, campaign-wide fix, not
+  bg_cohort-specific. Full detail in §7.2 below. Prior: v1.1 (2026-07-29, SATYA-DĪPA): added §7,
+  the freeze's first authorized, dated exception — the no-op-completion promotion predicate in
+  asset_runner.py (`_run_data_writer`) now verifies substep-plan completeness (has_substeps=true
+  writers only) before reclassifying a 0-rows 'dormant' result to 'lit'. See
+  SATYA_DIPA_REPORT_v1_0.md for full detail. The freeze itself (§2) is otherwise untouched — no
+  writer contract, WriterBase signature, or control-flow change.
 ---
 
 # Orchestrator Convergence — Close v1.0
@@ -177,3 +185,66 @@ completed (same fingerprint, no intervening state change), is safe and does not 
 with data present → 'incomplete', not 'lit'; proven to fail against pre-fix code, pass against
 fixed code) and `test_satyadipa_light_writer_no_substep_plan_behaves_as_before` (has_substeps=false
 → unchanged). Full detail: `SATYA_DIPA_REPORT_v1_0.md`.
+
+### 7.2 — Service-dependency accommodation in upstream-digest provenance (2026-09-07)
+
+**Authorization:** D-NATIVE-07, native direct authorization — root-caused and specified the fix
+in full, one narrow freeze exception: `compute_upstream_hash`/`load_upstream_receipts` in
+`asset_runner.py` and nothing else in the orchestrator.
+
+**Defect:** `bg_cohort` (built correctly — 10,000 rows, `lit`, has `integrity_check_sql`) could
+never reach `asset_frozen` because its provenance receipt read `receipt_state='unknown'` /
+`unknown_reasons=['upstream_digest_unavailable']`. Its only dependency, `bg_ephemeris_engine`, is
+a healthy, already-frozen-via-probe service — but `compute_upstream_hash`'s completeness check
+required EVERY dependency's own stored receipt to have `receipt_state == 'proven'`, and
+`bg_ephemeris_engine`'s own receipt was itself permanently stuck `unknown`, for an unrelated
+reason (`output_digest_spec_unavailable`): `output_digest_spec` describes a writer's *relational*
+output (a table's key/value columns), a concept that structurally does not apply to a service
+health probe. A service can never author a meaningful spec for output it doesn't have, so its own
+receipt can never reach `proven` via that requirement alone — this is a structural artifact of
+being a service dependency, not evidence the dependency is actually unverified. `bg_cohort`'s own
+build path already treats a healthy service dependency correctly (`asset_runner.py`'s
+`deps_unsatisfied`, `state='service_ok'` is what "lit" means for a service, D-VR-DATA-CORRECTNESS
+§3.5); the gap was isolated to the provenance/receipt layer one level below that.
+
+**Fix (`asset_runner.py`'s `load_upstream_receipts` + `compute_upstream_hash` only):**
+`load_upstream_receipts` now also carries each dependency's live `asset_kind`/`service_health`
+from `asset_registry` (asset identity + current health, not a DAG edge, so this does not violate
+the function's existing "without consulting mutable DAG metadata" discipline). In
+`compute_upstream_hash`'s completeness check, a dependency still requires a real, non-null
+`output_digest` unconditionally; if its own receipt is not `'proven'`, it is now still accepted
+**only when** `asset_kind == 'service'` **and** `service_health == 'healthy'`, verified fresh
+against the live registry column at the moment of the check — never trusted from the dependency's
+own possibly-stale/unknown receipt, and never a fabricated stand-in digest: the contributed value
+is the service's own real, already-persisted probe-result `output_digest`
+(`_persist_probe_receipt`'s `canonical_digest({"status": "GREEN", ...})`), not a sentinel. A data
+dependency, or a service that has never been probed GREEN (no `output_digest` at all), or a
+service that is currently unhealthy, is unaffected and still blocks exactly as before — the
+accommodation is a live-verified, narrow exception, not a blanket bypass for any `'unknown'`
+receipt (§N.8 Earned-Signal Principle: the check that gates this is a real one, not a name that
+always resolves true). The `asset_kind`/`service_health` fields are stripped back out before the
+receipts list is hashed, so a plain data-dependency digest is byte-identical to before this
+change.
+
+**Contract impact:** none. `WriterBase`, `plan_substeps`/`run_substep`, `ctx`, `WriterResult` are
+untouched. `_persist_probe_receipt`/`_run_data_writer` call `compute_upstream_hash` exactly as
+before; only its internal completeness predicate changed. `platform/src/generated/nirmana-writer-
+digests.json`'s `probe_digest` field (the fallback `code_digest` for the legacy health-probe path,
+sourced from this same file) changed as a direct, correct consequence of editing the file it
+hashes — no other writer's digest, and no layer's `writer_inventory_sha256` aggregate (which reads
+only the per-asset `writers` map, never `probe_digest`), is affected.
+
+**Regression proof:** `tests/test_asset_runner_provenance_hashes.py` — five new cases:
+`test_compute_upstream_hash_declared_deps_requires_proven_receipts_for_data_deps` (unchanged
+behavior for ordinary data deps), `test_compute_upstream_hash_accommodates_a_healthy_service_
+dependency_stuck_unknown` (the fix's positive case, `bg_ephemeris_engine`'s exact shape),
+`test_compute_upstream_hash_service_accommodation_is_not_a_blanket_bypass` (an unhealthy service
+and a merely-unproven data dependency both still block), `test_compute_upstream_hash_still_
+requires_a_real_output_digest_from_a_healthy_service` (a never-probed healthy service is still
+genuinely unavailable), and `test_compute_upstream_hash_excludes_asset_kind_and_service_health_
+from_the_digest_payload` (digest byte-identical with or without the new live-lookup fields
+present). Full orchestrator suite (1134 tests) re-run clean; the 3 pre-existing failures
+(`test_forensic_moon_sign_passes_for_aquarius`, two `test_bg_muhurta_lattice.py` cases) were
+independently confirmed present on an unmodified `origin/main` checkout in the same sandbox
+(missing Swiss Ephemeris `.se1` data / a `swisseph` stub gap) — unrelated to this change, not
+introduced by it.

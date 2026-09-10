@@ -4,16 +4,19 @@ import { useEffect, useRef } from 'react'
 import type { TurnState } from '../state/types'
 import { GroundingCard } from './GroundingCard'
 import { PredictionCard } from './PredictionCard'
+import { InterpretationSetsSection } from './InterpretationSetsSection'
 import { useDockController } from './DockController'
 
 /**
  * The collapsible right panel (§3.2, §5.8.0 ruling 2). Carries the
- * grounding ledger and the prediction-card placeholder — NOT inline in the
- * conversation column. Chips deep-link here (`⟦n⟧` → `openToCitation`);
- * clicking one opens the dock (if collapsed) and highlights + scrolls to
- * that row. No provenance anywhere — not the header, not this dock's
- * footer (§5.8.0 ruling 8c): the note at the bottom is a plain-language
- * caption, never a build id or priors dump.
+ * grounding ledger, the prediction-card placeholder, and — lane G3-E
+ * (PPR-05) — the "Read it another way" / "What would change my mind"
+ * interpretation-set affordances (`InterpretationSetsSection.tsx`). NONE of
+ * this lives inline in the conversation column. Chips deep-link here
+ * (`⟦n⟧` → `openToCitation`); clicking one opens the dock (if collapsed) and
+ * highlights + scrolls to that row. No provenance anywhere — not the
+ * header, not this dock's footer (§5.8.0 ruling 8c): the note at the bottom
+ * is a plain-language caption, never a build id or priors dump.
  */
 export function RightDock({ turns }: { turns: TurnState[] }) {
   const { open, setOpen, activeCitation } = useDockController()
@@ -26,12 +29,25 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }, [activeCitation])
 
-  const turnsWithGrounding = turns.filter((t) => Object.keys(t.citations).length > 0 || t.blocks.some((b) => b.kind === 'prediction_card'))
+  const turnsWithGrounding = turns.filter(
+    (t) => Object.keys(t.citations).length > 0 || t.blocks.some((b) => b.kind === 'prediction_card') || t.interpretationSets !== null,
+  )
   const orderedTurns = [...turnsWithGrounding].reverse()
 
   return (
     <div
-      className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width]"
+      data-testid="pp-right-dock"
+      // P2-close item 5. DockController.tsx's own doc comment has always
+      // said "below the mobile breakpoint the dock itself is hidden" and
+      // its own MOBILE_BREAKPOINT_QUERY constant (`(max-width: 900px)`) was
+      // consulted for chip-tap routing (openToCitation → bottom sheet) — but
+      // nothing ever actually hid THIS element. It rendered unconditionally,
+      // crushing the main reading column to ~2px on a real phone viewport.
+      // `max-[900px]:hidden` must stay in sync with DockController.tsx's
+      // MOBILE_BREAKPOINT_QUERY pixel value — the two encode the SAME design
+      // decision (dock hidden, chip-tap opens a sheet instead) and drifting
+      // apart would silently reopen this exact bug at a different width.
+      className="flex-none flex flex-col overflow-hidden rounded-[14px] transition-[width] max-[900px]:hidden"
       style={{
         width: open ? 312 : 46,
         background: 'var(--pp-panel)',
@@ -71,30 +87,57 @@ export function RightDock({ turns }: { turns: TurnState[] }) {
             const predictionBlock = turn.blocks.find((b) => b.kind === 'prediction_card')
             const citations = Object.values(turn.citations).sort((a, b) => a.n - b.n)
             const classicalCount = citations.filter((c) => c.sourceClass === 'classical_source').length
+            // P2-close Lane K (PPR-03 typed confidence, G3-C). The receipt types
+            // EVERY CITATION this turn typed (confidence_typing's own header
+            // comment) — keyed by `ref`, the same token as `citation.ref`
+            // (TypedConfidenceEntrySchema's own doc comment). Built once per
+            // turn render, not per-citation, so a turn with many citations
+            // doesn't re-scan `entries` for each row. `undefined` (never a
+            // guessed type) when the receipt hasn't arrived, the flag was off,
+            // or this ref simply wasn't typed.
+            const confidenceTyping = turn.receipt?.confidence_typing
+            const confidenceByRef =
+              confidenceTyping?.status === 'measured' && confidenceTyping.entries
+                ? new Map(confidenceTyping.entries.map((e) => [e.ref, e.confidence_type]))
+                : null
+            // The Seal (§5.3 step 4): the sealed turn's own ledger fades in once,
+            // the instant `turn.commit` moves it to `settling`/`settled` — not on
+            // every intermediate citation arriving mid-stream (ruling 8a's
+            // "grounding accrues across passes" still holds; only the coordinated
+            // fade is a one-time settle event). Keying the inner block on the
+            // sealed/live split forces React to remount exactly once at that
+            // transition, replaying `.pp-dock-seal-in`'s mount animation once —
+            // further re-renders of an already-sealed turn (unrelated field
+            // updates) keep the same key and do not replay it.
+            const sealed = turn.status === 'settling' || turn.status === 'settled'
             return (
               <div key={turn.id} className="mb-5">
-                {predictionBlock?.prediction && <PredictionCard prediction={predictionBlock.prediction} />}
-                {citations.length > 0 && (
-                  <>
-                    <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', margin: '2px 0 10px' }}>
-                      <span style={{ color: 'var(--pp-ink)' }}>{citations.length}</span> CHART FACTORS
-                      {classicalCount > 0 && (
-                        <>
-                          {' '}
-                          · <span style={{ color: 'var(--pp-ink)' }}>{classicalCount}</span> CLASSICS
-                        </>
-                      )}
-                    </div>
-                    {citations.map((c) => (
-                      <GroundingCard
-                        key={c.n}
-                        citation={c}
-                        highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
-                        registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
-                      />
-                    ))}
-                  </>
-                )}
+                <div key={sealed ? 'sealed' : 'live'} className={sealed ? 'pp-dock-seal-in' : undefined}>
+                  {predictionBlock?.prediction && <PredictionCard prediction={predictionBlock.prediction} />}
+                  {citations.length > 0 && (
+                    <>
+                      <div style={{ fontSize: 9, letterSpacing: '0.22em', textTransform: 'uppercase', color: 'var(--pp-gold-dim)', margin: '2px 0 10px' }}>
+                        <span style={{ color: 'var(--pp-ink)' }}>{citations.length}</span> CHART FACTORS
+                        {classicalCount > 0 && (
+                          <>
+                            {' '}
+                            · <span style={{ color: 'var(--pp-ink)' }}>{classicalCount}</span> CLASSICS
+                          </>
+                        )}
+                      </div>
+                      {citations.map((c) => (
+                        <GroundingCard
+                          key={c.n}
+                          citation={c}
+                          highlighted={activeCitation?.turnId === turn.id && activeCitation?.n === c.n}
+                          registerRef={(el) => cardRefs.current.set(`${turn.id}:${c.n}`, el)}
+                          confidenceType={confidenceByRef?.get(c.ref)}
+                        />
+                      ))}
+                    </>
+                  )}
+                  {turn.interpretationSets && <InterpretationSetsSection interpretationSets={turn.interpretationSets} />}
+                </div>
               </div>
             )
           })}

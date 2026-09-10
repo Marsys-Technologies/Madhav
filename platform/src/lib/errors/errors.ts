@@ -101,6 +101,31 @@ export const dataError = {
     apiError('DATA_CONFLICT', 'Resource already exists or state conflict.', { retry: false, detail }),
 }
 
+// ── LIMIT ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Limit-class refusals: rate limits and spend ceilings (NCD-8, Paripraśna G1-D).
+ *
+ * These are DESIGNED failure states, not errors. The request was well-formed, the
+ * caller was authenticated and entitled, and the server is healthy — the turn is
+ * simply not permitted to run right now. That is why they carry their own class
+ * with `retry: true` and map to 429, never to a 500: a client must be able to
+ * branch on `LIMIT_*` and say something true to the reader ("your daily ceiling
+ * is reached, it resets at midnight UTC") instead of "something went wrong".
+ */
+export const limitError = {
+  rateLimitExceeded: (detail?: string) =>
+    apiError('LIMIT_RATE_LIMIT_EXCEEDED', 'Too many requests. Please slow down.', {
+      retry: true,
+      detail,
+    }),
+  spendCeilingExceeded: (detail?: string) =>
+    apiError('LIMIT_SPEND_CEILING_EXCEEDED', 'Spend ceiling reached.', {
+      retry: true,
+      detail,
+    }),
+}
+
 // ── SYSTEM ────────────────────────────────────────────────────────────────────
 
 /** System-class failures: server-side problems. Most are transient (`retry: true`). */
@@ -129,6 +154,7 @@ export const systemError = {
  * Status mapping:
  *   400 → invalidInput      401 → unauthenticated     403 → forbidden
  *   404 → notFound          409 → conflict            422 → validationFailed
+ *   429 → rateLimited | spendCeilingExceeded
  *   500 → internal          503 → dbError | sidecarDown
  */
 export const res = {
@@ -144,6 +170,19 @@ export const res = {
     NextResponse.json(dataError.conflict(detail), { status: 409 }),
   validationFailed: (detail?: string) =>
     NextResponse.json(dataError.validationFailed(detail), { status: 422 }),
+  /**
+   * 429 — per-user rate limit. `retryAfterSeconds`, when known, is echoed as the
+   * standard `Retry-After` header so a client can back off correctly instead of
+   * guessing.
+   */
+  rateLimited: (detail?: string, retryAfterSeconds?: number) =>
+    NextResponse.json(limitError.rateLimitExceeded(detail), {
+      status: 429,
+      headers: retryAfterSeconds ? { 'retry-after': String(retryAfterSeconds) } : undefined,
+    }),
+  /** 429 — NCD-8 spend ceiling ($2/turn, $40/day). A designed refusal, never a 500. */
+  spendCeilingExceeded: (detail?: string) =>
+    NextResponse.json(limitError.spendCeilingExceeded(detail), { status: 429 }),
   internal: (detail?: string) =>
     NextResponse.json(systemError.internal(detail), { status: 500 }),
   dbError: () =>

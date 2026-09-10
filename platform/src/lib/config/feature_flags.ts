@@ -168,6 +168,258 @@ export type FeatureFlag =
   // PB-1 wave IS this flag (route ships dark, flipped on deliberately post-
   // deploy). Env: MARSYS_FLAG_PARIPRASHNA_ENABLED.
   | 'PARIPRASHNA_ENABLED'
+  // P1 G1-D "Limits" — NCD-8 per-user rate limits + pre-dispatch spend ceilings
+  // ($2/turn, $40/day) on BOTH serving doors (the web `/api/pariprashna` door and
+  // the MCP `/api/mcp/prashna_ask` door), plus the request proxy's per-user RPM
+  // gate. Default OFF — this lane ships dark per the P1 pre-authorization
+  // ("features ship flag-OFF; the safety gate flips ON at close"), so merging it
+  // cannot change production behaviour until the flip is deliberate. When OFF,
+  // every gate short-circuits to "allowed" before any DB or pricing work runs.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED.
+  | 'PARIPRASHNA_LIMITS_ENABLED'
+  // P1 FOUNDATION lane G1-B — subject consent (NCD-9, PPR-14, abuse case A9).
+  // Gates the WHOLE `src/lib/pariprashna/consent` surface:
+  //   · OFF (default) — `resolveSubjectConsent` returns allow/enforcement_disabled
+  //     BEFORE any DB access, so the serving path is byte-for-byte what it is
+  //     today; every mutating entry point (withdrawal sweep, dispute open,
+  //     subject export) throws ConsentFeatureDisabledError instead of running.
+  //   · ON — no L2+ interpretive output for a chart whose subject lacks a
+  //     consent row; `native_self` is strictly checked (subject IS the account
+  //     holder, not self-certified); under-18 subjects serve only to the
+  //     recorded guardian and never as a cohort; refusals land in the
+  //     excluded-subject register.
+  // Flip this ON only after consent rows exist for the charts in play —
+  // flipping it on an empty `chart_subject_consent` table refuses EVERY chart
+  // by design (that is the fail-closed direction, but it is a real outage).
+  // Env: MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT.
+  | 'SUBJECT_CONSENT_ENFORCEMENT'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-1 (NCD-5, PPR-21/PPR-22).
+  // Gates the SERVING-SIDE half of the role/RLS work:
+  //   · OFF (default) — `getServeReadPool()` returns the one existing shared pool
+  //     and `withChartContext()` sets no GUC, so every read path is byte-for-byte
+  //     what it is today. Migration 576's roles hold grants but have no members,
+  //     and its RLS policies are stored but not enabled, so the DB half is inert
+  //     too. Nothing in this lane is live until BOTH this flag flips AND an
+  //     operator runs `platform/scripts/pariprashna/g1c_arm_rls.sql`.
+  //   · ON — reads route through a `role_web_serve`-backed pool built from
+  //     SERVE_DATABASE_URL (or DB_SERVE_USER/DB_SERVE_PASSWORD), and
+  //     `withChartContext()` pins `app.chart_context` per transaction so the RLS
+  //     policies have a value to compare against. If those credentials are NOT
+  //     configured, `getServeReadPool()` THROWS rather than quietly falling back
+  //     to the legacy credential — a flag that claims role separation while
+  //     serving on `amjis_app` would be exactly the §N.8 defect class this lane
+  //     exists to close.
+  // Flipping this ON is a live traffic-affecting cutover. It is deliberately NOT
+  // paired with any credential rotation; see the cutover runbook
+  // 00_ARCHITECTURE/briefs/pariprashna_swarm/G1_C_ROLES_RLS_CUTOVER_RUNBOOK_v1_0.md.
+  // Env: MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION.
+  | 'PARIPRASHNA_ROLE_SEPARATION'
+  // P1 FOUNDATION lane G1-C — NO-LEAKAGE arm-3 (PPR-31 arm 3).
+  // Gates the out-of-process ledger writer.
+  //   · OFF (default) — the SAMĪKṢĀ capture path INSERTs into
+  //     `brahma_mimamsa_prediction_ledger` in-process, exactly as it does today.
+  //   · ON — the serving process enqueues a write INTENT into
+  //     `pariprashna_ledger_outbox` (the only ledger-adjacent privilege
+  //     `role_web_serve` keeps) and the out-of-process worker
+  //     (`platform/scripts/pariprashna/ledger_writer_worker.ts`), the sole holder
+  //     of `role_ledger_write`, drains it and performs the real write.
+  // This flag MUST be flipped ON *before* PARIPRASHNA_ROLE_SEPARATION, not after:
+  // once the app serves on `role_web_serve` it has no ledger INSERT at all, so an
+  // in-process capture would start failing. The runbook sequences them.
+  // Env: MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS.
+  | 'PARIPRASHNA_LEDGER_OUT_OF_PROCESS'
+  // P1 FOUNDATION lane G1-A — the SafetyPolicyGate (PPR-12, MP §3.5.C hard
+  // stops HS-1..HS-6). Gates the WHOLE `src/lib/pariprashna/safety` surface:
+  //   · OFF (default) — `classifyTurnSafety` returns enforced:false / proceed
+  //     BEFORE running a single pattern and before touching the database; the
+  //     plan, prompt, and pre-wire controls are all no-ops; every governance
+  //     entry point (retraction, sample review) throws instead of running.
+  //   · ON — every query is classified before planning; suicide-adjacent
+  //     queries get a fixed response and NO plan; date-of-death is blocked at
+  //     plan-time, synthesis-time and pre-wire; health-crisis / mental-health /
+  //     mortality-window readings do not leave the session without two
+  //     independent adversarial passes AND a separate sign-off (NCD-4's
+  //     interstitial is the one relaxation, and only for a PROVEN native_self
+  //     subject on an HS-3 class).
+  // Operational note, because the coupling is real and fails CLOSED: NCD-4's
+  // interstitial requires a proven `native_self` subject_kind, which only
+  // exists when SUBJECT_CONSENT_ENFORCEMENT is also ON. Flipping this flag
+  // alone sends every health question on every chart down the full seal path —
+  // correct, and a large behavioural change. Flip the pair together.
+  // Env: MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED.
+  | 'PARIPRASHNA_SAFETY_GATE_ENABLED'
+  // P1 FOUNDATION lane G1-G — prompt-injection containment (PPR-13, TA §14A.1).
+  // Gates the WHOLE `src/lib/pariprashna/injection` surface, four controls:
+  //   · OFF (default) — the question, the conversation history, the retrieved
+  //     evidence and every agentic tool result reach the model exactly as they
+  //     do today; the plan is not re-closed; no tool-sequence monitor is built;
+  //     the answer-side entitlement scan contributes no rules to the pre-wire
+  //     pass. Byte-for-byte no change.
+  //   · ON — untrusted content is wrapped in `<untrusted_*>` containers whose
+  //     own delimiters are neutralized inside the payload, with a system-side
+  //     data-not-instruction clause; planner-supplied identity params
+  //     (chart_id and friends) carrying anything other than the AUTHENTICATED
+  //     chart are rejected from tool calls; a tool sequence that diverges from
+  //     the authorized plan is TRACE-FLAGGED (never blocked — TA §14A.1 rules
+  //     that explicitly); and any sentence naming a chart outside the caller's
+  //     entitlements is redacted before the wire.
+  // Independent of PARIPRASHNA_SAFETY_GATE_ENABLED on purpose: the two share
+  // the pre-wire pass but arm different pattern classes, and
+  // `scanMortalityPhrasing`'s `mortalityRulesEnabled` option is what keeps
+  // flipping one from silently arming the other.
+  // Env: MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT.
+  | 'PARIPRASHNA_INJECTION_CONTAINMENT'
+  // P2-A G2-A — Semantic blocks on the wire (PPR-07, FD-1). Gates the WHOLE
+  // `src/lib/pariprashna/semantics` surface plus the new `prediction_card`
+  // wire event:
+  //   · OFF (default) — `block.commit` carries only `{ block_id, text }`
+  //     exactly as before (no `kind`/`role`/`content`/`table`/`gap_text`),
+  //     no commit-time classification runs, and no `prediction_card` event is
+  //     ever emitted. Byte-for-byte no change to the existing wire or to what
+  //     the client renders (the s1 live adapter's `block.commit` case
+  //     defaults `kind` to `'paragraph'` when the field is absent, same as
+  //     today).
+  //   · ON — every committed PROSE block is classified deterministically from
+  //     its own committed text (table / verse / gap_ribbon / heading /
+  //     paragraph, plus a verdict/elaboration/caveat role for paragraphs) and
+  //     the classification rides on that block's `block.commit` event; the
+  //     client's already-built `TableBlock`/`VerseBlock`/`GapRibbonBlock`
+  //     renderers activate on the live route instead of only in fixtures. A
+  //     detected, persisted prediction candidate is also surfaced as a
+  //     first-class `prediction_card` event carrying the structured
+  //     candidate + its real `message_parts.id`, which mounts the in-stream
+  //     `LogToSamiksha` confirm affordance (built and unmounted since PB-3).
+  // Env: MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED.
+  | 'PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED'
+  // P2-C — Honest controls (PPR-09/16). Gates two additive, together-shipped
+  // behaviors that were previously either inert or misleading:
+  //   · `length_tier` (TODO(PB-4) in safety_gate.ts) gains a REAL effect —
+  //     `synthesis_stage.assembleSynthesisContext` appends a short, fixed
+  //     length-discipline instruction to the system prompt for `brief`/
+  //     `exhaustive` (never for `standard`, which stays a byte-identical
+  //     no-op whether or not the flag is on).
+  //   · `plan_stage.ts` emits an HONEST `reading_depth_received` grade
+  //     derived from the PLANNER's own `plan.scope_tuple.depth` (the real
+  //     signal of how deep the turn actually went), not from whatever the
+  //     composer's mode/pill claimed before planning ran. The client
+  //     surfaces it as a disclosure distinct from the requested tier.
+  // `model_id` needed no backend flag — `bindTurnParams` already binds it
+  // directly to the synthesis model (verified live end-to-end); the defect
+  // there was UI-only (the composer's model picker never sent its selection
+  // and offered labels with no matching registry id), fixed by wiring the
+  // real picker through, unconditionally, with no serving-path behavior
+  // change to gate.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  | 'PARIPRASHNA_HONEST_CONTROLS_ENABLED'
+  // P2-B G2-B "Citations at first paint" (PPR-08, FD-2/FD-6). Gates wiring
+  // the already-built S-3 rewriter (`lib/pariprashna/citations/rewriter.ts`)
+  // into the live synthesis stream:
+  //   · OFF (default) — the synthesis stream runs exactly as it does today:
+  //     each delta goes through the bare `lintReaderProse` register-leak
+  //     scrub with no resolver, citation sentinels are redacted like any
+  //     other internal-id-shaped token, no `citation.define` event fires
+  //     during streaming, and persistence still re-derives citations by
+  //     regex-scanning the accumulated text (the pre-existing P0C-R5 dead
+  //     path — unchanged, not newly introduced, when this flag is off).
+  //     `turn.commit` carries no `grounding_summary` field.
+  //   · ON — a `TurnCitationStream` (per turn) resolves sentinels against
+  //     this turn's own retrieved evidence, emits `⟦n⟧`-style inline markers
+  //     + `citation.define`/`flag` wire events DURING streaming (not just at
+  //     final commit), persistence builds canonical citation parts from the
+  //     turn's own resolution ledger instead of re-scanning scrubbed prose,
+  //     and `turn.commit` carries a server-derived `grounding_summary`
+  //     (counts, grade rollup, completeness line) that the client prefers
+  //     over its own citation-tally estimate.
+  // Env: MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED.
+  | 'PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED'
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false: ships dark.
+  // The direct (pre-P2-D) write path stays the sole active path off-flag;
+  // flipping this arms the write-ahead outbox — which additionally requires
+  // the `pariprashna_persistence_outbox` migration to have landed (see
+  // store/durable_outbox.ts's header) or the write path silently degrades
+  // back to direct mode with a disclosed `outbox_unavailable` detail. Flip
+  // via MARSYS_FLAG_PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED=true.
+  | 'PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED'
+  // G3-A — AcharyaReadingReceipt v1 assembly + persistence (PPR-01). Default
+  // false: ships dark. Off, `persistence_stage.ts` writes exactly what it
+  // wrote before this lane — no new metadata_json key, no new DB read. On,
+  // every persisted assistant turn assembles a receipt (coverage, facts
+  // consumed by reference, derivation chains, cross-domain, evidence grades,
+  // honest gaps, safety decision, calibration disclosure, prose binding,
+  // provenance, receipt hash) from ALREADY-COMPUTED pipeline outputs, runs it
+  // through the §N.8 structural validator, and — only if valid — attaches it
+  // as `conversation_messages.metadata_json.acharya_reading_receipt` (same
+  // additive-jsonb convention as `provenance_stamp`; no migration). A receipt
+  // that fails validation is logged and OMITTED, never persisted malformed.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_RECEIPT_EMISSION_ENABLED=true.
+  | 'PARIPRASHNA_RECEIPT_EMISSION_ENABLED'
+  // G3-D / P2-L — Voice enforcement (PPR-04, roadmap line 104). A LINT
+  // EXTENSION of the register-leak lint, not a parallel scanner — see
+  // `src/lib/pariprashna/voice/voice_lint.ts`'s header. Gates the WHOLE
+  // `src/lib/pariprashna/voice` surface:
+  //   · OFF (default) — the per-delta lint call in `synthesis_stage.ts` (both
+  //     the citation-stream-on and citation-stream-off branches) and the
+  //     whole-block backstop in `reading_parts.ts`'s `commitBlock` run exactly
+  //     the register-leak lint they run today; `lintVoiceProse` is never
+  //     called. Byte-for-byte no change.
+  //   · ON — the SAME two call sites additionally run a second-person-
+  //     imperative detector on remedy-verb sentences (telemetry only — flags
+  //     "you should wear a ruby", passes "the tradition prescribes wearing a
+  //     ruby"; no safe generic rewrite exists for an arbitrary imperative
+  //     sentence, unlike the register-leak lint's own rewrite/redact
+  //     verdicts) and, only when this turn's G1-A `SafetyDecision` shows an
+  //     HS-class actually fired (the honest "difficult finding" proxy — no
+  //     finer-grained block-level difficulty classifier exists in this
+  //     codebase), a bounded/idempotent bare-probability framing rewrite plus
+  //     an uncertainty-before-severity ordering check (telemetry only). Under
+  //     the same difficult-finding condition, `synthesis_stage.ts`'s streaming
+  //     loop also force-commits an open prose block early once it crosses a
+  //     length floor at a sentence boundary — shorter committed blocks for
+  //     hard findings, never touching pass/seam state.
+  // Env: MARSYS_FLAG_PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED.
+  | 'PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED'
+  // G3-B — interpretation_sets: three candidate interpretations + a
+  // falsifier per SIGNIFICANT judgment (PPR-02). Default false: ships dark.
+  // Depends on G3-A (PARIPRASHNA_RECEIPT_EMISSION_ENABLED) — interpretation
+  // sets ride as an additive sub-field of the receipt, so this flag has no
+  // effect unless receipt emission is also on. Off, `persistence_stage.ts`
+  // never calls `detectSignificantJudgments`/`generateInterpretationSets`
+  // and the receipt's `interpretation_sets` field assembles as
+  // `status: 'unavailable'` with an honest reason — zero new LLM calls, zero
+  // new DB reads. On, every SIGNIFICANT judgment this turn (domain verdict ·
+  // time-indexed · remedial · prediction-detected · rules-in-tension, each
+  // detected from a REAL structural signal — see
+  // `interpretation/detect.ts`) gets a real structured-output call
+  // requesting >=3 distinct candidate interpretations, a selected reading +
+  // rationale, and a falsifier — or an explicit, reason-carrying WAIVER when
+  // the model genuinely cannot produce 3 distinct candidates. Never
+  // fabricated client-side. Also depends on
+  // PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED (G2-A) — 4 of the 5 significant-
+  // judgment categories classify from `OpenBlock.semantic`, which only
+  // exists when semantic blocks are on; when semantic blocks are off, the
+  // interpretation_sets field honestly reports `status: 'unavailable'`
+  // (`reason: 'semantic_blocks_disabled'`) rather than a populated-looking
+  // `detected_count: 0` (G3BC hardening, defect 1). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_INTERPRETATION_SETS_ENABLED=true.
+  | 'PARIPRASHNA_INTERPRETATION_SETS_ENABLED'
+  // G3-C — PPR-03 typed confidence. Default false: ships dark. Off,
+  // `assembleAcharyaReadingReceipt` writes its new `confidence_typing` field
+  // as `{ status: 'unavailable', ... }` and every other receipt field is
+  // byte-for-byte what G3-A already computed — this flag adds nothing to the
+  // 11 pre-existing fields' logic. On, each citation this turn is typed into
+  // one of the five PPR-03 confidence types (deterministic_fact /
+  // structural_prior / classical_prior / empirically_calibrated /
+  // unresolved) from a real per-type source (see
+  // `pariprashna/confidence/type_claim.ts`), `empirically_calibrated` is
+  // gated on a real sample-size activation gate
+  // (`pariprashna/confidence/activation_gate.ts` — proven closed under
+  // today's real L5 STRUCTURAL-mode data), and any numeric confidence value
+  // this turn served from a calibration-bearing tool is scanned for
+  // overstated precision (T-8,
+  // `pariprashna/confidence/precision_scan.ts`). Flip via
+  // MARSYS_FLAG_PARIPRASHNA_TYPED_CONFIDENCE_ENABLED=true.
+  | 'PARIPRASHNA_TYPED_CONFIDENCE_ENABLED'
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   PANEL_MODE_ENABLED: true,
@@ -269,6 +521,64 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   // via MARSYS_FLAG_PARIPRASHNA_ENABLED=true once the native is ready to
   // exercise the deployed route.
   PARIPRASHNA_ENABLED: false,
+  // P1 G1-D — NCD-8 limits. Default false: ships dark, flipped deliberately.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_LIMITS_ENABLED=true.
+  PARIPRASHNA_LIMITS_ENABLED: false,
+  // P1 G1-B — subject consent enforcement. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Flip via MARSYS_FLAG_SUBJECT_CONSENT_ENFORCEMENT=true
+  // only after `chart_subject_consent` carries a row for every live chart.
+  SUBJECT_CONSENT_ENFORCEMENT: false,
+  // P1 G1-C — NO-LEAKAGE arm-1 role separation. Default false: ships dark. The
+  // flip is a live cutover of what credential the app serves on; it is gated on
+  // the runbook's pre-flight, not on this file.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_ROLE_SEPARATION=true.
+  PARIPRASHNA_ROLE_SEPARATION: false,
+  // P1 G1-C — NO-LEAKAGE arm-3 out-of-process ledger writer. Default false: the
+  // in-process capture path is unchanged. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_LEDGER_OUT_OF_PROCESS=true, BEFORE role separation.
+  PARIPRASHNA_LEDGER_OUT_OF_PROCESS: false,
+  // P1 G1-A — the SafetyPolicyGate. Default false: this lane ships flag-OFF per
+  // the P1 pre-authorization note, so merging it changes no production
+  // behavior. Flip via MARSYS_FLAG_PARIPRASHNA_SAFETY_GATE_ENABLED=true,
+  // together with SUBJECT_CONSENT_ENFORCEMENT (see the declaration comment —
+  // NCD-4's interstitial cannot be earned without a proven subject_kind).
+  PARIPRASHNA_SAFETY_GATE_ENABLED: false,
+  // P1 G1-G — prompt-injection containment. Default false: this lane ships
+  // flag-OFF per the P1 pre-authorization note, so merging it changes no
+  // production behavior. Two of its four controls change what the synthesis
+  // model reads (structural delimiters + the containment clause), which can
+  // move prose — flip it deliberately, with a reading compared before/after.
+  // Flip via MARSYS_FLAG_PARIPRASHNA_INJECTION_CONTAINMENT=true.
+  PARIPRASHNA_INJECTION_CONTAINMENT: false,
+  // P2-A G2-A — Semantic blocks on the wire. Default false: ships dark, no
+  // behavior change on merge. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED=true once the client
+  // renderers have been verified against a real deployed reading.
+  PARIPRASHNA_SEMANTIC_BLOCKS_ENABLED: false,
+  // P2-C — honest length shaping + scope-tuple-derived depth disclosure.
+  // Default false: ships dark. Flip via
+  // MARSYS_FLAG_PARIPRASHNA_HONEST_CONTROLS_ENABLED=true.
+  PARIPRASHNA_HONEST_CONTROLS_ENABLED: false,
+  // P2-B G2-B — citations at first paint. Default false: ships flag-OFF, the
+  // synthesis stream is byte-for-byte what it is today (see the declaration
+  // comment). Flip via MARSYS_FLAG_PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED=true.
+  PARIPRASHNA_FIRST_PAINT_CITATIONS_ENABLED: false,
+  // P2-D — Durable persistence (PPR-10, FD-9). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_DURABLE_PERSISTENCE_ENABLED: false,
+  // G3-A — AcharyaReadingReceipt v1 (PPR-01). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_RECEIPT_EMISSION_ENABLED: false,
+  // G3-D / P2-L — Voice enforcement (PPR-04). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_VOICE_ENFORCEMENT_ENABLED: false,
+  // G3-B — interpretation_sets (PPR-02). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_INTERPRETATION_SETS_ENABLED: false,
+  // G3-C — typed confidence (PPR-03). Default false — see the union
+  // declaration above for the full flip contract.
+  PARIPRASHNA_TYPED_CONFIDENCE_ENABLED: false,
 }
 
 // Numeric config keys (read via configService.getValue)

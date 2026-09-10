@@ -1,0 +1,18 @@
+{
+  "_note": "Post-deploy probe for A-01+A-05 (sha=3deb54180). Deploy sha=3deb5418 completed ~20:09Z UTC 2026-08-15.",
+  "probe_time_utc": "2026-08-15T20:10Z",
+  "deployed_main_sha": "3deb54180deeb2f6141f189899da29284638ac54",
+  "deploy_conclusion": "success",
+  "mcp_server_info": {
+    "catalog_version": "catalog-1+t152+r653c2a1a98c8",
+    "tool_count": 125,
+    "tools_changed_at": "2026-08-13T11:40:22.000Z",
+    "tools_changed_at_note": "A-01+A-05 do not add/remove tools, so catalog manifest mtime does not advance. tools_changed_at unchanged from pre-deploy baseline.",
+    "stale": false
+  },
+  "deploy_chain": [
+    {"sha": "55a476fbd", "lane": "A-01", "merged_at": "~19:38Z"},
+    {"sha": "3deb54180", "lane": "A-05", "merged_at": "~20:00Z", "deploy_triggered_by": "A-01 CI completion on main", "deploy_completed": "~20:09Z"}
+  ],
+  "confirmation": "deploy.yml run conclusion=success for sha=3deb54180; MCP server responds; catalog_version stable (non-catalog lanes)"
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "fixtureId": "factual-001-moon-nakshatra-lagna",
+    "turnId": "90e62a61-8ade-4302-b68c-ff84d73c4ed6",
+    "conversationId": "779e209c-fb4a-4583-9a23-fba6191ed212",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "interpretive-001-saturn-7h-authority",
+    "turnId": "d451c930-f27e-4707-b7fe-17b298b09b6c",
+    "conversationId": "0373d028-4bc2-4749-9a53-7b7f2bdec280",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "timing-001-mercury-md-saturn-ad",
+    "turnId": "b581237a-550c-41d4-bbe4-880da2308641",
+    "conversationId": "a6349b5d-16f8-4fb0-9ef8-e307ba617f34",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "cross-domain-001-mercury-career-vs-6l",
+    "turnId": "299d992e-5de5-47a7-bb82-b56579bb1552",
+    "conversationId": "482c349c-0cde-4e8e-b260-c99c556bbcb7",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "remedial-001-saturn-strengthening",
+    "turnId": "e8b5c8bb-af9d-48ea-a24c-57a601bfc7c2",
+    "conversationId": "510b13e4-5289-41cf-b817-5699c708c1ae",
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "sensitive-001-ayurdaya-longevity",
+    "turnId": "1418e693-4810-498d-9bc7-0cde17d22b87",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "incomplete-001-d60-shashtiamsha",
+    "turnId": "a887c328-9577-4c8e-ba37-d18850fcc585",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": true
+  },
+  {
+    "fixtureId": "disagreement-001-jupiter-vs-saturn",
+    "turnId": "52f7973c-24b3-48a7-a83e-1e58c351f0bb",
+    "conversationId": null,
+    "seedConversationId": null,
+    "realChart": true
+  }
+]

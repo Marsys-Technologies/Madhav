@@ -1,0 +1,266 @@
+{
+  "status": "PUBLISHED",
+  "chart_id": "482012f1-710e-4a25-994a-93821f5871aa",
+  "measurement": 4,
+  "label": "FIELD-BASELINE",
+  "field_corpus": {
+    "table": "kala_field_windows",
+    "row_count": 6708,
+    "event_classes": [
+      "childbirth",
+      "foreign_settlement",
+      "marriage",
+      "relocation",
+      "separation",
+      "surgery"
+    ],
+    "class_counts": {
+      "childbirth": 1118,
+      "foreign_settlement": 1118,
+      "marriage": 1118,
+      "relocation": 1118,
+      "separation": 1118,
+      "surgery": 1118
+    }
+  },
+  "lel_coverage": {
+    "total_train": 36,
+    "scorable_by_vagueness": 25,
+    "strict_matched": 3,
+    "extended_only": 4,
+    "parked_no_field_class": 18,
+    "parked_by_vagueness": 11
+  },
+  "strict": {
+    "scored_count": 3,
+    "hit_count": 3,
+    "hit_rate": 1.0,
+    "skill_score": 1.0,
+    "per_event": [
+      {
+        "event_id": "4e09e1e1-7925-5675-9af8-74e8eea6fe67",
+        "event_date": "2007-06-15",
+        "window_start": "2004-12-15",
+        "window_end": "2009-12-13",
+        "threshold_percentile": 0.6666666666666666,
+        "threshold_value": 0.0,
+        "peak_date": "2007-05-24",
+        "peak_intensity": 1.0459548305684607e-05,
+        "peak_lag_days": -22,
+        "within_proximity": true,
+        "at_or_above_threshold": true,
+        "passed": true
+      },
+      {
+        "event_id": "b72f40f7-687e-51dd-a21d-06b184fc24c1",
+        "event_date": "2013-12-11",
+        "window_start": "2011-06-13",
+        "window_end": "2016-06-10",
+        "threshold_percentile": 0.6666666666666666,
+        "threshold_value": 0.0,
+        "peak_date": "2014-01-08",
+        "peak_intensity": 4.897410413475715e-05,
+        "peak_lag_days": 28,
+        "within_proximity": true,
+        "at_or_above_threshold": true,
+        "passed": true
+      },
+      {
+        "event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4",
+        "event_date": "2019-05-15",
+        "window_start": "2016-11-14",
+        "window_end": "2021-11-12",
+        "threshold_percentile": 0.6666666666666666,
+        "threshold_value": 0.0,
+        "peak_date": "2019-04-13",
+        "peak_intensity": 6.236817349130151e-07,
+        "peak_lag_days": -32,
+        "within_proximity": true,
+        "at_or_above_threshold": true,
+        "passed": true
+      }
+    ]
+  },
+  "extended": {
+    "scored_count": 7,
+    "hit_count": 4,
+    "hit_rate": 0.5714285714285714,
+    "skill_score": -0.43655227454110146
+  },
+  "noise_floor": {
+    "n_shuffles": 1000,
+    "seed": 42,
+    "mean_hit_rate": 0.7016666666666667,
+    "std_hit_rate": 0.26203795314589234,
+    "floor_threshold_mean_plus_2std": 1.2257425729584512
+  },
+  "per_class": {
+    "surgery": {
+      "events": [
+        {
+          "event_id": "4e09e1e1-7925-5675-9af8-74e8eea6fe67",
+          "event_date": "2007-06-15"
+        }
+      ],
+      "hits": 1,
+      "total": 1,
+      "set": "strict"
+    },
+    "marriage": {
+      "events": [
+        {
+          "event_id": "b72f40f7-687e-51dd-a21d-06b184fc24c1",
+          "event_date": "2013-12-11"
+        },
+        {
+          "event_id": "3a37fa76-cfc1-599b-bbdf-97cff784f5ac",
+          "event_date": "1998-02-16"
+        },
+        {
+          "event_id": "45ba996d-5923-5570-8055-8cbf4a470636",
+          "event_date": "2004-01-15"
+        },
+        {
+          "event_id": "aa591eb5-8e00-5600-b9c1-7177f7919ab8",
+          "event_date": "2012-10-15"
+        }
+      ],
+      "hits": 2,
+      "total": 4,
+      "set": "strict"
+    },
+    "foreign_settlement": {
+      "events": [
+        {
+          "event_id": "928a1f56-0940-5428-a35a-8591f84fd5b4",
+          "event_date": "2019-05-15"
+        },
+        {
+          "event_id": "a1ef10c2-c52d-536e-9fd5-51342d58721e",
+          "event_date": "2010-12-15"
+        }
+      ],
+      "hits": 1,
+      "total": 2,
+      "set": "strict"
+    }
+  },
+  "parked_events": {
+    "no_field_class": [
+      {
+        "event_id": "0d03e02a-e619-52b5-8a78-8f26e13ba125",
+        "event_date": "1993-07-01",
+        "category": "creative",
+        "domain": "creative/award"
+      },
+      {
+        "event_id": "359944e3-908f-5eb0-ba38-6696bbbefbe6",
+        "event_date": "2001-03-15",
+        "category": "education",
+        "domain": "education/entrance_exam_preparation"
+      },
+      {
+        "event_id": "4a1b1dc0-df38-56d8-a2c8-0383bb2acc7c",
+        "event_date": "2003-06-15",
+        "category": "education",
+        "domain": "education/entrance_exam_preparation_ended"
+      },
+      {
+        "event_id": "cd68bc5c-c5fc-5914-bd95-e18ba639a5dc",
+        "event_date": "2004-06-01",
+        "category": "education",
+        "domain": "education/opportunity_declined"
+      },
+      {
+        "event_id": "fd04fecc-21f7-5dfd-b68b-f1a6f1cd6bfa",
+        "event_date": "2007-06-10",
+        "category": "career",
+        "domain": "career/first_job_joined"
+      },
+      {
+        "event_id": "71af4f61-3efc-557b-949a-d855845a5ca5",
+        "event_date": "2007-06-15",
+        "category": "education",
+        "domain": "education/engineering_completed"
+      },
+      {
+        "event_id": "aed78f94-87ca-5347-a1d0-7f277a99b6c4",
+        "event_date": "2008-06-09",
+        "category": "career",
+        "domain": "career/first_job_exited"
+      },
+      {
+        "event_id": "132b61e0-3409-53fd-bb1a-80b4b6bdcc67",
+        "event_date": "2010-07-01",
+        "category": "spiritual",
+        "domain": "spiritual/devata_adoption"
+      },
+      {
+        "event_id": "4e96f4b9-fe3b-5b40-bdb3-c60e3024abfa",
+        "event_date": "2011-01-15",
+        "category": "education",
+        "domain": "education/mba_admission"
+      },
+      {
+        "event_id": "95138517-2d23-51a6-b13b-71801e806a11",
+        "event_date": "2011-06-15",
+        "category": "education",
+        "domain": "education/mba_enrolled"
+      },
+      {
+        "event_id": "cf0c918d-da71-504f-9c62-4920c48cd69e",
+        "event_date": "2012-09-01",
+        "category": "education",
+        "domain": "education/leadership_role"
+      },
+      {
+        "event_id": "852d1420-e733-582b-a2ae-f7de33b8d38e",
+        "event_date": "2012-09-15",
+        "category": "creative",
+        "domain": "creative/modeling"
+      },
+      {
+        "event_id": "c143ce2a-f1e1-5092-9c04-f659fa0de5e1",
+        "event_date": "2013-03-15",
+        "category": "education",
+        "domain": "education/mba_graduation"
+      },
+      {
+        "event_id": "6f5ee9cb-8b35-5da9-a601-30430e8ad7d9",
+        "event_date": "2013-05-15",
+        "category": "career",
+        "domain": "career/corporate_job_joined"
+      },
+      {
+        "event_id": "72fad18c-ad30-5f46-9418-c2ed28c4d9ac",
+        "event_date": "2013-07-01",
+        "category": "family",
+        "domain": "family/parent_illness_onset"
+      },
+      {
+        "event_id": "b5ea6a4d-6e0a-5ed3-875c-e241d3cb50a5",
+        "event_date": "2016-07-01",
+        "category": "career",
+        "domain": "career/employer_instability"
+      },
+      {
+        "event_id": "e3b2f1d5-5609-5dca-af84-d9fac54cd3cd",
+        "event_date": "2017-03-15",
+        "category": "career",
+        "domain": "career/employer_switch"
+      },
+      {
+        "event_id": "b75c63f4-ead1-5d6d-9811-011277347d57",
+        "event_date": "2018-11-28",
+        "category": "loss",
+        "domain": "loss/parent_passing"
+      }
+    ]
+  },
+  "tripwire_r15": "NOT_FIRED",
+  "notes": [
+    "null_p=1.0 for all 6,708 kala_field_windows: field signal is below global null distribution (expected at baseline; field has not been calibrated). Skill score is the baseline from which integration (P3) will be measured.",
+    "Extended set includes loose semantic mappings (relationship\u2192marriage, etc.). Strict set uses only direct semantic matches.",
+    "26/36 LEL events have no matching field class: field currently covers only 6 event classes (marriage, foreign_settlement, surgery, separation, childbirth, relocation). Full coverage requires P3+ integration."
+  ]
+}

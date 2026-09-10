@@ -6,6 +6,9 @@ import {
   BODY_SCHEMA_BY_KIND,
   CanonicalMessageSchema,
   MessagePartInputSchema,
+  CANONICAL_SCHEMA_VERSION,
+  MIN_SUPPORTED_CANONICAL_SCHEMA_VERSION,
+  isCanonicalSchemaVersionSupported,
 } from '../schema'
 
 describe('kind enum', () => {
@@ -119,5 +122,24 @@ describe('MessagePartInputSchema', () => {
 
   it('rejects a missing model_visible', () => {
     expect(MessagePartInputSchema.safeParse({ seq: 0, kind: 'text', body: { text: 'x' } }).success).toBe(false)
+  })
+})
+
+describe('canonical schema-version declared compatibility (P2-D, PPR-10)', () => {
+  it('the current version is always supported', () => {
+    expect(isCanonicalSchemaVersionSupported(CANONICAL_SCHEMA_VERSION)).toBe(true)
+  })
+
+  it('the declared floor is always supported', () => {
+    expect(isCanonicalSchemaVersionSupported(MIN_SUPPORTED_CANONICAL_SCHEMA_VERSION)).toBe(true)
+  })
+
+  it('rejects a version below the floor and above current', () => {
+    expect(isCanonicalSchemaVersionSupported(MIN_SUPPORTED_CANONICAL_SCHEMA_VERSION - 1)).toBe(false)
+    expect(isCanonicalSchemaVersionSupported(CANONICAL_SCHEMA_VERSION + 1)).toBe(false)
+  })
+
+  it('rejects a non-integer version', () => {
+    expect(isCanonicalSchemaVersionSupported(1.5)).toBe(false)
   })
 })

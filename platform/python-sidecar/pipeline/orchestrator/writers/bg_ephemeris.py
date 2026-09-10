@@ -6,11 +6,10 @@ Wraps the legacy bootstrap logic from brahmagyan.l0_ephemeris so that
 "Rebuild All" via the orchestrator can regenerate the daily ephemeris
 table without needing a separate bootstrap invocation.
 
-L0 idempotency: ON CONFLICT (date, body, ayanamsha_id) DO NOTHING (as in
-the brahmagyan module). The full build period is 1900-01-01 → 2150-12-31
-(~825,075 rows × 9 bodies). Existing rows are left in place; only missing
-rows are inserted. This is safe for orchestrator-owned transactions because
-each batch's rowcount is tracked and returned without committing.
+L0 convergence: ON CONFLICT (date, body, ayanamsha_id) conditionally repairs
+stale semantic columns. The full build period is 1900-01-01 → 2150-12-31
+(~825,075 rows × 9 bodies). Exact rows are left untouched so rowcount reports
+only inserted or genuinely repaired rows.
 
 ZERO LLM use. Pure deterministic pyswisseph / algorithmic computation.
 
@@ -42,11 +41,12 @@ class BgEphemerisWriter(WriterBase):
     Seeds ephemeris_daily (9 bodies × date range 1900-01-01 → 2150-12-31).
 
     L0 writer — chart-agnostic daily planetary positions (tropical longitudes)
-    computed via pyswisseph DE441. Falls back to algorithmic approximation when
-    pyswisseph is unavailable (dry_run / test contexts).
+    computed via the pinned, file-backed Swiss Ephemeris corpus. A governed
+    rebuild fails closed rather than accepting pyswisseph's analytic fallback.
 
-    Idempotency: ON CONFLICT (date, body, ayanamsha_id) DO NOTHING — restarts
-    and partial rebuilds are safe; only rows not yet present are inserted.
+    Idempotency: ON CONFLICT (date, body, ayanamsha_id) conditionally repairs
+    stale values; restarts and partial rebuilds converge without rewriting
+    already-exact rows.
 
     This writer wraps the legacy brahmagyan.l0_ephemeris bootstrap logic so
     that "Rebuild All" via the orchestrator can regenerate the ephemeris table.
@@ -70,15 +70,12 @@ class BgEphemerisWriter(WriterBase):
             _resolve_ephe_path,
         )
 
-        # swisseph is optional at this tier — the ephemeris_daily table is
-        # pre-populated (825 k rows via ON CONFLICT DO NOTHING).  If pyswisseph
-        # is not available we skip live computation gracefully rather than crash.
         try:
             import swisseph as swe  # type: ignore[import]
-            _swe_available = True
-        except ImportError:
-            swe = None  # type: ignore[assignment]
-            _swe_available = False
+        except ImportError as exc:
+            raise RuntimeError(
+                "bg_ephemeris requires pyswisseph and cannot rebuild without it"
+            ) from exc
 
         t0 = time.time()
 
@@ -91,21 +88,19 @@ class BgEphemerisWriter(WriterBase):
                 duration_seconds=round(time.time() - t0, 2),
             )
 
-        if not _swe_available:
-            logger.warning(
-                "[bg_ephemeris] swisseph not available — skipping live computation. "
-                "ephemeris_daily is assumed pre-populated (825 k rows). "
-                "Install pyswisseph for Tier-3 full rebuild."
-            )
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes="skipped: swisseph unavailable; ephemeris_daily pre-populated",
-                duration_seconds=round(time.time() - t0, 2),
-            )
-
         # Resolve ephemeris data path and initialise swisseph
         ephe_path = _resolve_ephe_path()
+        if not ephe_path:
+            raise RuntimeError(
+                "bg_ephemeris requires the pinned Swiss Ephemeris .se1 corpus; "
+                "refusing the analytic fallback"
+            )
+        from pipeline.orchestrator.writers.bg_sky_calendar import (
+            _require_pinned_ephemeris_files,
+            _require_swiss_file_backend,
+        )
+        _require_swiss_file_backend(swe, ephe_path)
+        _require_pinned_ephemeris_files(ephe_path)
 
         conn = ctx.db_conn
         rows_inserted = 0
@@ -135,7 +130,26 @@ class BgEphemerisWriter(WriterBase):
                           (%(date)s, %(body)s, %(ayanamsha_id)s, %(tropical_longitude)s,
                            %(latitude)s, %(speed_dps)s, %(is_retrograde)s,
                            %(source_citation)s, %(computed_at)s)
-                        ON CONFLICT (date, body, ayanamsha_id) DO NOTHING
+                        ON CONFLICT (date, body, ayanamsha_id) DO UPDATE SET
+                          tropical_longitude = EXCLUDED.tropical_longitude,
+                          latitude = EXCLUDED.latitude,
+                          speed_dps = EXCLUDED.speed_dps,
+                          is_retrograde = EXCLUDED.is_retrograde,
+                          source_citation = EXCLUDED.source_citation,
+                          computed_at = EXCLUDED.computed_at
+                        WHERE ROW(
+                          ephemeris_daily.tropical_longitude,
+                          ephemeris_daily.latitude,
+                          ephemeris_daily.speed_dps,
+                          ephemeris_daily.is_retrograde,
+                          ephemeris_daily.source_citation
+                        ) IS DISTINCT FROM ROW(
+                          EXCLUDED.tropical_longitude,
+                          EXCLUDED.latitude,
+                          EXCLUDED.speed_dps,
+                          EXCLUDED.is_retrograde,
+                          EXCLUDED.source_citation
+                        )
                         """,
                         batch_rows,
                     )
@@ -151,17 +165,12 @@ class BgEphemerisWriter(WriterBase):
                             pct, current, rows_inserted,
                         )
         except Exception as exc:
-            logger.warning(
-                "[bg_ephemeris] computation failed (%s) — returning rows inserted so far (%d). "
-                "ephemeris_daily is assumed pre-populated; no crash.",
-                exc, rows_inserted,
+            logger.exception(
+                "[bg_ephemeris] computation failed after %d inserted rows: %s",
+                rows_inserted,
+                exc,
             )
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=rows_inserted,
-                notes=f"partial/skipped: {exc}; ephemeris_daily pre-populated",
-                duration_seconds=round(time.time() - t0, 2),
-            )
+            raise
 
         elapsed = round(time.time() - t0, 2)
         logger.info(

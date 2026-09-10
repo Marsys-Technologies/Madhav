@@ -334,6 +334,120 @@ TAJIK_YOGAS: list[dict[str, Any]] = [
         "classical_citation": "Tājika Nīlakaṇṭhī, Ch. 4 (Duḥphalī Kuṭṭha adhyāya)",
         "is_fructification_indicator": False,
     },
+    {
+        "yoga_id": "ikbal",
+        "yoga_name": "Ikbal",
+        "yoga_name_sa": "Ikbāl",
+        "judgment_meaning": "yes_matter_coming_to_fruition",
+        "formation_rule": (
+            "A planet that has recently stationed (turned direct after retrograde) and is now "
+            "moving forward applies to the significator. The forward motion of a previously "
+            "retrograde planet brings renewed momentum — what was stalled is now moving toward "
+            "completion. A variant of Ithasala emphasizing the retrograde-to-direct transition "
+            "as the activating trigger."
+        ),
+        "formation_rule_jsonb": {
+            "condition": "planet_recently_stationed_direct_and_now_applying",
+            "mechanism": "retrograde_to_direct_forward_application",
+            "related_to": "ithasala_variant",
+        },
+        "classical_citation": "Tājika Nīlakaṇṭhī, Ch. 4 (Ikbāl adhyāya — application after station)",
+        "is_fructification_indicator": True,
+    },
+    {
+        "yoga_id": "kuttha",
+        "yoga_name": "Kuttha",
+        "yoga_name_sa": "Kuṭṭha",
+        "judgment_meaning": "matter_cut_or_severed",
+        "formation_rule": (
+            "A malefic planet (Mars, Saturn, Rahu, Ketu) intervenes between the two "
+            "significators and forms an exact applying aspect to the slower significator before "
+            "the faster significator can complete its own applying aspect. The malefic 'cuts' "
+            "the connection — the matter is severed, blocked by an active hostile agent, or the "
+            "relationship between the querent and the matter is severed before it can fructify."
+        ),
+        "formation_rule_jsonb": {
+            "effect": "connection_severed",
+            "condition": "malefic_completes_aspect_to_slower_sig_before_faster_sig",
+            "malefic_planets": ["Mars", "Saturn", "Rahu", "Ketu"],
+            "distinction_from_rudda": "kuttha severs; rudda merely blocks",
+        },
+        "classical_citation": "Tājika Nīlakaṇṭhī, Ch. 4 (Kuṭṭha adhyāya — cutting/severing)",
+        "is_fructification_indicator": False,
+    },
+    {
+        "yoga_id": "dutthadhuta",
+        "yoga_name": "Dutthadhuta",
+        "yoga_name_sa": "Dutthadhūta",
+        "judgment_meaning": "malefic_aspect_creates_difficulty",
+        "formation_rule": (
+            "A malefic planet is in exact applying trine (120°) or square (90°) aspect to "
+            "one of the significators — not intercepting the connection, but adding malefic "
+            "energy directly to one party in the matter. This is distinct from Kuttha (which "
+            "severs) and Dutthottha (which places significator in 8th from own sign). "
+            "Dutthadhuta signifies a malefic messenger — the matter proceeds but arrives "
+            "corrupted or with damage."
+        ),
+        "formation_rule_jsonb": {
+            "condition": "malefic_in_applying_trine_or_square_to_significator",
+            "distinction": "does not sever connection; adds malefic coloring to outcome",
+            "aspect_types": ["trine_120", "square_90"],
+            "malefic_planets": ["Saturn", "Mars", "Rahu", "Ketu"],
+        },
+        "classical_citation": (
+            "Tājika Nīlakaṇṭhī, Ch. 4 "
+            "(Dutthadhūta adhyāya — malefic aspect messenger)"
+        ),
+        "is_fructification_indicator": False,
+    },
+    {
+        "yoga_id": "tambira",
+        "yoga_name": "Tambira",
+        "yoga_name_sa": "Tambira",
+        "judgment_meaning": "venus_as_morning_star_auspicious_timing",
+        "formation_rule": (
+            "Venus appears as a morning star (Purva-bha — rising before the Sun, ahead of the "
+            "Sun in zodiacal longitude). In Tajika horary, when Venus is a morning star and is "
+            "the significator of the matter or the querent, the matter is judged especially "
+            "auspicious and the timing is propitious. Venus as morning star (Lucifer position) "
+            "confers special strength and beauty to the outcome. Applicable specifically to "
+            "matters of marriage, pleasure, wealth, and artistic endeavours."
+        ),
+        "formation_rule_jsonb": {
+            "condition": "venus_is_morning_star",
+            "venus_position": "eastern_elongation_before_sun",
+            "applicable_matters": ["marriage", "wealth", "pleasure", "arts"],
+            "morning_star_definition": "venus_ahead_of_sun_in_longitude_rising_before_sunrise",
+        },
+        "classical_citation": "Tājika Nīlakaṇṭhī, Ch. 4 (Tambira adhyāya — Venus morning star)",
+        "is_fructification_indicator": True,
+    },
+    {
+        "yoga_id": "durupha",
+        "yoga_name": "Durupha",
+        "yoga_name_sa": "Durupha",
+        "judgment_meaning": "retrograde_significator_complicates_judgment",
+        "formation_rule": (
+            "The lord of the matter (quesited significator) is retrograde. A retrograde planet "
+            "in Tajika horary indicates a return to past conditions — the matter asked about has "
+            "been considered before, or the situation will revert to a previous state. If the "
+            "querent significator (lord of 1st) is direct and applying to the retrograde quesited "
+            "significator, the matter may still fructify but with delay, reversal, or a return "
+            "journey. If the querent significator is also retrograde, judgment is especially "
+            "complex."
+        ),
+        "formation_rule_jsonb": {
+            "condition": "quesited_significator_is_retrograde",
+            "key_signification": "return_to_past_conditions_or_reconsideration",
+            "effect_if_querent_direct": "matter_fructifies_with_delay_or_reversal",
+            "effect_if_both_retrograde": "complex_mixed_judgment",
+        },
+        "classical_citation": (
+            "Tājika Nīlakaṇṭhī, Ch. 4 "
+            "(Durupha adhyāya — retrograde influence on fructification)"
+        ),
+        "is_fructification_indicator": False,
+    },
 ]
 
 # ---------------------------------------------------------------------------
@@ -663,7 +777,7 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
     """
     Seed all bg_prashna_* reference tables.
 
-    Uses ON CONFLICT DO NOTHING (L0 idempotency standard).
+    Uses convergent ON CONFLICT DO UPDATE (L0 idempotency standard).
     Never commits — caller owns the transaction.
     Returns counts by category and a 'total_rules' sum.
     """
@@ -695,7 +809,14 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
                 (method_id, method_name, method_name_sa, derivation_rule,
                  derivation_rule_jsonb, classical_citation, is_primary, tradition)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (method_id) DO NOTHING
+            ON CONFLICT (method_id) DO UPDATE SET
+                method_name = EXCLUDED.method_name,
+                method_name_sa = EXCLUDED.method_name_sa,
+                derivation_rule = EXCLUDED.derivation_rule,
+                derivation_rule_jsonb = EXCLUDED.derivation_rule_jsonb,
+                classical_citation = EXCLUDED.classical_citation,
+                is_primary = EXCLUDED.is_primary,
+                tradition = EXCLUDED.tradition
             """,
             (
                 row["method_id"],
@@ -717,7 +838,14 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
                 (yoga_id, yoga_name, yoga_name_sa, judgment_meaning, formation_rule,
                  formation_rule_jsonb, classical_citation, is_fructification_indicator)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (yoga_id) DO NOTHING
+            ON CONFLICT (yoga_id) DO UPDATE SET
+                yoga_name = EXCLUDED.yoga_name,
+                yoga_name_sa = EXCLUDED.yoga_name_sa,
+                judgment_meaning = EXCLUDED.judgment_meaning,
+                formation_rule = EXCLUDED.formation_rule,
+                formation_rule_jsonb = EXCLUDED.formation_rule_jsonb,
+                classical_citation = EXCLUDED.classical_citation,
+                is_fructification_indicator = EXCLUDED.is_fructification_indicator
             """,
             (
                 row["yoga_id"],
@@ -739,7 +867,13 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
                 (question_class, querent_house, querent_planet, quesited_house,
                  quesited_planet, significator_rule, classical_citation)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (question_class) DO NOTHING
+            ON CONFLICT (question_class) DO UPDATE SET
+                querent_house = EXCLUDED.querent_house,
+                querent_planet = EXCLUDED.querent_planet,
+                quesited_house = EXCLUDED.quesited_house,
+                quesited_planet = EXCLUDED.quesited_planet,
+                significator_rule = EXCLUDED.significator_rule,
+                classical_citation = EXCLUDED.classical_citation
             """,
             (
                 row["question_class"],
@@ -759,7 +893,11 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
             INSERT INTO bg_prashna_fructification_rules
                 (rule_id, time_unit, degree_conversion_rule, applicable_when, classical_citation)
             VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (rule_id) DO NOTHING
+            ON CONFLICT (rule_id) DO UPDATE SET
+                time_unit = EXCLUDED.time_unit,
+                degree_conversion_rule = EXCLUDED.degree_conversion_rule,
+                applicable_when = EXCLUDED.applicable_when,
+                classical_citation = EXCLUDED.classical_citation
             """,
             (
                 row["rule_id"],
@@ -777,7 +915,11 @@ def seed_prashna_rules(db_conn, *, dry_run: bool = False) -> dict[str, int]:
             INSERT INTO bg_prashna_special_techniques
                 (technique_id, technique_name, technique_name_sa, application_rule, classical_citation)
             VALUES (%s, %s, %s, %s, %s)
-            ON CONFLICT (technique_id) DO NOTHING
+            ON CONFLICT (technique_id) DO UPDATE SET
+                technique_name = EXCLUDED.technique_name,
+                technique_name_sa = EXCLUDED.technique_name_sa,
+                application_rule = EXCLUDED.application_rule,
+                classical_citation = EXCLUDED.classical_citation
             """,
             (
                 row["technique_id"],

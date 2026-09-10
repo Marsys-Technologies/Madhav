@@ -1,0 +1,124 @@
+name: Gochara Serving Outage Smoke Probe (MR-35)
+
+# MR-35 close-out: all three gochara tools were hard-down for 3+ hours
+# (~15:47 IST) with NOTHING alerting. Discovery was manual. UTKARṢA's
+# "E2E probe" was a psycopg DB query — it never called the deployed product.
+#
+# This workflow calls the DEPLOYED MCP server directly (the same calling
+# convention as elev-serving-gates.yml's LIVE mode) for every gochara tool
+# against both canonical charts, plus one kala and one judgment baseline.
+#
+# SCHEDULE: runs every 6 hours (00:00 / 06:00 / 12:00 / 18:00 UTC). A 3-hour
+# outage therefore never goes more than ~3h before the next probe fires — the
+# stated MR-35 goal of "detect serving outages within minutes" on a scheduled
+# basis. workflow_dispatch is also wired so the native can trigger immediately.
+#
+# SECRETS:
+#   MARSYS_MCP_URL  — base URL of the deployed MCP endpoint (e.g. https://host/mcp).
+#                     The same secret elev-serving-gates.yml reads as MCP_SERVER_URL.
+#   MARSYS_MCP_KEY  — Bearer token. The same secret referenced across probe workflows.
+#
+# FAIL-LOUD DOCTRINE (mirrors samiksha-daily.yml A5/G2 fix):
+#   A missing MARSYS_MCP_URL secret FAILS the job with ::error:: annotation,
+#   NOT a silent exit-0. A misconfigured probe must never report green — that
+#   is the exact failure mode this workflow exists to prevent.
+#
+# PROBE CHECKS (platform/scripts/gochara/smoke_probe.ts):
+#   - gochara_forecast_get       × primary chart (482012f1) + cross-check (cb73cd3d)
+#   - gochara_activation_get     × same 2 charts
+#   - gochara_election_avoidance_get × same 2 charts
+#   - kala_now_get               × primary chart (L3 serving baseline)
+#   - judgment_query             × primary chart (verdict pipeline baseline)
+#
+# KEY OUTAGE-SPECIFIC CHECK: backing_data_reachable=false is FAIL even on
+# HTTP 200 — that was the exact symptom of the 3h+ outage that a naive
+# HTTP-200 check would have silently passed.
+#
+# ADDITIVE-ONLY: this file is new. It adds no trigger to, and modifies no
+# step of, any existing workflow.
+
+on:
+  schedule:
+    # Every 6 hours: 00:00, 06:00, 12:00, 18:00 UTC.
+    # A 3h+ outage is caught within ≤6h rather than "eventually, if someone
+    # notices by hand" (the actual failure mode this workflow closes).
+    - cron: '0 0,6,12,18 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'PLAN mode only (no live calls). Set to "true" to preview the probe plan without credentials.'
+        type: string
+        required: false
+        default: 'false'
+
+# Pure check workflow — safe to cancel superseded runs.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gochara-smoke:
+    name: Gochara serving smoke probe (all 3 tools × 2 charts)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: platform
+    env:
+      MCP_SERVER_URL: ${{ secrets.MARSYS_MCP_URL }}
+      MCP_BEARER: ${{ secrets.MARSYS_MCP_KEY }}
+
+    steps:
+      - name: Preflight — MARSYS_MCP_URL must be configured (fail loud before any setup cost)
+        # FAIL-LOUD DOCTRINE (mirrors samiksha-daily.yml A5/G2): a missing secret
+        # MUST exit 1 with a visible ::error:: annotation. Silent green on a
+        # misconfigured probe is the exact failure mode MR-35 exists to close.
+        #
+        # DRY_RUN exception: if workflow_dispatch passes dry_run=true, we still
+        # want to see the probe plan even without credentials — allowed, because
+        # plan-mode makes no network calls and cannot produce a false green.
+        working-directory: ${{ github.workspace }}
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "[gochara-smoke] dry_run=true — PLAN mode only, no credentials required."
+            exit 0
+          fi
+          if [ -z "${MCP_SERVER_URL}" ]; then
+            echo "::error::[gochara-smoke] MARSYS_MCP_URL secret not configured — failing loudly."
+            echo "[gochara-smoke] Set the MARSYS_MCP_URL repo secret (same as elev-serving-gates.yml uses) to enable the gochara smoke probe."
+            echo "[gochara-smoke] This probe MUST NOT silently report green when misconfigured — that is the failure mode it exists to prevent."
+            exit 1
+          fi
+          echo "[gochara-smoke] MARSYS_MCP_URL is configured; proceeding to live probe."
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: platform/package-lock.json
+
+      - run: npm ci
+
+      - name: Run gochara smoke probe (LIVE — calls deployed MCP product)
+        # PLAN mode (dry_run=true): MCP_SERVER_URL unset so probe self-switches
+        # to plan mode (printPlanAndExit → exit 0). Credentials not needed.
+        # LIVE mode: calls all 3 gochara tools × 2 charts + 2 baseline tools
+        # directly against the deployed connector. Exit 1 = outage detected.
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "[gochara-smoke] dry_run=true — running in PLAN mode (unset MCP_SERVER_URL)."
+            unset MCP_SERVER_URL
+          fi
+          npx tsx scripts/gochara/smoke_probe.ts
+
+      - name: Annotate failure (helps GH surface the right line in the Actions UI)
+        if: failure()
+        run: |
+          echo "::error::[gochara-smoke] One or more gochara tool checks FAILED."
+          echo "::error::[gochara-smoke] Check the 'Run gochara smoke probe' step above for which tool/chart failed and why."
+          echo "::error::[gochara-smoke] Likely causes: server outage, DB connectivity loss (backing_data_reachable=false), deploy regression."

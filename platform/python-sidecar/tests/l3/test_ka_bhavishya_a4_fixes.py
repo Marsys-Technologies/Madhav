@@ -86,6 +86,7 @@ class TestB4ConsumeKaBhavishya:
             'confidence_label': 'high',
             'rarity_years': 12.0,
             'mode': 'vimshottari',
+            'tier_basis': 'relative_uncalibrated',
             'domain': domain_col_value,  # from kc.domain (migration 361)
         }
         return row
@@ -111,6 +112,10 @@ class TestB4ConsumeKaBhavishya:
         # 4. SELECT signal_type_id from bodha_msr_signals  -> machine code, no keyword match
         # 5. INSERT kala_bhavishya
         cur_timeout = _make_cursor()
+        # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
+        # survive the rebuild (outcome_recorded / outcome_notes are observations of the world,
+        # not derivations — a writer cannot regenerate them). Empty here: no outcome recorded.
+        cur_outcomes = _make_cursor([])
         cur_delete = _make_cursor()
         cur_probe = _make_cursor()
         cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
@@ -118,7 +123,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:gochara:0042'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -158,6 +163,10 @@ class TestB4ConsumeKaBhavishya:
         # 4. SELECT signal_type_id from bodha_msr_signals
         # 5. INSERT kala_bhavishya
         cur_timeout = _make_cursor()
+        # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
+        # survive the rebuild (outcome_recorded / outcome_notes are observations of the world,
+        # not derivations — a writer cannot regenerate them). Empty here: no outcome recorded.
+        cur_outcomes = _make_cursor([])
         cur_delete = _make_cursor()
         cur_probe = _make_cursor()
         cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
@@ -166,7 +175,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'kalatra_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -196,6 +205,8 @@ class TestB4ConsumeKaBhavishya:
             darshana_row = self._make_darshana_row(test_domain)
 
             cur_timeout = _make_cursor()
+            # NIRMĀṆA L3-W3: preserve-outcomes SELECT precedes the DELETE (see above).
+            cur_outcomes = _make_cursor([])
             cur_delete = _make_cursor()
             cur_probe = _make_cursor()
             cur_probe.fetchone = MagicMock(return_value=(1,))  # domain col present
@@ -203,7 +214,7 @@ class TestB4ConsumeKaBhavishya:
             cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:0001'}])
             cur_insert = _make_cursor()
 
-            conn = _make_conn(cur_timeout, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+            conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
             ctx = SimpleNamespace(
                 db_conn=conn,
                 config={'chart_id': 'chart-abc', 'birth_params': {}},
@@ -251,10 +262,15 @@ class TestB4ConsumeKaBhavishya:
             'confidence_label': 'high',
             'rarity_years': 12.0,
             'mode': 'vimshottari',
+            'tier_basis': 'relative_uncalibrated',
             'domain': None,  # NULL AS domain from probe-gated query
         }
 
         cur_timeout = _make_cursor()
+        # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
+        # survive the rebuild (outcome_recorded / outcome_notes are observations of the world,
+        # not derivations — a writer cannot regenerate them). Empty here: no outcome recorded.
+        cur_outcomes = _make_cursor([])
         cur_delete = _make_cursor()
         cur_probe = _make_cursor()
         cur_probe.fetchone = MagicMock(return_value=None)  # column absent
@@ -262,7 +278,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'raja_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,

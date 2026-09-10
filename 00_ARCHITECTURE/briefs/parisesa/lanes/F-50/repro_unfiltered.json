@@ -1,0 +1,19 @@
+{
+  "call": "bodha_remedies_get(chart_id='482012f1-710e-4a25-994a-93821f5871aa')  // no graha filter",
+  "captured_at": "2026-08-16 (Stage-D DIAGNOSE lane, F-50)",
+  "response_narration_lead": "Your Bodha remedy layer flags Venus as your #1 remedy-priority target — resonance_score 0.173, priority class critical — followed by Ketu, Rahu, Moon.",
+  "resonance_ranked": [
+    {"rank": 1, "graha": "Venus",   "resonance_score": 0.173195, "remedy_priority_class": "critical", "weakest_rank_in_chart": 1},
+    {"rank": 2, "graha": "Ketu",    "resonance_score": 0.138642, "remedy_priority_class": "high",     "weakest_rank_in_chart": 2},
+    {"rank": 3, "graha": "Rahu",    "resonance_score": 0.126100, "remedy_priority_class": "high",     "weakest_rank_in_chart": 3},
+    {"rank": 4, "graha": "Moon",    "resonance_score": 0.116022, "remedy_priority_class": "medium",   "weakest_rank_in_chart": 4},
+    {"rank": 5, "graha": "Jupiter", "resonance_score": 0.114660, "remedy_priority_class": "medium",   "weakest_rank_in_chart": 5},
+    {"rank": 6, "graha": "Mars",    "resonance_score": 0.102700, "remedy_priority_class": "medium",   "weakest_rank_in_chart": 6},
+    {"rank": 7, "graha": "Sun",     "resonance_score": 0.097822, "remedy_priority_class": "low",      "weakest_rank_in_chart": 7},
+    {"rank": 8, "graha": "Saturn",  "resonance_score": 0.094032, "remedy_priority_class": "low",      "weakest_rank_in_chart": 8},
+    {"rank": 9, "graha": "Mercury", "resonance_score": 0.077022, "remedy_priority_class": "low",      "weakest_rank_in_chart": 9}
+  ],
+  "resonance_count": 9,
+  "prescription_count": 27,
+  "confirms": "Saturn is rank 8 of 9 (near-strongest / lowest remedy priority) in the unfiltered ranking — same resonance_score (0.094032) and same weakest_rank_in_chart (8) as reported inside the Saturn-filtered call. The filtered call's numeric fields are internally consistent with the unfiltered truth; only the narration's superlative wording changes."
+}

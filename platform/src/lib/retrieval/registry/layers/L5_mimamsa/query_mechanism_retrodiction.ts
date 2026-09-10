@@ -184,6 +184,15 @@ export const queryMechanismRetrodictionCapability: CapabilityDescriptor = {
     },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 Serving Density Principle / plan §2 D-SERVICE P8).
+  // Bounded LIMIT over a clamped `limit`; the handler already emits a real empty_reason
+  // ('no_pre_2020_life_events_for_chart') rather than a hollow mechanisms:[] envelope.
+  density_contract: {
+    paginated: true,
+    facets: ['domain', 'house', 'dasha_level', 'ayanamsha_id'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''

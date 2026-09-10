@@ -91,9 +91,10 @@ import hashlib
 import json
 import logging
 import math
+import os
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
-from typing import Any, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from pipeline.orchestrator.writers import SubStep, WriterBase, WriterResult, register
 
@@ -111,6 +112,28 @@ from services.ka_kshetra import (
 from services.ka_kshetra.contracts import ProvenanceEdge, RobustnessVector, Segment
 
 logger = logging.getLogger(__name__)
+
+# OPT-N1: lazy accessors for dhara_null and engine_config so the module stays
+# importable even if the optional deps are absent (parity with dhara_sweep's
+# lazy import in _run_stage4), and so tests can patch at the module level.
+
+def _engine_version() -> str:
+    """Return the current ENGINE_VERSION from engine_config."""
+    from services.ka_kshetra.engine_config import ENGINE_VERSION
+    return ENGINE_VERSION
+
+
+def _dn_module():
+    """Return the dhara_null module (lazy import, O(1) after first call)."""
+    from services.ka_kshetra import dhara_null as _dn
+    return _dn
+
+# Expose dhara_null as module-level name DN so _run_stage5dhara can be patched
+# in tests via 'services.ka_kshetra.writer.DN.dhara_compute_null'.
+import services.ka_kshetra.dhara_null as DN  # noqa: E402
+# Expose dhara_null_vec as module-level name DNV so _run_stage5dhara can be
+# patched in tests via 'services.ka_kshetra.writer.DNV.dhara_compute_null_vec'.
+import services.ka_kshetra.dhara_null_vec as DNV  # noqa: E402
 
 ASSET_ID = 'ka_kshetra'
 
@@ -132,7 +155,13 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: older writer build is treated as a different build and replanned in full
 #: (the `ka_sangam` / `ka_gochara_sweep` convention).
 #: v2 — stages 6 / 6.5 / 8 joined the plan and the content hash.
-_RESUME_VERSION = 2
+#: v5 — OPT-N1: stage5dhara replaces stage5:*:*/stage5finalize:* under ENGINE_VERSION='analytic'.
+#: v6 — P-B L-NULL: vectorized null (dhara_compute_null_vec) + DEFAULT_REPLICATES=1024 restored
+#:       (SM-R-8 mandate; OPT-N3 R=256 VOIDED). Invalidates all R=256 checkpoints from OPT-N3.
+#: v7 — F1+F2+F5 (SM-R-11): zero-evaluator-call null via C/E decomposition;
+#:       stage5dhara:{ec} split into stage5dhara:{ec}:1 (null) + stage5dhara:{ec}:2 (windows);
+#:       interior decade knots d·H/10 added to assemble_knot_set.
+_RESUME_VERSION = 7
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -172,6 +201,29 @@ _CANONICAL_MD_LORDS = frozenset({'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter',
 _DAYS_PER_JULIAN_YEAR = 365.2425
 
 
+def built_event_classes(
+    event_classes: Iterable[str], skipped_classes: Iterable[Mapping[str, str]],
+) -> list[str]:
+    """F-78 disclosure helper: the CLASSES-ACTUALLY-BUILT set, not the attempted set.
+
+    `kala_field_snapshots.event_classes` is the discovery-time ATTEMPTED list —
+    every class `_discover_event_classes` found a `bodha_pratijna` row for,
+    regardless of whether stage 4/5 produced any `kala_field` rows for it (see
+    that function's own docstring: "regardless of status"). `skipped_classes`
+    records, honestly (LAW ZERO), every class from that attempted list the
+    build could NOT produce rows for, and why. Neither column alone tells a
+    caller which classes actually got `kala_field` rows written for this
+    snapshot — that is this function's one job:
+    `set(event_classes) - {skipped event_class values}`, sorted for
+    determinism. A caller reading `kala_field_snapshots.event_classes` and
+    treating it as "classes this snapshot covers" is the exact conflation
+    F-78 named — call this function instead of subtracting the two columns
+    ad hoc.
+    """
+    skipped_ids = {s['event_class'] for s in skipped_classes}
+    return sorted(set(event_classes) - skipped_ids)
+
+
 @dataclass
 class _ClassContext:
     """Everything one event class needs, loaded once and reused across its
@@ -180,6 +232,14 @@ class _ClassContext:
     evaluator: S4.FieldEvaluator
     null_accumulator: S5.NullAccumulator
     temporal_shape: str
+    #: Full-horizon DHARA segments, built once per event class when
+    #: ENGINE_VERSION == 'analytic'.  None when 'sampled'.
+    dhara_segments: "list | None" = None
+    #: P3-a (DHARA_ENGINE_SPEC_v1_0.md §4.1): True when the baseline λ⁰_e for
+    #: this class was constructed from SHAPE_ONLY_SYNTHETIC_LIFETIME_COUNT
+    #: rather than a calibrated bg_class_priors row.  Every row the writer
+    #: produces for this class must carry this tag (P3-e).
+    baseline_is_synthetic: bool = False
 
 
 @register(ASSET_ID)
@@ -210,6 +270,13 @@ class KaKshetraWriter(WriterBase):
         self._shared_clocks = None             # list[ClockApplicability]
         self._shared_ladder = None             # list[BoundaryRow]
         self._shared_extra_breakpoints = None  # list[float]
+        self._shared_layer0 = None             # layer0.Layer0, set on first class (DHARA_ENGINE_SPEC §1)
+        # F-186: memoizes `_load_window_provenance`'s dict[window_id, list[dict]]
+        # for the build's lifetime. `_load_window_fact_ids` used to call the
+        # loader a SECOND time rather than reuse the first call's result,
+        # doubling a full-table read of `kala_field_provenance` (~1.8M rows for
+        # the native chart). Same lazy-init pattern as `_shared_envelopes`.
+        self._window_provenance_cache: dict[str, list[dict]] | None = None
         self._birth_date, self._birth_time = self._load_birth_instant(conn, self._chart_id)
 
         # §7.5 sub-rule 5: resolve the weights version EXACTLY ONCE, here, and
@@ -231,10 +298,15 @@ class KaKshetraWriter(WriterBase):
                 'rho_max': hazard.RHO_MAX,
                 'tau_nats': integrator.DEFAULT_TAU,
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
-                'null_replicates': S5.DEFAULT_REPLICATES,
+                'null_replicates': (
+                    _dn_module().DEFAULT_REPLICATES
+                    if _engine_version() == 'analytic'
+                    else S5.DEFAULT_REPLICATES
+                ),
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
+                **self._gochara_corpus_pin(conn, self._chart_id),  # A1 pin
             },
         )
         self._snapshot_id = self._pins.field_snapshot_id
@@ -258,13 +330,24 @@ class KaKshetraWriter(WriterBase):
             for d in range(DECADES):
                 steps.append(SubStep(key=f'stage4:{ec}:{d}',
                                      label=f'field {ec} decade {d}'))
+        _ev5 = _engine_version()
         n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
-            for b in range(1, n_blocks + 1):
-                steps.append(SubStep(key=f'stage5:{ec}:{b}',
-                                     label=f'null {ec} replicate block {b}/{n_blocks}'))
-            steps.append(SubStep(key=f'stage5finalize:{ec}',
-                                 label=f'windows + robustness {ec}'))
+            if _ev5 == 'analytic':
+                # F2 (SM-R-11): two substeps so each commits within the 15-min
+                # reaper window. Chunk:1 writes kala_field_null; chunk:2 loads
+                # that committed null and writes kala_field_windows. Resume-safe:
+                # chunk:2 reads from DB, not in-memory state from chunk:1.
+                steps.append(SubStep(key=f'stage5dhara:{ec}:1',
+                                     label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
+                steps.append(SubStep(key=f'stage5dhara:{ec}:2',
+                                     label=f'dhara windows {ec} — load null → kala_field_windows'))
+            else:
+                for b in range(1, n_blocks + 1):
+                    steps.append(SubStep(key=f'stage5:{ec}:{b}',
+                                         label=f'null {ec} replicate block {b}/{n_blocks}'))
+                steps.append(SubStep(key=f'stage5finalize:{ec}',
+                                     label=f'windows + robustness {ec}'))
         # Stages 6 → 6.5 → 8, in pipeline order and strictly after every
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
@@ -365,6 +448,12 @@ class KaKshetraWriter(WriterBase):
         if kind == 'stage5':
             _, ec, block = step.key.split(':')
             return self._run_stage5_block(conn, ec, int(block), step)
+        if kind == 'stage5dhara':
+            # key format: stage5dhara:{ec}:{chunk}  (F2: chunk=1 or 2)
+            _, ec, chunk = step.key.split(':')
+            if chunk == '1':
+                return self._run_stage5dhara_null(conn, ec, step)
+            return self._run_stage5dhara_windows(conn, ec, step)
         if kind == 'stage5finalize':
             _, ec = step.key.split(':', 1)
             return self._run_stage5_finalize(conn, ec, step)
@@ -400,40 +489,8 @@ class KaKshetraWriter(WriterBase):
 
     # ── stage 4 ──────────────────────────────────────────────────────────────
 
-    def _run_stage4(self, conn, event_class: str, decade: int, step: SubStep) -> WriterResult:
-        try:
-            cctx = self._class_context(conn, event_class)
-        except S4.ClassSkipped as skip:
-            self._record_skip(skip)
-            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
-                                notes=f'{event_class} skipped: {skip.reason}')
-
-        d0 = decade * HORIZON_DAYS / DECADES
-        d1 = (decade + 1) * HORIZON_DAYS / DECADES
-        ev = cctx.evaluator
-        knots = [t for t in ev.breakpoints() if d0 < t < d1]
-        segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
-
-        if self._dry_run:
-            return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
-
-        rows = 0
-        with conn.cursor() as cur:
-            for local, seg in enumerate(segments):
-                terms = ev.terms_at(seg.t_start)
-                self._insert_segment(cur, event_class,
-                                     decade * SEGMENT_INDEX_DECADE_STRIDE + local,
-                                     seg, terms)
-                rows += 1
-        self._record_substep(conn, step.key, rows)
-        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows)
-
-    def _insert_segment(self, cur, event_class: str, segment_index: int,
-                        seg: Segment, terms: hazard.HazardTerms) -> None:
-        lam_start = math.exp(seg.alpha)
-        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
-        cur.execute(
-            """INSERT INTO kala_field (
+    # SQL constant shared by the batch (_run_stage4) and single-row (_insert_segment) paths.
+    _KALA_FIELD_INSERT_SQL = """INSERT INTO kala_field (
                    chart_id, event_class, segment_index, t_start, t_end, alpha, gamma,
                    lambda_start, lambda_end, integral_days,
                    promise_term, clock_term_start, modifier_term_start,
@@ -446,15 +503,67 @@ class KaKshetraWriter(WriterBase):
                    alpha = EXCLUDED.alpha, gamma = EXCLUDED.gamma,
                    lambda_start = EXCLUDED.lambda_start, lambda_end = EXCLUDED.lambda_end,
                    integral_days = EXCLUDED.integral_days,
-                   computed_at = now()""",
-            (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
-             seg.alpha, seg.gamma, lam_start, lam_end,
-             integrator.segment_integral(seg, seg.t_start, seg.t_end),
-             terms.promise_term, terms.clock_term, terms.modifier_term,
-             terms.suppression_term, terms.signed_obstruction,
-             seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
-             self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
-        )
+                   computed_at = now()"""
+
+    def _run_stage4(self, conn, event_class: str, decade: int, step: SubStep) -> WriterResult:
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        d0 = decade * HORIZON_DAYS / DECADES
+        d1 = (decade + 1) * HORIZON_DAYS / DECADES
+        ev = cctx.evaluator
+        from services.ka_kshetra.engine_config import ENGINE_VERSION
+        if ENGINE_VERSION == 'analytic':
+            # Full-horizon segments built once in _class_context(); filter to
+            # this decade's window [d0, d1] to match the per-decade substep model.
+            segments = [s for s in cctx.dhara_segments
+                        if s.t_start >= d0 and s.t_end <= d1]
+        else:
+            knots = [t for t in ev.breakpoints() if d0 < t < d1]
+            segments = integrator.build_segments([d0] + knots + [d1], ev.ln_lambda)
+
+        if self._dry_run:
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=len(segments))
+
+        # L1e: separate computation from DB writes — batch all segment rows into a
+        # single executemany call rather than one cur.execute() per segment.
+        # Stage4 produces 40–80K segments per decade; at ~7ms per round-trip through
+        # the Cloud SQL proxy, individual inserts took 5–10 min per decade.
+        # executemany sends one batch, matching stage3's L1d pattern (which cut
+        # chara_karaka boundaries from 22 min to seconds).
+        params_list = [
+            self._segment_row(event_class,
+                              decade * SEGMENT_INDEX_DECADE_STRIDE + local,
+                              seg, ev.terms_at(seg.t_start))
+            for local, seg in enumerate(segments)
+        ]
+        if params_list:
+            with conn.cursor() as cur:
+                cur.executemany(self._KALA_FIELD_INSERT_SQL, params_list)
+        self._record_substep(conn, step.key, len(params_list))
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=len(params_list))
+
+    def _segment_row(self, event_class: str, segment_index: int,
+                     seg: Segment, terms: hazard.HazardTerms) -> tuple:
+        """Return the params tuple for one kala_field row (shared by batch and single paths)."""
+        lam_start = math.exp(seg.alpha)
+        lam_end = math.exp(seg.alpha + seg.gamma * (seg.t_end - seg.t_start))
+        return (self._chart_id, event_class, segment_index, seg.t_start, seg.t_end,
+                seg.alpha, seg.gamma, lam_start, lam_end,
+                integrator.segment_integral(seg, seg.t_start, seg.t_end),
+                terms.promise_term, terms.clock_term, terms.modifier_term,
+                terms.suppression_term, terms.signed_obstruction,
+                seg.refinement_depth, seg.refinement_exhausted, seg.refinement_residual,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id)
+
+    def _insert_segment(self, cur, event_class: str, segment_index: int,
+                        seg: Segment, terms: hazard.HazardTerms) -> None:
+        cur.execute(self._KALA_FIELD_INSERT_SQL,
+                    self._segment_row(event_class, segment_index, seg, terms))
 
     # ── stage 5 ──────────────────────────────────────────────────────────────
 
@@ -533,16 +642,17 @@ class KaKshetraWriter(WriterBase):
 
         windows = integrator.find_windows(segments, result.q_threshold or math.inf)
         totals = [w.expected_count for w in windows]
-        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count),
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
                                         HORIZON_DAYS)
         ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
         sigma_t = self._sigma_t_days(conn)
         legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
 
-        for w in windows:
-            rows += self._write_window(conn, ev, event_class, segments, w, result,
-                                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                                       cctx.temporal_shape)
+        rows += self._write_windows_batch(conn, ev, event_class, segments, windows, result,
+                                          adrishta, ayanamsha_ids, sigma_t, legacy,
+                                          cctx.temporal_shape,
+                                          baseline_is_synthetic=cctx.baseline_is_synthetic)
 
         if not self._dry_run:
             self._record_substep(conn, step.key, rows)
@@ -550,9 +660,139 @@ class KaKshetraWriter(WriterBase):
                             notes=f'{event_class}: {len(windows)} window(s), '
                                   f'q={result.q_threshold!r}')
 
+    # ── stage 5 (DHARA analytic path) ────────────────────────────────────────
+
+    def _run_stage5dhara_null(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """F2/chunk:1 (SM-R-11) — DHARA null distribution → kala_field_null.
+
+        Runs dhara_compute_null (F1: C/E decomposition, zero evaluator calls in
+        replicate loop, ~5–15 s for R=1024) and commits kala_field_null rows.
+        The orchestrator commits immediately after this substep returns, advancing
+        the reaper heartbeat before the 15-min window expires.
+
+        chunk:2 (_run_stage5dhara_windows) then reads this committed null from DB
+        to find and write kala_field_windows — fully resume-safe.
+        """
+        self._require_stage4_committed(conn, event_class)
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        ev = cctx.evaluator
+
+        null_result = DN.dhara_compute_null(ev, replicates=DN.DEFAULT_REPLICATES)
+
+        rows = 0
+        if not self._dry_run:
+            with conn.cursor() as cur:
+                for bucket, stats in null_result.max_stats.items():
+                    cur.execute(
+                        """INSERT INTO kala_field_null (
+                               chart_id, event_class, replicates, horizon_days,
+                               q_threshold, bucket_days, null_max_stats, shift_grid_step,
+                               weights_version, x_schema_version, field_snapshot_id)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                           ON CONFLICT (chart_id, event_class, bucket_days, field_snapshot_id)
+                           DO UPDATE SET null_max_stats = EXCLUDED.null_max_stats,
+                                         q_threshold = EXCLUDED.q_threshold,
+                                         computed_at = now()""",
+                        (self._chart_id, event_class, null_result.replicates, HORIZON_DAYS,
+                         null_result.q_threshold, bucket, stats, null_result.shift_grid_step,
+                         self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                    )
+                    rows += 1
+            self._record_substep(conn, step.key, rows)
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: null committed '
+                                  f'({DN.DEFAULT_REPLICATES} replicates, '
+                                  f'q={null_result.q_threshold!r})')
+
+    def _run_stage5dhara_windows(self, conn, event_class: str, step: SubStep) -> WriterResult:
+        """F2/chunk:2 (SM-R-11) — load committed null, find windows → kala_field_windows.
+
+        Resume-safe: reads the NullResult from committed kala_field_null rows
+        rather than in-memory state from chunk:1. If chunk:1 is committed but
+        the build was interrupted before chunk:2, this chunk can be re-run
+        from a resumed build without re-computing the null distribution.
+        """
+        try:
+            cctx = self._class_context(conn, event_class)
+        except S4.ClassSkipped as skip:
+            self._record_skip(skip)
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class} skipped: {skip.reason}')
+
+        # F2: chunk:1 never commits in dry_run — kala_field_null is empty.
+        # Return early; the contract only asserts zero writes.
+        if self._dry_run:
+            return WriterResult(asset_id=ASSET_ID, rows_inserted=0,
+                                notes=f'{event_class}: dry_run (dhara chunk:2)')
+
+        # ── load committed null from DB (resume-safe) ─────────────────────────
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT replicates, horizon_days, q_threshold, shift_grid_step,
+                          bucket_days, null_max_stats
+                     FROM kala_field_null
+                    WHERE chart_id = %s AND event_class = %s AND field_snapshot_id = %s
+                    ORDER BY bucket_days""",
+                (self._chart_id, event_class, self._snapshot_id),
+            )
+            null_rows = S4._rows(cur)
+        if not null_rows:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: stage5dhara chunk:1 not committed for '
+                f'{event_class} — kala_field_null is empty for this snapshot'
+            )
+        first = null_rows[0]
+        rep_count = first['replicates']
+        null_result = DN.NullResult(
+            replicates=rep_count,
+            shift_count=rep_count - 1,
+            horizon_days=first['horizon_days'],
+            shift_grid_step=first['shift_grid_step'],
+            q_threshold=first['q_threshold'],
+            max_stats={int(r['bucket_days']): r['null_max_stats'] for r in null_rows},
+            alpha=DN.DEFAULT_ALPHA,
+        )
+
+        ev = cctx.evaluator
+        # Windows are derived from COMMITTED segments, matching _run_stage5_finalize parity.
+        # Under dry_run, the evaluator's own segments stand in — nothing is written.
+        segments = (ev.build_segments() if self._dry_run
+                    else self._load_segments(conn, event_class))
+        if not segments:
+            raise S4.UpstreamStageIncomplete(
+                f'upstream_stage_incomplete: no kala_field segments for {event_class}'
+            )
+
+        windows = integrator.find_windows(segments, null_result.q_threshold or math.inf)
+        totals = [w.expected_count for w in windows]
+        # P3-a: baseline_rate() now returns (rate, is_synthetic). Unpack the rate.
+        adrishta = S5.adrishta_residual(totals, hazard.baseline_rate(ev.lifetime_count)[0],
+                                        HORIZON_DAYS)
+        ayanamsha_ids = self._kinematics_ayanamsha_ids(conn)
+        sigma_t = self._sigma_t_days(conn)
+        legacy = S4.load_legacy_crosscheck(conn, self._chart_id, event_class)
+
+        rows = self._write_windows_batch(conn, ev, event_class, segments, windows, null_result,
+                                         adrishta, ayanamsha_ids, sigma_t, legacy,
+                                         cctx.temporal_shape,
+                                         baseline_is_synthetic=cctx.baseline_is_synthetic)
+
+        if not self._dry_run:
+            self._record_substep(conn, step.key, rows)
+        return WriterResult(asset_id=ASSET_ID, rows_inserted=rows,
+                            notes=f'{event_class}: {len(windows)} window(s) '
+                                  f'(dhara chunk:2), q={null_result.q_threshold!r}')
+
     def _write_window(self, conn, ev, event_class, segments, w, null_result,
                       adrishta, ayanamsha_ids, sigma_t, legacy,
-                      temporal_shape: str) -> int:
+                      temporal_shape: str,
+                      baseline_is_synthetic: bool = False) -> int:
         wid = integrator.window_id(str(self._chart_id), event_class, w.t_start, w.t_end,
                                    self._weights_version, hazard.X_SCHEMA_VERSION)
         terms = ev.terms_at(w.t_peak)
@@ -600,9 +840,10 @@ class KaKshetraWriter(WriterBase):
                        expected_count, duration_days, promise_state, temporal_shape,
                        precision_regime, null_p, null_R, null_resolution, null_exceeding,
                        robustness, confidence_tier, weakest_link, adrishta_residual,
-                       weights_version, x_schema_version, field_snapshot_id)
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                           %s::jsonb,%s,%s,%s,%s,%s,%s)
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_id, window_id) DO UPDATE SET
                        lambda_peak = EXCLUDED.lambda_peak,
                        expected_count = EXCLUDED.expected_count,
@@ -611,17 +852,20 @@ class KaKshetraWriter(WriterBase):
                        confidence_tier = EXCLUDED.confidence_tier,
                        weakest_link = EXCLUDED.weakest_link,
                        adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
                        computed_at = now()""",
                 (self._chart_id, wid, event_class, w.t_start, w.t_end,
                  self._as_date(w.t_start), self._as_date(w.t_end), self._as_date(w.t_peak),
                  w.t_peak, w.lambda_peak, w.expected_count, w.duration_days,
                  hazard.promise_state(ev.promise.p),
                  temporal_shape, 'day_grade',
-                 p, null_result.replicates, S5.null_resolution(null_result.replicates),
+                 p, null_result.replicates,
+                 null_result.resolution,
                  robustness.null_exceeding,
                  json.dumps(robustness.as_json()),
                  robustness.confidence_tier(), robustness.weakest_link(), adrishta,
-                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id),
+                 self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                 baseline_is_synthetic),
             )
             for e in edges:
                 cur.execute(
@@ -642,6 +886,146 @@ class KaKshetraWriter(WriterBase):
                      e.source_fact_id, wid),
                 )
         return 1 + len(edges)
+
+    def _write_windows_batch(self, conn, ev, event_class, segments, windows, null_result,
+                              adrishta, ayanamsha_ids, sigma_t, legacy,
+                              temporal_shape: str,
+                              baseline_is_synthetic: bool = False) -> int:
+        """L1o: batch-insert all windows + provenance in two executemany calls.
+
+        Per-window _write_window does one cur.execute per edge (~37 edges/window
+        × thousands of windows) — hundreds of thousands of round-trips causing
+        30+ min finalize → idle_in_transaction timeout kills the signal-check
+        connection. Two executemany calls reduce this to seconds.
+        """
+        if self._dry_run:
+            return len(windows)
+        if not windows:
+            return 0
+
+        # ── Phase 1: pure CPU — compute all per-window values (no DB I/O) ─────
+        prepared: list[tuple] = []   # (wid, w, edges, bucket, p, robustness)
+        for w in windows:
+            wid = integrator.window_id(
+                str(self._chart_id), event_class, w.t_start, w.t_end,
+                self._weights_version, hazard.X_SCHEMA_VERSION,
+            )
+            terms = ev.terms_at(w.t_peak)
+            edges: list[ProvenanceEdge] = list(terms.edges)
+            for r in ev.promise.routes:
+                edges.append(hazard.identity_edge(
+                    'route', f'route:rank{r.route_rank}', 'l3_row',
+                    source_table='kala_field_routes',
+                    source_pk=str(r.path_edge_ids[0]) if r.path_edge_ids else None,
+                ))
+            for row in legacy:
+                agreement = 'agree' if self._legacy_overlaps(row, w) else 'diverge'
+                edges.append(hazard.identity_edge(
+                    'gate', f'gate:legacy_sweep_xref:{row["id"]}:{agreement}', 'l3_row',
+                    source_table='kala_gochara_windows', source_pk=str(row['id']),
+                ))
+            S4.assert_provenance_reconciles(edges, w.lambda_peak, target_id=wid)
+
+            bucket = S5.select_bucket(w.duration_days)
+            p = S5.null_p(null_result.max_stats.get(bucket, []), w.expected_count)
+            robustness = RobustnessVector(
+                ayanamsha_robust=S5.ayanamsha_robust(ayanamsha_ids),
+                birth_time_robust=S5.birth_time_robust(
+                    segments, w.t_peak, null_result.q_threshold or 0.0, sigma_t,
+                ),
+                system_concurrent=S5.system_concurrent(ev, w.t_peak),
+                null_exceeding=S5.null_exceeding(p),
+                authority_clean=None,   # filled after batch citation query below
+            )
+            prepared.append((wid, w, edges, bucket, p, robustness))
+
+        # ── Phase 2: ONE citation query covering all windows ──────────────────
+        all_fact_ids = sorted({
+            e.source_fact_id
+            for _, _, edges, _, _, _ in prepared
+            for e in edges
+            if e.source_fact_id
+        })
+        resolved_set: set[str] = set()
+        if all_fact_ids:
+            with conn.cursor() as cur:
+                cur.execute(
+                    'SELECT DISTINCT fact_id FROM chart_facts '
+                    'WHERE chart_id = %s AND fact_id = ANY(%s)',
+                    (self._chart_id, all_fact_ids),
+                )
+                resolved_set = {r['fact_id'] for r in S4._rows(cur)}
+
+        # ── Phase 3: build insert param lists ────────────────────────────────
+        window_params: list[tuple] = []
+        prov_params: list[tuple] = []
+        for wid, w, edges, bucket, p, robustness in prepared:
+            cited = sum(1 for e in edges if e.source_fact_id)
+            resolved = sum(1 for e in edges if e.source_fact_id in resolved_set)
+            robustness.authority_clean = S5.authority_clean(cited, resolved)
+            window_params.append((
+                self._chart_id, wid, event_class, w.t_start, w.t_end,
+                self._as_date(w.t_start), self._as_date(w.t_end),
+                self._as_date(w.t_peak), w.t_peak, w.lambda_peak,
+                w.expected_count, w.duration_days,
+                hazard.promise_state(ev.promise.p),
+                temporal_shape, 'day_grade',
+                p, null_result.replicates,
+                null_result.resolution,
+                robustness.null_exceeding,
+                json.dumps(robustness.as_json()),
+                robustness.confidence_tier(), robustness.weakest_link(), adrishta,
+                self._weights_version, hazard.X_SCHEMA_VERSION, self._snapshot_id,
+                baseline_is_synthetic,
+            ))
+            for e in edges:
+                prov_params.append((
+                    self._chart_id, self._snapshot_id, 'window', wid,
+                    e.term_role, e.term_key, e.term_value, e.log_contribution,
+                    e.weight_id, e.weight_value, self._weights_version,
+                    e.source_kind, e.source_table, e.source_pk, e.source_fact_id, wid,
+                ))
+
+        # ── Phase 4: TWO executemany calls (was N×~37 individual inserts) ─────
+        with conn.cursor() as cur:
+            cur.executemany(
+                """INSERT INTO kala_field_windows (
+                       chart_id, window_id, event_class, t_start, t_end,
+                       window_start, window_end, peak_date, t_peak, lambda_peak,
+                       expected_count, duration_days, promise_state, temporal_shape,
+                       precision_regime, null_p, null_R, null_resolution, null_exceeding,
+                       robustness, confidence_tier, weakest_link, adrishta_residual,
+                       weights_version, x_schema_version, field_snapshot_id,
+                       baseline_is_synthetic)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                           %s::jsonb,%s,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, window_id) DO UPDATE SET
+                       lambda_peak = EXCLUDED.lambda_peak,
+                       expected_count = EXCLUDED.expected_count,
+                       null_p = EXCLUDED.null_p,
+                       robustness = EXCLUDED.robustness,
+                       confidence_tier = EXCLUDED.confidence_tier,
+                       weakest_link = EXCLUDED.weakest_link,
+                       adrishta_residual = EXCLUDED.adrishta_residual,
+                       baseline_is_synthetic = EXCLUDED.baseline_is_synthetic,
+                       computed_at = now()""",
+                window_params,
+            )
+            cur.executemany(
+                """INSERT INTO kala_field_provenance (
+                       chart_id, field_snapshot_id, target_kind, target_id,
+                       term_role, term_key, term_value, log_contribution,
+                       weight_id, weight_value, weights_version,
+                       source_kind, source_table, source_pk, source_fact_id,
+                       authority_basis)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                   ON CONFLICT (chart_id, field_snapshot_id, target_kind,
+                                target_id, term_key)
+                   DO UPDATE SET term_value = EXCLUDED.term_value,
+                                 log_contribution = EXCLUDED.log_contribution""",
+                prov_params,
+            )
+        return len(window_params) + len(prov_params)
 
     # ── stage 6 · salience vector + submodular selection (§6.1/§6.2) ─────────
 
@@ -971,22 +1355,75 @@ class KaKshetraWriter(WriterBase):
                       if counts['empty_reason'] else '')))
 
     # ── stage 6/6.5/8 loaders + shape adapters ───────────────────────────────
+    #
+    # F-186 audit (CLAUDE.md §N.8 — a decision needs the number that justifies
+    # it, not streaming-on-principle). All four loaders used to end in
+    # `S4._rows(cur)` (a single `fetchall()`), which the module's own docstring
+    # (`stage4_field._rows`) already flags as wrong for a per-chart fact table.
+    # Per-loader disposition, largest table first:
+    #   • `_load_window_provenance` (`kala_field_provenance`, ~1.8M rows for the
+    #     native chart per `_iter_content_hash_rows`'s F-149 measurement) — WAS
+    #     read via `S4._rows` (client-side `fetchall()`, forcing the driver to
+    #     buffer the whole ~1.8M-row resultset before Python saw any of it)
+    #     TWICE per build: once directly (stage 6) and once more via
+    #     `_load_window_fact_ids` (stage 6.5), which called this loader again
+    #     instead of reusing its result. STREAMED (`streaming_cursor` +
+    #     `iter_rows`, mirroring F-149's `_iter_content_hash_rows`) and
+    #     MEMOIZED on `self._window_provenance_cache` so the second call site
+    #     reuses the first read. The `target_kind = 'window'` filter is not a
+    #     bug to change: `kala_field_provenance` writes only ever set
+    #     `target_kind='window'` (both `INSERT INTO kala_field_provenance`
+    #     sites in this file hardcode `'window'`; the column's CHECK constraint
+    #     in migration 493 also allows `'segment'`/`'insight'` for future use)
+    #     — the filter selects everything that exists today by construction,
+    #     not because it fails to filter.
+    #   • `_load_segments` (`kala_field`, ~8.6M rows chart-wide per the same
+    #     measurement) — called once per event class (§D.2 Hub H). STREAMED for
+    #     the same reason: still returns a `list[Segment]` (not a generator)
+    #     because callers consume it more than once (window detection, then the
+    #     write batch) — the fix bounds what the driver buffers during the
+    #     fetch, not the final in-memory shape, which was never the problem
+    #     here.
+    #   • `_load_committed_windows` (`kala_field_windows`) — one row per
+    #     committed window; `_write_windows_batch`'s own comment puts this at
+    #     "thousands of windows" for a real chart, three orders of magnitude
+    #     below the two tables above. LEFT EAGER (streaming a bounded loader is
+    #     churn, not a fix, per §N.4's floors-are-aspirational spirit) — but its
+    #     redundant `sorted(..., key=lambda r: r['window_id'])` is removed: the
+    #     SQL already carries `ORDER BY window_id`, so the Python sort was a
+    #     second full materialization doing nothing the query hadn't already
+    #     done.
+    #   • `_load_salience` (`kala_field_salience`) — one float per window, the
+    #     smallest of the four. LEFT EAGER, same reasoning.
 
     def _load_committed_windows(self, conn) -> list[dict]:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
                           expected_count, duration_days, null_p, confidence_tier,
-                          robustness, temporal_shape, precision_regime
+                          robustness, temporal_shape, precision_regime,
+                          baseline_is_synthetic
                      FROM kala_field_windows
                     WHERE chart_id = %s AND field_snapshot_id = %s
                     ORDER BY window_id""",
                 (self._chart_id, self._snapshot_id),
             )
-            return sorted(S4._rows(cur), key=lambda r: r['window_id'])
+            return S4._rows(cur)
 
     def _load_window_provenance(self, conn) -> dict[str, list[dict]]:
-        with conn.cursor() as cur:
+        """`window_id -> [provenance edge rows]`, memoized for the build.
+
+        F-186: streamed (`S4.streaming_cursor` + `S4.iter_rows`, the F-149
+        pattern) rather than `S4._rows`'s single `fetchall()` — this table
+        runs to ~1.8M rows for the native chart. Memoized on
+        `self._window_provenance_cache` because `_load_window_fact_ids` below
+        also needs this result and used to re-query for it, doubling the
+        full-table read every build.
+        """
+        if self._window_provenance_cache is not None:
+            return self._window_provenance_cache
+        out: dict[str, list[dict]] = {}
+        with S4.streaming_cursor(conn, 'kfp_window_provenance') as cur:
             cur.execute(
                 """SELECT target_id, term_key, log_contribution, source_fact_id
                      FROM kala_field_provenance
@@ -995,9 +1432,9 @@ class KaKshetraWriter(WriterBase):
                     ORDER BY target_id, term_key""",
                 (self._chart_id, self._snapshot_id),
             )
-            out: dict[str, list[dict]] = {}
-            for r in S4._rows(cur):
+            for r in S4.iter_rows(cur):
                 out.setdefault(r['target_id'], []).append(r)
+        self._window_provenance_cache = out
         return out
 
     def _load_window_fact_ids(self, conn) -> dict[str, list[str]]:
@@ -1214,11 +1651,31 @@ class KaKshetraWriter(WriterBase):
         sign: Optional[int] = None
         try:
             with conn.cursor() as cur:
+                # NIRMĀṆA L3-W3 (§N.5, §N.7 item 2), found by the L3 `depends_on` audit.
+                #
+                # This asked for `fact_category = 'lagna'`, which does not exist — measured live,
+                # 0 rows on every chart, for that category AND for the plausible alternative
+                # `lagna_position`. The lookup therefore always failed, and the `except` below
+                # logs a warning and leaves `sign = None`, which silently disables the rarity
+                # axis for every chart. The real fact is `LAGNA` / `longitude_sidereal` under
+                # `fact_category = 'graha_position'`.
+                #
+                # `fact_subject` is now pinned too: the original query filtered on `fact_key`
+                # alone, so even with the right category it would have matched any body's
+                # longitude and bucketed THAT into a lagna sign.
+                #
+                # The `ORDER BY ayanamsha_id LIMIT 1` is deliberately KEPT AS IT WAS rather than
+                # repointed at a canonical ayanamsha. It resolves to `krishnamurti` (12.5280°).
+                # All five ayanamshas fall in sign 1 for this chart (12.43–15.39°), so the choice
+                # does not change today's answer — but it is a real convention question about
+                # which population the rarity axis compares against, and picking one inside a
+                # bug-fix would be an undisclosed change of meaning. Flagged, not silently altered.
                 cur.execute(
                     """SELECT fact_value_num FROM chart_facts
-                        WHERE chart_id = %s AND fact_category = 'lagna'
-                          AND fact_key = 'longitude'
-                        ORDER BY ayanamsha_id
+                        WHERE chart_id = %s AND fact_category = 'graha_position'
+                          AND fact_subject = 'LAGNA'
+                          AND fact_key = 'longitude_sidereal'
+                        ORDER BY ayanamsha_id, fact_id
                         LIMIT 1""",
                     (self._chart_id,))
                 rows = S4._rows(cur)
@@ -1407,90 +1864,33 @@ class KaKshetraWriter(WriterBase):
         return WriterResult(asset_id=ASSET_ID, rows_inserted=1,
                             notes=f'content_hash={content_hash}')
 
+    def _iter_content_hash_rows(self, conn):
+        """Stream every hashed row as (table, natural_key, payload), one table at
+        a time, one server-side cursor batch at a time.
+
+        F-149. This used to build a single Python list of EVERY stage-0–8 row for
+        the chart before hashing anything — `kala_field` (~8.6M for the native
+        chart) + `kala_field_provenance` (~1.8M) + five smaller tables — and then
+        handed that list to a `sorted()` that made a second full copy of the
+        serialized form. Three simultaneous full materializations of ~10.5M rows
+        is the confirmed root cause of the OOM behind the F-141 incident: a
+        rebuild could not succeed, deterministically, on any machine sized for
+        this service.
+
+        Nothing about WHICH rows are hashed, or in what canonical form, changed —
+        the SQL below is verbatim what it was, and the resulting digest is
+        byte-identical (see `field_content_hash`'s own note). Only the
+        materialization strategy changed.
+        """
+        for table, key_cols, sql in _CONTENT_HASH_QUERIES:
+            with S4.streaming_cursor(conn, f'kfh_{table}') as cur:
+                cur.execute(sql, (self._chart_id, self._snapshot_id))
+                for r in S4.iter_rows(cur):
+                    yield (table, tuple(r[c] for c in key_cols), r)
+
     def _compute_content_hash(self, conn) -> str:
-        rows: list[tuple[str, tuple, dict[str, Any]]] = []
-        with conn.cursor() as cur:
-            cur.execute(
-                """SELECT event_class, segment_index, t_start, t_end, alpha, gamma,
-                          integral_days, refinement_depth, refinement_exhausted
-                     FROM kala_field WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                key = (r['event_class'], r['segment_index'])
-                rows.append(('kala_field', key, {k: v for k, v in r.items()}))
-            cur.execute(
-                """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
-                          expected_count, null_p, confidence_tier, weakest_link,
-                          adrishta_residual
-                     FROM kala_field_windows
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_windows', (r['window_id'],), dict(r)))
-            cur.execute(
-                """SELECT target_kind, target_id, term_key, term_value, log_contribution,
-                          weight_id, weight_value, source_kind, source_table, source_pk,
-                          source_fact_id, authority_basis
-                     FROM kala_field_provenance
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_provenance',
-                             (r['target_kind'], r['target_id'], r['term_key']), dict(r)))
-            cur.execute(
-                """SELECT event_class, bucket_days, q_threshold, replicates
-                     FROM kala_field_null
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_null', (r['event_class'], r['bucket_days']),
-                             dict(r)))
-            # ── stage 6 / 6.5 / 8 (see _HASHED_TABLES for why they are here) ──
-            cur.execute(
-                """SELECT window_id, event_class, factor_informativeness,
-                          factor_consequence, factor_relevance, factor_reliability,
-                          factor_actionability, salience, salience_weights_version,
-                          salience_basis, selected, selection_rank, marginal_gain,
-                          coverage_fraction, largest_omission_window_id,
-                          largest_omission_marginal_gain, cohort_version
-                     FROM kala_field_salience
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_field_salience', (r['window_id'],), dict(r)))
-            # `lel_derived = FALSE` is the §7.4 exclusion, stated in the WHERE
-            # clause rather than filtered afterwards: the hash must not be able
-            # to see a Lane E biographical_echo row even transiently.
-            cur.execute(
-                """SELECT insight_id, insight_type, event_class, window_id, t_start,
-                          t_end, statement_key, statement_params, fact_ids,
-                          cohort_surprise, cohort_version, surprise_basis,
-                          insight_score
-                     FROM kala_insights
-                    WHERE chart_id = %s AND field_snapshot_id = %s
-                      AND lel_derived = FALSE""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_insights', (r['insight_id'],), dict(r)))
-            # `computed_at` is excluded per §7.4's own column exclusion list; the
-            # `spec` blob is included because it IS the row's content, and it is
-            # byte-stable by construction (`_now_marker`, natural-key point ids).
-            cur.execute(
-                """SELECT generated_for, spec_version, spec, n_tracks, n_intervals,
-                          n_points, n_bands, empty_reason
-                     FROM kala_timeline_spec
-                    WHERE chart_id = %s AND field_snapshot_id = %s""",
-                (self._chart_id, self._snapshot_id),
-            )
-            for r in S4._rows(cur):
-                rows.append(('kala_timeline_spec', (r['generated_for'],), dict(r)))
-        return S4.field_content_hash(self._snapshot_id, rows)
+        return S4.field_content_hash(self._snapshot_id,
+                                     self._iter_content_hash_rows(conn))
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -1512,7 +1912,14 @@ class KaKshetraWriter(WriterBase):
                 conn, self._chart_id
             )
         lifetime, source = S4.load_class_lifetime_count(conn, event_class)
-        lifetime = S4.require_baseline(lifetime, event_class)
+
+        # P3-e (DHARA_ENGINE_SPEC_v1_0.md §4.4): tier-aware path selection.
+        # Look up whether this class is classified shape_only in the tier-basis
+        # table.  The C-1 guard is COMPLETELY UNCHANGED on the calibrated path
+        # (shape_only_from_tier=False).
+        shape_only_from_tier = self._is_shape_only_class(conn, event_class, lifetime)
+        lifetime = S4.require_baseline(lifetime, event_class,
+                                       shape_only=shape_only_from_tier)
         shape = S4.require_event_shape(S4.load_event_shape(conn, event_class), event_class)
         evaluator = S4.FieldEvaluator(
             event_class=event_class,
@@ -1525,16 +1932,76 @@ class KaKshetraWriter(WriterBase):
             horizon_days=HORIZON_DAYS,
             baseline_source=source,
             extra_breakpoints=self._shared_extra_breakpoints,
+            shape_only=shape_only_from_tier,
         )
+        # DHARA_ENGINE_SPEC §1: compute Layer 0 once per chart (chart-level raw
+        # matrix shared across all 27 event classes). Uses the first evaluator
+        # built — all chart-level data (lord stacks, covariates, obstructions)
+        # is independent of event_class. Layer 0 is consumed by Layer 1
+        # projection (layer1.project_layer1) and by the P2 vectorized null.
+        if self._shared_layer0 is None:
+            try:
+                from services.ka_kshetra.layer0 import compute_layer0
+                self._shared_layer0 = compute_layer0(evaluator, HORIZON_DAYS)
+            except Exception as _l0_exc:  # pragma: no cover
+                logger.warning(
+                    'ka_kshetra: Layer 0 pre-computation failed (%s); '
+                    'falling back to per-knot evaluation. This is a '
+                    'performance degradation, not a correctness failure.',
+                    _l0_exc,
+                )
+        from services.ka_kshetra.engine_config import ENGINE_VERSION as _EV
+        dhara_segs = None
+        if _EV == 'analytic':
+            from services.ka_kshetra.dhara_sweep import dhara_build_segments
+            dhara_segs = dhara_build_segments(evaluator)
         ctx = _ClassContext(
             event_class=event_class,
             evaluator=evaluator,
             null_accumulator=S5.NullAccumulator(replicates=S5.DEFAULT_REPLICATES,
                                                 horizon_days=HORIZON_DAYS),
             temporal_shape=shape,
+            dhara_segments=dhara_segs,
+            baseline_is_synthetic=shape_only_from_tier,
         )
         self._class_cache[event_class] = ctx
         return ctx
+
+    def _is_shape_only_class(
+        self, conn, event_class: str, lifetime: Optional[float]
+    ) -> bool:
+        """P3-e: Return True iff this event class is in the shape_only tier.
+
+        The tier-basis table (`ka_kshetra_tier_basis`, P3-d deliverable) maps
+        each of the 27 event classes to one of: 'calibrated', 'shape_only', or
+        'not_applicable'.  Until that table exists (it is a conductor/PRATINIDHI
+        deliverable gated before P3-e production writes), this method returns
+        False so the calibrated C-1 guard path is unchanged for all classes.
+
+        INVARIANT: Returns True ONLY when `lifetime is None` (no calibrated
+        bg_class_priors row exists).  A class WITH a calibrated prior is NEVER
+        silently reclassified as shape_only — that would be the exact B.10
+        fabrication this gate is designed to prevent.
+        """
+        if lifetime is not None:
+            # Calibrated prior exists — always use the calibrated path.
+            return False
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """SELECT tier FROM ka_kshetra_tier_basis
+                        WHERE event_class = %s""",
+                    (event_class,),
+                )
+                rows = S4._rows(cur)
+        except Exception:
+            # Table does not exist yet (P3-d not yet deployed) or query error.
+            # Fall back to the calibrated path (which will raise ClassSkipped
+            # for classes with no bg_class_priors row — the existing behaviour).
+            return False
+        if not rows:
+            return False
+        return str(rows[0].get('tier', '')) == 'shape_only'
 
     def _record_skip(self, skip: S4.ClassSkipped) -> None:
         entry = {'event_class': skip.event_class, 'reason': skip.reason,
@@ -1566,7 +2033,18 @@ class KaKshetraWriter(WriterBase):
             )
 
     def _load_segments(self, conn, event_class: str) -> list[Segment]:
-        with conn.cursor() as cur:
+        """F-186: streamed (`S4.streaming_cursor` + `S4.iter_rows`) rather than
+        `S4._rows`'s single `fetchall()` — `kala_field` runs to ~8.6M rows
+        chart-wide (§D.2 Hub H measurement), and this loader is called once per
+        event class in a loop (:611/:766/:1558-area callers), so the eager
+        fetch forced the driver to fully buffer each class's slice before
+        Python began normalizing any of it. Still returns a `list[Segment]`,
+        not a generator: every caller consumes `segments` more than once
+        (window detection, then the write batch), so full materialization is
+        unavoidable here — streaming only bounds what the driver buffers
+        during the fetch itself.
+        """
+        with S4.streaming_cursor(conn, 'kf_segments') as cur:
             cur.execute(
                 """SELECT segment_index, t_start, t_end, alpha, gamma,
                           refinement_depth, refinement_exhausted, refinement_residual
@@ -1582,7 +2060,7 @@ class KaKshetraWriter(WriterBase):
                         refinement_depth=int(r['refinement_depth'] or 0),
                         refinement_exhausted=bool(r['refinement_exhausted']),
                         refinement_residual=r['refinement_residual'])
-                for r in S4._rows(cur)
+                for r in S4.iter_rows(cur)
             ]
 
     def _citation_resolution(self, conn, edges) -> tuple[int, int]:
@@ -1694,6 +2172,72 @@ class KaKshetraWriter(WriterBase):
         return 'corpus_pin_unavailable'
 
     @staticmethod
+    def _gochara_corpus_pin(conn, chart_id) -> dict:
+        """Three-field gochara corpus pin for config_pin (A1 pin).
+
+        Captures which generation of kala_gochara_windows is served, the dominant
+        calibration tier of those windows, and a content fingerprint of the
+        gochara_resonance_map rows for this chart.
+
+        All three are unavailable-safe: an absent row produces an explicit sentinel
+        so the field hash still changes if any component later becomes available —
+        never a blank that two distinct corpus states would share.
+        """
+        generation = 'v1'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COALESCE("
+                    "  (SELECT authoritative_generation FROM kala_gochara_authority"
+                    "   WHERE chart_id = %s), 'v1') AS gen",
+                    (chart_id,),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['gen']:
+                generation = str(rows[0]['gen'])
+        except Exception:
+            pass
+
+        calibration_state = 'no_windows'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT calibration_state, COUNT(*) AS n"
+                    " FROM kala_gochara_windows"
+                    " WHERE chart_id = %s AND generation = %s"
+                    " GROUP BY calibration_state ORDER BY n DESC LIMIT 1",
+                    (chart_id, generation),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['calibration_state']:
+                calibration_state = str(rows[0]['calibration_state'])
+        except Exception:
+            pass
+
+        digest = 'digest_unavailable'
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT md5("
+                    "  COALESCE(COUNT(*)::text, '0') || '|'"
+                    "  || COALESCE(MAX(computed_at)::text, '') || '|'"
+                    "  || COALESCE(MAX(id)::text, '')) AS digest"
+                    " FROM gochara_resonance_map WHERE chart_id = %s",
+                    (chart_id,),
+                )
+                rows = S4._rows(cur)
+            if rows and rows[0]['digest']:
+                digest = str(rows[0]['digest'])
+        except Exception:
+            pass
+
+        return {
+            'gochara_generation': generation,
+            'gochara_calibration_state': calibration_state,
+            'gochara_corpus_digest': digest,
+        }
+
+    @staticmethod
     def _discover_event_classes(conn, chart_id) -> list[str]:
         """LIVE discovery from Lane A's promise register — never a hardcoded list.
 
@@ -1715,7 +2259,20 @@ class KaKshetraWriter(WriterBase):
                     'SELECT DISTINCT event_class_id FROM bodha_pratijna '
                     'WHERE chart_id = %s '
                     'ORDER BY event_class_id', (chart_id,))
-                return [r['event_class_id'] for r in S4._rows(cur)]
+                classes = [r['event_class_id'] for r in S4._rows(cur)]
+            # F3 (SM-R-11): canary gate — limit to named class(es) if env var is set.
+            # Usage: gcloud run jobs execute brahma-build-pipeline-job
+            #          --update-env-vars SAMPURTI_CANARY_CLASSES=CAREER
+            # Allows a 1-class timing canary to validate F1+F2+F5 before A8 full run.
+            canary_filter = os.environ.get('SAMPURTI_CANARY_CLASSES')
+            if canary_filter:
+                canary_set = {c.strip() for c in canary_filter.split(',') if c.strip()}
+                classes = [c for c in classes if c in canary_set]
+                logger.info(
+                    'ka_kshetra: SAMPURTI_CANARY_CLASSES=%r → %d class(es): %s',
+                    canary_filter, len(classes), classes,
+                )
+            return classes
         except Exception as exc:
             logger.warning('ka_kshetra: event-class discovery failed for %s: %s',
                            chart_id, exc)
@@ -1830,6 +2387,80 @@ _HASHED_TABLES: tuple[str, ...] = (
     'kala_insights',
     'kala_timeline_spec',
 )
+
+
+#: (table, natural-key columns, SQL) for every table in `_HASHED_TABLES`, in the
+#: order §7.4's hash walks them. Hoisted out of `_compute_content_hash` by F-149
+#: so the hash can be computed by STREAMING one table at a time instead of
+#: accumulating all seven into one list; the SQL text is verbatim what that
+#: method used to inline, deliberately, so that the circularity guard's statement
+#: census and the digest itself both see exactly what they saw before.
+#:
+#: Column-selection notes carried over from the inline version:
+#:   • `kala_insights` states `lel_derived = FALSE` in the WHERE clause rather
+#:     than filtering afterwards — the hash must not be able to see a Lane E
+#:     biographical_echo row even transiently.
+#:   • `kala_timeline_spec` excludes `computed_at` per §7.4's own column-exclusion
+#:     list; the `spec` blob IS the row's content and is byte-stable by
+#:     construction (`_now_marker`, natural-key point ids).
+_CONTENT_HASH_QUERIES: tuple[tuple[str, tuple[str, ...], str], ...] = (
+    ('kala_field', ('event_class', 'segment_index'),
+     """SELECT event_class, segment_index, t_start, t_end, alpha, gamma,
+                          integral_days, refinement_depth, refinement_exhausted
+                     FROM kala_field WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_windows', ('window_id',),
+     """SELECT window_id, event_class, t_start, t_end, t_peak, lambda_peak,
+                          expected_count, null_p, confidence_tier, weakest_link,
+                          adrishta_residual
+                     FROM kala_field_windows
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_provenance', ('target_kind', 'target_id', 'term_key'),
+     """SELECT target_kind, target_id, term_key, term_value, log_contribution,
+                          weight_id, weight_value, source_kind, source_table, source_pk,
+                          source_fact_id, authority_basis
+                     FROM kala_field_provenance
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_field_null', ('event_class', 'bucket_days'),
+     """SELECT event_class, bucket_days, q_threshold, replicates
+                     FROM kala_field_null
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    # ── stage 6 / 6.5 / 8 (see _HASHED_TABLES for why they are here) ──
+    ('kala_field_salience', ('window_id',),
+     """SELECT window_id, event_class, factor_informativeness,
+                          factor_consequence, factor_relevance, factor_reliability,
+                          factor_actionability, salience, salience_weights_version,
+                          salience_basis, selected, selection_rank, marginal_gain,
+                          coverage_fraction, largest_omission_window_id,
+                          largest_omission_marginal_gain, cohort_version
+                     FROM kala_field_salience
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+    ('kala_insights', ('insight_id',),
+     """SELECT insight_id, insight_type, event_class, window_id, t_start,
+                          t_end, statement_key, statement_params, fact_ids,
+                          cohort_surprise, cohort_version, surprise_basis,
+                          insight_score
+                     FROM kala_insights
+                    WHERE chart_id = %s AND field_snapshot_id = %s
+                      AND lel_derived = FALSE"""),
+    ('kala_timeline_spec', ('generated_for',),
+     """SELECT generated_for, spec_version, spec, n_tracks, n_intervals,
+                          n_points, n_bands, empty_reason
+                     FROM kala_timeline_spec
+                    WHERE chart_id = %s AND field_snapshot_id = %s"""),
+)
+
+# A real detector, not a comment (§N.8): `hashed_tables` is written to every
+# snapshot row from `_HASHED_TABLES` while the digest is computed from
+# `_CONTENT_HASH_QUERIES`. If a future lane adds a table to one and forgets the
+# other, the stored `hashed_tables` would advertise coverage the hash does not
+# have. Import fails loudly instead — and it is a `raise`, not an `assert`,
+# because `python -O` strips asserts and a detector that can be optimized out is
+# the same class of defect as one that was never written.
+if tuple(t for t, _, _ in _CONTENT_HASH_QUERIES) != _HASHED_TABLES:
+    raise RuntimeError(
+        '_CONTENT_HASH_QUERIES and _HASHED_TABLES disagree: '
+        'kala_field_snapshots.hashed_tables would misdescribe what the hash covers'
+    )
 
 
 __all__ = ['KaKshetraWriter', 'ASSET_ID', 'HORIZON_DAYS', 'DECADES',

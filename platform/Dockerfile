@@ -64,6 +64,13 @@ ARG NEXT_PUBLIC_NIM_STACK_DEGRADED
 ENV NEXT_PUBLIC_NIM_STACK_DEGRADED=$NEXT_PUBLIC_NIM_STACK_DEGRADED
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+# PARIPRASHNA-GOLIVE-EXECUTE: PariprashnaApp picks its transport at mount —
+# NEXT_PUBLIC_PARIPRASHNA_LIVE=1 opens a real SSE stream; otherwise it replays
+# fixtures. Compile-time only (Next.js inlines NEXT_PUBLIC_* at build), so it
+# must be declared here AND passed as --build-arg in deploy.yml, or Docker
+# silently drops it (see the C1 note above this block).
+ARG NEXT_PUBLIC_PARIPRASHNA_LIVE
+ENV NEXT_PUBLIC_PARIPRASHNA_LIVE=$NEXT_PUBLIC_PARIPRASHNA_LIVE
 RUN npm run build
 
 FROM base AS runner

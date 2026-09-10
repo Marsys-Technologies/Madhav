@@ -1,0 +1,16 @@
+{
+  "turn_id": "clean-02-ahead",
+  "question": "What is coming for me over the next few months?",
+  "chart_id": "1c826d5a-41cb-4450-b4dc-59d440e5f75a",
+  "conversation_id": "clean-conv-0001",
+  "partial": false,
+  "terminal_status": "ok",
+  "blocks": [{ "blockId": "b1", "kind": "paragraph", "role": "verdict" }],
+  "prose": "Over the next few months, you remain currently in the Mahadasha of Saturn. A transit window in the coming quarter will test the same structural themes this dasha has already been building.",
+  "events": [
+    { "type": "block.commit", "raw": { "type": "block.commit", "block_id": "b1", "kind": "paragraph", "role": "verdict", "text": "Over the next few months, you remain currently in the Mahadasha of Saturn. A transit window in the coming quarter will test the same structural themes this dasha has already been building." }, "receivedAtMs": 100 },
+    { "type": "citation.define", "raw": { "type": "citation.define", "index": 0, "signal_id": "SIG.KALA.002", "layer": "L3", "snippet": "forward window", "reader_label": "upcoming transit window", "grade": "confirmed" }, "receivedAtMs": 90 },
+    { "type": "grade", "raw": { "type": "grade", "subject": "citation_gate", "grade": "PASS" }, "receivedAtMs": 95 },
+    { "type": "turn.close", "raw": { "type": "turn.close", "status": "ok" }, "receivedAtMs": 200 }
+  ]
+}

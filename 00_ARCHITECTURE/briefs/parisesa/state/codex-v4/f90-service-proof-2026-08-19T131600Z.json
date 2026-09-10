@@ -1,0 +1,36 @@
+{
+  "record_type": "PARISESA_V4_DIRECT_MCP_SERVICE_PROOF",
+  "recorded_at": "2026-08-19T13:16:00Z",
+  "continuation_owner": "/root",
+  "finding_id": "F90",
+  "merge_sha": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+  "service": {
+    "name": "amjis-mcp",
+    "revision": "amjis-mcp-00574-c72",
+    "commit_sha_label": "bc7390923709ae1fc3001d3f295fc1dee2afaebc",
+    "traffic_percent": 100,
+    "mcp_deploy_job": "SUCCESS"
+  },
+  "canaries": [
+    {
+      "tool": "kala_muhurta_get",
+      "path_class": "sidecar POST invalid-date",
+      "is_error": true,
+      "generic_marker_present": true,
+      "backend_detail_marker_present": false
+    },
+    {
+      "tool": "ref_planet_position_get",
+      "path_class": "sidecar GET invalid-date",
+      "is_error": true,
+      "generic_marker_present": true,
+      "backend_detail_marker_present": false
+    }
+  ],
+  "workflow_note": "Overall Cloud Run workflow still has unrelated Web database-migrations work in progress; affected MCP build/deploy/smoke/traffic promotion completed successfully.",
+  "disposition": "CURRENT_SERVICE_VERIFIED_CLOSURE_ELIGIBLE",
+  "normal_v4_state_writer": {
+    "status": "unavailable",
+    "reason": "guardian approval NotSubmitted { reason: NotIdle }; operator-authorized fallback ledger is active"
+  }
+}

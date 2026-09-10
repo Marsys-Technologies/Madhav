@@ -1,0 +1,21 @@
+-- 673_nirmana_l3_w3_n9_graha_sancara_current.sql
+--
+-- NIRMĀṆA L3 Kāla — W3 IMPLEMENT. Completes finding N9 (`L3_W2_DECIDE_v1_0.md`): flips
+-- `ka_graha_sancara.catalog_status` DRAFT -> CURRENT, the last of L3's 11 originally-DRAFT
+-- assets (10 already flipped in migration 670).
+--
+-- Deliberately held at DRAFT in migration 670 "until M3 deploys" (M3 = the two real defects
+-- fixed in PR #1751: positional row[0] indexing against a dict_row connection, and a
+-- day-grade ephemeris_daily self-test asked a birth-INSTANT FORENSIC question it structurally
+-- cannot answer) — promoting a service that was genuinely broken to CURRENT would have been
+-- exactly the unearned-signal move §N.8 exists to forbid.
+--
+-- M3 has now deployed. Verified live before writing this migration: PR #1751's merge commit
+-- (97fd08e1c) is a git ancestor of BOTH currently-serving revisions —
+-- amjis-web (commit-sha=75ac19c661c96cad11d086cfea42d5017992f6c0, `metadata.labels.commit-sha`)
+-- and amjis-sidecar (100%-traffic revision amjis-sidecar-probe-291beab7b6e0-..., confirmed via
+-- `gcloud run services describe --format='yaml(status.traffic)'`).
+--
+-- Transaction ownership belongs to platform/scripts/migrate.ts.
+
+UPDATE asset_registry SET catalog_status = 'CURRENT' WHERE asset_id = 'ka_graha_sancara';

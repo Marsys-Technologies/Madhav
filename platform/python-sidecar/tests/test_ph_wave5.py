@@ -31,6 +31,7 @@ from services.ph_sodhana.engine import (
     detect_falsifier_absent,
     detect_ledger_gap,
     detect_layer_leakage,
+    detect_ceiling_inputs_degenerate,
     derive_sodhana_flags,
 )
 from services.ph_suddha_sodhana.engine import (
@@ -96,6 +97,34 @@ class TestDetectConfidenceInflation:
         # n=6 → ceiling = (0.50 + 0.30) * (0.80 + 0.20) = 0.80 * 1.00 = 0.80
         a = _clean_anchor(confidence_high=0.79, dasha_consensus_count=6, ayanamsha_robustness=5)
         assert detect_confidence_inflation(a) is None
+
+    def test_genuine_zero_robustness_is_not_coerced_to_the_default(self):
+        # F-12: `int(ayanamsha_robustness or 3)` silently substituted the default (3) for
+        # a genuine measured 0 -- NOT numerically inert here (unlike n_independent, whose
+        # clamp floors at 1 regardless): rob=0 is a legal, stricter value inside [0,5].
+        # n=3, rob=0 (honoured): ceiling = (0.50+0.15) * (0.80+0.00) = 0.65 * 0.80 = 0.52.
+        # n=3, rob coerced to 3: ceiling = 0.65 * 0.92 = 0.598 -- the old, wrong, laxer bar.
+        a = _clean_anchor(confidence_high=0.55, dasha_consensus_count=3, ayanamsha_robustness=0)
+        rec = detect_confidence_inflation(a)
+        assert rec is not None, (
+            "confidence_high=0.55 must be flagged against the true rob=0 ceiling (0.52); "
+            "the pre-fix coercion to rob=3 (ceiling 0.598) would have missed this"
+        )
+
+    def test_genuine_zero_n_independent_still_floors_to_one(self):
+        # n_independent's clamp floor is 1, so a genuine 0 lands on the exact same numeric
+        # ceiling as None would (both -> n=1) -- proving this half of the fix is a None-check
+        # correction with NO behavioural change, unlike the ayanamsha_robustness half above.
+        # n=0 (or None) -> clamped n=1, rob=3: ceiling = (0.50+0.05) * (0.80+0.12) = 0.506.
+        a_zero = _clean_anchor(confidence_high=0.50, dasha_consensus_count=0, ayanamsha_robustness=3)
+        a_none = _clean_anchor(confidence_high=0.50, dasha_consensus_count=None, ayanamsha_robustness=3)
+        assert detect_confidence_inflation(a_zero) is None
+        assert detect_confidence_inflation(a_none) is None
+        # Both still correctly flag once confidence_high exceeds that shared 0.506 ceiling.
+        a_zero_over = _clean_anchor(confidence_high=0.55, dasha_consensus_count=0, ayanamsha_robustness=3)
+        a_none_over = _clean_anchor(confidence_high=0.55, dasha_consensus_count=None, ayanamsha_robustness=3)
+        assert detect_confidence_inflation(a_zero_over) is not None
+        assert detect_confidence_inflation(a_none_over) is not None
 
     def test_at_exactly_cap_no_flag(self):
         a = _clean_anchor(confidence_high=0.80, dasha_consensus_count=6, ayanamsha_robustness=5)
@@ -195,6 +224,76 @@ class TestDetectLayerLeakage:
             a = _clean_anchor(confidence_basis=bad_basis)
             rec = detect_layer_leakage(a)
             assert rec is not None, f"basis={bad_basis!r} must be flagged"
+
+    def test_null_or_empty_basis_flagged(self):
+        # F-14: a writer that omits confidence_basis entirely (NULL) or writes an
+        # empty string is the exact failure mode this firewall exists to catch --
+        # the prior `if basis and ...` short-circuited before the inequality ran,
+        # so this case tripped nothing.
+        for bad_basis in (None, '', '   '):
+            a = _clean_anchor(confidence_basis=bad_basis)
+            rec = detect_layer_leakage(a)
+            assert rec is not None, f"basis={bad_basis!r} must be flagged, not silently pass"
+            assert rec.leakage_class == 'l5_calibration_attempted'
+
+
+class TestDetectCeilingInputsDegenerate:
+    """F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b)): the G-LADDER ceiling's own two
+    inputs (dasha_consensus_count, ayanamsha_robustness) can be chart-wide
+    constants while confidence_high varies -- detect_confidence_degenerate
+    cannot see that, since it only watches confidence_high."""
+
+    def _anchors(self, n_pairs: list[tuple[int, int]]) -> list:
+        return [
+            _clean_anchor(anchor_id=f'a{i}', dasha_consensus_count=n, ayanamsha_robustness=rob)
+            for i, (n, rob) in enumerate(n_pairs)
+        ]
+
+    def test_below_min_anchors_no_flag(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors([(0, 3)] * 4))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_constant_pair_across_min_anchors_flagged(self):
+        # The measured live shape: (0, 3) constant across every anchor.
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors([(0, 3)] * 6))
+        rec = detect_ceiling_inputs_degenerate(ctx)
+        assert rec is not None
+        assert rec.anomaly_type == 'ceiling_inputs_degenerate'
+        assert rec.anomaly_severity == 'major'
+        assert rec.derivation_ledger_jsonb['constant_dasha_consensus_count'] == 0
+        assert rec.derivation_ledger_jsonb['constant_ayanamsha_robustness'] == 3
+
+    def test_varying_dasha_consensus_count_not_flagged(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 3), (1, 3), (2, 3), (3, 3), (0, 3), (1, 3)]
+        ))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_varying_ayanamsha_robustness_not_flagged(self):
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 3)]
+        ))
+        assert detect_ceiling_inputs_degenerate(ctx) is None
+
+    def test_genuine_zero_dasha_consensus_count_still_participates(self):
+        # A real 0 must not be silently dropped from the distinctness check the
+        # way `int(n or 1)` would drop it in the ceiling formula itself.
+        ctx = SodhanaContext(chart_id='cid', anchors=self._anchors(
+            [(0, 3), (0, 3), (0, 3), (1, 3), (0, 3), (0, 3)]
+        ))
+        rec = detect_ceiling_inputs_degenerate(ctx)
+        assert rec is None, "one anchor with n=1 among five n=0 anchors is real variance, not degeneracy"
+
+    def test_does_not_interfere_with_confidence_degenerate(self):
+        # Both chart-wide detectors can fire independently in derive_sodhana_flags.
+        anchors = self._anchors([(0, 3)] * 6)
+        for a in anchors:
+            a.confidence_high = 0.55  # also degenerate on this axis
+        ctx = SodhanaContext(chart_id='cid', anchors=anchors)
+        flags = derive_sodhana_flags(ctx)
+        types = {f.anomaly_type for f in flags}
+        assert 'ceiling_inputs_degenerate' in types
+        assert 'confidence_degenerate' in types
 
 
 class TestDerivesodhanaFlags:
@@ -422,3 +521,28 @@ class TestSuddhaSodhanaAntiDrift:
         assert 'INSERT INTO phala_suddha_sodhana' in src
         assert 'INSERT INTO phala_anchors' not in src
         assert 'INSERT INTO phala_sodhana ' not in src
+
+    def test_flags_load_fails_loud_not_silently_clean(self):
+        # F-16 (L4_W1_ANALYSIS_BATCH_C.md §2.4, N-5): a phala_sodhana read failure
+        # must never be swallowed into "no flags found" -- that made every anchor
+        # classify 'clean' on error. Same class the sibling ph_pratikara names
+        # "the bug pattern" after F-173 removed it.
+        import os
+        path = os.path.join(
+            os.path.dirname(__file__), '..', 'pipeline', 'orchestrator', 'writers', 'ph_suddha_sodhana.py'
+        )
+        with open(path) as f:
+            src = f.read()
+        method_start = src.index('def _load_flags_grouped')
+        rest = src[method_start + 1:]
+        next_def = rest.find('\n    def ')
+        method_body = src[method_start:] if next_def == -1 else src[method_start:method_start + 1 + next_def]
+        # Strip the docstring (which discusses "except" in prose describing the
+        # OLD, now-removed behaviour) before checking the actual code.
+        doc_start = method_body.index('"""')
+        doc_end = method_body.index('"""', doc_start + 3) + 3
+        code_only = method_body[:doc_start] + method_body[doc_end:]
+        assert 'except' not in code_only, (
+            "_load_flags_grouped must fail loud on query errors, not silently "
+            "return an empty flags dict (F-16)"
+        )

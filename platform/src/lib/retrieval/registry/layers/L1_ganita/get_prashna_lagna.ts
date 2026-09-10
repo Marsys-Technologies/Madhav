@@ -49,6 +49,13 @@ export const getPrashnaLagnaCapability: CapabilityDescriptor = {
     agentic: { cost_class: 'cheap', cacheable: true },
     bulk_context: { pre_fetch_priority: 20, always_include: false },
   },
+  // F-E28 (L1_W1_ANALYSIS_BATCH_E.md, NOW, §N.6 item 4): was undeclared. empty_reason:
+  // true is a genuine claim -- this handler already sets content.empty_reason (see below).
+  density_contract: {
+    paginated: true,
+    facets: ['ayanamsha_id', 'lagna_method', 'primary_only'],
+    empty_reason: true,
+  },
 
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     void _ctx

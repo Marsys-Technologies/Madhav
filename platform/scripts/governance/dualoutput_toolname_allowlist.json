@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "description": "Pre-existing dualOutput defects in register_p1_aliases.ts. Stream A (A-09) migrates to kalaBudgetedDualOutput / explicit toolName. Remove entries as A-09 PRs land.",
+  "entries": [
+    {
+      "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+      "line": 188,
+      "justification": "function dualOutput with toolName='unknown_tool' default — F-43 primary defect; A-09 will give it a real toolName or migrate to kalaBudgetedDualOutput."
+    },
+    {
+      "file": "platform-mcp/src/tools/register_p1_aliases.ts",
+      "line": null,
+      "pattern": "^dualOutput\\(",
+      "justification": "Bare dualOutput(data) call sites inheriting 'unknown_tool' default — F-43 call-site defects; all resolved when A-09 fixes the definition at line 188."
+    }
+  ]
+}

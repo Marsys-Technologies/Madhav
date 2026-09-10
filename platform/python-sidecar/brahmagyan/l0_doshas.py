@@ -1935,6 +1935,14 @@ def seed_doshas(
                 "Apply migration 176 first."
             )
 
+        # All three projections are wholly owned by bg_doshas (the shared
+        # ontology delete is scoped to its entity class). The orchestrator owns
+        # the surrounding transaction/savepoint, so a failed replacement rolls
+        # back atomically.
+        cur.execute("DELETE FROM reference_doshas")
+        cur.execute("DELETE FROM brahma_dosha_catalog")
+        cur.execute("DELETE FROM brahma_ontology WHERE entity_class = 'dosha'")
+
         for d in DOSHAS:
             cid = d["canonical_id"]
 
@@ -1954,7 +1962,6 @@ def seed_doshas(
                     %s::jsonb, %s,
                     %s, %s, %s
                 )
-                ON CONFLICT (canonical_id) DO NOTHING
                 """,
                 (
                     cid,
@@ -1986,7 +1993,6 @@ def seed_doshas(
                     entity_class, canonical_id, canonical_name_en, canonical_name_sa,
                     synonyms, description, source_citation, created_at
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (entity_class, canonical_id) DO NOTHING
                 """,
                 (
                     "dosha",
@@ -2007,12 +2013,35 @@ def seed_doshas(
                 """
                 INSERT INTO reference_doshas (canonical_id, name_en, category)
                 VALUES (%s, %s, %s)
-                ON CONFLICT (canonical_id) DO NOTHING
                 """,
                 (cid, d["name_en"], d["category"]),
             )
             if cur.rowcount > 0:
                 ref_inserted += 1
+
+        cur.execute(
+            """
+            SELECT
+              (SELECT count(*) FROM brahma_dosha_catalog) AS catalog_count,
+              (SELECT count(*) FROM brahma_ontology WHERE entity_class='dosha') AS ontology_count,
+              (SELECT count(*) FROM reference_doshas) AS reference_count
+            """
+        )
+        postflight = cur.fetchone()
+        actual = (
+            (
+                postflight["catalog_count"],
+                postflight["ontology_count"],
+                postflight["reference_count"],
+            )
+            if isinstance(postflight, dict)
+            else tuple(postflight)
+        )
+        expected = (len(DOSHAS),) * 3
+        if actual != expected:
+            raise RuntimeError(
+                f"bg_doshas exact postflight failed: expected {expected}, got {actual}"
+            )
 
         logger.info(
             "[L0/doshas] catalog: +%d inserted / %d skipped; ontology: +%d; ref: +%d",

@@ -12,23 +12,20 @@
  * vimshottari / 3 levels / ±5y. Gate target: system=vimshottari, level=Maha ("1"),
  * as_of=today, ayanamsha_id=lahiri_chitrapaksha → ≤1KB in ONE call.
  *
- * IMPORTANT — `ayanamsha_id` is NOT defaulted server-side (unlike `system`/`level`/`window`):
- * omitting it returns one row per ayanamsha (5 rows, ~3.2KB for the current-dasha case — 3x
- * over the ≤1KB gate) because chart_dashas carries all 5 ayanamshas and this handler applies
- * no ayanamsha filter unless the caller supplies one. An endpoint LLM following only the
- * "Gate target" line above (without noticing this paragraph) will silently bust the gate.
- * ALWAYS pass `ayanamsha_id: "lahiri_chitrapaksha"` (the platform-mcp shim's own default,
- * matching chart_facts_query's default) when the gate/current-dasha shape is what's wanted.
- * Flagged (not fixed here — a silent default would change existing multi-ayanamsha callers'
- * results): a future wave should consider defaulting `ayanamsha_id` server-side the same way
- * `system` defaults to vimshottari, per the same E-5 "declared-but-silently-unfiltered is the
- * worst contract violation" reasoning. See R5_RUN_LEDGER W1 dasha_query verifier finding.
+ * F-93: `ayanamsha_id` now defaults server-side to `DEFAULT_AYANAMSHA` ('lahiri_chitrapaksha',
+ * `../../constants`) the same way `system`/`level`/`window` already default — omitting it no
+ * longer returns one row per ayanamsha. An explicit `ayanamsha_id` is still validated against
+ * `STORED_DASHA_AYANAMSHAS` (`invalid_ayanamsha_id` on a bad value). Pass `ayanamsha_id` only
+ * when a non-canonical ayanamsha is actually wanted. Closes the gap flagged at R5 W1 (below,
+ * historical) and the wrong-ayanamsha-reaches-the-model failure mode from DIAGNOSIS/F-93.
  */
 import type { CapabilityDescriptor } from '../../types'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
+import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
+import { DEFAULT_AYANAMSHA } from '../../constants'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -45,6 +42,11 @@ import { grahaCodeOf } from '../../../address_resolver'
 const KNOWN_SYSTEMS = [
   'vimshottari', 'vimshottari_kp', 'yogini', 'ashtottari', 'chara_karaka', 'kalachakra', 'mudda', 'naisargika',
 ] as const
+
+// chart_dashas stores only the five material ayanamshas. This is intentionally not
+// an alias map: public aliases are normalized at the MCP boundary, while this
+// primitive accepts only identifiers that can be persisted in this table.
+const STORED_DASHA_AYANAMSHAS = new Set<string>(REAL_AYANAMSHAS)
 
 // Case/spelling normalization for the `system` facet — accepts the actual system_id values,
 // common uppercase spellings, and the classical/alias names a caller might reach for.
@@ -85,6 +87,34 @@ function normalizeLevel(input: string | number): number | null {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+// R-43 / F-A11: `chart_dashas.lord_graha` holds the 9 classical graha display
+// names for every system EXCEPT yogini, whose lords are deity names
+// (Mangala/Pingala/…) — the deity a graha's natal condition is inherited
+// through, not the graha itself. Same alias table as ga_dashas_writer.py's
+// _YOGINI_DEITY_TO_GRAHA (derived from its YOGINI_SEQUENCE) — kept in sync by
+// inspection, not imported, since this is a TS serving file with no Python
+// dependency. Without this, the serve-side natal re-derivation below (which
+// keys ONLY on the 9 graha names) resolves nothing for yogini's 83,740 rows
+// and overwrites the writer's correctly-populated lord_natal_* with NULL.
+const YOGINI_DEITY_TO_GRAHA_NAME: Record<string, string> = {
+  Mangala: 'Moon', Pingala: 'Sun', Dhanya: 'Jupiter', Bhramari: 'Mars',
+  Bhadrika: 'Mercury', Ulka: 'Saturn', Siddha: 'Venus', Sankata: 'Rahu',
+}
+
+const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
+  ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    .map(name => [name, grahaCodeOf(name)]),
+)
+
+/**
+ * Resolve a chart_dashas.lord_graha value (classical graha name OR yogini
+ * deity name) to its chart_facts fact_subject code, or undefined if
+ * unrecognized. Exported for unit testing (no DB access required).
+ */
+export function factSubjectForLord(lordGraha: string | undefined): string | undefined {
+  return GRAHA_NAME_TO_FACT_SUBJECT[YOGINI_DEITY_TO_GRAHA_NAME[lordGraha ?? ''] ?? lordGraha ?? '']
+}
+
 // ── fields projection (design §3 `select` idiom — "projection, the 63KB killer") ──
 // chart_dashas carries ~40 columns/row (citation strings, verification metadata, jsonb
 // blobs) — a single unprojected row already runs ~2KB serialized, which alone busts the
@@ -106,6 +136,96 @@ function projectRow(row: Record<string, unknown>, fields: readonly string[] | nu
   return out
 }
 
+// F-120: level names for narration chain
+const LEVEL_NAMES: Record<number, string> = {
+  1: 'Mahadasha',
+  2: 'Antardasha',
+  3: 'Pratyantardasha',
+  4: 'Sukshmadasha',
+  5: 'Prana',
+  6: 'Anu',
+}
+
+/**
+ * Build the dasha-period narration string from a pre-populated byLevel map.
+ * Exported for unit testing (no DB access required).
+ * F-120: extends to finest running level, labels only that level "current",
+ * and checks sandhi_flag at every level in the chain.
+ */
+export function buildDashaNarration(
+  byLevel: Record<number, Record<string, unknown>>,
+  birthDate: string | null
+): string {
+  const ageAtDate = (isoDate: string | null): string => {
+    if (!birthDate || !isoDate) return 'age unknown'
+    const b = new Date(birthDate)
+    const d = new Date(isoDate)
+    let years = d.getFullYear() - b.getFullYear()
+    const hasHadBirthdayThisYear =
+      d.getMonth() > b.getMonth() ||
+      (d.getMonth() === b.getMonth() && d.getDate() >= b.getDate())
+    if (!hasHadBirthdayThisYear) years -= 1
+    return `age ~${years}`
+  }
+
+  const levelNums = Object.keys(byLevel).map(Number).sort((a, b) => a - b)
+  if (levelNums.length === 0) return ''
+
+  const finestLevel = Math.max(...levelNums)
+  const finestRow = byLevel[finestLevel]
+  const finestName = LEVEL_NAMES[finestLevel] ?? `Level${finestLevel}`
+  const finestEnd = finestRow['end_date'] as string
+
+  // Opening sentence names the currently running period — placed FIRST so that
+  // "current" never appears after a coarser-level name in the string (test constraint).
+  const currentSentence =
+    `${finestRow['lord_graha']} ${finestName} is currently running (ends ${finestEnd}, ${ageAtDate(finestEnd)}).`
+
+  // Chain sentence: levels 1 through finestLevel in ascending order, no inline "current" label.
+  const chainParts: string[] = []
+  for (const lvl of levelNums) {
+    const row = byLevel[lvl]
+    const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+    const endDate = row['end_date'] as string
+    chainParts.push(`${row['lord_graha']} ${name} (ends ${endDate}, ${ageAtDate(endDate)})`)
+  }
+  const chainSentence = `You are in ${chainParts.join(' -> ')}.`
+
+  // Natal sentences for sub-levels (AD and finer)
+  const natalSentences: string[] = []
+  for (const lvl of levelNums) {
+    if (lvl === 1) continue
+    const row = byLevel[lvl]
+    if (row['lord_natal_dignity_d1'] && row['lord_natal_house_d1']) {
+      const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+      natalSentences.push(
+        `${row['lord_graha']}, your ${name} lord, is ${row['lord_natal_dignity_d1']} ` +
+        `in your ${row['lord_natal_house_d1']} house (${row['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
+      )
+    }
+  }
+
+  // Sandhi sentences for every level whose flag is set (F-120: check all levels, not only MD)
+  const sandhiSentences: string[] = []
+  for (const lvl of levelNums) {
+    const row = byLevel[lvl]
+    if (row['sandhi_flag']) {
+      const name = LEVEL_NAMES[lvl] ?? `Level${lvl}`
+      const nextRow = byLevel[lvl + 1]
+      const blendClause = nextRow
+        ? ` — worth weighing against ${nextRow['lord_graha']}'s own placement above rather than reading as blanket alarm`
+        : ''
+      sandhiSentences.push(
+        `Note: the ${name} is in its sandhi (junction) window — classically a transitional caution period where both lords' effects blend${blendClause}.`
+      )
+    }
+  }
+
+  return [currentSentence, chainSentence, ...natalSentences, ...sandhiSentences]
+    .filter(Boolean)
+    .join(' ')
+}
+
 export const getDashasCapability: CapabilityDescriptor = {
   uri: 'marsys://tool/L1/get_dashas',
   type: 'tool',
@@ -122,20 +242,21 @@ export const getDashasCapability: CapabilityDescriptor = {
     'or all_levels=true for every level), and window (default now±5y when no date filter is ' +
     'given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). ' +
     'Use as_of_date to retrieve the dasha running on a specific date (e.g. today). ' +
-    'Spans all systems, levels and ayanamshas as a large, paginated result set — ' +
+    'Spans all systems and levels as a large, paginated result set — ' +
     'never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. ' +
-    'NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it ' +
-    'returns one row PER AYANAMSHA (5 rows). For the standard "current dasha" gate shape (one ' +
-    'row, <=1KB), ALWAYS pass ayanamsha_id="lahiri_chitrapaksha" explicitly.',
+    'F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it ' +
+    'returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one ' +
+    'row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha.',
   input_schema: {
     chart_id:      { type: 'string', description: 'Chart UUID', required: true },
     ayanamsha_id:  {
       type: 'string',
       description:
-        'Filter by ayanamsha_id (e.g. lahiri_chitrapaksha). Omit to get ALL 5 ayanamshas ' +
-        '(one row per ayanamsha for the same period — NOT a single unfiltered answer). For the ' +
-        'standard "current dasha" gate shape (one row, <=1KB) ALWAYS pass ' +
-        'ayanamsha_id="lahiri_chitrapaksha" explicitly — this param has no server-side default.',
+        'Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | ' +
+        'surya_siddhanta_classical | true_chitra). Unknown values are rejected. ' +
+        'F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) ' +
+        'when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass ' +
+        'this explicitly only to request a different, non-canonical ayanamsha.',
     },
     system: {
       type: 'string',
@@ -172,7 +293,7 @@ export const getDashasCapability: CapabilityDescriptor = {
     window_end:   { type: 'string', description: 'ISO date (YYYY-MM-DD). Window facet: only periods overlapping [window_start, window_end].' },
     date_contains: { type: 'string', description: 'ISO date (YYYY-MM-DD). Returns dashas active on this date.' },
     date_from:     { type: 'string', description: 'ISO date (YYYY-MM-DD). Filters to dashas whose end_date >= this date. Pass the birth date to exclude pre-birth rows.' },
-    as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins.' },
+    as_of_date:    { type: 'string', description: 'ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date ("what dasha am I running as of X"). Takes effect the same as date_contains; if both are passed, date_contains wins. A date before the chart birth date is served with an explicit structured pre-birth warning.' },
     lord_graha:    { type: 'string', description: 'Filter by lord graha abbreviation (e.g. SU, MO, MA).' },
     fields: {
       type: 'string',
@@ -204,13 +325,35 @@ export const getDashasCapability: CapabilityDescriptor = {
       const limit   = Math.min((args.limit as number) ?? 200, 1000)
       const offset  = (args.offset as number) ?? 0
 
+      const requestedAyanamsha = args.ayanamsha_id
+      if (
+        requestedAyanamsha !== undefined &&
+        requestedAyanamsha !== null &&
+        requestedAyanamsha !== '' &&
+        (typeof requestedAyanamsha !== 'string' || !STORED_DASHA_AYANAMSHAS.has(requestedAyanamsha))
+      ) {
+        return {
+          content: {
+            chart_id: chartId,
+            code: 'invalid_ayanamsha_id',
+            error: 'get_dashas: ayanamsha_id is not one of the stored chart ayanamshas.',
+            recognized_ayanamsha_ids: [...REAL_AYANAMSHAS],
+          },
+          is_error: true,
+        }
+      }
+
+      // F-93: validated above (rejected if present-but-invalid) — default to the project's
+      // canonical ayanamsha when the caller omits it, rather than silently returning all 5.
+      const ayanamshaId =
+        typeof requestedAyanamsha === 'string' && requestedAyanamsha !== ''
+          ? requestedAyanamsha
+          : DEFAULT_AYANAMSHA
       const params: unknown[] = [chartId, limit, offset]
       let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
 
-      if (args.ayanamsha_id) {
-        sql += ` AND ayanamsha_id = $${params.length + 1}`
-        params.push(args.ayanamsha_id as string)
-      }
+      sql += ` AND ayanamsha_id = $${params.length + 1}`
+      params.push(ayanamshaId)
 
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
       // rather than silently returning zero rows — an unrecognized system name is a caller error
@@ -341,15 +484,9 @@ export const getDashasCapability: CapabilityDescriptor = {
       // enrichment attempt keyed shadbala on 2-letter codes (SU/VE…), but chart_dashas.lord_graha
       // stores the DISPLAY name ("Venus") — so it silently matched nothing (a second R-43 bug).
       // This block keys on display-name → chart_facts subject-code, per (ayanamsha, graha),
-      // and carries a PERMANENT verifier cross-check (served == chart_facts).
-      // Values sourced from the graha SSoT (address_resolver.grahaCodeOf)
-      // rather than hardcoded literals — ADHIṢṬHĀNA Lane A2.
-      const GRAHA_NAME_TO_FACT_SUBJECT: Record<string, string> = Object.fromEntries(
-        ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
-          .map(name => [name, grahaCodeOf(name)]),
-      )
-
-      // Re-derived condition keyed by `${ayanamsha_id}|${factSubject}`.
+      // and carries a PERMANENT verifier cross-check (served == chart_facts). Re-derived
+      // condition keyed by `${ayanamsha_id}|${factSubject}` (factSubjectForLord, F-A11,
+      // handles both classical graha names and yogini deity names).
       const dignityMap: Record<string, string | null> = {}
       const shadbalMap: Record<string, number | null> = {}
       try {
@@ -357,7 +494,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         const pairs = new Map<string, { aya: string; subj: string }>()
         for (const r of rows) {
           const aya = r['ayanamsha_id'] as string | undefined
-          const subj = GRAHA_NAME_TO_FACT_SUBJECT[(r['lord_graha'] as string) ?? '']
+          const subj = factSubjectForLord(r['lord_graha'] as string | undefined)
           if (aya && subj) pairs.set(`${aya}|${subj}`, { aya, subj })
         }
         if (pairs.size > 0) {
@@ -398,7 +535,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       // independently re-reads chart_facts and asserts equality on every dasha row of both charts.
       const enrichedRows = rows.map(row => {
         const aya = row['ayanamsha_id'] as string | undefined
-        const subj = GRAHA_NAME_TO_FACT_SUBJECT[(row['lord_graha'] as string) ?? '']
+        const subj = factSubjectForLord(row['lord_graha'] as string | undefined)
         const key = aya && subj ? `${aya}|${subj}` : null
         const rederivedDignity = key ? (dignityMap[key] ?? null) : null
         const rederivedShadbala = key ? (shadbalMap[key] ?? null) : null
@@ -435,6 +572,39 @@ export const getDashasCapability: CapabilityDescriptor = {
         ))
       }
 
+      // F-33: a pre-birth as-of date can legitimately select a computed dasha period, but it
+      // is not a meaningful "current dasha" question for this chart. Keep the factual rows,
+      // and make that boundary machine-readable rather than leaving a negative age buried in
+      // optional narration. The birth-date lookup is metadata-only and must not break serving.
+      let chartBirthDate: string | null = null
+      let temporalContext: Record<string, unknown> | null = null
+      if (containsDate) {
+        try {
+          const birthRows = await query<{ birth_date: string; as_of_date_precedes_birth: boolean }>(
+            `SELECT birth_date::text AS birth_date,
+                    ($2::date < birth_date) AS as_of_date_precedes_birth
+             FROM charts WHERE id = $1`,
+            [chartId, containsDate]
+          )
+          chartBirthDate = birthRows.rows[0]?.birth_date ?? null
+          if (chartBirthDate && birthRows.rows[0]?.as_of_date_precedes_birth) {
+            temporalContext = {
+              as_of_date: containsDate,
+              birth_date: chartBirthDate,
+              as_of_date_status: 'pre_birth',
+            }
+            judgment_flags.push(judgmentFlag(
+              'as_of_date_precedes_chart_birth',
+              `as_of_date ${containsDate} precedes this chart's birth date ${chartBirthDate}; returned dasha rows are historical computation, not a native life-period reading.`,
+              'warning',
+            ))
+          }
+        } catch {
+          // Non-blocking metadata: absence must not turn an otherwise valid fact lookup into an error.
+          chartBirthDate = null
+        }
+      }
+
       // ── R5.3 B2 (Pratinidhi-R Q6-N-2 ruling): current-dasha narration ──
       // This tool is a flat_fact/leaf archetype that has never carried a narration field.
       // Built ONLY from rows already fetched in this call (no new computation, no new
@@ -448,80 +618,33 @@ export const getDashasCapability: CapabilityDescriptor = {
       const drill_pointers: DrillPointer[] = []
       if (containsDate && systemApplied === 'vimshottari') {
         try {
-          const birthRows = await query<{ birth_date: string }>(
-            `SELECT birth_date::text AS birth_date FROM charts WHERE id = $1`,
-            [chartId]
-          )
-          const birthDate = birthRows.rows[0]?.birth_date ?? null
-
           const isCanonicalRow = (r: Record<string, unknown>) =>
             !String(r['citation_ref'] ?? '').includes('kp_sub')
 
+          // INVARIANT(F-120): no upper bound on lvl — collect all levels the caller supplies.
+          // If you add `lvl > N` here, the narration_F120 test suite will fail.
           const byLevel: Record<number, Record<string, unknown>> = {}
           for (const rawRow of enrichedRows) {
             const row = rawRow as Record<string, unknown>
             const lvl = row['level_n'] as number
-            if (lvl < 1 || lvl > 3) continue
+            if (lvl < 1) continue
             // Prefer the canonical (non-kp_sub) row per level; first-seen otherwise.
             if (byLevel[lvl] === undefined || isCanonicalRow(row)) {
               byLevel[lvl] = row
             }
           }
 
-          const ageAtDate = (isoDate: string | null): string => {
-            if (!birthDate || !isoDate) return 'age unknown'
-            const b = new Date(birthDate)
-            const d = new Date(isoDate)
-            let years = d.getFullYear() - b.getFullYear()
-            const hasHadBirthdayThisYear =
-              d.getMonth() > b.getMonth() ||
-              (d.getMonth() === b.getMonth() && d.getDate() >= b.getDate())
-            if (!hasHadBirthdayThisYear) years -= 1
-            return `age ~${years}`
-          }
+          if (byLevel[1] && byLevel[2] && byLevel[3]) {
+            narration = buildDashaNarration(byLevel, chartBirthDate)
 
-          const md = byLevel[1]
-          const ad = byLevel[2]
-          const pd = byLevel[3]
-
-          if (md && ad && pd) {
-            const mdEnd = md['end_date'] as string
-            const adEnd = ad['end_date'] as string
-            const pdEnd = pd['end_date'] as string
-
-            const leadSentence =
-              `You are in ${md['lord_graha']} Mahadasha (ends ${mdEnd}, ${ageAtDate(mdEnd)}) -> ` +
-              `${ad['lord_graha']} Antardasha (ends ${adEnd}, ${ageAtDate(adEnd)}) -> ` +
-              `${pd['lord_graha']} Pratyantardasha (current, ends ${pdEnd}, ${ageAtDate(pdEnd)}).`
-
-            const natalSentences: string[] = []
-            if (ad['lord_natal_dignity_d1'] && ad['lord_natal_house_d1']) {
-              natalSentences.push(
-                `${ad['lord_graha']}, your Antardasha lord, is ${ad['lord_natal_dignity_d1']} ` +
-                `in your ${ad['lord_natal_house_d1']} house (${ad['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
-              )
-            }
-            if (pd['lord_natal_dignity_d1'] && pd['lord_natal_house_d1']) {
-              natalSentences.push(
-                `${pd['lord_graha']}, your Pratyantardasha lord, is ${pd['lord_natal_dignity_d1']} ` +
-                `in your ${pd['lord_natal_house_d1']} house (${pd['lord_natal_nakshatra'] ?? 'nakshatra n/a'}).`
-              )
-            }
-
-            const sandhiSentence = md['sandhi_flag']
-              ? `Note: the Mahadasha is in its sandhi (junction) window — classically a transitional ` +
-                `caution period where both lords' effects blend — worth weighing against ${ad['lord_graha']}'s ` +
-                `own placement above rather than reading as blanket alarm.`
-              : null
-
-            narration = [leadSentence, ...natalSentences, sandhiSentence]
-              .filter(Boolean)
-              .join(' ')
-
+            const finest = Math.max(...Object.keys(byLevel).map(Number))
+            const finestRow = byLevel[finest]
+            const finestEnd = finestRow['end_date'] as string
+            const finestName = LEVEL_NAMES[finest] ?? `Level${finest}`
             drill_pointers.push({
               instrument: 'ganita_dashas_get',
-              hint: `The period after the current Pratyantardasha (ends ${pdEnd}) is not returned by ` +
-                `an as_of_date call — re-call with as_of_date just after ${pdEnd} (or window_start=${pdEnd}) ` +
+              hint: `The period after the current ${finestName} (ends ${finestEnd}) is not returned by ` +
+                `an as_of_date call — re-call with as_of_date just after ${finestEnd} (or window_start=${finestEnd}) ` +
                 `to see the next lord and its natal condition.`,
               pointer_type: 'dasha_of_promise',
             })
@@ -542,10 +665,8 @@ export const getDashasCapability: CapabilityDescriptor = {
       try {
         const lvlParams: unknown[] = [chartId]
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
-        if (args.ayanamsha_id) {
-          lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
-          lvlParams.push(args.ayanamsha_id as string)
-        }
+        lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
+        lvlParams.push(ayanamshaId)
         if (systemApplied) {
           lvlSql += ` AND system_id = $${lvlParams.length + 1}`
           lvlParams.push(systemApplied)
@@ -570,6 +691,7 @@ export const getDashasCapability: CapabilityDescriptor = {
             // so a requested date/window is provably reflected back and never silently dropped.
             date_filter: dateFilterApplied,
             fields: fieldsApplied,
+            ayanamsha: ayanamshaId,
           },
           rows: projectedRows,
           total: projectedRows.length,
@@ -580,6 +702,7 @@ export const getDashasCapability: CapabilityDescriptor = {
           natal_condition_provenance: 'chart_facts:re-derived@serve (WP-1.8/R-43)',
           ...(narration ? { narration } : {}),
           ...(drill_pointers.length > 0 ? { drill_pointers } : {}),
+          ...(temporalContext ? { temporal_context: temporalContext } : {}),
         },
         is_error: false,
         ...(judgment_flags.length > 0 ? { judgment_flags } : {}),

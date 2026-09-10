@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "recorded_at": "2026-08-19T14:31:00Z",
+  "recording_path": "authorized_fallback_own_worktree",
+  "normal_state_writer_status": "unavailable: guardian NotSubmitted { reason: NotIdle }",
+  "finding_id": "F-47",
+  "merge_commit": "bb5c5278b5adeb1e3e9761bc1655986a0a04e177",
+  "deployment_workflow": {"run": 32263050773, "status": "completed", "conclusion": "success"},
+  "affected_service": {
+    "name": "amjis-sidecar",
+    "revision": "amjis-sidecar-01066-bzx",
+    "commit_label": "bb5c5278b5adeb1e3e9761bc1655986a0a04e177",
+    "traffic_percent": 100
+  },
+  "service_proof_reference": "state/codex-v4/f47-service-proof-2026-08-19T142115Z.json",
+  "disposition": "F47_CODE_AND_SERVICE_VERIFIED; normal closure-matrix reconciliation remains pending solely because its normal guardian-controlled writer is unavailable"
+}

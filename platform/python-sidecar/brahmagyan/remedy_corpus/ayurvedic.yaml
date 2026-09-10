@@ -78,7 +78,7 @@
   deity: "Brihaspati"
   remedy_text: "For Jupiter-related liver, fat metabolism, and spiritual growth issues: take Shatavari (Asparagus racemosus) in milk. Shatavari is the Jupiterian herb — sweet, cooling, nourishing, and promoter of wisdom (Medhya) and fertility (Shukra-promoting)."
   mantra_sanskrit: "ॐ गुरवे नमः"
-  mantra_transliteration: "Om Guruve Namah"
+  mantra_transliteration: "Om Gurave Namah"
   ingredients_jsonb: {"ingredients": ["Shatavari powder — 1 tsp", "warm milk — 250ml", "honey — 1 tsp", "ghee — 1/4 tsp"], "alternatives": ["Bala (Sida cordifolia) for similar benefits"], "preparation": "Shatavari in warm milk with ghee and honey; drink on Thursdays especially", "frequency": "daily (especially Thursdays) during Jupiter dasha"}
   timing_rules_jsonb: {"day": "daily, especially Thursday", "time": "morning or before bed", "duration_weeks": 12}
   cost_tier: "accessible"

@@ -1,5 +1,6 @@
 import type {
   Citation,
+  ClassifiedError,
   GroundingSummary,
   PredictionCardData,
   ReadingRole,
@@ -150,6 +151,16 @@ export class FixtureBuilder {
 
   reconnected() {
     this.push({ type: 'reconnected', turnId: this.turnId, eventId: nextEventId() })
+  }
+
+  /** §7.8 edge state: "User presses Stop → STOPPED — KEPT WHAT ARRIVED". */
+  interrupted() {
+    this.push({ type: 'interrupted', turnId: this.turnId, eventId: nextEventId() })
+  }
+
+  /** An in-stream `error` event, already classified (P2-G, edge-state fixtures §7.5/§7.8). */
+  error(error: ClassifiedError) {
+    this.push({ type: 'error', turnId: this.turnId, error, eventId: nextEventId() })
   }
 
   build(): ScheduledEvent[] {

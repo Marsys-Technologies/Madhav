@@ -1,0 +1,100 @@
+[
+  {
+    "finding_id": "F-102",
+    "classification": "LANDED",
+    "evidence": "CONTROL claim: asset_runner re-probes remaining substeps inside a savepoint before no-op-completion promotion to 'lit' for has_substeps assets. Confirmed on current HEAD (ancestor of origin/main, 0 commits ahead): platform/python-sidecar/pipeline/orchestrator/asset_runner.py lines ~606-680 contain exactly this mechanism -- 'SAVEPOINT noop_completeness_probe' / 'ROLLBACK TO SAVEPOINT' / asset.noop_completion vs asset.noop_completion_rejected event types, with an explicit comment referencing the same 'unearned lit' defect class as D-1.6. This is the documented SATYA-DIPA fix cited in this repo's own CLAUDE.md SS N.8 (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md SS7.1) as already landed. Independently re-derived from source, not from the corpus's own (unlocatable) bundles.jsonl citation.",
+    "next_action": "retain as closed control; only reopen on a source regression in asset_runner.py's substep-completeness probe",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-11",
+    "classification": "LANDED",
+    "evidence": "Corpus's cfb6444c8 + Cloud Run revision citations are unrelated (cfb6444c8 is 'filter undertaking elections by domain', #1331 -- nothing to do with kala_ritual/paddhati routing) and the Cloud Run revision claim cannot be independently checked from this environment. But the real underlying finding is verifiable and genuinely fixed: batch commit 7bf1bec1b ('batch-3 (night): ... + F-11 whitelist + ...', PR #1315, merge-base confirms it IS on origin/main) adds query_kala_paddhati_profile to SURGICAL_TOOLS/TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL in tool_name_bridge.ts; grep on current source confirms all three entries present today (lines 138/507/608), and register_all.ts calls registerKalaRitualGet which is wired to the MCP server, and ritual.ts implements full Mode 2 (sky_pattern_spec) pattern-search routing. The capability is genuinely reachable on main today.",
+    "next_action": "retain as landed; only reopen on a regression removing the whitelist entries or Mode 2 route",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-114",
+    "classification": "OPEN",
+    "evidence": "CL-10 jargon/raw-internal leakage via domain-lens ranking degeneracy on assess_marriage. No commits/PRs cited in the corpus row itself (evidence.commits is empty), no ingested builder/reviewer/ratifier artifacts exist for F-114, no matching branch or commit found anywhere in git history. Corpus's own next_executable_action ('after G0, define question-lens relevance and tie-break requirements, then add marriage and health ranking regressions before a fresh-main repair') reads as genuinely unstarted, precode-gated work, not a false claim -- this is an honest open item.",
+    "next_action": "needs a precode ranking contract (question-lens relevance + tie-break rules) authored and reviewed before implementation can start",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-124",
+    "classification": "STRANDED",
+    "evidence": "CL-14 assess_career vs assess_marriage/assess_health depth asymmetry. Confirmed still live on current main: registry_bridge.ts's DOMAIN_READING_FAMILIES-family maps and attachDomainCompleteness/attachDomainReading call sites exist only for 'career' (line 3084/3086) and 'wealth' (3166/3168) -- 'marriage' and 'health' handlers still lack them, matching F-124's exact claim. A real, independently-ratified fix exists on branch par/night-F-124 (commit 5f8871bcd8195f1b3014a6d0b45b9a50ad250c52, 'F-124: assess_wealth completeness wiring -- domain reading parity for health/relationship') -- confirmed present on the remote branch (git log origin/par/night-F-124), confirmed NOT an ancestor of origin/main. Diff shows AssessedDomain union + RELATIONSHIP_READING_FAMILIES/HEALTH_READING_FAMILIES + the missing attachDomainCompleteness('relationship'/'health', ...) call sites, exactly matching the gap. Companion lane to F-14 (same underlying defect, different branch/commit).",
+    "next_action": "rebase par/night-F-124 (5f8871bcd) onto current origin/main, re-verify against F-14's overlapping branch to avoid duplicate work, then land",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-128",
+    "classification": "LANDED",
+    "evidence": "CL-21 response-envelope double-enveloping. Corpus's citation of 693a7bdc ('page remedies by category', #1323) is unrelated (touches register_d7_channel.ts pagination, nothing to do with envelope shape). The real fix is findable independently: commit 12cbf5e14 ('ekv(a-03): F-16/F-128 -- unwrapCapabilityResult helper + fix bodha_discoveries_get', #1293) is confirmed on origin/main via merge-base, and adds a typed unwrapCapabilityResult() helper fixing exactly the double-wrap symptom described (callRegistryCapability's ToolResult wrapper being read as if it were the raw content, so content['rows'] always resolved undefined). Current source (register_p1_synthesis.ts) has unwrapCapabilityResult defined and applied at multiple call sites today.",
+    "next_action": "retain as landed; only reopen on a regression to callRegistryCapability's wrapper contract or a new unwrapped call site",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-14",
+    "classification": "STRANDED",
+    "evidence": "Same underlying defect family as F-124 (CL-14, D6/D9 slice contract for assess_health specifically). Corpus's cfb6444c8 citation is bogus (unrelated commit, same IF-001 pattern). Confirmed still live on main: DOMAIN_READING_FAMILIES has only wealth/career keys, buildAssessResponse:2925 still checks the wrong key response['completeness'] instead of response['domain_completeness'], assess_health handler (~3071) still has no attach call sites. A real, independently-ratified fix exists on branch par/night-F-14 (commit 5f8a129b490f9943f45d3596ccb0f0e1b46afba0, 'F-14: assess_* domain-family wiring + buildAssessResponse key-mismatch fix') touching registry_bridge.ts + response_budget.ts + a new parity test; confirmed present on remote branch, confirmed NOT merged into origin/main. Verifier notes state this unified spec covers F-15/F-124/F-31/F-112 as well -- overlaps significantly with F-124's branch, so these two branches likely need reconciling (pick one, not both) before landing.",
+    "next_action": "reconcile par/night-F-14 (5f8a129b4) against par/night-F-124 (5f8871bcd) -- they fix overlapping/duplicate ground -- pick the more complete one, rebase onto origin/main, land",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-19",
+    "classification": "LANDED",
+    "evidence": "CL-07 Rahu/Ketu special-aspect truncation to the universal 7th. Corpus's cfb6444c8 citation is bogus (same IF-001 pattern, unrelated commit). Independently found the real fix: commit 33289b579 ('ekv(b-02): F-109 -- Rahu/Ketu cast 5th/7th/9th parashari aspects (not 7th only)') -- note this commit is labeled F-109 at build time, not F-19, exactly matching this session's IF-002 pattern (a real fix exists but under a since-reused/relabeled finding_id; the corpus's current F-109 row is now an unrelated CONTROL about a dark-corpus 21-question replay). Content match is exact and unambiguous: platform/python-sidecar/brahmagyan/aspects.py on current main defines NODE_PARASHARI_ASPECTS = {5,7,9} (not just 7) for both rahu and ketu, with an explicit docstring 'Rahu/Ketu cast the same special aspects as Jupiter per BPHS parasari mainstream', plus a governance lint (check_no_local_aspect_dict.py) preventing consumers from reintroducing a local truncated table.",
+    "next_action": "retain as landed; only reopen on a regression to aspects.py's NODE_PARASHARI_ASPECTS or a new local aspect-dict violation slipping past the governance lint",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-30",
+    "classification": "LANDED",
+    "evidence": "CL-19 chart-scope entitlement boundary, bodha_bundle_get. Corpus's cfb6444c8 citation is bogus (IF-001). Independently found the real, exact-match fix: commit c75400b23 ('ekv(a-11): F-30/74/127 -- bundle principal propagation + real upstream_status surfaced', #1302) is confirmed on origin/main via merge-base, and the commit message names F-30 explicitly, describing the fix to bundle_adapters.ts's callPrimitive (opaque error class collapsing 401/403/400/500 into one undifferentiated tool_error, now returns typed PrimitiveResult with upstream_status) -- directly matching F-30's 'chart-scope entitlement boundary crossed inconsistently' classification (callers previously could not distinguish an entitlement denial from any other failure).",
+    "next_action": "retain as landed; only reopen on a regression to bundle_adapters.ts's PrimitiveResult/upstream_status propagation",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-51",
+    "classification": "LANDED",
+    "evidence": "CL-05 response-budget/trim defects, judgment_query marriage timing hooks. Corpus row itself cites zero commits (empty evidence.commits array) despite claiming 'historical-stale/code-fixed'. Independently found the real fix: commit 55a476fbd ('ekv(a-01): F-51 -- hardFloor:true on timing_hooks.current + mahadasha_windows_by_graha', #1289), confirmed on origin/main via merge-base. Current source (registry_bridge.ts:3650, 3681, 4424) has explicit '// F-51: answer-bearing timing -- PASS 2 must not zero this while catalog rows survive' comments on hardFloor:true declarations, matching the corpus's exact claim about ancestral timing-hook hard floors.",
+    "next_action": "retain as landed; only reopen on a regression removing hardFloor from timing_hooks.current/mahadasha_windows_by_graha",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-74",
+    "classification": "LANDED",
+    "evidence": "CL-19 chart-scope entitlement, companion to F-30 (bundle adapters chart-scope regression). Same commit c75400b23 ('ekv(a-11): F-30/74/127 -- bundle principal propagation + real upstream_status surfaced', #1302) explicitly names F-74 in its message and fixes the same bundle_adapters.ts callPrimitive opaque-error-class defect for the bundle-adapter chart-scope path; confirmed on origin/main via merge-base. Matches F-74's own code_status claim ('current-bundle-params-and-principal-propagated') exactly.",
+    "next_action": "retain as landed; only reopen on a regression to bundle_adapters.ts's principal propagation",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-78",
+    "classification": "OPEN",
+    "evidence": "CL-13 kala_field_snapshots.event_classes conflates attempted with built (ka_kshetra, dormant asset). Corpus cites zero commits. Ingested artifacts show a genuine build attempt that FAILED: builder.json status=FAILED, lane_commits={} (no commit was ever created), files_touched=[]. The branch par/night-F-78 exists locally/remotely but its HEAD is just an unrelated ancestor commit (51096a655, batch-1 F-79/F-141 work) with zero F-78-specific work on it -- confirms no F-78 commit exists anywhere. Verifier's own notes say 'Fix code IS present' but that refers to the builder's local, uncommitted working state, which never made it into any commit. Independently confirmed the underlying defect is still live on current main: writer.py:1760 still does 'list(self._event_classes)' unconditionally into the INSERT with no filtering against self._skipped (populated at 1962-1970); no built_event_classes function exists anywhere in writer.py; no migration 572 exists in platform/supabase/migrations.",
+    "next_action": "re-implement from scratch per the (uncommitted, but ratified/reviewed) spec: writer.py built_event_classes() helper + migration 572 COMMENT ON COLUMN + fix the SAMPURTI-G1-stale test harness (missing stage0/1/3 monkeypatch in the exit test's _run_full_build)",
+    "confidence": "HIGH"
+  },
+  {
+    "finding_id": "F-84",
+    "classification": "LANDED",
+    "evidence": "CL-00 control: FK-orphan and duplicate-key checks on kala_field and chart_facts natural keys. Corpus's own test_status honestly reports a fail-honest SKIP (no DATABASE_URL in the CI/EKV environment that produced the row) rather than a false PASS -- this is itself a correctly-behaving control per SS N.8 (an honest null, not an invented judgment). Source-level verification (this pass, no DB access here either) independently confirms the structural claim: platform/supabase/migrations has multiple UNIQUE constraints on kala_field_* tables (kala_field_natural_key UNIQUE(chart_id,event_class,segment_index) in 492_kala_field_core.sql, plus kinematics/primitives/clocks/boundaries/promise-graph uniques in 488/489/490) and chart_facts.fact_id is a global TEXT PRIMARY KEY (552_chart_fact_identity.sql) referenced by chart_fact_provenance -- these are real, current, on-main constraints matching the claim, even though a live duplicate-row query was not run.",
+    "next_action": "when DB access is available, run the approved read-only duplicate/orphan query to close the live-data half of this control; the schema half is already confirmed",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-88",
+    "classification": "LANDED",
+    "evidence": "CL-00 control: session_recall active-chart-hint vs explicit-chart-pin boundary. Corpus cites zero commits but describes a specific, checkable mechanism. Confirmed on current main: platform-mcp/src/tools/session_tools.ts explicitly documents and implements this boundary -- 'chart_id is ALWAYS ... never relies on active_chart_id for correctness -- only convenience', re-checks entitlement for a stored active_chart_id on every recall_session call (revoking it from the response if access was pulled), and resolves pinTarget = chart_id ?? entitledChartId (explicit always wins). This matches the corpus's 'current-active-chart-hint-and-explicit-chart-pin-boundary-present' claim precisely.",
+    "next_action": "retain as landed; the 21/21 focused-suite claim and the live MCP session_recall probe are still worth running when DB/session infra is available, but the code-level boundary is real and current",
+    "confidence": "MEDIUM"
+  },
+  {
+    "finding_id": "F-99",
+    "classification": "LANDED",
+    "evidence": "CL-00 control: ganita_structural_get treats D1 kala_sarpa_per_varga as authoritative over the generic dosha_label catalog row. Given a genuinely fresh look per instructions (this finding was already demoted twice for weak verification): independently located and read the actual mechanism in register_p1_ganita.ts (lines ~677-694), which explicitly narrates 'A generic \"Kala Sarpa Dosha\" catalog row does appear ... but its cited constituent fact is a generic placeholder ... it is NOT the verified per-chart computation. The kala_sarpa_per_varga fact ... is the authoritative, genuinely per-chart-computed Rahu/Ketu detection.' This is a real, specific, source-level detector (not a proxy) -- exactly the SS N.8 earned-signal bar. A dedicated, substantive test suite exists and matches: get_yoga_dosha.test.ts's 'kala_sarpa_reconciliation (D-1.6 Lane S-2 item c)' describe block has real agrees=true/false assertions comparing dosha_label vs per-varga D1 fires, including a case reproducing the live canonical-chart specimen (482012f1) where the dosha_label row is honestly absent and D1 fires=false. This is independently re-derived from source content, not inherited from the corpus's own bundles.jsonl citation.",
+    "next_action": "retain as landed; a live re-run of the exact cited ganita_structural_get(facet=dosha_fires) canary against the canonical chart would be a cheap final confirmation but is not required to close this given the source+test match",
+    "confidence": "HIGH"
+  }
+]

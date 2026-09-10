@@ -61,7 +61,7 @@
   deity: "Brihaspati"
   remedy_text: "Jupiter governs the North-East (Ishanya) direction, the zone of divine grace and knowledge. The puja room, study, or meditation space should ideally be in the North-East. Keep it clean, elevated, and free of clutter. Yellow or gold color elements activate Jupiter."
   mantra_sanskrit: "ॐ गुरवे नमः"
-  mantra_transliteration: "Om Guruve Namah"
+  mantra_transliteration: "Om Gurave Namah"
   ingredients_jsonb: {"direction": "North-East (Ishanya)", "elements": ["puja room in NE", "yellow or gold colors in NE", "crystals or sacred images", "fresh flowers daily", "avoid toilet or kitchen in NE — major Vastu defect"], "library": "books and sacred texts in NE corner activate Jupiter's blessings"}
   timing_rules_jsonb: {"day": "Thursday", "time": "morning", "implementation": "one-time Vastu arrangement"}
   cost_tier: "accessible"

@@ -1,7 +1,8 @@
 /**
  * query_manifestation_grammar — Manifestation Grammar (L5 Mīmāṃsā)
  * ===================================================================
- * Queries mimamsa_manifestation_grammar (mi_sambandha) — count unknown, per_chart.
+ * Queries mimamsa_manifestation_grammar (mi_sambandha) — per_chart; the row count is a
+ * live quantity the handler measures and returns as `total_matching`, never pinned in prose.
  * Returns per-native grammar of how each signal/house/karaka expresses:
  *   structural cells (classical prediction) + empirical cells (observed expression).
  *
@@ -66,6 +67,14 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 15 },
   },
 
+  // NIRMĀṆA L5 W3-3 (§N.6 / plan §2 D-SERVICE P8). paginated: clamped `top_k` LIMIT with
+  // a measured `total_matching` + `more_available`.
+  density_contract: {
+    paginated: true,
+    facets: ['origin_kind', 'origin_ref', 'domain'],
+    empty_reason: true,
+  },
+
   async handler(args: Record<string, unknown>, _ctx: unknown) {
     const chart_id = args['chart_id'] as string
     if (!chart_id) {
@@ -86,6 +95,8 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
       if (origin_ref)  { conds.push(`origin_ref = $${p++}`);  params.push(origin_ref) }
       if (domain)      { conds.push(`domain = $${p++}`);      params.push(domain) }
 
+      const where = conds.join(' AND ')
+      const countParams = [...params]
       params.push(top_k)
 
       const sql = `
@@ -95,12 +106,20 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
                confidence_band, evidence_grade, citation_ref,
                grammar_formula_version, updated_at
         FROM mimamsa_manifestation_grammar
-        WHERE ${conds.join(' AND ')}
+        WHERE ${where}
         ORDER BY channel_propensity DESC NULLS LAST
         LIMIT $${p}
       `
 
-      const result = await query(sql, params)
+      // Family size BEFORE the LIMIT, same filters as the page (§N.6 item 4).
+      const [result, countResult] = await Promise.all([
+        query(sql, params),
+        query<{ total: string }>(
+          `SELECT COUNT(*)::text AS total FROM mimamsa_manifestation_grammar WHERE ${where}`,
+          countParams,
+        ),
+      ])
+      const total_matching = Number(countResult.rows[0]?.total ?? 0)
       const originRefs = [...new Set(
         (result.rows as Array<{ origin_ref?: string }>).map(r => r.origin_ref).filter(Boolean) as string[]
       )]
@@ -110,9 +129,22 @@ export const queryManifestationGrammarCapability: CapabilityDescriptor = {
           chart_id,
           grammar_rows:  result.rows,
           row_count:     result.rows.length,
+          total_matching,
+          more_available: total_matching > result.rows.length,
           origin_refs:   originRefs,
+          ...(result.rows.length === 0
+            ? {
+                empty_reason:
+                  `No manifestation-grammar rows matched for chart ${chart_id} ` +
+                  `(origin_kind=${origin_kind ?? 'any'}, origin_ref=${origin_ref ?? 'any'}, ` +
+                  `domain=${domain ?? 'any'}). Reported rather than served as a hollow envelope.`,
+              }
+            : {}),
           filters: { origin_kind, origin_ref, domain, top_k },
-          provenance: { tables: ['mimamsa_manifestation_grammar'] },
+          provenance: {
+            tables: ['mimamsa_manifestation_grammar'],
+            source: 'L5 Mīmāṃsā manifestation grammar (mi_sambandha); served chart-scoped.',
+          },
         },
         is_error: false,
       }

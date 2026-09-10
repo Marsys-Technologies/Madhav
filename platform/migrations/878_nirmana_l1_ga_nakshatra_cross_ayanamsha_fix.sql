@@ -1,0 +1,53 @@
+-- 878_nirmana_l1_ga_nakshatra_cross_ayanamsha_fix.sql
+--
+-- NIRMANA v2.1 -- L1 (Ganita) W3 IMPLEMENT. Transaction ownership belongs to
+-- platform/scripts/migrate.ts.
+--
+-- Resolves the close report's own flagged-but-deferred finding: "The
+-- get_nakshatra.ts 3-category docstring overclaim remains untouched and
+-- genuinely needs its own separate investigation" (§5, cycle 157). On
+-- investigation the claim turned out to be PARTLY wrong, not just
+-- unverified: only ONE of the three (`nakshatra_lord_placement`) is a
+-- genuine overclaim -- the other two (`graha_degree_flags`,
+-- `nakshatra_exchange`) were already independently confirmed real,
+-- writer-owned categories back in migration 872's own investigation, and a
+-- THIRD category, `nakshatra_cross_ayanamsha`, turned out to be a genuine
+-- MISS from that same migration -- present in `count_sql` and in
+-- `get_nakshatra.ts`'s own `NAKSHATRA_CATEGORIES` const, but absent from
+-- `natural_key_partition`, because migration 872's investigation checked
+-- `ga_nakshatra_emitters.py` + `ga_kp_significators.py` but never checked
+-- `pipeline/orchestrator/writers/ga_nakshatra.py` itself, which emits this
+-- one category directly (lines ~458-478, a real, currently-active
+-- `run_substep` code path writing via `replace_prior_chart_facts`,
+-- confirmed live: 17 rows for the canonical chart, `fact_key`s
+-- `nak_5ay_consistency` and `stable_nakshatra_id`).
+--
+-- `nakshatra_lord_placement` genuinely has NO writer emission anywhere --
+-- grepped `ga_writers/*.py` AND `pipeline/orchestrator/writers/ga_
+-- nakshatra.py` for a literal `"fact_category": "nakshatra_lord_
+-- placement"` (or equivalent constructor call): zero hits outside its own
+-- declared-but-unused `GA_NAKSHATRA_FACT_CATEGORIES` list entry. Zero live
+-- rows, confirmed live for the canonical chart, matching this class of
+-- defect (`graha_yuddha_per_varga`'s own precedent, cycle 153).
+--
+-- True, complete category ownership (verified against all three source
+-- files, cross-checked live): the 14 categories already in natural_key_
+-- partition, PLUS `nakshatra_cross_ayanamsha` -- 15 total, EXCLUDING
+-- `nakshatra_lord_placement`.
+--
+-- Fix 1: `natural_key_partition` -- add the missing `nakshatra_cross_
+-- ayanamsha`.
+-- Fix 2: `count_sql` -- remove the dead `nakshatra_lord_placement`
+-- (numerically harmless -- it has always contributed 0 rows to the
+-- count -- but semantically wrong to claim as part of what this asset
+-- counts).
+--
+-- No overlap re-check needed against the 6 already-migrated sibling
+-- `chart_facts` co-writers for `nakshatra_cross_ayanamsha` specifically
+-- (its own name is unique enough, and it is already present in the live
+-- `count_sql` this migration only trims, not extends, in that direction).
+
+UPDATE asset_registry
+   SET natural_key_partition = 'chart_facts.fact_category IN (graha_nakshatra_join, graha_pada_join, cusp_kp_lords, graha_degree_flags, graha_gandanta, graha_kp_lords, graha_tara_bala, nakshatra_cogravity, nakshatra_conjunction, nakshatra_cross_ayanamsha, nakshatra_dispositor, nakshatra_exchange, nakshatra_statistics, kp_house_significators, kp_planet_significations)',
+       count_sql = $sql$SELECT count(*) FROM chart_facts WHERE chart_id = $1 AND fact_category IN ('graha_nakshatra_join','graha_pada_join','graha_kp_lords','cusp_kp_lords','graha_gandanta','graha_degree_flags','nakshatra_dispositor','nakshatra_exchange','nakshatra_conjunction','nakshatra_cogravity','graha_tara_bala','nakshatra_statistics','nakshatra_cross_ayanamsha','kp_house_significators','kp_planet_significations')$sql$
+ WHERE asset_id = 'ga_nakshatra';

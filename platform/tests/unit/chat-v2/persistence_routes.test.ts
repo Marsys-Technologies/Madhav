@@ -29,7 +29,16 @@ vi.mock('@/lib/firebase/server', () => ({
 }))
 
 vi.mock('@/lib/db/client', () => ({
-  query: vi.fn(async () => ({ rows: [{ role: 'user' }] })),
+  // S1-F-001: /api/conversations now gates chartId through authorizeChartAccess,
+  // which queries `profiles.role`, `charts.owner_id`, and `chart_grants` in
+  // addition to any route-local lookups — dispatch by SQL shape so each gets
+  // its own believable row instead of one flat `{ role: 'user' }` for every call.
+  query: vi.fn(async (sql: string) => {
+    if (/FROM profiles/.test(sql)) return { rows: [{ role: 'user' }] }
+    if (/owner_id[\s\S]*FROM charts/.test(sql)) return { rows: [] }
+    if (/FROM chart_grants/.test(sql)) return { rows: [{ permission: 'view' }] }
+    return { rows: [{ role: 'user' }] }
+  }),
 }))
 
 vi.mock('server-only', () => ({}))
@@ -53,6 +62,7 @@ vi.mock('@/lib/persistence/conversation_writer', () => ({
 vi.mock('@/lib/errors', () => ({
   res: {
     unauthenticated: () => new Response('Unauthorized', { status: 401 }),
+    forbidden: () => new Response('Forbidden', { status: 403 }),
     badRequest: (msg: string) => new Response(msg, { status: 400 }),
     notFound: (entity: string) => new Response(`${entity} not found`, { status: 404 }),
     dbError: () => new Response('DB error', { status: 500 }),

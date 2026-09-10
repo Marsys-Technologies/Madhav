@@ -63,7 +63,13 @@ interface Props {
   onPersonaChange?: (personaId: string | null) => void
 }
 
-const ANTHROPIC_HIDDEN = process.env.NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN === 'true'
+// DD-2 (PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md §2): ANTHROPIC_API_KEY is
+// unprovisioned in production and the anthropic stack has been failing silently
+// since 2026-08-01 (production default is Gemini). Delist it from the stack
+// picker rather than provision a key. Hidden by default; set
+// NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN=false explicitly to re-show it once a key
+// is provisioned and the qualification suite passes.
+const ANTHROPIC_HIDDEN = process.env.NEXT_PUBLIC_MARSYS_ANTHROPIC_HIDDEN !== 'false'
 
 export function ModelStylePicker({ stack, style, onStackChange, onStyleChange, disabled, activePersonaId, onPersonaChange }: Props) {
   const stacks = stackPicker().filter(s => !(ANTHROPIC_HIDDEN && s.stack === 'anthropic'))

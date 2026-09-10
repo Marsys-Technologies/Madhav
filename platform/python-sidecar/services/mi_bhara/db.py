@@ -178,6 +178,7 @@ def fetch_open_predictions(
              WHERE chart_id = %s
                AND lifecycle_status = 'open'
                AND observation_window IS NOT NULL
+               AND NOT isempty(observation_window)
              ORDER BY prediction_id
             """,
             (birth_iso, birth_iso, birth_iso, chart_id),

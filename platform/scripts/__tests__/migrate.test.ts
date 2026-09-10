@@ -127,6 +127,20 @@ describe('collectMigrationFiles', () => {
     }
   })
 
+  it('replays the wave-one provenance contract after its active text-table creator', () => {
+    const migrationNames = collectMigrationFiles([
+      path.resolve(process.cwd(), 'migrations'),
+      path.resolve(process.cwd(), 'supabase/migrations'),
+    ]).map(file => file.name)
+    const prerequisiteIndex = migrationNames.indexOf('ws2_l0_texts.sql')
+    const targetIndex = migrationNames.indexOf(
+      '630_nirmana_l0_wave1_correctness_contract.sql'
+    )
+
+    expect(prerequisiteIndex).toBeGreaterThanOrEqual(0)
+    expect(targetIndex).toBe(prerequisiteIndex + 1)
+  })
+
   it('skips non-existent dirs', () => {
     const files = collectMigrationFiles(['/no/such/dir'])
     expect(files).toHaveLength(0)
@@ -738,17 +752,62 @@ describe('loadRenumberDisclosures', () => {
     }
   })
 
-  it('the checked-in allowlist parses; two known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07)', () => {
+  it('the checked-in allowlist parses; twelve known disclosures: 484→543 bg_muhurta_lattice + 485→544 bg_parihara_rules (2026-08-07) + 692→821 mi_vistara output_digest_spec + 806→820 mi_jivanaghatana output_digest_spec (2026-09-06) + 880→881 ga_dashas output_digest_spec + 896→897 + 897→898 ga_transit_anchors grant (2026-09-07) + 935→937 + 936→938 bo_bimba output_digest_spec/natural_key_partition + 950→966 bo_karanajala edge/contradiction identity fix + 976→980 + 977→981 ka_sangam output_digest_spec/natural_key_partition (2026-09-09)', () => {
     // This test intentionally fails when entries are added without updating it — the canary
-    // forces documentation of each real renumber event. Current disclosed set: exactly 2.
+    // forces documentation of each real renumber event. Current disclosed set: exactly 12.
     // Entry 1: 484_bg_muhurta_lattice.sql applied to prod, renumbered to 543 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31140238243).
     // Entry 2: 485_bg_parihara_rules.sql applied to prod, renumbered to 544 during ṢAḌ-DARŚANA.
     //   Disclosed 2026-08-07 (MigrationRenumberedError on deploy run 31143327280).
+    // Entry 3: 692_nirmana_l5_mi_vistara_output_digest_spec.sql applied to the shared dev DB,
+    //   renumbered 808->810->812->821 (final -- into L5's dedicated 820-839 range per adjudication #2086) after colliding with an unrelated 692_bg_doshas_... migration that
+    //   merged to main first. Disclosed 2026-09-06 (self-diagnosed by the L5 NIRMANA campaign
+    //   lane via an independent migration-guard review of a sibling migration, PR #1844).
+    // Entry 4: 806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql applied to the shared dev
+    //   DB, renumbered 809->811->813->820 (final -- into L5's dedicated 820-839 range per adjudication #2086) after colliding with an unrelated L1 806 migration that merged to
+    //   main first. Disclosed 2026-09-06 (self-diagnosed proactively by the L5 NIRMANA campaign
+    //   lane while reconciling the sibling 692->808 collision on PR #1844, same session).
+    // Entry 5: 880_nirmana_l1_ga_dashas_output_digest_spec.sql applied to production, renumbered
+    //   to 881 after colliding with an unrelated, independently-authored L2 880 migration
+    //   (bo_sudarshana_natural_key_partition, PR #2262) that merged to main first. Disclosed
+    //   2026-09-07 (caught by the E2 NEW-COLLISION CI gate on PR #2272 before merge, by the L1
+    //   NIRMANA campaign lane).
+    // Entry 6: 896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql applied to
+    //   production, renumbered to 897 after colliding with an unrelated, independently-authored
+    //   L2 896 migration (bo_sudarshana_output_digest_spec) that merged to main first. Disclosed
+    //   2026-09-07 (caught by the E2 NEW-COLLISION CI gate on PR #2329 before merge, by the L1
+    //   NIRMANA campaign lane).
+    // Entry 7: the SAME file, renumbered a second time, 897->898, after the merge queue's own
+    //   speculative merge-group check caught ANOTHER collision at 897 against an unrelated,
+    //   independently-authored, still-in-flight L2 897 migration (bo_bodha_grounding_matches_
+    //   schema, PR #2346, ahead of PR #2329 in the merge queue) before either PR had actually
+    //   merged to main. Disclosed 2026-09-07 (caught by the merge queue's speculative
+    //   merge-group Unit Tests run for PR #2329, by the L1 NIRMANA campaign lane).
+    // Entry 8: 935_nirmana_l2_bo_bimba_output_digest_spec.sql applied to production under the
+    //   DB-only fast-path ruling (#1770, cycle 361) on this same PR's own branch, renumbered to
+    //   937 after colliding with two OTHER concurrently open PRs (#2472/#2473) also claiming
+    //   935/936 for an unrelated grant pair. Disclosed 2026-09-09 (self-diagnosed during this
+    //   PR's own pre-merge PR-hygiene pass, by the L1 NIRMANA campaign lane).
+    // Entry 9: 936_nirmana_l2_bo_bimba_natural_key_partition.sql, sibling to Entry 8, same
+    //   three-way collision, same in-branch renumber commit, renumbered to 938. Disclosed
+    //   2026-09-09 (same pre-merge discovery as Entry 8).
+    // Entry 10: 950_bo_karanajala_edge_contradiction_identity.sql, applied to production by the
+    //   L2 lane (#1888/D-CND-29-class fix for PR #2482), collided at 950 with an unrelated,
+    //   independently-authored L5 migration also numbered 950. L2's PR #2482 renumbered its file
+    //   to 966 before merging, but the already-applied production row stayed under the OLD
+    //   filename. Disclosed 2026-09-09 (self-diagnosed by the L1 NIRMANA campaign lane via a
+    //   blocked migrate.ts --dry-run the cycle immediately after PR #2482 merged).
+    // Entry 11: 976_nirmana_l3_ka_sangam_output_digest_spec.sql, applied to production by the L1
+    //   lane (PR #2496), renumbered to 980 by a later in-lane commit for a cross-lane collision
+    //   after the 976/977 files had already merged and deployed. Disclosed 2026-09-09 (Conductor
+    //   lane, diagnosed from a real post-merge deploy failure, run 34307247313).
+    // Entry 12: 977_nirmana_l3_ka_sangam_natural_key_partition.sql, sibling to Entry 11, same
+    //   renumber commit, renumbered to 981. Disclosed 2026-09-09 (Conductor lane, proactively
+    //   alongside Entry 11 in the same pass).
     const real = path.resolve(__dirname, '../ci/migration_renumber_disclosed.json')
     expect(fs.existsSync(real)).toBe(true)
     const map = loadRenumberDisclosures(real)
-    expect(map.size).toBe(2)
+    expect(map.size).toBe(12)
     const entry543 = map.get('543_bg_muhurta_lattice.sql')
     expect(entry543).toBeDefined()
     expect(entry543!.applied_filename).toBe('484_bg_muhurta_lattice.sql')
@@ -761,6 +820,66 @@ describe('loadRenumberDisclosures', () => {
     expect(entry544!.sql_identity).toBe('42587f528d94e01f59a41c8a5f9fff2ea60d1abacf913fb8da20ab5e4fb0eb08')
     expect(entry544!.disposition).toBe('already-applied-under-old-name')
     expect(entry544!.disclosed_on).toBe('2026-08-07')
+    const entry821 = map.get('821_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry821).toBeDefined()
+    expect(entry821!.applied_filename).toBe('692_nirmana_l5_mi_vistara_output_digest_spec.sql')
+    expect(entry821!.sql_identity).toBe('24a46f3ceb62529bbed913f0a969806a84b528a558f4dadaeed4997772be5dd8')
+    expect(entry821!.disposition).toBe('already-applied-under-old-name')
+    expect(entry821!.disclosed_on).toBe('2026-09-06')
+    const entry820 = map.get('820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
+    expect(entry820).toBeDefined()
+    expect(entry820!.applied_filename).toBe('806_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql')
+    expect(entry820!.sql_identity).toBe('2490ae2d69d3a7ed465a708e2d9564602e3fc5fe0ac6ba8690af7e1d0663f102')
+    expect(entry820!.disposition).toBe('already-applied-under-old-name')
+    expect(entry820!.disclosed_on).toBe('2026-09-06')
+    const entry881 = map.get('881_nirmana_l1_ga_dashas_output_digest_spec.sql')
+    expect(entry881).toBeDefined()
+    expect(entry881!.applied_filename).toBe('880_nirmana_l1_ga_dashas_output_digest_spec.sql')
+    expect(entry881!.sql_identity).toBe('b641c15e348896ddff992f0a560fe69c13db103104df156479f0e5b6b666e19d')
+    expect(entry881!.disposition).toBe('already-applied-under-old-name')
+    expect(entry881!.disclosed_on).toBe('2026-09-07')
+    const entry897 = map.get('897_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry897).toBeDefined()
+    expect(entry897!.applied_filename).toBe('896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry897!.sql_identity).toBe('fe69f2f440828433117c3542f861538e17182b54c55a65706471d3a8df00f8a9')
+    expect(entry897!.disposition).toBe('already-applied-under-old-name')
+    expect(entry897!.disclosed_on).toBe('2026-09-07')
+    const entry898 = map.get('898_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry898).toBeDefined()
+    expect(entry898!.applied_filename).toBe('896_nirmana_evidence_ingress_writer_ga_transit_anchors_grant.sql')
+    expect(entry898!.sql_identity).toBe('fe69f2f440828433117c3542f861538e17182b54c55a65706471d3a8df00f8a9')
+    expect(entry898!.disposition).toBe('already-applied-under-old-name')
+    expect(entry898!.disclosed_on).toBe('2026-09-07')
+    const entry937 = map.get('937_nirmana_l2_bo_bimba_output_digest_spec.sql')
+    expect(entry937).toBeDefined()
+    expect(entry937!.applied_filename).toBe('935_nirmana_l2_bo_bimba_output_digest_spec.sql')
+    expect(entry937!.sql_identity).toBe('e419cdc9c08e809af17c95c552aa3df9810ba98c527aede5dd61e46eefb4f385')
+    expect(entry937!.disposition).toBe('already-applied-under-old-name')
+    expect(entry937!.disclosed_on).toBe('2026-09-09')
+    const entry938 = map.get('938_nirmana_l2_bo_bimba_natural_key_partition.sql')
+    expect(entry938).toBeDefined()
+    expect(entry938!.applied_filename).toBe('936_nirmana_l2_bo_bimba_natural_key_partition.sql')
+    expect(entry938!.sql_identity).toBe('c25c9f3f7f522018ead3ce8e5b69c415c08a97aa1487e3f497366ccb887d32d3')
+    expect(entry938!.disposition).toBe('already-applied-under-old-name')
+    expect(entry938!.disclosed_on).toBe('2026-09-09')
+    const entry966 = map.get('966_bo_karanajala_edge_contradiction_identity.sql')
+    expect(entry966).toBeDefined()
+    expect(entry966!.applied_filename).toBe('950_bo_karanajala_edge_contradiction_identity.sql')
+    expect(entry966!.sql_identity).toBe('f6861ea379e2999c470975a490419efa44a02fd4e68c475199f6cb34fc29d867')
+    expect(entry966!.disposition).toBe('already-applied-under-old-name')
+    expect(entry966!.disclosed_on).toBe('2026-09-09')
+    const entry980 = map.get('980_nirmana_l3_ka_sangam_output_digest_spec.sql')
+    expect(entry980).toBeDefined()
+    expect(entry980!.applied_filename).toBe('976_nirmana_l3_ka_sangam_output_digest_spec.sql')
+    expect(entry980!.sql_identity).toBe('b7d0df3aa24185f00c92548b52a6d58abc5603f1825c2a15aade429bd8e9f3fb')
+    expect(entry980!.disposition).toBe('already-applied-under-old-name')
+    expect(entry980!.disclosed_on).toBe('2026-09-09')
+    const entry981 = map.get('981_nirmana_l3_ka_sangam_natural_key_partition.sql')
+    expect(entry981).toBeDefined()
+    expect(entry981!.applied_filename).toBe('977_nirmana_l3_ka_sangam_natural_key_partition.sql')
+    expect(entry981!.sql_identity).toBe('42c24b6385b5c05c9da4e4b062fe428b1412f74ac4f185d46eb84a4e791e8c21')
+    expect(entry981!.disposition).toBe('already-applied-under-old-name')
+    expect(entry981!.disclosed_on).toBe('2026-09-09')
   })
 })
 

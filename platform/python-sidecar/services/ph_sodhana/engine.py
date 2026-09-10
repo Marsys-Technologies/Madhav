@@ -32,6 +32,7 @@ __all__ = [
     'detect_ledger_gap',
     'detect_layer_leakage',
     'detect_confidence_degenerate',
+    'detect_ceiling_inputs_degenerate',
     'derive_sodhana_flags',
 ]
 
@@ -113,8 +114,26 @@ class SodhanaRecord:
 
 
 def _g_ladder_ceiling(n_independent: Optional[int], ayanamsha_robustness: Optional[int]) -> float:
-    n   = min(max(int(n_independent or 1), 1), 6)
-    rob = min(max(int(ayanamsha_robustness or 3), 0), 5)
+    """
+    F-12 (L4_W1_ANALYSIS_BATCH_C.md §1.5(a), §N.7 item 1/6): `int(x or default)` treats a
+    genuine measured 0 identically to "unknown, use the default" -- the falsy-zero coercion
+    class this campaign has fixed repeatedly elsewhere.
+
+    For `n_independent` this is numerically inert (the clamp floor is already 1, so 0 and
+    None land on the same result either way) -- kept as an explicit None-check anyway so the
+    code says what it means, not because the output changes.
+
+    For `ayanamsha_robustness` this is NOT inert: 0 is a legal, meaningful value inside its
+    [0, 5] clamp range (the worst-robustness case, rob_factor floor 0.80) -- `0 or 3` silently
+    substituted the "normal middle" default (3) for the "zero robustness" measurement,
+    producing a MORE LENIENT ceiling than the true input warrants. A chart whose robustness
+    genuinely measures 0 would have confidence_inflation checked against a laxer bar than it
+    should be. No live anchor currently has ayanamsha_robustness=0 (measured: constant at 3
+    across all anchors on both charts today -- see F-13's detect_ceiling_inputs_degenerate),
+    but the correction matters once that stops being true.
+    """
+    n   = min(max(n_independent if n_independent is not None else 1, 1), 6)
+    rob = min(max(ayanamsha_robustness if ayanamsha_robustness is not None else 3, 0), 5)
     rob_factor = _ROBUSTNESS_FACTOR_MIN + 0.04 * rob
     return min(_CONF_CAP, (0.50 + 0.05 * n) * rob_factor)
 
@@ -249,8 +268,15 @@ def detect_layer_leakage(anchor: AnchorRow) -> Optional[SodhanaRecord]:
     Returns a record with leakage_class = 'l5_calibration_attempted'.
     The WRITER raises LeakageFirewallError when it sees this record type.
     """
+    # F-14 (L4_W1_ANALYSIS_BATCH_C.md §1.5(c)): the prior `if basis and basis != ...`
+    # let a NULL/empty confidence_basis pass silently -- the truthy check on `basis`
+    # short-circuited before the inequality ever ran. A writer that omits
+    # confidence_basis entirely is exactly the failure mode this firewall exists to
+    # catch (§N.8: a detector that watches a proxy of the claim, not the claim
+    # itself -- here the claim is "confidence_basis IS 'structural_not_yet_empirical'",
+    # and NULL/empty is not that, same as any other wrong value).
     basis = (anchor.confidence_basis or '').strip()
-    if basis and basis != 'structural_not_yet_empirical':
+    if basis != 'structural_not_yet_empirical':
         return SodhanaRecord(
             anchor_id=anchor.anchor_id,
             anomaly_type='layer_leakage',
@@ -326,6 +352,65 @@ def detect_confidence_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]
     )
 
 
+def detect_ceiling_inputs_degenerate(ctx: SodhanaContext) -> Optional[SodhanaRecord]:
+    """
+    F-13 (L4_W1_ANALYSIS_BATCH_C.md §1.5(b), §N.8): detect_confidence_degenerate
+    guards confidence_high's variance -- but confidence_high can vary for reasons
+    unrelated to the G-LADDER ceiling (it has 10 distinct values on the canonical
+    chart today and correctly passes that check) WHILE the ceiling's own two
+    inputs -- dasha_consensus_count and ayanamsha_robustness -- are simultaneously
+    a chart-wide constant (measured: exactly one (0, 3) pair across all 139
+    anchors). That is the live instance detect_confidence_degenerate exists to
+    catch, on a different axis it never looks at -- a detector that watches a
+    proxy of the claim, not the claim itself.
+
+    This is the rewrite-floor-clean addition, not a replacement: it fires on a
+    real corruption class (ceiling inputs frozen chart-wide) the sibling detector
+    structurally cannot see, and does not touch that detector's own behaviour.
+    """
+    n_values = [a.dasha_consensus_count for a in ctx.anchors if a.dasha_consensus_count is not None]
+    rob_values = [a.ayanamsha_robustness for a in ctx.anchors if a.ayanamsha_robustness is not None]
+    if len(n_values) < _DEGENERATE_MIN_ANCHORS or len(rob_values) < _DEGENERATE_MIN_ANCHORS:
+        return None
+
+    n_distinct = set(n_values)
+    rob_distinct = set(rob_values)
+    if len(n_distinct) > 1 or len(rob_distinct) > 1:
+        return None
+
+    anchor = ctx.anchors[0]
+    n_const = next(iter(n_distinct))
+    rob_const = next(iter(rob_distinct))
+    return SodhanaRecord(
+        anchor_id=anchor.anchor_id,
+        anomaly_type='ceiling_inputs_degenerate',
+        anomaly_severity='major',
+        detected_field='dasha_consensus_count,ayanamsha_robustness',
+        expected_value_text='dasha_consensus_count and ayanamsha_robustness varying per anchor '
+                             '(the G-LADDER ceiling is meant to be a per-anchor calibration)',
+        observed_value_text=f'dasha_consensus_count={n_const}, ayanamsha_robustness={rob_const} '
+                             f'constant across all {len(n_values)} anchors',
+        leakage_class=None,
+        recommendation_text=(
+            'The G-LADDER confidence ceiling (_g_ladder_ceiling) is computed from '
+            'dasha_consensus_count and ayanamsha_robustness -- both are numerically '
+            'identical across every anchor in this chart, so the "per-anchor calibration" '
+            'confidence_inflation checks against is actually one chart-wide constant. '
+            'confidence_inflation and confidence_degenerate can both stay clean while this '
+            'holds, because neither examines these two inputs directly -- investigate '
+            'ph_nimitta._build_ctx (or wherever these two fields are sourced) before '
+            'treating any confidence_inflation clean bill of health as meaningful.'
+        ),
+        derivation_ledger_jsonb={
+            'chart_id': str(ctx.chart_id),
+            'anchor_count': len(n_values),
+            'constant_dasha_consensus_count': n_const,
+            'constant_ayanamsha_robustness': rob_const,
+        },
+        source_citation=f'ph_sodhana/ceiling_inputs_degenerate/{ctx.chart_id}',
+    )
+
+
 def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
     """
     Run all detectors over every anchor. Returns list of SodhanaRecords.
@@ -352,10 +437,14 @@ def derive_sodhana_flags(ctx: SodhanaContext) -> list[SodhanaRecord]:
                 else:
                     records.append(rec)
 
-    # Chart-wide detector (operates over all anchors at once, not per-anchor)
+    # Chart-wide detectors (operate over all anchors at once, not per-anchor)
     degenerate_rec = detect_confidence_degenerate(ctx)
     if degenerate_rec is not None:
         records.append(degenerate_rec)
+
+    ceiling_degenerate_rec = detect_ceiling_inputs_degenerate(ctx)
+    if ceiling_degenerate_rec is not None:
+        records.append(ceiling_degenerate_rec)
 
     # LEAKAGE-FIREWALL: halt before any insert
     if leakage_found:

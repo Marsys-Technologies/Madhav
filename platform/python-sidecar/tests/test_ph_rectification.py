@@ -618,13 +618,27 @@ def test_structural_chart_yields_calibration_state_structural():
 
 
 def test_calibrated_chart_yields_calibration_state_calibrated():
-    """A chart with >= 10 recorded life events → calibration_state='calibrated'."""
+    """A chart with >= 10 recorded life events -> calibration_state='calibrated'.
+
+    load_bearing is False here even though calibration_state is 'calibrated':
+    _stub_ascendant only ever varies lagna sign OUTSIDE the offset range where
+    score_candidate() actually scores a candidate (scoring requires
+    lagna_stable=True, which by construction means the candidate's sign equals
+    the reference/offset-0 sign for every ayanamsha) -- so every SCORED
+    candidate in this fixture shares one lagna sign and therefore one identical
+    match count. win_margin is exactly 0 as a structural consequence, same
+    shape as the measured production defect (F3, L4_W1_ANALYSIS_BATCH_D.md):
+    calibration_state answers "were there enough events" (availability);
+    load_bearing must also answer "did the fit discriminate between offsets"
+    (see _apply_discrimination_gate) -- this fixture answers availability=yes,
+    discrimination=no, so the honest load_bearing is False."""
     flags = _run_writer_capture(12, n_min_row=[])
     assert flags is not None
     assert flags["calibration_state"] == "calibrated"
     assert flags["calibration"] == "calibrated"
     assert flags["rectification_basis"] == "lel_fit"
-    assert flags["load_bearing"] is True
+    assert flags["load_bearing"] is False
+    assert "load_bearing_note" in flags
     assert flags["lel_event_count"] == 12
 
 

@@ -45,8 +45,17 @@ describe('deriveState — badge-honesty (partial vs error)', () => {
     ).toBe('lit')
   })
 
-  it('service/not_migrated/is_active=false still short-circuit before the partial check', () => {
-    expect(deriveState({ asset_type: 'service', has_substeps: true }, null, 'x', 'error', 5)).toBe('service_ok')
+  it('services require measured health evidence rather than registration alone', () => {
+    expect(deriveState({ asset_type: 'service', has_substeps: true }, null, 'x', 'error', 5)).toBe('service_down')
+    expect(deriveState({ asset_type: 'service', service_health: 'unknown' }, null, null, null)).toBe('dormant')
+    expect(deriveState({
+      asset_type: 'service', service_health: 'healthy',
+      last_invoked_at: '2026-08-27T01:00:00Z', last_selftest_at: '2026-08-27T01:00:00Z',
+    }, null, null, 'lit')).toBe('service_ok')
+    expect(deriveState({
+      asset_type: 'service', service_health: 'healthy',
+      last_selftest_at: '2026-08-27T01:00:00Z',
+    }, null, null, 'lit')).toBe('service_ok')
     expect(deriveState({ is_active: false, has_substeps: true }, null, 'x', 'error', 5)).toBe('not_migrated')
   })
 })
@@ -134,9 +143,9 @@ describe('deriveState — incomplete is never lit (SAMĀPTI B-COCKPIT-INCOMPLETE
     expect(deriveState({ has_substeps: true, target_floor: 0 }, 0, null, 'incomplete', 0)).toBe('incomplete')
   })
 
-  it('service and not_migrated still short-circuit ahead of it (ordering unchanged)', () => {
-    expect(deriveState({ asset_type: 'service' }, 99, null, 'incomplete', 3)).toBe('service_ok')
-    expect(deriveState({ asset_kind: 'service' }, 99, null, 'incomplete', 3)).toBe('service_ok')
+  it('service evidence remains non-ready without a measured healthy completion', () => {
+    expect(deriveState({ asset_type: 'service' }, 99, null, 'incomplete', 3)).toBe('dormant')
+    expect(deriveState({ asset_kind: 'service', service_health: 'unhealthy' }, 99, null, 'incomplete', 3)).toBe('service_down')
     expect(deriveState({ is_active: false }, 99, null, 'incomplete', 3)).toBe('not_migrated')
   })
 

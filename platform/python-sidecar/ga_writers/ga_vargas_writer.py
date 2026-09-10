@@ -61,6 +61,7 @@ from typing import Any
 
 import psycopg.rows
 
+from brahmagyan.dignity_oracle import classify_dignity
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
@@ -117,17 +118,55 @@ _FLOORED_BODY_TO_SUBJECT = {
 BODY_TO_SUBJECT = {name: norm_graha(name) for name in CLASSICAL_BODIES}
 BODY_TO_SUBJECT.update(_FLOORED_BODY_TO_SUBJECT)
 
-# Saptavargaja bala: 7 vargas used by D1 (D1=moolam, D2, D3, D9, D12, D30, D60)
-SAPTAVARGA_SET = {1, 2, 3, 9, 12, 30, 60}
+# Saptavargaja bala: the classical Sapta-varga group —
+#   Rasi (D1), Hora (D2), Drekkana (D3), Saptamsa (D7), Navamsa (D9),
+#   Dwadasamsa (D12), Trimsamsa (D30).
+#
+# F-61 correction (PARIŚEṢA-V4): this set previously read {1,2,3,9,12,30,60},
+# i.e. it EXCLUDED D7 (Saptamsa — a real member, the division the group is
+# literally named for) and INCLUDED D60 (Shashtiamsa — not a saptavarga
+# member; D60 belongs to the Shodasavarga/Vimsopaka group, see
+# VIMSOPAKA_SHODA_WEIGHTS below). The membership is not a judgement call —
+# three independent authorities in this repo's own reach agree:
+#
+#   1. This project's own L0 canonical reference table, which is the
+#      authority L1 writers are supposed to inherit from:
+#        brahmagyan/l0_reference.py — strength_reference row
+#        `saptavargaja_bala`.formula_text ==
+#        "Sum of dignity points across D1,D2,D3,D7,D9,D12,D30"
+#      and the varga-group table at l0_reference.py:821,
+#        "saptavarga": {D1,D2,D3,D7,D9,D12,D30}   (no D60).
+#   2. PyJHora — the engine this writer already delegates its compound-relation
+#      ladder to — `jhora.const.sapthavargaja_factors == [1,2,3,7,9,12,30]`
+#      (installed 4.8.6), consumed by
+#      `jhora.horoscope.chart.strength._sapthavargaja_bala1/_sthana_bala`.
+#   3. BPHS Ch. 27 (Shadbala Adhyaya), Sthana Bala / Saptavargaja Bala.
+#
+# The prior set was therefore an internal-consistency violation against this
+# project's own L0 authority (§N.5: L1 does not get to restate an L0/L1
+# reference as its own divergent truth).
+SAPTAVARGA_SET = {1, 2, 3, 7, 9, 12, 30}
 # 7 classical grahas for shadbala (no Rahu/Ketu/Lagna)
 CLASSICAL_7_GRAHAS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
-# Vimsopaka weights per 16-varga Shodasavarga system (BPHS)
+# Vimsopaka weights per 16-varga Shodasavarga system (BPHS Ch.7).
+#
+# F-168 fix (PARIŚEṢA-V4): D40 and D45 were both wrongly 1.0, making this
+# table sum to 21.0 rather than the required 20 (Vimsopaka == "twenty-point").
+# L0 canonical authority — brahmagyan/l0_reference.py, _VIMSHOPAKA["shodashavarga"]
+# — and PyJHora (jhora.const.py:228-231) both agree D40 and D45 are 0.5. This
+# was simultaneously a wrapper-local constant shadowing an L0 value (§N.7
+# item 3) and an arithmetic error; fixed to match L0/PyJHora exactly.
 VIMSOPAKA_SHODA_WEIGHTS = {
     1: 3.5, 2: 1.0, 3: 1.0, 4: 0.5, 7: 0.5, 9: 3.0,
     10: 0.5, 12: 0.5, 16: 2.0, 20: 0.5, 24: 0.5,
-    27: 0.5, 30: 1.0, 40: 1.0, 45: 1.0, 60: 4.0,
+    27: 0.5, 30: 1.0, 40: 0.5, 45: 0.5, 60: 4.0,
 }
+assert sum(VIMSOPAKA_SHODA_WEIGHTS.values()) == 20.0, (
+    "F-168: VIMSOPAKA_SHODA_WEIGHTS must sum to exactly 20 (Vimsopaka == "
+    "'twenty-point', BPHS Ch.7) — got "
+    f"{sum(VIMSOPAKA_SHODA_WEIGHTS.values())}"
+)
 
 # Dignity table: sign-based dignity per graha
 # (exaltation_sign_idx, debilitation_sign_idx, moolatrikona_sign_idx, own_signs)
@@ -461,28 +500,34 @@ def _compute_general_varga(longitude_deg: float, divisor: int) -> int:
     return global_amsa % 12
 
 
-def _compute_dignity(body: str, sign_idx: int) -> str:
-    """Compute dignity label from sign_idx (0-based)."""
-    if body not in DIGNITY_TABLE:
+def _compute_dignity(body: str, sign_idx: int, degree_in_sign: float = 0.0) -> str:
+    """Compute dignity label from sign_idx (0-based) and degree_in_sign.
+
+    Delegates to brahmagyan.dignity_oracle.classify_dignity for the five-tier
+    classical classification (exalted/debilitated/moolatrikona/own/neutral) with
+    degree-gated moolatrikona support.  Returns Title-case to preserve callers'
+    existing comparison strings.
+
+    The Friend/Enemy tier that the previous local DIGNITY_TABLE implementation
+    produced is intentionally retained as a fallback label so that callers that
+    compare against "Friend" / "Enemy" continue to work; those values are not
+    produced by the oracle (which returns only the five canonical tiers), so the
+    oracle's "neutral" maps to the old "Neutral" — a conservative no-regression
+    choice.  The only new labels classify_dignity can produce that the old code
+    could not are "moolatrikona" (now degree-gated) and "neutral" in places
+    where the old code might have said "Friend" or "Enemy".  Callers that use
+    dignity for vimsopaka/saptavargaja scoring already handle "Neutral" via their
+    default-fallback branch, so this change is safe.
+    """
+    if body not in DIGNITY_TABLE and body not in ("Rahu", "Ketu"):
         return "Unknown"
-    d = DIGNITY_TABLE[body]
-    if sign_idx == d["exalt"]:
-        return "Exalted"
-    if sign_idx == d["debil"]:
-        return "Debilitated"
-    if d["mt"] is not None and sign_idx == d["mt"]:
-        return "Moolatrikona"
-    if sign_idx in d.get("own", []):
-        return "Own"
-    # Friend/neutral/enemy based on sign lord
-    sign_lord = SIGN_LORDS[sign_idx]
-    friends = NATURAL_FRIENDS.get(body, [])
-    enemies = NATURAL_ENEMIES.get(body, [])
-    if sign_lord in friends:
-        return "Friend"
-    if sign_lord in enemies:
-        return "Enemy"
-    return "Neutral"
+    try:
+        sign_name = SIGN_NAMES[sign_idx]
+        raw = classify_dignity(body, sign_name, degree_in_sign)
+    except (KeyError, IndexError):
+        return "Unknown"
+    # Map lowercase oracle result → Title-case to preserve caller comparisons
+    return raw.capitalize()
 
 
 def _compute_vargottama(d1_sign: int, varga_sign: int) -> bool:
@@ -581,6 +626,8 @@ def _compute_aspect_matrix(varga_positions: dict[str, int]) -> list[tuple[str, s
         "Mars": [3, 7],   # 4th, 8th (0-indexed offset from body sign)
         "Jupiter": [4, 8], # 5th, 9th
         "Saturn": [2, 9],  # 3rd, 10th
+        "Rahu": [4, 8],    # 5th, 9th (BPHS Ch.26 — same as Jupiter)
+        "Ketu": [4, 8],    # 5th, 9th (BPHS Ch.26 — same as Jupiter)
     }
     for body, sign in varga_positions.items():
         if body == "Lagna":
@@ -777,6 +824,28 @@ def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
     drik.set_ayanamsa_mode(mode)
     place = drik.Place("subject", lat, lon, tz)
 
+    # PyJHora uses TWO julian-day conventions and they are not interchangeable.
+    # From drik.sidereal_longitude's own docstring:
+    #
+    #     "The julian day number supplied to this function must be UTC
+    #      date/time. All other functions of this PyJHora library will require
+    #      JD and not JD_UTC.  JD_UTC = JD - Place.TimeZoneInFloatHours
+    #      For example for India JD_UTC = JD - 5.5"
+    #
+    # `jd_ut` here is built by utils.julian_day_number(dob, tob) from the LOCAL
+    # time of birth, so it is PyJHora's "JD" -- correct for drik.ascendant(jd,
+    # place), which applies the timezone itself, and WRONG for
+    # drik.sidereal_longitude, which does not.
+    #
+    # Passing the local JD to sidereal_longitude computed every graha for an
+    # instant tz hours after birth (5h30m for India). Because the Lagna call IS
+    # place-aware, the FORENSIC gate -- which checks Sun sign, Moon nakshatra
+    # and Lagna -- passed on the one body the defect cannot reach, while 21.9%
+    # of varga sign rows disagreed with ga_positions' own L1 longitudes,
+    # rising to 96% at D2700 as the divisor amplifies the error.
+    # (Nirmāṇa L1-W1 F-A1, cross-layer notice #1747.)
+    jd_utc = jd_ut - tz / 24.0
+
     # Get D1 (natal) positions for all bodies
     asc = drik.ascendant(jd_ut, place)
     asc_full_long = int(asc[0]) * 30.0 + float(asc[1])
@@ -794,9 +863,10 @@ def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
                       4: swe.JUPITER, 5: swe.VENUS, 6: swe.SATURN,
                       7: swe.MEAN_NODE, 8: swe.MEAN_NODE}
         try:
-            raw_lon = drik.sidereal_longitude(jd_ut, planet_map[pid])
+            # jd_utc, never jd_ut -- see the convention note above.
+            raw_lon = drik.sidereal_longitude(jd_utc, planet_map[pid])
             if pid == 8:  # Ketu = Rahu + 180
-                raw_lon = (drik.sidereal_longitude(jd_ut, swe.MEAN_NODE) + 180.0) % 360.0
+                raw_lon = (drik.sidereal_longitude(jd_utc, swe.MEAN_NODE) + 180.0) % 360.0
             d1_longitudes[pname] = float(raw_lon)
         except Exception as exc:
             logger.warning("[ga_vargas] Planet %s D1 longitude failed: %s", pname, exc)
@@ -1043,7 +1113,7 @@ def _build_dignity_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         subject = BODY_TO_SUBJECT.get(body, body.upper())
         rid = _fact_id(vid, body, "varga_dignity", "dignity",
                        chart_id, ayanamsha_id, build_id)
@@ -1538,7 +1608,7 @@ def _build_vimsopaka_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         # Vimsopaka contribution: max score × weight based on dignity
         dignity_factor = {
             "Exalted": 1.0, "Moolatrikona": 0.9, "Own": 0.8,
@@ -1729,7 +1799,16 @@ def _build_saptavargaja_rows(
         sign_idx = bdata["sign_idx"]
         dtab = DIGNITY_TABLE.get(body, {})
 
-        if varga_n == 1 and dtab.get("mt") is not None and sign_idx == dtab["mt"]:
+        # B-01 dignity oracle: Moolatrikona is degree-gated (only evaluated for
+        # varga_n==1, where degree_in_sign is the real natal degree — vargas
+        # >1 have no meaningful "degree within amsa" for a re-derived MT check,
+        # matching the pre-existing varga_n==1 guard above).
+        is_mt = (
+            varga_n == 1
+            and classify_dignity(body, SIGN_NAMES[sign_idx], bdata.get("degree_in_sign", 0.0))
+            == "moolatrikona"
+        )
+        if is_mt:
             saptavargaja_score = 45.0
             relation_label = "Moolatrikona"
         elif sign_idx in dtab.get("own", []):
@@ -1902,7 +1981,7 @@ def _build_rollup_rows(
         if bdata is None:
             continue
         sign_idx = bdata["sign_idx"]
-        dignity = _compute_dignity(body, sign_idx)
+        dignity = _compute_dignity(body, sign_idx, bdata.get("degree_in_sign", 0.0))
         dignity_score_sum += dignity_scores.get(dignity, 2)
         if dignity == "Exalted":
             exalted_count += 1
@@ -2589,11 +2668,46 @@ def _check_already_written(conn, chart_id: str, ayanamsha_id: str, varga_id: str
     return count > 10  # > 10 rows means varga was written
 
 
-def _write_rows_batch(conn, rows: list[dict]) -> int:
-    """Write a batch of rows to chart_divisionals, return count written."""
-    # Idempotency: replace this chart's prior rows for the (ayanamsha, varga) scope
-    # in this batch so a rebuild replaces rather than leaving stale values.
-    replace_prior_chart_divisionals(conn, rows)
+def _write_rows_batch(conn, rows: list[dict], cleared: set | None = None) -> int:
+    """Write a batch of rows to chart_divisionals, return count written.
+
+    `cleared` carries the (chart_id, ayanamsha_id, varga) scopes this RUN has
+    already deleted. It exists because the delete grain and the insert grain do
+    not match (Nirmāṇa L1-W1 finding F-A3).
+
+    replace_prior_chart_divisionals deletes everything for the (chart, ayanamsha,
+    varga) scopes present in `rows`, but this writer calls _write_rows_batch up
+    to five times per ayanamsha — the main varga loop, the D30-lords pass, the
+    cross-varga harmonics, and two scope-cap sentinels. Any later pass carrying a
+    varga an earlier pass already wrote therefore DELETED that earlier pass's
+    rows.
+
+    Measured live before the fix, chart 482012f1 / lahiri_chitrapaksha:
+    D30 held 10 rows across 1 fact_category while every peer varga held 147
+    across 10 — the D30-lords pass had erased the main loop's D30 output. Nothing
+    detected it, because this function returned len(rows) rather than the number
+    of rows that actually survived (asset_throughput.rows_written 38,620 against
+    23,542 live, a 39% loss reported as success).
+
+    Deleting once per scope per run preserves §N.3 exactly — a rebuild still
+    REPLACES rather than accretes — while letting the passes that legitimately
+    add rows to a varga do so.
+    """
+    # Idempotency (§N.3): replace this chart's prior rows for the (ayanamsha,
+    # varga) scopes in this batch, but only for scopes this run has not already
+    # cleared -- see the note above.
+    if cleared is None:
+        replace_prior_chart_divisionals(conn, rows)
+    else:
+        pending = [
+            r for r in rows
+            if (r.get("chart_id"), r.get("ayanamsha_id"), r.get("varga")) not in cleared
+        ]
+        if pending:
+            replace_prior_chart_divisionals(conn, pending)
+            cleared.update(
+                (r.get("chart_id"), r.get("ayanamsha_id"), r.get("varga")) for r in pending
+            )
     if not rows:
         return 0
     # chart_divisionals carries a REAL CHECK constraint on
@@ -2617,8 +2731,29 @@ def _write_rows_batch(conn, rows: list[dict]) -> int:
         try:
             cur.execute("SAVEPOINT ga_vargas_batch_sp")
             cur.executemany(_UPSERT_WITH_FACT_ID_SQL, rows)
+            # Report rows that ACTUALLY landed, not rows attempted (F-A3).
+            # _UPSERT_WITH_FACT_ID_SQL is ON CONFLICT DO NOTHING, so a row that
+            # collides on the unique index is silently skipped; returning
+            # len(rows) reported those skips as successes and is why a 39% loss
+            # (38,620 written vs 23,542 live) surfaced as a clean build. rowcount
+            # after executemany is the driver's affected-row total; fall back to
+            # len(rows) only if the driver declines to report one (-1/None), and
+            # say so rather than quietly substituting the optimistic number.
+            affected = getattr(cur, "rowcount", None)
+            if affected is None or affected < 0:
+                logger.warning(
+                    "[ga_vargas] driver reported no rowcount for a %d-row batch; "
+                    "falling back to attempted count, which may overstate",
+                    len(rows),
+                )
+                affected = len(rows)
+            elif affected < len(rows):
+                logger.info(
+                    "[ga_vargas] %d of %d rows landed (%d skipped on conflict)",
+                    affected, len(rows), len(rows) - affected,
+                )
             cur.execute("RELEASE SAVEPOINT ga_vargas_batch_sp")
-            return len(rows)
+            return int(affected)
         except Exception as batch_exc:
             cur.execute("ROLLBACK TO SAVEPOINT ga_vargas_batch_sp")
             logger.warning("[ga_vargas] batch write failed (%s), falling back to per-row", batch_exc)
@@ -2741,6 +2876,10 @@ def build_ga_vargas(
 
     total_rows = 0
     total_batches = len(VARGA_BATCHES)
+    # (chart_id, ayanamsha_id, varga) scopes already delete-cleared by THIS run.
+    # Scoped to the run, never persisted: each fresh build clears again, so
+    # rebuild-replaces (§N.3) is preserved. See _write_rows_batch (F-A3).
+    cleared_scopes: set = set()
 
     # INVARIANT sentinel deletion: remove any prior scope-cap sentinel rows
     # written under ayanamsha_id='INVARIANT' for this chart before inserting new ones.
@@ -2897,7 +3036,7 @@ def build_ga_vargas(
 
                 # Write batch
                 if batch_rows:
-                    written = _write_rows_batch(conn, batch_rows)
+                    written = _write_rows_batch(conn, batch_rows, cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -2918,7 +3057,7 @@ def build_ga_vargas(
                 d30_rows = _build_d30_lord_per_amsa_rows(
                     chart_id, ayan_id, build_id, str(build_id))
                 if d30_rows:
-                    written = _write_rows_batch(conn, d30_rows)
+                    written = _write_rows_batch(conn, d30_rows, cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written
@@ -2928,7 +3067,7 @@ def build_ga_vargas(
             cross_rows = _build_cross_varga_harmonic_rows(
                 chart_id, ayan_id, build_id, all_varga_signs)
             if cross_rows:
-                written = _write_rows_batch(conn, cross_rows)
+                written = _write_rows_batch(conn, cross_rows, cleared_scopes)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -2973,7 +3112,7 @@ def build_ga_vargas(
                     "formula_provenance_text": "scope_cap/locked_decision_J",
                     "cross_ayanamsha_divergence_arcsec": None,
                 }
-                written = _write_rows_batch(conn, [scope_cap_row])
+                written = _write_rows_batch(conn, [scope_cap_row], cleared_scopes)
                 if owns_conn:
                     conn.commit()
                 total_rows += written
@@ -3022,7 +3161,7 @@ def build_ga_vargas(
                         "formula_provenance_text": "scope_cap/floored_bodies",
                         "cross_ayanamsha_divergence_arcsec": None,
                     }
-                    written = _write_rows_batch(conn, [outer_cap_row])
+                    written = _write_rows_batch(conn, [outer_cap_row], cleared_scopes)
                     if owns_conn:
                         conn.commit()
                     total_rows += written

@@ -164,4 +164,42 @@ describe('/api/mcp/recent GET handler', () => {
     expect(body.ok).toBe(false)
     expect(body.error.class).toBe('validation')
   })
+
+  // ── F-161 — confidence_band on a zero-result recent-queries call ───────────
+  //
+  // This route hardcoded `confidence_band: 'high'` unconditionally, the same
+  // §N.8 unearned-grade defect F-126 fixed in the primitives route. Unlike
+  // the primitives route, `detectEvidenceState` cannot grade `{queries: []}`
+  // on its own — no COUNT_KEYS member is present — so the fix also adds a
+  // `count` field to the served result (the served-page-size convention
+  // documented in evidence_state.ts's COUNT_KEYS comment).
+
+  it('F-161: zero recent queries serves confidence_band "none" with evidence_state "empty"', async () => {
+    mockDbRows(0)
+    const req = buildRequest()
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.ok).toBe(true)
+    expect(body.result.queries).toHaveLength(0)
+    expect(body.result.count).toBe(0)
+    // The exact defect assertion — this failed before the fix.
+    expect(body.epistemics.confidence_band).not.toBe('high')
+    expect(body.epistemics.confidence_band).toBe('none')
+    expect(body.epistemics.evidence_state).toBe('empty')
+    expect(body.epistemics.surgical).toBe(true)
+    expect(body.epistemics.falsifier).toBeNull()
+  })
+
+  it('F-161: recent queries that DO exist still serve confidence_band "high"', async () => {
+    mockDbRows(3)
+    const req = buildRequest()
+    const res = await GET(req)
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.result.queries).toHaveLength(3)
+    expect(body.result.count).toBe(3)
+    expect(body.epistemics.confidence_band).toBe('high')
+    expect(body.epistemics.evidence_state).toBe('present')
+  })
 })

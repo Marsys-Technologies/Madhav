@@ -73,6 +73,42 @@ CANONICAL_AYANAMSHAS = [
 
 ENGINE_VERSION = "bo_laksana_v2.2"
 
+# D-CND-33 (Conductor ruling on adjudication #2052, 2026-09-06): two
+# salience_formula_v2 multiplicands — orb_tightness and specificity — are
+# unconditional multiplicative-identity placeholders (1.0) on every row,
+# pending a native design ruling on a formula input their own spec document
+# never completes (orb_tightness's max-orb reference; specificity's "value"
+# term). This is a design-authority question, not an engineering gap — see
+# #2052 for the full analysis. Per the ruling, this placeholder is honestly
+# flagged rather than presented identically to a genuinely computed sibling
+# term: surfaced in WriterResult.notes on every bo_laksana run (never a
+# per-row DB flag — both terms are unconditionally 1.0 for 100% of rows,
+# so a per-row flag would carry no information a build-level note doesn't
+# already convey).
+PROVISIONAL_SALIENCE_TERMS_NOTE = (
+    "provisional_constant_pending_design_ruling=orb_tightness,specificity(see #2052/D-CND-33)"
+)
+
+# D-CND-33 (Conductor ruling on adjudication #2102, 2026-09-06 — applying the
+# #2052 ruling above rather than minting a new one): divisional_corroboration_count
+# is an unconditional NULL on every row (already honest per N.8 — never
+# fabricated), pending a native design ruling on "reinforce" semantics that
+# A10_MSR_SPEC_v1_0.md's own spec gestures at ("how many vargas reinforce")
+# but never completes — does the anchor varga's predicate need to be TRUE
+# first, before counting other TRUE vargas as corroboration? which
+# signal_type_classes does cross-varga persistence classically apply to?
+# Both are design-authority questions, not engineering gaps — see #2102 for
+# the full analysis. Reuses the identical disposition label #2056/D-CND-33
+# already established above for orb_tightness/specificity, per the ruling's
+# own instruction not to invent a second label for the same disposition —
+# kept as its own constant (not folded into PROVISIONAL_SALIENCE_TERMS_NOTE)
+# because this is an MSR corroboration metric, not a salience_formula_v2
+# multiplicand; the two constants' own docstrings would otherwise misdescribe
+# what each covers.
+PROVISIONAL_MSR_TERMS_NOTE = (
+    "provisional_constant_pending_design_ruling=divisional_corroboration_count(see #2102/D-CND-33)"
+)
+
 # ── D-1.5b hotfix: bo_laksana's ownership allowlist for bodha_msr_signals ────
 # `bodha_msr_signals` is a shared table: bo_laksana projects ALL L1
 # chart_facts into it (category-agnostic), and bo_sudarshana (an independent
@@ -314,7 +350,13 @@ _MALEFIC_VALUE_SUBSTRINGS = (
     "retrograde", "cancel", "dosha", "kala_sarpa",
 )
 _BENEFIC_VALUE_SUBSTRINGS = (
-    "exalted", "uccha", "own", "mooltrikona", "friend", "benefic",
+    # F-62: "moolatrikona" is the spelling the B-01 dignity oracle emits and the
+    # one stored in chart_facts. It is NOT a substring of the legacy
+    # "mooltrikona" spelling that used to be the only entry here (and vice
+    # versa), so a moolatrikona graha — the strongest own-sign tier in classical
+    # Sthana Bala — matched no benefic substring at all and fell through to the
+    # malefic scan. Both spellings are listed; only the first is ever emitted.
+    "exalted", "uccha", "own", "moolatrikona", "mooltrikona", "friend", "benefic",
     "yoga_karaka", "vargottama", "strong",
 )
 
@@ -948,32 +990,145 @@ def _build_dignity_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[s
     return lookup
 
 
-def _build_av_lookup(conn: Any, chart_id: str, ayanamsha_id: str) -> dict[int, int]:
-    """house → sarva ashtakavarga bindus (D1).
+def _build_av_lookup(
+    conn: Any, chart_id: str, ayanamsha_id: str
+) -> dict[tuple[str, str, int], int]:
+    """(graha, varga, house) → BHINNA ashtakavarga bindus, 0..8.
 
-    B2-fix: the old query used ashtakavarga_pinda_sarva with fact_key='total'
-    (graha totals — no house dimension) and tried to parse a house from 'total',
-    which always failed → house defaulted to 1 → every signal got the same AV
-    multiplier.
+    NIRMANA L2-W3 (D-SALIENCE, M-01). Two prior fixes of this lookup each corrected
+    a real defect and each left the multiplier constant:
 
-    Correct source: ashtakavarga_bindu, fact_subject = 'SARVA-HOUSE_N',
-    fact_key = 'bindus', fact_value_num = sarva bindus for house N.
+      * the original read ashtakavarga_pinda_sarva with fact_key='total' (graha
+        totals, no house dimension), failed to parse a house, and defaulted every
+        signal to house 1;
+      * the B2-fix corrected the house dimension by switching to
+        fact_subject='SARVA-HOUSE_N' — but SARVA is the seven-graha SUM, measured
+        23–33 per house on this chart, while formulas._av_multiplier's buckets
+        (7/5/3/1) are BHINNA scale, 0..8. So every row landed in the >=7 bucket and
+        ashtakavarga_support_multiplier was 1.15 on 149,375 of 150,150 rows.
+
+    The defect survived its own repair because the fix addressed the dimension and
+    not the scale. Correct source: ashtakavarga_bindu_per_varga —
+    fact_subject='<GRAHA>-HOUSE_<n>', fact_key='<varga>', fact_value_num = that
+    graha's own bindus in that house, 0..8. Also the classically correct reading:
+    AV support for a signal about Saturn is Saturn's bindus, not the undifferentiated
+    sarva total.
+
+    Rahu/Ketu carry no bhinnashtakavarga (standard Parashari), so signals about them
+    resolve to no entry and store an honest NULL multiplier rather than a bucket.
+
+    DISTINCT ON + total ORDER BY, here and in the two sibling lookups below: the read
+    must not depend on which row the planner happens to return. These facts are 1:1
+    per (subject, key) within an ayanamsha today (measured 1,344 rows / 1,344 distinct
+    keys on the canonical chart), but that is a write-path property, not a read-time
+    guarantee across build_id generations — which is exactly the scope caveat
+    CLAUDE.md §N.7 item 2 records about the fact-category pin lint.
     """
     rows = _fetch_dict(conn,
-        """SELECT fact_subject, fact_value_num FROM chart_facts
-           WHERE chart_id=%s AND ayanamsha_id=%s
-             AND fact_category='ashtakavarga_bindu'
-             AND fact_subject LIKE 'SARVA-HOUSE_%%'""",
+        """SELECT DISTINCT ON (fact_subject, fact_key)
+                  fact_subject, fact_key, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='ashtakavarga_bindu_per_varga'
+            ORDER BY fact_subject, fact_key, computed_at DESC, build_id DESC""",
         [chart_id, ayanamsha_id])
-    lookup: dict[int, int] = {}
+    lookup: dict[tuple[str, str, int], int] = {}
     for r in rows:
         subject = str(r.get("fact_subject") or "")
-        # pattern: 'SARVA-HOUSE_1' … 'SARVA-HOUSE_12'
-        try:
-            house = int(subject.split("_")[-1])
-        except (ValueError, IndexError):
+        varga = str(r.get("fact_key") or "").strip()
+        value = r.get("fact_value_num")
+        if "-HOUSE_" not in subject or not varga or value is None:
             continue
-        lookup[house] = int(r.get("fact_value_num") or 28)
+        graha, _, house_tok = subject.partition("-HOUSE_")
+        try:
+            house = int(house_tok)
+        except ValueError:
+            continue
+        # No `or <default>`: an unparseable/absent bindu count must stay absent.
+        # `int(x or 28)` was the prior form, and 28 is >= 7 — the most favourable
+        # bucket in the table (CLAUDE.md §N.7 item 6).
+        lookup[(graha.strip(), varga, house)] = int(value)
+    return lookup
+
+
+def _build_vargottama_lookup(
+    conn: Any, chart_id: str, ayanamsha_id: str
+) -> dict[str, float]:
+    """graha → vargottama amplification, as the (1 + x) addend.
+
+    L1 authority: chart_facts.graha_vargottama_amplification_factor, fact_key=
+    'amplification_factor', fact_value_num a multiplicative factor where 1.0 is
+    neutral (measured values on the canonical chart: 1.0 on 31 rows, 1.25 on 4).
+    salience_formula_v2 consumes the term as (1 + x), so x = factor - 1.
+
+    Before this, the writer read tags['vargottama_amp'] — a key that appears in
+    ZERO of the chart's 139,471 L1 facts, so the term defaulted to 0.0 on every
+    row and could never fire (§N.8: a detector that cannot read false).
+    """
+    rows = _fetch_dict(conn,
+        """SELECT DISTINCT ON (fact_subject)
+                  fact_subject, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='graha_vargottama_amplification_factor'
+              AND fact_key='amplification_factor'
+            ORDER BY fact_subject, computed_at DESC, build_id DESC""",
+        [chart_id, ayanamsha_id])
+    lookup: dict[str, float] = {}
+    for r in rows:
+        graha = _graha_key_from_subject(str(r.get("fact_subject") or ""))
+        value = r.get("fact_value_num")
+        if graha is None or value is None:
+            continue
+        lookup[graha] = float(value) - 1.0
+    return lookup
+
+
+# Net argala is a signed count in [-9, +9] (argala minus virodha-argala). The v1
+# contract documented argala_modifier on a 0..0.20 magnitude, so the scale factor
+# is 45: net/45 lands exactly on ±0.20 at the observed extremes. The sign is KEPT —
+# virodha_argala_natal_matrix is half of the 41,760 argala facts, and clamping
+# negatives to zero would discard the obstruction half and leave only the
+# favourable one.
+_ARGALA_NET_SCALE = 45.0
+_ARGALA_MODIFIER_CAP = 0.20
+
+
+def _build_argala_lookup(
+    conn: Any, chart_id: str, ayanamsha_id: str
+) -> dict[tuple[str, int], float]:
+    """(varga, house) → argala modifier in [-0.20, +0.20].
+
+    L1 authority: chart_facts.net_argala_per_varga, fact_subject='<VARGA>_HOUSE_<n>',
+    fact_key='net_argala', fact_value_num the signed net. This is the pre-netted
+    rollup of argala_natal_matrix + virodha_argala_natal_matrix (41,760 facts on the
+    canonical chart), all of which were unconsumed: argala_modifier was dropped from
+    the salience input contract entirely at the v1 -> v2 formula upgrade.
+    """
+    rows = _fetch_dict(conn,
+        """SELECT DISTINCT ON (fact_subject)
+                  fact_subject, fact_value_num
+             FROM chart_facts
+            WHERE chart_id=%s AND ayanamsha_id=%s
+              AND fact_category='net_argala_per_varga'
+              AND fact_key='net_argala'
+            ORDER BY fact_subject, computed_at DESC, build_id DESC""",
+        [chart_id, ayanamsha_id])
+    lookup: dict[tuple[str, int], float] = {}
+    for r in rows:
+        subject = str(r.get("fact_subject") or "")
+        value = r.get("fact_value_num")
+        if "_HOUSE_" not in subject or value is None:
+            continue
+        varga, _, house_tok = subject.partition("_HOUSE_")
+        try:
+            house = int(house_tok)
+        except ValueError:
+            continue
+        raw = float(value) / _ARGALA_NET_SCALE
+        lookup[(varga.strip(), house)] = max(
+            -_ARGALA_MODIFIER_CAP, min(_ARGALA_MODIFIER_CAP, raw)
+        )
     return lookup
 
 
@@ -1224,7 +1379,9 @@ def _load_vichara_divergence_signals(
             "benefic" if (value_num is not None and float(value_num) > 0) else "neutral"
         )
         signals.append({
-            "signal_id": str(uuid.uuid4()),
+            # Placeholder only. Overwritten by assign_deterministic_signal_ids()
+            # before any write; see #1804. Never reaches the database.
+            "signal_id": None,
             "chart_id": chart_id,
             "ayanamsha_id": ayanamsha_id,
             "build_id": build_id,
@@ -1482,6 +1639,38 @@ def _validate_chunk_ids(conn: Any, chunk_ids: set[str]) -> set[str]:
         [list(chunk_ids)],
     )
     return {str(r["id"]) for r in rows}
+
+
+def _corroboration_count_by_text(sources_jsonb: dict | None) -> int | None:
+    """How many DISTINCT classical texts actually corroborate this signal.
+
+    NIRMANA L2-W3 (D-GROUNDING, M-08). Derived from the row's own
+    classical_sources_jsonb — the citations it genuinely carries — rather than from
+    the verification tier of the underlying L1 fact, which is what the previous
+    literal (`5 if two_pass_verified else 2`) keyed off. "Was this number
+    double-checked?" and "how many texts say so?" are different questions, and the
+    old expression answered the first while the column name promised the second.
+
+    Returns None, not 0, when the row carries no classical sources at all: that row
+    has no grounding assessed, which is a different statement from "assessed, and
+    no text corroborates". classical_sources_array is NULL on those same rows.
+
+    Citation strings are '<text_id>:<chapter>' or bare '<text_id>' (see
+    _build_classical_sources), so the text identity is the part before the first
+    colon. Chunk ids ('bphs_pg0211_c01') carry their text id before '_pg'.
+    """
+    if not sources_jsonb:
+        return None
+    texts: set[str] = set()
+    for citation in sources_jsonb.get("citations") or []:
+        text_id = str(citation).split(":", 1)[0].strip()
+        if text_id:
+            texts.add(text_id)
+    for chunk_id in sources_jsonb.get("text_chunk_ids") or []:
+        text_id = str(chunk_id).split("_pg", 1)[0].strip()
+        if text_id:
+            texts.add(text_id)
+    return len(texts) or None
 
 
 def _build_classical_sources(
@@ -1809,23 +1998,22 @@ def _safe_float(v: Any, default: float = 0.5) -> float:
         return default
 
 
+# F-62: "moolatrikona" is the canonical emitted spelling (see
+# brahmagyan.dignity_oracle.DIGNITY_STATES); "mooltrikona" is a same-valued
+# legacy alias kept so historic callers do not regress. Before this fix the
+# alias was the ONLY key, so a moolatrikona graha scored 0.50 (the caller's
+# neutral default) instead of 0.95 — below the 0.85 it would have scored as
+# plain "own".
 _DIGNITY_SCORE: dict[str, float] = {
-    "exalted": 1.00, "mooltrikona": 0.95, "own": 0.85,
+    "exalted": 1.00, "moolatrikona": 0.95, "mooltrikona": 0.95, "own": 0.85,
     "friend": 0.65, "neutral": 0.50, "enemy": 0.35, "debilitated": 0.10,
 }
 
-_HOUSE_WEIGHT: dict[int, float] = {
-    1: 1.30, 5: 1.20, 9: 1.20, 4: 1.15, 7: 1.15, 10: 1.15,
-    3: 1.05, 11: 1.05, 6: 0.90, 8: 0.90, 12: 0.90, 2: 1.00,
-}
-
-
-def _av_mult(bindus: int) -> float:
-    if bindus >= 7: return 1.15
-    if bindus >= 5: return 1.05
-    if bindus >= 3: return 1.00
-    if bindus >= 1: return 0.85
-    return 0.70
+# NIRMANA L2-W3 (N-06): local `_HOUSE_WEIGHT` and `_av_mult` duplicates were deleted
+# here. Both had ZERO call sites and both shadowed the canonical definitions in
+# bodha_writers/formulas.py (HOUSE_WEIGHT, _av_multiplier). A second copy of a
+# lookup table cannot be kept in step with the first by anything except attention,
+# and the AV table's scale defect (M-01) is what that costs.
 
 
 def _graha_key_from_subject(fact_subject: str) -> str | None:
@@ -1854,10 +2042,12 @@ def _compute_salience(
     tags: dict,
     strength_lookup: dict[str, float],
     dignity_lookup: dict[str, str],
-    av_lookup: dict[int, int],
+    av_lookup: dict[tuple[str, str, int], int],
     class_prior: float = 1.0,
     functional_context: float = 1.0,
     varga_id: str = "D1",
+    vargottama_lookup: dict[str, float] | None = None,
+    argala_lookup: dict[tuple[str, int], float] | None = None,
 ) -> dict:
     """Compute salience_formula_v2 inputs from L1 data (BA-P3B formula upgrade).
 
@@ -1886,21 +2076,62 @@ def _compute_salience(
     dignity_state = dignity_lookup.get(primary_graha or "", "neutral") if primary_graha else "neutral"
     dignity_score = _FML_DIGNITY_SCORE.get(dignity_state, 0.50)
 
-    bindus_raw = av_lookup.get(house_num, None)
-    bindus = bindus_raw if bindus_raw is not None else 4
+    # NIRMANA L2-W3 (D-SALIENCE): bhinna bindus keyed on this signal's own graha,
+    # varga and house. `None` propagates as an honest "not measured" all the way to
+    # the stored column — no 4-bucket, no 28-fallback.
+    bindus_raw = (
+        av_lookup.get((primary_graha, varga_id or "D1", house_num))
+        if primary_graha is not None
+        else None
+    )
 
-    # Track completeness — any default = incomplete (trap #17)
+    # NIRMANA L2-W3: these four terms previously read tags['orb_tightness'],
+    # ['vargottama_amp'], ['neechabhanga'] and ['cancellation'] — jsonb keys that
+    # appear in ZERO of this chart's 139,471 L1 facts. All four were therefore
+    # frozen at their defaults on all 150,150 rows: four detectors that could not
+    # fire (CLAUDE.md §N.8). Two now read the L1 authority that always existed;
+    # two remain honestly unmeasured.
+    #
+    # D-CND-33 (Conductor ruling on adjudication #2052): orb_tightness has a real
+    # L1 data source (conjunction_per_varga.orb_deg) for a narrow signal slice, but
+    # the FORMULA's own "1 = exact, 0 = at max orb" spec is missing a max-orb
+    # reference this codebase does not define anywhere (searched: bg_combustion_orbs
+    # and L3's _ACTIVITY_MAX_ORB_DEG are both real but different classical concepts —
+    # borrowing either would be a wrong-domain N.7 item-6 substitute). This is a
+    # design-authority question, not an engineering one — flagged for the native via
+    # #2052, not guessed. Until resolved, this multiplicative-identity placeholder
+    # (1.0 = "no orb narrowing effect") is honestly labeled below and in
+    # PROVISIONAL_SALIENCE_TERMS_NOTE — never presented identically to a genuinely
+    # computed sibling term.
+    orb = _safe_float(tags.get("orb_tightness"), 1.0)  # provisional_constant_pending_design_ruling — see #2052
+
+    vargottama_amp = (
+        (vargottama_lookup or {}).get(primary_graha) if primary_graha is not None else None
+    )
+    argala_mod = (argala_lookup or {}).get((varga_id or "D1", house_num))
+
+    # neechabhanga: the ONE real detector for this term lives on the D9 cross-check
+    # path (see _build_nbry_redemption_map, off L1 ga_yoga_firings). It does not
+    # reach this row builder, so this path stores None — "no detector ran" — rather
+    # than 1.0, which a reader cannot distinguish from "ran, found no redemption".
+    neechabhanga = None
+    # cancellation: no detector exists anywhere in the codebase. The documented
+    # "1.0 normal / 0.1 cancelled yoga" semantic was never implemented, so per §N.8
+    # this is null, not green. It was 1.0 on all 150,150 rows.
+    cancellation = None
+
+    # Track completeness — any unresolved input = incomplete (trap #17).
+    # Note this flag was itself never written to the DB before L2-W3 (the column was
+    # absent from _INSERT_SQL), so its stored `false` on every production row was the
+    # column default, not a measurement.
     inputs_complete = (
         primary_graha is not None
         and house_num_raw is not None
         and shadbala_raw is not None
         and bindus_raw is not None
+        and vargottama_amp is not None
+        and argala_mod is not None
     )
-
-    orb = _safe_float(tags.get("orb_tightness"), 1.0)
-    vargottama_amp = _safe_float(tags.get("vargottama_amp"), 0.0)
-    neechabhanga = _safe_float(tags.get("neechabhanga"), 1.0)
-    cancellation = _safe_float(tags.get("cancellation"), 1.0)
 
     # bala_gate: yoga-class signals only
     is_yoga_class = fact_cat in (
@@ -1915,14 +2146,24 @@ def _compute_salience(
         shadbala_norm=min(shadbala_norm, 2.0),
         dignity_score=dignity_score,
         house_number=house_num,
-        ashtakavarga_bindus=bindus,
+        ashtakavarga_bindus=bindus_raw,
         vargottama_amplification=vargottama_amp,
         neechabhanga_modifier=neechabhanga,
         cancellation_modifier=cancellation,
+        argala_modifier=argala_mod,
         verification_pass_status=tier,
         class_prior=class_prior,
         varga_id=varga_id,
-        specificity=1.0,        # filled in second pass by percentile UPDATE
+        # D-CND-33 (Conductor ruling on adjudication #2052): the spec formula
+        # (BA_BRIEF_PACK_P2_P7_v1_0.md §C: specificity = 1 + 0.5 x extremity_pctl)
+        # never defines "value" in extremity_pctl = percentile(|value - family
+        # median|) — and it cannot mean computed_salience itself, since specificity
+        # is one of salience_formula_v2's own multiplicands (circular). No
+        # disambiguating doc found. Flagged for the native via #2052, not guessed.
+        # The stale "filled in second pass by percentile UPDATE" comment referred to
+        # a pass that was confirmed never to exist — removed rather than left as a
+        # false claim.
+        specificity=1.0,        # provisional_constant_pending_design_ruling — see #2052
         bala_gate=bala_gate_val,
         functional_context=functional_context,
         inputs_complete=inputs_complete,
@@ -1932,9 +2173,11 @@ def _compute_salience(
     result["orb_tightness"] = round(orb, 6)
     result["shadbala_norm"] = round(min(shadbala_norm, 2.0), 6)
     result["dignity_score"] = round(dignity_score, 6)
-    result["vargottama_amplification"] = round(vargottama_amp, 6)
-    result["neechabhanga_modifier"] = round(neechabhanga, 6)
-    result["cancellation_modifier"] = round(cancellation, 6)
+    # vargottama_amplification / neechabhanga_modifier / cancellation_modifier /
+    # argala_modifier / ashtakavarga_support_multiplier are returned by
+    # salience_formula_v2 itself, None-preserving. They are deliberately NOT
+    # re-rounded here — round(None, 6) would raise, and overwriting them with a
+    # local default is how the None got lost before.
     return result
 
 
@@ -1954,6 +2197,8 @@ def _build_signal_row(
     class_priors: dict[tuple[str, str], float] | None = None,
     ratification_lookup: dict[tuple[str, str], float] | None = None,
     vichara_valence_lookup: dict[tuple[str, str, str], dict] | None = None,
+    vargottama_lookup: dict[str, float] | None = None,
+    argala_lookup: dict[tuple[str, int], float] | None = None,
 ) -> dict:
     fact_id  = str(fact_row.get("fact_id", ""))
     fact_cat = str(fact_row.get("fact_category", ""))
@@ -2137,6 +2382,8 @@ def _build_signal_row(
         class_prior=class_prior_val,
         functional_context=1.0,
         varga_id=varga_id or "D1",
+        vargottama_lookup=vargottama_lookup,
+        argala_lookup=argala_lookup,
     )
     computed_salience = sal["computed_salience"]
 
@@ -2215,7 +2462,8 @@ def _build_signal_row(
 
     return {
         # Identity
-        "signal_id":                                str(uuid.uuid4()),
+        # Placeholder only -- derived in _batch_insert (#1804).
+        "signal_id":                                None,
         "chart_id":                                 chart_id,
         "ayanamsha_id":                             aya,
         "build_id":                                 build_id,
@@ -2250,7 +2498,24 @@ def _build_signal_row(
         "constituent_signals_array":                None,
         # ── Classical sourcing ────────────────────────────────────────────────
         "classical_sources_array":                  classical_sources_array,
-        "source_corroboration_count_by_text":       5 if vpass == "two_pass_verified" else 2,
+        # NIRMANA L2-W3 (D-GROUNDING, M-08). This previously returned 5 when the
+        # underlying L1 fact carried the two-pass verification tier and 2 otherwise —
+        # i.e. it asserted "N classical texts corroborate this signal" on the strength
+        # of whether the underlying L1 FACT had been double-checked.
+        # (Stated in prose rather than by quoting the old expression: the TAP-6 method
+        # audit greps that tier's literal lexically and cannot tell a comment from an
+        # emit site, so quoting the defect would reintroduce the pattern it guards.) Those are not the
+        # same question, and no code path could ever have made the number true: it was
+        # 2 on 135,042 rows and 5 on 14,664, while classical_sources_array was populated
+        # on 156 rows of 150,150. A corroboration count is now derived from the actual
+        # sources carried on the row, and is None when there are none — an honest empty
+        # beats an invented count (CLAUDE.md §N.8, §N.7 item 6).
+        "source_corroboration_count_by_text":       _corroboration_count_by_text(classical_sources_jsonb),
+        # Stays None, and not provisionally: classical_text_chunks.chapter is a PAGE
+        # number and verse_start/verse_end are COLUMN indices (classical_texts
+        # declares bphs.total_chapters=97 while chunk chapter runs to 1034). There
+        # is no verse-level addressing in this corpus to count, so any number here
+        # would be invented. Raised as NIRMANA adjudication #1726.
         "source_corroboration_count_by_verse":      None,
         # ── Salience inputs (v2 — BA-P3B) ────────────────────────────────────
         "orb_tightness":                            sal["orb_tightness"],
@@ -2258,7 +2523,7 @@ def _build_signal_row(
         "dignity_score":                            sal["dignity_score"],
         "deterministic_strength":                   sal.get("condition_terms"),   # v2 name
         "verification_certainty":                   sal.get("verification_rescale"),  # v2 replaces v1
-        "divisional_corroboration_count":           None,
+        "divisional_corroboration_count":           None,  # provisional_constant_pending_design_ruling — see #2102
         "dasha_activation_proximity_score":         None,   # L3-fill hook
         "house_weight_multiplier":                  sal["house_weight_multiplier"],
         "ashtakavarga_support_multiplier":          sal["ashtakavarga_support_multiplier"],
@@ -2332,7 +2597,12 @@ def _build_signal_row(
 # Dignity strength tier for cross-check comparisons
 _DIGNITY_STRENGTH_TIER: dict[str, int] = {
     "exalted": 3, "uccha": 3,
-    "own": 2, "mooltrikona": 2,
+    # F-62: "moolatrikona" is the emitted spelling; "mooltrikona" is the legacy
+    # alias. Without the canonical key, `_dignity_tier` returned 0 (the neutral
+    # tier) for a moolatrikona graha, so the D1→D9 cross-check read a genuine
+    # own-sign-strongest placement as neutral and could report a spurious
+    # promotion or demotion across the navamsha.
+    "own": 2, "moolatrikona": 2, "mooltrikona": 2,
     "friend": 1, "mitra": 1,
     "neutral": 0,
     "enemy": -1, "shatru": -1,
@@ -2667,7 +2937,8 @@ def _build_navamsha_cross_check_signals(
         computed_salience = round(salience_base, 6)
 
         row: dict = {
-            "signal_id":                                str(uuid.uuid4()),
+            # Placeholder only -- derived in _batch_insert (#1804).
+            "signal_id":                                None,
             "chart_id":                                 chart_id,
             "ayanamsha_id":                             ayanamsha_id,
             "build_id":                                 build_id,
@@ -2726,6 +2997,19 @@ def _build_navamsha_cross_check_signals(
             "cancellation_modifier":                    1.0,
             "computed_salience":                        computed_salience,
             "salience_formula_version":                 "v1.0",
+            # NIRMANA L2-W3: the six salience-decomposition columns are now bound
+            # into _INSERT_SQL, so every row shape must supply them. This path does
+            # not run salience_formula_v2 at all — it computes `salience_base`
+            # directly — so the v2-specific terms have no measured value here and
+            # are NULL rather than a borrowed default. `salience_inputs_complete` is
+            # False for the same reason, and here that is a real measurement: this
+            # row genuinely did not resolve the v2 input set.
+            "class_prior":                              None,
+            "salience_inputs_complete":                 False,
+            "present_but_enfeebled":                    None,
+            "bala_gate":                                None,
+            "functional_context_score":                 None,
+            "verification_rescale":                     None,
             "salience_confidence_interval_jsonb":       None,
             "domains_affected_array":                   ["career", "character"],
             "domain_salience_jsonb":                    json.dumps({
@@ -2808,7 +3092,14 @@ INSERT INTO bodha_msr_signals (
   pada_precision_flag, cross_system_consensus_count, channel_render_priority_jsonb,
   verification_pass_status, verification_method,
   citation_ref, citation_human, computed_at, engine_version,
-  ratification_factor, valence_source
+  ratification_factor, valence_source,
+  -- NIRMANA L2-W3: these six were computed by _build_signal_row and never bound
+  -- into this statement, so every stored row carried the DB default instead of the
+  -- writer's own value: class_prior 1.0 (default) on 150,150 rows including the 16
+  -- the writer hardcodes to 1.2; salience_inputs_complete false (default) on every
+  -- row, which read as a measurement and was not one; the other four NULL.
+  class_prior, salience_inputs_complete, present_but_enfeebled,
+  bala_gate, functional_context_score, verification_rescale
 ) VALUES (
   %(signal_id)s, %(chart_id)s, %(ayanamsha_id)s, %(build_id)s,
   %(signal_type_id)s, %(signal_type_class)s, %(signal_tradition)s,
@@ -2837,7 +3128,9 @@ INSERT INTO bodha_msr_signals (
   %(pada_precision_flag)s, %(cross_system_consensus_count)s, %(channel_render_priority_jsonb)s::jsonb,
   %(verification_pass_status)s, %(verification_method)s,
   %(citation_ref)s, %(citation_human)s, %(computed_at)s, %(engine_version)s,
-  %(ratification_factor)s, %(valence_source)s
+  %(ratification_factor)s, %(valence_source)s,
+  %(class_prior)s, %(salience_inputs_complete)s, %(present_but_enfeebled)s,
+  %(bala_gate)s, %(functional_context_score)s, %(verification_rescale)s
 )
 ON CONFLICT (chart_id, ayanamsha_id, signal_type_id, build_id, configuration_jsonb)
 DO NOTHING
@@ -2846,8 +3139,113 @@ DO NOTHING
 _BATCH_SIZE = 200
 
 
+def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
+    """Replace each row's signal_id with its DERIVED identity. Returns the collapse count.
+
+    Nirmāṇa #1804 (D-NATIVE-05 action 8; D-CND-11 as amended there).
+    signal_id was randomly generated at three emit sites, so every rebuild minted
+    fresh identities for the same signals. (Described rather than quoted: the
+    guard in test_bo_laksana_signal_identity.py greps this file lexically for a
+    random-id call beside `signal_id`, and cannot tell prose from an emit site --
+    the same reason main's `bo_laksana` comment describes the old
+    corroboration-count expression instead of reproducing it.) That is the
+    mechanism behind the orphaning D-NATIVE-05 §5 assigns dispositions for:
+    bodha_triangulation holds 143 dangling references today because the array
+    kept ids a later run replaced.
+
+    The identity is computed by `bodha_signal_identity()` in migration 660 —
+    **the single source of truth** — and never reimplemented here. That is
+    deliberate and it is L4's pattern from #1754: a Python copy of the algorithm
+    is free to drift from the SQL one, and a drifted identity function is
+    indistinguishable from no identity function at all.
+
+    It is assigned back onto the row dicts rather than computed inside the INSERT
+    because the dicts outlive the insert: `bo_laksana` issues post-insert UPDATEs
+    keyed on `row["signal_id"]` (see the ratification and valence passes below).
+    Had the database derived one identity while Python held a uuid4, those updates
+    would have matched **zero rows, silently** — manufacturing the exact orphan
+    class this change exists to remove.
+
+    One round-trip for the whole substep, not one per batch.
+    """
+    if not rows:
+        return 0
+
+    def _config_object(row: dict) -> Any:
+        # Rows carry configuration_jsonb PRE-SERIALISED (json.dumps(config) at the
+        # emit sites, for the INSERT's ::jsonb cast). The identity function must
+        # receive the parsed OBJECT, not that string: embedding the string here
+        # double-encodes it, so jsonb_array_elements yields a jsonb *string
+        # scalar* and bodha_signal_identity() ends up hashing Python's emit-order
+        # serialisation instead of the key-order-normalised jsonb object. That
+        # silently defeats both properties migration 661 builds the identity on --
+        # key-order invariance, and derivability of signal_id from the stored
+        # row's own columns (661 PART 4's conformance detector, now bo_laksana's
+        # integrity_check_sql via migration 931). Verified live 2026-09-08:
+        # 150,280/150,280 rows failed re-derivation before this fix (#2455).
+        config = row.get("configuration_jsonb")
+        if isinstance(config, str):
+            return json.loads(config)
+        return config
+
+    payload = [
+        {
+            "i": index,
+            "chart_id": row.get("chart_id"),
+            "ayanamsha_id": row.get("ayanamsha_id"),
+            "signal_type_id": row.get("signal_type_id"),
+            "varga_id": row.get("varga_id"),
+            "configuration_jsonb": _config_object(row),
+        }
+        for index, row in enumerate(rows)
+    ]
+    with conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT (e->>'i')::int AS i,
+                   bodha_signal_identity(
+                     (e->>'chart_id')::uuid,
+                     e->>'ayanamsha_id',
+                     e->>'signal_type_id',
+                     e->>'varga_id',
+                     e->'configuration_jsonb'
+                   )::text AS sid
+              FROM jsonb_array_elements(%s::jsonb) AS e
+            """,
+            [json.dumps(payload, default=str)],
+        )
+        # conn uses dict_row factory (see _fetch_dict above) — fetchall() rows are
+        # dict-like, not tuples. Unpacking `for index, sid in cur.fetchall()` silently
+        # iterated each row's KEYS ("i", "sid") instead of its values, producing a str
+        # index and crashing `rows[index]` with "list indices must be integers or
+        # slices, not str" on the very first row.
+        for id_row in cur.fetchall():
+            rows[id_row["i"]]["signal_id"] = id_row["sid"]
+
+    # §N.8: report the collapse honestly rather than assume none. Two rows sharing
+    # a derived identity ARE the same signal by the #1804 definition, so collapsing
+    # them is correct — hiding it is not. Measured at migration time the tuple is
+    # exactly unique (150,150 rows / 150,150 identities across all three charts),
+    # so a non-zero count here is new information and worth a loud line.
+    distinct_ids = len({row["signal_id"] for row in rows})
+    collapsed = len(rows) - distinct_ids
+    if collapsed:
+        logger.warning(
+            "bo_laksana: %d of %d signal rows collapsed onto an existing deterministic "
+            "identity (same signal by the #1804 definition). Expected 0 — the identity "
+            "tuple measured exactly unique on all three charts at migration 660.",
+            collapsed, len(rows),
+        )
+    return collapsed
+
+
 def _batch_insert(conn: Any, rows: list[dict]) -> int:
     """Batch insert using executemany (one round-trip per batch). Transaction owned by orchestrator — no commit here."""
+    # #1804: derive every signal_id before anything is written. Placed here, at the
+    # single insert path, rather than at the three emit sites -- the emit sites can
+    # multiply, this cannot be bypassed, and a row that reaches the database with a
+    # uuid4 is precisely the defect.
+    assign_deterministic_signal_ids(conn, rows)
     inserted = 0
     with conn.cursor() as cur:
         for i in range(0, len(rows), _BATCH_SIZE):
@@ -3016,6 +3414,10 @@ class BoLaksanaWriter(WriterBase):
         strength_lookup = _build_strength_lookup(conn, chart_id, ayanamsha)
         dignity_lookup  = _build_dignity_lookup(conn, chart_id, ayanamsha)
         av_lookup       = _build_av_lookup(conn, chart_id, ayanamsha)
+        # NIRMANA L2-W3 (D-SALIENCE): the L1 authorities for the two static terms
+        # that previously read jsonb keys absent from every fact in the chart.
+        vargottama_lookup = _build_vargottama_lookup(conn, chart_id, ayanamsha)
+        argala_lookup     = _build_argala_lookup(conn, chart_id, ayanamsha)
 
         # Night-1 Lane 4 — Change 1 (CR-81): activated class priors.
         class_priors = _load_class_priors(conn)
@@ -3080,6 +3482,8 @@ class BoLaksanaWriter(WriterBase):
                     class_priors=class_priors,
                     ratification_lookup=ratification_lookup,
                     vichara_valence_lookup=vichara_valence_lookup,
+                    vargottama_lookup=vargottama_lookup,
+                    argala_lookup=argala_lookup,
                 )
                 signal_rows.append(row)
             except Exception as exc:
@@ -3302,6 +3706,8 @@ class BoLaksanaWriter(WriterBase):
             f";ratification_available={ratification_available}"
             f";vichara_valence_available={vichara_valence_available}"
             f";divergence_signals={len(divergence_signals)}"
+            f";{PROVISIONAL_SALIENCE_TERMS_NOTE}"
+            f";{PROVISIONAL_MSR_TERMS_NOTE}"
         )
 
         return WriterResult(
@@ -3382,6 +3788,119 @@ def _fetch_graha_centrality(conn: Any, chart_id: str, ayanamsha_id: str) -> dict
     return {str(r["node_subject"]): r for r in rows}
 
 
+
+# ── NIRMĀṆA L2-W3 (D-SYNTHESIS): the three cross-system rollups ───────────────
+#
+# WHY THESE LIVE IN THE RERANK PASS AND NOT IN bo_laksana ITSELF
+#
+# All three were 100% NULL on 150,150 production rows, bound as literal `None` at
+# every write site. Populating them in bo_laksana is impossible, not merely awkward,
+# and the reason is DAG order:
+#
+#   * `contradicts_signals_array` denormalises `bodha_contradictions`, which is written
+#     by bo_karanajala (sort_order 3) — AFTER bo_laksana (1). At bo_laksana's own build
+#     time the source table holds the PREVIOUS generation's rows or nothing at all.
+#   * `system_convergence_count` and `cross_system_consensus_count` are computed over
+#     the COMPLETE signal set for a (chart, ayanamsha). Six satellite writers
+#     (sort_order 19-23) insert into bodha_msr_signals after bo_laksana, so a count
+#     taken at bo_laksana time would silently omit their 149 rows — and those are the
+#     rarest classes, i.e. the ones a convergence count is most interesting about.
+#
+# bo_laksana_rerank (sort_order 24, moved there by migration 660 so it follows every
+# MSR writer) is the only point in the DAG where the complete signal set and its
+# downstream contradiction rows both exist. That the migration moved it for a
+# different reason — it UPDATEs rows the satellites INSERT — and the reason turns out
+# to be the same one, is worth noting rather than treating as luck.
+#
+# COST NOTE: the two subject-derived columns are written by ONE combined UPDATE rather
+# than two. This table's 20 indexes (3 GIN) make any UPDATE a full-row rewrite —
+# bo_laksana.py's own percentile note records 600s+ for one scalar column over ~28K
+# rows — so two statements would pay that cost twice for the same rows.
+
+_SYNTHESIS_ROLLUP_SQL = """
+WITH sig AS (
+  SELECT s.signal_id, s.signal_tradition, cf.fact_subject
+    FROM bodha_msr_signals s
+    JOIN chart_facts cf
+      ON cf.fact_id = ANY(s.constituent_facts_array)
+     AND cf.chart_id = s.chart_id
+     AND cf.ayanamsha_id = s.ayanamsha_id
+   WHERE s.chart_id = %(chart_id)s AND s.ayanamsha_id = %(aya)s
+), subj AS (
+  SELECT fact_subject, count(DISTINCT signal_tradition) AS n_trad
+    FROM sig GROUP BY 1
+), pairs AS (
+  SELECT DISTINCT a.signal_id, b.signal_id AS other_id
+    FROM sig a JOIN sig b USING (fact_subject)
+   WHERE b.signal_id <> a.signal_id
+), conv AS (
+  SELECT signal_id, count(*)::int AS n FROM pairs GROUP BY 1
+), cons AS (
+  SELECT sig.signal_id, max(subj.n_trad)::int AS n_trad
+    FROM sig JOIN subj USING (fact_subject) GROUP BY 1
+)
+UPDATE bodha_msr_signals m
+   SET system_convergence_count     = COALESCE(conv.n, 0),
+       cross_system_consensus_count = cons.n_trad
+  FROM cons LEFT JOIN conv USING (signal_id)
+ WHERE m.signal_id = cons.signal_id
+   AND m.chart_id = %(chart_id)s AND m.ayanamsha_id = %(aya)s
+"""
+
+_CONTRADICTS_SQL = """
+WITH pairs AS (
+  SELECT signal_a_id AS sid, signal_b_id AS other FROM bodha_contradictions
+   WHERE chart_id = %(chart_id)s AND ayanamsha_id = %(aya)s
+  UNION ALL
+  SELECT signal_b_id, signal_a_id FROM bodha_contradictions
+   WHERE chart_id = %(chart_id)s AND ayanamsha_id = %(aya)s
+), agg AS (
+  SELECT sid, array_agg(DISTINCT other) AS arr FROM pairs GROUP BY sid
+)
+UPDATE bodha_msr_signals m
+   SET contradicts_signals_array = agg.arr
+  FROM agg
+ WHERE m.signal_id = agg.sid
+   AND m.chart_id = %(chart_id)s AND m.ayanamsha_id = %(aya)s
+"""
+
+
+def _populate_synthesis_rollups(conn: Any, chart_id: str, ayanamsha: str) -> tuple[int, int]:
+    """Populate the three D-SYNTHESIS cross-system columns for one ayanamsha.
+
+    Returns (rows_with_convergence_and_consensus, rows_with_contradictions).
+
+    THE STORAGE CONTRACT, which is three-way and deliberately so:
+
+      * a signal whose constituent facts resolve AND that shares a fact_subject with
+        another signal  -> the measured count;
+      * a signal whose facts resolve and that shares no subject  -> `0`. A MEASURED
+        zero: this signal genuinely stands alone in the chart, which is real
+        information about it;
+      * a signal with NO resolvable constituent facts  -> left NULL, untouched. Nothing
+        was checked, so nothing is claimed.
+
+    Collapsing the last two into a single `0` is the defect the campaign's standing
+    NULL-not-empty convention exists to prevent (ruling #1720): a reader could not tell
+    "this signal converges with nothing" from "this signal's facts could not be
+    resolved". The UPDATE joins through `cons`, which only contains signals with
+    resolvable facts, so the third population is never touched rather than being
+    explicitly skipped — the honest outcome falls out of the join.
+
+    `contradicts_signals_array` is likewise left NULL, never `'{}'`, on
+    non-participating rows. bo_upaya probes this column and reads an empty array as a
+    MEASURED "no contradictions found", which would silently enable a term that has no
+    evidence behind it (bo_upaya.py's own source_available check).
+    """
+    params = {"chart_id": chart_id, "aya": ayanamsha}
+    with conn.cursor() as cur:
+        cur.execute(_SYNTHESIS_ROLLUP_SQL, params)
+        rollup_rows = cur.rowcount or 0
+        cur.execute(_CONTRADICTS_SQL, params)
+        contradiction_rows = cur.rowcount or 0
+    return rollup_rows, contradiction_rows
+
+
 @register("bo_laksana_rerank")
 class BoLaksanaRerankWriter(WriterBase):
     """Post-CGM structural re-rank pass (CR-84) + PARK-#4 valence pickup.
@@ -3400,8 +3919,16 @@ class BoLaksanaRerankWriter(WriterBase):
         total_rerank = 0
         total_park4_reclaimed = 0
         total_park4_remaining = 0
+        total_rollup = 0
+        total_contradicts = 0
 
         for ayanamsha in CANONICAL_AYANAMSHAS:
+            # NIRMĀṆA L2-W3 (D-SYNTHESIS, ruling #1720). See the block above this class
+            # for why these three columns can only be computed here.
+            rollup_n, contradicts_n = _populate_synthesis_rollups(conn, chart_id, ayanamsha)
+            total_rollup += rollup_n
+            total_contradicts += contradicts_n
+
             centrality_by_graha = _fetch_graha_centrality(conn, chart_id, ayanamsha)
 
             # ── CR-84: structural_role from real CGM centrality ──────────────
@@ -3515,6 +4042,8 @@ class BoLaksanaRerankWriter(WriterBase):
             notes=(
                 f"structural_role_updated={total_rerank};"
                 f"park4_reclaimed={total_park4_reclaimed};"
-                f"park4_still_keyword_heuristic={total_park4_remaining}"
+                f"park4_still_keyword_heuristic={total_park4_remaining};"
+                f"synthesis_rollup_rows={total_rollup};"
+                f"contradicts_array_rows={total_contradicts}"
             ),
         )

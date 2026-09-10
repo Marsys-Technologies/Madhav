@@ -17,6 +17,9 @@
 /.next/
 /out/
 
+# pariprashna dd1 battery run artifacts (receipts, transcripts — local only)
+/scripts/pariprashna/dd1_battery/out/
+
 # production
 /build
 

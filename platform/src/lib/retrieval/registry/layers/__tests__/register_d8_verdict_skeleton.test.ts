@@ -87,16 +87,34 @@ beforeEach(() => {
       ranking_basis: { mode: 'composite', priors_version: '1.0', domain: 'career' },
     },
   })
-  // stratified stage-pool query — returns the rare structural classes
-  queryMock.mockResolvedValue({
-    rows: [
-      sig('par-1', 'parivartana'),
-      sig('par-2', 'parivartana'),
-      sig('yog-1', 'yoga', 'yoga'),
-      sig('cfg-1', 'configuration'),
-      sig('kar-1', 'karaka_alignment'),
-      sig('var-1', 'varga_pattern', 'varga'),
-    ],
+  // stratified stage-pool query — returns the rare structural classes. F-164: routes the
+  // brahma_vichara_constants read (DOMAIN_DIRECT_VARGAS is now a live read, not a literal)
+  // to a realistic fixture rather than falling through to the structural-class rows below,
+  // which are shaped nothing like {value_jsonb}.
+  queryMock.mockImplementation(async (sql: string) => {
+    if (String(sql).includes('brahma_vichara_constants')) {
+      return {
+        rows: [{
+          value_jsonb: {
+            wealth:   { vargas: ['D1', 'D2', 'D9', 'D11'], provisional: false, houses: [2, 11], karaka: 'Jupiter' },
+            career:   { vargas: ['D1', 'D10', 'D9'], provisional: true, houses: [10], karaka: 'Saturn' },
+            marriage: { vargas: ['D1', 'D9', 'D7'], provisional: true, houses: [7], karaka: 'Venus' },
+            health:   { vargas: ['D1', 'D6', 'D9'], provisional: true, houses: [6], karaka: 'Saturn' },
+            general:  { vargas: ['D1', 'D9'], provisional: true, houses: [1], karaka: 'Sun' },
+          },
+        }],
+      }
+    }
+    return {
+      rows: [
+        sig('par-1', 'parivartana'),
+        sig('par-2', 'parivartana'),
+        sig('yog-1', 'yoga', 'yoga'),
+        sig('cfg-1', 'configuration'),
+        sig('kar-1', 'karaka_alignment'),
+        sig('var-1', 'varga_pattern', 'varga'),
+      ],
+    }
   })
 })
 

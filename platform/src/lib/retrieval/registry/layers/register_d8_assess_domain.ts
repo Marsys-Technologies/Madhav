@@ -39,6 +39,9 @@ import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
 import { SHASTRA_MAP } from './register_d9_judgment'
+// F-166a: domain-resolution disclosure, mirroring judgment_query's F-57 mechanism (see
+// register_d9_judgment.ts's own domain_resolution block for the full rationale).
+import { isCanonicalDomain } from '@/lib/domain_vocabulary'
 // ŚODHANA T5 (PŪRTI) — the computed-but-never-joined classical legs + the served
 // reading_checklist receipt, shared with judgment_query (MC-030/031/033).
 import {
@@ -47,9 +50,60 @@ import {
   fetchGocharaSweep,
   checklistExhaustiveness,
   DOMAIN_KP_CUSPS,
+  DOMAIN_DIRECT_VARGAS,
+  DOMAIN_INDU_LAGNA,
+  ensureDomainDirectVargasLoaded,
   type ChecklistUnit,
+  type GocharaSweepWindow,
 } from './reading_checklist'
 import { judgmentFlag, type JudgmentFlagEntry } from '../../envelope'
+// F-113 (PARIŚEṢA-V4): the D1 (rāśi) significator-condition leg. Before this, assess_*
+// consumed the OPERATIVE VARGA's dignity (D9 for relationship) but never the rāśi dignity/
+// house/ṣaḍbala of the domain's own bhāveśa, kāraka(s) or bhāva occupants — which is how
+// an EXALTED Saturn in the 7th bhāva could be absent from every byte of assess_marriage.
+// The module reuses judgment_query's already-reviewed grading mechanism; see its header.
+import {
+  buildSignificatorCondition,
+  describeNotablePlacements,
+  NO_NOTABLE_PLACEMENT_TEXT,
+  type SignificatorCondition,
+} from './significator_condition'
+
+// F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure to gochara_sweep rows
+// so callers can distinguish genuine timing windows from era-scale context rows.
+// GocharaSweepWindow carries only 7 fields — too few for the full
+// deriveResolutionDisclosure() from register_gochara_windows.ts (which needs
+// resolution, peak_basis, milestone_id, shape_conformance). We derive the
+// disclosure from what is available: temporal_shape + peak_date.
+//
+// Rule (mirrors PK-R-1's second floor): a point-shaped row with a peak_date
+// is a genuine timing claim (is_timing_window=true). A row with temporal_shape
+// 'interval' or null without verifiable resolution data is era-scale context
+// (is_timing_window=false). Bare point rows (temporal_shape='point', peak_date
+// null) are suppressed — they carry no actionable timing claim.
+interface SweepWindowDisclosure {
+  is_timing_window: boolean
+  timing_window_blocked_reason: 'era_scale_context' | 'bare_point_no_date' | null
+}
+
+function withSweepDisclosure(
+  rows: GocharaSweepWindow[]
+): Array<GocharaSweepWindow & { resolution_disclosure: SweepWindowDisclosure }> {
+  // Suppress bare point rows (temporal_shape='point' but peak_date is null) —
+  // §N.6: do not serve a row that cannot support any timing claim.
+  const retained = rows.filter(
+    (r) => !(r.temporal_shape === 'point' && r.peak_date == null)
+  )
+  return retained.map((row) => {
+    const isPoint = row.temporal_shape === 'point'
+    return {
+      ...row,
+      resolution_disclosure: isPoint
+        ? { is_timing_window: true, timing_window_blocked_reason: null }
+        : { is_timing_window: false, timing_window_blocked_reason: 'era_scale_context' },
+    }
+  })
+}
 import { applyCompositeRanking, type MsrSignalRow } from '../../ranking/composite_ranker'
 import { fetchL1Context } from '../../ranking/l1_context_fetcher'
 import { rankGrahasByShadbala, type GrahaShadbalaInput } from '../../ranking/rank_vocabulary'
@@ -81,6 +135,12 @@ interface AssessDomainArgs {
   domain: string
   domain_label: string
   judgment_flag_note: string
+  /** F-166a: the tool-name domain word the caller actually invoked (e.g. `marriage` for
+   *  assess_marriage), which can differ from `domain` above — `domain` is already the
+   *  canonical signal-domain tag (e.g. `relationship`) that every domain-scoped leg below
+   *  is keyed by. Carried through so the response can disclose the mapping rather than
+   *  applying it silently, exactly like judgment_query's `domain_resolution` (F-57). */
+  requested_domain_key: string
 }
 
 // F-021R bounding defaults for assess_* tools.
@@ -113,8 +173,10 @@ const ASSESS_MAX_PREDICATES = 50
 // so a consumer knows the stage is pending, not genuinely quiet. (Item-0 R-45 triage,
 // AUDIT_STATE.md 2026-07-12.) No chart-specific row counts are embedded here — this string is
 // served to every caller regardless of chart context (GT-32/GT-54). Exported so its regression
-// protection (checkTextForNativeLeak scan, see register_d8_assess_domain.test.ts /
+// protection (checkTextForNativeLeak scan, see register_d8_assess_domain.gate.test.ts:76-77 /
 // chart_agnostic_gate.test.ts) can import the REAL constant rather than a synthetic copy.
+// (F-166b: repointed from a stale filename — this file's own basename + `.test.ts` — that
+// did not exist anywhere in the repo; see the F-166 PR for the prior dead pointer.)
 export const TEMPORAL_EMPTY_REASON =
   'kala_activation returned no dated windows in range. Known L3 writer defect (R-45/R-40 ' +
   'shared root): ~99% of kala_activation rows have NULL activation_start/end for the ' +
@@ -144,13 +206,12 @@ function capArray<T>(
 // Lagna (the dedicated Jaimini wealth-strength lagna). Exported so a CI check (and the D8
 // test suite) can assert every SHASTRA_MAP domain this file serves has a non-empty entry —
 // "no domain assessor may ship a stub for a layer classical to its own domain."
-export const DOMAIN_DIRECT_VARGAS: Record<string, string[]> = {
-  wealth: ['D2', 'D11'],
-  career: ['D10'],
-  relationship: ['D9'],
-  health: ['D6'],
-}
-const DOMAIN_INDU_LAGNA = new Set(['wealth'])
+// F-107: the registry itself now lives in ./reading_checklist (a leaf module that
+// judgment_query can also import without a d9→d8 cycle). Re-exported from here
+// unchanged so every existing import path — including the Lane-E CI rule loop in
+// register_d8_assess_domain.lane_e.test.ts — keeps working, and so there is exactly
+// ONE definition rather than two registries that can drift (CLAUDE.md §B.8 / GA.1).
+export { DOMAIN_DIRECT_VARGAS, DOMAIN_INDU_LAGNA } from './reading_checklist'
 
 interface VargaDignityRow {
   graha: string
@@ -285,6 +346,12 @@ export async function buildVargaAnalysisDirect(
   ayanamsha_id: string,
   domain: string,
 ): Promise<Record<string, unknown>> {
+  // F-164: hydrate the live-read registry before the first synchronous read this request
+  // makes of it (this call also feeds the reading_checklist_units block further down this
+  // same handler, which reads DOMAIN_DIRECT_VARGAS[domain] again synchronously — safe
+  // because this await always runs first). Throws (fails loudly) if the constants row is
+  // missing — never silently degrades to an empty/stale varga set.
+  await ensureDomainDirectVargasLoaded()
   const vargas = DOMAIN_DIRECT_VARGAS[domain] ?? []
   if (vargas.length === 0) {
     return {
@@ -362,10 +429,28 @@ export async function buildVargaAnalysisDirect(
 // an LLM). Every clause states which real L1/L2 fact_ids it is grounded on; a clause that
 // describes an honest absence (no yogas fired, no contradictions) carries `grounded: false`
 // with an empty fact_ids array rather than a fabricated citation (B.10).
+/** F-175: stable, structural identity for each verdict clause. Added so a downstream
+ *  composer (platform-mcp's assess_* Sāra kernel) can target a specific clause — e.g. the
+ *  contradiction-absence certification the PACT promise gate must qualify — WITHOUT
+ *  substring-matching the prose it is about to correct. Pattern-matching generated prose to
+ *  decide whether a claim is being made is exactly the fragility §N.7 item 2 legislates
+ *  against for fact selection; the same reasoning applies to clause selection. */
+export type VerdictClauseId =
+  | 'overview'
+  | 'significator_condition'
+  | 'yoga_findings'
+  | 'varga_grounding'
+  | 'contradictions'
+  | 'timing'
+  /** Inserted downstream (platform-mcp) — never emitted by this file. */
+  | 'promise_chain'
+
 export interface VerdictClause {
   text: string
   fact_ids: string[]
   grounded: boolean
+  /** Optional for back-compat with hand-built test fixtures; always set by buildVerdictLayer. */
+  clause_id?: VerdictClauseId
 }
 export interface VerdictLayer {
   clauses: VerdictClause[]
@@ -385,7 +470,17 @@ interface VerdictLayerInputs {
   chartWideContradictionCount: number
   temporalOk: boolean
   stageTemporalCount: number
+  /** F-113: the D1 significator-condition leg. Optional so existing callers/tests that
+   *  never assembled it keep their exact prior clause set (no silent behaviour change). */
+  significatorCondition?: SignificatorCondition | null
 }
+
+// F-113: the verdict layer is the ONLY assess_* surface that survives every budget pass —
+// `assembleSaraContent` drops `grounding` and `evidence` ALL-OR-NOTHING (live-confirmed:
+// assess_marriage at its 40KB default omits BOTH), while `kernel.verdict` is immune to
+// trimming by construction. A domain's most consequential classical placement therefore
+// belongs in a verdict clause, not only in a structured section a trim can delete.
+const VERDICT_MAX_CLAUSES = 6
 
 export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
   const clauses: VerdictClause[] = []
@@ -400,9 +495,28 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
       'placements, contradictions, and dasha timing below.',
     fact_ids: top10FactIds,
     grounded: top10FactIds.length > 0,
+    clause_id: 'overview',
   })
 
-  // 2 — yoga findings.
+  // 2 — F-113: D1 significator condition. Placed SECOND (immediately after the overview,
+  // ahead of yoga/varga/contradiction/timing) because a classical dignity extreme on the
+  // domain's own bhāveśa/kāraka/bhāva-occupant is the highest-order statement the rāśi makes
+  // about that domain — an acharya reads it before anything else. An honest absence is stated
+  // explicitly rather than the clause silently disappearing (B.10 / §N.7 item 6).
+  const sigCond = inputs.significatorCondition
+  if (sigCond) {
+    if (sigCond.empty_reason) {
+      clauses.push({ text: `Significator condition (D1) unavailable: ${sigCond.empty_reason}`, fact_ids: [], grounded: false, clause_id: 'significator_condition' })
+    } else {
+      const sentence = describeNotablePlacements(sigCond.notable, sigCond.bhava)
+      const notableFactIds = Array.from(new Set(sigCond.notable.flatMap(p => p.fact_ids)))
+      clauses.push(sentence
+        ? { text: sentence, fact_ids: notableFactIds, grounded: notableFactIds.length > 0, clause_id: 'significator_condition' as const }
+        : { text: NO_NOTABLE_PLACEMENT_TEXT, fact_ids: [], grounded: false, clause_id: 'significator_condition' as const })
+    }
+  }
+
+  // 3 — yoga findings.
   const domainMatched = inputs.bearingYogaFirings.filter(y => y['domain_match'] === true)
   if (domainMatched.length > 0) {
     const names = domainMatched.slice(0, 3)
@@ -414,6 +528,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         `bear directly on this domain's significators${names ? `, including ${names}` : ''}.`,
       fact_ids: inputs.domainMatchedYogaFactIds,
       grounded: inputs.domainMatchedYogaFactIds.length > 0,
+      clause_id: 'yoga_findings',
     })
   } else if (inputs.bearingYogaFirings.length > 0) {
     clauses.push({
@@ -421,6 +536,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         "name only this domain's bhāveśa/kāraka(s) — shown for context, not domain-confirmed.",
       fact_ids: [],
       grounded: false,
+      clause_id: 'yoga_findings',
     })
   } else {
     clauses.push({
@@ -428,6 +544,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'honest absence, not a fabricated claim either way.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'yoga_findings',
     })
   }
 
@@ -436,11 +553,19 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
     const vargas = (inputs.vargaAnalysis['consumed_vargas'] as string[] | undefined) ?? []
     const vargaFactIds = (inputs.vargaAnalysis['fact_ids'] as string[] | undefined) ?? []
     clauses.push({
+      // F-156: this clause is flattened into kernel.verdict (budget-immune) while
+      // varga_analysis itself is an all-or-nothing evidence/grounding-layer object that can
+      // be omitted under budget pressure (response_budget.ts assembleSaraContent). Citing the
+      // section by name produced an unfalsifiable claim — the citation always survived even
+      // when its referent did not. Cite what the clause carries directly (fact_ids, below)
+      // instead of naming a section that may not ship.
       text: `${vargas.map(displayVarga).join(' + ')} placements were consumed directly from L1 ` +
-        "to confirm this domain's operative-varga promise (see varga_analysis.per_varga for " +
-        'per-graha dignity and, where computed, per-varga Ashtakavarga).',
+        "to confirm this domain's operative-varga promise (per-graha dignity and, where " +
+        'computed, per-varga Ashtakavarga confirmed from L1 divisional placements — see ' +
+        'fact_ids below).',
       fact_ids: vargaFactIds,
       grounded: vargaFactIds.length > 0,
+      clause_id: 'varga_grounding',
     })
   }
 
@@ -453,6 +578,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         `${inputs.chartWideContradictionCount} chart-wide) — see contradictions for the adjudication detail.`,
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   } else if (contraStatus === 'no_contradictions_in_domain') {
     clauses.push({
@@ -460,6 +586,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'exist chart-wide) — an honest domain-scoped absence, not a silent omission.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   } else {
     clauses.push({
@@ -467,6 +594,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'has completed its L2 build (bo_karanajala) before reading this as a clean chart.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'contradictions',
     })
   }
 
@@ -477,10 +605,11 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
         'activating_dasha for the exact bounds.',
       fact_ids: [],
       grounded: false,
+      clause_id: 'timing',
     })
   }
 
-  const bounded = clauses.slice(0, 5)
+  const bounded = clauses.slice(0, VERDICT_MAX_CLAUSES)
   return {
     clauses: bounded,
     sentence_count: bounded.length,
@@ -494,7 +623,7 @@ export function buildVerdictLayer(inputs: VerdictLayerInputs): VerdictLayer {
 
 async function runAssessDomain(
   args: Record<string, unknown>,
-  opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note'>
+  opts: Pick<AssessDomainArgs, 'domain' | 'domain_label' | 'judgment_flag_note' | 'requested_domain_key'>
 ): Promise<{ content: object; is_error: boolean }> {
   const chart_id = args['chart_id'] as string | undefined
   if (!chart_id) {
@@ -502,7 +631,32 @@ async function runAssessDomain(
   }
 
   const ayanamsha_id = (args['ayanamsha_id'] as string | undefined) ?? 'lahiri_chitrapaksha'
-  const { domain, domain_label, judgment_flag_note } = opts
+  const { domain, domain_label, judgment_flag_note, requested_domain_key } = opts
+
+  // ── F-166a: domain-resolution disclosure (mirrors judgment_query's F-57 block) ──────
+  // `domain` above is already the canonical signal-domain tag every domain-scoped leg in
+  // this response is keyed by; `requested_domain_key` is the tool-name word the caller
+  // actually invoked (e.g. `marriage`). For assess_marriage the two differ (the silent
+  // `relationship` alias); for assess_career/health/wealth they happen to coincide. Before
+  // this fix the mapping was invisible on the wire for all four tools — the file imports
+  // SHASTRA_MAP but never disclosed which canonical domain it actually queried with.
+  const domain_resolution = {
+    requested: requested_domain_key,
+    resolved_signal_domain: domain,
+    is_exact: requested_domain_key === domain,
+    is_canonical: isCanonicalDomain(domain),
+    applies_to: [
+      'house_analysis / karaka_analysis (bodha_question_lenses + bodha_cdlm_cells via query_domain_reading, domain param)',
+      'bearing_yoga_firings (ga_yoga_firings domain_match against this domain\'s bhāveśa/kāraka(s))',
+      'gochara_sweep (brahma_event_ontology.domain)',
+      'contradictions (bodha_contradictions dissent surface, scoped via query_contradictions)',
+    ],
+    note:
+      'The domain-scoped legs listed in applies_to are keyed by the CANONICAL 13-domain ' +
+      'vocabulary (brahmagyan/domain_vocabulary.py). resolved_signal_domain is the tag those ' +
+      'legs were actually queried with — read any empty domain-scoped leg against THIS value, ' +
+      'not against `requested` (F-166, mirroring judgment_query\'s F-57).',
+  }
 
   // F-021R caps: bound signals per lens + contradictions in the assembled bundle.
   const max_signals_per_lens = Math.min(
@@ -731,6 +885,20 @@ async function runAssessDomain(
 
     // ── Step 5: direct varga/AV consumption (EL-45) — never a "see other tool" stub ──
     const vargaAnalysis = await buildVargaAnalysisDirect(chart_id, ayanamsha_id, domain)
+
+    // ── Step 5b (F-113): D1 (rāśi) significator condition ─────────────────────────
+    // The varga leg above reads the OPERATIVE VARGA (D9 for relationship) only. Nothing in
+    // this assembler read the rāśi dignity/house/ṣaḍbala of the domain's own bhāveśa,
+    // kāraka(s) or bhāva OCCUPANTS — the gap that let an exalted Saturn in the 7th bhāva be
+    // absent from every byte of assess_marriage on the canonical chart. Non-fatal: on failure
+    // the leg reports its own empty_reason and the rest of the assessment stands.
+    let significatorCondition: SignificatorCondition | null = null
+    try {
+      significatorCondition = await buildSignificatorCondition(chart_id, ayanamsha_id, domain)
+    } catch (err) {
+      significatorCondition = null
+      void err
+    }
 
     // ── Assemble verdict_skeleton (deterministic — no LLM inference) ──────────
     // Groups signals by reasoning-chain stage.
@@ -1062,6 +1230,17 @@ async function runAssessDomain(
     const reading_checklist_units: ChecklistUnit[] = [
       { unit: 'bhava_bhavesha', state: 'served', detail: 'domain reading (question lenses + bhāveśa via CDLM cells)' },
       { unit: 'karakas', state: 'served', detail: t5Spec ? t5Spec.karakas.join(', ') : domain },
+      // F-113: the D1 (rāśi) condition of bhāveśa + kāraka(s) + bhāva occupants. Previously
+      // NOT a checklist unit at all — its absence was invisible, which is exactly how the
+      // exalted-Saturn-in-the-7th omission survived a "served" reading_checklist.
+      {
+        unit: 'significator_condition_d1',
+        state: significatorCondition && !significatorCondition.empty_reason ? 'served' : 'not_computed',
+        count: significatorCondition ? significatorCondition.notable.length : 0,
+        detail: significatorCondition?.empty_reason
+          ?? 'D1 dignity + sign + house + ṣaḍbala of bhāveśa, kāraka(s) and bhāva occupants; ' +
+             'count = placements at a classical dignity/ṣaḍbala extreme (F-113)',
+      },
       { unit: 'operative_vargas', state: (vargaAnalysis && Object.keys(vargaAnalysis).length > 0) ? 'served' : 'not_computed', detail: (DOMAIN_DIRECT_VARGAS[domain] ?? []).join('+') + ' dignity + AV' },
       { unit: 'ashtakavarga', state: 'served', detail: 'per-varga pinda/sarva folded into varga_analysis' },
       { unit: 'special_lagnas', state: DOMAIN_INDU_LAGNA.has(domain) ? 'served' : 'not_joined', detail: DOMAIN_INDU_LAGNA.has(domain) ? 'Indu Lagna (Jaimini wealth lagna)' : 'no special-lagna leg for this domain', ...(DOMAIN_INDU_LAGNA.has(domain) ? {} : { drill: 'ganita_special_lagnas_get' }) },
@@ -1073,6 +1252,13 @@ async function runAssessDomain(
       { unit: 'bearing_yoga_firings', state: bearingYogaFirings.length > 0 ? 'served' : 'empty_for_this_chart', count: bearingYogaFirings.length, detail: 'ga_yoga_firings (firings-authoritative)' },
       { unit: 'contradictions', state: (contradictions.status === 'ok' && Array.isArray((contradictions as Record<string, unknown>)['items']) && ((contradictions as Record<string, unknown>)['items'] as unknown[]).length > 0) ? 'served' : 'empty_for_this_chart', detail: 'bodha_contradictions dissent surface' },
       { unit: 'tajaka', state: 'not_joined', detail: 'annual (varṣaphala/tājaka) not folded into the natal assessment', drill: 'ganita_tajaka_get' },
+      // F-107 (PP2 audit): bhavat-bhavam rule not computed. Discloses absence explicitly
+      // rather than silently omitting a classical layer of house analysis.
+      { unit: 'bhavat_bhavam_rule', state: 'not_joined', detail: 'Bhavat-bhavam (house-from-house) analysis — computation absent; registered for future build', drill: 'ganita_structural_get' },
+      // F-108 (PP2 audit): cross-varga dignity/strength cross-reference not computed.
+      // A confirmed finding in one varga that contradicts another is a classical discriminator;
+      // the cross-varga layer is not yet folded into this surface.
+      { unit: 'cross_varga_analysis', state: 'not_joined', detail: 'Cross-varga dignity/strength cross-reference — computation absent; registered for future build', drill: 'ganita_chart_facts_get' },
     ]
     const t5Exhaustiveness = checklistExhaustiveness(reading_checklist_units)
     const reading_checklist = {
@@ -1096,6 +1282,7 @@ async function runAssessDomain(
       chartWideContradictionCount,
       temporalOk: temporalResult.ok,
       stageTemporalCount: stageTemporal.length,
+      significatorCondition,
     })
 
     return {
@@ -1104,6 +1291,8 @@ async function runAssessDomain(
         domain_label,
         chart_id,
         ayanamsha_id,
+        // F-166a: which canonical domain the domain-scoped legs were ACTUALLY queried with.
+        domain_resolution,
         ranking_basis: p2RankingBasis,
         verdict,
         // T5 (PŪRTI): the served completeness receipt — which classical units this
@@ -1142,6 +1331,10 @@ async function runAssessDomain(
         })(),
         // EL-45: direct consumption, not a "see other tool" stub — see buildVargaAnalysisDirect.
         varga_analysis: vargaAnalysis,
+        // F-113: the D1 (rāśi) significator condition — every graded placement, plus the
+        // `notable` subset the verdict clause names. Structured detail lives here; the
+        // headline statement lives in `verdict` (the budget-immune kernel layer).
+        significator_condition: significatorCondition,
         // T5 (PŪRTI): the three computed-but-never-joined classical legs, served inline.
         sensitive_degree_firings: t5Sensitive.firings,
         kp_cusp_chain: { cusps: t5Kp.cusps, note: t5Kp.note },
@@ -1149,9 +1342,13 @@ async function runAssessDomain(
           domain: t5SignalDomain,
           domain_covered: t5Gochara.domain_covered,
           upcoming_window_count: t5Gochara.upcoming_window_count,
+          past_peak_window_count: t5Gochara.past_peak_window_count,
           valence_breakdown: t5Gochara.valence_breakdown,
           window_range: t5Gochara.window_range,
-          top_windows: t5Gochara.windows,
+          // F-119 (EKAVĀKYATĀ A-06): attach resolution_disclosure so callers
+          // distinguish genuine timing windows from era-scale context rows.
+          // Bare point rows (point-shaped, no peak_date) are suppressed per §N.6.
+          top_windows: withSweepDisclosure(t5Gochara.windows ?? []),
           note: t5Gochara.note,
         },
         activating_dasha: (() => {
@@ -1185,6 +1382,48 @@ async function runAssessDomain(
         },
         judgment_flags: [
           judgmentFlag('domain_inference_requires_acharya_validation', judgment_flag_note, 'warning'),
+          // F-166a: fires exactly when the tool-name domain word is a classical/colloquial
+          // alias for the canonical signal domain (e.g. assess_marriage -> 'relationship'),
+          // mirroring judgment_query's domain_resolution_aliased flag (F-57).
+          ...(domain_resolution.is_exact
+            ? []
+            : [judgmentFlag(
+                'domain_resolution_aliased',
+                `domain '${domain_resolution.requested}' resolves to the canonical signal domain ` +
+                `'${domain_resolution.resolved_signal_domain}' for the domain-scoped legs ` +
+                `(${domain_resolution.applies_to.join('; ')}) — a deliberate vocabulary mapping, ` +
+                'disclosed rather than applied silently (F-166, mirroring F-57).',
+                'info',
+              )]),
+          // F-113: disclose the D1 significator leg's state at the flag seam — a `not_computed`
+          // leg is a stated limit on the verdict, never a silent gap. §N.8: the flag has a real
+          // detector behind it (buildSignificatorCondition's own empty_reason), not a proxy.
+          ...(significatorCondition === null || significatorCondition.empty_reason
+            ? [judgmentFlag(
+                'significator_condition_unavailable',
+                'the D1 (rāśi) dignity/ṣaḍbala condition of this domain\'s bhāveśa, kāraka(s) and ' +
+                  'bhāva occupants could not be assembled this call' +
+                  (significatorCondition?.empty_reason ? ` — ${significatorCondition.empty_reason}` : '') +
+                  '. Read the verdict without it; drill ganita_chart_facts_get / judgment_query.',
+                'warning',
+              )]
+            : []),
+          // GA-5 review finding on #1384: register_d9_judgment.ts already flags this exact
+          // condition (gochara_top_window_already_peaked) from the same fetchGocharaSweep data;
+          // this file threaded past_peak_window_count/is_past_peak through without ever
+          // emitting the flag -- live-confirmed on assess_wealth (top-ranked window
+          // 'major_gain', peak 2025-04-26, already peaked, shipped silently). Mirrored here.
+          ...(t5Gochara.windows[0]?.is_past_peak === true
+            ? [judgmentFlag(
+                'gochara_top_window_already_peaked',
+                `the top-ranked (highest |intensity|) window in gochara_sweep.top_windows ` +
+                `('${t5Gochara.windows[0].event_class}', peak_date=${t5Gochara.windows[0].peak_date}) ` +
+                `already peaked before as_of_date=${today} — served for context (it is still ` +
+                `inside the query's date-overlap horizon), but its intensity ranking should not be ` +
+                `read as a forward-looking signal. See top_windows[].is_past_peak for the full set.`,
+                'info',
+              )]
+            : []),
           ...(bearingYogaFirings.length === 0
             ? [judgmentFlag(
                 'bearing_yogas_empty',
@@ -1310,6 +1549,7 @@ const assessMarriageCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'relationship',
+      requested_domain_key: 'marriage',
       domain_label: 'Marriage / Partnership',
       judgment_flag_note:
         'Marriage domain synthesis reconciles 7th lord + Venus kāraka + D9 from L1 chart_facts (via drill). CDLM cell reconciliation and affliction assessment require acharya review of the assembled bundle.',
@@ -1383,6 +1623,7 @@ const assessCareerCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'career',
+      requested_domain_key: 'career',
       domain_label: 'Career / Vocation',
       judgment_flag_note:
         'Career domain synthesis reconciles 10th lord + Saturn kāraka + D10 from L1 chart_facts (via drill). Yoga detection and dasha activation windows require acharya review of the assembled bundle.',
@@ -1456,6 +1697,7 @@ const assessHealthCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'health',
+      requested_domain_key: 'health',
       domain_label: 'Health / Vitality',
       judgment_flag_note:
         'Health domain synthesis reconciles 1st/6th/8th lords + Sun kāraka from L1 chart_facts (via drill). Affliction assessment and maraka timing require acharya review of the assembled bundle.',
@@ -1528,6 +1770,7 @@ const assessWealthCapability: CapabilityDescriptor = {
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     return runAssessDomain(args, {
       domain: 'wealth',
+      requested_domain_key: 'wealth',
       domain_label: 'Wealth / Prosperity',
       judgment_flag_note:
         'Wealth domain synthesis reconciles 2nd/11th lords + Jupiter kāraka from L1 chart_facts (via drill). Dhana yoga identification and dasha timing require acharya review of the assembled bundle.',

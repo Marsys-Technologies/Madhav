@@ -68,19 +68,32 @@ describe('bodha_remedies_get / bodha_remedies_search — graha/planet schema + p
   })
 
   it('bodha_remedies_get: a caller-supplied `planet` is forwarded to the capability call AS `graha` (paramAliases applied)', async () => {
+    // F-125: bodha_remedies_get now also carries the B.11 orientation gate
+    // (requiresOrientation: true), so it issues a SECOND fetch call
+    // (marsys://tool/L2/query_ucd) after the primary capability call — both mocked here.
     mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, content: { resonances: [], prescriptions: [] } }))
+    mockFetch.mockResolvedValueOnce(jsonResponse({ ok: true, content: { content: { chart_id: '482012f1-710e-4a25-994a-93821f5871aa', entity_profiles: [] }, is_error: false } }))
     const handler = registeredHandlers.get('bodha_remedies_get')!
     await handler({ chart_id: '482012f1-710e-4a25-994a-93821f5871aa', planet: 'Saturn' })
 
-    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
     const body = JSON.parse((mockFetch.mock.calls[0][1] as { body: string }).body) as {
       uri: string
       args: Record<string, unknown>
     }
+    expect(body.uri).toBe('marsys://tool/L2/query_remedies')
     // The alias-only param name must NOT survive to the capability call...
     expect(body.args['planet']).toBeUndefined()
     // ...and its value must have landed on the capability's real param name.
     expect(body.args['graha']).toBe('Saturn')
+
+    // The second call is the B.11 orientation pre-fetch (F-125) — same chart_id.
+    const secondBody = JSON.parse((mockFetch.mock.calls[1][1] as { body: string }).body) as {
+      uri: string
+      args: Record<string, unknown>
+    }
+    expect(secondBody.uri).toBe('marsys://tool/L2/query_ucd')
+    expect(secondBody.args['chart_id']).toBe('482012f1-710e-4a25-994a-93821f5871aa')
   })
 
   it('bodha_remedies_search: a caller-supplied `planet` is forwarded as `graha` too', async () => {

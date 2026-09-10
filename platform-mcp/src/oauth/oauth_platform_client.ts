@@ -82,6 +82,31 @@ export async function validateOAuthClient(
   }
 }
 
+/**
+ * SF-004 (PARIŚEṢA-V4): lookup-only client metadata for the /authorize
+ * redirect_uri allowlist check. Calls the platform's `metadata_only` mode —
+ * fully separate from `validateOAuthClient`'s secret-required call above.
+ * Returns ONLY redirect_uris + scopes, never owner_uid. See
+ * SF004_OAUTH_BINDING_CONTRACT_v1_0.md §4.
+ */
+export async function fetchOAuthClientMetadata(
+  clientId: string
+): Promise<{ found: true; redirect_uris: string[]; scopes: string[] } | { found: false }> {
+  try {
+    const res = await fetch(`${PLATFORM_URL}/api/mcp/oauth/clients/validate`, {
+      method: 'POST',
+      headers: serviceHeaders(),
+      body: JSON.stringify({ client_id: clientId, metadata_only: true }),
+      signal: AbortSignal.timeout(5_000),
+    })
+    if (!res.ok) return { found: false }
+    return (await res.json()) as { found: true; redirect_uris: string[]; scopes: string[] } | { found: false }
+  } catch (err) {
+    console.error('[mcp:oauth_client] fetchOAuthClientMetadata error:', err instanceof Error ? err.message : String(err))
+    return { found: false }
+  }
+}
+
 // ── Auth code operations ──────────────────────────────────────────────────────
 
 /**

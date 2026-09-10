@@ -42,6 +42,20 @@
  */
 export const SERVING_PATH_FILES: readonly string[] = [
   'src/app/api/pariprashna/route.ts',
+  // P0-C (RF-1) decomposed the pariprashna route into typed-stage pipeline
+  // modules — the served reading is now assembled across these 9 files, not
+  // the (now 237-line) route shell alone. Listed explicitly, per this file's
+  // own allowlist discipline, so the gate's coverage matches what actually
+  // assembles the served envelope.
+  'src/lib/pariprashna/pipeline/safety_gate.ts',
+  'src/lib/pariprashna/pipeline/plan_stage.ts',
+  'src/lib/pariprashna/pipeline/evidence_stage.ts',
+  'src/lib/pariprashna/pipeline/synthesis_stage.ts',
+  'src/lib/pariprashna/pipeline/validation_stage.ts',
+  'src/lib/pariprashna/pipeline/reading_parts.ts',
+  'src/lib/pariprashna/pipeline/receipt_stage.ts',
+  'src/lib/pariprashna/pipeline/persistence_stage.ts',
+  'src/lib/pariprashna/pipeline/stage_context.ts',
   'src/app/api/chat/consult/route.ts',
   'src/app/api/mcp/prashna_ask/route.ts',
   'src/lib/retrieval/envelope.ts',

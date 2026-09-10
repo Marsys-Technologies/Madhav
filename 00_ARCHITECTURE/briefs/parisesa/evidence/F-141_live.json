@@ -1,0 +1,21 @@
+{
+  "lane": "F-141",
+  "probe_ts": "2026-08-16T19:01:02Z",
+  "merged_sha": "51096a655645cdf640fc62e7d6ad7744656a0c7e",
+  "expected_close_state": "PARKED-WITH-DETECTOR (per PRATINIDHI PAR-R-9)",
+  "ka_kshetra_row": {
+    "asset_id": "ka_kshetra",
+    "state": "lit",
+    "rows_written": 11069325,
+    "last_built_at": "2026-08-15 06:28:11.690022+00",
+    "last_error_excerpt": "orphan-watchdog: heartbeat went stale while a substep plan was in flight. 301 substep(s) committed and 8599775 data row(s) are present, but this route cannot prove the plan finished, so the asset was NOT promoted to 'lit'. Re-run the build ..."
+  },
+  "detector_sql": "SELECT count(*) FROM asset_throughput WHERE state IN ('lit','mature') AND last_error IS NOT NULL AND last_error != ''",
+  "detector_count": 5,
+  "expected_count": 5,
+  "detector_note": "FAIL count=5 is the correct honest result for a disclosure detector per SPEC.md §3 — a PASS would signal regression",
+  "f102_wired_into_cheap_ids": true,
+  "sql_widened": true,
+  "exit_test": "PASS",
+  "cl00_f102_fail": "EXPECTED (disclosure-only remediation, PAR-R-9)"
+}

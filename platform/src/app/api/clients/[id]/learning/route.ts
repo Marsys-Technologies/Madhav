@@ -11,11 +11,19 @@
  *
  * Auth: Firebase session; chart-level access guard (must be owner or super_admin).
  * No direct writes to L1–L4 tables. LEL markdown is never bypassed (Step 2).
+ *
+ * V3-E-011 finding 2 fix (2026-08-28): all five POST actions are mutating —
+ * `guardChartAccess` (ownership-only, permits `chart_grants` view grantees) is
+ * no longer sufficient on its own for POST. Every action additionally requires
+ * `requireChartPermission({ access: 'write' })` (owner/super_admin) before its
+ * handler runs. GET (read-only open-windows/followups/pending-cosign listing)
+ * is unchanged — still gated by `guardChartAccess` alone.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -287,6 +295,20 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
   }
+
+  // V3-E-011 finding 2: `guardChartAccess` above is an OWNERSHIP check, not a
+  // read/write split — a `chart_grants` VIEW-ONLY grantee passes it. That is
+  // correct for this route's genuinely read-only surface (the GET handler
+  // below), but every one of the five POST actions performs a write
+  // (mimamsa_adjudication_log insert, a direct append to the LEL markdown
+  // source-of-truth, prashna_followup_schedule insert, the cosign
+  // approve/revoke that flips mimamsa_calibration_snapshot.publication_status,
+  // mimamsa_resonance_feedback insert) — none is read-only. Every action
+  // therefore additionally requires 'write' access (owner or super_admin)
+  // through the shared requireChartPermission brain before its handler runs.
+  // Additive: guardChartAccess above is unchanged and still runs first.
+  const writeDenied = await requireChartPermission({ uid: user.uid, chartId, access: 'write' })
+  if (writeDenied) return writeDenied
 
   const action = (body as { action?: string }).action
   switch (action) {

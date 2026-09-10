@@ -13,6 +13,7 @@ test_bg_sky_calendar.py):
 from __future__ import annotations
 
 import os
+import sys
 import uuid
 from datetime import date
 
@@ -189,15 +190,32 @@ def test_compute_day_factors_is_deterministic():
            [(r.factor_family, r.factor_key, r.start_utc, r.end_utc) for r in b]
 
 
-def test_compute_day_factors_covers_all_four_families():
-    """A real day must yield at least the two always-present families
-    (agnivasa: exactly 1/day; kalam: several/day) and, over a sampled week,
-    every one of the four documented families must appear at least once."""
+def test_compute_day_factors_covers_all_nine_families():
+    """A sampled week must expose every family bound by migration 530."""
     families_seen: set[str] = set()
     for offset in range(7):
         rows = compute_day_factors(date(2026, 8, 1 + offset))
         families_seen.update(r.factor_family for r in rows)
-    assert families_seen == {"agnivasa", "combination_yoga", "kalam", "ghati_muhurta"}
+    assert families_seen == {
+        "agnivasa", "combination_yoga", "kalam", "ghati_muhurta",
+        "hora", "vara", "nakshatra", "tithi", "lagna",
+    }
+
+
+def test_sampling_method_is_the_migration_530_nine_family_v2_contract():
+    from pipeline.orchestrator.writers.bg_muhurta_lattice import (
+        FACTOR_FAMILIES,
+        SAMPLING_METHOD_VERSION,
+    )
+
+    assert FACTOR_FAMILIES == (
+        "agnivasa", "combination_yoga", "kalam", "ghati_muhurta",
+        "hora", "vara", "nakshatra", "tithi", "lagna",
+    )
+    assert SAMPLING_METHOD_VERSION == (
+        "muhurta_lattice_agnivasa_yoga_kalam_ghati_"
+        "hora_vara_nakshatra_tithi_lagna_v2"
+    )
 
 
 def test_compute_day_factors_agnivasa_two_rows_per_day():
@@ -370,12 +388,185 @@ def test_writer_dry_run_no_db_needed():
     assert result.notes == "dry_run"
 
 
+def test_writer_fails_closed_when_swisseph_is_unavailable(monkeypatch):
+    """A missing compute dependency must not become a zero-row success."""
+    monkeypatch.setitem(sys.modules, "swisseph", None)
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+    with pytest.raises(RuntimeError, match="requires pyswisseph"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_fails_closed_before_computation_without_swiss_ephemeris_files(monkeypatch):
+    """A configured library alone must not silently select Moshier for writes."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: None)
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match=r"Swiss Ephemeris .*\.se1"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_fails_closed_when_pinned_ephemeris_bytes_are_corrupt(monkeypatch, tmp_path):
+    """Matching file names are insufficient: persisted rows require pinned bytes."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    for filename in ("sepl_18.se1", "semo_18.se1", "seas_18.se1"):
+        (tmp_path / filename).write_bytes(b"corrupt")
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: str(tmp_path))
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match="digest"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_fails_closed_when_swisseph_reports_moshier_fallback(monkeypatch):
+    """The return flags, not import success, prove the Swiss-file backend."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    class MoshierSwe:
+        SIDM_LAHIRI = 1
+        FLG_SWIEPH = 2
+        FLG_MOSEPH = 4
+        FLG_SIDEREAL = 64 * 1024
+        FLG_SPEED = 256
+        SUN = 0
+
+        @staticmethod
+        def set_ephe_path(_path):
+            return None
+
+        @staticmethod
+        def set_sid_mode(_mode):
+            return None
+
+        @staticmethod
+        def julday(*_args):
+            return 2_451_544.5
+
+        @staticmethod
+        def calc_ut(*_args):
+            return ((280.0, 0.0, 1.0, 1.0, 0.0, 0.0), MoshierSwe.FLG_MOSEPH)
+
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
+    monkeypatch.setitem(sys.modules, "swisseph", MoshierSwe)
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(AssertionError("computation started")),
+    )
+    ctx = ContextSpec(asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None)
+
+    with pytest.raises(RuntimeError, match="Moshier"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_day_computation_failure(monkeypatch):
+    """A partial year must roll back instead of being marked complete."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
+    monkeypatch.setattr(
+        lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
+    )
+    monkeypatch.setattr(
+        lattice,
+        "compute_day_factors",
+        lambda *_args: (_ for _ in ()).throw(ValueError("day computation exploded")),
+    )
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice", build_id=str(uuid.uuid4()), db_conn=None,
+    )
+    with pytest.raises(ValueError, match="day computation exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
+def test_writer_propagates_insert_failure(monkeypatch):
+    """A failed batch write must escape so the substep savepoint is rolled back."""
+    import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
+
+    class CursorContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, *_args):
+            return False
+
+    class Connection:
+        @staticmethod
+        def cursor():
+            return CursorContext()
+
+    monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
+    monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
+    monkeypatch.setattr(
+        lattice, "compute_horizon", lambda: (date(2026, 1, 1), date(2026, 1, 2))
+    )
+    monkeypatch.setattr(lattice, "compute_day_factors", lambda *_args: [object()])
+    monkeypatch.setattr(
+        BgMuhurtaLatticeWriter,
+        "_to_insert_dict",
+        staticmethod(lambda *_args: {}),
+    )
+    monkeypatch.setattr(
+        BgMuhurtaLatticeWriter,
+        "_flush_batch",
+        staticmethod(lambda *_args: (_ for _ in ()).throw(RuntimeError("insert exploded"))),
+    )
+    ctx = ContextSpec(
+        asset_id="bg_muhurta_lattice",
+        build_id=str(uuid.uuid4()),
+        db_conn=Connection(),
+    )
+    with pytest.raises(RuntimeError, match="insert exploded"):
+        BgMuhurtaLatticeWriter().run_substep(ctx, SubStep(key="year:2026"))
+
+
 def test_reference_location_matches_bhubaneswar_panchang_convention():
     """The reference (lat, lon, tz_offset) must match panchang.py's own
     FORENSIC-matching 'bhubaneswar' fallback triple, not a different value."""
     assert REFERENCE_LAT == 20.27
     assert REFERENCE_LON == 85.84
     assert REFERENCE_TZ_OFFSET_MINUTES == 330
+
+
+def test_flush_batch_repairs_stale_rows_on_natural_key_conflict():
+    """A rolling rebuild must converge an existing legacy lattice atom."""
+    class RecordingCursor:
+        rowcount = 1
+        sql = ""
+
+        def executemany(self, sql, _batch):
+            self.sql = sql
+
+    cursor = RecordingCursor()
+    written = BgMuhurtaLatticeWriter._flush_batch(cursor, [{}])
+
+    assert written == 1
+    assert "DO UPDATE SET" in cursor.sql
+    assert "end_utc = EXCLUDED.end_utc" in cursor.sql
+    assert "bg_muhurta_lattice.source_citation" in cursor.sql
+    assert "IS DISTINCT FROM" in cursor.sql
 
 
 # ── Live tests (require DATABASE_URL; skipped otherwise) ─────────────────────
@@ -408,11 +599,21 @@ def test_bg_muhurta_lattice_no_null_citations(db_conn):
     assert n == 0, f"bg_muhurta_lattice has {n} rows with NULL source_citation"
 
 
-def test_bg_muhurta_lattice_all_four_families_present_after_full_build(db_conn):
+def test_bg_muhurta_lattice_v2_contract_has_all_nine_families_after_full_build(db_conn):
+    """Migration 530's v2 corpus is canonical; retained v1 rows are separate."""
+    from pipeline.orchestrator.writers.bg_muhurta_lattice import (
+        FACTOR_FAMILIES,
+        SAMPLING_METHOD_VERSION,
+    )
+
     cur = db_conn.cursor()
-    cur.execute("SELECT DISTINCT factor_family FROM bg_muhurta_lattice")
+    cur.execute(
+        "SELECT DISTINCT factor_family FROM bg_muhurta_lattice "
+        "WHERE sampling_method = %s",
+        (SAMPLING_METHOD_VERSION,),
+    )
     families = {r["factor_family"] for r in cur.fetchall()}
-    assert families == {"agnivasa", "combination_yoga", "kalam", "ghati_muhurta"}
+    assert families == set(FACTOR_FAMILIES)
 
 
 def test_bg_muhurta_lattice_writer_idempotent(db_conn):

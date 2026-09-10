@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db/client'
+import { getServerUser } from '@/lib/firebase/server'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export const dynamic = 'force-dynamic'
+
+function envelope(errors: string[], status: number) {
+  return NextResponse.json(
+    { data: null, fetched_at: new Date().toISOString(), stale_after_seconds: 0, errors },
+    { status }
+  )
+}
 
 const MAX_LIMIT = 50
 
@@ -66,6 +75,15 @@ function buildSampleQuery(
 }
 
 export async function GET(req: NextRequest) {
+  // P2-B-008 (CRITICAL): this route had NO authentication whatsoever — zero
+  // getServerUser() calls — and served `SELECT * FROM <target_table> WHERE
+  // chart_id = $1` for any caller-supplied asset + chart_id. An anonymous HTTP
+  // request could read another person's chart_facts, bodha_*, kala_*, phala_*
+  // rows in full. Authentication is the first gate; ownership (below, once the
+  // asset's scope is known) is the second.
+  const user = await getServerUser()
+  if (!user) return envelope(['authentication required'], 401)
+
   const assetId = req.nextUrl.searchParams.get('asset')
   const chartId = req.nextUrl.searchParams.get('chart_id') || null
   const rawLimit = parseInt(req.nextUrl.searchParams.get('limit') ?? '10', 10)
@@ -94,6 +112,33 @@ export async function GET(req: NextRequest) {
     }
 
     const asset = assetResult.rows[0]
+
+    // P2-B-008, second gate. Two distinct holes are closed here, and BOTH are
+    // required — authentication alone would leave the second one wide open.
+    //
+    //   1. A per_chart asset WITH a chart_id: the rows belong to that chart's
+    //      owner, so the caller needs at least a 'view' relationship to it.
+    //   2. A per_chart asset WITHOUT a chart_id: `buildSampleQuery` used to fall
+    //      through to the unscoped `SELECT * FROM <table> LIMIT $1` branch,
+    //      returning rows from ALL charts mixed together. Any logged-in user
+    //      could read everyone's data simply by omitting the parameter. A
+    //      per_chart asset now REQUIRES a chart_id; the unscoped branch is
+    //      reachable only by genuinely global-scope assets.
+    //
+    // Global-scope assets (bg_* reference corpora and the like) have no owner to
+    // check — for those, authentication above is the whole gate.
+    if (asset.scope === 'per_chart') {
+      if (!chartId) {
+        return envelope(['chart_id is required for a per-chart asset'], 400)
+      }
+      const denied = await requireChartPermission({
+        uid: user.uid,
+        chartId,
+        access: 'read',
+      })
+      if (denied) return envelope(['forbidden'], 403)
+    }
+
     const querySpec = buildSampleQuery(asset, chartId, limit)
 
     if (!querySpec) {

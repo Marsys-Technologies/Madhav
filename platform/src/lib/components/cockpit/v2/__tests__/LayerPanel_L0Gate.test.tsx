@@ -149,3 +149,40 @@ describe('LayerPanel — L0 ClearIconButton gate', () => {
     expect(screen.getByTitle(/clear/i)).toBeTruthy()
   })
 })
+
+describe('LayerPanel — singleton asset_set ownership', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+  })
+
+  it('holds the selected service row and its layer while a singleton asset_set run is active', () => {
+    render(
+      <LayerPanel
+        layer="brahmagyan"
+        assets={[{ ...ASSET_BASE, asset_id: 'bg_ephemeris_engine', asset_type: 'service' as const, asset_kind: 'service' as const, health_probe: { type: 'ephemeris' } }]}
+        stats={new Map()}
+        defaultExpanded
+        chartId="chart-1"
+        activeRun={{
+          id: 'run-ephemeris',
+          scope: 'asset_set',
+          scope_target: 'bg_ephemeris_engine',
+          action: 'rebuild',
+          state: 'running',
+          plan: ['bg_ephemeris_engine'],
+          current_asset_id: 'bg_ephemeris_engine',
+          created_at: '2026-08-27T00:00:00Z',
+          started_at: '2026-08-27T00:00:01Z',
+          pause_requested_at: null,
+          stop_requested_at: null,
+        }}
+        onRunStarted={() => {}}
+      />
+    )
+
+    expect(screen.queryByText(/^(Build|Rebuild)$/)).toBeNull()
+    expect(screen.queryByTitle('Rebuild')).toBeNull()
+    expect(screen.getAllByTitle('Stop build')).toHaveLength(2)
+  })
+})

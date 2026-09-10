@@ -1,0 +1,20 @@
+{
+  "finding_id": "F-60",
+  "outcome": "PR_OPENED_FROZEN",
+  "pr_url": "https://github.com/Marsys-Technologies/Madhav/pull/1388",
+  "branch": "parisesa/repair-F60-total-count-fix",
+  "worktree": "/private/tmp/claude-504/-Users-Dev-par-night-parisesa-v4-conductor/30dc2deb-5f29-4de7-a662-dd6592959462/scratchpad/repair-f60",
+  "base_commit": "dc78e82df (origin/main at time of branch)",
+  "commit": "5d1d68af5",
+  "test_results": {
+    "regression_test_new_file": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength_f60_total_count.test.ts",
+    "pre_fix_run": "4/4 tests FAILED against original (stashed-fix) get_strength.ts -- undefined total_available/limit_capped/requested_limit fields, confirming a genuine pre-existing defect, not a test artifact",
+    "post_fix_run": "4/4 tests PASS after fix",
+    "regression_suite": "get_strength_mc014_defaults.test.ts (updated to distinguish the new COUNT(*) query from the SELECT in its mock) -- 2/2 PASS",
+    "gate_registry_suite": "chart_agnostic_gate_registry.test.ts -- 14/14 PASS (schema-only, includes get_strength descriptor)",
+    "typecheck": "npx tsc --noEmit -- no new errors introduced (pre-existing unrelated module-resolution errors only, from a symlinked node_modules used for the sandbox)",
+    "lint": "npx eslint on all 3 touched files -- 0 errors (1 pre-existing unrelated warning on unused _ctx param)"
+  },
+  "review_notes": "Ledger F-60 record: corpus cited commit cfb6444c8 (known IF-001 mis-citation); a second mis-citation (cd7653855, PR #1306, titled with F-60/F-92 but its actual diff touches only query_temporal_activation.ts + register_d9_judgment.ts) was found and ruled out this session. The real, still-open defect was independently re-confirmed directly on origin/main: get_strength.ts line 111 silently capped `limit` to 2000 via Math.min, and line 214 reported `total: servedRows.length` -- a post-cap/post-offset/post-all:false-filter page length masquerading as a true row count. Fix: (1) restructured the WHERE-clause + params construction to be shared between a new dedicated COUNT(*) query and the existing SELECT, so a genuine pre-LIMIT/OFFSET row count (matching chart_id/categories/ayanamsha_id/graha_key) is surfaced as a new `total_available` field, independent of pagination/cap/the all:false counterfactual-row drop; (2) recorded the caller's original requested limit before capping and added explicit `limit_capped`/`requested_limit`/`note_limit_cap` disclosure whenever the 2000-row hard cap is actually hit, instead of silently truncating. `total` field's name and page-length meaning were left unchanged (additive-only) after confirming, via targeted grep across platform/ and platform-mcp/, that no downstream caller reads `total` as a true count: graha_portrait.ts and query_planet.ts (the only two other in-repo callers of getStrengthCapability.handler) destructure only `.rows`; register_p1_ganita.ts's ganita_strength_get MCP tool wrapper calls envelope(data, 'ganita_strength_get') with no `pagination` argument at all, so the wire-level pagination.total the MCP client sees was already null/unrelated to this field pre-fix. No other test file, snapshot, or type contract in the repo asserts get_strength's exact response-key set. Independent review pass confirms the diff is additive-only and does not change any existing field's name, type, or meaning.",
+  "next_action": "None required from this lane. PR #1388 is open against main and intentionally left unmerged per the campaign's overnight scope boundary (real code work, commit + push only, no merge/deploy/data action). A future session can merge once the campaign's merge window opens; no further design work is pending on this finding."
+}

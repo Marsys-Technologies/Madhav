@@ -176,14 +176,32 @@ describe('kala_ahead_get — falsifier (derived from existing window bounds, nev
 })
 
 describe('kala_ahead_get — coverage honesty (not-yet-built concepts disclosed, never dropped)', () => {
-  it('discloses promise_gated_forecasting / sky_event_calendar / tithi_pravesa as not_in_corpus', async () => {
+  it('discloses sky_event_calendar / tithi_pravesa as not_in_corpus', async () => {
     vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
     const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
     const byConcept = Object.fromEntries(result.coverage.map((c) => [c.concept, c]))
-    for (const key of ['promise_gated_forecasting', 'sky_event_calendar', 'tithi_pravesa']) {
+    for (const key of ['sky_event_calendar', 'tithi_pravesa']) {
       expect(byConcept[key]?.state).toBe('not_in_corpus')
       expect(byConcept[key]?.reason?.length).toBeGreaterThan(0)
     }
+  })
+
+  // F-110 (CL-15): `promise_gated_forecasting` used to be asserted here as an
+  // unconditional `not_in_corpus` — i.e. this test asserted the §N.8 Earned-Signal defect
+  // itself: a status string no input could ever change. It now has a real detector
+  // (`computePromiseGate`), so what this test must pin is that the state VARIES with what
+  // the PACT chain actually returned. This mock's registry answers every URI it does not
+  // recognise with an empty body, so the pact_query leg yields no `pact_status` → the
+  // honest `honest_empty` ("unchecked"), never a silent `computed` pass.
+  // Full per-state coverage: kala_ahead_get_f110_promise_gate.test.ts.
+  it('promise_gated_forecasting reports the REAL gate state, not a hardcoded string (F-110/§N.8)', async () => {
+    vi.stubGlobal('fetch', mockRegistryFetch({ reachable: true }))
+    const result = await computeKalaAhead(TEST_CHART_ID, {}, TEST_PRINCIPAL)
+    const entry = result.coverage.find((c) => c.concept === 'promise_gated_forecasting')
+    expect(entry?.state).toBe('honest_empty')
+    expect(entry?.reason?.length).toBeGreaterThan(0)
+    expect(result.promise_gate.state).toBe('unreachable')
+    expect(result.promise_gate.join).toBeNull()
   })
 })
 

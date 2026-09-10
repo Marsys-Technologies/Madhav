@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerUser } from '@/lib/firebase/server'
 import { query } from '@/lib/db/client'
 import { resolveBuildPlan, type RegistryEntry, type ThroughputEntry, type BuildAction, type BuildScope } from '@/lib/build/plan'
+import { COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS } from '@/lib/cockpit/serviceProbeContract'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 
 export async function POST(req: NextRequest) {
   // Plan preview is a read-only operation — any authenticated user may call it.
@@ -22,11 +24,40 @@ export async function POST(req: NextRequest) {
     action: BuildAction
   }
 
+  // P2-B-008: per-chart authorization on the caller-supplied chart_id. The
+  // "read-only, so any authenticated user may call it" note above is correct about
+  // this route being read-only, and about it not needing to be super_admin-only —
+  // but read-only was never the question. Applied to an arbitrary chart_id it
+  // disclosed a build-state profile of someone else's chart: per-asset built/
+  // dormant/stale state, whether chart_facts is populated and ga_structural lit
+  // (the bo_* precondition probes), which assets are protected, and historical
+  // per-asset build durations.
+  //
+  // 'read' (permission !== 'deny'), not the 'write' the destructive routes demand:
+  // a preview is exactly the kind of read a chart_grants 'view' grant covers, and
+  // the plan modal must keep working for view-grantees.
+  const denied = await requireChartPermission({
+    uid: user.uid,
+    chartId: chart_id,
+    access: 'read',
+  })
+  if (denied) return denied
+
   try {
     const [registryResult, throughputResult, protectedResult] = await Promise.all([
       query<RegistryEntry>(
         `SELECT asset_id, layer, COALESCE(depends_on, '{}') AS depends_on, estimated_seconds
-         FROM asset_registry WHERE has_writer = true ORDER BY layer, sort_order`
+         FROM asset_registry
+         WHERE has_writer = true
+            OR (
+              asset_id = ANY($1::text[])
+              AND scope = 'global'
+              AND asset_kind = 'service'
+              AND asset_type = 'service'
+              AND health_probe IS NOT NULL
+            )
+         ORDER BY layer, sort_order`,
+        [COCKPIT_DISPATCHABLE_SERVICE_PROBE_IDS]
       ),
       query<ThroughputEntry>(
         // Include BOTH the chart-scoped rows AND the global (chart_id IS NULL) rows so that

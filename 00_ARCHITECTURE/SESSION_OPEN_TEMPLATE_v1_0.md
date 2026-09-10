@@ -1,16 +1,18 @@
 ---
 artifact: SESSION_OPEN_TEMPLATE_v1_0.md
-version: 1.1
+version: 1.2
 status: CURRENT
 produced_during: STEP_7_GOVERNANCE_INTEGRITY_IMPLEMENTATION (2026-04-24)
 implements: GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §F
-authoritative_side: Claude (Claude-only template artifact; no Gemini-side counterpart required — the instantiated handshake produced by each session IS the mirror surface, via SESSION_LOG + CURRENT_STATE_v1_0.md pairings per MP.2. STEP_LEDGER retired 2026-04-24; FILE_REGISTRY superseded by CAPABILITY_MANIFEST.json 2026-04-27; ND.1/MP.1 Mirror Discipline retired 2026-05-27)
+authoritative_side: tool-neutral (the instantiated handshake produced by each session is the
+  governed provenance surface, via SESSION_LOG + CURRENT_STATE_v1_0.md pairings. STEP_LEDGER
+  retired 2026-04-24; FILE_REGISTRY superseded by CAPABILITY_MANIFEST.json 2026-04-27.)
 mirror_obligations: >
   None for this template file itself. Per-session instantiations are appended to SESSION_LOG
   (Claude-side) as the opening block of the session's entry; the Gemini-side mirror is the
   corresponding state reflected in `.gemini/project_state.md` per MP.2 adapted parity.
 consumers:
-  - Every Claude (and Gemini) session opening on this project from Step 7 close forward
+  - Every Claude Code and Codex session opening on this project
   - `schema_validator.py` — validates the handshake YAML before any substantive work
   - `mirror_enforcer.py` — reads `mirror_pair_freshness_check` to decide whether a mid-session
     enforcer run is obligated
@@ -20,6 +22,9 @@ consumers:
     the `step_number_or_macro_phase` field to name a CURRENT_STATE row instead of a STEP_LEDGER
     row post-rebuild
 changelog:
+  - v1.2 (2026-08-15, CODEX_ONBOARDING): Adds tool/profile/worktree provenance,
+    coordination-lease evidence, and mandatory CCD-register consumption for the shared
+    Claude Code/Codex operating convention in GOVERNANCE_INTEGRITY_PROTOCOL §P.
   - v1.0 (2026-04-24, Step 7): Initial template. Produced per GOVERNANCE_INTEGRITY_PROTOCOL §F.
     Carries the mandatory-field schema, enforcement rules, two worked examples (rebuild-era
     and post-rebuild-era), and the CLI invocation for validation.
@@ -31,7 +36,9 @@ changelog:
 # SESSION_OPEN_TEMPLATE v1.0
 ## MARSYS-JIS Project — Session-Open Handshake
 
-*Implements `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §F`. Every session, Claude-side or Gemini-side, emits a handshake per this schema **before any substantive tool call**. A session whose handshake fails `schema_validator.py` halts and reports; it does not proceed.*
+*Implements `GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md §§F, P`. Every Claude Code or Codex
+session emits a handshake per this schema **before any substantive tool call**. A session
+whose handshake fails `schema_validator.py` halts and reports; it does not proceed.*
 
 ---
 
@@ -67,12 +74,34 @@ session_open:
     # "gemini-2-5-pro" / etc. Pinned per MP v2.0 §3.4.F.
   agent_version: claude-opus-4-7
     # Model version identifier at session open (may equal agent_name).
+  tool: "Claude Code"
+    # Required provenance: "Claude Code" or "Codex".
+  tool_profile: null
+    # Codex sessions record "madhav-safe" or "madhav-parity"; Claude Code records null.
+  worktree_path: <absolute-path>
+    # Every state-changing session uses its own task-specific worktree.
   step_number_or_macro_phase: STEP_7
     # Rebuild era: STEP_NN. Post-rebuild: M.P.sub-phase, e.g., M2.B.3.
   predecessor_session: STEP_6_GOVERNANCE_INTEGRITY_DESIGN
     # session_id of the previous session that handed off to this one. MUST match
     # STEP_LEDGER's most recently `completed` row (rebuild era) or the last
     # `current_state_updated: true` session (post-rebuild).
+
+  # ------------------------------------------------------------------
+  # Cross-tool coordination
+  # ------------------------------------------------------------------
+  coordination:
+    coordination_ref: "origin/campaign-coordination"
+    lease_id: "L-<live-id>"
+    lease_status_verified: true
+    lease_verified_at: <ISO-8601>
+    work_order_surface: <owning-campaign-ledger-or-queue>
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+      - ".conductor-state.json"
+      - ".gemini/project_state.md"
+      - "CLAUDECODE_BRIEF.md (when COMPLETE)"
 
   # ------------------------------------------------------------------
   # Mandatory reading confirmation
@@ -97,6 +126,9 @@ session_open:
     - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md  # replaces STEP_LEDGER post-rebuild
       fingerprint_sha256: <hex>
       read_at: 2026-04-24T00:00:00+05:30
+    - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      fingerprint_sha256: <hex>
+      read_at: 2026-08-15T00:00:00+05:30
     - file: 00_ARCHITECTURE/STEP_BRIEFS/STEP_07_GOVERNANCE_INTEGRITY_IMPLEMENTATION_v1_0.md
       fingerprint_sha256: <hex>
       read_at: 2026-04-24T00:00:00+05:30

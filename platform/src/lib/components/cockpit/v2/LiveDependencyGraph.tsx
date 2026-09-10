@@ -12,7 +12,7 @@ import type { ActiveRun } from '@/hooks/useActiveRun'
 // AssetWithState type the whole v2 cockpit renders from, so the two must stay in step).
 // 'incomplete' added by SAMĀPTI B-COCKPIT-INCOMPLETE (DVA Ruling 24) — the widened stats
 // contract does not type-check into this surface without it.
-type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok'
+type AssetState = 'lit' | 'building' | 'stale' | 'dormant' | 'error' | 'partial' | 'incomplete' | 'not_migrated' | 'service_ok' | 'service_down'
 
 interface AssetWithState extends AssetRow {
   state: AssetState
@@ -120,6 +120,7 @@ function stateOpacity(state: AssetState): number {
 
 function fillFor(state: AssetState): string {
   if (state === 'dormant' || state === 'not_migrated') return 'none'
+  if (state === 'service_down') return 'rgba(181,71,76,0.45)'
   return 'url(#nodeBead)'
 }
 
@@ -133,6 +134,7 @@ function strokeFor(state: AssetState): string {
   if (state === 'stale' || state === 'partial' || state === 'incomplete') return 'rgba(140,104,36,0.55)'
   if (state === 'building') return GOLD_NODE_MID
   if (state === 'lit')      return GOLD_ROOT_MID
+  if (state === 'service_down') return 'rgba(181,71,76,0.85)'
   return GOLD_NODE_LIGHT
 }
 

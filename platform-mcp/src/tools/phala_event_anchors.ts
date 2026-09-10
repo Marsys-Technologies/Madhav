@@ -215,14 +215,16 @@ export async function fetchEventAnchors(
 }
 
 /**
- * Seed pre-calibrated phala anchors for a chart (idempotent).
- * Calls seed_native_phala_anchors() SQL function via the sidecar.
+ * seedNativeAnchors REMOVED -- CONDUCTOR ruling on adjudication #1739 (D-CND-08).
+ *
+ * It called `/api/compute/phala/seed_anchors`, a live endpoint into the deployed SQL
+ * function `seed_native_phala_anchors()`, which inserts hand-authored predictions with
+ * hand-assigned confidence values into `phala_anchors` -- the L4 root table -- where they
+ * are indistinguishable from derived ones. Only a schema mismatch stopped it, and an
+ * accident is not a control.
+ *
+ * Do not reinstate. Predictive anchors come from `ph_nimitta`, deterministically.
  */
-export async function seedNativeAnchors(
-  chartId: string
-): Promise<{ ok: boolean; rows_inserted: number; chart_id: string }> {
-  return callSidecar('/api/compute/phala/seed_anchors', { chart_id: chartId })
-}
 
 // ── Tool registration ──────────────────────────────────────────────────────────
 

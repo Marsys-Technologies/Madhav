@@ -1,0 +1,5 @@
+chart_id,conclusion_id,signal_id,sensitivity,role,formula_version
+482012f1-710e-4a25-994a-93821f5871aa,concl_fam_yoga,fam_yoga,0.7,load_bearing,mi_adhilepa_v1.0
+482012f1-710e-4a25-994a-93821f5871aa,concl_fam_msr_signal,fam_msr_signal,0.7,supporting,mi_adhilepa_v1.0
+482012f1-710e-4a25-994a-93821f5871aa,concl_fam_convergence,fam_convergence,0.6,supporting,mi_adhilepa_v1.0
+482012f1-710e-4a25-994a-93821f5871aa,concl_fam_dasha_period,fam_dasha_period,0.575,redundant,mi_adhilepa_v1.0

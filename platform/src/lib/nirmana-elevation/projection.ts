@@ -1,0 +1,856 @@
+import {
+  NirmanaAssetAnalysisEvidenceSchema,
+  NirmanaFoundationLaneEvidenceSchema,
+  NirmanaFreezeEvidenceSchema,
+  NirmanaImplementationEvidenceSchema,
+  NirmanaIntegrityEvidenceSchema,
+  NirmanaNonBuildDispositionEvidenceSchema,
+  NirmanaOptimizationVerdictEvidenceSchema,
+  NirmanaProbeEvidenceSchema,
+  NirmanaProducerCoverageEvidenceSchema,
+  NirmanaRebuildEvidenceSchema,
+  canonicalNirmanaOptimizationVerdictDigest,
+  canonicalNirmanaRebuildEvidenceDigest,
+  type NirmanaElevationManifest,
+} from './definitions'
+import { PROGRAMME_WAVES, type ProgrammeWaveId } from './programme'
+import type { NirmanaCampaignStage, NirmanaElevationSnapshotV2 } from './types'
+import { NIRMANA_MILESTONE_IDS, NIRMANA_STAGE_IDS } from './vocab'
+
+export interface CampaignEvent {
+  campaign_id: string
+  definition_revision: string
+  event_type: string
+  entity_type: string
+  entity_id: string
+  layer: string | null
+  evidence_payload: unknown
+  source_kind: string
+  source_ref: string
+  observed_at: string
+  recorded_at: string
+  writer_identity?: string | null
+}
+
+export type NirmanaLayerId = NirmanaElevationSnapshotV2['layers'][number]['layer_id']
+export type NirmanaStageId = (typeof NIRMANA_STAGE_IDS)[number]
+type ManifestAsset = NirmanaElevationManifest['assets'][number]
+type Milestone = NirmanaElevationSnapshotV2['assets'][number]['milestones'][number]
+
+export interface AssetMilestoneProjection {
+  milestones: NirmanaElevationSnapshotV2['assets'][number]['milestones']
+  milestones_earned: number | null
+  milestones_required: number | null
+  current_action: string | null
+  next_action: string | null
+  inherited_from_asset_id: string | null
+}
+
+const STAGE_KINDS: NirmanaCampaignStage['kind'][] = [
+  'bootstrap', 'census', 'plan', 'denominator', 'foundation',
+  'layer', 'layer', 'layer', 'layer', 'layer', 'layer', 'closing', 'complete',
+]
+
+const STAGE_GATES = [
+  'Campaign charter accepted',
+  'Registry census reconciled',
+  'Campaign plan frozen',
+  'Campaign denominator frozen',
+  'Foundation lanes accepted',
+  'L0 assets frozen',
+  'L1 assets frozen',
+  'L2 assets frozen',
+  'L3 assets frozen',
+  'L4 assets frozen',
+  'L5 assets frozen',
+  'Campaign close evidence accepted',
+  'All campaign stages closed',
+] as const
+
+const FOUNDATION_LANES = [
+  ['A', 'Asset and DAG census'],
+  ['B', 'Run and progress truth'],
+  ['C', 'Hash and invalidation'],
+  ['D', 'Tracker and release'],
+  ['E', 'Evidence control'],
+] as const
+
+const LAYER_IDS = ['L0', 'L1', 'L2', 'L3', 'L4', 'L5'] as const
+const SHA256 = /^[a-f0-9]{64}$/
+const BUILD_RUN_SOURCE_REF = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i
+const INGRESS_WRITER = 'nirmana_evidence_ingress_writer'
+const CONTROL_WRITER = 'nirmana_campaign_control_writer'
+
+/** New evidence is trusted only when its database-derived writer matches its source class. */
+function hasExpectedWriter(event: CampaignEvent): boolean {
+  return event.writer_identity === (event.source_kind === 'server_reconstructed' ? INGRESS_WRITER : CONTROL_WRITER)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function validIso(value: string): boolean {
+  return !Number.isNaN(Date.parse(value))
+}
+
+function eventTime(event: CampaignEvent): number {
+  return Date.parse(event.recorded_at)
+}
+
+function stableJson(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value)
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`
+  const object = value as Record<string, unknown>
+  return `{${Object.keys(object).sort().map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`).join(',')}}`
+}
+
+function eventTieBreaker(event: CampaignEvent): string {
+  return [event.campaign_id, event.definition_revision, event.event_type, event.entity_type,
+    event.entity_id, event.layer ?? '', stableJson(event.evidence_payload)].join('\0')
+}
+
+function compareEvents(left: CampaignEvent, right: CampaignEvent): number {
+  return eventTime(left) - eventTime(right)
+    || Date.parse(left.observed_at) - Date.parse(right.observed_at)
+    || eventTieBreaker(left).localeCompare(eventTieBreaker(right))
+}
+
+function acceptedAt(event: CampaignEvent | undefined): string | null {
+  return event && validIso(event.observed_at) ? new Date(event.observed_at).toISOString() : null
+}
+
+/** Selects only the caller-pinned active definition; array order can never choose authority. */
+function definitionCohort(events: CampaignEvent[], campaignId: string, definitionRevision: string): CampaignEvent[] {
+  return events.filter((event) => event.campaign_id === campaignId
+    && event.definition_revision === definitionRevision
+    && validIso(event.observed_at)
+    && validIso(event.recorded_at))
+}
+
+function latest(events: CampaignEvent[]): CampaignEvent | undefined {
+  return [...events].sort((left, right) => compareEvents(right, left))[0]
+}
+
+function isStageId(value: unknown): value is NonNullable<NirmanaStageId> {
+  return typeof value === 'string' && (NIRMANA_STAGE_IDS as readonly string[]).includes(value)
+}
+
+export interface AcceptedCampaignStageTransition<TEvent extends CampaignEvent = CampaignEvent> {
+  event: TEvent
+  from: NirmanaStageId | null
+  to: NonNullable<NirmanaStageId>
+  prerequisitesSha256: string
+}
+
+export function parseCampaignStageTransition<TEvent extends CampaignEvent>(
+  event: TEvent,
+): AcceptedCampaignStageTransition<TEvent> | null {
+  if (event.event_type !== 'stage_transition_accepted'
+    || event.entity_type !== 'campaign_stage'
+    || event.layer !== null
+    || event.source_kind !== 'server_reconstructed'
+    || !hasExpectedWriter(event)
+    || event.source_ref !== 'nirmana-elevation:stage-spine'
+    || !isRecord(event.evidence_payload)
+    || !validIso(event.observed_at)
+    || !validIso(event.recorded_at)) return null
+  const from = event.evidence_payload.from_stage
+  const to = event.evidence_payload.to_stage
+  const manifestSha256 = event.evidence_payload.manifest_sha256
+  if (!isStageId(to)
+    || event.entity_id !== to
+    || event.evidence_payload.schema_version !== 'nirmana-stage-transition-receipt/v1'
+    || typeof manifestSha256 !== 'string'
+    || !SHA256.test(manifestSha256)) return null
+  if (from === null) {
+    return to === 'BOOTSTRAP' ? { event, from, to, prerequisitesSha256: manifestSha256 } : null
+  }
+  if (!isStageId(from)) return null
+  return { event, from, to, prerequisitesSha256: manifestSha256 }
+}
+
+function stageIndex(stage: NirmanaStageId | null): number {
+  return stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(stage)
+}
+
+export function canonicalizeCampaignStageTransitions<TEvent extends CampaignEvent>(events: TEvent[]): {
+  transitions: Array<AcceptedCampaignStageTransition<TEvent>>
+  contradictions: string[]
+  invalidEventCount: number
+} {
+  const parsed = events.flatMap((event) => {
+    const transition = parseCampaignStageTransition(event)
+    return transition === null ? [] : [transition]
+  }).sort((left, right) => compareEvents(left.event, right.event))
+  const byEdge = new Map<string, {
+    transition: AcceptedCampaignStageTransition<TEvent>
+    prerequisiteDigests: Set<string>
+  }>()
+
+  for (const transition of parsed) {
+    const edgeKey = `${transition.from ?? 'null'}\0${transition.to}`
+    const edge = byEdge.get(edgeKey)
+    if (edge) {
+      edge.prerequisiteDigests.add(transition.prerequisitesSha256)
+    } else {
+      byEdge.set(edgeKey, {
+        transition,
+        prerequisiteDigests: new Set([transition.prerequisitesSha256]),
+      })
+    }
+  }
+
+  const contradictions = [...byEdge.values()]
+    .filter(({ prerequisiteDigests }) => prerequisiteDigests.size > 1)
+    .map(({ transition }) => `Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prerequisite digests differ.`)
+  return {
+    transitions: [...byEdge.values()].map(({ transition }) => transition),
+    contradictions,
+    invalidEventCount: events.length - parsed.length,
+  }
+}
+
+function laneReceipt(event: CampaignEvent): boolean {
+  if (event.event_type !== 'foundation_lane_accepted'
+    || event.entity_type !== 'foundation_lane'
+    || event.layer !== null
+    || !FOUNDATION_LANES.some(([laneId]) => laneId === event.entity_id)
+    || !isRecord(event.evidence_payload)
+    || event.evidence_payload.schema_version !== 'nirmana-foundation-lane-receipt/v1'
+    || event.evidence_payload.lane_id !== event.entity_id
+    || event.source_kind !== 'server_reconstructed'
+    || !hasExpectedWriter(event)
+    || event.source_ref !== `nirmana-elevation:foundation-lane:${event.entity_id}`) return false
+  const receipt = NirmanaFoundationLaneEvidenceSchema.safeParse(event.evidence_payload)
+  return receipt.success && receipt.data.lane_id === event.entity_id
+}
+
+export function projectCampaignStages(input: {
+  campaignId: string
+  definitionRevision: string
+  definitionStatus: 'reconciling' | 'frozen' | 'superseded'
+  events: CampaignEvent[]
+  layers: Array<{ layer_id: NirmanaLayerId; state: string; assets_total: number | null; frozen: number }>
+}): { current_stage: NirmanaStageId | null; stages: NirmanaCampaignStage[]; contradictions: string[] } {
+  const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
+  const canonical = canonicalizeCampaignStageTransitions(
+    events.filter((event) => event.event_type === 'stage_transition_accepted'),
+  )
+  const transitions = canonical.transitions
+  const currentTransition = transitions.at(-1)
+  const current_stage = currentTransition?.to ?? null
+  const currentIndex = current_stage === null ? -1 : NIRMANA_STAGE_IDS.indexOf(current_stage)
+  const contradictions = [...canonical.contradictions]
+  let previous: AcceptedCampaignStageTransition | null = null
+
+  for (const transition of transitions) {
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
+    if (toIndex !== fromIndex + 1) {
+      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: stages must advance exactly once in canonical order.`)
+    } else if (previous && transition.from !== previous.to) {
+      contradictions.push(`Contradictory stage transition ${transition.from ?? 'null'} -> ${transition.to}: prior accepted stage was ${previous.to}.`)
+    }
+    previous = transition
+  }
+
+  const completedAt = new Map<NonNullable<NirmanaStageId>, string | null>()
+  for (const transition of transitions) {
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
+    const completionRequiresProjectedEvidence = transition.from === 'F0_FOUNDATION'
+      || LAYER_IDS.includes(transition.from as NirmanaLayerId)
+    if (transition.from !== null && toIndex === fromIndex + 1 && !completionRequiresProjectedEvidence) {
+      completedAt.set(transition.from, acceptedAt(transition.event))
+    }
+  }
+  if (input.definitionStatus === 'frozen') completedAt.set('DENOMINATOR_FROZEN', null)
+
+  const acceptedLaneById = new Map<string, CampaignEvent>()
+  for (const laneId of FOUNDATION_LANES.map(([id]) => id)) {
+    const receipt = latest(events.filter((event) => event.entity_id === laneId && laneReceipt(event)))
+    if (receipt) acceptedLaneById.set(laneId, receipt)
+  }
+  const foundation_lanes: NonNullable<NirmanaCampaignStage['foundation_lanes']> = FOUNDATION_LANES.map(([lane_id, name]) => {
+    const receipt = acceptedLaneById.get(lane_id)
+    return {
+      lane_id,
+      name,
+      state: receipt ? 'completed' : 'unknown',
+      completed_at: acceptedAt(receipt),
+      blocked_reason: null,
+    }
+  })
+  if (input.definitionStatus === 'frozen' && acceptedLaneById.size === FOUNDATION_LANES.length) {
+    completedAt.set('F0_FOUNDATION', acceptedAt(latest([...acceptedLaneById.values()])))
+  }
+
+  let priorStageComplete = completedAt.has('F0_FOUNDATION')
+  for (const layerId of LAYER_IDS) {
+    const layer = input.layers.find(({ layer_id }) => layer_id === layerId)
+    const layerComplete = priorStageComplete
+      && layer?.assets_total !== null
+      && layer?.assets_total !== undefined
+      && layer.frozen === layer.assets_total
+    if (layerComplete) {
+      const latestFreeze = latest(events.filter((event) => event.event_type === 'asset_frozen' && event.entity_type === 'asset' && event.layer === layerId))
+      completedAt.set(layerId, acceptedAt(latestFreeze))
+    }
+    priorStageComplete = layerComplete
+  }
+
+  for (const transition of transitions) {
+    const fromIndex = stageIndex(transition.from)
+    const toIndex = stageIndex(transition.to)
+    const requiresProjectedEvidence = transition.from === 'F0_FOUNDATION'
+      || LAYER_IDS.includes(transition.from as NirmanaLayerId)
+    if (transition.from !== null && toIndex === fromIndex + 1 && requiresProjectedEvidence && !completedAt.has(transition.from)) {
+      contradictions.push(`Contradictory stage transition ${transition.from} -> ${transition.to}: ${transition.from} completion evidence is incomplete.`)
+    }
+  }
+
+  const stages = NIRMANA_STAGE_IDS.map((stage_id, order): NirmanaCampaignStage => {
+    const layer = LAYER_IDS.includes(stage_id as NirmanaLayerId)
+      ? input.layers.find(({ layer_id }) => layer_id === stage_id) : undefined
+    const isCompleted = completedAt.has(stage_id)
+    let state: NirmanaCampaignStage['state'] = isCompleted
+      ? 'completed'
+      : currentIndex === order ? 'active'
+        : currentIndex >= 0 && order > currentIndex ? 'locked' : 'unknown'
+    if (input.definitionStatus === 'superseded' && state === 'active') state = 'paused'
+    const blocked = contradictions.length > 0 && stage_id === current_stage
+    if (blocked) state = 'blocked'
+    return {
+      stage_id,
+      order,
+      kind: STAGE_KINDS[order],
+      state,
+      required_gate: STAGE_GATES[order],
+      completed_at: isCompleted ? completedAt.get(stage_id) ?? null : null,
+      blocked_reason: blocked ? contradictions.join(' ') : null,
+      earned: stage_id === 'F0_FOUNDATION' ? acceptedLaneById.size
+        : layer ? layer.frozen : null,
+      required: stage_id === 'F0_FOUNDATION' ? FOUNDATION_LANES.length
+        : layer ? layer.assets_total : null,
+      foundation_lanes: stage_id === 'F0_FOUNDATION' ? foundation_lanes : null,
+    }
+  })
+
+  return { current_stage, stages, contradictions }
+}
+
+const BUILD_EVENT_BY_MILESTONE = {
+  analysed: 'asset_analysis_accepted',
+  decision_accepted: 'optimization_verdict_accepted',
+  built_or_dispositioned: 'implementation_accepted',
+  deployed_and_executed: 'accepted_rebuild_observed',
+  verified: 'integrity_verified',
+  frozen: 'asset_frozen',
+} as const
+
+const DISPOSITION_EVENTS = {
+  static_acceptance: 'static_accepted',
+  source_acceptance: 'source_accepted',
+  empty_acceptance: 'empty_accepted',
+  retired_with_disposition: 'retired_with_disposition',
+} as const
+
+const ACTIONS: Record<(typeof NIRMANA_MILESTONE_IDS)[number], string> = {
+  analysed: 'Accept asset analysis',
+  decision_accepted: 'Accept optimization decision',
+  built_or_dispositioned: 'Accept implementation or disposition',
+  deployed_and_executed: 'Accept deployed execution',
+  verified: 'Verify asset integrity',
+  frozen: 'Freeze asset evidence',
+}
+
+function after(event: CampaignEvent | undefined, predecessor: CampaignEvent | undefined): boolean {
+  return event !== undefined && predecessor !== undefined && compareEvents(event, predecessor) > 0
+}
+
+function hasCurrentBinding(payload: unknown, analysis: CampaignEvent | undefined): boolean {
+  const analysisPayload = NirmanaAssetAnalysisEvidenceSchema.safeParse(analysis?.evidence_payload)
+  if (!analysisPayload.success || !isRecord(payload)) return false
+  return payload.registry_fingerprint_sha256 === analysisPayload.data.registry_fingerprint_sha256
+    && payload.analysis_digest === analysisPayload.data.analysis_digest
+}
+
+function latestTrustedAssetEvent(
+  events: CampaignEvent[],
+  asset: ManifestAsset,
+  eventType: string,
+  predicate: (event: CampaignEvent) => boolean,
+): CampaignEvent | undefined {
+  return latest(events.filter((event) => event.event_type === eventType
+    && event.entity_type === 'asset'
+    && event.entity_id === asset.asset_id
+    && event.layer === asset.layer
+    && predicate(event)))
+}
+
+export function projectAssetMilestones(input: {
+  campaignId: string
+  definitionRevision: string
+  asset: ManifestAsset
+  events: CampaignEvent[]
+  activeRunState: string | null
+  producerAsset: ManifestAsset | null
+}): AssetMilestoneProjection {
+  const events = definitionCohort(input.events, input.campaignId, input.definitionRevision)
+  const obligation = input.asset.execution_obligation ?? 'unresolved'
+  let validProducer: ManifestAsset | null = null
+  if (obligation === 'producer_covered'
+    && input.asset.producer_id
+    && input.producerAsset?.asset_id === input.asset.producer_id
+    && input.producerAsset.execution_obligation === 'build'
+    && input.producerAsset.covered_asset_ids?.includes(input.asset.asset_id) === true) {
+    validProducer = input.producerAsset
+  }
+
+  if (obligation === 'unresolved') {
+    return {
+      milestones: NIRMANA_MILESTONE_IDS.map((milestone_id) => ({ milestone_id, state: 'pending', event_type: null, accepted_at: null })),
+      milestones_earned: null,
+      milestones_required: null,
+      current_action: null,
+      next_action: null,
+      inherited_from_asset_id: null,
+    }
+  }
+
+  const acceptedEvents = new Map<(typeof NIRMANA_MILESTONE_IDS)[number], CampaignEvent>()
+  const notApplicable = new Set<(typeof NIRMANA_MILESTONE_IDS)[number]>()
+  const analysis = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
+    NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
+      && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref))
+  const decision = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
+    const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
+    return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+      && hasCurrentBinding(payload.data, analysis) && after(event, analysis)
+  })
+  const integrity = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.verified, (event) =>
+    NirmanaIntegrityEvidenceSchema.safeParse(event.evidence_payload).success && hasExpectedWriter(event) && hasCurrentBinding(event.evidence_payload, analysis))
+  const frozen = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.frozen, (event) =>
+    NirmanaFreezeEvidenceSchema.safeParse(event.evidence_payload).success && hasExpectedWriter(event) && hasCurrentBinding(event.evidence_payload, analysis))
+  if (analysis) acceptedEvents.set('analysed', analysis)
+  if (decision) acceptedEvents.set('decision_accepted', decision)
+
+  if (obligation === 'build') {
+    const decisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision?.evidence_payload)
+    const requiresChange = decisionPayload.success && ['optimize', 'correct', 'optimize_and_correct'].includes(decisionPayload.data.proposal.action)
+    let implementation: CampaignEvent | undefined
+    if (decisionPayload.success && !requiresChange) notApplicable.add('built_or_dispositioned')
+    else {
+      implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+        const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
+        return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+          && hasCurrentBinding(payload.data, analysis)
+          && payload.data.decision_digest === (decisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(decisionPayload.data) : '')
+          && after(event, decision)
+      })
+      if (implementation) acceptedEvents.set('built_or_dispositioned', implementation)
+    }
+    const implementationPayload = NirmanaImplementationEvidenceSchema.safeParse(implementation?.evidence_payload)
+    const execution = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.deployed_and_executed, (event) => {
+      const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
+      const runId = /^build_run:([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i.exec(event.source_ref)?.[1]
+      return payload.success && event.source_kind === 'build_run' && hasExpectedWriter(event) && runId !== undefined
+        && runId.toLowerCase() === payload.data.build_run_id.toLowerCase()
+        && hasCurrentBinding(payload.data, analysis)
+        && payload.data.decision_digest === (decisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(decisionPayload.data) : '')
+        && payload.data.implementation_digest === (requiresChange && implementationPayload.success ? implementationPayload.data.implementation_digest : null)
+        && after(event, requiresChange ? acceptedEvents.get('built_or_dispositioned') : decision)
+    })
+    if (execution) acceptedEvents.set('deployed_and_executed', execution)
+  } else if (obligation === 'probe') {
+    const decisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(decision?.evidence_payload)
+    const requiresChange = decisionPayload.success && ['optimize', 'correct', 'optimize_and_correct'].includes(decisionPayload.data.proposal.action)
+    const implementation = latestTrustedAssetEvent(events, input.asset, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+      const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && hasCurrentBinding(payload.data, analysis)
+        && payload.data.decision_digest === (decisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(decisionPayload.data) : '')
+        && after(event, decision)
+    })
+    if (requiresChange && implementation) acceptedEvents.set('built_or_dispositioned', implementation)
+    else if (!requiresChange && decisionPayload.success) notApplicable.add('built_or_dispositioned')
+    const execution = latestTrustedAssetEvent(events, input.asset, 'probe_accepted', (event) =>
+      NirmanaProbeEvidenceSchema.safeParse(event.evidence_payload).success
+        && hasCurrentBinding(event.evidence_payload, analysis)
+        && event.source_kind === 'server_reconstructed'
+        && hasExpectedWriter(event)
+        && event.source_ref === `nirmana-elevation:health-probe:${input.asset.asset_id}`
+        && after(event, requiresChange ? implementation : decision))
+    if (execution) acceptedEvents.set('deployed_and_executed', execution)
+  } else if (obligation === 'producer_covered') {
+    const producerAnalysis = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.analysed, (event) =>
+      NirmanaAssetAnalysisEvidenceSchema.safeParse(event.evidence_payload).success
+        && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)) : undefined
+    const producerDecision = validProducer ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.decision_accepted, (event) => {
+      const payload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && hasCurrentBinding(payload.data, producerAnalysis) && after(event, producerAnalysis)
+    }) : undefined
+    const producerDecisionPayload = NirmanaOptimizationVerdictEvidenceSchema.safeParse(producerDecision?.evidence_payload)
+    const producerRequiresChange = producerDecisionPayload.success
+      && ['optimize', 'correct', 'optimize_and_correct'].includes(producerDecisionPayload.data.proposal.action)
+    const producerImplementation = validProducer && producerRequiresChange ? latestTrustedAssetEvent(events, validProducer, BUILD_EVENT_BY_MILESTONE.built_or_dispositioned, (event) => {
+      const payload = NirmanaImplementationEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && hasCurrentBinding(payload.data, producerAnalysis)
+        && payload.data.decision_digest === (producerDecisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(producerDecisionPayload.data) : '')
+        && after(event, producerDecision)
+    }) : undefined
+    const coverage = latestTrustedAssetEvent(events, input.asset, 'producer_covered', (event) => {
+      const payload = NirmanaProducerCoverageEvidenceSchema.safeParse(event.evidence_payload)
+      const runId = BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase()
+      return payload.success && event.source_kind === 'build_run' && hasExpectedWriter(event) && runId !== undefined
+        && runId === payload.data.producer_run_id.toLowerCase()
+        && hasCurrentBinding(payload.data, analysis)
+        && validProducer !== null
+        && payload.data.producer_asset_id === validProducer.asset_id
+        && payload.data.producer_layer === validProducer.layer
+        && after(event, decision)
+    })
+    const coveragePayload = NirmanaProducerCoverageEvidenceSchema.safeParse(coverage?.evidence_payload)
+    const coverageRunId = coveragePayload.success ? coveragePayload.data.producer_run_id.toLowerCase() : undefined
+    if (coverage && coverageRunId) acceptedEvents.set('built_or_dispositioned', coverage)
+    if (coverageRunId && validProducer) {
+      const producerExecution = latest(events.filter((event) => {
+        if (event.event_type !== BUILD_EVENT_BY_MILESTONE.deployed_and_executed
+          || event.entity_type !== 'asset'
+          || event.entity_id !== validProducer.asset_id
+          || event.layer !== validProducer.layer) return false
+        const payload = NirmanaRebuildEvidenceSchema.safeParse(event.evidence_payload)
+        return payload.success && event.source_kind === 'build_run' && hasExpectedWriter(event)
+          && BUILD_RUN_SOURCE_REF.exec(event.source_ref)?.[1]?.toLowerCase() === coverageRunId
+          && payload.data.build_run_id.toLowerCase() === coverageRunId
+          && coveragePayload.success
+          && canonicalNirmanaRebuildEvidenceDigest(payload.data) === coveragePayload.data.producer_rebuild_digest
+          && hasCurrentBinding(payload.data, producerAnalysis)
+          && payload.data.decision_digest === (producerDecisionPayload.success ? canonicalNirmanaOptimizationVerdictDigest(producerDecisionPayload.data) : '')
+          && payload.data.implementation_digest === (producerRequiresChange
+            ? NirmanaImplementationEvidenceSchema.safeParse(producerImplementation?.evidence_payload).data?.implementation_digest ?? null
+            : null)
+          && after(event, producerRequiresChange ? producerImplementation : producerDecision)
+          && after(coverage, event)
+      }))
+      if (producerExecution) acceptedEvents.set('deployed_and_executed', producerExecution)
+    }
+  } else {
+    const dispositionEventType = DISPOSITION_EVENTS[obligation as keyof typeof DISPOSITION_EVENTS]
+    const disposition = dispositionEventType ? latestTrustedAssetEvent(events, input.asset, dispositionEventType, (event) => {
+      const payload = NirmanaNonBuildDispositionEvidenceSchema.safeParse(event.evidence_payload)
+      return payload.success && payload.data.disposition === obligation
+        && hasCurrentBinding(payload.data, analysis)
+        && event.source_kind === 'git_commit' && hasExpectedWriter(event) && /^git:[a-f0-9]{40}$/.test(event.source_ref)
+        && after(event, decision)
+    }) : undefined
+    if (disposition) acceptedEvents.set('built_or_dispositioned', disposition)
+    notApplicable.add('deployed_and_executed')
+  }
+
+  const operational = ['build', 'probe', 'producer_covered'].includes(obligation)
+    ? acceptedEvents.get('deployed_and_executed')
+    : acceptedEvents.get('built_or_dispositioned')
+  const integrityIngress = obligation === 'producer_covered'
+    ? acceptedEvents.get('built_or_dispositioned')
+    : operational
+  if (integrity && after(integrity, integrityIngress)
+    && integrity.source_kind === 'server_reconstructed'
+    && hasExpectedWriter(integrity)
+    && integrity.source_ref === `nirmana-elevation:integrity:${input.asset.asset_id}`) acceptedEvents.set('verified', integrity)
+  if (frozen && after(frozen, acceptedEvents.get('verified'))
+    && frozen.source_kind === 'server_reconstructed'
+    && hasExpectedWriter(frozen)
+    && frozen.source_ref === `nirmana-elevation:freeze:${input.asset.asset_id}`) acceptedEvents.set('frozen', frozen)
+
+  let milestones: Milestone[] = NIRMANA_MILESTONE_IDS.map((milestone_id) => {
+    const receipt = acceptedEvents.get(milestone_id)
+    return {
+      milestone_id,
+      state: notApplicable.has(milestone_id) ? 'not_applicable' : receipt ? 'earned' : 'pending',
+      event_type: receipt?.event_type ?? null,
+      accepted_at: acceptedAt(receipt),
+    }
+  })
+  const currentIndex = milestones.findIndex(({ state }) => state === 'pending')
+  if (currentIndex >= 0) {
+    milestones = milestones.map((milestone, index) => index === currentIndex ? { ...milestone, state: 'current' } : milestone)
+  }
+  const nextIndex = currentIndex < 0
+    ? -1
+    : milestones.findIndex((milestone, index) => index > currentIndex && milestone.state === 'pending')
+  const milestones_earned = milestones.filter(({ state }) => state === 'earned').length
+  const milestones_required = milestones.filter(({ state }) => state !== 'not_applicable').length
+
+  return {
+    milestones,
+    milestones_earned,
+    milestones_required,
+    current_action: currentIndex < 0 ? null
+      : input.activeRunState ? `Active run: ${input.activeRunState}` : ACTIONS[milestones[currentIndex].milestone_id],
+    next_action: nextIndex < 0 ? null : ACTIONS[milestones[nextIndex].milestone_id],
+    inherited_from_asset_id: acceptedEvents.has('deployed_and_executed') ? validProducer?.asset_id ?? null : null,
+  }
+}
+
+export function deriveEligibleNextAssetIds(input: {
+  manifestAssets: ManifestAsset[]
+  frozenAssetIds: Set<string>
+  blockedAssetIds: Set<string>
+  currentLayer: NirmanaLayerId | null
+  currentWave: number | null
+}): string[] {
+  if (input.currentLayer === null || input.currentWave === null) return []
+  const currentLayerRank = LAYER_IDS.indexOf(input.currentLayer)
+  if (currentLayerRank < 0) return []
+  const byId = new Map(input.manifestAssets.map((asset) => [asset.asset_id, asset]))
+  const validlyInherited = (asset: ManifestAsset): boolean => {
+    if (asset.execution_obligation !== 'producer_covered' || !asset.producer_id) return false
+    const producer = byId.get(asset.producer_id)
+    return producer?.execution_obligation === 'build'
+      && producer.covered_asset_ids?.includes(asset.asset_id) === true
+      && !input.blockedAssetIds.has(producer.asset_id)
+      && input.frozenAssetIds.has(producer.asset_id)
+  }
+  const satisfied = (asset: ManifestAsset): boolean => asset.execution_obligation !== undefined
+    && asset.execution_obligation !== 'unresolved'
+    && !input.blockedAssetIds.has(asset.asset_id)
+    && (input.frozenAssetIds.has(asset.asset_id) || validlyInherited(asset))
+
+  const lowerLayersActuallyFrozen = input.manifestAssets
+    .filter((asset) => LAYER_IDS.indexOf(asset.layer) < currentLayerRank)
+    .every((asset) => asset.execution_obligation !== undefined
+      && asset.execution_obligation !== 'unresolved'
+      && !input.blockedAssetIds.has(asset.asset_id)
+      && input.frozenAssetIds.has(asset.asset_id))
+  if (!lowerLayersActuallyFrozen) return []
+
+  const layerAssets = input.manifestAssets.filter((asset) => asset.layer === input.currentLayer)
+  if (layerAssets.some((asset) => asset.wave_index === undefined)) return []
+  const unfinishedWaves = layerAssets.filter((asset) => !satisfied(asset)).map((asset) => asset.wave_index!)
+  if (unfinishedWaves.length === 0) return []
+  const nextUnfinishedWave = Math.min(...unfinishedWaves)
+  if (input.currentWave !== nextUnfinishedWave) return []
+
+  return layerAssets.filter((asset) => asset.wave_index === nextUnfinishedWave
+    && !satisfied(asset)
+    && asset.execution_obligation !== undefined
+    && asset.execution_obligation !== 'unresolved'
+    && !input.blockedAssetIds.has(asset.asset_id)
+    && (asset.depends_on ?? []).every((dependencyId) => {
+      const dependency = byId.get(dependencyId)
+      if (!dependency) return false
+      const dependencyRank = LAYER_IDS.indexOf(dependency.layer)
+      return dependencyRank >= 0 && dependencyRank <= currentLayerRank && satisfied(dependency)
+    }))
+    .map((asset) => asset.asset_id)
+    .sort((left, right) => left.localeCompare(right))
+}
+
+export interface WaveProgressCount {
+  wave_id: ProgrammeWaveId
+  label: string
+  milestone_id: string
+  earned: number
+  required: number
+}
+
+/**
+ * Re-aggregates the existing per-asset 6-milestone projection into per-layer W1..W6
+ * wave counts (Task 2, programme-model presentational grouping). Always returns exactly
+ * 6 entries, in W1..W6 order — one per PROGRAMME_WAVES entry, 1:1 onto NIRMANA_MILESTONE_IDS.
+ * A milestone in state 'not_applicable' is excluded from both earned and required (it was
+ * never owed by that asset), matching the same convention `milestones_required` already uses
+ * in `projectAssetMilestones` above.
+ */
+export function projectLayerWaveProgress(
+  assets: { layer: NirmanaLayerId; milestones: { milestone_id: string; state: string }[] }[],
+  layerId: NirmanaLayerId,
+): WaveProgressCount[] {
+  const layerAssets = assets.filter((asset) => asset.layer === layerId)
+  return PROGRAMME_WAVES.map((wave) => {
+    let earned = 0
+    let required = 0
+    for (const asset of layerAssets) {
+      const milestone = asset.milestones.find((candidate) => candidate.milestone_id === wave.milestone_id)
+      if (!milestone || milestone.state === 'not_applicable') continue
+      required += 1
+      if (milestone.state === 'earned') earned += 1
+    }
+    return { wave_id: wave.wave_id, label: wave.label, milestone_id: wave.milestone_id, earned, required }
+  })
+}
+
+type NirmanaCampaignStageState = NirmanaCampaignStage['state']
+
+/**
+ * Collapses a group of campaign stages (e.g. the PRE_L0 group folding into PHASE A) into a
+ * single presentational state. 'unknown' both for an empty group and for one where none of
+ * groupIds resolve against the supplied stages. Priority order below completed:
+ * blocked > paused > active > locked > unknown — a single blocked or paused member should
+ * never be masked by an otherwise-quiet group.
+ */
+export function summarizeStageGroupState(
+  stages: { stage_id: NirmanaStageId; state: NirmanaCampaignStageState }[],
+  groupIds: readonly NirmanaStageId[],
+): NirmanaCampaignStageState {
+  const members = groupIds
+    .map((id) => stages.find((stage) => stage.stage_id === id))
+    .filter((stage): stage is { stage_id: NirmanaStageId; state: NirmanaCampaignStageState } => stage !== undefined)
+  if (members.length === 0) return 'unknown'
+  if (members.every((stage) => stage.state === 'completed')) return 'completed'
+  if (members.some((stage) => stage.state === 'blocked')) return 'blocked'
+  if (members.some((stage) => stage.state === 'paused')) return 'paused'
+  if (members.some((stage) => stage.state === 'active')) return 'active'
+  if (members.some((stage) => stage.state === 'locked')) return 'locked'
+  return 'unknown'
+}
+
+export interface ProgrammePosition {
+  phase_id: 'PHASE_A' | 'O_WAVE' | NirmanaLayerId | 'PHASE_Z'
+  label: string
+}
+
+/**
+ * Maps the campaign's current stage onto the v2 programme model's coarse phase grouping
+ * (PHASE_A collapsed pre-L0 history, the six L0..L5 build layers, PHASE_Z close). A
+ * currently-open O-wave work package (openWp) is surfaced as its own O_WAVE phase only
+ * when the campaign isn't inside a concrete layer/PHASE_Z stage — once execution has
+ * reached a specific layer, that layer's identity (and, within it, its active W1..W6 wave)
+ * takes precedence and the open work package is folded into the label as a prefix instead.
+ */
+export function projectProgrammePosition(args: {
+  currentStage: NirmanaStageId | null
+  layerWaveProgress: Partial<Record<NirmanaLayerId, WaveProgressCount[]>>
+  layerNames: Partial<Record<NirmanaLayerId, string>>
+  openWp: { wp_id: string } | null
+}): ProgrammePosition {
+  const { currentStage, layerWaveProgress, layerNames, openWp } = args
+  const isLayerStage = (stage: NirmanaStageId): stage is NirmanaLayerId =>
+    (LAYER_IDS as readonly string[]).includes(stage)
+
+  if (currentStage !== null && isLayerStage(currentStage)) {
+    const layerId = currentStage
+    const progress = layerWaveProgress[layerId] ?? []
+    const activeWave = progress.find((wave) => wave.required > 0 && wave.earned < wave.required)
+    const layerName = layerNames[layerId] ?? layerId
+    const openWpPrefix = openWp ? `O-WAVE · ${openWp.wp_id} · ` : ''
+    if (activeWave) {
+      return {
+        phase_id: layerId,
+        label: `${openWpPrefix}${layerId} · ${activeWave.wave_id} (${activeWave.earned}/${activeWave.required} ${activeWave.milestone_id})`,
+      }
+    }
+    return { phase_id: layerId, label: `${openWpPrefix}${layerId} · ${layerName}` }
+  }
+
+  if (currentStage === 'CLOSING' || currentStage === 'COMPLETE') {
+    return { phase_id: 'PHASE_Z', label: currentStage === 'COMPLETE' ? 'PHASE Z · Complete' : 'PHASE Z · Closing' }
+  }
+
+  if (openWp) return { phase_id: 'O_WAVE', label: `O-WAVE · ${openWp.wp_id}` }
+
+  return {
+    phase_id: 'PHASE_A',
+    label: currentStage ? `PHASE A · ${currentStage}` : 'PHASE A · Execution not yet evidenced',
+  }
+}
+
+export interface CompletionCount { earned: number; required: number; percent: number | null }
+
+/**
+ * Sums earned/required across assets, excluding any asset whose milestones_required is null
+ * (an authoritatively-unknown obligation — an unresolved asset, or one outside the frozen
+ * manifest). Counting a null denominator as zero-of-N would fabricate the sum; per §N.8 an
+ * unknown must stay unknown, not silently read as complete or as zero progress.
+ */
+export function projectCompletion(
+  assets: { milestones_earned: number | null; milestones_required: number | null }[],
+): CompletionCount {
+  let earned = 0
+  let required = 0
+  for (const asset of assets) {
+    if (asset.milestones_required === null) continue
+    required += asset.milestones_required
+    earned += asset.milestones_earned ?? 0
+  }
+  return { earned, required, percent: required === 0 ? null : Math.floor((earned / required) * 100) }
+}
+
+/**
+ * Charter v2.1 asset-frontier pipelining (mirrors charter C10): an asset is eligible to execute
+ * once every one of its TRANSITIVE depends_on ancestors is frozen, regardless of which layer
+ * those ancestors live in. The prior dispatcher (#1730/#1737) instead demanded every asset in
+ * every lower layer be frozen — a cross-layer ancestor relationship (an L3 asset whose only
+ * ancestor is a frozen L0 asset) is normal and must be eligible under the correct semantics.
+ * Ancestor closure is memoized per call (shared across all assets processed) since the same
+ * upstream asset id typically recurs across many descendants in a 128-asset manifest. A
+ * defensive visited-set breaks any cycle (the manifest schema forbids them, but this must never
+ * hang the server).
+ */
+export function projectAssetFrontier(args: {
+  manifestAssets: { asset_id: string; layer: NirmanaLayerId; depends_on?: string[] }[]
+  frozenAssetIds: ReadonlySet<string>
+  decidedAssetIds: ReadonlySet<string>
+}): Partial<Record<NirmanaLayerId, string[]>> {
+  const byId = new Map(args.manifestAssets.map((asset) => [asset.asset_id, asset]))
+  const ancestorsCache = new Map<string, Set<string>>()
+
+  function transitiveAncestors(assetId: string, visiting: Set<string>): Set<string> {
+    const cached = ancestorsCache.get(assetId)
+    if (cached) return cached
+    if (visiting.has(assetId)) return new Set()
+    visiting.add(assetId)
+    const result = new Set<string>()
+    for (const dependencyId of byId.get(assetId)?.depends_on ?? []) {
+      result.add(dependencyId)
+      for (const ancestor of transitiveAncestors(dependencyId, visiting)) result.add(ancestor)
+    }
+    visiting.delete(assetId)
+    ancestorsCache.set(assetId, result)
+    return result
+  }
+
+  const byLayer = new Map<NirmanaLayerId, string[]>()
+  for (const asset of args.manifestAssets) {
+    if (args.frozenAssetIds.has(asset.asset_id) || !args.decidedAssetIds.has(asset.asset_id)) continue
+    const ancestors = transitiveAncestors(asset.asset_id, new Set())
+    if (![...ancestors].every((ancestorId) => args.frozenAssetIds.has(ancestorId))) continue
+    const bucket = byLayer.get(asset.layer) ?? []
+    bucket.push(asset.asset_id)
+    byLayer.set(asset.layer, bucket)
+  }
+
+  const result: Partial<Record<NirmanaLayerId, string[]>> = {}
+  for (const [layerId, assetIds] of byLayer) result[layerId] = [...assetIds].sort((left, right) => left.localeCompare(right))
+  return result
+}
+
+export function deriveLayerActivityState(args: {
+  assetsTotal: number | null
+  frozen: number
+  milestonesEarned: number
+}): 'completed' | 'active' | 'pending' | 'unknown' {
+  if (args.assetsTotal === null) return 'unknown'
+  // Final-review fix wave, opportunistic guard (same family as Fixes 2/3): assetsTotal === 0
+  // would otherwise fall through to `frozen === assetsTotal` (0 === 0) and read 'completed'
+  // on vacuous truth — zero assets were never actually elevated through anything. assetsTotal
+  // === 0 is real evidence (a known, non-null count), unlike the null case above, so this is
+  // 'pending' (nothing has happened, nothing is owed), not 'unknown'.
+  if (args.assetsTotal === 0) return 'pending'
+  if (args.frozen === args.assetsTotal) return 'completed'
+  if (args.milestonesEarned > 0) return 'active'
+  return 'pending'
+}
+
+export function projectProgrammePositionV21(args: {
+  overall: CompletionCount
+  frozenTotal: number
+  assetsTotal: number | null
+}): string {
+  if (args.overall.percent === null) return 'Execution not yet evidenced'
+  return `${args.overall.percent}% · ${args.frozenTotal}/${args.assetsTotal ?? '—'} frozen`
+}
