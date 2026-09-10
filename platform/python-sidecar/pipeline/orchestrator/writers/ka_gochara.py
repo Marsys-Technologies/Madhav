@@ -186,7 +186,8 @@ class KaGocharaWriter(WriterBase):
 
     def plan_substeps(self, ctx: ContextSpec) -> list[SubStep]:
         chart_id = ctx.config['chart_id']
-        query = _query_fn(ctx.db_conn)
+        conn = ctx.db_conn
+        query = _query_fn(conn)
         try:
             rows = query(
                 "SELECT DISTINCT event_class FROM gochara_resonance_map "
@@ -201,7 +202,55 @@ class KaGocharaWriter(WriterBase):
         if not event_classes:
             logger.info("[ka_gochara] no populated gochara_resonance_map event_classes "
                         "for chart %s -- honest empty plan, zero substeps.", chart_id)
-        return [SubStep(key=ec, label=f"W2G materialize: {ec}") for ec in event_classes]
+            return []
+
+        all_steps = [SubStep(key=ec, label=f"W2G materialize: {ec}") for ec in event_classes]
+
+        # Cross-attempt substep resumption, mirroring ka_sangam's own
+        # migration-436 pattern (see that writer's plan_substeps): a fresh
+        # orchestrator invocation must resume at genuinely UNFINISHED classes,
+        # not replan every populated class unconditionally. Without this, the
+        # D-1.6/SATYA-DIPA no-op-completion re-probe (asset_runner.py's
+        # post-write `writer.plan_substeps(ctx)` call, which treats a
+        # non-empty plan as "work still remaining") sees this writer's own
+        # full, stateless class list forever -- even on a chart that is
+        # already fully and correctly built -- and permanently rejects the
+        # promotion to 'lit'. This writer's own delta-aware invalidation
+        # (kala_gochara_v2_build_state class_fingerprint, already used by
+        # run_substep to skip a no-op rewrite) is the correct source of
+        # truth for "is this class actually done" -- it was simply never
+        # consulted here before.
+        if getattr(ctx, 'dry_run', False):
+            return all_steps  # dry runs never delete data or touch the ledger
+
+        arc_fps = self._fetch_arc_fingerprints(query)
+        remaining: list[SubStep] = []
+        for step in all_steps:
+            event_class = step.key
+            try:
+                with savepoint_scope(conn, "w2g_v2_targets_plan"):
+                    raw_targets = RM.fetch_resonance_targets(conn, chart_id, event_class)
+            except Exception as exc:
+                logger.warning(
+                    "[ka_gochara] could not pre-check targets for chart %s "
+                    "event_class %s: %s -- conservatively keeping it in the plan.",
+                    chart_id, event_class, exc,
+                )
+                remaining.append(step)
+                continue
+            if not raw_targets:
+                # run_substep's own honest-empty path agrees: nothing to do
+                # for this class (no resonance_map targets survive this
+                # tier's filter) -- genuinely complete, not remaining.
+                continue
+            target_refs = [t.target_ref for t in raw_targets]
+            fp = class_fingerprint(event_class, GRAMMAR_VERSION, target_refs, BODIES, arc_fps)
+            stored_fp = self._stored_fingerprint(query, chart_id, event_class)
+            if stored_fp == fp:
+                continue  # already correctly built under this exact fingerprint
+            remaining.append(step)
+
+        return remaining
 
     def run_substep(self, ctx: ContextSpec, step: SubStep) -> WriterResult:
         t0 = time.time()
