@@ -42,9 +42,9 @@
     },
     {
       "file": "platform/python-sidecar/bodha_writers/special_lagna_emitter.py",
-      "line": 55,
-      "pattern": null,
-      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py:57 entry — fact_key selected and preserved per row."
+      "line": null,
+      "pattern": "fact_id, fact_subject, fact_key, fact_value_text, fact_value_num FROM chart_facts WHERE chart_id = %s AND ayanamsha_id = %s AND fact_category = 'special_",
+      "justification": "PRE-EXISTING, not in this wave's scope. Same shape as the arudha_emitter.py entry — fact_key is selected and preserved per row. The deterministic-signal repair removed an unrelated uuid import and shifted this unchanged query from line 55 to 54; use the query's stable SELECT/WHERE shape instead of a brittle line pointer."
     },
     {
       "file": "platform/python-sidecar/brahmagyan/bodha/l2_embeddings.py",

@@ -27,7 +27,6 @@ Salience: class_prior=0.90, subsystem='special_lagna' — ratified DIS.019/DR-6.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSION_SALIENCE_FORMULA_V2
@@ -140,7 +139,9 @@ def build_signal_row(
     headline = f"{display} in H{house_d1} ({sign}, lord {sign_lord}) — governs {'/'.join(domains)}"
 
     return {
-        "signal_id": str(uuid.uuid4()),
+        # Assigned by BoSpecialLagnaWriter through the database-authoritative
+        # bodha_signal_identity() immediately before INSERT.
+        "signal_id": None,
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,

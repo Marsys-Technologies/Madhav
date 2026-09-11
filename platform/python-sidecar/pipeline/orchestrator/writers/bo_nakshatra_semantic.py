@@ -19,6 +19,7 @@ LIGHT writer: loops over the 5 canonical ayanamshas in a single run() call
 """
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timezone
 from typing import Any
@@ -56,6 +57,53 @@ def _signature_tier(computed_salience: float) -> str:
     if computed_salience >= _TIER_SUPPORTING:
         return "supporting"
     return "background"
+
+
+def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
+    """Assign each emitted identity through the canonical SQL function."""
+    if not rows:
+        return 0
+
+    def _config_object(row: dict) -> Any:
+        config = row.get("configuration_jsonb")
+        return json.loads(config) if isinstance(config, str) else config
+
+    payload = [
+        {
+            "i": index,
+            "chart_id": row["chart_id"],
+            "ayanamsha_id": row["ayanamsha_id"],
+            "signal_type_id": row["signal_type_id"],
+            "varga_id": row["varga_id"],
+            "configuration_jsonb": _config_object(row),
+        }
+        for index, row in enumerate(rows)
+    ]
+    id_rows = conn.execute(
+        """
+        SELECT (e->>'i')::int AS i,
+               bodha_signal_identity(
+                 (e->>'chart_id')::uuid,
+                 e->>'ayanamsha_id',
+                 e->>'signal_type_id',
+                 e->>'varga_id',
+                 e->'configuration_jsonb'
+               )::text AS sid
+          FROM jsonb_array_elements(%s::jsonb) AS e
+        """,
+        [json.dumps(payload, default=str)],
+    ).fetchall()
+    for id_row in id_rows:
+        rows[id_row["i"]]["signal_id"] = id_row["sid"]
+
+    collapsed = len(rows) - len({row["signal_id"] for row in rows})
+    if collapsed:
+        logger.warning(
+            "bo_nakshatra_semantic: %d of %d rows collapsed onto deterministic identities",
+            collapsed,
+            len(rows),
+        )
+    return collapsed
 
 
 @register("bo_nakshatra_semantic")
@@ -105,6 +153,8 @@ class BoNakshatraSemanticWriter(WriterBase):
 
             if not rows:
                 continue
+
+            assign_deterministic_signal_ids(conn, rows)
 
             deleted = replace_prior_msr_for_chart(
                 conn, chart_id, aya, BO_NAKSHATRA_SEMANTIC_OWNED_SIGNAL_TYPE_CLASSES,
