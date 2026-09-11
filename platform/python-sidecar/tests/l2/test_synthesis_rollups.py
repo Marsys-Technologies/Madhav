@@ -65,19 +65,34 @@ class _FakeConn:
 
 class TestRollupContract(unittest.TestCase):
     def test_returns_rowcounts_for_both_statements(self):
-        conn = _FakeConn([9872, 22])
+        conn = _FakeConn([9872, 11, 22])
         rollup, contradicts = BL._populate_synthesis_rollups(conn, "chart-1", "lahiri_chitrapaksha")
         self.assertEqual((rollup, contradicts), (9872, 22))
 
-    def test_both_statements_are_chart_and_ayanamsha_scoped(self):
-        conn = _FakeConn([1, 1])
+    def test_all_statements_are_chart_and_ayanamsha_scoped(self):
+        conn = _FakeConn([1, 1, 1])
         BL._populate_synthesis_rollups(conn, "chart-1", "raman")
-        self.assertEqual(len(conn.cursor_obj.executed), 2)
+        self.assertEqual(len(conn.cursor_obj.executed), 3)
         for sql, params in conn.cursor_obj.executed:
             self.assertEqual(params, {"chart_id": "chart-1", "aya": "raman"})
             # never a chart-wide or all-ayanamsha write
             self.assertIn("%(chart_id)s", sql)
             self.assertIn("%(aya)s", sql)
+
+    def test_stale_contradiction_arrays_are_cleared_before_current_pairs_are_populated(self):
+        conn = _FakeConn([1, 11, 22])
+        BL._populate_synthesis_rollups(conn, "chart-1", "raman")
+
+        clear_sql = conn.cursor_obj.executed[1][0]
+        populate_sql = conn.cursor_obj.executed[2][0]
+        self.assertRegex(
+            clear_sql,
+            r"SET\s+contradicts_signals_array\s*=\s*NULL",
+        )
+        self.assertIn("contradicts_signals_array IS NOT NULL", clear_sql)
+        self.assertNotIn("DELETE FROM bodha_msr_signals", clear_sql)
+        self.assertIn("SET contradicts_signals_array = agg.arr", populate_sql)
+        self.assertIn("WHERE m.signal_id = agg.sid", populate_sql)
 
 
 class TestStorageContract(unittest.TestCase):
@@ -96,15 +111,13 @@ class TestStorageContract(unittest.TestCase):
         self.assertRegex(BL._SYNTHESIS_ROLLUP_SQL, r"FROM\s+bodha_msr_signals s\s+JOIN chart_facts")
         self.assertIn("WHERE m.signal_id = cons.signal_id", BL._SYNTHESIS_ROLLUP_SQL)
 
-    def test_contradicts_array_is_never_written_as_empty(self):
+    def test_contradicts_array_is_null_for_nonparticipants_and_never_empty(self):
         # bo_upaya reads '{}' as a MEASURED "no contradictions found" and would enable
-        # its contradiction_factor term with nothing behind it. Only rows present in
-        # bodha_contradictions are updated; everything else keeps NULL.
-        sql = BL._CONTRADICTS_SQL
-        self.assertIn("array_agg(DISTINCT other)", sql)
-        self.assertIn("WHERE m.signal_id = agg.sid", sql)
-        self.assertNotIn("'{}'", sql)
-        self.assertNotIn("COALESCE(agg.arr", sql)
+        # its contradiction_factor term with nothing behind it. The reset restores NULL
+        # for every scoped row before current contradiction participants are repopulated.
+        self.assertNotIn("'{}'", BL._CLEAR_CONTRADICTS_SQL)
+        self.assertNotIn("'{}'", BL._CONTRADICTS_SQL)
+        self.assertNotIn("COALESCE(agg.arr", BL._CONTRADICTS_SQL)
 
     def test_contradictions_are_symmetric(self):
         # A contradiction is mutual: both signals must list the other, so the source
@@ -112,6 +125,12 @@ class TestStorageContract(unittest.TestCase):
         self.assertIn("UNION ALL", BL._CONTRADICTS_SQL)
         self.assertIn("SELECT signal_a_id AS sid, signal_b_id AS other", BL._CONTRADICTS_SQL)
         self.assertIn("SELECT signal_b_id, signal_a_id", BL._CONTRADICTS_SQL)
+
+    def test_current_contradiction_ids_are_aggregated_in_deterministic_order(self):
+        self.assertIn(
+            "array_agg(DISTINCT other ORDER BY other)",
+            BL._CONTRADICTS_SQL,
+        )
 
 
 class TestConsensusIsSubjectLevel(unittest.TestCase):
