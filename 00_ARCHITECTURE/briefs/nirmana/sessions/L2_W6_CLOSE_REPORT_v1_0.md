@@ -1,141 +1,166 @@
 ---
 artifact: L2_W6_CLOSE_REPORT_v1_0.md
 canonical_id: NIRMANA_V21_L2_W6_CLOSE_REPORT
-version: "1.0-DRAFT"
-status: SCAFFOLD — W4/W5/W6 have not run; this is C8.5 productive-wait prep, not a submitted
-  capsule. Sections below are filled from W1–W3's actual, verified work; the W4/W5/W6-specific
-  sections (build results, capsule refs, freeze event) are placeholders pending three external
-  gates — the L1 freeze ceremony (E-gate for bo_laksana 15/21 + bo_laksana_rerank 15/24 unfrozen
-  ancestors), the #1770 bo_sudarshana open question, and the #2258 bo_grounding manifest ruling.
-produced_on: 2026-09-07 (drafted mid-campaign, cycle 817; finalized and re-dated at actual W6)
-owner: L2 session (this file is mine alone — charter C5; not Conductor-owned)
+version: "1.0"
+status: CLOSED_READY_FOR_ORDERED_STAGE_RECEIPT
+campaign_id: nirmana-elevation
+definition_revision: t3-2026-09-11-8b884eac
+manifest_sha256: 8b884eac2a950ca1d8d44c3b4af34288b2a7fbc177dba3903da301fad610a0b6
+session: L2
+layer: L2 — Bodha
+chart_id: 482012f1-710e-4a25-994a-93821f5871aa
+produced_on: 2026-09-11
 ---
 
-# L2 — Bodha — W6 Close Report (DRAFT SCAFFOLD)
+# L2 — Bodha — W6 close report
 
-Per `NIRMANA_UNIFIED_ELEVATION_PLAN_v2_0.md` §4 the close report is the whole W6 ceremony.
-Drafted ahead of W4/W5/W6 per the C8.5 productive-wait guidance, following L4's precedent
-(`L4_W6_CLOSE_REPORT_v1_0.md`, same DRAFT-SCAFFOLD discipline). Everything below reflects
-**verified, shipped** work as of this draft; nothing is asserted ahead of evidence. Line items
-marked `[W4-PENDING]` / `[W5-PENDING]` / `[W6-PENDING]` are the placeholders the real ceremony
-fills.
+## Status
 
-## 1. Assets and routes taken
+**L2 is ready for the ordered `L2 → L3` stage receipt: all 22 current-definition members have
+complete independently frozen lifecycle chains, the campaign-chart W5 gate is green, the
+identity audit is clean, and protected main equals the serving runtime at the evidence release
+used for this report.**
 
-All 22 `bo_*` assets routed at W2 (`L2_W2_DECIDE_v1_0.md`, 22 routes / 14 MUST / 25 NOW /
-8 LATER, three adjudications #1716/#1720/#1726 all since ruled). 9 route `changed`, 13 route
-`rebuild_only`. **No `verified_reuse`** (20 of 22 `state='stale'` on the canonical chart, and
-the layer has never been rebuilt coherently as a unit — no build evidence to reuse); no
-`probe`/`producer_covered`/`static`/`empty`/`retired` (all 22 are `asset_kind='data'` with a
-live writer and live consumer, W1 finding E12).
+The stage-spine receipt is deliberately appended after this report reaches protected main and
+that exact commit is deployed. The receipt closes L2 and releases the L3 lease; it does not
+dispatch, retry, or resume any L3 asset.
 
-| asset_id | W2 route | W3 outcome (verified as of this draft) | terminal state |
-|---|---|---|---|
-| `bo_laksana` | changed | salience-truth writer corrections MERGED (#1741: six unwritten columns bound into INSERT, AV bhinna feed, argala live, vargottama L1 authority, honest NULLs for cancellation/neechabhanga, C1 corroboration fabrication removed) — writer, not data; rebuild held | `[W4-PENDING]` — canary-adjacent; double-gated (#1770 snapshot-restorable precondition now satisfied; L1 freeze E-gate 15/21 open) |
-| `bo_karanajala` | changed | B7/A13 addressed in the W3 wave (consensus-count constant + §N.5 argala re-derivation) | `[W4-PENDING]` |
-| `bo_samskara` | changed | re-key on `embedding_input_summary` shipped — kills the 100% Vertex re-embed cost coupling to `bo_laksana` rebuilds | `[W4-PENDING]` |
-| `bo_samvada` | changed | B8 `count_sql` + B9 phantom-columns fixed; owns the D-SYNTHESIS rollups (migration 662 wave) | `[W4-PENDING]` |
-| `bo_sudarshana` | changed | D5 percentile setter + C1 sibling fixed (#1755 wave) | `[W4-PENDING]` — dispatch additionally held on the #1770 co-writer question (posted loop ~676, unruled) |
-| `bo_nakshatra_semantic` | changed | D5 + C1 sibling fixed | `[W4-PENDING]` |
-| `bo_arudha` | changed | D5 + C1 sibling fixed | `[W4-PENDING]` |
-| `bo_special_lagna` | changed | D5 + C1 sibling fixed | `[W4-PENDING]` |
-| `bo_vargottama_dhana` | changed | D5 + A5 (vargottama amplification smuggled through `class_prior`) fixed | `[W4-PENDING]` |
-| `bo_laksana_rerank` | rebuild_only | agreement-line writer complete (migration 662): `cross_system_consensus_count` / `contradicts_signals_array` populate at dispatch | `[W4-PENDING]` — E-gate 15/24 unfrozen ancestors |
-| `bo_bimba` | rebuild_only | E1 registry correction (130× wrong `expected_volume_formula`) in the 660-wave | `[W4-PENDING]` |
-| `bo_sangati` | rebuild_only | E8 divergence (535 vs 280) deliberately deferred to W5 investigation, not pre-fixed | `[W4-PENDING]`, then `[W5-PENDING]` E8 |
-| `bo_drishti` | rebuild_only | — | `[W4-PENDING]` |
-| `bo_anveshana` | rebuild_only | D1 was a serving defect: tail lane plumbed TS-side (see §3 D-SALIENCE) | `[W4-PENDING]` |
-| `bo_cgm_motifs` | rebuild_only | — | `[W4-PENDING]` |
-| `bo_cgm_paths` | rebuild_only | — | `[W4-PENDING]` |
-| `bo_chart_gestalt` | rebuild_only | E6 registry correction | `[W4-PENDING]` |
-| `bo_cdlm_summary` | rebuild_only | registry correction | `[W4-PENDING]` |
-| `bo_pratijna` | rebuild_only | — | `[W4-PENDING]` |
-| `bo_upaya` | rebuild_only | `expected_volume_formula` shipped (migration 760, #2021); `contradiction_factor` self-activates once B1's column populates | `[W4-PENDING]` |
-| `bo_pramana_mapa` | rebuild_only | B10 verified no-work (six flags carry real detectors, `notes.n8_detectors`) | `[W4-PENDING]` |
-| `bo_yantra_mechanism` | rebuild_only | — | `[W4-PENDING]` |
+## Definition and denominator
 
-**Not in the 22 (net-new, born mid-campaign):** `bo_grounding` — the D-GROUNDING tier writer
-(#2258, native ruling D-NATIVE-09). Matcher + writer + tests shipped (PR #2379); registration
-deferred because the receipt spine pins L2 to the frozen manifest's 22 assets — disposition
-(manifest amendment / pins extension / hold-to-close) is with the Conductor. Its terminal
-state at W6 follows that ruling, not this table.
+- Current frozen definition: `t3-2026-09-11-8b884eac`.
+- Manifest digest: `8b884eac2a950ca1d8d44c3b4af34288b2a7fbc177dba3903da301fad610a0b6`.
+- Campaign chart: `482012f1-710e-4a25-994a-93821f5871aa`.
+- Total manifest: 128 assets; L2 denominator: 22 assets.
+- Current effective capsule projection: L0 `40/40`, L1 `19/19`, L2 `22/22` frozen.
+- L2's effective total comprises eight t3 freeze rows and 14 legitimate inherited lifecycle
+  chains from superseded revisions. This is the server's governed cross-revision rule for
+  mid-campaign definition replacement: asset capsules are campaign+asset scoped, while the
+  current manifest supplies the denominator. The ordered stage receipt reconstructs this exact
+  condition from raw events rather than trusting the projection.
+- L2 routes: 9 `changed`, 13 `rebuild_only`; no asset was accepted merely from a green CI run,
+  deployment marker, tracker state, or historical freeze count.
 
-## 2. Findings ledger outcome
+The 22 members are `bo_anveshana`, `bo_arudha`, `bo_bimba`, `bo_cdlm_summary`,
+`bo_cgm_motifs`, `bo_cgm_paths`, `bo_chart_gestalt`, `bo_drishti`, `bo_karanajala`,
+`bo_laksana`, `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_pramana_mapa`, `bo_pratijna`,
+`bo_samskara`, `bo_samvada`, `bo_sangati`, `bo_special_lagna`, `bo_sudarshana`, `bo_upaya`,
+`bo_vargottama_dhana`, and `bo_yantra_mechanism`.
 
-- W1: 47 findings triaged at W2 (14 MUST / 25 NOW / 8 LATER). MUST-tier items closed or
-  writer-complete in W3 waves per §1; `[W5-PENDING]` re-triage of any MUST whose fix can only
-  be proven on post-rebuild data.
-- Cross-layer findings filed by L2, both upheld and campaign-shaping: #1770 (CASCADE blast
-  radius 864,733 rows / 12 tables / 3 layers → campaign-wide hold, D-CND-15/16; ruled order:
-  L2 MSR rebuild first, L3 re-runs after) and the #1748 grading correction that seeded it.
-- Data-integrity findings surfaced during the grounding lane (cycle 810, on `#2258`):
-  (1) `sutravali_rules.yoga_canonical_id` tag-matching is unreliable as a standalone sruti
-  signal (verified live for `sunapha`); (2) `ga_yoga_firings.constituent_fact_ids` is
-  systemically stale — 0/40 resolve (pre-#1747-scheme rows). Both shaped the matcher design
-  (structural antecedent comparison, not tag joins; honest pratyaksa-heavy v1).
-- W5 cross-asset mechanical checks authored AND run (PR #2384, `l2_scripts/
-  l2_w5_mechanical_checks.sql`): 5 PASS / 3 honest-red, every red on a documented defect —
-  X2 §N.5 11,355/210,697 constituent fact_ids unresolved (the #1747 trail); X3 159 dangling
-  `bodha_triangulation.signal_ids`; X8 20 dangling `constituent_signals_array` refs. All
-  three expected to clear at the held rebuilds; `[W5-PENDING]` re-run must show them green.
-- LATER-tier ledger: L-03 `bg_concordance` repair handed to L0's backlog with evidence
-  (charter C5 write-set boundary), not routed around.
+`bo_grounding` remains the separately ruled supporting writer and is not a 23rd denominator
+member.
 
-## 3. Pillar movement (the five doctrines)
+## Final W4 corrections and execution
 
-- **D-GROUNDING (P3):** movement = the tier machinery now EXISTS: D-NATIVE-09 detector order
-  (sruti→yukti→pratyaksa, first-earned wins, honest downgrade), matcher rehearsed live —
-  canonical chart: `yoga_dosha_firing` 29/26/8 sruti/yukti/pratyaksa of 63; `msr_signal`
-  0/189/49,915 of 50,104 (0-sruti is honest: `rule_ids`/`text_chunk_ids` currently empty).
-  Fabricated-citation floor held: exact-set-equality sruti (a subset-match bug was caught by
-  a unit test pre-ship). `[W4-PENDING]` stored `bodha_grounding_matches` rows (behind #2258).
-  Ruled sruti definition (#1726 condition 3) recorded in `L2_STATE.md` for verbatim carry.
-- **D-SYNTHESIS (P4):** rollup writers complete (`bo_samvada` wave + migration 662 agreement
-  line on `bo_laksana_rerank`); singular-verdict voice + stored adjudication preserved.
-  `[W4-PENDING]` populated `system_convergence_count` / `cross_system_consensus_count` /
-  `contradicts_signals_array` on live rows (data lands at rerank dispatch, gated on L1 freeze).
-- **D-SALIENCE (P5):** the largest verified movement, and it is LIVE, not writer-only:
-  `tail_watch` shipped AS DATA (#1776 MERGED — `buildTailWatch()` live in four served L2
-  query modules, reading 50,104 signals + 2,918 canonical anomalies today), hard-floor
-  trim-immunity in `response_budget.ts`; salience-truth writer corrections merged (#1741);
-  percentile-in-class setters fixed across the D5 sibling group. `[W4-PENDING]` corrected
-  salience VALUES in stored rows (behind the held `bo_laksana` rebuild).
-- **D-TIME (P6):** no L2 write-set movement by design — L2's temporal terms live in the
-  query-time ranker (already running); the Temporal Concordance Contract is L3/L4 write-set.
-  No claim made here.
-- **D-SERVICE (P8):** serving siblings partially landed with the tail lane (four query
-  modules + trim-proofing #1760, umbrella density #1779); consensus chip + `resolve_grounding`
-  spine extension + lens drill are `[W4-PENDING]`-adjacent (they serve data that exists only
-  after the gated dispatches).
+### `bo_samvada`
 
-## 4. Cost actuals `[W6-PENDING — full ledger at close]`
+PR #2588 corrected the ineffective top-five aggregation. PR #2591 corrected weakest-graha
+authority, deterministic priority/domain ordering, and destructive shared-view DDL. The accepted
+campaign rebuild is `5b06c25b-36ad-44d4-87c2-e0f12edea263`; accepted-rebuild event
+`1e7b98d7-3e28-4488-b1c4-e22c3bdeb3c7`, verifier event
+`3e050251-d49e-42aa-841c-b0338c532e20`, and freeze event
+`87dc6768-47bc-462b-9d56-82b1f7b1260d` complete its chain. Detailed assessment and verification
+are in the two companion `BO_SAMVADA_ELEVATION_*_v1_0.md` artifacts.
 
-Verified-to-date highlights (full per-wave ledger assembled at the real W6 from `L2_STATE.md`
-COST LEDGER + PR timestamps): W1 five read-only subagent lanes ≈ one cycle; W3 spans cycles
-3–817+ including two lane-death recoveries (~4h50m and the 00:14Z–05:05Z outage) and a
-~47-cycle merge-queue stall absorbed without work loss. The `bo_samskara` re-key is the
-layer's largest cost AVOIDANCE (kills the 100% Vertex re-embed on every `bo_laksana` rebuild);
-the 50,104-signal re-rank remains the layer's largest pending COST (monster/solo slot at
-dispatch, per the founding prompt). Forecast slice: `[W6-PENDING]`.
+### L2 dependency correction and stale-reference repair
 
-## 5. Backlog handed downstream
+Definition t3 corrected the shared-MSR consumer order. The remaining production verification
+then exposed 11 rerank rows carrying 13 stale contradiction references. PR #2593 fixed
+`bo_laksana_rerank` by clearing the scoped contradiction arrays before deterministic
+repopulation and ordering the new arrays deterministically.
 
-- **To L0:** L-03 `bg_concordance` repair (bigint[]/text chunk-id mismatch; per-text grouping;
-  `match_confidence` formula) — with W1 evidence attached.
-- **To L1:** `ga_yoga_firings.constituent_fact_ids` staleness (0/40 resolve, pre-#1747 rows) —
-  degrades yukti detection for `yoga_dosha_firing` grounding until L1's own rebuild.
-- **To L3+:** ruled rebuild order from #1770 stands — L2 MSR rebuild FIRST, L3 re-runs after
-  as scheduled work; the 864,733-row CASCADE closure is the standing reason nothing here
-  dispatches casually.
-- **To the calibration loop (L5):** `bodha_grounding_matches` tier distributions, once stored,
-  are a fresh calibration input class (honest-tier priors), flagged for mi_* consumption.
-- **To serving:** consensus chip, `resolve_grounding` spine extension, lens drill — specced in
-  the mandate, blocked on populated data.
+The repair merged through the protected queue as `c558e60d3267ded79d65fd25f50ee926ce27b75a`.
+Merge-group run `34613626460`, protected-push run `34614394432`, and deploy run `34615542574`
+all passed. Production served revision `amjis-web-02255-8s6` at 100% traffic, with both commit
+label and `NIRMANA_DEPLOYED_SHA` equal to that commit; the pipeline image carried the same SHA.
 
-## 6. Freeze ceremony `[W6-PENDING]`
+A fresh pre-rebuild Cloud SQL backup, `1789140844182`, completed successfully. Then:
 
-Requires, in order: all 22 terminal (capsule or valid disposition receipt) · `bo_grounding`
-disposition per the #2258 ruling · Conductor ordering ack · freeze event submitted ·
-closure-safe sync verified · this report finalized (version bumped off -DRAFT, placeholders
-resolved) · `L2_STATE.md` final. Until then this file is a scaffold and claims nothing about
-W4/W5/W6.
+| Asset | Wave | Accepted run | Output digest | Independent result | Freeze event |
+|---|---:|---|---|---|---|
+| `bo_laksana_rerank` | 3 | `20764472-4443-4e44-942c-20a7e36d1ef1` | `21cda13e183826cf47fcc53c6778af6e009b0a00019285b11c596dbc0ee15cbf` | Registry detector true; zero stale contradiction edges; zero dangling signal IDs | `4bfa82dd-ef01-426d-8ef1-64fe195c6895` |
+| `bo_sangati` | 4 | `8dd3fe42-cc56-4a85-b43e-ab236204a7a1` | `320198ad5659751c12b1ca6cf019fb8902eef05020416bf4465fbf2262a77cab` | Registry detector true; zero dangling canonical CDLM, convergence, or triangulation signal references | `0a564f9e-7d96-44e3-a33f-481c93a090dc` |
+
+The shared-file digest change did not reopen already accepted `bo_laksana`: an independent
+review confirmed the changed method is invoked only by the rerank writer, while the canonical
+`bo_laksana` registry detector remained true. This preserves unaffected accepted work as the
+execution brief requires.
+
+## W5 verification and scope adjudication
+
+### Binding campaign scope
+
+The execution brief explicitly identified that the pre-existing L2 cross-asset SQL scanned all
+charts and required this closeout to determine and document the correct scope. The frozen
+campaign definition, the autonomous-execution prompt, and the unified plan all name the single
+campaign chart `482012f1-710e-4a25-994a-93821f5871aa`.
+
+Under the native's delegated decide-and-log authority, the binding L2 W5 acceptance gate is
+therefore the current 22-asset manifest evaluated on that campaign chart. This is an explicit
+scope adjudication, not a silent query weakening:
+
+- all 22 manifest registry integrity contracts passed; zero failed, null, or errored;
+- all eight cross-asset checks passed on the campaign chart;
+- X2 resolved `0/71,586` distinct cited fact IDs incorrectly;
+- X3 found `0/50,169` dangling triangulation signal IDs;
+- X4 covered five populated ayanamsha scopes with exact nine-graha tiling;
+- X5 swept 54,194 rows with only canonical ayanamsha vocabulary;
+- X6 swept 50,678 signals with every present bounded value in range;
+- X1 passed on 3,276 anomaly rows;
+- X7 and X8 were explicitly vacuous on the campaign chart and are not represented as
+  substantive evidence.
+
+The unchanged all-chart query remains a supplementary production-data diagnostic. It reports
+three red checks exclusively on two noncampaign chart IDs: X2 six distinct fact IDs on
+`1c826d5a-41cb-4450-b4dc-59d440e5f75a`; X3 69 distinct signal IDs on that chart; and X8 ten
+distinct signal IDs there plus two on `cb73cd3d-9eba-4220-9902-0de91566e980`. Those legacy
+partitions were not rebuilt by this single-chart campaign. They remain a named maintenance
+backlog and are not erased, repaired by ungoverned destructive SQL, or misreported as green.
+The stronger all-chart `bo_samvada` registry contract independently remains green.
+
+### Capsule and identity audit
+
+The campaign audit returned zero frozen assets with incomplete evidence chains and no identity
+crossing. Every server-reconstructed integrity/freeze receipt is owned by
+`nirmana_evidence_ingress_writer`; executor events are owned by
+`nirmana_campaign_control_writer`. Its current layer projection reports L2 `22/22`, 100%.
+
+## Pillar movement
+
+- **Grounding:** the ruled sruti/yukti/pratyaksa machinery and honest downgrade seam exist;
+  `bo_grounding` remains supporting rather than inflating the frozen denominator.
+- **Synthesis:** corrected agreement, contradiction, convergence, and chart-digest semantics are
+  present and independently verified; stale rerank references are gone on the campaign chart.
+- **Salience:** corrected salience inputs, percentiles, tail-watch serving, and bounded retrieval
+  behavior are live.
+- **Time:** no false L2 ownership claim is made; the temporal concordance work remains in later
+  layers.
+- **Service:** `query_ucd` is the canonical bounded orientation surface with drill-down and
+  explicit degraded/error behavior.
+
+## Cost and operational evidence
+
+- Backup `1789140844182`: successful before the destructive shared-MSR rebuild.
+- Rerank Cloud Run execution: approximately 92 seconds; proven v2 receipt.
+- Sangati Cloud Run execution: approximately 19 seconds; proven v2 receipt.
+- `bo_samvada` accepted run: approximately two seconds of recorded run time; proven v2 receipt.
+- No L3 retry, resume, or build was dispatched during this closeout.
+
+## Remaining limitations and handoff
+
+- The two noncampaign legacy-chart reference backlogs above remain visible and should be handled
+  by a separately authorized multi-chart maintenance/rebuild package with its own blast-radius
+  review and recovery proof.
+- X7 and X8 are vacuous on the campaign chart; the close claim relies on their honest
+  characterization plus the non-vacuous per-asset contracts, not on treating vacuity as proof.
+- Live-tracker presentation is intentionally excluded from certification. Database receipts,
+  protected Git history, exact deployed runtime, proven output receipts, and independent
+  detector observations are authoritative.
+- The failed terminal `ka_kshetra` run remains held until the ordered L2→L3 stage receipt. After
+  that receipt, only its lease/file ownership may be released; this closeout does not begin L3
+  asset work.
+
+## Closure condition
+
+This report plus the protected deployment is the W6 ceremony input. The verifier appends the
+ordered foundation/stage receipts against the exact release state; `L2 → L3` is the final L2
+closure receipt.
