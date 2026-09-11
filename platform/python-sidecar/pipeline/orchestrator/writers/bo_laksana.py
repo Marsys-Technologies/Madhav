@@ -3847,6 +3847,14 @@ UPDATE bodha_msr_signals m
    AND m.chart_id = %(chart_id)s AND m.ayanamsha_id = %(aya)s
 """
 
+_CLEAR_CONTRADICTS_SQL = """
+UPDATE bodha_msr_signals
+   SET contradicts_signals_array = NULL
+ WHERE chart_id = %(chart_id)s
+   AND ayanamsha_id = %(aya)s
+   AND contradicts_signals_array IS NOT NULL
+"""
+
 _CONTRADICTS_SQL = """
 WITH pairs AS (
   SELECT signal_a_id AS sid, signal_b_id AS other FROM bodha_contradictions
@@ -3855,7 +3863,7 @@ WITH pairs AS (
   SELECT signal_b_id, signal_a_id FROM bodha_contradictions
    WHERE chart_id = %(chart_id)s AND ayanamsha_id = %(aya)s
 ), agg AS (
-  SELECT sid, array_agg(DISTINCT other) AS arr FROM pairs GROUP BY sid
+  SELECT sid, array_agg(DISTINCT other ORDER BY other) AS arr FROM pairs GROUP BY sid
 )
 UPDATE bodha_msr_signals m
    SET contradicts_signals_array = agg.arr
@@ -3887,15 +3895,18 @@ def _populate_synthesis_rollups(conn: Any, chart_id: str, ayanamsha: str) -> tup
     resolvable facts, so the third population is never touched rather than being
     explicitly skipped — the honest outcome falls out of the join.
 
-    `contradicts_signals_array` is likewise left NULL, never `'{}'`, on
-    non-participating rows. bo_upaya probes this column and reads an empty array as a
-    MEASURED "no contradictions found", which would silently enable a term that has no
-    evidence behind it (bo_upaya.py's own source_available check).
+    `contradicts_signals_array` is reset to NULL for the scoped chart/ayanamsha before
+    current contradiction pairs are repopulated. This removes stale references from
+    signals that no longer participate while preserving NULL, never `'{}'`, for current
+    non-participants. bo_upaya probes this column and reads an empty array as a MEASURED
+    "no contradictions found", which would silently enable a term that has no evidence
+    behind it (bo_upaya.py's own source_available check).
     """
     params = {"chart_id": chart_id, "aya": ayanamsha}
     with conn.cursor() as cur:
         cur.execute(_SYNTHESIS_ROLLUP_SQL, params)
         rollup_rows = cur.rowcount or 0
+        cur.execute(_CLEAR_CONTRADICTS_SQL, params)
         cur.execute(_CONTRADICTS_SQL, params)
         contradiction_rows = cur.rowcount or 0
     return rollup_rows, contradiction_rows
