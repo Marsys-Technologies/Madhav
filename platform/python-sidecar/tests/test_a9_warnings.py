@@ -323,6 +323,33 @@ class TestW3SamvadaDeadBranchRemoved:
             "this is the bug from the deleted dead branch."
         )
 
+    def test_view_uses_l1_shadbala_for_weakest_graha(self):
+        """The digest's weakest graha is an L1 strength fact, never an RM rank."""
+        mod = self._load()
+        sql = mod._CREATE_VIEW_CLEAN
+        weakest_clause = sql.split("AS weakest_graha", 1)[0]
+        assert "fact_category = 'graha_shadbala_total'" in weakest_clause
+        assert "fact_key = 'rupa'" in weakest_clause
+        assert "ORDER BY cf.fact_value_num ASC, cf.fact_subject ASC" in weakest_clause
+        assert "rm.weakest_rank_in_chart" not in weakest_clause
+
+    def test_top_convergence_domains_is_bounded_and_totally_ordered(self):
+        """The top-five digest has deterministic tie and null behaviour."""
+        mod = self._load()
+        sql = mod._CREATE_VIEW_CLEAN
+        assert "LIMIT 5" in sql
+        assert "cv2.convergence_score DESC NULLS LAST" in sql
+        assert "cv2.convergence_count DESC NULLS LAST" in sql
+        assert "cv2.domain ASC" in sql
+
+    def test_top_priority_class_is_remedy_rank_with_a_total_order(self):
+        """Priority remains RM remedy priority, distinct from weakest strength."""
+        mod = self._load()
+        sql = mod._CREATE_VIEW_CLEAN
+        priority_clause = sql.split("AS top_priority_class", 1)[0].rsplit("(", 1)[-1]
+        assert "rm.remedy_priority_class" in priority_clause
+        assert "rm.weakest_rank_in_chart ASC NULLS LAST, rm.graha ASC" in priority_clause
+
     def test_run_creates_view_using_clean_ddl(self):
         """W3: run() calls conn.execute with the correct VIEW DDL."""
         mod = self._load()
@@ -340,6 +367,9 @@ class TestW3SamvadaDeadBranchRemoved:
         assert "CREATE OR REPLACE VIEW vw_chart_digest" in calls_str, (
             "run() did not issue CREATE OR REPLACE VIEW vw_chart_digest; "
             f"execute calls were: {calls_str[:400]}"
+        )
+        assert "DROP VIEW" not in calls_str, (
+            "run() must preserve shared view dependents and grants; it issued DROP VIEW"
         )
 
     def test_dry_run_does_not_execute_ddl(self):

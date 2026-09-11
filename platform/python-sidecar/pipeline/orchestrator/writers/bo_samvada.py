@@ -15,14 +15,16 @@ Bodha layer for a chart into a compact, LLM-friendly digest:
     avg_salience NUMERIC,            ← round(avg(computed_salience), 4)
     max_salience NUMERIC,            ← round(max(computed_salience), 4)
     contradiction_count INT,         ← live count from bodha_contradictions
-    weakest_graha TEXT,              ← bodha_rm_resonances, rank 1
-    top_priority_class TEXT,         ← bodha_rm_resonances, rank 1's remedy_priority_class
+    weakest_graha TEXT,              ← L1 Shadbala rupa minimum (not RM priority rank)
+    top_priority_class TEXT,         ← bodha_rm_resonances, rank 1's remedy_priority_class (not strength)
     top_convergence_domains JSONB,   ← bodha_convergence, top 5 by score, static_natal snapshot
     trap1_count INT,                 ← synthesis_quality_scorecard.trap1_authority_inversion_count, latest scored_at
     digest_at TIMESTAMPTZ            ← NOW() at view-query time, not build time (a VIEW, not a snapshot)
 
 This is a DDL-only writer: it emits CREATE OR REPLACE VIEW and returns
-rows_inserted = 1 if the view was created successfully (0 on dry_run).
+rows_inserted = 1 if the view was created successfully (0 on dry_run).  It
+must not DROP ... CASCADE the shared serving view: this definition preserves
+the stable column contract, and CREATE OR REPLACE retains dependents and grants.
 
 The bo_samvada asset in the orchestrator registry counts rows in the
 view (via count_sql) to signal success — count_sql already reads
@@ -70,26 +72,53 @@ SELECT
     WHERE bc.chart_id = m.chart_id AND bc.ayanamsha_id = m.ayanamsha_id
   )                                                                AS contradiction_count,
   (
-    SELECT rm.graha FROM bodha_rm_resonances rm
-    WHERE rm.chart_id = m.chart_id AND rm.ayanamsha_id = m.ayanamsha_id
-    ORDER BY rm.weakest_rank_in_chart ASC NULLS LAST LIMIT 1
+    -- `weakest_rank_in_chart` is a composite remedy-priority ordering.  It is
+    -- not a strength measure, so it must never populate a field named
+    -- `weakest_graha`.  L1 `graha_shadbala_total` / `rupa` is the canonical
+    -- six-fold strength authority; retain a total order for tied rupas.
+    SELECT CASE cf.fact_subject
+      WHEN 'SUN' THEN 'Sun'
+      WHEN 'MOON' THEN 'Moon'
+      WHEN 'MAR' THEN 'Mars'
+      WHEN 'MER' THEN 'Mercury'
+      WHEN 'JUP' THEN 'Jupiter'
+      WHEN 'VEN' THEN 'Venus'
+      WHEN 'SAT' THEN 'Saturn'
+    END
+    FROM chart_facts cf
+    WHERE cf.chart_id = m.chart_id
+      AND cf.ayanamsha_id = m.ayanamsha_id
+      AND cf.fact_category = 'graha_shadbala_total'
+      AND cf.fact_key = 'rupa'
+      AND cf.fact_value_num IS NOT NULL
+      AND cf.fact_subject IN ('SUN', 'MOON', 'MAR', 'MER', 'JUP', 'VEN', 'SAT')
+    ORDER BY cf.fact_value_num ASC, cf.fact_subject ASC
+    LIMIT 1
   )                                                                AS weakest_graha,
   (
     SELECT rm.remedy_priority_class FROM bodha_rm_resonances rm
     WHERE rm.chart_id = m.chart_id AND rm.ayanamsha_id = m.ayanamsha_id
-    ORDER BY rm.weakest_rank_in_chart ASC NULLS LAST LIMIT 1
+    -- This is a remedy-priority classification, intentionally distinct from
+    -- the L1 Shadbala strength above.  The graha tiebreaker makes the UCD
+    -- stable when the priority rank is tied.
+    ORDER BY rm.weakest_rank_in_chart ASC NULLS LAST, rm.graha ASC
+    LIMIT 1
   )                                                                AS top_priority_class,
   (
     SELECT jsonb_agg(
       jsonb_build_object('domain', cv2.domain, 'score', cv2.convergence_score, 'n', cv2.convergence_count)
-      ORDER BY cv2.convergence_score DESC
+      ORDER BY cv2.convergence_score DESC NULLS LAST,
+               cv2.convergence_count DESC NULLS LAST,
+               cv2.domain ASC
     )
     FROM (
       SELECT cv2.domain, cv2.convergence_score, cv2.convergence_count
       FROM bodha_convergence cv2
       WHERE cv2.chart_id = m.chart_id AND cv2.ayanamsha_id = m.ayanamsha_id
         AND cv2.snapshot_type = 'static_natal'
-      ORDER BY cv2.convergence_score DESC
+      ORDER BY cv2.convergence_score DESC NULLS LAST,
+               cv2.convergence_count DESC NULLS LAST,
+               cv2.domain ASC
       LIMIT 5
     ) cv2
   )                                                                AS top_convergence_domains,
@@ -120,7 +149,6 @@ class BoSamvadaWriter(WriterBase):
 
         conn = ctx.db_conn
         try:
-            conn.execute("DROP VIEW IF EXISTS vw_chart_digest CASCADE")
             conn.execute(_CREATE_VIEW_CLEAN)
             logger.info("[bo_samvada] vw_chart_digest created/replaced")
             return WriterResult(asset_id=self.asset_id, rows_inserted=1,
