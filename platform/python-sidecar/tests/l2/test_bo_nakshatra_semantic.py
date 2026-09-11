@@ -163,7 +163,7 @@ def test_build_signal_row_not_null_columns_populated():
         tara_facts=None, now="2026-07-16T00:00:00+00:00",
     )
     not_null_cols = [
-        "signal_id", "chart_id", "ayanamsha_id", "build_id",
+        "chart_id", "ayanamsha_id", "build_id",
         "signal_type_id", "signal_type_class", "signal_tradition",
         "fact_kind", "source_l1_asset", "source_subsystem", "lel_origin",
         "configuration_jsonb", "constituent_facts_array",
@@ -173,6 +173,7 @@ def test_build_signal_row_not_null_columns_populated():
         "active_duration_class", "verification_pass_status",
         "citation_ref", "citation_human", "computed_at", "engine_version",
     ]
+    assert row["signal_id"] is None  # assigned by the writer's SQL identity boundary
     for col in not_null_cols:
         assert row[col] is not None, f"{col} must not be None (NOT NULL column)"
 

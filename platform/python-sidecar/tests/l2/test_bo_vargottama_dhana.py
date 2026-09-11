@@ -174,7 +174,7 @@ def test_not_null_columns_populated_both_classes():
     )
     assert len(rows) == 3  # 1 vargottama + 2 dhana_axis
     not_null_cols = [
-        "signal_id", "chart_id", "ayanamsha_id", "build_id",
+        "chart_id", "ayanamsha_id", "build_id",
         "signal_type_id", "signal_type_class", "signal_tradition",
         "fact_kind", "source_l1_asset", "source_subsystem", "lel_origin",
         "configuration_jsonb", "constituent_facts_array",
@@ -185,6 +185,7 @@ def test_not_null_columns_populated_both_classes():
         "citation_ref", "citation_human", "computed_at", "engine_version",
     ]
     for row in rows:
+        assert row["signal_id"] is None  # assigned by the writer's SQL identity boundary
         for col in not_null_cols:
             assert row[col] is not None, f"{col} must not be None (NOT NULL column) in {row['signal_type_id']}"
 

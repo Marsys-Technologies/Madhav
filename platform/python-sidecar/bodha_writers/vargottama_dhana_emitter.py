@@ -36,7 +36,6 @@ with `bo_laksana`'s yoga-class rows by construction.
 from __future__ import annotations
 
 import json
-import uuid
 from typing import Any
 
 from bodha_writers.formulas import salience_formula_v2, SalienceInputsV2, VERSION_SALIENCE_FORMULA_V2
@@ -148,7 +147,9 @@ def _make_row(
     sal = salience_formula_v2(inputs)
     computed_salience = sal["computed_salience"]
     return {
-        "signal_id": str(uuid.uuid4()),
+        # Assigned by BoVargottamaDhanaWriter through the database-authoritative
+        # bodha_signal_identity() immediately before INSERT.
+        "signal_id": None,
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,
