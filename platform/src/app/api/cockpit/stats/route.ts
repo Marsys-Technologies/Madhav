@@ -4,6 +4,7 @@ import { getServerUser } from '@/lib/firebase/server'
 import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { deriveState } from './deriveState'
 import type { AssetState } from './deriveState'
+import { readSqlScalarMetric } from './scalarMetric'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 15 // seconds — Next.js route segment config
@@ -148,17 +149,16 @@ async function fetchAllCounts(
 
     try {
       const countParams = /\$1/.test(asset.count_sql) ? [chartId] : []
-      const countResult = await query<{ count: string }>(asset.count_sql, countParams)
-      const actual_rows = parseInt(countResult.rows[0]?.count ?? '0', 10)
+      const countResult = await query<Record<string, unknown>>(asset.count_sql, countParams)
+      const actual_rows = readSqlScalarMetric(countResult.rows[0], 'count')
 
       let size_bytes: number | null = null
       let size_is_estimate = false
       if (asset.size_sql) {
         size_is_estimate = /\$1/.test(asset.size_sql)
         const sizeParams = size_is_estimate ? [chartId] : []
-        const sizeResult = await query<{ size: string }>(asset.size_sql, sizeParams)
-        const raw = sizeResult.rows[0]?.size
-        size_bytes = raw != null ? parseInt(raw, 10) : null
+        const sizeResult = await query<Record<string, unknown>>(asset.size_sql, sizeParams)
+        size_bytes = readSqlScalarMetric(sizeResult.rows[0], 'size', { nullable: true })
       }
 
       return {
