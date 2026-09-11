@@ -8,6 +8,7 @@ vi.mock('@/hooks/useUserRole', () => ({
 }))
 
 import { useUserRole } from '@/hooks/useUserRole'
+import type { AssetStats } from '@/app/api/cockpit/stats/route'
 const mockUseUserRole = useUserRole as ReturnType<typeof vi.fn>
 
 const ASSET_BASE = {
@@ -43,6 +44,22 @@ const ASSET_BASE = {
   last_invoked_at: null,
   last_selftest_at: null,
   selftest_detail: null,
+}
+
+function stat(assetId: string, state: AssetStats['state'], actualRows: number): AssetStats {
+  return {
+    asset_id: assetId,
+    actual_rows: actualRows,
+    volume: actualRows,
+    size_bytes: null,
+    last_updated: '2026-09-12T00:00:00.000Z',
+    error: null,
+    state,
+    last_built_at: state === 'lit' ? '2026-09-12T00:00:00.000Z' : null,
+    build_state_stale: false,
+    service_health: null,
+    last_invoked_at: null,
+  }
 }
 
 describe('LayerPanel — L0 BuildActionButton gate', () => {
@@ -184,5 +201,63 @@ describe('LayerPanel — singleton asset_set ownership', () => {
     expect(screen.queryByText(/^(Build|Rebuild)$/)).toBeNull()
     expect(screen.queryByTitle('Rebuild')).toBeNull()
     expect(screen.getAllByTitle('Stop build')).toHaveLength(2)
+  })
+})
+
+describe('LayerPanel — D-NATIVE-11 supporting-writer operational readiness', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockUseUserRole.mockReturnValue({ role: 'super_admin', isSuperAdmin: true, loading: false })
+  })
+
+  const l2Assets = [
+    { ...ASSET_BASE, asset_id: 'bo_laksana', layer: 'bodha', scope: 'per_chart' },
+    {
+      ...ASSET_BASE,
+      asset_id: 'bo_grounding',
+      layer: 'bodha',
+      scope: 'per_chart',
+      target_floor: 0,
+    },
+  ]
+
+  it('keeps a dormant supporting writer in the operational denominator', () => {
+    render(
+      <LayerPanel
+        layer="bodha"
+        assets={l2Assets}
+        stats={new Map([
+          ['bo_laksana', stat('bo_laksana', 'lit', 12)],
+          ['bo_grounding', stat('bo_grounding', 'dormant', 0)],
+        ])}
+        chartId="chart-1"
+        activeRun={null}
+        onRunStarted={() => {}}
+      />
+    )
+
+    expect(screen.getByTitle('1 / 2 lit')).toBeTruthy()
+    expect(screen.getByText('1')).toBeTruthy()
+    expect(screen.getByText('/ 2')).toBeTruthy()
+  })
+
+  it('accepts a successfully completed zero-row supporting writer as operationally ready', () => {
+    render(
+      <LayerPanel
+        layer="bodha"
+        assets={l2Assets}
+        stats={new Map([
+          ['bo_laksana', stat('bo_laksana', 'lit', 12)],
+          ['bo_grounding', stat('bo_grounding', 'lit', 0)],
+        ])}
+        chartId="chart-1"
+        activeRun={null}
+        onRunStarted={() => {}}
+      />
+    )
+
+    expect(screen.getByTitle('All assets lit')).toBeTruthy()
+    expect(screen.getByText('2')).toBeTruthy()
+    expect(screen.getByText('/ 2')).toBeTruthy()
   })
 })

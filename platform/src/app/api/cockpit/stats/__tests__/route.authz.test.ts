@@ -47,8 +47,17 @@ function setupMocks(opts: {
   role?: string
   ownerId?: string | null
   grantPermission?: string | null
+  countSql?: string
+  countRow?: Record<string, unknown>
 }) {
-  const { uid, role = 'guest', ownerId = VICTIM_UID, grantPermission = null } = opts
+  const {
+    uid,
+    role = 'guest',
+    ownerId = VICTIM_UID,
+    grantPermission = null,
+    countSql = 'SELECT count(*) FROM kala_kshetra WHERE chart_id=$1',
+    countRow = { count: '4242' },
+  } = opts
   mockGetServerUser.mockResolvedValue(uid ? { uid } : null)
   issued = []
 
@@ -67,7 +76,7 @@ function setupMocks(opts: {
     if (/FROM asset_registry/.test(sql)) {
       return Promise.resolve({
         rows: [{
-          asset_id: 'ka_kshetra', count_sql: 'SELECT count(*) FROM kala_kshetra WHERE chart_id=$1',
+          asset_id: 'ka_kshetra', count_sql: countSql,
           size_sql: null, scope: 'per_chart', is_active: true, target_floor: null,
           asset_type: 'data', asset_kind: 'data', health_probe: null,
           service_health: null, last_invoked_at: null, last_selftest_at: null, has_substeps: false,
@@ -77,7 +86,7 @@ function setupMocks(opts: {
     }
     if (/FROM asset_throughput/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
     if (/FROM build_substep_progress/.test(sql)) return Promise.resolve({ rows: [], rowCount: 0 })
-    if (/count\(\*\)/.test(sql)) return Promise.resolve({ rows: [{ count: '4242' }], rowCount: 1 })
+    if (/count\(\*\)/.test(sql)) return Promise.resolve({ rows: [countRow], rowCount: 1 })
     return Promise.resolve({ rows: [], rowCount: 0 })
   })
 }
@@ -113,6 +122,19 @@ describe('GET /api/cockpit/stats — P2-B-008 unauthenticated per-chart disclosu
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.data.assets[0].actual_rows).toBe(4242)
+  })
+
+  it('reports an unaliased single-column compound count instead of a false zero', async () => {
+    setupMocks({
+      uid: VICTIM_UID,
+      ownerId: VICTIM_UID,
+      countSql: 'SELECT (SELECT count(*) FROM first_table) + (SELECT count(*) FROM second_table)',
+      countRow: { '?column?': '440' },
+    })
+    const res = await GET(makeReq(VICTIM_CHART))
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.data.assets[0]).toMatchObject({ actual_rows: 440, state: 'lit', error: null })
   })
 
   it('ALLOWS a view-grantee — stats are a read', async () => {
