@@ -37434,3 +37434,1293 @@ absence is what blocked 16 of S6's 31 scenarios) and **R-2** (add re-hydration /
 conversation-replay paths). Read `PARIPRASHNA_V3_FINAL_CLOSE_REPORT_v1_0.md` §5 directly for the full
 residual table rather than assuming a common cause — R-3's six referrals each carry their own target
 stream, and R-4 is a recorded accepted risk, not open work.
+
+
+## MADHAV-PRODUCT-V3-20260912 — 2026-09-13
+
+### Session open
+
+```yaml
+{
+  "session_open": {
+    "session_id": "MADHAV-PRODUCT-V3-20260912",
+    "cowork_thread_name": "Madhav — Product Definition v3.0 Finalization",
+    "agent_name": "Codex",
+    "agent_version": "runtime model identifier not independently exposed",
+    "tool": "Codex",
+    "tool_profile": "managed",
+    "worktree_path": "/private/tmp/madhav-product-final.FqznR2/publication",
+    "step_number_or_macro_phase": "PRODUCT-STRATEGY-GOVERNANCE-ASIDE",
+    "expected_session_class": "governance_aside",
+    "predecessor_session": "PARISESA-V4-CONDUCTOR-20260822T023000Z-CLOSE",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "MADHAV-PRODUCT-V3-20260912",
+      "lease_status_verified": true,
+      "lease_verified_at": "2026-09-12T23:31:00+05:30",
+      "claim_commit": "1f22b772bdb2856b603fd965265677a1704d9969",
+      "work_order_surface": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md"
+    },
+    "cross_tool_state_read": {
+      "cross_cutting_decision_register": true,
+      "stale_surfaces_disregarded": [
+        ".conductor-state.json",
+        ".gemini/project_state.md",
+        "CLAUDECODE_BRIEF.md (COMPLETE)",
+        "CLAUDE.md cached campaign status"
+      ]
+    },
+    "mandatory_reading_confirmation": [
+      {
+        "file": "CLAUDE.md",
+        "fingerprint_sha256": "4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f",
+        "read_at": "2026-09-12T18:03:02.096Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "fingerprint_sha256": "42203bdf4a70ae25fad18a342de0d8b12bba2afd16a3e83c7a6b9059be83a248",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "fingerprint_sha256": "61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "fingerprint_sha256": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
+        "fingerprint_sha256": "a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0",
+        "read_at": "2026-09-12T18:03:02.099Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "fingerprint_sha256": "55274377a113f096aa55236c4906f623438f173eb12d25be49c74db3400b1307",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "fingerprint_sha256": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md",
+        "fingerprint_sha256": "8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
+        "fingerprint_sha256": "8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md",
+        "fingerprint_sha256": "ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/ROOT_FILE_POLICY.md",
+        "fingerprint_sha256": "6da89a754f20669fa70d37e3c233c638f72acd92139ae1866524a17ef2df41fd",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md",
+        "fingerprint_sha256": "45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3",
+        "read_at": "2026-09-12T18:03:02.100Z"
+      }
+    ],
+    "canonical_artifact_fingerprint_check": [
+      {
+        "canonical_id": "MACRO_PLAN",
+        "declared_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "observed_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "match": true
+      },
+      {
+        "canonical_id": "CANONICAL_ARTIFACTS",
+        "declared_fingerprint": "<populated-at-step-15-close>",
+        "observed_fingerprint": "398484a50dc17fd2c711638f9041b7524c52dbca742145465d716985a33af3c0",
+        "match": null,
+        "reason": "Existing historical self-reference placeholder; verified unchanged against publication base. No fabricated self-hash match."
+      },
+      {
+        "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+        "declared_fingerprint": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+        "observed_fingerprint": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+        "match": true
+      }
+    ],
+    "declared_scope": {
+      "may_touch": [
+        "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+        "00_ARCHITECTURE/briefs/nirmana/MADHAV*.md",
+        "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+        "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "00_ARCHITECTURE/SESSION_LOG.md",
+        "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (coordination worktree only)",
+        "/private/tmp/madhav-product-final.FqznR2/* (local validation evidence only)",
+        "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json"
+      ],
+      "must_not_touch": [
+        "platform/**",
+        "platform-mcp/**",
+        ".github/**",
+        "01_FACTS_LAYER/**",
+        "025_HOLISTIC_SYNTHESIS/**",
+        "06_LEARNING_LAYER/**",
+        "CLAUDE.md",
+        "CLAUDECODE_BRIEF.md",
+        "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "00_ARCHITECTURE/briefs/nirmana/KA_*.md",
+        "00_ARCHITECTURE/briefs/nirmana/L3_*.md",
+        "all unrelated and original-worktree edits"
+      ]
+    },
+    "mirror_pair_freshness_check": [],
+    "native_directive_obligations": [],
+    "red_team_due": true,
+    "native_overrides": [
+      {
+        "authority": "Native user: Yes, authorized.",
+        "scope": "One-time documentation-only actual managed profile exception to SESSION_OPEN tool_profile rule; save/register/local commit final definition and selected provenance. No application, DB, deploy, merge, campaign or validator change.",
+        "record": "CCD-010"
+      }
+    ],
+    "notes": "Continuation of strategic session after explicit profile-exception approval. Reading timestamps record fresh hash confirmation of governing material read throughout this session, not a claim of re-reading every historical section. Conditional layer-build/redesign reads not applicable. Raw profile failure must be retained. Baseline schema43/exit3 and drift79/exit3; no authority for broader repairs. Historical CURRENT_STATE predecessor retained without claiming campaign progression."
+  }
+}
+```
+
+### Work completed — governance aside
+
+Native adopted the final target in `00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md`; CCD-010 records its bounded documentation-only authority and the expressly authorized actual managed-profile exception. The raw profile validation failure remains recorded, not relabeled PASS. The actual master incorporates the domain-rich v2.3 direction, fourteen source-audited portal families, controlled comparisons, accountable prediction, purpose-separated observations and all final independent-review corrections. Seven product antecedents are preserved; prior proposals are not retroactively ratified. One master identity is registered in CAPABILITY_MANIFEST (131 entries), with historical audit pointer and current product-planning provenance.
+
+### Scope discipline
+
+Only the fifteen declared product/history/governance/evidence files are in the publication scope. Original strategic-worktree contents, six unrelated KA/L3 documents, all application/database/production/campaign state and all safety/consent decisions remain untouched. The documentation lease was remotely released at d4b29c81fedc6dccc2bbecea4e2a4ce0869729d2. Product push, merge and deployment are not included. Individual MEDIUM/LOW residuals and baseline-to-final evidence are retained in the product review/evidence; no broad validation ceiling was changed.
+
+### Session close
+
+```yaml
+{
+  "session_close": {
+    "session_id": "MADHAV-PRODUCT-V3-20260912",
+    "closed_at": "2026-09-12T18:34:34Z",
+    "tool": "Codex",
+    "tool_profile": "managed",
+    "step_completed": "Final product definition adoption and documentation-only local publication",
+    "expected_session_class": "governance_aside",
+    "files_touched": [
+      {
+        "path": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_CONSUMER_PRODUCT_VISION_AND_DEFINITION_v1_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "282bb045bfd67e512f0fd7cc861d8dd7613371f0b172da20d86933e8b36ef326",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DEEP_INQUIRY_AND_DATA_UTILIZATION_PLAN_v1_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "82162727139ab37c4a925a3654a8338f25eb3372a8d81171959d4220966a874d",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_RECONCILIATION_v1_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "286a1e7d94f61bfc360ca8c4de632f0f28f18f0a08baf832d9377624314341be",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "69dd1bd3cae78adb6a9533ad2503af250633092ecc517ac37c19e30586eb616e",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "8dd92cdf5db00fdd7a5fdccf6a4adc5724eaadf05873f3358f2b022ab5612e89",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v1_1_REVIEW_v1_0.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "236fa12487f97bd2dbafac46669555335373e0a13cb2976f8272015351055881",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_0_PROPOSAL.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "5028fa3d9c9898644ff1143d9f2106c796e8467dd6cb565cfe8026f162770a33",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_1.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "e66b6a2eaa0669c53380a9dfaf9348c61046e8e46ee8f6f9afb0a7a1fb307cf4",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_2.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": "d0c6746b1a13e398e3b0a4bdf9c4058dd6cfd2d58404b5452c231f43cf459261",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "action": "modified",
+        "sha256_before": "42203bdf4a70ae25fad18a342de0d8b12bba2afd16a3e83c7a6b9059be83a248",
+        "sha256_after": "d6abc03a241496b32d881e8baf1ffa2caad67df644d5a1f3e527ed4d6eb3d272",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+        "action": "modified",
+        "sha256_before": "398484a50dc17fd2c711638f9041b7524c52dbca742145465d716985a33af3c0",
+        "sha256_after": "c426ee992287101b2c4342a0f580528d0272e76059c7a73ae8bef9d53f327a42",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "action": "modified",
+        "sha256_before": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+        "sha256_after": "60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "action": "modified",
+        "sha256_before": "55274377a113f096aa55236c4906f623438f173eb12d25be49c74db3400b1307",
+        "sha256_after": "67d9c29191af129e7a5a43806ba747a0997dac1f983e97eddee69ef1018a6671",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/SESSION_LOG.md",
+        "action": "created",
+        "sha256_before": null,
+        "sha256_after": null,
+        "within_declared_scope": true,
+        "hash_note": "Self-containing atomic close record; final bytes anchored by the containing Git commit."
+      }
+    ],
+    "artifacts_produced": [
+      "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_CONSUMER_PRODUCT_VISION_AND_DEFINITION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DEEP_INQUIRY_AND_DATA_UTILIZATION_PLAN_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_RECONCILIATION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v1_1_REVIEW_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_0_PROPOSAL.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_1.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_2.md",
+      "00_ARCHITECTURE/SESSION_LOG.md"
+    ],
+    "may_touch_actual": [
+      "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_CONSUMER_PRODUCT_VISION_AND_DEFINITION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DEEP_INQUIRY_AND_DATA_UTILIZATION_PLAN_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_RECONCILIATION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v1_1_REVIEW_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_0_PROPOSAL.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_1.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_v2_2.md",
+      "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+      "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+      "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+      "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+      "00_ARCHITECTURE/SESSION_LOG.md"
+    ],
+    "must_not_touch_respected": true,
+    "registry_updates_made": {
+      "capability_manifest": {
+        "added": [
+          "MADHAV_PRODUCT_DEFINITION"
+        ],
+        "fingerprints_rotated": [
+          "CROSS_CUTTING_DECISION_REGISTER_v1_0"
+        ],
+        "entry_count": 131
+      },
+      "canonical_artifacts": "Historical post-cutover pointer only; remains SUPERSEDED",
+      "ccd": [
+        "CCD-010"
+      ],
+      "file_registry": "N/A retired",
+      "current_state": "6.67 product governance aside; active campaign unchanged"
+    },
+    "red_team_pass": {
+      "performed": true,
+      "reviewers": [
+        "portal_coverage_final",
+        "frontier_value_final",
+        "governance_package_review"
+      ],
+      "verdict": "Material review corrections incorporated; documentation review only",
+      "findings_record": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md#5-final-pass-findings-and-dispositions"
+    },
+    "red_team_due": true,
+    "red_team_discharged": true,
+    "drift_detector_run": {
+      "exit_code": 3,
+      "total_findings": 79,
+      "report": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json",
+      "phase": "Final paired-entry verification; exact79 baseline findings unchanged"
+    },
+    "schema_validator_run": {
+      "exit_code": 3,
+      "total_violations": 42,
+      "report": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_VALIDATION_EVIDENCE_v1_0.json",
+      "phase": "Final paired-entry verification; baseline43 reduced by one inherited session-pointer reconciliation, no new finding"
+    },
+    "known_residuals": [
+      {
+        "finding_id": "SCHEMA-001",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-001: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 0
+      },
+      {
+        "finding_id": "SCHEMA-002",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-002: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 1
+      },
+      {
+        "finding_id": "SCHEMA-003",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-003: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 2
+      },
+      {
+        "finding_id": "SCHEMA-004",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-004: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 3
+      },
+      {
+        "finding_id": "SCHEMA-005",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-005: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 4
+      },
+      {
+        "finding_id": "SCHEMA-006",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-006: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 5
+      },
+      {
+        "finding_id": "SCHEMA-007",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-007: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 6
+      },
+      {
+        "finding_id": "SCHEMA-008",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-008: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 7
+      },
+      {
+        "finding_id": "SCHEMA-009",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-009: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 8
+      },
+      {
+        "finding_id": "SCHEMA-010",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-010: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 9
+      },
+      {
+        "finding_id": "SCHEMA-011",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-011: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 10
+      },
+      {
+        "finding_id": "SCHEMA-012",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-012: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 11
+      },
+      {
+        "finding_id": "SCHEMA-013",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-013: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 12
+      },
+      {
+        "finding_id": "SCHEMA-014",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-014: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 13
+      },
+      {
+        "finding_id": "SCHEMA-015",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-015: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 14
+      },
+      {
+        "finding_id": "SCHEMA-016",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-016: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 15
+      },
+      {
+        "finding_id": "SCHEMA-017",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-017: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 16
+      },
+      {
+        "finding_id": "SCHEMA-018",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-018: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 17
+      },
+      {
+        "finding_id": "SCHEMA-019",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-019: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 18
+      },
+      {
+        "finding_id": "SCHEMA-020",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-020: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 19
+      },
+      {
+        "finding_id": "SCHEMA-021",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-021: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 20
+      },
+      {
+        "finding_id": "SCHEMA-022",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-022: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 21
+      },
+      {
+        "finding_id": "SCHEMA-023",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-023: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 22
+      },
+      {
+        "finding_id": "SCHEMA-024",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-024: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 23
+      },
+      {
+        "finding_id": "SCHEMA-025",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-025: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 24
+      },
+      {
+        "finding_id": "SCHEMA-026",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-026: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 25
+      },
+      {
+        "finding_id": "SCHEMA-027",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-027: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 26
+      },
+      {
+        "finding_id": "SCHEMA-028",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-028: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 27
+      },
+      {
+        "finding_id": "SCHEMA-029",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-029: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 28
+      },
+      {
+        "finding_id": "SCHEMA-030",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-030: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 29
+      },
+      {
+        "finding_id": "SCHEMA-031",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-031: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 30
+      },
+      {
+        "finding_id": "SCHEMA-032",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-032: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 31
+      },
+      {
+        "finding_id": "SCHEMA-033",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-033: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 32
+      },
+      {
+        "finding_id": "SCHEMA-034",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-034: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 33
+      },
+      {
+        "finding_id": "SCHEMA-035",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-035: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 34
+      },
+      {
+        "finding_id": "SCHEMA-036",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-036: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 35
+      },
+      {
+        "finding_id": "SCHEMA-037",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-037: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 36
+      },
+      {
+        "finding_id": "SCHEMA-038",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-038: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 37
+      },
+      {
+        "finding_id": "SCHEMA-039",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-039: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 38
+      },
+      {
+        "finding_id": "SCHEMA-040",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-040: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 39
+      },
+      {
+        "finding_id": "SCHEMA-041",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-041: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 40
+      },
+      {
+        "finding_id": "SCHEMA-042",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / SCHEMA-042: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "schema-post",
+        "source_index": 41
+      },
+      {
+        "finding_id": "DRIFT-001",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-001: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 0
+      },
+      {
+        "finding_id": "DRIFT-002",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-002: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 1
+      },
+      {
+        "finding_id": "DRIFT-003",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-003: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 2
+      },
+      {
+        "finding_id": "DRIFT-004",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-004: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 3
+      },
+      {
+        "finding_id": "DRIFT-005",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-005: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 4
+      },
+      {
+        "finding_id": "DRIFT-006",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-006: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 5
+      },
+      {
+        "finding_id": "DRIFT-007",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-007: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 6
+      },
+      {
+        "finding_id": "DRIFT-008",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-008: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 7
+      },
+      {
+        "finding_id": "DRIFT-009",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-009: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 8
+      },
+      {
+        "finding_id": "DRIFT-010",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-010: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 9
+      },
+      {
+        "finding_id": "DRIFT-011",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-011: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 10
+      },
+      {
+        "finding_id": "DRIFT-012",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-012: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 11
+      },
+      {
+        "finding_id": "DRIFT-013",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-013: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 12
+      },
+      {
+        "finding_id": "DRIFT-014",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-014: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 13
+      },
+      {
+        "finding_id": "DRIFT-015",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-015: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 14
+      },
+      {
+        "finding_id": "DRIFT-016",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-016: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 15
+      },
+      {
+        "finding_id": "DRIFT-017",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-017: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 16
+      },
+      {
+        "finding_id": "DRIFT-018",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-018: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 17
+      },
+      {
+        "finding_id": "DRIFT-019",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-019: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 18
+      },
+      {
+        "finding_id": "DRIFT-020",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-020: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 19
+      },
+      {
+        "finding_id": "DRIFT-021",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-021: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 20
+      },
+      {
+        "finding_id": "DRIFT-022",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-022: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 21
+      },
+      {
+        "finding_id": "DRIFT-023",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-023: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 22
+      },
+      {
+        "finding_id": "DRIFT-024",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-024: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 23
+      },
+      {
+        "finding_id": "DRIFT-025",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-025: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 24
+      },
+      {
+        "finding_id": "DRIFT-026",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-026: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 25
+      },
+      {
+        "finding_id": "DRIFT-027",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-027: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 26
+      },
+      {
+        "finding_id": "DRIFT-028",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-028: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 27
+      },
+      {
+        "finding_id": "DRIFT-029",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-029: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 28
+      },
+      {
+        "finding_id": "DRIFT-030",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-030: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 29
+      },
+      {
+        "finding_id": "DRIFT-031",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-031: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 30
+      },
+      {
+        "finding_id": "DRIFT-032",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-032: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 31
+      },
+      {
+        "finding_id": "DRIFT-033",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-033: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 32
+      },
+      {
+        "finding_id": "DRIFT-034",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-034: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 33
+      },
+      {
+        "finding_id": "DRIFT-035",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-035: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 34
+      },
+      {
+        "finding_id": "DRIFT-036",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-036: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 35
+      },
+      {
+        "finding_id": "DRIFT-037",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-037: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 36
+      },
+      {
+        "finding_id": "DRIFT-038",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-038: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 37
+      },
+      {
+        "finding_id": "DRIFT-039",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-039: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 38
+      },
+      {
+        "finding_id": "DRIFT-040",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-040: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 39
+      },
+      {
+        "finding_id": "DRIFT-041",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-041: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 40
+      },
+      {
+        "finding_id": "DRIFT-042",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-042: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 41
+      },
+      {
+        "finding_id": "DRIFT-043",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-043: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 42
+      },
+      {
+        "finding_id": "DRIFT-044",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-044: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 43
+      },
+      {
+        "finding_id": "DRIFT-045",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-045: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 44
+      },
+      {
+        "finding_id": "DRIFT-046",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-046: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 45
+      },
+      {
+        "finding_id": "DRIFT-047",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-047: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 46
+      },
+      {
+        "finding_id": "DRIFT-048",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-048: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 47
+      },
+      {
+        "finding_id": "DRIFT-049",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-049: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 48
+      },
+      {
+        "finding_id": "DRIFT-050",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-050: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 49
+      },
+      {
+        "finding_id": "DRIFT-051",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-051: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 50
+      },
+      {
+        "finding_id": "DRIFT-052",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-052: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 51
+      },
+      {
+        "finding_id": "DRIFT-053",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-053: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 52
+      },
+      {
+        "finding_id": "DRIFT-054",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-054: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 53
+      },
+      {
+        "finding_id": "DRIFT-055",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-055: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 54
+      },
+      {
+        "finding_id": "DRIFT-056",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-056: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 55
+      },
+      {
+        "finding_id": "DRIFT-057",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-057: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 56
+      },
+      {
+        "finding_id": "DRIFT-058",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-058: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 57
+      },
+      {
+        "finding_id": "DRIFT-059",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-059: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 58
+      },
+      {
+        "finding_id": "DRIFT-060",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-060: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 59
+      },
+      {
+        "finding_id": "DRIFT-061",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-061: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 60
+      },
+      {
+        "finding_id": "DRIFT-062",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-062: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 61
+      },
+      {
+        "finding_id": "DRIFT-063",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-063: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 62
+      },
+      {
+        "finding_id": "DRIFT-064",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-064: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 63
+      },
+      {
+        "finding_id": "DRIFT-065",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-065: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 64
+      },
+      {
+        "finding_id": "DRIFT-066",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-066: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 65
+      },
+      {
+        "finding_id": "DRIFT-067",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-067: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 66
+      },
+      {
+        "finding_id": "DRIFT-068",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-068: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 67
+      },
+      {
+        "finding_id": "DRIFT-069",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-069: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 68
+      },
+      {
+        "finding_id": "DRIFT-070",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-070: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 69
+      },
+      {
+        "finding_id": "DRIFT-071",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-071: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 70
+      },
+      {
+        "finding_id": "DRIFT-072",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-072: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 71
+      },
+      {
+        "finding_id": "DRIFT-073",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-073: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 72
+      },
+      {
+        "finding_id": "DRIFT-074",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-074: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 73
+      },
+      {
+        "finding_id": "DRIFT-075",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-075: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 74
+      },
+      {
+        "finding_id": "DRIFT-076",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-076: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 75
+      },
+      {
+        "finding_id": "DRIFT-077",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-077: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 76
+      },
+      {
+        "finding_id": "DRIFT-078",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-078: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 77
+      },
+      {
+        "finding_id": "DRIFT-079",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-PRODUCT-V3-20260912 / review section 7.3 / DRIFT-079: unchanged protected-base MEDIUM/LOW debt retained for separately scoped governance remediation; no ceiling increase",
+        "source_report": "drift-post",
+        "source_index": 78
+      }
+    ],
+    "session_log_appended": true,
+    "session_log_append_mode": "Atomic owned entry after exact close-checklist validation; no foreign entry changes",
+    "current_state_updated": true,
+    "cross_tool_sync": {
+      "ccd_entries_appended": [
+        "CCD-010"
+      ],
+      "work_order_outcome_recorded": true,
+      "work_order_surface": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md",
+      "lease_id": "MADHAV-PRODUCT-V3-20260912",
+      "lease_release_recorded": true,
+      "lease_release_verified_on_remote": true,
+      "lease_release_commit": "d4b29c81fedc6dccc2bbecea4e2a4ce0869729d2",
+      "coordination_ref": "origin/campaign-coordination"
+    },
+    "native_overrides": [
+      {
+        "authority": "Native user: Yes, authorized.",
+        "scope": "One-time documentation-only actual managed profile exception to SESSION_OPEN tool_profile rule; save/register/local commit final definition and selected provenance. No application, DB, deploy, merge, campaign or validator change.",
+        "record": "CCD-010"
+      }
+    ],
+    "halts_encountered": [
+      {
+        "rule": "handshake_codex_profile_invalid",
+        "raw_exit_code": 1,
+        "raw_severity": "CRITICAL",
+        "disposition": "Explicit native-authorized documentation-only exception under CCD-010. Unmodified validator retained; not a PASS or low-severity residual."
+      }
+    ],
+    "build_state_serialized": {
+      "serialized": false,
+      "uploaded": false,
+      "applicability": "N/A non-build documentation; no production state or GCS action authorized/performed; existing non-build-close precedent"
+    },
+    "mirror_updates_propagated": [],
+    "close_criteria_met": true,
+    "unblocks": [
+      "Strategic data-plane reconciliation against the adopted target; no implementation unlocked"
+    ],
+    "handoff_notes": "Master and records are registered on codex/madhav-product-definition-v3 from protected base731e311f. Local commit authorized; product push/merge/deploy not performed. Original strategic checkout and seven source drafts preserved; six unrelated KA/L3 documents not imported. The coherent data-plane proposal remains to be saved/aligned; this task does not execute it."
+  }
+}
+```
+
+### Exact refreshed close validation
+
+Staged whitespace review reported one inherited terminal blank line in the imported, byte-identical `MADHAV_PRODUCT_DEFINITION_v1_1_REVIEW_v1_0.md` (line 1620). It is retained to preserve the independent audit's original bytes; all other staged files pass the whitespace check. This cosmetic import warning is not a new substantive finding or a waived schema/drift gate.
+
+The unchanged close validator was rerun on the final file-hash and 121-residual payload before this owned entry was atomically replaced:
+
+```json
+{
+  "schema_validation_report": {
+    "session_id": "MADHAV-PRODUCT-V3-20260912",
+    "run_at": "2026-09-12T18:35:31.844265+00:00",
+    "violations": [],
+    "summary": {
+      "total": 0,
+      "by_severity": {}
+    },
+    "exit_code": 0
+  }
+}
+```
+
+### Next session objective
+
+Reconcile and save the cohesive data-plane plan against the adopted v3.0 target, then derive explicit L0–L5/asset deltas while preserving useful capital. This is planning only; implementations require separately authorized tasks. Active Nirmana campaign objectives are not replaced by this governance aside.

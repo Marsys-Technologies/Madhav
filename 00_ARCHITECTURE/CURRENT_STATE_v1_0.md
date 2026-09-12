@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.66
+version: 6.67
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,12 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.67 (2026-09-12, MADHAV-PRODUCT-V3-20260912): governance aside only. Native adopted
+    MADHAV_PRODUCT_DEFINITION_v3_0.md as the final target for subsequent product planning;
+    CCD-010 records bounded documentation registration/local-commit authority and the actual
+    managed-profile exception. Earlier product proposals retained as history. Next product
+    task is data-plane reconciliation, not implementation. Active Nirmana position, campaign
+    authorities, acceptance, consent posture and deployment state are unchanged.
   - v6.66 (2026-08-30, PARIPRASHNA-V3-FINAL-CLOSE): Paripraśna Experience Assurance Programme
     v3.0 SEALED. New §2 top entry. All 8 gates CG-0..CG-7 CLOSED; campaign 100.0%; tracker
     replay integrity ok:true. Native acceptance fired by the native's own native_acceptance
@@ -5869,6 +5875,16 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
+> [Madhav Product Definition v3.0](MADHAV_PRODUCT_DEFINITION_v3_0.md) is the final product
+> planning reference under [CCD-010](CROSS_CUTTING_DECISION_REGISTER_v1_0.md#ccd-010--madhav-product-definition-v30-adoption).
+> The [review/adoption record](briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md)
+> contains source coverage, preserved lineage and delivery/validation evidence. This package
+> records local-branch adoption/registration; protected integration must be verified separately.
+> Next **product-planning** objective: align the cohesive data-plane plan to this master,
+> then derive L0–L5/asset deltas preserving useful capital. This aside does not advance,
+> stop or recertify the active Nirmana campaign, and grants no execution or deployment authority.
+
 > 🔵 **ACTIVE CAMPAIGN (2026-09-01): Nirmāṇa L0→L5 velocity-reset.** Native-authorized, full
 > execution authority delegated per `00_ARCHITECTURE/briefs/nirmana/
 > NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` (doctrine amendments in
@@ -7861,12 +7877,12 @@ current_state:
     # platform/scripts/temporal/compute_narayana.py, 025_HOLISTIC_SYNTHESIS/**,
     # 035_DISCOVERY_LAYER/**, 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
     # (read-only for cross-check anchor only), 01_FACTS_LAYER/**. L1 frozen.
-  last_session_closed_at: 2026-05-02T22:00:00+05:30
-  last_session_attempted_close_at: 2026-05-02T22:00:00+05:30
-  last_session_agent: claude-opus-4-7[1m]
-  last_session_cowork_thread_name: "Madhav M4-D-S1 — M4 Macro-Phase Close"
+  last_session_closed_at: 2026-09-12T18:34:34Z
+  last_session_attempted_close_at: 2026-09-12T18:34:34Z
+  last_session_agent: Codex
+  last_session_cowork_thread_name: "Madhav — Product Definition v3.0 Finalization"
   last_session_close_state: atomically_closed
-  last_session_drift_verdict: >
+  historical_m3_close_drift_verdict: >
     M3-D Wave 4 D2 — M3 MACRO-PHASE CLOSE. Substantive governance-layer
     session: M3_CLOSE_v1_0.md + HANDOFF_M3_TO_M4_v1_0.md authoring +
     CURRENT_STATE flip M3→M4 + MP.1+MP.2 mirror sync. Counter incremented
@@ -9135,8 +9151,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-22T00:30:00+05:30
-  file_updated_by_session: NATIVE-CLIENT-ID-FIX
+  file_updated_at: 2026-09-12T18:34:34Z
+  file_updated_by_session: MADHAV-PRODUCT-V3-20260912
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
@@ -9277,7 +9293,11 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z-CLOSE
+  last_session_id: MADHAV-PRODUCT-V3-20260912
+  last_product_strategy_session: MADHAV-PRODUCT-V3-20260912
+  last_session_drift_verdict: "Documentation-only adoption under CCD-010; exact baseline/final findings and profile exception in the product review/evidence and paired session close. No campaign acceptance or deployment claim."
+  product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
+  next_product_strategy_objective: "Reconcile the cohesive data-plane plan with the adopted product master, preserving useful capital; derive no implementation authority from this aside."
 ```
 
 ---
