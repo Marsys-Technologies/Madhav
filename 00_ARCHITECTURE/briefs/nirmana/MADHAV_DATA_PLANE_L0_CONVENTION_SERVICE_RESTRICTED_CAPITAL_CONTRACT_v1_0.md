@@ -15,8 +15,9 @@ produced_on: 2026-09-13
 | `bg_panchanga` | civil date + latitude + longitude + fixed UTC offset, Lahiri frame, mean-node mode, sunrise/day-boundary convention, engine versions and precision | partial coordinates, coordinates without timezone, unknown named location and conflicting named timezone fail; fixed offset is not zone-rule history |
 | `bg_gochara_arcs` | body + substrate version + bounded longitude arc | current generation rebuild no longer deletes prior substrate generations; exact instant refinement remains a later service operation |
 
-Swiss sidereal mode is process-global, so the complete set-mode/calculation
-operation is serialized per request to prevent concurrent ayanāṃśa state bleed.
+Swiss sidereal mode is process-global, so a shared L0 boundary serializes the
+complete set-mode/calculation operation for ephemeris and both day/instant
+Pañcāṅga entry points to prevent concurrent ayanāṃśa state bleed.
 The ephemeris Ketu correction preserves the antipodal longitude and uses Rahu's
 same signed angular speed. Negating that speed incorrectly reported a direct Ketu
 while mean Rahu was retrograde. The numerical kernel, ayanāṃśa calculation and

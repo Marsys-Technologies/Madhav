@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
-from threading import RLock
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import swisseph as swe
+
+from panchang_engine.swiss_state import SWISS_STATE_LOCK
 
 router = APIRouter()
 
@@ -14,7 +15,6 @@ _EPHEMERIS_BACKENDS = (
     (swe.FLG_SWIEPH, "swiss_ephemeris_file"),
     (swe.FLG_MOSEPH, "moshier_analytic_fallback"),
 )
-_SWISSEPH_SIDEREAL_LOCK = RLock()
 
 
 def _ephemeris_backend(retflag: int) -> str:
@@ -142,7 +142,7 @@ def _calculate_sidereal_positions(
     lock across both mode selection and every dependent calculation prevents a
     concurrent request from changing the mode mid-response.
     """
-    with _SWISSEPH_SIDEREAL_LOCK:
+    with SWISS_STATE_LOCK:
         swe.set_sid_mode(sidereal_mode)
         flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
         positions: list[PlanetPosition] = []

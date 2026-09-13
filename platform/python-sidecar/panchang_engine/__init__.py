@@ -18,8 +18,10 @@ from .types import Panchang, PanchangaInstant, Anga, Timing, PlanetState, Muhura
 from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
+from .swiss_state import serialized_swiss_state
 
 
+@serialized_swiss_state
 def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang":
     """
     High-level: full Panchang for a single day.
@@ -188,6 +190,7 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     )
 
 
+@serialized_swiss_state
 def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "PanchangaInstant":
     """
     Compute panchang state at the exact given datetime (birth moment / event instant).

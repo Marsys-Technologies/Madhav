@@ -11,6 +11,8 @@ from time import sleep
 
 from brahmagyan.l0_ephemeris import derive_sidereal, _tropical_to_jd, AYANAMSHA_MAP
 from fastapi import HTTPException
+from panchang_engine import compute_panchang, panchanga_instant
+from panchang_engine.swiss_state import serialized_swiss_state
 from routers.ephemeris import (
     EphemerisAtTRequest,
     _calculate_sidereal_positions,
@@ -63,7 +65,7 @@ def test_backend_flag_is_observation_not_corpus_qualification():
     )
 
 
-def test_concurrent_ayanamshas_cannot_bleed_process_global_mode(monkeypatch):
+def test_ephemeris_and_panchanga_share_process_global_mode_boundary(monkeypatch):
     import routers.ephemeris as ephemeris
 
     first_calc_entered = Event()
@@ -83,10 +85,18 @@ def test_concurrent_ayanamshas_cannot_bleed_process_global_mode(monkeypatch):
     monkeypatch.setattr(ephemeris.swe, "set_sid_mode", fake_set_sid_mode)
     monkeypatch.setattr(ephemeris.swe, "calc_ut", fake_calc_ut)
 
+    @serialized_swiss_state
+    def panchanga_like_calculation():
+        ephemeris.swe.set_sid_mode(202)
+        ephemeris.swe.calc_ut(2460000.5, ephemeris.swe.SUN, 0)
+
+    assert getattr(compute_panchang, "__swiss_state_serialized__", False)
+    assert getattr(panchanga_instant, "__swiss_state_serialized__", False)
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         first = pool.submit(_calculate_sidereal_positions, 2460000.5, 101)
         assert first_calc_entered.wait(timeout=1)
-        second = pool.submit(_calculate_sidereal_positions, 2460000.5, 202)
+        second = pool.submit(panchanga_like_calculation)
         first.result(timeout=2)
         second.result(timeout=2)
 

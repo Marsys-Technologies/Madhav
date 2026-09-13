@@ -51,6 +51,7 @@ MCP consumer.
 | `platform/python-sidecar/tests/test_l0_semantic_release.py` (new) | Python identity, alias, ambiguity, unknown and physical-variant detector. | Remove test. |
 | `platform/python-sidecar/tests/test_l0_resource_config_slice.py` (new) | Qualification, rights, grain, forbidden-scope, boundary, duplication, omission and rollback detector. | Remove test. |
 | `platform/python-sidecar/routers/ephemeris.py` | Add producer-owned service context and serialized Swiss-state handling; correct Ketu to the same signed angular speed as antipodal Rahu. | Revert response metadata/validation/speed correction; no persisted row rewrite. |
+| `platform/python-sidecar/panchang_engine/swiss_state.py` (new) and `panchang_engine/__init__.py` | Shared re-entrant boundary serializes both L0 services across process-global Swiss mode/path mutation and dependent calculations. | Revert decorator/import and remove shared boundary. |
 | `platform/python-sidecar/pipeline/orchestrator/service_probes.py` | Reuse existing backend/file verification as detector-backed service context. | Revert metadata addition. |
 | `platform/python-sidecar/tests/test_ephemeris_ayanamsha.py` | Context, precision, backend and unsupported-convention negative fixtures. | Revert tests. |
 | `platform/python-sidecar/routers/panchang.py` | Reject incomplete location tuples and expose timezone/sunrise/computation context; preserve engine. | Revert validation/metadata. |
