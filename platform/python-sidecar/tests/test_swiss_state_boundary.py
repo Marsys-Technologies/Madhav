@@ -181,7 +181,10 @@ def _scan_module(source: str, relative_path: str):
             module = node.module or ""
             for imported in node.names:
                 local_name = imported.asname or imported.name
-                if module == "swisseph" and imported.name in SWE_STATE_METHODS:
+                if module == "swisseph" and (
+                    imported.name in SWE_STATE_METHODS
+                    or imported.name.startswith("set_")
+                ):
                     swiss_callable_aliases.add(local_name)
                 if "jhora" in module and imported.name == "drik":
                     pyjhora_module_aliases.add(local_name)
@@ -202,9 +205,11 @@ def _scan_module(source: str, relative_path: str):
             method = node.func.attr
             receiver = _receiver_label(node.func.value)
             terminal = receiver.split(".")[-1]
-            direct_swiss = method in SWE_STATE_METHODS and terminal in swiss_module_aliases
+            direct_swiss = (
+                method in SWE_STATE_METHODS or method.startswith("set_")
+            ) and terminal in swiss_module_aliases
             pyjhora_wrapper = (
-                method in PYJHORA_STATE_METHODS
+                (method in PYJHORA_STATE_METHODS or method.startswith("set_ayanam"))
                 and terminal in pyjhora_module_aliases
             )
             operation = f"{receiver}.{method}"
@@ -279,6 +284,7 @@ def test_generated_inventory_is_exact_and_has_no_unresolved_live_owner():
             "    ephemeris.set_sid_mode(1)\n"
             "    return ephemeris.calc_ut(1, 0, 0)\n"
         ),
+        "def unsafe(swe):\n    swe.set_tid_acc(1)\n",
         (
             "from swisseph import set_sid_mode as select_mode, calc_ut as calculate\n"
             "def unsafe():\n"
