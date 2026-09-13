@@ -5,7 +5,7 @@ status: PRODUCER_PACKAGE_IMPLEMENTED
 produced_on: 2026-09-13
 slice_id: L0-SLICE-RESOURCE-CONFIG-01
 generation_id: l0-resource-config-g1
-content_sha256: ccd4384518daacfcb14a7652952ef295eaa23ade4a0a8f5d29b80b1635e6e1f9
+content_sha256: d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a
 qualification_state: UNQUALIFIED_SOURCE
 ---
 declares later L1/L2/DP10-DP12 expectations without claiming those consumers are
@@ -28,6 +28,10 @@ Grain is exactly:
 Scope is global/reference only. Subject, chart, birth and personal-observation
 fields are forbidden recursively. The package does not emit occurrence,
 interpretation, timing, manifestation, forecast or evaluation.
+Its current epistemic class is null with target `QUALIFIED_RULE` and evidence
+maturity `present`; it cannot claim the qualified class while the witness is
+unadmitted. All concept, role, domain, outcome, method and operator-scope IDs
+must resolve in the pinned semantic release.
 
 The map remains `1->[1,7]`, `3->[2,8]`, `5->[3,9]`, `7->[4,10]`,
 `9->[5,11]`, `11->[6,12]`; even houses map to empty. It is never a generator,

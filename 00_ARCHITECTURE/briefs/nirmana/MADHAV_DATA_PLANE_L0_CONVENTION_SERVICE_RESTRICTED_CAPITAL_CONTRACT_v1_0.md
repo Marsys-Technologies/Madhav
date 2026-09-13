@@ -11,10 +11,12 @@ produced_on: 2026-09-13
 
 | Producer | Grain/context now carried | Honest failure and limit |
 |---|---|---|
-| `bg_ephemeris_engine` | instant UTC, geocentric sidereal frame, ayanāṃśa, mean-node mode, observed backend, output precision and registry generation | timezone-free/invalid instant and unknown ayanāṃśa fail; local Moshier fallback is returned as `UNQUALIFIED_BACKEND`, never represented as the admitted Swiss-file corpus |
+| `bg_ephemeris_engine` | instant UTC, geocentric sidereal frame, ayanāṃśa, mean-node mode, observed backend, output precision and registry generation | timezone-free/invalid instant and unknown ayanāṃśa fail; return flags are observation only and remain `UNQUALIFIED_BACKEND` until an exact corpus-hash + forensic probe receipt is supplied |
 | `bg_panchanga` | civil date + latitude + longitude + fixed UTC offset, Lahiri frame, mean-node mode, sunrise/day-boundary convention, engine versions and precision | partial coordinates, coordinates without timezone, unknown named location and conflicting named timezone fail; fixed offset is not zone-rule history |
 | `bg_gochara_arcs` | body + substrate version + bounded longitude arc | current generation rebuild no longer deletes prior substrate generations; exact instant refinement remains a later service operation |
 
+Swiss sidereal mode is process-global, so the complete set-mode/calculation
+operation is serialized per request to prevent concurrent ayanāṃśa state bleed.
 The ephemeris Ketu correction preserves the antipodal longitude and uses Rahu's
 same signed angular speed. Negating that speed incorrectly reported a direct Ketu
 while mean Rahu was retrograde. The numerical kernel, ayanāṃśa calculation and

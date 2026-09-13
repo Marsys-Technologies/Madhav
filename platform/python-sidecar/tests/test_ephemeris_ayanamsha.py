@@ -4,12 +4,16 @@ FORENSIC anchor: Sun tropical on 1984-02-05 = 315.874297° (pyswisseph DE441, ve
 Lahiri offset on that date ≈ 23.6349° → sidereal ≈ 292.239° = Capricorn (sign 10).
 """
 import pytest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
+from threading import Event
+from time import sleep
 
 from brahmagyan.l0_ephemeris import derive_sidereal, _tropical_to_jd, AYANAMSHA_MAP
 from fastapi import HTTPException
 from routers.ephemeris import (
     EphemerisAtTRequest,
+    _calculate_sidereal_positions,
     _service_context,
     ephemeris_at_t,
 )
@@ -33,14 +37,13 @@ def test_arbitrary_instant_service_emits_full_l0_context():
     assert context["ayanamsha_id"] == "lahiri_chitrapaksha"
     assert context["node_mode"] == "mean"
     assert context["ephemeris_backends_observed"]
-    assert context["backend_qualification_state"] in {
-        "QUALIFIED_BACKEND", "UNQUALIFIED_BACKEND"
-    }
+    assert context["backend_observation_state"] == "OBSERVED"
+    assert context["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
     assert context["precision"]["supported_horizon"] == "UNVERIFIED_FOR_OBSERVED_BACKEND"
 
 
-def test_backend_qualification_is_detector_backed_not_a_literal_pass():
-    qualified = _service_context(
+def test_backend_flag_is_observation_not_corpus_qualification():
+    swiss_flag_only = _service_context(
         instant_utc="2026-07-20T12:00:00Z",
         ayanamsha_id="lahiri_chitrapaksha",
         backends={"swiss_ephemeris_file"},
@@ -52,8 +55,40 @@ def test_backend_qualification_is_detector_backed_not_a_literal_pass():
         backends={"moshier_analytic_fallback"},
         input_precision="second",
     )
-    assert qualified["backend_qualification_state"] == "QUALIFIED_BACKEND"
+    assert swiss_flag_only["backend_observation_state"] == "OBSERVED"
+    assert swiss_flag_only["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
     assert degraded["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
+    assert swiss_flag_only["failure_contract"]["qualification_requires"] == (
+        "VERIFIED_REGISTRY_PROBE_RECEIPT"
+    )
+
+
+def test_concurrent_ayanamshas_cannot_bleed_process_global_mode(monkeypatch):
+    import routers.ephemeris as ephemeris
+
+    first_calc_entered = Event()
+    selected = {"mode": None}
+
+    def fake_set_sid_mode(mode):
+        selected["mode"] = mode
+
+    def fake_calc_ut(_jd, _code, _flags):
+        mode_at_entry = selected["mode"]
+        if mode_at_entry == 101 and not first_calc_entered.is_set():
+            first_calc_entered.set()
+            sleep(0.05)
+            assert selected["mode"] == 101, "sidereal mode changed mid-calculation"
+        return ([10.0, 0.0, 0.0, -0.1], ephemeris.swe.FLG_SWIEPH)
+
+    monkeypatch.setattr(ephemeris.swe, "set_sid_mode", fake_set_sid_mode)
+    monkeypatch.setattr(ephemeris.swe, "calc_ut", fake_calc_ut)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(_calculate_sidereal_positions, 2460000.5, 101)
+        assert first_calc_entered.wait(timeout=1)
+        second = pool.submit(_calculate_sidereal_positions, 2460000.5, 202)
+        first.result(timeout=2)
+        second.result(timeout=2)
 
 
 def test_rahu_and_ketu_share_signed_angular_speed():

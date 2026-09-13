@@ -4,7 +4,7 @@ version: "1.0"
 status: IMPLEMENTED
 produced_on: 2026-09-13
 semantic_release_id: l0.semantic.2026-09-13.1
-semantic_release_digest: b5563e1eea87ca06b5e912b902869483b4bbb1b3b2c87ed6bed9bc8d892ad2a7
+semantic_release_digest: 665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1
 owner: bg_ontology
 ---
 
@@ -22,6 +22,9 @@ rival registries.
 The release records stable `identity_id`, canonical subject code and label,
 Unicode/transliteration aliases, roles, physical variant, interface/generation,
 compatibility and digest. NFC + trim + casefold is the comparison operation.
+The same release contains the slice's owned concept, role, domain, outcome,
+method and operator-scope catalogues; the slice validator rejects any reference
+not present in those versioned catalogues.
 
 ## Node correction and compatibility
 

@@ -48,6 +48,21 @@ def _load() -> dict[str, Any]:
         raise SemanticReleaseError("unsupported L0 semantic release schema")
     if release.get("content_sha256") != _digest_payload(release):
         raise SemanticReleaseError("L0 semantic release content digest mismatch")
+    required_release_fields = {
+        "semantic_release_id",
+        "semantic_version",
+        "interface_version",
+        "generation_id",
+        "layer_owner",
+        "release_status",
+        "admission_status",
+        "supersedes_release_id",
+    }
+    missing_release_fields = required_release_fields.difference(release)
+    if missing_release_fields:
+        raise SemanticReleaseError(
+            f"L0 semantic release fields missing: {sorted(missing_release_fields)}"
+        )
 
     identity_ids: set[str] = set()
     codes: set[str] = set()
@@ -70,6 +85,23 @@ def _load() -> dict[str, Any]:
             aliases[key] = identity_id
     if not {"RAH_MEAN", "RAH_TRUE", "KET_MEAN", "KET_TRUE"}.issubset(codes):
         raise SemanticReleaseError("mean/true node physical variants are incomplete")
+
+    catalogue_shapes = {
+        "concepts": "concept_id",
+        "roles": "role_id",
+        "domains": "domain_id",
+        "outcomes": "outcome_id",
+        "methods": "method_id",
+        "operator_scopes": "operator_scope_id",
+    }
+    catalogues = release.get("catalogues", {})
+    for catalogue, id_field in catalogue_shapes.items():
+        rows = catalogues.get(catalogue)
+        if not isinstance(rows, list) or not rows:
+            raise SemanticReleaseError(f"semantic catalogue missing: {catalogue}")
+        ids = [row.get(id_field) for row in rows]
+        if any(not value for value in ids) or len(ids) != len(set(ids)):
+            raise SemanticReleaseError(f"invalid or duplicate IDs in {catalogue}")
     return release
 
 

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from brahmagyan.l0_semantic_release import (
+    SEMANTIC_RELEASE,
     SEMANTIC_RELEASE_DIGEST,
     SEMANTIC_RELEASE_ID,
 )
@@ -36,7 +37,8 @@ class ResourceConfigSliceError(ValueError):
     """Raised when a producer package or request violates the frozen contract."""
 
 
-def _digest_payload(package: dict[str, Any]) -> str:
+def package_digest_for_validation(package: dict[str, Any]) -> str:
+    """Compute a candidate package digest for validation and negative tests."""
     payload = deepcopy(package)
     payload["content_sha256"] = ""
     encoded = json.dumps(
@@ -66,7 +68,7 @@ def validate_package(package: dict[str, Any]) -> None:
         raise ResourceConfigSliceError("semantic release ID mismatch")
     if package.get("semantic_release_digest") != SEMANTIC_RELEASE_DIGEST:
         raise ResourceConfigSliceError("semantic release digest mismatch")
-    if package.get("content_sha256") != _digest_payload(package):
+    if package.get("content_sha256") != package_digest_for_validation(package):
         raise ResourceConfigSliceError("resource-config content digest mismatch")
     if set(package.get("qualification_states", [])) != QUALIFICATION_STATES:
         raise ResourceConfigSliceError("qualification state vocabulary mismatch")
@@ -101,8 +103,61 @@ def validate_package(package: dict[str, Any]) -> None:
         "never_outranks_primary": True,
     }:
         raise ResourceConfigSliceError("frozen restraints changed")
-    witness = package.get("source_witness", {})
+
     state = package.get("method", {}).get("qualification_state")
+    if state == "UNQUALIFIED_SOURCE":
+        if package.get("epistemic_class") is not None:
+            raise ResourceConfigSliceError(
+                "unqualified source cannot declare a qualified epistemic class"
+            )
+        if package.get("target_epistemic_class") != "QUALIFIED_RULE":
+            raise ResourceConfigSliceError("unqualified source target class mismatch")
+        if package.get("evidence_maturity") != "present":
+            raise ResourceConfigSliceError("unqualified source maturity must be present")
+    elif state == "QUALIFIED_EXECUTABLE":
+        if package.get("epistemic_class") != "QUALIFIED_RULE":
+            raise ResourceConfigSliceError("qualified rule epistemic class mismatch")
+        if package.get("evidence_maturity") != "qualified":
+            raise ResourceConfigSliceError("qualified rule maturity mismatch")
+
+    catalogue_specs = {
+        "concepts": "concept_id",
+        "roles": "role_id",
+        "domains": "domain_id",
+        "outcomes": "outcome_id",
+        "methods": "method_id",
+        "operator_scopes": "operator_scope_id",
+    }
+    released_ids = {
+        name: {row[id_field] for row in SEMANTIC_RELEASE["catalogues"][name]}
+        for name, id_field in catalogue_specs.items()
+    }
+    refs = {
+        "concepts": set(package.get("rule_clause", {}).get("concept_ids", [])),
+        "roles": set(package.get("rule_clause", {}).get("role_ids", [])),
+        "domains": {
+            package.get("consumer_question", {}).get("domain_id"),
+            *package.get("rule_clause", {}).get("domain_ids", []),
+        },
+        "outcomes": {
+            *package.get("consumer_question", {}).get("outcome_ids", []),
+            *package.get("rule_clause", {}).get("outcome_ids", []),
+        },
+        "methods": {package.get("method", {}).get("method_id")},
+        "operator_scopes": {package.get("method", {}).get("operator_scope_id")},
+    }
+    for catalogue, referenced in refs.items():
+        missing = {value for value in referenced if value} - released_ids[catalogue]
+        if missing:
+            raise ResourceConfigSliceError(
+                f"unreleased {catalogue} references: {sorted(missing)}"
+            )
+
+    witness = package.get("source_witness", {})
+    if package.get("rule_clause", {}).get("source_passage_id") != witness.get(
+        "source_passage_id"
+    ):
+        raise ResourceConfigSliceError("rule/source passage identity mismatch")
     if state == "QUALIFIED_EXECUTABLE":
         required = (
             "work_id", "edition_id", "translation_id", "passage_locator",
@@ -183,4 +238,4 @@ def validate_request_payload(payload: dict[str, Any]) -> None:
 
 
 def slice_digest_for_test() -> str:
-    return _digest_payload(RESOURCE_CONFIG_SLICE)
+    return package_digest_for_validation(RESOURCE_CONFIG_SLICE)

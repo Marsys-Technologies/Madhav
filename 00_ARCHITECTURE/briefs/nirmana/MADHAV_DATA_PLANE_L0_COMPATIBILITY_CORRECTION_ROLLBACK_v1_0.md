@@ -11,8 +11,8 @@ produced_on: 2026-09-13
 
 | Component | New/current generation | Compatible predecessor | Invalidation and rollback |
 |---|---|---|---|
-| graha semantic release | `l0-semantic-g1` / digest `b5563e1e...ad2a7` | `legacy.local-vocabularies.pre-l0.semantic.2026-09-13.1` | identity/code change stales adapters and identity fixtures; alias-only addition does not stale computations; revert adapters/remove release to restore old local vocabulary |
-| resource/config slice | `l0-resource-config-g1` / digest `ccd43845...1f9` | `legacy.bhavat-bhavam-map.1.0` | qualification/identity consumers stale; map values and historical rows do not; select prior adapter generation |
+| graha semantic release | `l0-semantic-g1` / digest `665096a7...9dd1` | `legacy.local-vocabularies.pre-l0.semantic.2026-09-13.1` | identity/code change stales adapters and identity fixtures; alias-only addition does not stale computations; revert adapters/remove release to restore old local vocabulary |
+| resource/config slice | `l0-resource-config-g1` / digest `d516aecf...279a` | `legacy.bhavat-bhavam-map.1.0` | qualification/identity consumers stale; map values and historical rows do not; select prior adapter generation |
 | ephemeris service context | `l0-ephemeris-service-context/v1` + registry generation `migration-624` | prior response without context | additive response metadata; revert router; Ketu speed correction requires consumer recalculation, never historical receipt rewrite |
 | Panchanga service context | `l0-panchanga-service-context/v1` | prior permissive request contract | clients relying on guessed timezone must supply it; revert router to restore legacy behavior |
 | gochara arcs | existing caller-selected `substrate_version` | prior stored substrate versions | current-generation rebuild cleans only current unknown bodies; prior versions retained and selected by version; revert scoped DELETE |

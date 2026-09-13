@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from threading import RLock
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ _EPHEMERIS_BACKENDS = (
     (swe.FLG_SWIEPH, "swiss_ephemeris_file"),
     (swe.FLG_MOSEPH, "moshier_analytic_fallback"),
 )
+_SWISSEPH_SIDEREAL_LOCK = RLock()
 
 
 def _ephemeris_backend(retflag: int) -> str:
@@ -36,7 +38,6 @@ def _service_context(
     explicitly unqualified, rather than being misreported as that corpus.
     """
     backend_list = sorted(backends)
-    qualified = backend_list == ["swiss_ephemeris_file"]
     return {
         "schema_version": _EPHEMERIS_CONTEXT_VERSION,
         "service_asset_id": "bg_ephemeris_engine",
@@ -49,8 +50,11 @@ def _service_context(
         "ketu_derivation": "mean_rahu_plus_180_same_angular_speed",
         "location_applicability": "not_used_for_geocentric_longitudes",
         "ephemeris_backends_observed": backend_list,
-        "backend_qualification_state": (
-            "QUALIFIED_BACKEND" if qualified else "UNQUALIFIED_BACKEND"
+        "backend_observation_state": "OBSERVED" if backend_list else "UNAVAILABLE",
+        "backend_qualification_state": "UNQUALIFIED_BACKEND",
+        "backend_qualification_reason": (
+            "A calculation return flag identifies the backend kind but does not prove "
+            "the admitted corpus hashes and forensic anchor required by the registry probe."
         ),
         "precision": {
             "longitude_output_decimal_places": 4,
@@ -62,6 +66,7 @@ def _service_context(
             "unknown_ayanamsha": "HTTP_422",
             "invalid_or_timezone_free_instant": "HTTP_400",
             "unapproved_backend": "RETURNED_WITH_UNQUALIFIED_BACKEND_STATE",
+            "qualification_requires": "VERIFIED_REGISTRY_PROBE_RECEIPT",
             "registry_health_detector": "pipeline.orchestrator.service_probes._probe_ephemeris_engine",
         },
     }
@@ -128,11 +133,45 @@ def _position_from_lon(lon: float, speed: float, name: str) -> PlanetPosition:
     )
 
 
+def _calculate_sidereal_positions(
+    jd: float, sidereal_mode: int
+) -> tuple[list[PlanetPosition], set[str]]:
+    """Calculate one request under a serialized Swiss sidereal-mode scope.
+
+    Swiss Ephemeris stores sidereal mode in process-global C state. Holding the
+    lock across both mode selection and every dependent calculation prevents a
+    concurrent request from changing the mode mid-response.
+    """
+    with _SWISSEPH_SIDEREAL_LOCK:
+        swe.set_sid_mode(sidereal_mode)
+        flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
+        positions: list[PlanetPosition] = []
+        rahu_long = None
+        rahu_speed = None
+        observed_backends: set[str] = set()
+
+        for name, code in PLANETS:
+            pos, retflag = swe.calc_ut(jd, code, flags)
+            if name != 'Rahu':
+                observed_backends.add(_ephemeris_backend(retflag))
+            lon, speed = pos[0], pos[3]
+            positions.append(_position_from_lon(lon, speed, name))
+            if name == 'Rahu':
+                rahu_long = lon
+                rahu_speed = speed
+
+        # Ketu is the antipode of the selected Rahu node. Its longitude changes
+        # with the same signed angular speed.
+        if rahu_long is not None:
+            positions.append(
+                _position_from_lon(rahu_long + 180, rahu_speed or 0.0, 'Ketu')
+            )
+
+    return positions, observed_backends
+
+
 @router.post("")
 def compute_natal_positions(req: EphemerisRequest) -> dict:
-    # Set Lahiri ayanamsa per-invocation to guard against global state mutation
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-
     h, m = map(int, req.birth_time.split(':'))
     decimal_hour_ut = h + m / 60.0 - req.ut_offset
 
@@ -140,30 +179,7 @@ def compute_natal_positions(req: EphemerisRequest) -> dict:
     year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
 
     jd = swe.julday(year, month, day, decimal_hour_ut)
-    flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
-
-    positions = []
-    rahu_long = None
-    rahu_speed = None
-    observed_backends: set[str] = set()
-
-    for name, code in PLANETS:
-        pos, retflag = swe.calc_ut(jd, code, flags)
-        if name != 'Rahu':
-            observed_backends.add(_ephemeris_backend(retflag))
-        lon, speed = pos[0], pos[3]
-        positions.append(_position_from_lon(lon, speed, name))
-        if name == 'Rahu':
-            rahu_long = lon
-            rahu_speed = speed
-
-    # Ketu is the antipode of the selected Rahu node.  Its longitude changes
-    # with the same signed angular speed; negating the speed would falsely
-    # report Ketu as direct while mean Rahu is retrograde.
-    if rahu_long is not None:
-        ketu_long = rahu_long + 180
-        ketu_speed = rahu_speed or 0.0
-        positions.append(_position_from_lon(ketu_long, ketu_speed, 'Ketu'))
+    positions, observed_backends = _calculate_sidereal_positions(jd, swe.SIDM_LAHIRI)
 
     instant_utc = datetime(
         year, month, day, tzinfo=timezone.utc
@@ -255,33 +271,11 @@ def ephemeris_at_t(req: EphemerisAtTRequest) -> dict:
         )
     dt_utc = dt.astimezone(timezone.utc)
 
-    # Set the requested sidereal mode per-invocation to guard against global
-    # swisseph state mutation (same discipline as compute_natal_positions above).
-    swe.set_sid_mode(_AT_T_AYANAMSHA_MAP[req.ayanamsha_id])
-
     decimal_hour_ut = dt_utc.hour + dt_utc.minute / 60.0 + dt_utc.second / 3600.0
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, decimal_hour_ut)
-    flags = swe.FLG_SWIEPH | swe.FLG_SIDEREAL | swe.FLG_SPEED
-
-    positions = []
-    rahu_long = None
-    rahu_speed = None
-    observed_backends: set[str] = set()
-
-    for name, code in PLANETS:
-        pos, retflag = swe.calc_ut(jd, code, flags)
-        if name != 'Rahu':
-            observed_backends.add(_ephemeris_backend(retflag))
-        lon, speed = pos[0], pos[3]
-        positions.append(_position_from_lon(lon, speed, name))
-        if name == 'Rahu':
-            rahu_long = lon
-            rahu_speed = speed
-
-    if rahu_long is not None:
-        ketu_long = rahu_long + 180
-        ketu_speed = rahu_speed or 0.0
-        positions.append(_position_from_lon(ketu_long, ketu_speed, 'Ketu'))
+    positions, observed_backends = _calculate_sidereal_positions(
+        jd, _AT_T_AYANAMSHA_MAP[req.ayanamsha_id]
+    )
 
     return {
         "datetime_utc": dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),

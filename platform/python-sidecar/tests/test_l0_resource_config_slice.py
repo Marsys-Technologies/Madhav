@@ -10,6 +10,7 @@ from brahmagyan.l0_resource_config_slice import (
     ResourceConfigSliceError,
     SLICE_DIGEST,
     classify_bhavat_bhavam,
+    package_digest_for_validation,
     slice_digest_for_test,
     validate_package,
     validate_request_payload,
@@ -28,6 +29,9 @@ def test_exact_composite_grain_and_five_states_are_frozen() -> None:
 
 
 def test_missing_witness_is_unqualified_and_positive_is_not_reachable() -> None:
+    assert RESOURCE_CONFIG_SLICE["epistemic_class"] is None
+    assert RESOURCE_CONFIG_SLICE["target_epistemic_class"] == "QUALIFIED_RULE"
+    assert RESOURCE_CONFIG_SLICE["evidence_maturity"] == "present"
     assert RESOURCE_CONFIG_SLICE["source_witness"]["rights_use_status"] == "UNRESOLVED"
     assert RESOURCE_CONFIG_SLICE["method"]["qualification_state"] == "UNQUALIFIED_SOURCE"
     positive = next(
@@ -79,8 +83,19 @@ def test_personal_or_chart_payload_is_forbidden_at_l0_boundary() -> None:
 def test_rights_or_passage_cannot_be_omitted_from_executable_state() -> None:
     candidate = deepcopy(RESOURCE_CONFIG_SLICE)
     candidate["method"]["qualification_state"] = "QUALIFIED_EXECUTABLE"
-    candidate["content_sha256"] = ""
-    with pytest.raises(ResourceConfigSliceError, match="digest mismatch|lacks exact"):
+    candidate["epistemic_class"] = "QUALIFIED_RULE"
+    candidate["epistemic_class_reason"] = None
+    candidate["evidence_maturity"] = "qualified"
+    candidate["content_sha256"] = package_digest_for_validation(candidate)
+    with pytest.raises(ResourceConfigSliceError, match="lacks exact"):
+        validate_package(candidate)
+
+
+def test_all_slice_semantic_references_resolve_to_the_pinned_release() -> None:
+    candidate = deepcopy(RESOURCE_CONFIG_SLICE)
+    candidate["rule_clause"]["outcome_ids"].append("unreleased_outcome")
+    candidate["content_sha256"] = package_digest_for_validation(candidate)
+    with pytest.raises(ResourceConfigSliceError, match="unreleased outcomes"):
         validate_package(candidate)
 
 
