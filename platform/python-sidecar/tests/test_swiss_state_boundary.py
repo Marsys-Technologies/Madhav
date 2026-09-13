@@ -10,6 +10,7 @@ from time import sleep
 
 import pytest
 
+from ga_writers import ga_strength_writer
 from panchang_engine import SWISS_STATE_LOCK as EXPORTED_LOCK
 from panchang_engine.swiss_state import (
     SWISS_STATE_LOCK,
@@ -83,6 +84,11 @@ EXPECTED_OPERATION_OWNERS = {
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_retrogrades"),
     ("ga_writers/ga_sade_sati_writer.py", "_detect_saturn_sign_changes"),
     ("ga_writers/ga_sade_sati_writer.py", "_lookup_tara_bala_for_saturn_at"),
+    (
+        "ga_writers/ga_strength_writer.py",
+        "_derive_ashtakavarga_shodhana_grids",
+    ),
+    ("ga_writers/ga_strength_writer.py", "_derive_bhava_bala"),
     ("ga_writers/ga_vargas_writer.py", "_compute_varga_positions"),
     ("panchang_engine/__init__.py", "compute_panchang"),
     ("panchang_engine/__init__.py", "panchanga_instant"),
@@ -127,6 +133,10 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/sensitive_points.py", "compute_sensitive_points"),
     ("pyjhora_adapter/special_lagnas.py", "compute_special_lagnas"),
     ("pyjhora_adapter/strength.py", "_set_ayanamsha"),
+    ("pyjhora_adapter/strength.py", "compute_ashtakavarga_shodhana"),
+    ("pyjhora_adapter/strength.py", "compute_shadbala"),
+    ("pyjhora_adapter/strength.py", "compute_uchcha_bala"),
+    ("pyjhora_adapter/strength.py", "compute_vimsopaka"),
     ("pyjhora_adapter/vargas.py", "compute_vargas"),
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
     ("routers/pyhora.py", "compute_natal"),
@@ -172,6 +182,9 @@ def _scan_module(source: str, relative_path: str):
     swiss_callable_aliases: set[str] = set()
     pyjhora_module_aliases = {"drik", "_drik", "jh_drik"}
     pyjhora_callable_aliases: set[str] = set()
+    pyjhora_chart_aliases = {"charts", "_charts"}
+    pyjhora_strength_aliases = {"_jhora_strength"}
+    pyjhora_wrapper_aliases = {"pyjhora_strength"}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for imported in node.names:
@@ -190,6 +203,12 @@ def _scan_module(source: str, relative_path: str):
                     pyjhora_module_aliases.add(local_name)
                 if module.endswith("drik") and imported.name in PYJHORA_STATE_METHODS:
                     pyjhora_callable_aliases.add(local_name)
+                if "jhora" in module and imported.name == "charts":
+                    pyjhora_chart_aliases.add(local_name)
+                if module.startswith("jhora.") and imported.name == "strength":
+                    pyjhora_strength_aliases.add(local_name)
+                if module == "pyjhora_adapter" and imported.name == "strength":
+                    pyjhora_wrapper_aliases.add(local_name)
 
     parents: dict[ast.AST, ast.AST] = {}
     for parent in ast.walk(tree):
@@ -211,6 +230,13 @@ def _scan_module(source: str, relative_path: str):
             pyjhora_wrapper = (
                 (method in PYJHORA_STATE_METHODS or method.startswith("set_ayanam"))
                 and terminal in pyjhora_module_aliases
+            ) or (
+                terminal in pyjhora_chart_aliases
+                or terminal in pyjhora_strength_aliases
+            )
+            pyjhora_wrapper = pyjhora_wrapper or (
+                terminal in pyjhora_wrapper_aliases
+                and method.lstrip("_").startswith("set_ayanam")
             )
             operation = f"{receiver}.{method}"
         elif isinstance(node.func, ast.Name):
@@ -414,6 +440,162 @@ def test_reentrant_nested_entry_points_complete_without_deadlock():
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         assert pool.submit(outer).result(timeout=1) == "deterministic"
+
+
+class _BlockingPyJHoraState:
+    def __init__(self, block_label: str | None = None):
+        self.mode: str | None = None
+        self.block_label = block_label
+        self.entered = Event()
+        self.release = Event()
+        self.calculations: list[tuple[str, str | None]] = []
+
+    def calculate(self, label: str):
+        selected = self.mode
+        self.calculations.append((label, selected))
+        if label == self.block_label and not self.entered.is_set():
+            self.entered.set()
+            assert self.release.wait(timeout=2)
+            assert self.mode == selected
+
+
+def _install_ga_strength_fakes(monkeypatch, state: _BlockingPyJHoraState):
+    from jhora.horoscope.chart import ashtakavarga as jhora_ashtakavarga
+    from jhora.horoscope.chart import strength as jhora_strength
+    from pyjhora_adapter._jhora import charts, utils
+
+    @serialized_swiss_state
+    def set_ayanamsha(mode):
+        state.mode = mode
+
+    monkeypatch.setattr(ga_strength_writer.pyjhora_strength, "_place", lambda *_: "place")
+    monkeypatch.setattr(
+        ga_strength_writer.pyjhora_strength,
+        "_set_ayanamsha",
+        set_ayanamsha,
+    )
+
+    def rasi_chart(*_args):
+        state.calculate("ashtakavarga")
+        return "positions"
+
+    monkeypatch.setattr(charts, "rasi_chart", rasi_chart)
+    monkeypatch.setattr(
+        utils,
+        "get_house_planet_list_from_planet_positions",
+        lambda _positions: [""] * 12,
+    )
+    monkeypatch.setattr(
+        jhora_ashtakavarga,
+        "get_ashtaka_varga",
+        lambda _chart: ([[i + h for h in range(12)] for i in range(8)], None, None),
+    )
+    monkeypatch.setattr(
+        jhora_ashtakavarga,
+        "_trikona_sodhana",
+        lambda grid: [[value + 1 for value in row] for row in grid],
+    )
+    monkeypatch.setattr(
+        jhora_ashtakavarga,
+        "_ekadhipatya_sodhana",
+        lambda grid, _chart: [[value + 2 for value in row] for row in grid],
+    )
+
+    def bhava_bala(*_args):
+        state.calculate("bhava")
+        return ([60.0] * 12, [1.0] * 12, [0.25] * 12)
+
+    def bhava_component(value):
+        def component(*_args):
+            assert state.mode == "LAHIRI"
+            return [value] * 12
+
+        return component
+
+    monkeypatch.setattr(jhora_strength, "bhava_bala", bhava_bala)
+    monkeypatch.setattr(
+        jhora_strength,
+        "_bhava_adhipathi_bala",
+        bhava_component(30.0),
+    )
+    monkeypatch.setattr(
+        jhora_strength,
+        "_bhava_dig_bala",
+        bhava_component(20.0),
+    )
+    monkeypatch.setattr(
+        jhora_strength,
+        "_bhava_drik_bala",
+        bhava_component(10.0),
+    )
+
+
+def _ga_strength_operation(name: str):
+    if name == "ashtakavarga":
+        return ga_strength_writer._derive_ashtakavarga_shodhana_grids
+    return ga_strength_writer._derive_bhava_bala
+
+
+@pytest.mark.parametrize("operation", ["ashtakavarga", "bhava"])
+@pytest.mark.parametrize("first", ["strength", "raman"])
+def test_ga_strength_setter_through_final_copy_is_one_serialized_span(
+    monkeypatch,
+    operation,
+    first,
+):
+    block_label = operation if first == "strength" else "raman"
+    state = _BlockingPyJHoraState(block_label)
+    _install_ga_strength_fakes(monkeypatch, state)
+
+    def strength_operation():
+        return _ga_strength_operation(operation)(2451545.0, "LAHIRI")
+
+    def raman_operation():
+        with swiss_state_scope():
+            state.mode = "RAMAN"
+            state.calculate("raman")
+
+    first_fn, second_fn = (
+        (strength_operation, raman_operation)
+        if first == "strength"
+        else (raman_operation, strength_operation)
+    )
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first_future = pool.submit(first_fn)
+        assert state.entered.wait(timeout=1)
+        second_future = pool.submit(second_fn)
+        try:
+            sleep(0.05)
+            assert len(state.calculations) == 1, (
+                "conflicting mode entered after the setter and before the "
+                "strength result was fully copied"
+            )
+        finally:
+            state.release.set()
+        first_future.result(timeout=2)
+        second_future.result(timeout=2)
+
+    assert state.calculations == (
+        [(operation, "LAHIRI"), ("raman", "RAMAN")]
+        if first == "strength"
+        else [("raman", "RAMAN"), (operation, "LAHIRI")]
+    )
+
+
+@pytest.mark.parametrize("operation", ["ashtakavarga", "bhava"])
+def test_ga_strength_boundary_is_canonical_reentrant_and_value_invariant(
+    monkeypatch,
+    operation,
+):
+    state = _BlockingPyJHoraState()
+    _install_ga_strength_fakes(monkeypatch, state)
+    entry_point = _ga_strength_operation(operation)
+
+    assert entry_point.__swiss_state_lock__ is SWISS_STATE_LOCK
+    expected = entry_point.__wrapped__(2451545.0, "LAHIRI")
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        actual = pool.submit(entry_point, 2451545.0, "LAHIRI").result(timeout=1)
+    assert actual == expected
 
 
 class _ContextSwiss:

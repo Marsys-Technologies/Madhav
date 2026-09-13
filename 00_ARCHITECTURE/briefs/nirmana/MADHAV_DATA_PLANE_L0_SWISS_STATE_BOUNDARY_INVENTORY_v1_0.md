@@ -6,6 +6,10 @@ decision: DP-SD-010
 accepted_source_revision: 552fa76d21406fcbb7f534afbd9600330f3a6276
 strategy_content_revision: d61469b6d96b956782548d36fb23f9e813e1ae98
 approval_pin_revision: b1a0f17eb65494f21a00fd2b22d6264da76c3c38
+scope_addendum_decision: DP-SD-011
+scope_addendum_accepted_source_revision: b8e342049f0ac90e794bc3f547468a785a98d108
+scope_addendum_strategy_content_revision: a112b64a61c60ff44369ba64eee73a3445a48461
+scope_addendum_approval_pin_revision: add798f6ce37893f8c7ef3e771f30e15b0fb24f2
 generated_on: 2026-09-13
 ---
 
@@ -13,9 +17,9 @@ generated_on: 2026-09-13
 
 ## Result
 
-The non-test Python sidecar tree has **64 detector-owned direct or wrapper
-Swiss-state operation owners**, **74 decorated serialized entry points**, and
-four exact explicit-scope owners. The union is 78 boundary owners. Every live
+The non-test Python sidecar tree has **70 detector-owned direct or wrapper
+Swiss-state operation owners**, **76 decorated serialized entry points**, and
+four exact explicit-scope owners. The union is 80 boundary owners. Every live
 state-dependent operation found by the source-tree detector is classified;
 `UNRESOLVED = 0`.
 
@@ -29,7 +33,8 @@ not another lock. This inventory does not claim deployment or production use.
 `platform/python-sidecar/tests/test_swiss_state_boundary.py` parses every
 non-test `*.py` under the sidecar. It resolves direct `swisseph` imports,
 renamed module imports, imported function aliases, PyJHora `drik` aliases,
-canonical decorators and canonical explicit scopes. The expected owner set is
+PyJHora chart/strength calls, adapter setter aliases, canonical decorators and
+canonical explicit scopes. The expected owner set is
 exact, so an added, removed or moved operation fails until this artifact and
 the detector are deliberately reconciled.
 
@@ -61,6 +66,7 @@ unrelated work remain outside.
 | `ga_writers/ga_dashas_writer.py` | `build_system` | narrow fallback scope; DB reads/writes are outside |
 | `ga_writers/ga_sade_sati_writer.py` | `_detect_saturn_sign_changes`, `_detect_saturn_retrogrades` | decorator |
 | `ga_writers/ga_sade_sati_writer.py` | `_lookup_tara_bala_for_saturn_at` | narrow computation scope; DB lookup is outside |
+| `ga_writers/ga_strength_writer.py` | `_derive_ashtakavarga_shodhana_grids`, `_derive_bhava_bala` | decorator; each spans ayanamsha selection through final dependent result copy |
 | `ga_writers/ga_vargas_writer.py` | `_compute_varga_positions` | decorator |
 | `panchang_engine/__init__.py` | `compute_panchang`, `panchanga_instant` | decorator; path and Lahiri selection through final result |
 | `panchang_engine/angas.py` | `_get_sun_moon_lon`, `compute_nakshatra` | decorator |
@@ -95,9 +101,10 @@ unrelated work remain outside.
 
 ## Transitive state-dependent boundaries
 
-These 14 functions do not own a detector-visible direct call, but enclose
-multiple state-dependent helper calls or PyJHora calculations and therefore
-hold one coherent boundary. They are also `SERIALIZED`:
+These 14 functions enclose multiple state-dependent helper calls or PyJHora
+calculations and therefore hold one coherent boundary. The hardened detector
+now also recognizes the four adapter-strength calculation owners directly.
+They are all `SERIALIZED`:
 
 - `panchang_engine/angas.py`: `compute_tithi`, `compute_yoga`,
   `compute_karana_pair`;
@@ -132,7 +139,8 @@ The implementation touches only these amendment-authorized surfaces:
 - L0/Gaṇita writers and adapters: `brahmagyan/l0_ephemeris.py`,
   `brahmagyan/ganita/{engine,graha_sthana_writer,l1_engine_check,l1_positions}.py`,
   `brahma/l1/ganita/divisionals_writer.py`,
-  `ga_writers/{ga_dashas_writer,ga_sade_sati_writer,ga_vargas_writer}.py`;
+  `ga_writers/{ga_dashas_writer,ga_sade_sati_writer,ga_strength_writer,
+  ga_vargas_writer}.py`;
 - pipeline: `pipeline/transit_search.py`,
   `pipeline/orchestrator/service_probes.py`, and writers
   `{bg_cohort,bg_muhurta_lattice,bg_sky_calendar,ka_vighnakara}.py`;
@@ -145,6 +153,6 @@ The implementation touches only these amendment-authorized surfaces:
   `services/w2g_validations/v3_spline_accuracy.py`; and
 - proof: `tests/test_swiss_state_boundary.py`.
 
-No file outside the amendment `may_touch` list is affected. No process-manager,
-worker-count, deployment, schema, identity, rights or output-semantic surface is
-changed.
+No file outside the DP-SD-010 amendment plus DP-SD-011 addendum `may_touch`
+union is affected. No process-manager, worker-count, deployment, schema,
+identity, rights or output-semantic surface is changed.

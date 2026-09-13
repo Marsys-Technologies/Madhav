@@ -62,6 +62,7 @@ from ga_writers.ga_positions_writer import (
     _write_halt_log,
 )
 from brahmagyan.graha_vocabulary import norm_graha, to_title
+from panchang_engine.swiss_state import serialized_swiss_state
 
 logger = logging.getLogger(__name__)
 
@@ -450,6 +451,7 @@ def _derive_ashtakavarga(
 _AV_CLASSICAL_7 = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn"]
 
 
+@serialized_swiss_state
 def _derive_ashtakavarga_shodhana_grids(
     jd_ut: float,
     ayanamsha_id: str,
@@ -506,6 +508,7 @@ def _derive_ashtakavarga_shodhana_grids(
     return {"trikona": trikona_grid, "ekadhipatya": ekadhipatya_grid}
 
 
+@serialized_swiss_state
 def _derive_bhava_bala(
     jd_ut: float,
     ayanamsha_id: str,
