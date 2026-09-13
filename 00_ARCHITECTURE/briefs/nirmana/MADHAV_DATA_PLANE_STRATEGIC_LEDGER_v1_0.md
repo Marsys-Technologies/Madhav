@@ -16,6 +16,7 @@ role: >
 changelog:
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
+  - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
 ---
 
 # Madhav data-plane strategic ledger
@@ -114,9 +115,11 @@ separately admitted next-generation artifact. Product backcasting is not runtime
 | DP-SD-007 | Keep event-free generation, permitted historical inquiry, protected evaluation and any future context-conditioned forecasting as separate purposes. | RATIFIED for first three; fourth remains proposal-only. |
 | DP-SD-008 | Treat retrieval, judgment/assessment tools, adaptive inquiry, managed channels and replay/export as part of the data-to-answer chain, not post-layer polish. | WORKING STRATEGIC REQUIREMENT inherited from product v3.0. |
 | DP-SD-009 | Adopt Data Plane Value Architecture v2.0 with the execution foundation and L0 strategy controls as the governing data-plane planning basis. | ADOPTED AS PLANNING BASIS on 2026-09-13; not canonical product adoption or implementation proof. |
+| DP-SD-010 | Close the L0 Swiss Ephemeris process-global state blocker by extending one shared re-entrant serialization boundary to every live setter and dependent calculation in the approved exact scope; do not adopt process-isolated execution. | ADOPTED BLOCKER RESOLUTION on 2026-09-13; no output-semantic, deployment or L1-L5 authority expansion. |
 
-Only the planning-basis decision is adopted. Individual layer/asset deltas remain
-subject to their approved strategy and execution brief.
+The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
+Other individual layer/asset deltas remain subject to their approved strategy
+and execution brief.
 
 ## 5. Assumptions, contested findings and evidence limits
 
@@ -176,7 +179,7 @@ the repeatedly studied charts.
 |---|---|---|---|
 | DP-P0 | Plane baseline: ratified inheritance, target proposal, inventory, evidence limits and adoption delta | COMPLETE — baseline established and planning basis adopted by DP-SD-009 | This ledger; foundation commit `d838af455` |
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
-| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | STRATEGY APPROVED; execution brief ready | `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY_v1_0.md`; `MADHAV_DATA_PLANE_L0_BRAHMAGYAN_EXECUTION_BRIEF_v1_0.md` |
+| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | EXECUTION BLOCKER RESOLUTION APPROVED — DP-SD-010; terminal re-challenge pending | L0 strategy/brief; `MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_AMENDMENT_v1_0.md`; execution evidence `552fa76d2` |
 | DP-P3 | L1 Gaṇita definition: 19 writers, fact/configuration/context/precision packages, honest failure and L0 consumption | PENDING L0 contract | None |
 | DP-P4 | L2 Bodha definition: 23 writers including support, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | PENDING L1 contract | None |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
