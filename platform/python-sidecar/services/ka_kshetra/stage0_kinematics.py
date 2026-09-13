@@ -36,6 +36,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable, Optional, Sequence
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from scipy.optimize import brentq
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -601,6 +603,7 @@ def attach_dwell_weight(rows: Sequence[KinematicsRow], w_dwell: float) -> None:
 # sidereal derivation). Exercised only by the "live" test tier.
 # ═════════════════════════════════════════════════════════════════════════════
 
+@serialized_swiss_state
 def _sidereal_offset_series(jds: Sequence[float], ayanamsha: str) -> list[float]:
     """The ayanamsha offset at each Julian Day, via the SAME pyswisseph call
     sequence as brahmagyan.l0_ephemeris.derive_sidereal (§N.5 — reusing the

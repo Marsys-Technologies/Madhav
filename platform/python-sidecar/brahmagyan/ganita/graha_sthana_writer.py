@@ -26,6 +26,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 # ── DB helper ──────────────────────────────────────────────────────────────────
@@ -45,6 +47,7 @@ def _conn():
 
 # ── PyHora computation ─────────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def _compute_graha_sthana(
     datetime_iso: str,
     lat: float,

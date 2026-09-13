@@ -16,6 +16,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import dignities, houses, panchanga, positions, sensitive_points, vargas
 from . import special_lagnas as special_lagnas_mod
 from . import dashas as _dashas
@@ -32,6 +34,7 @@ def _parse_local_wallclock(datetime_iso: str) -> datetime:
     return dt
 
 
+@serialized_swiss_state
 def compute_chart(
     inputs: dict[str, Any],
     engine_version: str = ENGINE_VERSION,

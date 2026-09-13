@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik, get_vimsottari, utils
@@ -36,6 +38,7 @@ def _jd_to_iso(jd: float) -> str:
     return f"{int(y):04d}-{int(m):02d}-{int(d):02d}T{hh:02d}:{mm:02d}:{ss:02d}"
 
 
+@serialized_swiss_state
 def compute_dashas(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",

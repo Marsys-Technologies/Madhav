@@ -160,6 +160,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from brahmagyan.graha_vocabulary import norm_graha
 from . import uncertainty as U
 from .contracts import ClockApplicability
@@ -862,6 +864,7 @@ def write_clock_rows(chart_id: str, applicabilities: list[ClockApplicability], c
 
 # ── v_Moon at birth (module docstring #8) ───────────────────────────────────
 
+@serialized_swiss_state
 def moon_velocity_dps_at_jd(jd_ut: float) -> float:
     """Moon's tropical longitude speed (deg/day) at a Julian day (UT), via
     a direct swisseph evaluation. Ayanamsha-invariant (a constant angular

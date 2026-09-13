@@ -24,6 +24,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
@@ -44,6 +46,7 @@ def _to_dict(sign_idx: int, deg: float) -> dict[str, Any]:
     }
 
 
+@serialized_swiss_state
 def compute_special_lagnas(
     jd_ut: float,
     dob: Any,

@@ -37,6 +37,8 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Generator
 
+from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import (
     CLASSICAL_MATCH,
@@ -324,6 +326,7 @@ def _days_between(d1: date, d2: date) -> float:
 
 # ── Ayanamsha + Moon position ─────────────────────────────────────────────────
 
+@serialized_swiss_state
 def _get_moon_position(ayanamsha_id: str, birth: dict) -> tuple[float, float]:
     """
     Returns (moon_sidereal_lon, birth_jd_utc).
@@ -2498,6 +2501,7 @@ def compute_naisargika_system(
 _MUDDA_IDX_TO_LORD = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"]
 
 
+@serialized_swiss_state
 def _mudda_solar_return_jd(
     natal_sun_long: float,
     birth_jd: float,
@@ -2561,6 +2565,7 @@ def _mudda_solar_return_jd(
     return (lo + hi) / 2.0
 
 
+@serialized_swiss_state
 def compute_mudda_system(
     birth_jd: float,
     ayanamsha_id: str,
@@ -3153,8 +3158,9 @@ def build_system(
         from pyjhora_adapter._jhora import drik
         birth_jd = _birth_jd_utc(birth_params)
         mode, _ = resolve_mode(ayanamsha_id)
-        drik.set_ayanamsa_mode(mode)
-        moon_sid = float(drik.sidereal_longitude(birth_jd, 1))  # 1 = Moon
+        with swiss_state_scope():
+            drik.set_ayanamsa_mode(mode)
+            moon_sid = float(drik.sidereal_longitude(birth_jd, 1))  # 1 = Moon
 
     nak_idx_1, moon_nak_name, moon_nak_lord = _get_moon_nakshatra_lord(moon_sid)
 

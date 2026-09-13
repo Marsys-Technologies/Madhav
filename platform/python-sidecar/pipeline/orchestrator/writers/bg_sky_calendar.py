@@ -172,6 +172,8 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     WriterBase,
@@ -225,6 +227,7 @@ SIGN_NAMES = (
 )
 
 
+@serialized_swiss_state
 def _require_swiss_file_backend(swe: Any, ephe_path: str) -> None:
     """Configure the exact file-backed ephemeris contract or fail closed.
 
@@ -342,6 +345,7 @@ def _event_jd_to_utc(swe: Any, jd: float):
 
 # ── Family 1: ingresses ───────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def scan_ingresses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     """
     All sign-ingress events for the 9 tracked grahas over [start_jd, end_jd].
@@ -397,6 +401,7 @@ def scan_ingresses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
 
 # ── Family 2: stations ────────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def scan_stations(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     """
     Retrograde/direct station events for the 5 classical stationing planets.
@@ -426,6 +431,7 @@ def scan_stations(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
 
 # ── Family 3: eclipses (real swisseph eclipse-finding, not the orb proxy) ────
 
+@serialized_swiss_state
 def scan_eclipses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     """
     Solar + lunar eclipse TIMING events over [start_jd, end_jd].
@@ -435,6 +441,9 @@ def scan_eclipses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     for why this is used instead of transit_search's node-conjunction proxy.
     Per-location visibility/magnitude is out of scope here (see docstring).
     """
+    from brahmagyan.l0_ephemeris import _resolve_ephe_path
+
+    swe.set_ephe_path(_resolve_ephe_path())
     rows: list[_Row] = []
     rows.extend(_scan_solar_eclipses(swe, start_jd, end_jd))
     rows.extend(_scan_lunar_eclipses(swe, start_jd, end_jd))
@@ -462,6 +471,7 @@ def _decode_eclipse_type(swe: Any, retflag: int, bits: tuple[tuple[str, str], ..
     return "unknown"
 
 
+@serialized_swiss_state
 def _scan_solar_eclipses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     rows: list[_Row] = []
     jd = start_jd
@@ -506,6 +516,7 @@ def _scan_solar_eclipses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]
     return rows
 
 
+@serialized_swiss_state
 def _scan_lunar_eclipses(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     rows: list[_Row] = []
     jd = start_jd
@@ -557,6 +568,7 @@ def _moon_position(swe: Any, jd: float) -> tuple[float, float]:
 
 # ── Family 4: double-transit geometry ─────────────────────────────────────────
 
+@serialized_swiss_state
 def scan_double_transits(swe: Any, start_jd: float, end_jd: float) -> list[_Row]:
     """
     Conjunction events for each configured slow-mover pair (§DOUBLE_TRANSIT_PAIRS).

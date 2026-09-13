@@ -39,6 +39,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from typing import Any, Sequence
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from ._db import QueryFn, table_exists
 from .types import FAIL, INDETERMINATE, PASS, ValidationResult
 
@@ -106,6 +108,7 @@ def _noon_ut_jd(swe, d: date) -> float:
     return swe.julday(d.year, d.month, d.day, 12.0)
 
 
+@serialized_swiss_state
 def _swe_longitude(swe, body_name: str, jd: float) -> float:
     """Direct Swiss-Ephemeris tropical longitude, computed with the SAME
     flags and the SAME Ketu convention the builder used."""

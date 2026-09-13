@@ -14,6 +14,7 @@ References:
 """
 import swisseph as swe
 from .types import PlanetState
+from .swiss_state import serialized_swiss_state
 from .shastra_tables import (
     SIGN_NAMES, NAKSHATRA_NAMES, COMBUSTION_ORBS,
 )
@@ -96,6 +97,7 @@ def _is_combust(planet_name: str, planet_lon: float, sun_lon: float,
     return dist <= orb
 
 
+@serialized_swiss_state
 def compute_planet_state(planet_id: int, jd_ut: float,
                          sun_lon: float | None = None,
                          planet_name: str | None = None) -> PlanetState:
@@ -166,6 +168,7 @@ def compute_planet_state(planet_id: int, jd_ut: float,
     )
 
 
+@serialized_swiss_state
 def compute_all_grahas(jd_ut: float) -> list[PlanetState]:
     """
     Compute sidereal state for all 9 Vedic grahas at jd_ut.

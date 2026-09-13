@@ -22,6 +22,7 @@ from datetime import datetime, date, timedelta, timezone
 from typing import Optional
 from .types import Timing
 from .exceptions import OutOfRangeError
+from .swiss_state import serialized_swiss_state
 from .shastra_tables import (
     RAHU_KALAM_INDEX, YAMAGANDAM_INDEX, GULIKA_INDEX,
     CHOGHADIYA_DAY_TABLE, CHOGHADIYA_NIGHT_TABLE,
@@ -63,6 +64,7 @@ def _jd_to_utc(jd: float) -> datetime:
     return datetime(y, mo, day, hour_int, minute_int, second_int, tzinfo=timezone.utc)
 
 
+@serialized_swiss_state
 def compute_sunrise_sunset(d: date, lat: float, lon: float,
                            tz_offset: int) -> tuple[datetime, datetime]:
     """
@@ -115,6 +117,7 @@ def compute_sunrise_sunset(d: date, lat: float, lon: float,
     return sunrise_utc, sunset_utc
 
 
+@serialized_swiss_state
 def compute_moonrise_moonset(d: date, lat: float, lon: float,
                              tz_offset: int) -> tuple[Optional[datetime], Optional[datetime]]:
     """
@@ -601,6 +604,7 @@ def compute_festivals(tithi_id: int, paksha: str, masa_purnimanta: str) -> list:
     return result
 
 
+@serialized_swiss_state
 def compute_day_events(date_obj, lat: float, lon: float) -> list:
     """
     Scan the day for Sun sign ingress and lunar eclipse.

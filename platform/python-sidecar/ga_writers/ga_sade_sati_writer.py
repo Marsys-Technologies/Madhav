@@ -55,6 +55,8 @@ import re
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+
 from brahmagyan.graha_vocabulary import norm_graha
 from brahmagyan.verification_vocab import TWO_PASS_VERIFIED, UNVERIFIED_DEFAULT, assert_legal
 from ga_writers._idempotency import replace_prior_chart_facts
@@ -336,6 +338,7 @@ def _write_halt_log(gate_name: str, msg: str) -> None:
 
 # ── Swisseph Saturn transit detection ────────────────────────────────────────
 
+@serialized_swiss_state
 def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) -> list[dict]:
     """
     Use swisseph (via panchanga_engine) to detect all Saturn sign-change events
@@ -421,6 +424,7 @@ def _detect_saturn_sign_changes(window_start: datetime, window_end: datetime) ->
     return changes
 
 
+@serialized_swiss_state
 def _detect_saturn_retrogrades(window_start: datetime, window_end: datetime) -> list[dict]:
     """
     Detect Saturn retrograde periods in the window.
@@ -1586,13 +1590,14 @@ def _lookup_tara_bala_for_saturn_at(
     except ImportError:
         return None
 
-    swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-    jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
-                     at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
-    result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL)
-    lon = result[0] % 360.0
-    nak_idx = int(lon // (360.0 / 27.0))  # 0-based nakshatra index
+    with swiss_state_scope():
+        swe.set_ephe_path(os.environ.get("SWISSEPH_EPHE_PATH", "/usr/share/ephe"))
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        jd = swe.julday(at_dt.year, at_dt.month, at_dt.day,
+                        at_dt.hour + at_dt.minute / 60.0 + at_dt.second / 3600.0)
+        result, _ = swe.calc_ut(jd, swe.SATURN, swe.FLG_SIDEREAL)
+        lon = result[0] % 360.0
+        nak_idx = int(lon // (360.0 / 27.0))  # 0-based nakshatra index
     if not (0 <= nak_idx < 27):
         return None
     short = NAKSHATRA_SHORT[nak_idx]

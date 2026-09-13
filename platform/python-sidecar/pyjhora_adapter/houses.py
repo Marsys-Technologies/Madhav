@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
@@ -18,6 +20,7 @@ def _place(lat: float, lon: float, tz: float):
     return drik.Place("subject", lat, lon, tz)
 
 
+@serialized_swiss_state
 def compute_ascendant(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -51,6 +54,7 @@ def compute_ascendant(
     }
 
 
+@serialized_swiss_state
 def compute_midheaven(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -142,6 +146,7 @@ def _forward_arc_contains(long_deg: float, start: float, end: float) -> bool:
     return off < span
 
 
+@serialized_swiss_state
 def compute_bhava_chalit(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",

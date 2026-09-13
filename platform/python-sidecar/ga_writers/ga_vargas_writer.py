@@ -59,6 +59,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 import psycopg.rows
 
 from brahmagyan.dignity_oracle import classify_dignity
@@ -811,6 +813,7 @@ def _check_near_boundary(degree_in_sign: float, threshold_arcsec: float = 1800.0
 
 # ── Chart computation ─────────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
                               lat: float, lon: float, tz: float) -> dict[str, dict]:
     """

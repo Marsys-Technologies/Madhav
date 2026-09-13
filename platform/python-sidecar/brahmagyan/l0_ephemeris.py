@@ -36,6 +36,8 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
+
 try:
     import swisseph as swe  # type: ignore[import]
     _SWE_AVAILABLE = True
@@ -162,6 +164,7 @@ def _tropical_to_jd(d: date) -> float:
     return swe.julday(d.year, d.month, d.day, 12.0)
 
 
+@serialized_swiss_state
 def derive_sidereal(tropical_lon: float, jd: float, ayanamsha: str) -> dict[str, Any]:
     """
     Derive sidereal position from a stored tropical longitude.
@@ -258,6 +261,7 @@ def _get_conn():
 
 # ── Position computation ──────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def _compute_positions_for_date(
     d: date,
     swe: Any,
@@ -268,8 +272,7 @@ def _compute_positions_for_date(
 
     Returns a list of row dicts ready for bulk INSERT.
     """
-    if ephe_path is not None:
-        swe.set_ephe_path(ephe_path)
+    swe.set_ephe_path(ephe_path)
 
     # Julian day for noon UT
     jd = swe.julday(d.year, d.month, d.day, 12.0)
@@ -379,7 +382,8 @@ def build_ephemeris(
             logger.info("[l0_ephemeris] Using .se1 files at: %s", ephe_path)
         else:
             logger.warning("[l0_ephemeris] No .se1 path found; using built-in Moshier fallback")
-            swe.set_ephe_path(None)
+            with swiss_state_scope():
+                swe.set_ephe_path(None)
         use_swe = True
     except ImportError:
         logger.warning("[l0_ephemeris] pyswisseph not available; using algorithmic fallback")
@@ -1168,6 +1172,7 @@ def query_nakshatra_lord(
     }
 
 
+@serialized_swiss_state
 def query_ayanamsha_delta(
     date_str: str,
     conn=None,
