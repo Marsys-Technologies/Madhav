@@ -17,6 +17,7 @@ changelog:
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
   - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
+  - "1.0 update 2026-09-13: Links the native-authorized planner capability-knowledge and Inquiry Contract branch candidate as DP-P8a; implementation is local/reviewable only, not adopted, merged, migrated, deployed or production-verified."
 ---
 
 # Madhav data-plane strategic ledger
@@ -186,6 +187,7 @@ the repeatedly studied charts.
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
+| DP-P8a | Planner-facing SCU snapshot, Inquiry Contract/compiler, managed/raw lifecycle foundation and mechanical estate census | IMPLEMENTED BRANCH CANDIDATE — local tests/static review only; not adopted, merged, migrated, deployed or production-verified | `MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md`; branch `codex/planner-knowledge-inquiry` |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
 | DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 BRIEF APPROVED; later briefs pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
 
