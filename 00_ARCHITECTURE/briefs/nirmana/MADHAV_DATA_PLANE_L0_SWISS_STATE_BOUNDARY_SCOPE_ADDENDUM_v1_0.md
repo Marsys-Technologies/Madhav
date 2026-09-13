@@ -4,7 +4,7 @@ version: "1.0"
 status: APPROVED_FOR_EXECUTION
 approved_on: 2026-09-13
 strategy_decision: DP-SD-011
-approval_record: "DP-SD-011; immutable addendum commit populated before dispatch"
+approval_record: "DP-SD-011 at strategy content commit a112b64a61c60ff44369ba64eee73a3445a48461"
 strategic_parent_task: "Strategy — Data Plane / 01a0996e-6ca0-7642-ac31-f968fee214b3"
 execution_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
 parent_amendment: "MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_AMENDMENT v1.0 / content d61469b6d96b956782548d36fb23f9e813e1ae98 / approval pin b1a0f17eb65494f21a00fd2b22d6264da76c3c38"
