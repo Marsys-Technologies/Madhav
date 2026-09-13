@@ -1,0 +1,2109 @@
+{
+  "artifact": "MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE",
+  "version": "1.0",
+  "session_id": "MADHAV-DATA-PLANE-V2-20260913",
+  "scope": "Documentation verification only; code-observed source findings not runtime or empirical proof.",
+  "source_revision": "45120d72dd4e968234d5e77cc1d665e74bc595d6",
+  "document_checks": {
+    "source_revision": "45120d72dd4e968234d5e77cc1d665e74bc595d6",
+    "checks": [
+      {
+        "name": "129 identities exactly once",
+        "pass": true,
+        "detail": {
+          "actual": 129,
+          "unique": 129
+        }
+      },
+      {
+        "name": "all writer/nonwriter IDs accounted for",
+        "pass": true,
+        "detail": {
+          "missing": [],
+          "unexpected": []
+        }
+      },
+      {
+        "name": "123 writer census and six nonwriters",
+        "pass": true,
+        "detail": {
+          "writers": 123,
+          "nonwriters": 6
+        }
+      },
+      {
+        "name": "frozen receipt denominator remains128",
+        "pass": true
+      },
+      {
+        "name": "18 DP families present, DP15 split at issuance/evaluation",
+        "pass": true
+      },
+      {
+        "name": "ten bounded work packets",
+        "pass": true
+      },
+      {
+        "name": "24 source findings",
+        "pass": true
+      },
+      {
+        "name": "all local Markdown links resolve",
+        "pass": true,
+        "detail": []
+      },
+      {
+        "name": "explicit source anchors resolve",
+        "pass": true,
+        "detail": {
+          "count": 152,
+          "missing": []
+        }
+      },
+      {
+        "name": "reviewable proposal status",
+        "pass": true
+      },
+      {
+        "name": "scope and authority preserved",
+        "pass": true
+      },
+      {
+        "name": "no whole-asset retirement asserted",
+        "pass": true
+      },
+      {
+        "name": "generation and consumed-snapshot requirement",
+        "pass": true
+      },
+      {
+        "name": "observation brief and uncertainty resolution present",
+        "pass": true
+      },
+      {
+        "name": "forecast issuance precedes cutover",
+        "pass": true
+      },
+      {
+        "name": "within-method coherence explicit",
+        "pass": true
+      },
+      {
+        "name": "L1 epistemic type separate from membership",
+        "pass": true
+      },
+      {
+        "name": "unchanged 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+        "pass": true
+      },
+      {
+        "name": "unchanged 00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "pass": true
+      },
+      {
+        "name": "unchanged 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "pass": true
+      },
+      {
+        "name": "no trailing whitespace or conflict markers",
+        "pass": true
+      }
+    ],
+    "passed": 21,
+    "total": 21,
+    "files": [
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+        "sha256": "7af15df2e37734207109f92ac172791f43e4588eb9fb0b9f83779d8ad95ec885",
+        "lines": 482,
+        "words": 8793
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md",
+        "sha256": "b234083902997321077bee78fdfae50c7cd06c68a514a70ba34c532758ed2b0a",
+        "lines": 231,
+        "words": 4759
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "sha256": "42f93626598414d6b67f1c754fe1d46fe4ed0b7abab4a84fe461d04369f4aa6e",
+        "lines": 116,
+      "words": 2522
+      }
+    ]
+  },
+  "frontmatter_validation": {
+    "parser": "python3 yaml.safe_load",
+    "documents": 3,
+    "passed": true
+  },
+  "open_validation": {
+    "schema_validation_report": {
+      "session_id": "adhoc",
+      "run_at": "2026-09-12T19:57:43.231618+00:00",
+      "violations": [
+        {
+          "rule": "handshake_codex_profile_invalid",
+          "severity": "CRITICAL",
+          "path": "<handshake>",
+          "evidence": "Codex tool_profile must be madhav-safe or madhav-parity",
+          "suggested_remediation": "Record the selected approved Codex profile."
+        }
+      ],
+      "summary": {
+        "total": 1,
+        "by_severity": {
+          "CRITICAL": 1
+        }
+      },
+      "exit_code": 1
+    }
+  },
+  "raw_baseline_schema": {
+    "schema_validation_report": {
+      "session_id": "adhoc",
+      "run_at": "2026-09-12T19:57:42.814867+00:00",
+      "violations": [
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/RETRIEVAL_3_0_FACETED_INSTRUMENTS_DESIGN_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R6_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_3_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_JUDGMENT_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_ENDGAME_ACTIVITY_PLAN_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_RING3_REDTEAM_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_AUTHORITY_DOSSIER_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/BA_BRIEF_PACK_P2_P7_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_PRE_REBUILD_AUDIT_REPORT_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R6A_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/REBUILD_SESSION_PLAN_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_2_ACCEPTANCE_HONEST_CLOSE_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_AUTONOMOUS_RUN_CHARTER_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_ANSWER_BATTERY_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/GOCHARA_RESONANCE_MAP_SPEC.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_SYNC_FREEZE_REPORT_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_3_ACCEPTANCE_HONEST_CLOSE_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_RETRIEVAL_3_0_SEAL_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_3_CONTENT_SPECS_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_PREFLIGHT_REPORT_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_STRATEGIC_TRACK_HANDOFF_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/BA_PHASE4_RUNWAY_PLAN_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_1_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_1_MCP_CONSUME_ACCEPTANCE_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/R5_BATTERY_RESULTS_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/R5_2_RUN_LEDGER_v1_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/JL_027_GRAHA_YUDDHA_WINNER_RULE_OPTIONS_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "MEDIUM",
+          "path": "00_ARCHITECTURE/MCP_USAGE_GUIDE_v1_0.md",
+          "evidence": "Required key 'artifact' not present",
+          "suggested_remediation": "Add `artifact:` to frontmatter"
+        },
+        {
+          "rule": "frontmatter_field_missing[architecture_governance/artifact]",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/MARSYS_DEFECT_GAP_REGISTER_v2_0.md",
+          "evidence": "Required key 'artifact' not present (loose-YAML frontmatter)",
+          "suggested_remediation": "Add `artifact:` at line start"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-CAMPAIGN-NIGHT-1-2026-07-14",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-LANE-A0-2026-07-15",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.5a-CONDUCTOR-CLOSE-2026-07-15",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-1.6-CONDUCTOR-CLOSE-2026-07-16",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#PG-1-CONDUCTOR-2026-07-19",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#RETRIEVAL-AUDIT-CONDUCTOR-CLOSE-2026-07-19",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#PG-2-CONDUCTOR-2026-07-19",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CONDUCTOR-HALT-2026-07-20",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#DOCTRINE-WAVES-D-5-CLOSE-2026-07-20",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#PRE-D4B-READINESS-PASS-V3-2026-07-21",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        },
+        {
+          "rule": "session_log_entry_missing_next_objective_heading",
+          "severity": "LOW",
+          "path": "00_ARCHITECTURE/SESSION_LOG.md#W6-DOCS-SEAL-2026-07-22",
+          "evidence": "No `### Next session objective` heading found",
+          "suggested_remediation": "Add the heading per SESSION_LOG_SCHEMA_v1_0.md §2.f"
+        }
+      ],
+      "summary": {
+        "total": 42,
+        "by_severity": {
+          "LOW": 23,
+          "MEDIUM": 19
+        }
+      },
+      "exit_code": 3
+    }
+  },
+  "raw_baseline_drift": {
+    "drift_report": {
+      "session_id": "adhoc",
+      "run_at": "2026-09-12T19:57:43.165705+00:00",
+      "findings": [
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CGP_AUDIT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CGP_AUDIT_v1_0.md'",
+          "suggested_remediation": "Register CGP_AUDIT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "EXTERNAL_COMPUTATION_SPEC_v2_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'EXTERNAL_COMPUTATION_SPEC_v2_0.md'",
+          "suggested_remediation": "Register EXTERNAL_COMPUTATION_SPEC_v2_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "JH_EXPORT_SCHEDULE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'JH_EXPORT_SCHEDULE_v1_0.md'",
+          "suggested_remediation": "Register JH_EXPORT_SCHEDULE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_HELD_OUT_PARTITION",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LEL_HELD_OUT_PARTITION_v1_0.md'",
+          "suggested_remediation": "Register LEL_HELD_OUT_PARTITION_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LEL_FACTS_ONLY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md'",
+          "suggested_remediation": "Register LIFE_EVENT_LOG_FACTS_ONLY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PPL_RETROACTIVE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PPL_RETROACTIVE_PROTOCOL_v1_0.md'",
+          "suggested_remediation": "Register PPL_RETROACTIVE_PROTOCOL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SADE_SATI_CYCLES_ALL",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SADE_SATI_CYCLES_ALL.md'",
+          "suggested_remediation": "Register SADE_SATI_CYCLES_ALL.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "EVENT_CHART_STATES_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'EVENT_CHART_STATES_v1_0.md'",
+          "suggested_remediation": "Register EVENT_CHART_STATES_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "JHORA_TRANSCRIPTION_v8_0_SOURCE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'JHORA_TRANSCRIPTION_v8_0_SOURCE.md'",
+          "suggested_remediation": "Register JHORA_TRANSCRIPTION_v8_0_SOURCE.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CROSS_REPORT_COHERENCE_AUDIT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_REPORT_COHERENCE_AUDIT_v1_0.md'",
+          "suggested_remediation": "Register CROSS_REPORT_COHERENCE_AUDIT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RED_TEAM_L3_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RED_TEAM_L3_v1_0.md'",
+          "suggested_remediation": "Register RED_TEAM_L3_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CAREER_DHARMA_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_CAREER_DHARMA_v1_1.md'",
+          "suggested_remediation": "Register REPORT_CAREER_DHARMA_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_CHILDREN_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_CHILDREN_v1_1.md'",
+          "suggested_remediation": "Register REPORT_CHILDREN_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_FINANCIAL_v2_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_FINANCIAL_v2_1.md'",
+          "suggested_remediation": "Register REPORT_FINANCIAL_v2_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_HEALTH_LONGEVITY_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_HEALTH_LONGEVITY_v1_1.md'",
+          "suggested_remediation": "Register REPORT_HEALTH_LONGEVITY_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PARENTS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_PARENTS_v1_1.md'",
+          "suggested_remediation": "Register REPORT_PARENTS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_PSYCHOLOGY_MIND_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_PSYCHOLOGY_MIND_v1_1.md'",
+          "suggested_remediation": "Register REPORT_PSYCHOLOGY_MIND_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_RELATIONSHIPS_v1_0.md'",
+          "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_RELATIONSHIPS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_RELATIONSHIPS_v1_1.md'",
+          "suggested_remediation": "Register REPORT_RELATIONSHIPS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_SPIRITUAL_v1_0.md'",
+          "suggested_remediation": "Register REPORT_SPIRITUAL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_SPIRITUAL_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_SPIRITUAL_v1_1.md'",
+          "suggested_remediation": "Register REPORT_SPIRITUAL_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REPORT_TRAVEL_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REPORT_TRAVEL_v1_1.md'",
+          "suggested_remediation": "Register REPORT_TRAVEL_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DECISION_SUPPORT_PLAYBOOK_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'DECISION_SUPPORT_PLAYBOOK_v1_0.md'",
+          "suggested_remediation": "Register DECISION_SUPPORT_PLAYBOOK_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "QUERY_PROMPT_LIBRARY_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'QUERY_PROMPT_LIBRARY_v1_0.md'",
+          "suggested_remediation": "Register QUERY_PROMPT_LIBRARY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md'",
+          "suggested_remediation": "Register SESSION_PROTOCOL_QUESTION_TAXONOMY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "plans_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'plans_v1_0.md'",
+          "suggested_remediation": "Register plans_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CLUSTER_ATLAS_v1_1.md'",
+          "suggested_remediation": "Register CLUSTER_ATLAS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CONTRADICTION_REGISTER_v1_1.md'",
+          "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PATTERN_REGISTER_v1_1.md'",
+          "suggested_remediation": "Register PATTERN_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_v1_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESONANCE_REGISTER_v1_1.md'",
+          "suggested_remediation": "Register RESONANCE_REGISTER_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "SCHEMAS/chunker_spec_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'chunker_spec_v1_0.md'",
+          "suggested_remediation": "Register chunker_spec_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "L1_TRUTH_INDEX_REPORT_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'L1_TRUTH_INDEX_REPORT_v1_0.md'",
+          "suggested_remediation": "Register L1_TRUTH_INDEX_REPORT_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M4_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M5_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CI_REPORTING_POLICY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'NAP_M5_3_CI_REPORTING_POLICY_v1_0.md'",
+          "suggested_remediation": "Register NAP_M5_3_CI_REPORTING_POLICY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SHADOW_MODE_PROTOCOL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'SHADOW_MODE_PROTOCOL_v1_0.md'",
+          "suggested_remediation": "Register SHADOW_MODE_PROTOCOL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL1_TWO_PASS_APPROVAL_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL1_TWO_PASS_APPROVAL_v1_0.md'",
+          "suggested_remediation": "Register LL1_TWO_PASS_APPROVAL_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_EDGE_WEIGHT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL2_EDGE_WEIGHT_DESIGN_v1_0.md'",
+          "suggested_remediation": "Register LL2_EDGE_WEIGHT_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL2_STABILITY_GATE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL2_STABILITY_GATE_v1_0.md'",
+          "suggested_remediation": "Register LL2_STABILITY_GATE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL3_DOMAIN_COHERENCE_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL3_DOMAIN_COHERENCE_v1_0.md'",
+          "suggested_remediation": "Register LL3_DOMAIN_COHERENCE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL4_PREDICTION_PRIOR_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL4_PREDICTION_PRIOR_v1_0.md'",
+          "suggested_remediation": "Register LL4_PREDICTION_PRIOR_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "06_LEARNING_LAYER/SIGNAL_WEIGHT_CALIBRATION/LL5_DASHA_TRANSIT_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL5_DASHA_TRANSIT_DESIGN_v1_0.md'",
+          "suggested_remediation": "Register LL5_DASHA_TRANSIT_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL6_TEMPORAL_DENSITY_DESIGN_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md'",
+          "suggested_remediation": "Register LL6_TEMPORAL_DENSITY_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL7_DISCOVERY_PRIOR_DESIGN",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md'",
+          "suggested_remediation": "Register LL7_DISCOVERY_PRIOR_DESIGN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_B_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_B_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M4_B_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M4_C_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M4_C_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M4_C_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DBN_TOPOLOGY",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'DBN_TOPOLOGY_v1_0.md'",
+          "suggested_remediation": "Register DBN_TOPOLOGY_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_C_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_C_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M5_C_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "M5_D_CLOSE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'M5_D_CLOSE_v1_0.md'",
+          "suggested_remediation": "Register M5_D_CLOSE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PRIOR_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PRIOR_SPEC_v1_0.md'",
+          "suggested_remediation": "Register PRIOR_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_EMBEDDING_REFIT_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL8_EMBEDDING_REFIT_SPEC_v1_0.md'",
+          "suggested_remediation": "Register LL8_EMBEDDING_REFIT_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "REFIT_GATE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'REFIT_GATE_v1_0.md'",
+          "suggested_remediation": "Register REFIT_GATE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "refit_procedure",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'refit_procedure.md'",
+          "suggested_remediation": "Register refit_procedure.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "stability_report",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'stability_report.md'",
+          "suggested_remediation": "Register stability_report.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "ll2_promotion_campaign_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'll2_promotion_campaign_v1_0.md'",
+          "suggested_remediation": "Register ll2_promotion_campaign_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL8_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL8_SPEC_v1_0.md'",
+          "suggested_remediation": "Register LL8_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "LL9_SPEC",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'LL9_SPEC_v1_0.md'",
+          "suggested_remediation": "Register LL9_SPEC_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'pattern_schema_v0_1.json'",
+          "suggested_remediation": "Register pattern_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'prediction_schema_v0_1.json'",
+          "suggested_remediation": "Register prediction_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "TWO_PASS_EVENTS_SCHEMA_v0_1",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'two_pass_events_schema_v0_1.json'",
+          "suggested_remediation": "Register two_pass_events_schema_v0_1.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PROMPT_REGISTRY_INDEX",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'INDEX.json'",
+          "suggested_remediation": "Register INDEX.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PREDICTION_LEDGER_JSONL",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'prediction_ledger.jsonl'",
+          "suggested_remediation": "Register prediction_ledger.jsonl in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PATTERN_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PATTERN_REGISTER_v1_0.json'",
+          "suggested_remediation": "Register PATTERN_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESONANCE_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESONANCE_REGISTER_v1_0.json'",
+          "suggested_remediation": "Register RESONANCE_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CONTRADICTION_REGISTER_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CONTRADICTION_REGISTER_v1_0.json'",
+          "suggested_remediation": "Register CONTRADICTION_REGISTER_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CLUSTER_ATLAS_JSON",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CLUSTER_ATLAS_v1_0.json'",
+          "suggested_remediation": "Register CLUSTER_ATLAS_v1_0.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "DISCOVERY_REGISTERS_INDEX",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'INDEX.json'",
+          "suggested_remediation": "Register INDEX.json in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_CUTTING_DECISION_REGISTER_v1_0.md'",
+          "suggested_remediation": "Register CROSS_CUTTING_DECISION_REGISTER_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_ARCHITECTURE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_ARCHITECTURE_v1_0.md'",
+          "suggested_remediation": "Register PARIPRASHNA_ARCHITECTURE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_ASBUILT_BASELINE",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_ASBUILT_BASELINE_v1_0.md'",
+          "suggested_remediation": "Register PARIPRASHNA_ASBUILT_BASELINE_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_DECISION_REGISTER",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_DECISION_REGISTER_v1_0.md'",
+          "suggested_remediation": "Register PARIPRASHNA_DECISION_REGISTER_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_VERIFICATION_MATRIX",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md'",
+          "suggested_remediation": "Register PARIPRASHNA_VERIFICATION_MATRIX_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_PARISESA_COLLISION_INCIDENT",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md'",
+          "suggested_remediation": "Register CROSS_CAMPAIGN_COLLISION_FORENSICS_AND_REPAIR_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_SWARM_KICKOFF",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md'",
+          "suggested_remediation": "Register KICKOFF_PROMPT_SWARM_CONDUCTOR_v2_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARIPRASHNA_SWARM_PLAN_AMENDMENTS",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md'",
+          "suggested_remediation": "Register PARIPRASHNA_SWARM_REVIEW_AND_AMENDMENTS_v1_1.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "RESUME_BRIEFS_BOTH_CAMPAIGNS",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'RESUME_BRIEFS_BOTH_CAMPAIGNS.md'",
+          "suggested_remediation": "Register RESUME_BRIEFS_BOTH_CAMPAIGNS.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "registry_disagreement",
+          "severity": "MEDIUM",
+          "canonical_id": "PARISESA_V4_CLOSURE_FACTORY_PLAN",
+          "surfaces_involved": [
+            "00_ARCHITECTURE/CANONICAL_ARTIFACTS_v1_0.md",
+            "CAPABILITY_MANIFEST"
+          ],
+          "evidence": "CANONICAL_ARTIFACTS_v1_0.md does not name 'PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md'",
+          "suggested_remediation": "Register PARISESA_V4_CLOSURE_FACTORY_PLAN_v1_0.md in CANONICAL_ARTIFACTS_v1_0.md §1 (or correct its CAPABILITY_MANIFEST entry)",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "schema_db_unreachable",
+          "severity": "LOW",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "platform/scripts/governance/CHART_FACTS_SCHEMA.json"
+          ],
+          "evidence": "psql exit 2: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: Operation not permitted\n\tIs the server running on that host and accepting TCP/IP connections?",
+          "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT for live schema checks",
+          "whitelist_ticket": null
+        },
+        {
+          "class": "a3_schema_db_unreachable",
+          "severity": "LOW",
+          "canonical_id": null,
+          "surfaces_involved": [
+            "chart_facts"
+          ],
+          "evidence": "DB query failed: psql: error: connection to server at \"127.0.0.1\", port 5433 failed: Operation not permitted\n\tIs the server running on that host and accepting TCP/IP connections?",
+          "suggested_remediation": "Ensure DB is running on PGHOST:PGPORT",
+          "whitelist_ticket": null
+        }
+      ],
+      "summary": {
+        "total": 79,
+        "by_class": {
+          "registry_disagreement": 77,
+          "schema_db_unreachable": 1,
+          "a3_schema_db_unreachable": 1
+        },
+        "by_severity": {
+          "MEDIUM": 77,
+          "LOW": 2
+        },
+        "whitelisted": 0
+      },
+      "exit_code": 3
+    }
+  },
+  "known_residuals": [
+    {
+      "finding_id": "SCHEMA-001",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index0; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-002",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index1; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-003",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index2; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-004",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index3; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-005",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index4; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-006",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index5; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-007",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index6; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-008",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index7; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-009",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index8; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-010",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index9; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-011",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index10; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-012",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index11; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-013",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index12; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-014",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index13; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-015",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index14; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-016",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index15; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-017",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index16; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-018",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index17; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-019",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index18; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-020",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index19; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-021",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index20; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-022",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index21; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-023",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index22; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-024",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index23; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-025",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index24; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-026",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index25; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-027",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index26; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-028",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index27; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-029",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index28; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-030",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index29; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-031",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index30; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-032",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index31; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-033",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index32; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-034",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index33; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-035",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index34; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-036",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index35; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-037",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index36; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-038",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index37; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-039",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index38; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-040",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index39; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-041",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index40; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "SCHEMA-042",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index41; separate governance remediation, no new repair scope"
+    },
+    {
+      "finding_id": "DRIFT-001",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index0; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-002",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index1; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-003",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index2; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-004",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index3; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-005",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index4; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-006",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index5; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-007",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index6; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-008",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index7; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-009",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index8; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-010",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index9; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-011",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index10; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-012",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index11; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-013",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index12; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-014",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index13; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-015",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index14; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-016",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index15; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-017",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index16; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-018",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index17; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-019",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index18; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-020",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index19; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-021",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index20; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-022",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index21; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-023",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index22; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-024",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index23; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-025",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index24; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-026",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index25; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-027",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index26; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-028",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index27; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-029",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index28; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-030",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index29; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-031",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index30; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-032",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index31; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-033",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index32; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-034",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index33; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-035",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index34; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-036",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index35; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-037",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index36; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-038",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index37; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-039",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index38; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-040",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index39; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-041",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index40; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-042",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index41; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-043",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index42; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-044",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index43; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-045",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index44; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-046",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index45; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-047",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index46; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-048",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index47; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-049",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index48; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-050",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index49; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-051",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index50; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-052",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index51; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-053",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index52; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-054",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index53; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-055",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index54; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-056",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index55; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-057",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index56; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-058",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index57; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-059",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index58; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-060",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index59; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-061",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index60; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-062",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index61; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-063",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index62; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-064",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index63; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-065",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index64; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-066",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index65; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-067",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index66; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-068",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index67; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-069",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index68; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-070",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index69; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-071",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index70; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-072",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index71; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-073",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index72; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-074",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index73; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-075",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index74; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-076",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index75; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-077",
+      "severity": "MEDIUM",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index76; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-078",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index77; separate governance remediation, no ceiling change"
+    },
+    {
+      "finding_id": "DRIFT-079",
+      "severity": "LOW",
+      "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index78; separate governance remediation, no ceiling change"
+    }
+  ],
+  "final_comparison": {
+    "schema": {
+      "baseline_count": 42,
+      "final_count": 42,
+      "baseline_exit_code": 3,
+      "final_exit_code": 3,
+      "added": [],
+      "removed": [],
+      "exact_findings_unchanged": true
+    },
+    "drift": {
+      "baseline_count": 79,
+      "final_count": 79,
+      "baseline_exit_code": 3,
+      "final_exit_code": 3,
+      "added": [],
+      "removed": [],
+      "exact_findings_unchanged": true
+    },
+    "session_log_preserves_original_prefix": true,
+    "changed_paths": [
+      "M 00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+      " M 00_ARCHITECTURE/SESSION_LOG.md",
+      "?? 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md",
+      "?? 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "?? 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json",
+      "?? 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md"
+    ],
+    "close_checklist": {
+      "schema_validation_report": {
+        "session_id": "adhoc",
+        "run_at": "2026-09-12T20:12:55.023675+00:00",
+        "violations": [],
+        "summary": {
+          "total": 0,
+          "by_severity": {}
+        },
+        "exit_code": 0
+      }
+    },
+    "diff_check": {
+      "exit_code": 0
+    },
+    "document_checks": {
+      "passed": 21,
+      "total": 21
+    }
+  },
+  "coordination": {
+    "claim": "6f6049526afc168746612b4c5e561c4644eb6743",
+    "release": "d85a117b560bc6b5edbe00b8ee3cbe97a0e1c41a",
+    "remote_verified": true
+  },
+  "delivery": {
+    "status": "PROPOSED_LOCAL_COMMITTED",
+    "branch": "codex/madhav-data-plane-value-v2",
+    "application_changes": false,
+    "data_changes": false,
+    "implementation_dispatched": false,
+    "product_branch_pushed": false,
+    "canonical_adoption": false
+  }
+}

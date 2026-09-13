@@ -38724,3 +38724,957 @@ The unchanged close validator was rerun on the final file-hash and 121-residual 
 ### Next session objective
 
 Reconcile and save the cohesive data-plane plan against the adopted v3.0 target, then derive explicit L0–L5/asset deltas while preserving useful capital. This is planning only; implementations require separately authorized tasks. Active Nirmana campaign objectives are not replaced by this governance aside.
+
+
+---
+
+## MADHAV-DATA-PLANE-V2-20260913 — Data Plane Value Architecture
+
+### Session-open handshake
+
+```yaml
+session_open:
+  {
+    "session_id": "MADHAV-DATA-PLANE-V2-20260913",
+    "cowork_thread_name": "Madhav — Data Plane Value Architecture",
+    "agent_name": "Codex",
+    "agent_version": "runtime model identifier not independently exposed",
+    "tool": "Codex",
+    "tool_profile": "managed",
+    "worktree_path": "/private/tmp/madhav-data-plane.pUPGlk/plan",
+    "step_number_or_macro_phase": "PRODUCT-STRATEGY-GOVERNANCE-ASIDE",
+    "expected_session_class": "governance_aside",
+    "predecessor_session": "MADHAV-PRODUCT-V3-20260912",
+    "coordination": {
+      "coordination_ref": "origin/campaign-coordination",
+      "lease_id": "MADHAV-DATA-PLANE-V2-20260913",
+      "lease_status_verified": true,
+      "lease_verified_at": "2026-09-12T19:25:00Z",
+      "claim_commit": "6f6049526afc168746612b4c5e561c4644eb6743",
+      "work_order_surface": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md"
+    },
+    "cross_tool_state_read": {
+      "cross_cutting_decision_register": true,
+      "stale_surfaces_disregarded": [
+        ".conductor-state.json",
+        ".gemini/project_state.md",
+        "CLAUDECODE_BRIEF.md (COMPLETE)",
+        "CLAUDE.md cached campaign status"
+      ]
+    },
+    "mandatory_reading_confirmation": [
+      {
+        "file": "CLAUDE.md",
+        "fingerprint_sha256": "4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f",
+        "read_at": "2026-09-12T18:03:02.096Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.393Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "fingerprint_sha256": "d6abc03a241496b32d881e8baf1ffa2caad67df644d5a1f3e527ed4d6eb3d272",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.396Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "fingerprint_sha256": "61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.396Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "fingerprint_sha256": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.396Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md",
+        "fingerprint_sha256": "a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.397Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "414807baef6ee57efc4db2f14e0d399c9afa5735c6240f40c5d87a1f81b51db6",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.397Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md",
+        "fingerprint_sha256": "45e9a8f549ee1a1bf7586875b12f906f288d547ea58498bac193e1af9a3e55d0",
+        "read_at": "2026-09-12T18:03:02.099Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.397Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "fingerprint_sha256": "67d9c29191af129e7a5a43806ba747a0997dac1f983e97eddee69ef1018a6671",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.397Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md",
+        "fingerprint_sha256": "60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md",
+        "fingerprint_sha256": "8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md",
+        "fingerprint_sha256": "8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md",
+        "fingerprint_sha256": "ca9b37a754ac61896215e22bd2d2199916d9783c74238ecf4dce3049b67674b3",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/ROOT_FILE_POLICY.md",
+        "fingerprint_sha256": "6da89a754f20669fa70d37e3c233c638f72acd92139ae1866524a17ef2df41fd",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      },
+      {
+        "file": "00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md",
+        "fingerprint_sha256": "45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3",
+        "read_at": "2026-09-12T18:03:02.100Z",
+        "hash_reconfirmed_at": "2026-09-12T19:24:41.398Z"
+      }
+    ],
+    "canonical_artifact_fingerprint_check": [
+      {
+        "canonical_id": "MACRO_PLAN",
+        "declared_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "observed_fingerprint": "8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e",
+        "match": true
+      },
+      {
+        "canonical_id": "CANONICAL_ARTIFACTS",
+        "declared_fingerprint": "<populated-at-step-15-close>",
+        "observed_fingerprint": "398484a50dc17fd2c711638f9041b7524c52dbca742145465d716985a33af3c0",
+        "match": null,
+        "reason": "Existing historical self-reference placeholder; verified unchanged against publication base. No fabricated self-hash match."
+      },
+      {
+        "canonical_id": "CROSS_CUTTING_DECISION_REGISTER_v1_0",
+        "declared_fingerprint": "60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a",
+        "observed_fingerprint": "60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a",
+        "match": true
+      }
+    ],
+    "declared_scope": {
+      "may_touch": [
+        "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE*.md",
+        "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE*.json",
+        "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "00_ARCHITECTURE/SESSION_LOG.md",
+        "00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (coordination worktree only)",
+        "/private/tmp/madhav-data-plane.pUPGlk/* (validation evidence only)"
+      ],
+      "must_not_touch": [
+        "platform/**",
+        "platform-mcp/**",
+        ".github/**",
+        "01_FACTS_LAYER/**",
+        "025_HOLISTIC_SYNTHESIS/**",
+        "06_LEARNING_LAYER/**",
+        "CLAUDE.md",
+        "CLAUDECODE_BRIEF.md",
+        "00_ARCHITECTURE/MACRO_PLAN_v2_0.md",
+        "00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md",
+        "00_ARCHITECTURE/briefs/nirmana/KA_*.md",
+        "00_ARCHITECTURE/briefs/nirmana/L3_*.md",
+        "all unrelated and original-worktree edits",
+        "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+        "00_ARCHITECTURE/CAPABILITY_MANIFEST.json",
+        "00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md"
+      ]
+    },
+    "mirror_pair_freshness_check": [],
+    "native_directive_obligations": [],
+    "red_team_due": true,
+    "native_overrides": [
+      {
+        "authority": "Native user: You have full authorization.",
+        "scope": "Explicit extension of actual managed-profile exception for this documentation-only data-plane planning session. No application, data, campaign execution, deployment, product push or merge. Plan remains proposed and uncommitted for review.",
+        "record": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md"
+      }
+    ],
+    "notes": "Strategic continuation. Prior mandatory reading retained from the product-definition session, hashes freshly reconfirmed; changed current state/CCD and relevant governance sections reviewed in this continuation. No claim to reread all historical session narrative. Actual managed-profile failure is retained under native override, not relabeled PASS. No new layer build, research activation or canonical plan adoption. Mirror retired. Independent read-only source review and plan challenge required. Non-build state serialization N/A."
+  }
+```
+
+### Outcome and native authority
+
+Native explicitly extended the actual managed-profile exception: “You have full authorization.” The raw handshake failure remains one CRITICAL `handshake_codex_profile_invalid`; no validator, profile or policy was edited. This session produces a reviewable documentation proposal, not canonical adoption or implementation.
+
+Created `MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md`, its complete 129-identity contribution register, source/review record and validation evidence under `00_ARCHITECTURE/briefs/nirmana/`. Three independent read-only source reviews and whole-master challenges informed the final text. L0 semantic authority, rich structural/temporal contracts, manifestation, purpose-qualified observations and complete managed delivery are connected; historical source limitations and existing improvements are preserved. No application/data/build/deploy/model/campaign action occurred.
+
+The 21 scoped documentation checks pass; all three Markdown frontmatters parse. All 129 known identities occur once, 152 explicit source anchors and local links resolve. These checks establish document integrity, not domain/runtime/empirical validity. Broad baseline findings are schema42 and drift79, individually retained as MEDIUM/LOW debt with no ceiling change; exact final comparison belongs to the evidence record. The close checklist below validated with zero violations before this atomic append.
+
+Plan branch `codex/madhav-data-plane-value-v2` is local; all six planning/provenance files remain uncommitted for owner review. Only own coordination rows were pushed: claim `6f6049526afc168746612b4c5e561c4644eb6743`, release `d85a117b560bc6b5edbe00b8ee3cbe97a0e1c41a`, remotely verified. CURRENT_STATE6.68 updates only the planning aside and current session provenance. Product v3.0, manifest, CCD, active campaign and original dirty strategic checkout are unchanged.
+
+### Validated close checklist
+
+```yaml
+session_close:
+  {
+    "session_id": "MADHAV-DATA-PLANE-V2-20260913",
+    "closed_at": "2026-09-12T20:03:33Z",
+    "tool": "Codex",
+    "tool_profile": "managed",
+    "step_completed": "Data-plane value architecture proposal and complete identity-level asset contribution register",
+    "expected_session_class": "governance_aside",
+    "files_touched": [
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+        "mutation_type": "created",
+        "sha256_before": null,
+        "sha256_after": "7af15df2e37734207109f92ac172791f43e4588eb9fb0b9f83779d8ad95ec885",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md",
+        "mutation_type": "created",
+        "sha256_before": null,
+        "sha256_after": "b234083902997321077bee78fdfae50c7cd06c68a514a70ba34c532758ed2b0a",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+        "mutation_type": "created",
+        "sha256_before": null,
+      "sha256_after": "42f93626598414d6b67f1c754fe1d46fe4ed0b7abab4a84fe461d04369f4aa6e",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json",
+        "mutation_type": "created",
+        "sha256_before": null,
+        "sha256_after": null,
+        "hash_note": "Self-containing validation lifecycle; final file hash recorded externally at handoff.",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+        "mutation_type": "modified",
+        "sha256_before": "67d9c29191af129e7a5a43806ba747a0997dac1f983e97eddee69ef1018a6671",
+      "sha256_after": "8d5ab913a1d508becb38cfffec822d0aa5cd7dfcfe39d26353c20a40bbab92d7",
+        "within_declared_scope": true
+      },
+      {
+        "path": "00_ARCHITECTURE/SESSION_LOG.md",
+        "mutation_type": "modified",
+        "sha256_before": "ac2e186b7ff9098e90664f6c4f50bd2b4789f9e4f24970770b59ae37366749a2",
+        "sha256_after": null,
+        "hash_note": "Append-only own paired record; original bytes preserved as prefix, checked at handoff.",
+        "within_declared_scope": true
+      }
+    ],
+    "artifacts_produced": [
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json"
+    ],
+    "may_touch_actual": [
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json",
+      "00_ARCHITECTURE/CURRENT_STATE_v1_0.md",
+      "00_ARCHITECTURE/SESSION_LOG.md"
+    ],
+    "must_not_touch_respected": true,
+    "registry_updates_made": {
+      "capability_manifest": "No registry update required: reviewable planning briefs, not canonical adopted authority; manifest/product/CCD unchanged.",
+      "current_state": "6.68 planning aside only; active campaign state unchanged",
+      "file_registry": "N/A retired"
+    },
+    "red_team_pass": {
+      "due": true,
+      "performed": true,
+      "verdict": "PASS_WITH_FIXES",
+      "artifact_path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "reviewers": [
+        "portal_coverage_final",
+        "frontier_value_final",
+        "governance_package_review"
+      ]
+    },
+    "red_team_due": true,
+    "red_team_discharged": true,
+    "drift_detector_run": {
+      "script": "platform/scripts/governance/drift_detector.py",
+      "exit_code": 3,
+      "total_findings": 79,
+      "report": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json",
+      "phase": "Baseline run; exact final paired comparison required and recorded in evidence."
+    },
+    "schema_validator_run": {
+      "script": "platform/scripts/governance/schema_validator.py",
+      "exit_code": 3,
+      "total_violations": 42,
+      "report": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_VALIDATION_EVIDENCE_v1_0.json",
+      "phase": "Baseline run; exact final paired comparison required and recorded in evidence."
+    },
+    "known_residuals": [
+      {
+        "finding_id": "SCHEMA-001",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index0; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-002",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index1; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-003",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index2; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-004",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index3; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-005",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index4; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-006",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index5; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-007",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index6; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-008",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index7; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-009",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index8; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-010",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index9; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-011",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index10; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-012",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index11; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-013",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index12; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-014",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index13; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-015",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index14; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-016",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index15; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-017",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index16; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-018",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index17; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-019",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index18; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-020",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index19; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-021",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index20; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-022",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index21; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-023",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index22; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-024",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index23; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-025",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index24; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-026",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index25; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-027",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index26; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-028",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index27; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-029",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index28; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-030",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index29; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-031",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index30; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-032",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index31; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-033",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index32; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-034",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index33; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-035",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index34; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-036",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index35; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-037",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index36; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-038",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index37; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-039",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index38; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-040",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index39; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-041",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index40; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "SCHEMA-042",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline schema index41; separate governance remediation, no new repair scope"
+      },
+      {
+        "finding_id": "DRIFT-001",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index0; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-002",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index1; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-003",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index2; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-004",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index3; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-005",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index4; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-006",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index5; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-007",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index6; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-008",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index7; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-009",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index8; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-010",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index9; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-011",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index10; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-012",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index11; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-013",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index12; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-014",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index13; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-015",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index14; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-016",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index15; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-017",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index16; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-018",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index17; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-019",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index18; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-020",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index19; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-021",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index20; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-022",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index21; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-023",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index22; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-024",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index23; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-025",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index24; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-026",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index25; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-027",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index26; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-028",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index27; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-029",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index28; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-030",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index29; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-031",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index30; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-032",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index31; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-033",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index32; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-034",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index33; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-035",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index34; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-036",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index35; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-037",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index36; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-038",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index37; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-039",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index38; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-040",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index39; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-041",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index40; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-042",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index41; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-043",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index42; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-044",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index43; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-045",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index44; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-046",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index45; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-047",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index46; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-048",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index47; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-049",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index48; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-050",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index49; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-051",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index50; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-052",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index51; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-053",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index52; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-054",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index53; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-055",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index54; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-056",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index55; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-057",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index56; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-058",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index57; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-059",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index58; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-060",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index59; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-061",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index60; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-062",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index61; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-063",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index62; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-064",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index63; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-065",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index64; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-066",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index65; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-067",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index66; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-068",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index67; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-069",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index68; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-070",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index69; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-071",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index70; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-072",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index71; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-073",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index72; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-074",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index73; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-075",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index74; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-076",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index75; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-077",
+        "severity": "MEDIUM",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index76; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-078",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index77; separate governance remediation, no ceiling change"
+      },
+      {
+        "finding_id": "DRIFT-079",
+        "severity": "LOW",
+        "booking_reference": "MADHAV-DATA-PLANE-V2-20260913 review section6: inherited baseline drift index78; separate governance remediation, no ceiling change"
+      }
+    ],
+    "session_log_appended": true,
+    "session_log_append_mode": "Atomic paired record after this checklist validates; final full detectors and append-only check follow.",
+    "current_state_updated": true,
+    "cross_tool_sync": {
+      "ccd_entries_appended": [],
+      "work_order_outcome_recorded": true,
+      "work_order_surface": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md",
+      "lease_id": "MADHAV-DATA-PLANE-V2-20260913",
+      "lease_release_recorded": true,
+      "lease_release_verified_on_remote": true,
+      "lease_release_commit": "d85a117b560bc6b5edbe00b8ee3cbe97a0e1c41a",
+      "coordination_ref": "origin/campaign-coordination"
+    },
+    "native_overrides": [
+      {
+        "authority": "Native user: You have full authorization.",
+        "scope": "Explicit extension of actual managed-profile exception for this documentation-only data-plane planning session. No application, data, campaign execution, deployment, product push or merge. Plan remains proposed and uncommitted for review.",
+        "record": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_V2_REVIEW_RECORD_v1_0.md"
+      }
+    ],
+    "halts_encountered": [
+      {
+        "rule": "handshake_codex_profile_invalid",
+        "raw_exit_code": 1,
+        "raw_severity": "CRITICAL",
+        "disposition": "Native expressly extended actual managed-profile exception for this documentation-only session. Raw failure retained, not PASS or residual whitelist."
+      }
+    ],
+    "build_state_serialized": {
+      "serialized": false,
+      "uploaded": false,
+      "applicability": "N/A non-build documentation; no production state action performed."
+    },
+    "mirror_updates_propagated": [],
+    "native_directive_per_step_verification": [],
+    "close_criteria_met": true,
+    "unblocks": [
+      "Native review/adoption of proposed architecture, then L0 layer definition; no implementation."
+    ],
+    "handoff_notes": "Native subsequently authorized one local documentation commit on codex/madhav-data-plane-value-v2. The reviewed proposal corpus is committed for durable strategic use; the product branch is not pushed or merged. 129 identities are included once and exact sourced limitations are retained. Original strategic and prior product worktrees are untouched. No application/data/campaign/deploy/model activation or canonical adoption."
+  }
+```
+
+### Next session objective
+
+Review/adopt or amend the data-plane proposal; then author the L0 layer definition and exact asset/consumer contracts. Subsequent L1–L5 plans preserve the integrated requirements. Execution remains in separately authorized sessions; no active campaign authority is replaced.

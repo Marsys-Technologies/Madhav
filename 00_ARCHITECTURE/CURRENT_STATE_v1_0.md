@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.67
+version: 6.68
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.68 (2026-09-13, MADHAV-DATA-PLANE-V2-20260913): documentation-only planning aside.
+    Data-plane value architecture v2.0, 129-identity provisional asset register and source/review
+    record prepared against Product Definition v3.0; proposed and committed locally on dedicated
+    branch `codex/madhav-data-plane-value-v2` for durable strategic review.
+    Actual managed-profile exception explicitly extended by native. No application/data/campaign
+    changes, canonical adoption, implementation, model activation, product push, merge or deployment.
+    Next product task is review/adoption and then the L0 definition with precise asset contracts.
   - v6.67 (2026-09-12, MADHAV-PRODUCT-V3-20260912): governance aside only. Native adopted
     MADHAV_PRODUCT_DEFINITION_v3_0.md as the final target for subsequent product planning;
     CCD-010 records bounded documentation registration/local-commit authority and the actual
@@ -5881,8 +5888,11 @@ block (post-rebuild era), and proceeds.
 > The [review/adoption record](briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md)
 > contains source coverage, preserved lineage and delivery/validation evidence. This package
 > records local-branch adoption/registration; protected integration must be verified separately.
-> Next **product-planning** objective: align the cohesive data-plane plan to this master,
-> then derive L0–L5/asset deltas preserving useful capital. This aside does not advance,
+> The [Data Plane Value Architecture v2.0 proposal](briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md)
+> and its [asset contribution register](briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md)
+> are now prepared locally for native review (2026-09-13); they are not adopted or implemented.
+> Next **product-planning** objective: review this proposal, then derive the L0 definition and
+> remaining L1–L5/asset contracts preserving useful capital. This aside does not advance,
 > stop or recertify the active Nirmana campaign, and grants no execution or deployment authority.
 
 > 🔵 **ACTIVE CAMPAIGN (2026-09-01): Nirmāṇa L0→L5 velocity-reset.** Native-authorized, full
@@ -7877,10 +7887,10 @@ current_state:
     # platform/scripts/temporal/compute_narayana.py, 025_HOLISTIC_SYNTHESIS/**,
     # 035_DISCOVERY_LAYER/**, 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
     # (read-only for cross-check anchor only), 01_FACTS_LAYER/**. L1 frozen.
-  last_session_closed_at: 2026-09-12T18:34:34Z
-  last_session_attempted_close_at: 2026-09-12T18:34:34Z
+  last_session_closed_at: 2026-09-12T20:03:33Z
+  last_session_attempted_close_at: 2026-09-12T20:03:33Z
   last_session_agent: Codex
-  last_session_cowork_thread_name: "Madhav — Product Definition v3.0 Finalization"
+  last_session_cowork_thread_name: "Madhav — Data Plane Value Architecture"
   last_session_close_state: atomically_closed
   historical_m3_close_drift_verdict: >
     M3-D Wave 4 D2 — M3 MACRO-PHASE CLOSE. Substantive governance-layer
@@ -9151,8 +9161,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-09-12T18:34:34Z
-  file_updated_by_session: MADHAV-PRODUCT-V3-20260912
+  file_updated_at: 2026-09-12T20:03:33Z
+  file_updated_by_session: MADHAV-DATA-PLANE-V2-20260913
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
@@ -9293,11 +9303,12 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PRODUCT-V3-20260912
-  last_product_strategy_session: MADHAV-PRODUCT-V3-20260912
-  last_session_drift_verdict: "Documentation-only adoption under CCD-010; exact baseline/final findings and profile exception in the product review/evidence and paired session close. No campaign acceptance or deployment claim."
+  last_session_id: MADHAV-DATA-PLANE-V2-20260913
+  last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
+  last_session_drift_verdict: "Documentation-only data-plane proposal under explicit native managed-profile extension; baseline schema42/drift79 and scoped validation in data-plane review/evidence and paired close. No canonical adoption, campaign acceptance or deployment claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
-  next_product_strategy_objective: "Reconcile the cohesive data-plane plan with the adopted product master, preserving useful capital; derive no implementation authority from this aside."
+  data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
+  next_product_strategy_objective: "Review/adopt or amend the proposed data-plane value architecture, then derive the L0 definition and remaining layer/asset contracts. No implementation authority follows from this aside."
 ```
 
 ---
