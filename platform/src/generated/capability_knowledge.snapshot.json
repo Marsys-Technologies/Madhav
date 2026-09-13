@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "compatibility_version": "planner-scu-v1",
-  "generated_at": "2026-09-13T17:48:44.000Z",
-  "content_hash": "sha256:3b26675f97586f72c0cd186815e15a3704b6141f2bb6ac002527f521e425e150",
+  "generated_at": "2026-09-13T18:41:39.000Z",
+  "content_hash": "sha256:396e49d92c113f28d6747230c6297846deeffc6e709eb277dfca3f0ef8d465db",
   "source_catalog_fingerprint": "sha256:82d70ce366f65577513e5f6ba0bcbdff764e518efd20b26dea689d534136ad75",
   "scus": [
     {
@@ -103,10 +103,9 @@
         {
           "asset_id": "bo_yantra_mechanism",
           "component": "bodha_mechanisms rows",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "query_mechanisms handler reads bodha_mechanisms",
-          "gap_reason": "No reviewed output-digest component hash is joined to this SCU yet."
+          "output_digest_spec_sha256": "b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114"
         }
       ],
       "editorial": true,
@@ -537,11 +536,12 @@
           },
           "pagination": "offset",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all"
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -619,11 +619,12 @@
           },
           "pagination": "offset",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0"
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -762,7 +763,7 @@
           "capability_uri": "marsys://tool/L3/call_ephemeris_at_t",
           "input_contract": {
             "ayanamsha_id": "string:optional",
-            "datetime_utc": "string:optional"
+            "datetime_utc": "string:required"
           },
           "output_contract": {
             "content": "ToolResult.content"
@@ -835,8 +836,8 @@
           "capability_uri": "marsys://tool/L3/call_muhurta_score",
           "input_contract": {
             "ayanamsha_id": "string:optional",
-            "datetime_utc": "string:optional",
-            "event_class": "string:optional"
+            "datetime_utc": "string:required",
+            "event_class": "string:required"
           },
           "output_contract": {
             "content": "ToolResult.content"
@@ -1081,9 +1082,9 @@
           "capability_uri": "marsys://tool/L3/call_transit_search",
           "input_contract": {
             "aspect_degrees": "array:optional",
-            "date_from": "string:optional",
-            "date_to": "string:optional",
-            "event_type": "string:optional",
+            "date_from": "string:required",
+            "date_to": "string:required",
+            "event_type": "string:required",
             "orb_deg": "number:optional",
             "planet_a": "string:optional",
             "planet_b": "string:optional",
@@ -1542,7 +1543,7 @@
             "ayanamsha_id": "string:optional",
             "chart_id": "string:required",
             "per_family_cap": "number:optional",
-            "question": "string:optional",
+            "question": "string:required",
             "total_signal_rows": "number:optional"
           },
           "output_contract": {
@@ -1689,11 +1690,12 @@
           },
           "pagination": "none",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime"
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -1753,11 +1755,12 @@
           },
           "pagination": "none",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}"
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -3043,10 +3046,9 @@
         {
           "asset_id": "ga_vargas",
           "component": "chart_divisionals placements",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "get_divisionals handler reads chart_divisionals",
-          "gap_reason": "No reviewed output-digest component hash is joined to this SCU yet."
+          "output_digest_spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28"
         }
       ],
       "editorial": true,
@@ -4802,11 +4804,12 @@
           },
           "pagination": "none",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify"
+          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -5499,11 +5502,12 @@
           },
           "pagination": "none",
           "pagination_verified": false,
-          "executable": true,
+          "executable": false,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles"
+          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles",
+          "unavailable_reason": "CapabilityDescriptor has no executable handler."
         }
       ],
       "source_descriptor_uris": [
@@ -5945,10 +5949,8 @@
       ],
       "scope": "global",
       "inputs": [
-        "additionalProperties",
-        "properties",
-        "required",
-        "type"
+        "date",
+        "orb_degrees"
       ],
       "outputs": [
         "structured_content"
@@ -5974,10 +5976,8 @@
           "relation": "primary",
           "capability_uri": "marsys://tool/L0/query_aspects_at_time",
           "input_contract": {
-            "additionalProperties": "undefined:optional",
-            "properties": "undefined:optional",
-            "required": "undefined:optional",
-            "type": "undefined:optional"
+            "date": "string:required",
+            "orb_degrees": "number:optional"
           },
           "output_contract": {
             "structured_content": "declared"
@@ -9421,10 +9421,8 @@
       ],
       "scope": "global",
       "inputs": [
-        "additionalProperties",
-        "properties",
-        "required",
-        "type"
+        "date",
+        "planet"
       ],
       "outputs": [
         "structured_content"
@@ -9450,10 +9448,8 @@
           "relation": "primary",
           "capability_uri": "marsys://tool/L0/query_planet_position",
           "input_contract": {
-            "additionalProperties": "undefined:optional",
-            "properties": "undefined:optional",
-            "required": "undefined:optional",
-            "type": "undefined:optional"
+            "date": "string:required",
+            "planet": "string:optional"
           },
           "output_contract": {
             "structured_content": "declared"
@@ -9497,10 +9493,10 @@
       ],
       "scope": "global",
       "inputs": [
-        "additionalProperties",
-        "properties",
-        "required",
-        "type"
+        "end_date",
+        "planet",
+        "sign_number",
+        "start_date"
       ],
       "outputs": [
         "structured_content"
@@ -9526,10 +9522,10 @@
           "relation": "primary",
           "capability_uri": "marsys://tool/L0/query_planet_transit",
           "input_contract": {
-            "additionalProperties": "undefined:optional",
-            "properties": "undefined:optional",
-            "required": "undefined:optional",
-            "type": "undefined:optional"
+            "end_date": "string:required",
+            "planet": "string:required",
+            "sign_number": "number:optional",
+            "start_date": "string:required"
           },
           "output_contract": {
             "structured_content": "declared"
@@ -10856,10 +10852,9 @@
       ],
       "scope": "global",
       "inputs": [
-        "additionalProperties",
-        "properties",
-        "required",
-        "type"
+        "end_date",
+        "planet",
+        "start_date"
       ],
       "outputs": [
         "structured_content"
@@ -10885,10 +10880,9 @@
           "relation": "primary",
           "capability_uri": "marsys://tool/L0/query_retrograde_periods",
           "input_contract": {
-            "additionalProperties": "undefined:optional",
-            "properties": "undefined:optional",
-            "required": "undefined:optional",
-            "type": "undefined:optional"
+            "end_date": "string:required",
+            "planet": "string:required",
+            "start_date": "string:required"
           },
           "output_contract": {
             "structured_content": "declared"
@@ -14111,18 +14105,16 @@
         {
           "asset_id": "bo_cdlm_summary",
           "component": "wealth domain reconciled summary",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "assess_wealth orchestrates query_domain_reading",
-          "gap_reason": "A reviewed output component hash is not joined."
+          "output_digest_spec_sha256": "f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:137"
         },
         {
           "asset_id": "bo_vargottama_dhana",
           "component": "vargottama and dhana-axis signals",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "wealth assessment consumes operative-varga evidence",
-          "gap_reason": "A reviewed output component hash is not joined."
+          "output_digest_spec_sha256": "8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44"
         }
       ],
       "editorial": true,
@@ -14296,18 +14288,16 @@
         {
           "asset_id": "ka_yojaka",
           "component": "kala_activation_predicates rows",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "query_temporal_activation handler reads kala_activation_predicates",
-          "gap_reason": "No reviewed output-digest component hash is joined to this SCU yet."
+          "output_digest_spec_sha256": "9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80"
         },
         {
           "asset_id": "ka_bhavishya_lekha",
           "component": "kala_bhavishya forward windows",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "query_temporal_activation optional forward-window query",
-          "gap_reason": "Optional fallback output and no reviewed output-digest component hash is joined."
+          "output_digest_spec_sha256": "a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
         }
       ],
       "editorial": true,
@@ -14412,6 +14402,7 @@
       "primary_binding_details": {
         "pagination": "offset",
         "pagination_verified": true,
+        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -14475,10 +14466,9 @@
         {
           "asset_id": "ga_yoga",
           "component": "ga_yoga_firings rows",
-          "output_digest_spec_sha256": null,
-          "disposition": "route_evidence_only",
-          "evidence": "get_yoga_firings handler reads ga_yoga_firings",
-          "gap_reason": "No reviewed output-digest component hash is joined to this SCU yet."
+          "output_digest_spec_sha256": "fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128"
         }
       ],
       "editorial": true,
@@ -14533,6 +14523,7 @@
             "mcp_full"
           ],
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:970",
+          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -14882,12 +14873,12 @@
     "semantic_capabilities": 182,
     "editorial_scus": 5,
     "derived_scus": 177,
-    "executable_bindings": 185,
-    "unavailable_bindings": 0,
+    "executable_bindings": 179,
+    "unavailable_bindings": 6,
     "publicly_named_bindings": 7,
     "reviewed_pagination_bindings": 1,
     "producer_output_claims": 8,
-    "reviewed_output_claims": 0,
+    "reviewed_output_claims": 7,
     "exclusions": [
       {
         "capability_uri": "marsys://tool/L5/lel_query",

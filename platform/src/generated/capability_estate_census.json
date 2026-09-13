@@ -5,7 +5,7 @@
     "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
   ],
-  "content_sha256": "a06fc7445c597fb178efe3bed876f9bf383818ff4296d656ff1fd231594a39d9",
+  "content_sha256": "16db84648eb88c1d57769ea3d65e461cde202d9eeaa018b7db4851f84297426c",
   "denominators": {
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -1085,7 +1085,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-13T17:49:08.000Z",
+  "generated_at": "2026-09-13T18:41:39.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -1276,7 +1276,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_inquiry_lifecycle.ts",
-            "sha256": "4a2ca51537f5c9f07d49a3515c7336961654f1621ad081fe8e11e743c06a038c"
+            "sha256": "eacb620e098e5cfb5e1ca4dfe0e093a865ae4c04b0d7a5b22c84ddbc6da739e0"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
@@ -1348,7 +1348,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "b703c7cada62a1e41da8cdb54567d5aef75e371d9ce10e95d5fde12439bc2b93"
+        "sha256": "9d3e58893e0996f453b0575239d128d611a0a6fbbe7674b7552b8cf7393f8d15"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -1357,7 +1357,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 187,
+        "member_count": 189,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -1389,19 +1389,23 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "c54b63f2a64c0c855e8f4bf0ce0ca9149bf4c0fb032aec1cdf7a553f4b16ca6e"
+            "sha256": "ea44b25b0a12294cd663c3d1caee6792bb00876757681c81b326428d4cc8e5a4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "09e9129f51a114548e228f361534fac48ae02134e4741229b7fa4f68e45b197c"
+            "sha256": "20a7ce62f3fb3cdb1e44ea8721ab018aa376caa98bdec0338c951ddcf5f8fc66"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
-            "sha256": "b4fd806a3a47c2e46a1249f1748e72c927610b791f1394297698054c38bcbfd3"
+            "sha256": "f81518a720f53172dd4ee32f5c88ff30b1cff37e7a7466881f361cc968ab0034"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
+            "sha256": "0e5bcb7e3372e7d6f74dea5b6fa4cc75761776255cdd8a74f9c402f158d43321"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
-            "sha256": "3a5567609037666b717a5754d032b68915ca288b816f69f005c7312f3a12b013"
+            "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/planner_projection.ts",
@@ -1412,12 +1416,16 @@
             "sha256": "cc717510a979bbfe7947d0aa3cd3ed104180d42d53dfa0ac3eef0f4812e6725b"
           },
           {
+            "path": "platform/src/lib/retrieval/registry/knowledge/snapshot.ts",
+            "sha256": "019d6f42563b9383a9bb653e854e2a6ae17b31e1d924916fed6318aca15dbfd3"
+          },
+          {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
             "sha256": "b264637520628c9a8f9a0678ed0fc357cc9b3278f4792c6b1684c04ad6a2fcd6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "3e00e8439c4ba0492732352904d56c1e2e4b0cc06171cf1a10a87c0142f11a1c"
+            "sha256": "bbd0964bc4ea56275ef0fadb4802193eb0c32fe62504e65ae94fe820c96e6fb7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -2109,7 +2117,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/registry/**/*.ts (excluding tests)",
-        "sha256": "828170c740dd75ce5478101b61e2c43701c4909fe59af33f73a603930090a79f"
+        "sha256": "136b0e31f6551aef3d101d041125bb617756a4b4dc0c8b2b85fe5d86ad7b3f67"
       },
       {
         "id": "writer_digest_inventory",
@@ -2119,5 +2127,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1",
-  "source_revision": "58f242dacf004cce7afc664cf9ae13663bff8a26"
+  "source_revision": "e83d6b69057aa454fac4f39e06f5afb2c3c2502e"
 }
