@@ -18,6 +18,7 @@ changelog:
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
   - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
   - "1.0 update 2026-09-13: Records DP-SD-011, the exact ga_strength PyJHora transitive-span addendum returned by the deeper DP-SD-010 audit."
+  - "1.0 update 2026-09-13: Accepts the independently challenged L0 PRODUCER_READY packet at execution commit f6fed12c7 and opens L1 for strategy only."
 ---
 
 # Madhav data-plane strategic ledger
@@ -118,6 +119,7 @@ separately admitted next-generation artifact. Product backcasting is not runtime
 | DP-SD-009 | Adopt Data Plane Value Architecture v2.0 with the execution foundation and L0 strategy controls as the governing data-plane planning basis. | ADOPTED AS PLANNING BASIS on 2026-09-13; not canonical product adoption or implementation proof. |
 | DP-SD-010 | Close the L0 Swiss Ephemeris process-global state blocker by extending one shared re-entrant serialization boundary to every live setter and dependent calculation in the approved exact scope; do not adopt process-isolated execution. | ADOPTED BLOCKER RESOLUTION on 2026-09-13; no output-semantic, deployment or L1-L5 authority expansion. |
 | DP-SD-011 | Extend DP-SD-010 only to the two live PyJHora state-selection/dependent-calculation spans in `ga_strength_writer.py` and their exact tests/evidence. | ADOPTED SCOPE ADDENDUM on 2026-09-13; no strength semantics or broader directory authority. |
+| DP-SD-012 | Accept the L0 Brahmagyan terminal packet at `f6fed12c794224329f6b3b436f8b1b814499d06d` as `PRODUCER_READY`, with all later delivery states explicitly unreached. | ACCEPTED on 2026-09-13 after independent challenge; authorizes L1 strategy preparation only, not L1 execution. |
 
 The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
@@ -181,8 +183,8 @@ the repeatedly studied charts.
 |---|---|---|---|
 | DP-P0 | Plane baseline: ratified inheritance, target proposal, inventory, evidence limits and adoption delta | COMPLETE — baseline established and planning basis adopted by DP-SD-009 | This ledger; foundation commit `d838af455` |
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
-| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | DP-SD-010 + DP-SD-011 APPROVED; terminal re-challenge pending | L0 strategy/brief; Swiss-state amendment/addendum; execution evidence through `b8e342049` |
-| DP-P3 | L1 Gaṇita definition: 19 writers, fact/configuration/context/precision packages, honest failure and L0 consumption | PENDING L0 contract | None |
+| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
+| DP-P3 | L1 Gaṇita definition: 19 writers, fact/configuration/context/precision packages, honest failure and L0 consumption | READY FOR STRATEGIC PLANNING; execution remains unauthorized | L0 producer contract `f6fed12c7`; L1 strategy/brief pending |
 | DP-P4 | L2 Bodha definition: 23 writers including support, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | PENDING L1 contract | None |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
