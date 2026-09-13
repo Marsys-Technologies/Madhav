@@ -20,18 +20,14 @@
  *     complete v3-enveloped reading with its completeness receipt, not a summary
  *     or a pointer telling the caller to look elsewhere.
  *
- * SECURITY NOTE (inherited from JobRegistry.get()'s own doc comment): the registry
- * does not itself check chart entitlement on lookup — any caller holding a job_id
- * can read that job's result regardless of which chart it belongs to. This mirrors
- * prashna_ask's own model: the per-chart entitlement check already happened once,
- * server-side, when the engine call that produced this job ran (authorizeChartAccess
- * in platform/.../prashna_ask/route.ts) — job_id is a correlation handle for that
- * already-authorized call's outcome, not a fresh capability grant. A caller who
- * never had chart access could not have produced a job_id for that chart's
- * question in the first place (job_id is not guessable/enumerable — crypto.randomUUID()).
+ * SECURITY: a job id is only a correlation handle, never a bearer grant. Every
+ * poll is bound to the authenticated user+key that created it and re-runs chart
+ * authorization before any progress, result, or error is disclosed.
  */
 import { z } from 'zod'
 import { prashnaAskJobs } from './register_prashna_ask.js'
+import { remoteAuthorize } from '../lib/authz.js'
+import type { Principal } from '../types.js'
 
 export interface PrashnaStatusRegisteringServer {
   tool: (
@@ -65,7 +61,7 @@ function errorOutput(
   return { ...dualOutput({ ok: false, error: message, tool: 'prashna_status', ...extra }), isError: true }
 }
 
-export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer): void {
+export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer, principal: Principal): void {
   server.tool(
     'prashna_status',
     'Poll the status/result of a prashna_ask background job. Call this with the job_id ' +
@@ -95,6 +91,10 @@ export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer
           'different server instance, or has expired. Call prashna_ask again to start a new job.',
           { job_id: parsed.job_id }
         )
+      }
+
+      if (!job.ownerKey || job.ownerKey !== `${principal.user_uid}:${principal.key_id}` || !(await remoteAuthorize(principal, job.chartId))) {
+        return errorOutput('AUTHZ_DENIED: this job does not belong to the authenticated principal or chart entitlement is no longer valid.', { job_id: parsed.job_id })
       }
 
       const elapsedMs = Date.now() - job.createdAt

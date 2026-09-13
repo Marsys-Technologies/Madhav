@@ -29,6 +29,8 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 
 import { resolveActivityLabel } from './stage_context'
 import type { LegacyQueryPlan } from './plan_stage'
+import { applyInquiryObservations, finalizeInquiryContract, type InquiryContract, type InquiryObservation } from '@/lib/vidhi/inquiry'
+import { TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
 
 /** The pass id every first-pass retrieval event carries. */
 export const PASS_ONE = 1
@@ -57,6 +59,7 @@ export interface EvidenceStageOutput {
   toolEventLog: ToolEventLogEntry[]
   completenessReceipt: WebCompletenessReceipt | null
   orientation: ChartOrientation | null
+  inquiryContract: InquiryContract | null
 }
 
 export async function runEvidenceStage(args: {
@@ -69,6 +72,7 @@ export async function runEvidenceStage(args: {
   manifest: Awaited<ReturnType<typeof loadManifest>>
   toolsAuthorized: string[]
   orientationPromise: Promise<ChartOrientation | null>
+  inquiryContract?: InquiryContract | null
 }): Promise<EvidenceStageOutput> {
   const { em, request, chartId, userUid, plan, queryPlan, manifest, toolsAuthorized, orientationPromise } = args
 
@@ -134,5 +138,25 @@ export async function runEvidenceStage(args: {
 
   const orientation = await orientationPromise
 
-  return { bundle, validToolResults, toolEventLog, completenessReceipt, orientation }
+  let inquiryContract = args.inquiryContract ?? null
+  if (inquiryContract) {
+    const eventsByUri = new Map(toolEventLog.flatMap((event) => {
+      const uri = event.name.startsWith('marsys://') ? event.name : TOOL_NAME_TO_URI[event.name]
+      return uri ? [[uri, event] as const] : []
+    }))
+    const observations = inquiryContract.plan_items.flatMap<InquiryObservation>((item) => {
+      const capabilityUri = item.binding_id?.replace(/^registry:/, '')
+      const event = capabilityUri ? eventsByUri.get(capabilityUri) : undefined
+      if (!event) return []
+      if (event.status === 'error') return [{ item_id: item.item_id, disposition: 'failed' as const, evidence_refs: [], gap_reason: event.error_kind ?? 'dispatch_error' }]
+      return [{
+        item_id: item.item_id,
+        disposition: event.ok_count > 0 ? 'served' as const : 'empty' as const,
+        evidence_refs: [`retrieval:${event.name}:pass-${PASS_ONE}`],
+      }]
+    })
+    inquiryContract = finalizeInquiryContract(applyInquiryObservations(inquiryContract, observations))
+  }
+
+  return { bundle, validToolResults, toolEventLog, completenessReceipt, orientation, inquiryContract }
 }

@@ -3,7 +3,8 @@
  *
  * Renamed + rewired from manifest_planner.ts. Consumes:
  *   1. PLANNER_PROMPT_v2_0.md §3 system prompt (verbatim).
- *   2. The compressed CAPABILITY_MANIFEST primary-tool view (≤3K tokens).
+ *   2. A bounded semantic projection of the compiled registry SCU snapshot.
+ *   3. The compressed CAPABILITY_MANIFEST tool-name compatibility view.
  *   3. The PlannerContext window (≤600 tokens) from planner_context_builder.
  *   4. The native's query and chart id (the planner is per-native).
  *
@@ -50,6 +51,8 @@ import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import { getCatalog } from '@/lib/retrieval/registry/catalog'
+import { buildPlannerCapabilityKnowledgeProjection, compileCapabilityKnowledge } from '@/lib/retrieval/registry/knowledge'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Retry helpers — timeout + rate-limit retry gate
@@ -145,7 +148,10 @@ function getSystemPrompt(): string {
   const md = readFileSync(promptPath, 'utf-8')
   const body = extractSystemPromptBody(md)
   const fewShots = extractFewShotSection(md)
-  _systemPromptCache = `${body}\n\n---\n\n${fewShots}\n`
+  _systemPromptCache = `${body}\n\n---\n\n${fewShots}\n\n` +
+    'CAPABILITY AUTHORITY: Use capability_knowledge as the semantic authority for decomposition, prerequisites, contradictions, and known gaps. ' +
+    'The manifest field is a temporary execution-name compatibility projection only. Never infer semantic completeness from its flat tool list. ' +
+    'Select routes only from the supplied capability bindings and leave final interpretation to the downstream synthesis layer.\n'
   return _systemPromptCache
 }
 
@@ -410,11 +416,15 @@ export async function callPipelinePlanner(
   const manifest = loadManifest()
   const compressed = compressManifest(manifest)
   const compressedManifestStr = compressedManifestToString(compressed)
+  const knowledgeSnapshot = compileCapabilityKnowledge(getCatalog())
+  const capabilityKnowledge = buildPlannerCapabilityKnowledgeProjection(knowledgeSnapshot, query, scopeTuple)
 
   const ctx = await buildPlannerContext(query, conversationHistory, plannerModelId, queryId)
 
   const userPayload = {
     native_id: nativeId,
+    capability_knowledge: capabilityKnowledge,
+    capability_content_hash: knowledgeSnapshot.content_hash,
     manifest: JSON.parse(compressedManifestStr) as unknown,
     history: {
       turns: ctx.history_turns,

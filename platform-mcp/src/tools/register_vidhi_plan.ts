@@ -66,17 +66,6 @@ const scopeTupleSchema = z
   })
   .optional();
 
-const observationSchema = z
-  .array(
-    z.object({
-      floor_item_id: z.string(),
-      status: z.enum(['served', 'empty']),
-      source: z.string().optional(),
-      empty_reason: z.string().optional(),
-    }),
-  )
-  .optional();
-
 export function registerVidhiPlanTool(server: McpServer, principal: Principal): void {
   server.tool(
     'plan_retrieval',
@@ -84,7 +73,9 @@ export function registerVidhiPlanTool(server: McpServer, principal: Principal): 
       'scope_tuple (echoed for correction before you execute), the non-skippable acharya floor + ' +
       'machine band (each item names its live tool + args), a completeness receipt (served/empty/' +
       'dark per floor item — every dark item cites the OPEN/LOGGED CR that makes it a known gap), ' +
-      'and the capability_version. Pass a scope_tuple from intent_classify (DR-8) for an ' +
+      'and the capability_version. This scaffold never accepts caller-authored completion ' +
+      'observations; use inquiry_start → inquiry_execute_next → inquiry_finalize for a ' +
+      'server-observed, lifecycle-token-bound completion receipt. Pass a scope_tuple from intent_classify (DR-8) for an ' +
       'authoritative classification; otherwise a coarse keyword fallback resolves one (e.g. a ' +
       'wealth question → wealth_deepdive). This is the fallback path; the `vidhi_plan` prompt is ' +
       'the primary one.',
@@ -97,11 +88,6 @@ export function registerVidhiPlanTool(server: McpServer, principal: Principal): 
       scope_tuple: scopeTupleSchema.describe(
         'Pre-classified DR-8 scope tuple {intent, domains[], width, depth, horizon, intervention, ' +
           'entitlement} from intent_classify. When present it is used + echoed verbatim.',
-      ),
-      observations: observationSchema.describe(
-        'Post-execution per-floor-item results ({floor_item_id, status: served|empty, source?/' +
-          'empty_reason?}) to record a truthful post-synthesis completeness receipt. Omit at plan ' +
-          'issuance.',
       ),
       client_capability_version: z
         .string()
@@ -128,7 +114,6 @@ export function registerVidhiPlanTool(server: McpServer, principal: Principal): 
           chart_id: args.chart_id,
           question: args.question,
           scope_tuple: args.scope_tuple,
-          observations: args.observations,
         });
         const staleness = notifyIfCapabilityStale(args.client_capability_version, server);
         return dualOutput({

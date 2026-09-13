@@ -6,9 +6,14 @@
  * module-scoped singleton register_prashna_ask.ts writes to, so these tests
  * exercise the real cross-module contract, not a stand-in registry.
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { registerPrashnaStatusTool, type PrashnaStatusRegisteringServer } from './register_prashna_status.js'
 import { prashnaAskJobs } from './register_prashna_ask.js'
+
+vi.mock('../lib/authz.js', () => ({ remoteAuthorize: vi.fn(async () => true) }))
+
+const principal = { user_uid: 'user-1', key_id: 'key-1', role: 'guest' as const }
+const ownerKey = `${principal.user_uid}:${principal.key_id}`
 
 function makeMockServer(): { server: PrashnaStatusRegisteringServer; getHandler: () => (args: unknown) => Promise<unknown> } {
   let handler: ((args: unknown) => Promise<unknown>) | null = null
@@ -31,7 +36,7 @@ describe('registerPrashnaStatusTool', () => {
 
   beforeEach(() => {
     const { server, getHandler } = makeMockServer()
-    registerPrashnaStatusTool(server)
+    registerPrashnaStatusTool(server, principal)
     handler = getHandler()
   })
 
@@ -52,7 +57,7 @@ describe('registerPrashnaStatusTool', () => {
   })
 
   it('returns a meaningful progress payload — not a bare "pending" — for a pending/running job', async () => {
-    const job = prashnaAskJobs.create({ chartId: 'chart-1' })
+    const job = prashnaAskJobs.create({ chartId: 'chart-1', ownerKey })
     prashnaAskJobs.updateProgress(job.id, { message: '3/~10 tool calls made, 4.2s elapsed', pct: 42 })
 
     const result = (await handler({ job_id: job.id })) as {
@@ -71,7 +76,7 @@ describe('registerPrashnaStatusTool', () => {
   })
 
   it('returns a meaningful default progress payload for a job that is still literally "pending" (no progress recorded yet)', async () => {
-    const job = prashnaAskJobs.create({ chartId: 'chart-1' })
+    const job = prashnaAskJobs.create({ chartId: 'chart-1', ownerKey })
 
     const result = (await handler({ job_id: job.id })) as {
       structuredContent: { status: string; progress: { message: string; pct: number } }
@@ -85,7 +90,7 @@ describe('registerPrashnaStatusTool', () => {
   })
 
   it('returns the FULL final result (not a summary) once the job is complete', async () => {
-    const job = prashnaAskJobs.create({ chartId: 'chart-1' })
+    const job = prashnaAskJobs.create({ chartId: 'chart-1', ownerKey })
     const finalResult = {
       ok: true,
       trace_id: 't1',
@@ -117,7 +122,7 @@ describe('registerPrashnaStatusTool', () => {
   })
 
   it('returns the error for a failed job', async () => {
-    const job = prashnaAskJobs.create({ chartId: 'chart-1' })
+    const job = prashnaAskJobs.create({ chartId: 'chart-1', ownerKey })
     prashnaAskJobs.fail(job.id, 'planner fault: could not classify scope')
 
     const result = (await handler({ job_id: job.id })) as {

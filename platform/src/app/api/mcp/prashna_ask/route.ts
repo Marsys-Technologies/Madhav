@@ -70,7 +70,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
 // requirement as /api/mcp/primitives/[tool]/route.ts.
-import '@/lib/retrieval/registry/catalog'
+import { getCatalog } from '@/lib/retrieval/registry/catalog'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
@@ -88,7 +88,9 @@ import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
 import { enforceTurnLimits } from '@/lib/limits'
-import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getToolByName, TOOL_NAME_TO_URI } from '@/lib/retrieval/registry/tool_name_bridge'
+import { compileCapabilityKnowledge } from '@/lib/retrieval/registry/knowledge'
+import { applyInquiryObservations, compileInquiryContract, finalizeInquiryContract, type InquiryContract, type InquiryObservation } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -480,9 +482,13 @@ export async function POST(request: Request) {
   // ── toolsAuthorized derivation + B.11/dasha floor adoption (identical sequence
   // to consult/route.ts) ───────────────────────────────────────────────────────
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map((tc) => tc.tool_name)))
+  let compiledFloorFailed = false
+  let unmappedFloorItems = 0
 
   if (plan.scope_tuple) {
     const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
+    compiledFloorFailed = compiledFloor.compileFailed
+    unmappedFloorItems = compiledFloor.unmappedPrimitives.length
     for (const tc of compiledFloor.toolCalls) {
       if (!toolsAuthorized.includes(tc.tool_name)) {
         plan.tool_calls.push(tc)
@@ -510,6 +516,14 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+  const initialInquiryContract = plan.scope_tuple
+    ? compileInquiryContract({
+        snapshot: compileCapabilityKnowledge(getCatalog()),
+        chart_id: chartId,
+        question,
+        scope_tuple: plan.scope_tuple,
+      })
+    : null
 
   // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
   //
@@ -749,6 +763,26 @@ export async function POST(request: Request) {
         judgmentFlags.push('empty_tool_results')
       }
 
+      let inquiryContract: InquiryContract | null = initialInquiryContract
+      if (inquiryContract) {
+        const eventByUri = new Map(toolEventLog.flatMap((event) => {
+          const uri = event.tool_name.startsWith('marsys://') ? event.tool_name : TOOL_NAME_TO_URI[event.tool_name]
+          return uri ? [[uri, event] as const] : []
+        }))
+        const observations = inquiryContract.plan_items.flatMap<InquiryObservation>((item) => {
+          const capabilityUri = item.binding_id?.replace(/^registry:/, '')
+          const event = capabilityUri ? eventByUri.get(capabilityUri) : undefined
+          if (!event) return []
+          if (event.status === 'error') return [{ item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error' }]
+          return [{
+            item_id: item.item_id,
+            disposition: event.result_count > 0 ? 'served' : 'empty',
+            evidence_refs: [`retrieval:${event.tool_name}`],
+          }]
+        })
+        inquiryContract = finalizeInquiryContract(applyInquiryObservations(inquiryContract, observations))
+      }
+
       // W6.3 fix-cycle (native-directed, live trace d08d823a): chart_header must be
       // resolved BEFORE synthesis, not after — synthesis needs current_maha_antar
       // (+ the same as-of date) to anchor the model's notion of "now"; fetching it
@@ -816,7 +850,10 @@ export async function POST(request: Request) {
       }
       judgmentFlags.push(...synthesis.judgment_flags)
 
-      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+      const dispatchErrors = toolEventLog.filter((item) => item.status === 'error')
+      const isPartial = costCapTripped !== null || unresolvedTools.length > 0 ||
+        dispatchErrors.length > 0 ||
+        compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE')
 
       // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
       // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
@@ -840,7 +877,10 @@ export async function POST(request: Request) {
           stripped_leaked_capabilities: leakedTools,
           empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
+          compiled_floor_failed: compiledFloorFailed,
+          unmapped_floor_item_count: unmappedFloorItems,
         },
+        inquiry_contract: inquiryContract,
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
         // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`

@@ -25,7 +25,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
+vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
@@ -61,7 +61,7 @@ vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
   ensureDashaContextFloor: vi.fn(() => false),
 }))
 
-vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({ getToolByName: mockGetToolByName }))
+vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({ getToolByName: mockGetToolByName, TOOL_NAME_TO_URI: {} }))
 
 // Real filter — Part A — exercised for real so the leakage assertion is genuine.
 vi.mock('@/lib/pipeline/no_leakage_filter', () => ({

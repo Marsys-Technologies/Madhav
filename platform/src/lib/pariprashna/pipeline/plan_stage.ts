@@ -37,6 +37,9 @@ import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import { getCatalog } from '@/lib/retrieval/registry/catalog'
+import { compileCapabilityKnowledge } from '@/lib/retrieval/registry/knowledge'
+import { compileInquiryContract, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -111,6 +114,8 @@ export interface PlanStageOutput {
    * synthesis stage cannot reconstruct this set on its own.
    */
   removedCapabilities: string[]
+  /** Same authoritative inquiry contract used by raw MCP lifecycle clients. */
+  inquiryContract: InquiryContract | null
 }
 
 export async function runPlanStage(args: {
@@ -463,6 +468,15 @@ export async function runPlanStage(args: {
     tool_calls: plan.tool_calls,
   }
 
+  const inquiryContract = plan.scope_tuple
+    ? compileInquiryContract({
+        snapshot: compileCapabilityKnowledge(getCatalog()),
+        chart_id: chartId,
+        question: queryText,
+        scope_tuple: plan.scope_tuple,
+      })
+    : null
+
   return proceed({
     plan,
     queryPlan,
@@ -476,5 +490,6 @@ export async function runPlanStage(args: {
     judgmentFlags,
     safetyDecision,
     removedCapabilities,
+    inquiryContract,
   })
 }

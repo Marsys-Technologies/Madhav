@@ -8,6 +8,8 @@ export interface JobProgress {
 export interface Job<TResult = unknown> {
   id: string;
   chartId: string;
+  /** Authenticated owner. Job ids are correlation handles, never bearer grants. */
+  ownerKey?: string;
   status: JobStatus;
   progress?: JobProgress;
   result?: TResult;
@@ -21,9 +23,9 @@ export interface Job<TResult = unknown> {
  * Gives a caller an immediate job handle back for a long-running operation
  * (e.g. prashna_ask's engine loop) instead of blocking on the full run.
  * Jobs are held in memory only — they do not survive a process restart.
- * `sweepExpired()` evicts jobs older than the configured TTL, but this class
- * does not schedule that itself — a caller must invoke it periodically, or
- * the registry grows unbounded.
+ * Expired jobs are swept opportunistically on every create/get, so a quiet
+ * process retains at most its last active set and normal traffic cannot grow
+ * the map without bound.
  */
 export class JobRegistry<TResult = unknown> {
   private jobs = new Map<string, Job<TResult>>();
@@ -33,10 +35,12 @@ export class JobRegistry<TResult = unknown> {
     this.ttlMs = opts.ttlMs ?? 15 * 60 * 1000;
   }
 
-  create(input: { chartId: string }): Job<TResult> {
+  create(input: { chartId: string; ownerKey?: string }): Job<TResult> {
+    this.sweepExpired();
     const job: Job<TResult> = {
       id: crypto.randomUUID(),
       chartId: input.chartId,
+      ownerKey: input.ownerKey,
       status: 'pending',
       createdAt: Date.now(),
     };
@@ -44,12 +48,10 @@ export class JobRegistry<TResult = unknown> {
     return job;
   }
 
-  // SECURITY: does not check chartId — any caller holding a job id can read
-  // that job's result regardless of which chart it belongs to. Callers that
-  // serve results across chart/entitlement boundaries (e.g. an MCP tool
-  // handler) MUST compare `job.chartId` against the requesting caller's
-  // authorized chart themselves before returning this job to them.
+  // Raw lookup is intentionally internal. Externally served callers MUST bind
+  // the result to ownerKey and re-check chart entitlement.
   get(id: string): Job<TResult> | undefined {
+    this.sweepExpired();
     return this.jobs.get(id);
   }
 
