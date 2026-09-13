@@ -1,7 +1,7 @@
 ---
 artifact: MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_INVENTORY
 version: "1.0"
-status: IMPLEMENTED_VALIDATED_PENDING_INDEPENDENT_CHALLENGE
+status: IMPLEMENTED_VALIDATED_INDEPENDENT_CHALLENGE_PASS
 decision: DP-SD-010
 accepted_source_revision: 552fa76d21406fcbb7f534afbd9600330f3a6276
 strategy_content_revision: d61469b6d96b956782548d36fb23f9e813e1ae98
@@ -26,7 +26,9 @@ state-dependent operation found by the source-tree detector is classified;
 All decorators and explicit scopes resolve to
 `panchang_engine.swiss_state.SWISS_STATE_LOCK`. The tree contains one shipped
 `RLock()` construction. `panchang_engine.__init__` is a compatibility re-export,
-not another lock. This inventory does not claim deployment or production use.
+not another lock. Independent challenge at `f648d5add` reviewed 156
+state-sensitive call sites, found zero unsafe owner and returned PASS with no
+HIGH/MED/CRITICAL. This inventory does not claim deployment or production use.
 
 ## Detection contract
 

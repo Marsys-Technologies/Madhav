@@ -1,14 +1,20 @@
 ---
 artifact: MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE
 version: "1.0"
-status: PRODUCER_READY_BLOCKED_NOT_ACCEPTED
+status: PRODUCER_READY_ACCEPTED
 produced_on: 2026-09-13
-strategy_decision: DP-SD-009
+strategy_decisions:
+  - DP-SD-009
+  - DP-SD-010
+  - DP-SD-011
 execution_base: d838af45524369e804ca17ac63331237b6b8e100
 implementation_commits:
   - c047d01a4
   - 30711044b
   - 7c5eb1dce
+  - e0cfad5c1
+  - b8e342049
+  - f648d5add
 next_stage_hold: "L1 remains WAITING_FOR_STRATEGIC_BRIEF."
 ---
 
@@ -16,20 +22,19 @@ next_stage_hold: "L1 remains WAITING_FOR_STRATEGIC_BRIEF."
 
 ## Verdict
 
-`PRODUCER_READY` is **not accepted**. The bounded packet preserved and
+`PRODUCER_READY` is **accepted**. The bounded packet preserved and
 dispositioned all 36 L0 writers plus four non-writers and implemented the
 approved semantic-release, source/rule-qualification, convention/service,
 resource/configuration-slice and correction/rollback contracts. Its changed
 components and permitted service entry points pass their focused proof.
 
-One independent challenge nevertheless found a process-wide numerical
-repeatability gap outside this brief's immutable mutation boundary. Live
-`platform/python-sidecar/pipeline/transit_search.py` and potentially other
-sidecar callers can set the same process-global Swiss Ephemeris state without
-the shared `panchang_engine.swiss_state` boundary. A concurrent non-Lahiri
-request to the permitted ephemeris route can therefore observe an intervening
-state change. F22, the process-wide part of F23, DP03 and the terminal part of
-DP07 remain blocked. No producer-ready label is manufactured.
+DP-SD-010/011 closed the process-wide numerical-repeatability blocker with one
+canonical re-entrant Swiss-state boundary. The exact source-tree inventory now
+has 70 operation owners, 76 decorated entry points, four explicit-scope owners,
+80 owners in their union and `UNRESOLVED = 0`. Forward/reverse contention,
+nested re-entrancy, cache context and GA-strength value-invariance proofs pass.
+The independent final challenge at `f648d5add` found zero HIGH/MED/CRITICAL and
+confirmed the substantive L0 producer-ready terminal rule.
 
 ## Preserved and completed progress
 
@@ -46,19 +51,22 @@ DP07 remain blocked. No producer-ready label is manufactured.
   restraints, source-rights boundary and positive `NOT_REACHABLE` outcome.
 - Ketu signed-speed correction and Gochara prior-version retention are explicit,
   tested and rollback-capable.
-- Permitted ephemeris and Pañcāṅga routes now share one Swiss-state lock and a
-  real contention negative. This is preserved useful progress even though it
-  cannot prove every live in-process caller.
-- No L1-L5 writer, retrieval query, Paripraśna, synthesis, MCP, workflow,
-  migration, protected product artifact, private row, credential or secret was
-  changed or inspected. No push, PR, merge, deployment, rebuild or database
-  mutation occurred.
+- All inventoried live in-process Swiss/PyJHora state-dependent operations now
+  resolve to one shared canonical lock, including transit and both GA-strength
+  setter-through-result spans. Detector and contention negatives enforce it.
+- No L1-L5 output schema or semantic contract, retrieval query, Paripraśna,
+  synthesis, MCP, workflow, migration, protected product artifact, private row,
+  credential or secret was changed or inspected. Explicitly authorized existing
+  computation entry points received serialization only. No push, PR, merge,
+  deployment, rebuild or database mutation occurred.
 
 ## Validation and residuals
 
 | Evidence | Result |
 |---|---|
-| Focused Python producer/service/arc suite | `111 passed`, exit 0 |
+| Focused Python producer/service/arc suite | `136 passed`, exit 0 |
+| DP-SD-010/011 boundary suite | `18 passed`, exit 0; 70 exact owners, zero unresolved |
+| DP-SD-011 GA-strength regression suite | `132 passed`, exit 0 |
 | Focused TypeScript and Vidhi negative suite | `30 passed`, exit 0 |
 | TypeScript compile, targeted ESLint and Prettier | exit 0 each |
 | Changed Python module compilation | exit 0 |
@@ -67,32 +75,25 @@ DP07 remain blocked. No producer-ready label is manufactured.
 | Broad L0 service/writer suite | `383 passed, 34 skipped, 2 failed`, exit 1; both failures reproduce in unchanged Muhūrta isolation tests |
 | Live registry parity | unavailable, exit 1; no `DBURL`/`DATABASE_URL`, so no population or health claim |
 | Governance/schema preflights | 79 and 42 inherited MEDIUM/LOW findings respectively; no packet-path finding and no global pass claim |
-| Independent final challenge | no owned HIGH/CRITICAL; one MEDIUM terminal architecture/scope blocker retained |
+| Independent final challenge | PASS; `150 passed` plus supplemental `56 passed, 4 skipped`; zero HIGH/MED/CRITICAL and zero live unresolved caller |
 
 The detailed detector, F01-F28 and DP01-DP18 dispositions are recorded in
 `MADHAV_DATA_PLANE_L0_VALIDATION_AND_REVIEW_RECORD_v1_0.md`.
 
-## Smallest authority decision and next eligible action
+## Stop state and next eligible action
 
-Strategy must choose one of two bounded paths:
-
-1. issue a new/expanded execution packet authorizing inventory and serialization
-   of every live Swiss-state setter together with its dependent calculation,
-   including `platform/python-sidecar/pipeline/transit_search.py`; or
-2. approve process-isolated L0 numerical execution and define its explicit
-   latency and capacity contract.
-
-After that decision, execution may implement and challenge only the selected
-boundary, rerun focused plus broad tests, and re-evaluate F22/F23/DP03/DP07.
-Until then the preserved packet remains blocked at producer readiness. L1 must
-not start.
+The bounded L0 goal stops at `PRODUCER_READY`. L1 remains
+`WAITING_FOR_STRATEGIC_BRIEF` and may begin only under a separately approved L1
+brief and new goal. No integration, push, PR, merge, deployment, database
+mutation, managed-channel evaluation or consumer-value work is implied by this
+acceptance.
 
 ## Terminal truth matrix
 
 | State | Terminal evidence |
 |---|---|
-| `STRATEGY_AGREED` | YES — DP-SD-009 and the approved L0 strategy/brief |
-| `PRODUCER_READY` | **NO — BLOCKED, NOT ACCEPTED** |
+| `STRATEGY_AGREED` | YES — DP-SD-009, DP-SD-010 and DP-SD-011 |
+| `PRODUCER_READY` | **YES — ACCEPTED** |
 | `INTEGRATED` | NO — not authorized or proved |
 | `DEPLOYED_OPERATIONALLY_ACCEPTED` | NO — not authorized |
 | `CONSUMER_VALUE_DEMONSTRATED` | NO — not part of this goal |
