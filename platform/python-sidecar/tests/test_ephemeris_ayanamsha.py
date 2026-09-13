@@ -7,6 +7,12 @@ import pytest
 from datetime import date
 
 from brahmagyan.l0_ephemeris import derive_sidereal, _tropical_to_jd, AYANAMSHA_MAP
+from fastapi import HTTPException
+from routers.ephemeris import (
+    EphemerisAtTRequest,
+    _service_context,
+    ephemeris_at_t,
+)
 
 
 NATIVE_BIRTH_DATE = date(1984, 2, 5)
@@ -14,6 +20,56 @@ NATIVE_BIRTH_DATE = date(1984, 2, 5)
 # Actual Sun tropical longitude on 1984-02-05 (pyswisseph DE441, noon UT)
 # Verified: 315.874297°
 SUN_TROPICAL_1984_02_05 = 315.874297
+
+
+def test_arbitrary_instant_service_emits_full_l0_context():
+    result = ephemeris_at_t(
+        EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00Z")
+    )
+    context = result["service_context"]
+    assert context["service_asset_id"] == "bg_ephemeris_engine"
+    assert context["instant_utc"] == "2026-07-20T12:00:00Z"
+    assert context["frame"] == "geocentric_sidereal"
+    assert context["ayanamsha_id"] == "lahiri_chitrapaksha"
+    assert context["node_mode"] == "mean"
+    assert context["ephemeris_backends_observed"]
+    assert context["backend_qualification_state"] in {
+        "QUALIFIED_BACKEND", "UNQUALIFIED_BACKEND"
+    }
+    assert context["precision"]["supported_horizon"] == "UNVERIFIED_FOR_OBSERVED_BACKEND"
+
+
+def test_backend_qualification_is_detector_backed_not_a_literal_pass():
+    qualified = _service_context(
+        instant_utc="2026-07-20T12:00:00Z",
+        ayanamsha_id="lahiri_chitrapaksha",
+        backends={"swiss_ephemeris_file"},
+        input_precision="second",
+    )
+    degraded = _service_context(
+        instant_utc="2026-07-20T12:00:00Z",
+        ayanamsha_id="lahiri_chitrapaksha",
+        backends={"moshier_analytic_fallback"},
+        input_precision="second",
+    )
+    assert qualified["backend_qualification_state"] == "QUALIFIED_BACKEND"
+    assert degraded["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
+
+
+def test_rahu_and_ketu_share_signed_angular_speed():
+    result = ephemeris_at_t(
+        EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00Z")
+    )
+    rahu = next(p for p in result["positions"] if p["planet"] == "Rahu")
+    ketu = next(p for p in result["positions"] if p["planet"] == "Ketu")
+    assert ketu["speed"] == rahu["speed"]
+    assert ketu["retrograde"] == rahu["retrograde"]
+
+
+def test_arbitrary_instant_rejects_timezone_free_input():
+    with pytest.raises(HTTPException) as exc:
+        ephemeris_at_t(EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00"))
+    assert exc.value.status_code == 400
 
 
 # ── FORENSIC anchor ───────────────────────────────────────────────────────────

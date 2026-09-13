@@ -138,14 +138,16 @@ class GocharaArcsWriter(WriterBase):
                 ),
             )
 
-        # A standard full rebuild starts by removing obsolete versions and
-        # identities outside the closed nine-body source. Custom narrowed
-        # repair runs preserve untouched bodies deliberately.
+        # A standard full rebuild removes unknown bodies only from the current
+        # generation. Prior substrate versions are retained for compatible
+        # replay/rollback; they are not obsolete merely because a new release
+        # is being rebuilt. Custom narrowed repair runs preserve untouched
+        # bodies deliberately.
         requested_bodies = tuple(ctx.config.get("bodies") or BODIES)
         if requested_bodies == BODIES and body == BODIES[0]:
             ctx.db_conn.execute(
                 f"DELETE FROM {TABLE} "
-                "WHERE substrate_version <> %s OR body <> ALL(%s)",
+                "WHERE substrate_version = %s AND body <> ALL(%s)",
                 [substrate_version, list(BODIES)],
             )
 

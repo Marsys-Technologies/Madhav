@@ -6,6 +6,66 @@ import swisseph as swe
 
 router = APIRouter()
 
+_EPHEMERIS_CONTEXT_VERSION = "l0-ephemeris-service-context/v1"
+_EPHEMERIS_REGISTRY_GENERATION = "bg_ephemeris_engine@migration-624"
+_EPHEMERIS_BACKENDS = (
+    (swe.FLG_JPLEPH, "jpl_file"),
+    (swe.FLG_SWIEPH, "swiss_ephemeris_file"),
+    (swe.FLG_MOSEPH, "moshier_analytic_fallback"),
+)
+
+
+def _ephemeris_backend(retflag: int) -> str:
+    for bit, name in _EPHEMERIS_BACKENDS:
+        if retflag & bit:
+            return name
+    return f"unknown_retflag_{retflag}"
+
+
+def _service_context(
+    *,
+    instant_utc: str,
+    ayanamsha_id: str,
+    backends: set[str],
+    input_precision: str,
+) -> dict:
+    """Return detector-backed context without upgrading endpoint health.
+
+    Migration 624 admits only the pinned Swiss-file corpus for the registry
+    health probe.  An in-process Moshier fallback remains observable but is
+    explicitly unqualified, rather than being misreported as that corpus.
+    """
+    backend_list = sorted(backends)
+    qualified = backend_list == ["swiss_ephemeris_file"]
+    return {
+        "schema_version": _EPHEMERIS_CONTEXT_VERSION,
+        "service_asset_id": "bg_ephemeris_engine",
+        "registry_generation": _EPHEMERIS_REGISTRY_GENERATION,
+        "instant_utc": instant_utc,
+        "input_precision": input_precision,
+        "frame": "geocentric_sidereal",
+        "ayanamsha_id": ayanamsha_id,
+        "node_mode": "mean",
+        "ketu_derivation": "mean_rahu_plus_180_same_angular_speed",
+        "location_applicability": "not_used_for_geocentric_longitudes",
+        "ephemeris_backends_observed": backend_list,
+        "backend_qualification_state": (
+            "QUALIFIED_BACKEND" if qualified else "UNQUALIFIED_BACKEND"
+        ),
+        "precision": {
+            "longitude_output_decimal_places": 4,
+            "speed_output_decimal_places": 6,
+            "calculation_flag": "FLG_SWIEPH|FLG_SIDEREAL|FLG_SPEED",
+            "supported_horizon": "UNVERIFIED_FOR_OBSERVED_BACKEND",
+        },
+        "failure_contract": {
+            "unknown_ayanamsha": "HTTP_422",
+            "invalid_or_timezone_free_instant": "HTTP_400",
+            "unapproved_backend": "RETURNED_WITH_UNQUALIFIED_BACKEND_STATE",
+            "registry_health_detector": "pipeline.orchestrator.service_probes._probe_ephemeris_engine",
+        },
+    }
+
 PLANETS = [
     ('Sun', swe.SUN),
     ('Moon', swe.MOON),
@@ -85,22 +145,40 @@ def compute_natal_positions(req: EphemerisRequest) -> dict:
     positions = []
     rahu_long = None
     rahu_speed = None
+    observed_backends: set[str] = set()
 
     for name, code in PLANETS:
-        pos, _ = swe.calc_ut(jd, code, flags)
+        pos, retflag = swe.calc_ut(jd, code, flags)
+        if name != 'Rahu':
+            observed_backends.add(_ephemeris_backend(retflag))
         lon, speed = pos[0], pos[3]
         positions.append(_position_from_lon(lon, speed, name))
         if name == 'Rahu':
             rahu_long = lon
             rahu_speed = speed
 
-    # Ketu: opposite Rahu, moves at same rate in opposite direction
+    # Ketu is the antipode of the selected Rahu node.  Its longitude changes
+    # with the same signed angular speed; negating the speed would falsely
+    # report Ketu as direct while mean Rahu is retrograde.
     if rahu_long is not None:
         ketu_long = rahu_long + 180
-        ketu_speed = -(rahu_speed or 0.0)
+        ketu_speed = rahu_speed or 0.0
         positions.append(_position_from_lon(ketu_long, ketu_speed, 'Ketu'))
 
-    return {"jd": jd, "positions": [p.model_dump() for p in positions]}
+    instant_utc = datetime(
+        year, month, day, tzinfo=timezone.utc
+    ).replace(hour=0).timestamp() + decimal_hour_ut * 3600
+    instant_iso = datetime.fromtimestamp(instant_utc, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {
+        "jd": jd,
+        "positions": [p.model_dump() for p in positions],
+        "service_context": _service_context(
+            instant_utc=instant_iso,
+            ayanamsha_id="lahiri_chitrapaksha",
+            backends=observed_backends,
+            input_precision="minute",
+        ),
+    }
 
 
 # ── W2 dark-set wiring: POST /api/compute/ephemeris_at_t (ka_graha_sancara, GT-50) ──
@@ -171,7 +249,10 @@ def ephemeris_at_t(req: EphemerisAtTRequest) -> dict:
         raise HTTPException(status_code=400, detail=f"Invalid datetime_utc: {exc}")
 
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        raise HTTPException(
+            status_code=400,
+            detail="datetime_utc must include an explicit UTC offset or Z suffix",
+        )
     dt_utc = dt.astimezone(timezone.utc)
 
     # Set the requested sidereal mode per-invocation to guard against global
@@ -185,9 +266,12 @@ def ephemeris_at_t(req: EphemerisAtTRequest) -> dict:
     positions = []
     rahu_long = None
     rahu_speed = None
+    observed_backends: set[str] = set()
 
     for name, code in PLANETS:
-        pos, _ = swe.calc_ut(jd, code, flags)
+        pos, retflag = swe.calc_ut(jd, code, flags)
+        if name != 'Rahu':
+            observed_backends.add(_ephemeris_backend(retflag))
         lon, speed = pos[0], pos[3]
         positions.append(_position_from_lon(lon, speed, name))
         if name == 'Rahu':
@@ -196,7 +280,7 @@ def ephemeris_at_t(req: EphemerisAtTRequest) -> dict:
 
     if rahu_long is not None:
         ketu_long = rahu_long + 180
-        ketu_speed = -(rahu_speed or 0.0)
+        ketu_speed = rahu_speed or 0.0
         positions.append(_position_from_lon(ketu_long, ketu_speed, 'Ketu'))
 
     return {
@@ -204,4 +288,10 @@ def ephemeris_at_t(req: EphemerisAtTRequest) -> dict:
         "ayanamsha_id": req.ayanamsha_id,
         "jd": jd,
         "positions": [p.model_dump() for p in positions],
+        "service_context": _service_context(
+            instant_utc=dt_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            ayanamsha_id=req.ayanamsha_id,
+            backends=observed_backends,
+            input_precision="second",
+        ),
     }

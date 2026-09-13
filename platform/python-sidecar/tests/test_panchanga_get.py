@@ -187,6 +187,45 @@ class TestLocationResolution:
                         params={"date": "2026-09-18", "location": "BHUBANESWAR"})
         assert r.status_code == 200, r.text
 
+    @pytest.mark.parametrize("params", [
+        {"lat": 20.27},
+        {"lon": 85.84},
+        {"lat": 20.27, "lon": 85.84},
+        {"tz_offset_minutes": 330},
+    ])
+    def test_incomplete_location_context_fails_closed(self, client: TestClient, params):
+        r = client.get(
+            "/api/compute/panchanga_get",
+            params={"date": "2026-09-18", **params},
+        )
+        assert r.status_code == 422
+        assert "EXTERNAL_COMPUTATION_REQUIRED" in r.json()["detail"]
+
+    def test_named_location_rejects_conflicting_timezone(self, client: TestClient):
+        r = client.get("/api/compute/panchanga_get", params={
+            "date": "2026-09-18",
+            "location": "Bhubaneswar",
+            "tz_offset_minutes": 60,
+        })
+        assert r.status_code == 422
+        assert "conflicts" in r.json()["detail"]
+
+    def test_service_context_carries_conventions_versions_and_precision(self, client: TestClient):
+        r = client.get("/api/compute/panchanga_get", params={
+            "date": "2026-09-18", "location": "Bhubaneswar",
+        })
+        assert r.status_code == 200, r.text
+        context = r.json()["service_context"]
+        assert context["service_asset_id"] == "bg_panchanga"
+        assert context["grain"] == "civil_date+latitude+longitude+tz_offset_minutes"
+        assert context["ayanamsha_id"] == "lahiri"
+        assert context["node_mode"] == "mean"
+        assert context["calendar_day_boundary"] == "local_sunrise_to_next_local_sunrise"
+        assert context["sunrise_convention"] == "upper_limb_with_atmospheric_refraction"
+        assert context["computation_version"]
+        assert context["ephemeris_version"]
+        assert context["precision"]["timezone"] == "fixed_utc_offset_minutes_not_zone_rules"
+
 
 # ── Source disclosure (B.10 — never claim a computation source it isn't) ───
 
