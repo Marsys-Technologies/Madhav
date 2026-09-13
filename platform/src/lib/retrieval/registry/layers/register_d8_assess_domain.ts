@@ -35,6 +35,7 @@
 
 import { registerCapability } from '../index'
 import type { CapabilityDescriptor } from '../types'
+import { FINANCE_SCUS } from '../knowledge/editorial'
 import { query } from '@/lib/db/client'
 import { deriveDefect001Note } from '../../provenance/freshness_notes'
 import { resolveAddress } from '../../address_resolver'
@@ -1535,7 +1536,7 @@ const assessMarriageCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
-    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
 
@@ -1609,7 +1610,7 @@ const assessCareerCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
-    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
 
@@ -1683,7 +1684,7 @@ const assessHealthCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
-    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
 
@@ -1712,6 +1713,7 @@ const assessWealthCapability: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L2',
   name: 'assess_wealth',
+  semantic_capabilities: FINANCE_SCUS,
   scope: 'per_chart',
 
   description: [
@@ -1756,7 +1758,7 @@ const assessWealthCapability: CapabilityDescriptor = {
     'marsys://tool/L1/chart_facts_query',
     'marsys://tool/L2/query_signals',
     'marsys://tool/L2/classical_attribution_lookup',
-    'marsys://tool/L2/get_domain_reading',
+    'marsys://tool/L2/query_domain_reading',
     'marsys://tool/L2/query_contradictions',
   ],
 

@@ -20,6 +20,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { houseCountedFrom, ZODIAC_SIGNS, type ZodiacSign } from '../../../address_resolver'
+import { DIVISIONAL_SCUS } from '../../knowledge/editorial'
 
 function isZodiacSign(v: unknown): v is ZodiacSign {
   return typeof v === 'string' && (ZODIAC_SIGNS as readonly string[]).includes(v)
@@ -30,6 +31,7 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L1',
   name: 'get_divisionals',
+  semantic_capabilities: DIVISIONAL_SCUS,
   description:
     'Retrieve divisional chart (varga) placements for a chart from the chart_divisionals table. ' +
     'Contains graha positions in each of the 16 standard vargas (D1–D60 including D1, D2, D3, D4, D5, ' +
