@@ -4,7 +4,7 @@ version: "1.0"
 status: APPROVED_FOR_EXECUTION
 approved_on: 2026-09-13
 strategy_decision: DP-SD-010
-approval_record: "DP-SD-010; immutable amendment commit populated before dispatch"
+approval_record: "DP-SD-010 at strategy content commit d61469b6d96b956782548d36fb23f9e813e1ae98"
 strategic_parent_task: "Strategy — Data Plane / 01a0996e-6ca0-7642-ac31-f968fee214b3"
 execution_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
 parent_layer_contract: "MADHAV_DATA_PLANE_L0_BRAHMAGYAN_EXECUTION_BRIEF v1.0 / approval content cfe16cdac6d550499a2ecc7f762b57e3f3779da9 / dispatch 66a5ce6f8e92bd064b52b84d6eb473bb58ef1c9f"
