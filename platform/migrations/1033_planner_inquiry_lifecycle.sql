@@ -108,7 +108,7 @@ DECLARE
   active_count integer;
 BEGIN
   IF p_principal_uid IS DISTINCT FROM current_setting('app.principal_id', true)
-     OR p_chart_id::text IS DISTINCT FROM current_setting('app.chart_context', true) THEN
+     OR p_chart_id IS DISTINCT FROM app_chart_context() THEN
     RAISE EXCEPTION 'planner inquiry creation context mismatch' USING ERRCODE = '42501';
   END IF;
 

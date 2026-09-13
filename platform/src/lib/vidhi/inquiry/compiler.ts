@@ -464,7 +464,12 @@ export function failInquiryForOverlayDrift(contract: InquiryContract): InquiryCo
       evidence_refs: [],
       gap_reason: 'CAPABILITY_OVERLAY_CHANGED_DURING_DISPATCH',
     })))
-  return finalizeInquiryContract({ ...invalidated, iteration: invalidated.max_iterations })
+  const finalized = finalizeInquiryContract({ ...invalidated, iteration: invalidated.max_iterations })
+  return {
+    ...finalized,
+    status: 'BLOCKED',
+    status_reasons: unique([...finalized.status_reasons, 'chart capability overlay changed during dispatch']),
+  }
 }
 
 export function buildInquiryClosureReceipt(contract: InquiryContract): InquiryClosureReceipt {

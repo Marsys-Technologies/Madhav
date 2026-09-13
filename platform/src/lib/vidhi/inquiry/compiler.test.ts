@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
-import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
+import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, failInquiryForOverlayDrift, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
 import type { ScopeTuple } from '../types'
 
 const wealthScope: ScopeTuple = {
@@ -186,5 +186,22 @@ describe('versioned inquiry compiler', () => {
     const final = finalizeInquiryContract(applyInquiryObservations(initial, observations))
     expect(final.status).toBe('INCOMPLETE')
     expect(final.status_reasons).toContain('1 required obligations failed or are dark')
+  })
+
+  it('blocks overlay drift even when every obligation is supporting', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'chart overview',
+      scope_tuple: { ...wealthScope, intent: 'overview', domains: ['general'], depth: 'standard' },
+    })
+    const supportingOnly = {
+      ...initial,
+      obligations: initial.obligations.map((obligation) => ({ ...obligation, materiality: 'supporting' as const })),
+    }
+    const drifted = failInquiryForOverlayDrift(supportingOnly)
+    expect(drifted.status).toBe('BLOCKED')
+    expect(drifted.status_reasons).toContain('chart capability overlay changed during dispatch')
+    expect(drifted.obligations.some((obligation) => obligation.disposition === 'failed')).toBe(true)
   })
 })

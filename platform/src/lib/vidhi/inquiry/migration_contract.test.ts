@@ -44,7 +44,7 @@ describe('migration 1033 planner inquiry lifecycle', () => {
   it('scopes retention purge and active limits to the authenticated principal and chart', () => {
     expect(sql).toContain('prepare_planner_inquiry_creation(p_principal_uid text, p_chart_id uuid)')
     expect(sql).toMatch(/p_principal_uid IS DISTINCT FROM current_setting\('app\.principal_id', true\)/)
-    expect(sql).toMatch(/p_chart_id::text IS DISTINCT FROM current_setting\('app\.chart_context', true\)/)
+    expect(sql).toContain('p_chart_id IS DISTINCT FROM app_chart_context()')
     expect(sql).toMatch(/principal_uid=p_principal_uid AND chart_id=p_chart_id/)
     expect(sql).toContain("created_at > now() - interval '1 hour'")
     expect(sql).toContain('recent_count >= 32')
