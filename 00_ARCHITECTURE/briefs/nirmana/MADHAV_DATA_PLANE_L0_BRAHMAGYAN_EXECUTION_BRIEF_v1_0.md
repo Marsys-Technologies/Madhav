@@ -6,7 +6,7 @@ approved_on: 2026-09-13
 strategy_decision: DP-SD-009
 strategic_parent_task: "Strategy — Data Plane / 01a0996e-6ca0-7642-ac31-f968fee214b3"
 execution_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
-approval_record: "DP-SD-009; immutable strategy packet commit populated before dispatch"
+approval_record: "DP-SD-009 at strategy content commit cfe16cdac6d550499a2ecc7f762b57e3f3779da9"
 product_authority: "MADHAV_PRODUCT_DEFINITION v3.0 / CCD-010"
 strategy_version: "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE v2.0 amended by DP-SD-009 and MADHAV_DATA_PLANE_L0_BRAHMAGYAN_STRATEGY v1.0"
 layer: "L0 Brahmagyan"
