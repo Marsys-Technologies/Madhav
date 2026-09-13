@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
-import { applyInquiryObservations, compileInquiryContract, finalizeInquiryContract, validateInquiryContract } from './compiler'
+import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
+import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
 import type { ScopeTuple } from '../types'
 
 const wealthScope: ScopeTuple = {
@@ -48,6 +49,40 @@ describe('versioned inquiry compiler', () => {
     })
     expect(contract.plan_items.some((item) => item.scu_id.includes('fabricated'))).toBe(false)
     expect(contract.ai_hypotheses).toHaveLength(1)
+  })
+
+  it('canonicalizes question whitespace, domain order, and AI hint order', () => {
+    const first = compileInquiryContract({
+      snapshot, chart_id: 'chart-fixture', question: '  What   supports prosperity? ',
+      scope_tuple: { ...wealthScope, domains: ['wealth', 'finance'] },
+      ai_proposal: { question_facets: [{ label: ' Factors ', terms: ['mechanism', 'prosperity'], materiality: 'supporting' }], uncommon_adjacencies: [], hypotheses: [' Verify '] },
+    })
+    const second = compileInquiryContract({
+      snapshot, chart_id: 'chart-fixture', question: 'What supports prosperity?',
+      scope_tuple: { ...wealthScope, domains: ['finance', 'wealth', 'wealth'] },
+      ai_proposal: { question_facets: [{ label: 'Factors', terms: ['prosperity', 'mechanism'], materiality: 'supporting' }], uncommon_adjacencies: [], hypotheses: ['Verify'] },
+    })
+    expect(second.semantic_contract_hash).toBe(first.semantic_contract_hash)
+    expect(second.execution_plan_hash).toBe(first.execution_plan_hash)
+  })
+
+  it('blocks unresolved required JSON Schema arguments and internal-only raw MCP bindings', () => {
+    const internal = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth transit timing', scope_tuple: wealthScope })
+    const transit = internal.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')
+    expect(transit).toMatchObject({ state: 'blocked', binding_id: null })
+    expect(transit?.blocked_reason).toContain('planet')
+
+    const raw = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth varga', scope_tuple: wealthScope, execution_channel: 'mcp_full' })
+    expect(raw.plan_items.find((item) => item.scu_id === 'scu.catalog.get_divisionals')).toMatchObject({ state: 'blocked', binding_id: null })
+  })
+
+  it('does not authorize a binding that the chart/build overlay leaves dark', () => {
+    const overlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-1', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
+    const contract = compileInquiryContract({ snapshot, overlay, chart_id: 'chart-fixture', question: 'wealth outlook', scope_tuple: wealthScope })
+    expect(contract.chart_availability_version).toBe(overlay.overlay_version)
+    expect(contract.chart_build_id).toBe('build-1')
+    expect(contract.plan_items.every((item) => item.state === 'blocked')).toBe(true)
+    expect(finalizeInquiryContract(contract).status).toBe('INCOMPLETE')
   })
 
   it('admits a validated AI adjacency as a supporting obligation', () => {
@@ -104,12 +139,43 @@ describe('versioned inquiry compiler', () => {
     expect(finalizeInquiryContract(withFrontier).status).toBe('INCOMPLETE')
   })
 
+  it('executes a verified multi-page item until its frontier is exhausted', () => {
+    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    const item = initial.plan_items.find((candidate) => candidate.scu_id === 'scu.yoga.firing_and_cancellation')!
+    const first = recordInquiryExecution(initial, {
+      item_id: item.item_id, disposition: 'served', evidence_refs: ['receipt:page-1'],
+      pagination: { semantics: 'offset', exhausted: false, next: 50 }, request_position_path: 'offset',
+    })
+    expect(first.plan_items.find((candidate) => candidate.item_id === item.item_id)).toMatchObject({ state: 'ready', args: { offset: 50 } })
+    expect(first.material_frontier).toContainEqual(expect.objectContaining({ scu_id: item.scu_id, disposition: 'open' }))
+    const second = recordInquiryExecution(first, {
+      item_id: item.item_id, disposition: 'empty', evidence_refs: ['receipt:page-2'],
+      pagination: { semantics: 'offset', exhausted: true, next: null }, request_position_path: 'offset',
+    })
+    expect(second.plan_items.find((candidate) => candidate.item_id === item.item_id)).toMatchObject({ state: 'observed' })
+    expect(second.material_frontier).toContainEqual(expect.objectContaining({ scu_id: item.scu_id, disposition: 'absorbed' }))
+  })
+
   it('reports BLOCKED honestly when the iteration cap is exhausted', () => {
     const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope, max_iterations: 1 })
     const observed = applyInquiryObservations(initial, initial.plan_items.slice(0, 1).map((item) => ({ item_id: item.item_id, disposition: 'dark' as const, evidence_refs: [], gap_reason: 'build output is unavailable' })))
     const final = finalizeInquiryContract(observed)
     expect(final.status).toBe('BLOCKED')
     expect(final.status_reasons).toContain('iteration cap reached before material frontier closure')
+  })
+
+  it('recomputes immutable authorization and emits a normalized closure receipt', () => {
+    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    expect(inquiryAuthorizationHashes(initial)).toEqual({
+      semantic_contract_hash: initial.semantic_contract_hash,
+      execution_plan_hash: initial.execution_plan_hash,
+      contract_id: initial.contract_id,
+    })
+    const final = finalizeInquiryContract(initial)
+    const receipt = buildInquiryClosureReceipt(final)
+    expect(receipt.receipt_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
+    expect(receipt.obligation_coverage).toHaveLength(final.obligations.length)
+    expect(receipt.status).toBe('INCOMPLETE')
   })
 
   it('never treats a required failed observation as complete', () => {

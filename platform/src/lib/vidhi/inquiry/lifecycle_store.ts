@@ -13,6 +13,7 @@ export interface InquiryLifecycleRow {
   capability_compatibility_version: string
   chart_overlay_version: string | null
   chart_build_id: string | null
+  authorization_jsonb: InquiryContract
   contract_jsonb: InquiryContract
   status: InquiryContract['status']
   revision: number
@@ -28,20 +29,46 @@ export async function createInquiryLifecycle(args: {
   expires_at: string
 }): Promise<InquiryLifecycleRow> {
   return withChartContext(args.contract.chart_id, async (client) => {
+    // The lifecycle tables enforce principal/chart RLS even when the broader
+    // staged role-separation flag is off. Pin both contexts for the definer
+    // purge explicitly so default deployments neither fail nor gain a
+    // caller-selectable cross-tenant deletion primitive.
+    await client.query('SELECT set_config($1, $2, true), set_config($3, $4, true)', [
+      'app.principal_id', args.principal_uid, 'app.chart_context', args.contract.chart_id,
+    ])
+    await client.query('SELECT prepare_planner_inquiry_creation($1, $2)', [args.principal_uid, args.contract.chart_id])
     const result = await client.query<InquiryLifecycleRow>(
     `INSERT INTO planner_inquiry_lifecycles
        (inquiry_id, principal_uid, chart_id, semantic_contract_hash, execution_plan_hash, capability_content_hash,
-        capability_compatibility_version, chart_overlay_version, contract_jsonb,
+        capability_compatibility_version, chart_overlay_version, chart_build_id, authorization_jsonb, contract_jsonb,
         status, revision, current_jti_hash, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,0,$11,$12)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$10::jsonb,$11,0,$12,$13)
      RETURNING *`,
     [args.inquiry_id, args.principal_uid, args.contract.chart_id, args.contract.semantic_contract_hash,
       args.contract.execution_plan_hash, args.contract.capability_content_hash, args.contract.capability_compatibility_version,
-      args.contract.chart_availability_version, JSON.stringify(args.contract), args.contract.status,
+      args.contract.chart_availability_version, args.contract.chart_build_id, JSON.stringify(args.contract), args.contract.status,
       args.jti_hash, args.expires_at],
   )
     return result.rows[0]
   }, { principalId: args.principal_uid })
+}
+
+/** Atomically consume the one-use token before any externally costly dispatch. */
+export async function reserveInquiryAction(args: {
+  row: InquiryLifecycleRow
+  expected_jti_hash: string
+  reservation_hash: string
+}): Promise<void> {
+  await withChartContext(args.row.chart_id, async (client) => {
+    const updated = await client.query(
+      `UPDATE planner_inquiry_lifecycles
+          SET current_jti_hash=$1, updated_at=now()
+        WHERE inquiry_id=$2 AND principal_uid=$3 AND revision=$4
+          AND current_jti_hash=$5 AND status='INCOMPLETE' AND expires_at > now()`,
+      [args.reservation_hash, args.row.inquiry_id, args.row.principal_uid, args.row.revision, args.expected_jti_hash],
+    )
+    if (!updated.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
+  }, { principalId: args.row.principal_uid })
 }
 
 export async function getInquiryLifecycle(inquiryId: string, principalUid: string, chartId: string): Promise<InquiryLifecycleRow | null> {

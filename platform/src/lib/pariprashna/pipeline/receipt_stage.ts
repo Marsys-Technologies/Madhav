@@ -29,7 +29,7 @@ import {
 } from '@/lib/pariprashna/provenance/stamp'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
-import type { InquiryContract } from '@/lib/vidhi/inquiry'
+import { buildInquiryClosureReceipt, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 export interface TurnReceiptProvenance {
   provenanceStamp: TurnProvenanceStamp
@@ -75,12 +75,13 @@ export function emitCompletenessReceipt(args: {
     })
   }
   if (args.inquiryContract) {
+    const closureReceipt = buildInquiryClosureReceipt(args.inquiryContract)
     const required = args.inquiryContract.obligations.filter((item) => item.materiality === 'required')
     const dispositioned = required.filter((item) => item.disposition !== 'pending').length
     em.grade({
       subject: 'inquiry_contract',
       grade: args.inquiryContract.status,
-      detail: `${dispositioned}/${required.length} required obligations dispositioned; ${args.inquiryContract.material_frontier.filter((item) => item.disposition === 'open').length} material frontier items open`,
+      detail: `${dispositioned}/${required.length} required obligations dispositioned; ${args.inquiryContract.material_frontier.filter((item) => item.disposition === 'open').length} material frontier items open; receipt ${closureReceipt.receipt_hash}`,
     })
   }
 }

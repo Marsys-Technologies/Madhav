@@ -33,23 +33,35 @@ function nestedValues(raw: unknown): Record<string, unknown>[] {
 }
 
 /**
- * Empty is asserted only when a reviewed collection path is observed. For
- * unreviewed shapes, a successful bundle remains served rather than inventing
- * a semantic empty from adapter/container structure.
+ * Empty is asserted only when an independently reviewed semantic collection
+ * path is observed. Exhaustion proof remains a separate pagination concern.
  */
 export function classifyInquiryResult(
   binding: SemanticCapabilityBinding | undefined,
   raw: unknown,
-): 'served' | 'empty' {
-  const resultPath = binding?.pagination_verified ? binding.pagination_contract?.result_collection_path : undefined
-  if (resultPath) {
-    for (const object of nestedValues(raw)) {
-      const collection = atPath(object, resultPath)
-      if (Array.isArray(collection)) return collection.length > 0 ? 'served' : 'empty'
-    }
+): 'served' | 'empty' | 'failed' {
+  for (const object of nestedValues(raw)) {
+    if (object['is_error'] === true || object['ok'] === false || object['success'] === false) return 'failed'
+    if (typeof object['error'] === 'string' && object['error'].trim()) return 'failed'
   }
+  const semanticCount = semanticInquiryResultCount(binding, raw)
+  if (semanticCount !== null) return semanticCount > 0 ? 'served' : 'empty'
   const bundleResults = raw && typeof raw === 'object' ? (raw as Record<string, unknown>)['results'] : undefined
   return Array.isArray(bundleResults) && bundleResults.length === 0 ? 'empty' : 'served'
+}
+
+/** A semantic row count exists only for an independently reviewed collection path. */
+export function semanticInquiryResultCount(
+  binding: SemanticCapabilityBinding | undefined,
+  raw: unknown,
+): number | null {
+  const resultPath = binding?.result_collection_verified ? binding.pagination_contract?.result_collection_path : undefined
+  if (!resultPath) return null
+  for (const object of nestedValues(raw)) {
+    const collection = atPath(object, resultPath)
+    if (Array.isArray(collection)) return collection.length
+  }
+  return null
 }
 
 function atPath(value: unknown, path: string | undefined): unknown {

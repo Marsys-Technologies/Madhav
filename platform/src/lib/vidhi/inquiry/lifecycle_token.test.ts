@@ -4,7 +4,7 @@ import { hashJti, issueInquiryLifecycleToken, verifyInquiryLifecycleToken } from
 const key = 'test-only-inquiry-key-at-least-thirty-two-bytes-long'
 const base = {
   sub: 'user-1', inquiry_id: 'inquiry-1', chart_id: 'chart-1',
-  contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', overlay_version: null,
+  contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', contract_state_hash: 'sha256:state', catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', overlay_version: null, chart_build_id: null,
   revision: 0, allowed_transition: 'execute' as const, next_action_ids: ['item-001'],
 }
 

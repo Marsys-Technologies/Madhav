@@ -52,6 +52,8 @@ export interface SemanticCapabilityBinding {
   readonly pagination: PaginationSemantics
   /** True only when response paths and exhaustion semantics were source-reviewed. */
   readonly pagination_verified?: boolean
+  /** True when the semantic result collection path was reviewed, independently of exhaustion semantics. */
+  readonly result_collection_verified?: boolean
   readonly pagination_contract?: PaginationContract
   readonly executable: boolean
   /** Where the route is actually callable; internal dispatch is not public MCP proof. */
@@ -83,7 +85,7 @@ export interface SemanticCapabilityDeclaration {
   readonly outputs: readonly string[]
   readonly primary_binding_uri: string
   readonly primary_binding_details?: Pick<SemanticCapabilityBinding,
-    'pagination' | 'pagination_verified' | 'pagination_contract' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
+    'pagination' | 'pagination_verified' | 'result_collection_verified' | 'pagination_contract' | 'execution_channels' | 'public_tool_name' | 'route_evidence'>
   readonly additional_bindings?: readonly SemanticCapabilityBinding[]
   readonly edges?: readonly SemanticCapabilityEdgeDeclaration[]
   readonly provenance_requirements: readonly string[]
@@ -185,6 +187,7 @@ export interface KnowledgeIntegrityFinding {
     | 'STALE_EDGE'
     | 'NON_EXECUTABLE_BINDING'
     | 'BAD_PAGINATION_CONTRACT'
+    | 'BAD_PRODUCER_OUTPUT_CLAIM'
     | 'ORPHAN_DESCRIPTOR'
     | 'COMPATIBILITY_MISMATCH'
   readonly severity: 'error' | 'warning'

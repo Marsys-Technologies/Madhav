@@ -1,4 +1,4 @@
-import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay } from '../../retrieval/registry/knowledge/types'
+import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay, ExecutionChannel } from '../../retrieval/registry/knowledge/types'
 import { assertOverlayCompatibility } from '../../retrieval/registry/knowledge/overlay'
 import { searchSemanticCapabilities } from '../../retrieval/registry/knowledge/query'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
@@ -6,6 +6,7 @@ import {
   INQUIRY_CONTRACT_VERSION,
   type AiInquiryProposal,
   type InquiryContract,
+  type InquiryClosureReceipt,
   type InquiryObservation,
   type InquiryObligation,
   type InquiryPlanItem,
@@ -14,8 +15,9 @@ import {
   type MaterialFrontierItem,
   type OmissionFinding,
 } from './types'
+import type { InquiryPaginationReceipt } from './pagination'
 
-export const INQUIRY_COMPILER_VERSION = '1.0.0'
+export const INQUIRY_COMPILER_VERSION = '1.1.0'
 
 const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
   wealth_deepdive: [
@@ -41,8 +43,50 @@ const OMISSION_RULES = [
 
 function unique<T>(items: readonly T[]): T[] { return [...new Set(items)] }
 
+function normalizeQuestion(question: string): string {
+  return question.trim().replace(/\s+/g, ' ')
+}
+
+function normalizeScope(scope: InquiryScopeTuple): InquiryScopeTuple {
+  return {
+    ...scope,
+    intent: String(scope.intent ?? 'unknown').trim(),
+    domains: unique((scope.domains ?? []).map((domain) => String(domain).trim()).filter(Boolean)).sort(),
+    width: String(scope.width ?? 'focused').trim(),
+    depth: String(scope.depth ?? 'standard').trim(),
+    horizon: String(scope.horizon ?? 'unspecified').trim(),
+    intervention: typeof scope.intervention === 'string' ? scope.intervention.trim() : scope.intervention ?? false,
+    entitlement: String(scope.entitlement ?? 'native').trim(),
+  }
+}
+
+function normalizeAiProposal(ai: AiInquiryProposal | undefined): AiInquiryProposal | undefined {
+  if (!ai) return undefined
+  return {
+    question_facets: ai.question_facets.map((facet) => ({
+      ...facet,
+      label: facet.label.trim(),
+      terms: unique(facet.terms.map((term) => term.trim()).filter(Boolean)).sort(),
+    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))),
+    uncommon_adjacencies: ai.uncommon_adjacencies.map((adjacency) => ({
+      ...adjacency,
+      rationale: adjacency.rationale.trim(),
+    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))),
+    hypotheses: unique(ai.hypotheses.map((hypothesis) => hypothesis.trim()).filter(Boolean)).sort(),
+  }
+}
+
 function makeObligation(index: number, args: Omit<InquiryObligation, 'obligation_id' | 'disposition' | 'evidence_refs' | 'gap_reason'>): InquiryObligation {
   return { obligation_id: `obl-${String(index + 1).padStart(3, '0')}`, ...args, disposition: 'pending', evidence_refs: [], gap_reason: null }
+}
+
+function semanticObligationProjection(obligations: readonly InquiryObligation[]) {
+  return obligations.map((obligation) => ({
+    ...obligation,
+    disposition: 'pending' as const,
+    evidence_refs: [] as readonly string[],
+    gap_reason: null,
+  }))
 }
 
 function selectedScus(args: {
@@ -95,14 +139,26 @@ function omissionFindings(snapshot: CapabilityKnowledgeSnapshot, question: strin
   }))
 }
 
-function planFor(snapshot: CapabilityKnowledgeSnapshot, obligations: readonly InquiryObligation[], chartId: string, question: string, scope: InquiryScopeTuple): InquiryPlanItem[] {
+function planFor(
+  snapshot: CapabilityKnowledgeSnapshot,
+  obligations: readonly InquiryObligation[],
+  chartId: string,
+  question: string,
+  scope: InquiryScopeTuple,
+  executionChannel: ExecutionChannel,
+  overlay?: ChartCapabilityOverlay | null,
+): InquiryPlanItem[] {
   const byId = new Map(snapshot.scus.map((scu) => [scu.scu_id, scu]))
+  const availabilityByScu = new Map(overlay?.availability.map((item) => [item.scu_id, item]) ?? [])
   const plan: InquiryPlanItem[] = []
   for (const obligation of obligations) {
     for (const scuId of obligation.scu_ids) {
       const scu = byId.get(scuId)
       if (!scu || plan.some((item) => item.scu_id === scuId)) continue
-      const binding = scu.bindings.find((candidate) => candidate.relation === 'primary' && candidate.executable) ?? null
+      const channelBindings = scu.bindings.filter((candidate) => candidate.executable
+        && candidate.kind === 'registry_capability'
+        && (candidate.execution_channels ?? ['platform_internal']).includes(executionChannel))
+      const binding = channelBindings.find((candidate) => candidate.relation === 'primary') ?? channelBindings[0] ?? null
       const itemArgs: Record<string, unknown> = {}
       if (binding?.input_contract['chart_id']) itemArgs['chart_id'] = chartId
       if (binding?.input_contract['question']) itemArgs['question'] = question
@@ -112,14 +168,40 @@ function planFor(snapshot: CapabilityKnowledgeSnapshot, obligations: readonly In
       const unresolvedRequired = binding
         ? Object.entries(binding.input_contract).filter(([key, declaration]) => declaration.endsWith(':required') && itemArgs[key] === undefined).map(([key]) => key)
         : []
+      const availability = availabilityByScu.get(scuId)
+      const overlayAllowsBinding = !overlay || Boolean(binding
+        && availability
+        && ['available', 'partial'].includes(availability.state)
+        && availability.available_binding_ids.includes(binding.binding_id))
+      const executable = Boolean(binding && unresolvedRequired.length === 0 && overlayAllowsBinding)
+      const blockedReason = !binding
+        ? `No executable ${executionChannel} binding is declared.`
+        : unresolvedRequired.length > 0
+          ? `Required binding arguments are unresolved: ${unresolvedRequired.join(', ')}.`
+          : !overlayAllowsBinding
+            ? availability?.gaps.join('; ') || 'The chart/build overlay does not prove this binding available.'
+            : null
+      if (executable && binding) {
+        const duplicateIndex = plan.findIndex((item) => item.binding_id === binding.binding_id
+          && stableFingerprint(item.args) === stableFingerprint(itemArgs))
+        if (duplicateIndex >= 0) {
+          const duplicate = plan[duplicateIndex]!
+          plan[duplicateIndex] = {
+            ...duplicate,
+            obligation_ids: unique([...duplicate.obligation_ids, ...obligations.filter((candidate) => candidate.scu_ids.includes(scuId)).map((candidate) => candidate.obligation_id)]),
+          }
+          continue
+        }
+      }
       plan.push({
         item_id: `item-${String(plan.length + 1).padStart(3, '0')}`,
         obligation_ids: obligations.filter((candidate) => candidate.scu_ids.includes(scuId)).map((candidate) => candidate.obligation_id),
         scu_id: scuId,
-        binding_id: binding && unresolvedRequired.length === 0 ? binding.binding_id : null,
+        binding_id: executable ? binding!.binding_id : null,
         args: itemArgs,
         depends_on: [],
-        state: binding && unresolvedRequired.length === 0 ? 'ready' : 'blocked',
+        state: executable ? 'ready' : 'blocked',
+        blocked_reason: blockedReason,
         observation: null,
       })
     }
@@ -135,10 +217,15 @@ export function compileInquiryContract(args: {
   scope_tuple: InquiryScopeTuple
   ai_proposal?: AiInquiryProposal
   max_iterations?: number
+  execution_channel?: ExecutionChannel
 }): InquiryContract {
-  if (args.overlay) assertOverlayCompatibility(args.snapshot, args.overlay)
-  const selection = selectedScus({ snapshot: args.snapshot, question: args.question, scope: args.scope_tuple, ai: args.ai_proposal })
-  const omissions = omissionFindings(args.snapshot, args.question, selection.selected)
+  const question = normalizeQuestion(args.question)
+  const scope = normalizeScope(args.scope_tuple)
+  const aiProposal = normalizeAiProposal(args.ai_proposal)
+  const executionChannel = args.execution_channel ?? 'platform_internal'
+  if (args.overlay) assertOverlayCompatibility(args.snapshot, args.overlay, args.chart_id)
+  const selection = selectedScus({ snapshot: args.snapshot, question, scope, ai: aiProposal })
+  const omissions = omissionFindings(args.snapshot, question, selection.selected)
   for (const omission of omissions) {
     selection.obligations.push(makeObligation(selection.obligations.length, {
       label: `Omission guard: ${omission.rule_id}`,
@@ -155,17 +242,26 @@ export function compileInquiryContract(args: {
       selection.obligations.push(makeObligation(selection.obligations.length, { label: `Question-bearing capability: ${scuId}`, source: 'deterministic_floor', materiality: 'supporting', scu_ids: [scuId], rationale: 'Deterministic semantic search match.' }))
     }
   }
-  const plan = planFor(args.snapshot, selection.obligations, args.chart_id, args.question, args.scope_tuple)
+  const plan = planFor(args.snapshot, selection.obligations, args.chart_id, question, scope, executionChannel, args.overlay)
+  const obligations = selection.obligations.map((obligation) => {
+    const items = plan.filter((item) => item.obligation_ids.includes(obligation.obligation_id))
+    if (items.length === 0 || items.some((item) => item.state !== 'blocked')) return obligation
+    return {
+      ...obligation,
+      disposition: 'dark' as const,
+      gap_reason: unique(items.map((item) => item.blocked_reason).filter((reason): reason is string => Boolean(reason))).join('; ') || 'No executable plan item is available.',
+    }
+  })
   const semanticContractHash = stableFingerprint({
     contract_version: INQUIRY_CONTRACT_VERSION,
     compiler_version: INQUIRY_COMPILER_VERSION,
-    question: args.question,
-    scope_tuple: args.scope_tuple,
+    question,
+    scope_tuple: scope,
     capability_content_hash: args.snapshot.content_hash,
-    obligations: selection.obligations,
+    obligations: semanticObligationProjection(obligations),
     omission_findings: omissions,
   })
-  const executionPlanHash = stableFingerprint({ semantic_contract_hash: semanticContractHash, chart_id: args.chart_id, plan_items: plan })
+  const executionPlanHash = stableFingerprint({ semantic_contract_hash: semanticContractHash, chart_id: args.chart_id, execution_channel: executionChannel, plan_items: plan })
   const contractId = stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash })
   return {
     contract_version: INQUIRY_CONTRACT_VERSION,
@@ -174,16 +270,18 @@ export function compileInquiryContract(args: {
     semantic_contract_hash: semanticContractHash,
     execution_plan_hash: executionPlanHash,
     chart_id: args.chart_id,
-    question: args.question,
-    scope_tuple: args.scope_tuple,
+    question,
+    scope_tuple: scope,
+    execution_channel: executionChannel,
     capability_compatibility_version: args.snapshot.compatibility_version,
     capability_content_hash: args.snapshot.content_hash,
     chart_availability_version: args.overlay?.overlay_version ?? null,
-    obligations: selection.obligations,
+    chart_build_id: args.overlay?.build_id ?? null,
+    obligations,
     plan_items: plan,
     material_frontier: [],
     omission_findings: omissions,
-    ai_hypotheses: [...(args.ai_proposal?.hypotheses ?? [])],
+    ai_hypotheses: [...(aiProposal?.hypotheses ?? [])],
     status: 'INCOMPLETE',
     status_reasons: ['required_obligations_pending'],
     iteration: 0,
@@ -192,6 +290,34 @@ export function compileInquiryContract(args: {
     max_iterations: args.max_iterations === undefined
       ? Math.min(Math.max(plan.length + 4, 4), 64)
       : Math.max(1, Math.min(args.max_iterations, 64)),
+  }
+}
+
+/** Recompute the immutable authorization hashes from the original contract. */
+export function inquiryAuthorizationHashes(contract: InquiryContract): {
+  semantic_contract_hash: string
+  execution_plan_hash: string
+  contract_id: string
+} {
+  const semanticContractHash = stableFingerprint({
+    contract_version: contract.contract_version,
+    compiler_version: contract.compiler_version,
+    question: contract.question,
+    scope_tuple: contract.scope_tuple,
+    capability_content_hash: contract.capability_content_hash,
+    obligations: semanticObligationProjection(contract.obligations),
+    omission_findings: contract.omission_findings,
+  })
+  const executionPlanHash = stableFingerprint({
+    semantic_contract_hash: semanticContractHash,
+    chart_id: contract.chart_id,
+    execution_channel: contract.execution_channel,
+    plan_items: contract.plan_items,
+  })
+  return {
+    semantic_contract_hash: semanticContractHash,
+    execution_plan_hash: executionPlanHash,
+    contract_id: stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash }),
   }
 }
 
@@ -252,6 +378,51 @@ export function applyInquiryObservations(contract: InquiryContract, observations
   return { ...contract, obligations, plan_items: planItems, material_frontier: [...existingFrontier.values()], iteration: contract.iteration + 1, status: 'INCOMPLETE', status_reasons: ['finalization_required'] }
 }
 
+/** Apply one server-observed execution and authorize only a verified continuation/retry. */
+export function recordInquiryExecution(
+  contract: InquiryContract,
+  args: {
+    item_id: string
+    disposition: InquiryObservation['disposition']
+    evidence_refs: readonly string[]
+    gap_reason?: string
+    pagination: InquiryPaginationReceipt
+    request_position_path?: string
+  },
+): InquiryContract {
+  const item = contract.plan_items.find((candidate) => candidate.item_id === args.item_id)
+  if (!item) throw new Error('INQUIRY_UNKNOWN_PLAN_ITEM')
+  const materiality = contract.obligations.some((obligation) => item.obligation_ids.includes(obligation.obligation_id)
+    && obligation.materiality === 'required') ? 'required' as const : 'supporting' as const
+  let observed = applyInquiryObservations(contract, [{
+    item_id: item.item_id,
+    disposition: args.disposition,
+    evidence_refs: args.evidence_refs,
+    gap_reason: args.gap_reason,
+    ...(args.pagination.exhausted ? {} : {
+      discovered_frontier: [{ scu_id: item.scu_id, materiality, reason: `Pagination frontier remains open (${String(args.pagination.next)}).` }],
+    }),
+  }])
+  if (!args.pagination.exhausted && args.pagination.next !== 'unproven' && args.pagination.next !== null) {
+    const bindingPositionKey = args.request_position_path?.split('.').at(-1)
+    if (!bindingPositionKey) return observed
+    observed = {
+      ...observed,
+      plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
+        ? { ...candidate, args: { ...candidate.args, [bindingPositionKey]: args.pagination.next }, state: 'ready' as const }
+        : candidate),
+    }
+  } else if (args.disposition === 'failed' && observed.iteration < observed.max_iterations) {
+    observed = {
+      ...observed,
+      plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
+        ? { ...candidate, state: 'ready' as const }
+        : candidate),
+    }
+  }
+  return observed
+}
+
 export function validateInquiryContract(contract: InquiryContract): InquiryValidationResult {
   const errors: string[] = []
   const obligationIds = new Set<string>()
@@ -281,4 +452,40 @@ export function finalizeInquiryContract(contract: InquiryContract): InquiryContr
     status: reasons.length === 0 ? 'COMPLETE' : exhausted ? 'BLOCKED' : 'INCOMPLETE',
     status_reasons: reasons.length ? reasons : ['all required obligations dispositioned; material frontier closed'],
   }
+}
+
+/** Fail closed when the chart/build overlay changes during managed or raw retrieval. */
+export function failInquiryForOverlayDrift(contract: InquiryContract): InquiryContract {
+  const invalidated = applyInquiryObservations(contract, contract.plan_items
+    .filter((item) => item.binding_id !== null)
+    .map((item) => ({
+      item_id: item.item_id,
+      disposition: 'failed' as const,
+      evidence_refs: [],
+      gap_reason: 'CAPABILITY_OVERLAY_CHANGED_DURING_DISPATCH',
+    })))
+  return finalizeInquiryContract({ ...invalidated, iteration: invalidated.max_iterations })
+}
+
+export function buildInquiryClosureReceipt(contract: InquiryContract): InquiryClosureReceipt {
+  const normalized = {
+    receipt_version: 'inquiry-closure-v1' as const,
+    contract_id: contract.contract_id,
+    semantic_contract_hash: contract.semantic_contract_hash,
+    execution_plan_hash: contract.execution_plan_hash,
+    capability_content_hash: contract.capability_content_hash,
+    chart_availability_version: contract.chart_availability_version,
+    chart_build_id: contract.chart_build_id,
+    status: contract.status,
+    status_reasons: [...contract.status_reasons],
+    obligation_coverage: contract.obligations.map((obligation) => ({
+      obligation_id: obligation.obligation_id,
+      materiality: obligation.materiality,
+      disposition: obligation.disposition,
+      evidence_refs: [...obligation.evidence_refs],
+      gap_reason: obligation.gap_reason,
+    })),
+    residual_frontier: contract.material_frontier.filter((item) => item.disposition === 'open' || item.disposition === 'capped'),
+  }
+  return { ...normalized, receipt_hash: stableFingerprint(normalized) }
 }

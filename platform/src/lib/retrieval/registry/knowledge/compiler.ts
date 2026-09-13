@@ -19,26 +19,53 @@ function slug(value: string): string {
 }
 
 function isDescriptorExecutable(cap: CapabilityDescriptor): boolean {
-  const runtime = cap as CapabilityDescriptor & { loader?: unknown }
-  return typeof cap.handler === 'function' || typeof runtime.loader === 'function'
+  const primitiveType = (cap as CapabilityDescriptor & { primitive_type?: string }).primitive_type
+  return (cap.type === 'tool' || primitiveType === 'tool') && typeof cap.handler === 'function'
 }
 
 function exclusionReason(cap: CapabilityDescriptor): string | null {
   if (cap.calibration_context_only) return 'calibration_context_only descriptors are not planner-addressable'
-  if (!isDescriptorExecutable(cap)) return 'descriptor has no executable handler or loader on the runtime catalog surface'
+  if (cap.mutation) return 'mutation-capable descriptors are not planner-addressable inquiry evidence'
   return null
 }
 
 function paginationFor(cap: CapabilityDescriptor): PaginationSemantics {
   if (!cap.density_contract?.paginated) return 'none'
-  if (cap.input_schema?.['cursor']) return 'cursor'
-  if (cap.input_schema?.['offset']) return 'offset'
+  const parameters = normalizedInputParameters(cap)
+  if (parameters.properties['cursor']) return 'cursor'
+  if (parameters.properties['offset']) return 'offset'
   return 'bounded_unverified'
 }
 
+function normalizedInputParameters(cap: CapabilityDescriptor): {
+  properties: Record<string, { type?: unknown; required?: unknown }>
+  required: Set<string>
+} {
+  const schema = (cap.input_schema ?? {}) as Record<string, unknown>
+  const jsonSchemaProperties = schema['type'] === 'object'
+    && schema['properties']
+    && typeof schema['properties'] === 'object'
+    && !Array.isArray(schema['properties'])
+    ? schema['properties'] as Record<string, { type?: unknown; required?: unknown }>
+    : null
+  const properties = jsonSchemaProperties ?? schema as Record<string, { type?: unknown; required?: unknown }>
+  const schemaRequired = Array.isArray(schema['required'])
+    ? schema['required'].filter((value): value is string => typeof value === 'string')
+    : []
+  return {
+    properties,
+    required: new Set([
+      ...(cap.required_inputs ?? []),
+      ...schemaRequired,
+      ...Object.entries(properties).filter(([, value]) => value?.required === true).map(([key]) => key),
+    ]),
+  }
+}
+
 function contractFromSchema(cap: CapabilityDescriptor): Readonly<Record<string, string>> {
-  return Object.fromEntries(Object.entries(cap.input_schema ?? {}).sort(([a], [b]) => a.localeCompare(b)).map(
-    ([key, spec]) => [key, `${spec.type}${cap.required_inputs?.includes(key) ? ':required' : ':optional'}`],
+  const normalized = normalizedInputParameters(cap)
+  return Object.fromEntries(Object.entries(normalized.properties).sort(([a], [b]) => a.localeCompare(b)).map(
+    ([key, spec]) => [key, `${typeof spec?.type === 'string' ? spec.type : 'unknown'}${normalized.required.has(key) ? ':required' : ':optional'}`],
   ))
 }
 
@@ -65,6 +92,7 @@ function primaryBinding(
 }
 
 function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclaration {
+  const inputParameters = normalizedInputParameters(cap)
   return {
     scu_id: `scu.catalog.${slug(cap.name)}`,
     version: 1,
@@ -82,7 +110,7 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     intents: [cap.traversal_level.toLowerCase(), cap.tool_role],
     horizons: cap.archetype === 'temporal' ? ['current', 'multi_year'] : ['natal'],
     scope: cap.scope === 'per_chart' ? 'chart' : 'global',
-    inputs: Object.keys(cap.input_schema ?? {}).sort(),
+    inputs: Object.keys(inputParameters.properties).sort(),
     outputs: cap.output_schema ? ['structured_content'] : ['content'],
     primary_binding_uri: cap.uri,
     edges: (cap.drill_children ?? []).map((child) => ({
@@ -233,16 +261,27 @@ export function inspectCapabilityKnowledge(
     if (primary.length !== 1) findings.push({ code: 'MISSING_PRIMARY_BINDING', severity: 'error', subject: scu.scu_id, detail: `Expected exactly one primary binding; found ${primary.length}.` })
     for (const binding of scu.bindings) {
       const descriptor = binding.kind === 'registry_capability' ? descriptorByUri.get(binding.capability_uri) : undefined
-      const descriptorRuntime = descriptor as (CapabilityDescriptor & { loader?: unknown }) | undefined
-      const descriptorExecutable = descriptor && (typeof descriptor.handler === 'function' || typeof descriptorRuntime?.loader === 'function')
-      if (binding.kind === 'registry_capability' && (!descriptor || !binding.executable || !descriptorExecutable)) {
-        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: descriptor ? 'Binding is marked unavailable or handler is absent.' : 'Binding URI is absent from the runtime catalog.' })
+      const descriptorExecutable = descriptor ? isDescriptorExecutable(descriptor) : false
+      if (binding.kind === 'registry_capability' && !descriptor) {
+        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: 'Binding URI is absent from the runtime catalog.' })
+      } else if (binding.kind === 'registry_capability' && binding.executable !== descriptorExecutable) {
+        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: 'Binding executable state disagrees with the handler-backed tool surface.' })
+      } else if (binding.kind === 'registry_capability' && !binding.executable) {
+        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'warning', subject: binding.binding_id, detail: 'Resource/prompt remains discoverable knowledge but is not executable through the tool dispatcher.' })
       }
       if (descriptor?.density_contract?.paginated && binding.pagination === 'none') {
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'error', subject: binding.binding_id, detail: 'Paginated descriptor is presented as non-paginated.' })
       }
       if (scu.editorial && descriptor?.density_contract?.paginated && !binding.pagination_verified) {
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'warning', subject: binding.binding_id, detail: 'Editorial SCU uses a bounded route whose response/exhaustion contract is not yet source-reviewed.' })
+      }
+    }
+    for (const claim of scu.producer_output_claims ?? []) {
+      if (claim.disposition === 'reviewed_output' && !/^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? '')) {
+        findings.push({ code: 'BAD_PRODUCER_OUTPUT_CLAIM', severity: 'error', subject: `${scu.scu_id}:${claim.asset_id}`, detail: 'A reviewed output claim must pin one exact SHA-256 output-digest specification.' })
+      }
+      if (claim.disposition !== 'reviewed_output' && claim.output_digest_spec_sha256 !== null) {
+        findings.push({ code: 'BAD_PRODUCER_OUTPUT_CLAIM', severity: 'error', subject: `${scu.scu_id}:${claim.asset_id}`, detail: 'An unreviewed output claim cannot carry a reviewed specification hash.' })
       }
     }
   }

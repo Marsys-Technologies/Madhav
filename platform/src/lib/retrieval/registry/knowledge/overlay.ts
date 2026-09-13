@@ -7,6 +7,7 @@ export interface ChartCapabilityEvidence {
   readonly build_id: string | null
   readonly freshness: string | null
   readonly available_binding_ids: readonly string[]
+  readonly state?: ChartCapabilityAvailability['state']
   readonly gaps?: readonly string[]
   readonly asset_receipts?: readonly ChartAssetCapabilityReceipt[]
 }
@@ -37,7 +38,7 @@ export function compileChartCapabilityOverlay(args: {
     const available = evidence.available_binding_ids.filter((id) => expected.has(id)).sort()
     return {
       scu_id: scu.scu_id,
-      state: available.length === 0 ? 'empty' : available.length === expected.size ? 'available' : 'partial',
+      state: evidence.state ?? (available.length === 0 ? 'empty' : available.length === expected.size ? 'available' : 'partial'),
       build_status: evidence.build_status,
       build_id: evidence.build_id,
       freshness: evidence.freshness,
@@ -68,8 +69,9 @@ export function compileChartCapabilityOverlay(args: {
   })
 }
 
-export function assertOverlayCompatibility(snapshot: CapabilityKnowledgeSnapshot, overlay: ChartCapabilityOverlay): void {
+export function assertOverlayCompatibility(snapshot: CapabilityKnowledgeSnapshot, overlay: ChartCapabilityOverlay, chartId?: string): void {
   if (overlay.capability_compatibility_version !== snapshot.compatibility_version || overlay.catalog_content_hash !== snapshot.content_hash) {
     throw new Error('CAPABILITY_OVERLAY_INCOMPATIBLE')
   }
+  if (chartId && overlay.chart_id !== chartId) throw new Error('CAPABILITY_OVERLAY_CHART_MISMATCH')
 }

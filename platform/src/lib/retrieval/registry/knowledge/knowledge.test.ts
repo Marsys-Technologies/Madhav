@@ -31,7 +31,19 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(0)
+    expect(snapshot.census.reviewed_output_claims).toBe(7)
+    expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
+      .filter((claim) => claim.disposition === 'reviewed_output')
+      .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
+  })
+
+  it('normalizes legacy flat and JSON Schema input dialects without losing required fields', () => {
+    const transit = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_planet_transit')
+    expect(transit?.inputs).toEqual(expect.arrayContaining(['planet', 'start_date', 'end_date']))
+    expect(transit?.bindings[0]?.input_contract).toMatchObject({
+      planet: 'string:required', start_date: 'string:required', end_date: 'string:required',
+    })
+    expect(transit?.bindings[0]?.input_contract).not.toHaveProperty('properties')
   })
 
   it('provides staged discovery, graph inspection, and bounded depth', () => {
@@ -57,10 +69,22 @@ describe('planner capability knowledge', () => {
     expect(new Set(report.findings.map((finding) => finding.code))).toEqual(expect.objectContaining(new Set(['DUPLICATE_SCU', 'STALE_EDGE', 'NON_EXECUTABLE_BINDING'])))
   })
 
+  it('rejects a reviewed producer-output claim without an exact specification hash', () => {
+    const source = snapshot.scus.find((scu) => (scu.producer_output_claims?.length ?? 0) > 0)!
+    const broken = {
+      ...snapshot,
+      scus: snapshot.scus.map((scu) => scu.scu_id === source.scu_id
+        ? { ...scu, producer_output_claims: [{ ...scu.producer_output_claims![0]!, disposition: 'reviewed_output' as const, output_digest_spec_sha256: null }] }
+        : scu),
+    } as CapabilityKnowledgeSnapshot
+    expect(inspectCapabilityKnowledge(catalog, broken).findings).toContainEqual(expect.objectContaining({ code: 'BAD_PRODUCER_OUTPUT_CLAIM', severity: 'error' }))
+  })
+
   it('keeps chart availability separate and rejects a stale compatibility pair', () => {
     const overlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-fixture', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
     expect(overlay.availability.every((item) => item.state === 'dark')).toBe(true)
     expect(() => assertOverlayCompatibility(snapshot, overlay)).not.toThrow()
+    expect(() => assertOverlayCompatibility(snapshot, overlay, 'other-chart')).toThrow('CAPABILITY_OVERLAY_CHART_MISMATCH')
     expect(() => assertOverlayCompatibility(snapshot, { ...overlay, catalog_content_hash: 'sha256:stale' })).toThrow('CAPABILITY_OVERLAY_INCOMPATIBLE')
   })
 })

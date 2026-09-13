@@ -51,8 +51,7 @@ import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
-import { getCatalog } from '@/lib/retrieval/registry/catalog'
-import { buildPlannerCapabilityKnowledgeProjection, compileCapabilityKnowledge } from '@/lib/retrieval/registry/knowledge'
+import { buildPlannerCapabilityKnowledgeProjection, getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Retry helpers — timeout + rate-limit retry gate
@@ -416,7 +415,7 @@ export async function callPipelinePlanner(
   const manifest = loadManifest()
   const compressed = compressManifest(manifest)
   const compressedManifestStr = compressedManifestToString(compressed)
-  const knowledgeSnapshot = compileCapabilityKnowledge(getCatalog())
+  const knowledgeSnapshot = getPinnedCapabilityKnowledgeSnapshot()
   const capabilityKnowledge = buildPlannerCapabilityKnowledgeProjection(knowledgeSnapshot, query, scopeTuple)
 
   const ctx = await buildPlannerContext(query, conversationHistory, plannerModelId, queryId)

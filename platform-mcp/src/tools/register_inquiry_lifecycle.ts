@@ -16,6 +16,25 @@ const scopeSchema = z.object({
   entitlement: z.enum(['reference', 'native', 'restricted']),
 }).strict()
 
+const aiProposalSchema = z.object({
+  question_facets: z.array(z.object({
+    label: z.string().trim().min(1).max(160),
+    terms: z.array(z.string().trim().min(1).max(80)).max(32),
+    materiality: z.enum(['required', 'supporting']),
+  }).strict()).max(16),
+  uncommon_adjacencies: z.array(z.object({
+    from_scu_id: z.string().trim().min(1).max(200),
+    to_scu_id: z.string().trim().min(1).max(200),
+    rationale: z.string().trim().min(1).max(500),
+  }).strict()).max(16),
+  hypotheses: z.array(z.string().trim().min(1).max(500)).max(16),
+}).strict()
+
+const startSchema = z.object({
+  chart_id: z.string().uuid(), question: z.string().trim().min(1).max(4000),
+  scope_tuple: scopeSchema, ai_proposal: aiProposalSchema.optional(),
+}).strict()
+
 function output(payload: Record<string, unknown>) {
   const result = { content: [{ type: 'text' as const, text: JSON.stringify(payload) }], structuredContent: payload }
   return payload['ok'] === false ? { ...result, isError: true as const } : result
@@ -24,26 +43,26 @@ function output(payload: Record<string, unknown>) {
 export function registerInquiryLifecycleTools(server: InquiryRegisteringServer, principal: Principal, profile: string): void {
   const restricted = () => profile !== 'full'
   server.tool('inquiry_start', 'Start a durable, versioned Inquiry Contract. Returns required obligations, executable next actions, and a short-lived principal/chart-bound lifecycle token. Raw MCP receives evidence and closure receipts but no synthesis.', {
-    chart_id: z.string().uuid(), question: z.string().min(1), scope_tuple: scopeSchema,
+    chart_id: z.string().uuid(), question: z.string().trim().min(1).max(4000), scope_tuple: scopeSchema, ai_proposal: aiProposalSchema.optional(),
   }, async (args) => {
     if (restricted()) return output({ ok: false, error: 'inquiry lifecycle requires the full MCP profile' })
-    const parsed = z.object({ chart_id: z.string().uuid(), question: z.string().min(1), scope_tuple: scopeSchema }).strict().parse(args)
+    const parsed = startSchema.parse(args)
     return output(await callInquiryLifecycle(principal, { action: 'start', ...parsed }))
   })
 
   server.tool('inquiry_execute_next', 'Execute exactly one server-authorized Inquiry Contract action. The server pins tool identity and arguments, records raw evidence durably, proves pagination state, consumes the one-use token, and returns the next token.', {
-    lifecycle_token: z.string().min(1), action_id: z.string().min(1),
+    lifecycle_token: z.string().min(1).max(16384), action_id: z.string().regex(/^item-[0-9]{3}$/),
   }, async (args) => {
     if (restricted()) return output({ ok: false, error: 'inquiry lifecycle requires the full MCP profile' })
-    const parsed = z.object({ lifecycle_token: z.string().min(1), action_id: z.string().min(1) }).strict().parse(args)
+    const parsed = z.object({ lifecycle_token: z.string().min(1).max(16384), action_id: z.string().regex(/^item-[0-9]{3}$/) }).strict().parse(args)
     return output(await callInquiryLifecycle(principal, { action: 'execute', ...parsed }))
   })
 
   server.tool('inquiry_finalize', 'Validate deterministic closure. COMPLETE is returned only when all required obligations have evidence and the material frontier is closed; otherwise the receipt remains INCOMPLETE or BLOCKED with reasons.', {
-    lifecycle_token: z.string().min(1),
+    lifecycle_token: z.string().min(1).max(16384),
   }, async (args) => {
     if (restricted()) return output({ ok: false, error: 'inquiry lifecycle requires the full MCP profile' })
-    const parsed = z.object({ lifecycle_token: z.string().min(1) }).strict().parse(args)
+    const parsed = z.object({ lifecycle_token: z.string().min(1).max(16384) }).strict().parse(args)
     return output(await callInquiryLifecycle(principal, { action: 'finalize', ...parsed }))
   })
 }

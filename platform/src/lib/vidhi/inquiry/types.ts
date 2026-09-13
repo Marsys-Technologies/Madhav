@@ -1,4 +1,6 @@
-export const INQUIRY_CONTRACT_VERSION = '1.0.0' as const
+import type { ExecutionChannel } from '../../retrieval/registry/knowledge/types'
+
+export const INQUIRY_CONTRACT_VERSION = '1.1.0' as const
 
 /**
  * Channel-neutral scope carried by an Inquiry Contract. Both the Portal
@@ -38,6 +40,7 @@ export interface InquiryPlanItem {
   readonly args: Readonly<Record<string, unknown>>
   readonly depends_on: readonly string[]
   readonly state: 'ready' | 'blocked' | 'observed'
+  readonly blocked_reason: string | null
   readonly observation: {
     readonly disposition: Exclude<ObligationDisposition, 'pending' | 'not_applicable'>
     readonly evidence_refs: readonly string[]
@@ -75,11 +78,13 @@ export interface InquiryContract {
   readonly semantic_contract_hash: string
   readonly execution_plan_hash: string
   readonly chart_id: string
+  readonly execution_channel: ExecutionChannel
   readonly question: string
   readonly scope_tuple: InquiryScopeTuple
   readonly capability_compatibility_version: string
   readonly capability_content_hash: string
   readonly chart_availability_version: string | null
+  readonly chart_build_id: string | null
   readonly obligations: readonly InquiryObligation[]
   readonly plan_items: readonly InquiryPlanItem[]
   readonly material_frontier: readonly MaterialFrontierItem[]
@@ -106,4 +111,25 @@ export interface InquiryObservation {
 export interface InquiryValidationResult {
   readonly valid: boolean
   readonly errors: readonly string[]
+}
+
+export interface InquiryClosureReceipt {
+  readonly receipt_version: 'inquiry-closure-v1'
+  readonly contract_id: string
+  readonly semantic_contract_hash: string
+  readonly execution_plan_hash: string
+  readonly capability_content_hash: string
+  readonly chart_availability_version: string | null
+  readonly chart_build_id: string | null
+  readonly status: InquiryStatus
+  readonly status_reasons: readonly string[]
+  readonly obligation_coverage: readonly {
+    obligation_id: string
+    materiality: 'required' | 'supporting'
+    disposition: ObligationDisposition
+    evidence_refs: readonly string[]
+    gap_reason: string | null
+  }[]
+  readonly residual_frontier: readonly MaterialFrontierItem[]
+  readonly receipt_hash: string
 }
