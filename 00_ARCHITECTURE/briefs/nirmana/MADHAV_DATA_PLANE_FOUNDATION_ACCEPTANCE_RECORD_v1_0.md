@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_DATA_PLANE_FOUNDATION_ACCEPTANCE_RECORD
 version: "1.0"
-status: READY_FOR_LOCAL_COMMIT
+status: FOUNDATION_COMPLETE
 produced_on: 2026-09-13
 session_id: MADHAV-DATA-PLANE-EXECUTION-FOUNDATION-20260913
 source_revision: 9c497f3a7d500c18565e7bf0cde6d5bb56abb7fa
 task_branch: codex/madhav-data-plane-execution
 application_base: 731e311f0b8f5f84db2f152b93951e1d3d50d89a
-foundation_content_commit: PENDING
+foundation_content_commit: da4abc5f1f821f513273c82b46496256cadb1ccd
 changelog:
   - "1.0: Records bounded foundation deliverables, validation, scope-diff proof, inherited/new findings, local commit evidence and L0 hold."
 ---
@@ -16,7 +16,7 @@ changelog:
 
 ## 1. Acceptance verdict
 
-**Pre-commit verdict: READY_FOR_LOCAL_COMMIT.** The documentation foundation is coherent and scoped. It does not adopt the proposed Data Plane Value Architecture v2.0, begin L0, modify product authority or alter runtime/data/campaign/protected state. Final status becomes `FOUNDATION_COMPLETE` only after the bounded content commit, post-commit verification and ledger close update.
+**Verdict: FOUNDATION_COMPLETE.** The documentation foundation is coherent, locally committed and scoped. It does not adopt the proposed Data Plane Value Architecture v2.0, begin L0, modify product authority or alter runtime/data/campaign/protected state.
 
 ## 2. Deliverables
 
@@ -34,15 +34,16 @@ changelog:
 | Check | Command / method | Result |
 |---|---|---|
 | Session open | `python3 platform/scripts/governance/schema_validator.py --handshake verification_artifacts/madhav_data_plane_foundation_session_open.yaml` | Exit 1; exactly one CRITICAL: `handshake_codex_profile_invalid`. Explicit native documentation-only exception consumed; validator unchanged. |
-| Frontmatter | Ruby YAML parse of the five pre-acceptance foundation Markdown files; required `artifact`, `version`, `status` | `FRONTMATTER_FILES=5`, `FRONTMATTER_ERRORS=0`, exit 0. Acceptance artifact is included in final re-run. |
-| Local links | Ruby relative-link existence check over the five pre-acceptance foundation Markdown files | `LINK_ERRORS=0`, exit 0. Acceptance artifact is included in final re-run. |
+| Frontmatter | Ruby YAML parse of all six foundation Markdown files; required `artifact`, `version`, `status` | Final pre-commit run: `FRONTMATTER_FILES=6`, `FRONTMATTER_ERRORS=0`, exit 0. Repeated after close metadata. |
+| Local links | Ruby relative-link existence check over all six foundation Markdown files | Final pre-commit run: `LINK_ERRORS=0`, exit 0. Repeated after close metadata. |
 | Foundation invariant count | `rg` unique table IDs in contract | 28 unique F IDs (`F01`–`F28`). |
 | DP contract count | `rg` unique table IDs in contract | 18 DP families represented by 19 explicit rows because DP15 has issuance/evaluation subcontracts `DP15a` and `DP15b`. |
-| Generated census | `jq` keys + non-writer arrays | 123 writers; six non-writers; 129 unique identities; formal receipt sum 128. |
+| Generated census | `jq` keys + non-writer arrays, then generated-versus-baseline set comparison | `EXPECTED_IDENTITIES=129`, `OBSERVED_IDENTITIES=129`, `MISSING=0`, `EXTRA=0`, exit 0; formal receipt sum 128. |
 | Broad schema baseline | `python3 platform/scripts/governance/schema_validator.py --repo-root . --report-path /private/tmp/madhav-foundation-schema.json` | Exit 3, 42 pre-existing MEDIUM/LOW violations; matches inherited data-plane proposal baseline. No new HIGH/CRITICAL. |
 | Broad drift baseline | `python3 platform/scripts/governance/drift_detector.py --repo-root . --report-path /private/tmp/madhav-foundation-drift.json` | Exit 3, 79 pre-existing findings; matches inherited data-plane proposal baseline. No new hard finding attributed to foundation files. |
+| Paired close checklist | `python3 platform/scripts/governance/schema_validator.py --close-checklist verification_artifacts/madhav_data_plane_foundation_session_close.yaml --session-open-for-close verification_artifacts/madhav_data_plane_foundation_session_open.yaml --report-path /private/tmp/madhav-foundation-close-validation.md` | Exit 0, zero violations after enumerating the six exact may-touch paths. |
 
-Final validation after this file is complete will repeat frontmatter/link/count/census, identity reconciliation, trailing-whitespace/conflict-marker and Git scope-diff checks and record exact output in §7.
+Final validation after close metadata repeats frontmatter/link/count/census, identity reconciliation, trailing-whitespace/conflict-marker and Git scope-diff checks; §7 records the terminal results.
 
 ## 4. Scope and mutation proof
 
@@ -89,5 +90,19 @@ L0 has not started. It remains `WAITING_FOR_STRATEGIC_BRIEF` and requires a sepa
 
 ## 7. Commit and final verification
 
-Pending bounded content commit. After commit, this section will record the content commit, post-commit full hashes/status, final check results and the closure metadata commit relationship. A commit is durable local evidence only; it is not push, PR, protected integration, adoption, deployment or acceptance of the proposed architecture.
+The six-file content snapshot is locally committed at `da4abc5f1f821f513273c82b46496256cadb1ccd` (`docs(data-plane): establish execution foundation`). It contains 764 inserted lines across exactly the six files listed in §4.
 
+Terminal scoped results after close metadata:
+
+- six frontmatters parse with zero errors;
+- zero broken relative Markdown links;
+- 28 unique F invariants; 18 DP families represented by 19 explicit rows (`DP15a`/`DP15b`);
+- 129 expected and observed generated identities, zero missing and zero extra;
+- eight later stage rows remain `WAITING_FOR_STRATEGIC_BRIEF`;
+- no trailing whitespace or conflict markers;
+- Git task diff from `9c497f3a7` contains only the six foundation files; application/platform diff is empty;
+- broad repository baselines remain schema 42/exit 3 and drift 79/exit 3, with no new HIGH/CRITICAL;
+- paired close-checklist validation exits 0 with zero violations; the strategic-parent completion packet was delivered to task `01a0996e-6ca0-7642-ac31-f968fee214b3`;
+- no push, PR, merge, queue, deploy, migration, data/build/campaign or adoption action occurred.
+
+The subsequent closure-metadata commit changes only this acceptance record and the execution ledger to pin the content commit and terminal state. A commit is durable local evidence only; it is not protected integration, adoption, deployment or acceptance of the proposed architecture.
