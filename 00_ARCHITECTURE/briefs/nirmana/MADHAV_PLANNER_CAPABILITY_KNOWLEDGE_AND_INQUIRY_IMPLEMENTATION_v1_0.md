@@ -2,7 +2,7 @@
 artifact: MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION
 version: "1.0"
 status: "IMPLEMENTED BRANCH CANDIDATE — reviewed locally; not merged, deployed, migrated, or production-verified"
-produced_on: 2026-09-13
+produced_on: 2026-09-14
 decision_owner: Native
 implementation_branch: codex/planner-knowledge-inquiry
 source_baseline: b1a0f17eb65494f21a00fd2b22d6264da76c3c38
@@ -107,13 +107,16 @@ The generator emits `platform/src/generated/capability_knowledge.snapshot.json`.
 | Compiled SCUs | 182 |
 | Editorial SCUs | 5 |
 | Conservative derived stubs | 177 |
-| Executable bindings | 185 |
+| Executable bindings | 179 |
+| Non-executable/discovery-only bindings | 6 |
 | Bindings with a source-attached public name | 7 |
 | Source-reviewed pagination bindings | 1 |
 | Producer-output claims | 8 |
-| Claims joined to a reviewed output-spec hash | 0 |
+| Claims joined to a reviewed output-spec hash | 7 |
 
-Snapshot content hash at the time of this brief: `sha256:3b26675f97586f72c0cd186815e15a3704b6141f2bb6ac002527f521e425e150`.
+Snapshot content hash at the time of this brief: `sha256:396e49d92c113f28d6747230c6297846deeffc6e709eb277dfca3f0ef8d465db`.
+
+The runtime imports and deep-freezes this generated JSON artifact. It also recompiles the current registry to detect byte-affecting drift; the live catalog is not silently substituted for the pinned snapshot.
 
 The compiler rejects duplicate SCU IDs, missing/multiple primary bindings, stale edge targets, non-executable registry bindings, orphan addressable descriptors, incompatible snapshot versions, and a paginated descriptor falsely presented as non-paginated. It reports unreviewed pagination on editorial SCUs as a warning so the gap remains visible without claiming exhaustion proof.
 
@@ -131,11 +134,11 @@ Five editorial SCUs prove the many-to-many and cross-layer model:
 
 The representative wealth deep-dive floor includes prosperity assessment, mechanisms, divisional evidence, yoga firing/cancellation, temporal activation, dashas, transits, classical grounding and contradiction inquiry. Omission rules additionally seed Bhāvat Bhāvam, cancellation, varga contradiction, inhibitors, temporal prerequisites and cross-domain convergence when the question makes them material.
 
-Every producer-output link above is deliberately `route_evidence_only`. None has been upgraded to `reviewed_output` because the compiler does not yet join an authoritative output-digest component hash. This is an explicit unfinished boundary, not a hidden assumption.
+Seven producer-output links above pin exact migration-authored output-digest component hashes and are marked `reviewed_output`. `ka_kalasutra` remains the sole `route_evidence_only` link because no reviewed output-digest component hash is joined to it. These hashes prove a reviewed component contract exists in source; they do not prove the current deployed row, chart population, or empirical quality.
 
 ## 7. Estate census
 
-`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `a06fc7445c597fb178efe3bed876f9bf383818ff4296d656ff1fd231594a39d9`.
+`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `16db84648eb88c1d57769ea3d65e461cde202d9eeaa018b7db4851f84297426c`.
 
 | Denominator | Current source-tree result |
 |---|---:|
@@ -187,33 +190,39 @@ The overlay is a separate immutable value keyed by chart, snapshot hash, compati
 - gaps;
 - per-asset receipts including writer version, output-spec hash, state and receipt reference.
 
-The overlay compiler rejects snapshot/hash incompatibility before planning. No live overlay loader is wired in this branch, so current managed/raw contracts carry `chart_availability_version:null`. The type/compiler boundary is implemented; production availability proof is not.
+The overlay loader reads the latest completed build and matching provenance/freshness receipts in one database statement, requires exact reviewed output-spec hashes and the active build ID, and fails dark when evidence is missing, stale, incompatible, or unavailable. All three doors pin the resulting overlay in the Inquiry Contract, restrict dispatch to bindings it makes available, and revalidate the overlay immediately before closure or raw evidence commit.
+
+This is source-wired and unit-tested, not production-verified. Because most SCUs still have no reviewed producer-output claim, the loader will honestly leave most of the estate dark until those claims and live receipts exist.
 
 ## 10. Managed-channel wiring
 
-Portal plan stage compiles the Inquiry Contract from the same live catalog snapshot used by raw MCP. Evidence stage maps actual retrieval events to contract plan items and finalizes the contract deterministically. Receipt stage emits an `inquiry_contract` grade with required-obligation and open-frontier counts.
+Portal plan stage compiles the Inquiry Contract from the same pinned snapshot used by raw MCP. The server-compiled ready actions replace the planner tool list: unmatched, blocked, dark and duplicate planner-only calls do not survive into dispatch. Evidence stage classifies actual results through binding-specific reviewed response paths, follows verified page continuations within the bounded iteration budget, revalidates the overlay, and finalizes deterministically. Receipt stage emits an `inquiry_contract` grade with required-obligation, open-frontier and normalized closure-receipt data.
 
 Managed `prashna_ask` now:
 
 - compiles the same Inquiry Contract core;
+- treats server-compiled ready actions and exact arguments as execution authority rather than planner suggestions;
 - maps successful, empty and failed tool events to observations;
+- distinguishes adapter-item counts from semantic result counts and reports the latter only for reviewed collection paths;
+- follows verified page continuations within call, wall-clock and iteration caps;
+- revalidates the chart/build overlay before closure;
 - treats dispatch errors, compiler failure, unmapped floor items, caps, unresolved tools, and a non-complete Inquiry Contract as partial;
 - returns the Inquiry Contract beside its existing reading envelope;
 - keeps final synthesis in the synthesis component, outside the planner.
 
-The existing Portal and managed-MCP completeness receipts remain for compatibility. The Inquiry Contract is the new semantic closure authority. This branch does not yet delete or fully normalize the older receipt families.
+The existing Portal and managed-MCP completeness receipts remain for compatibility. The Inquiry Contract is the semantic closure authority, and every door emits the same normalized `inquiry-closure-v1` coverage/frontier receipt shape. Older receipt families are not deleted in this candidate.
 
 ## 11. Raw MCP lifecycle and security
 
 The raw MCP surface is full-profile only:
 
 1. `inquiry_start` accepts a strict managed-compatible scope tuple and returns a durable contract plus the only authorized next action IDs.
-2. `inquiry_execute_next` verifies the signed lifecycle token, current DB revision/JTI, principal, chart entitlement, semantic hash, execution-plan hash, compatibility version and snapshot hash. The server selects the binding and arguments; the caller cannot nominate a tool or claim an observation.
-3. The platform executes the pinned registry route, stores the raw result and hashes, records an append-only evidence receipt, atomically consumes the JTI/revision, and rotates the token.
+2. `inquiry_execute_next` verifies the signed lifecycle token, current DB revision/JTI, principal, chart entitlement, semantic hash, execution-plan hash, revision-specific contract-state hash, execution channel, overlay/build, compatibility version and snapshot hash. The server selects the binding and arguments; the caller cannot nominate a tool or claim an observation.
+3. The platform consumes the one-use JTI before dispatch, executes only an authorized `mcp_full` handler-backed registry route, caps the returned payload at 512 KiB, stores only result hashes and minimal trace/byte metadata in an append-only evidence receipt, and rotates the token after an atomic state transition.
 4. Verified multi-page routes remain executable until the server observes exhaustion. Unreviewed pagination produces `next:"unproven"` and an open material frontier.
 5. `inquiry_finalize` returns the deterministic closure receipt and never performs synthesis.
 
-Token security uses HMAC-SHA-256 with a dedicated `INQUIRY_LIFECYCLE_SIGNING_KEY`, a minimum key length, fixed issuer/audience, user-and-API-key subject binding, short expiry, random JTI, revision, allowed transition and next-action allowlist. The raw token is never stored; only its SHA-256 JTI hash is retained. Fresh chart authorization runs on every transition.
+Token security uses HMAC-SHA-256 with a dedicated `INQUIRY_LIFECYCLE_SIGNING_KEY`, a minimum key length, fixed issuer/audience, user-and-API-key subject binding, short expiry, random JTI, revision, authenticated mutable-state hash, allowed transition and next-action allowlist. The raw token is never stored; only its SHA-256 JTI hash is retained. Fresh chart authorization and overlay/build compatibility run on every transition. Unknown internal failures are logged under a trace ID and returned as a stable public error rather than leaking exception details.
 
 Migration 1033 creates principal/chart-bound lifecycle state and append-only evidence receipts with:
 
@@ -221,11 +230,14 @@ Migration 1033 creates principal/chart-bound lifecycle state and append-only evi
 - RLS on both tables using principal and chart context;
 - no sidecar access;
 - explicit least-privilege grants to `role_web_serve`;
+- immutable authorization JSON separated from authenticated mutable progress;
 - atomic compare-and-swap over revision and current JTI hash;
+- a database-serialized ceiling of 32 creations per principal/hour and eight active lifecycles per principal/chart;
+- 30-day immutable retention, with global expiry cleanup attached to the already-scheduled pending-stream reaper;
 - multiple receipts for verified pagination, one receipt per lifecycle revision;
-- documented child-first evidence export/purge requirements.
+- cascade deletion of child receipts only after lifecycle retention expiry, plus documented export requirements.
 
-The migration guard returned `MIGRATION SAFE`. This is a static review result, not application evidence.
+The independent migration guard returned `MIGRATION SAFE` after the retention/quota amendment. The migration remains unapplied; this is static review, not application evidence.
 
 ## 12. Adjacent managed-job security repair
 
@@ -251,8 +263,8 @@ Ordinary CI now checks:
 - Inquiry Compiler floors, AI-ID filtering, omission/frontier closure and blocked caps;
 - required failure never completing;
 - lifecycle token binding, tamper, subject, expiry and weak-key rejection;
-- pagination advance, terminal exhaustion and unproven handling;
-- raw-route principal-header enforcement, user-and-key token binding, and verified page continuation;
+- independently reviewed semantic-empty classification, pagination advance, terminal exhaustion and unproven handling;
+- raw-route principal-header enforcement, user-and-key/token-state binding, pre-dispatch replay exclusion, verified page continuation, mutable-state forgery rejection and overlay-drift termination;
 - migration FKs, RLS, grants, append-only evidence and independent hashes;
 - raw MCP lifecycle registration/profile restriction;
 - principal-bound `prashna_status`, managed `prashna_ask`, and server registration.
@@ -279,13 +291,13 @@ No test in this branch is described as live production proof. Database behavior 
 |---|---|---|
 | R1 | 177/182 SCUs are conservative descriptor-derived stubs. | Editorially decompose by high-value slice; do not claim semantic estate completion. |
 | R2 | 95/128 active assets lack any statically evidenced reviewed output spec. | Author/review output contracts or explicitly exclude/darken each output; regenerate census. |
-| R3 | Zero SCU producer claims currently pin an output-spec SHA. | Join claims to exact current component hashes before promoting `route_evidence_only` to `reviewed_output`. |
+| R3 | One of eight representative producer claims (`ka_kalasutra`) remains route-only. | Join it to an exact reviewed current component hash or retain it as an explicit dark/route-only boundary. |
 | R4 | Public registrar scanner resolves only 59 unambiguous descriptors and has known false negatives. | Replace source-text inference with structured registrar declarations; explicitly adjudicate three ambiguities. |
 | R5 | Only yoga firing currently has source-reviewed, receipt-grade pagination metadata. | Add total/next/exhaustion and total ordering to material routes, then golden-test first/middle/last pages. |
-| R6 | Live chart/build overlay loading is not wired. | Join build/provenance receipts and fail compatibility before dispatch. |
+| R6 | Chart/build overlay loading is source-wired but not exercised against a deployed schema; most SCUs have no reviewed producer claim and therefore remain dark. | Rehearse against throwaway/staging data, then expand exact producer claims and receipt population without weakening the dark default. |
 | R7 | `CAPABILITY_MANIFEST` remains as an execution-name compatibility projection. | Complete adapter coverage, then remove flat semantic authority and its prompt assumptions. |
-| R8 | Existing completeness/reading receipt families are not fully normalized. | Define a channel-neutral closure receipt adapter and run cross-door normalized-hash parity tests. |
-| R9 | Portal observes the current retrieval pass but does not yet checkpoint/resume adaptive frontier expansion through the durable lifecycle. | Add managed lifecycle persistence/resumption and route new frontier actions through the same server authority. |
+| R8 | A normalized channel-neutral closure receipt and semantic-hash parity tests exist, but no deployed cross-door trace proves equivalent runtime observations. | Run identical staging inquiries through Portal, managed MCP and raw MCP and compare normalized receipts without equating delivery envelopes. |
+| R9 | Portal and managed MCP perform bounded in-request multi-pass continuation but do not checkpoint/resume managed frontier expansion through the durable lifecycle. | Add managed lifecycle persistence/resumption while preserving the same server execution authority. |
 | R10 | Raw MCP lifecycle requires migration application and a dedicated signing key. | Provision through normal secrets/change control, apply DDL in a throwaway DB first, then staging; none was done here. |
 | R11 | Managed `prashna_ask` job wrapper remains process-local. | Adopt durable job delivery separately; principal binding fixes disclosure but not restart/cross-instance continuity. |
 | R12 | No live database, deployed endpoint, production overlay, or empirical answer-quality proof was run. | Treat all current results as branch/source verification only. |
@@ -296,8 +308,8 @@ Before merge:
 
 1. Independent code/security review of the raw execution authority and evidence retention.
 2. Throwaway PostgreSQL migration up/down rehearsal, RLS-role tests and concurrent CAS/replay tests.
-3. Extend route integration coverage to revoked access, stale snapshot, wrong action, failed dispatch, replay and terminal incomplete closure; user/key binding and verified multi-page continuation are already covered.
-4. Normalized semantic-contract parity across Portal, managed MCP and raw MCP for identical question/scope/snapshot.
+3. Extend route integration coverage to revoked access, stale snapshot, wrong action, failed dispatch and terminal incomplete closure; user/key binding, concurrent replay exclusion, state forgery rejection, overlay drift and verified multi-page continuation are covered.
+4. Rehearse normalized semantic-contract/closure parity across Portal, managed MCP and raw MCP for identical staging question/scope/snapshot.
 5. Confirm the dedicated signing-key provisioning/rotation runbook without exposing a key.
 
 Before deployment:
@@ -306,7 +318,7 @@ Before deployment:
 2. Apply migration 1033 under approved change control.
 3. Provision the signing key and verify service-to-service headers/role context in staging.
 4. Run staging lifecycle journeys, including restart/cross-instance behavior and evidence retention.
-5. Wire and validate a real chart/build overlay before claiming chart-aware capability completeness.
+5. Validate the wired chart/build overlay against real staging receipts before claiming chart-aware capability availability.
 
 Before any “complete data estate” claim:
 
