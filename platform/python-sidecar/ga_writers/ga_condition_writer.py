@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -29,6 +28,7 @@ import psycopg.rows
 
 from brahmagyan.graha_vocabulary import to_title
 
+from ga_writers.data_plane_contracts import stable_fact_id
 from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
@@ -1084,7 +1084,11 @@ def _build_per_varga_avastha_rows(
         if degree_in_sign is not None:
             baladi_val = avastha_baladi_from_degree(degree_in_sign)
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_baladi_per_varga",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), varga,
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1110,7 +1114,11 @@ def _build_per_varga_avastha_rows(
                 normalized_dignity, is_combust=False, is_retrograde=False
             )
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_deeptaadi_per_varga",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), varga,
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1133,7 +1141,10 @@ def _build_per_varga_avastha_rows(
     for graha in ALL_GRAHAS:
         for floor_cat, reason in INTRINSICALLY_D1_AVASTHAS:
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    floor_cat, PLANET_TO_SUBJECT.get(graha, graha.upper()),
+                    "D_ALL", chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1316,7 +1327,11 @@ def _build_d1_avastha_rows(
         if deg_in_sign is not None:
             sayanadi_val = _sayanadi_from_degree(float(deg_in_sign))
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_sayanadi",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), "D1",
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id or "",
@@ -1340,7 +1355,11 @@ def _build_d1_avastha_rows(
             graha, dignity_d1, house, is_combust, position_map
         )
         rows.append({
-            "fact_id":                 str(uuid.uuid4()),
+            "fact_id":                 stable_fact_id(
+                "graha_avastha_lajjitadi",
+                PLANET_TO_SUBJECT.get(graha, graha.upper()), "D1",
+                chart_id, ayanamsha_id,
+            ),
             "chart_id":                chart_id,
             "ayanamsha_id":            ayanamsha_id,
             "build_id":                build_id or "",

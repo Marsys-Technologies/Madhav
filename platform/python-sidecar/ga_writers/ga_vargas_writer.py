@@ -362,7 +362,9 @@ def _varga_id(n: int) -> str:
 
 def _fact_id(varga: str, body: str, category: str, key: str,
              chart_id: str, ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{varga}|{body}|{category}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # A fact is identified by what it is about, not by the rebuild that
+    # observed it.  build_id remains on the row as generation provenance.
+    raw = f"{varga}|{body}|{category}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:20]
 
 

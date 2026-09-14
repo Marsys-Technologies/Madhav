@@ -758,7 +758,8 @@ def _write_halt_log(reason: str, details: str) -> None:
 
 def _fact_id(category: str, subject: str, key: str, chart_id: str,
               ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # build_id is observation provenance, never semantic fact identity.
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 

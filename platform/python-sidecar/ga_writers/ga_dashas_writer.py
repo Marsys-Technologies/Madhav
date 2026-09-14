@@ -47,6 +47,7 @@ from brahmagyan.verification_vocab import (
     UNVERIFIED_DEFAULT,
     entry_for as _vocab_entry_for,
 )
+from ga_writers.data_plane_contracts import stable_uuid, stabilize_hierarchical_uuids
 
 # F-A17 fix, second half: 'scope_cap_sentinel' (verification_vocab.py's settled
 # vocabulary entry 9) had no exported named constant -- CLASSICAL_MATCH/
@@ -3273,6 +3274,22 @@ def build_system(
         system_id, verification, examined_count, len(rows) - examined_count, UNVERIFIED_DEFAULT,
     )
 
+    # Preserve interval identity across rebuilds.  The computation functions
+    # still use transient UUIDs while assembling parent/child trees; this
+    # post-pass replaces them with semantic UUID5 identities and rewires every
+    # parent reference before persistence or return.
+    stabilize_hierarchical_uuids(
+        rows,
+        id_field="dasha_row_id",
+        parent_field="parent_row_id",
+        identity_fields=(
+            "chart_id", "ayanamsha_id", "system_id", "level_n",
+            "lord_graha", "start_iso", "end_iso", "kp_sublevel",
+            "kp_sub_lord", "kp_sub_sub_lord",
+        ),
+        kind="dasha_interval",
+    )
+
     # DB write
     rows_written = 0
     if not skip_db:
@@ -3432,7 +3449,9 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
 
     scope_cap_row = {
         **common_fields,
-        "dasha_row_id": str(uuid.uuid4()),
+        "dasha_row_id": stable_uuid(
+            "dasha_scope_cap", chart_id, "PRANA_DASHA", 5,
+        ),
         "level_n": 5,
         "lord_graha": "PRANA_DASHA",
         "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
@@ -3440,7 +3459,9 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     }
     kp_cap_row = {
         **common_fields,
-        "dasha_row_id": str(uuid.uuid4()),
+        "dasha_row_id": stable_uuid(
+            "dasha_scope_cap", chart_id, "KP_LEVELS_BEYOND_SUB_SUB", 4,
+        ),
         "level_n": 4,
         "lord_graha": "KP_LEVELS_BEYOND_SUB_SUB",
         "citation_human": (

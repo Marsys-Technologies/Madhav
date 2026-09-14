@@ -229,8 +229,8 @@ _APRAKASHA_FORMULAS: dict[str, str] = {
 
 def _fact_id(category: str, subject: str, key: str, chart_id: str,
               ayanamsha_id: str, build_id: str, formula_id: str = "") -> str:
-    """Deterministic 16-hex fact_id. Includes formula_id for variant rows."""
-    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}|{formula_id}"
+    """Stable 16-hex semantic fact_id; formula_id distinguishes real variants."""
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{formula_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -1833,11 +1833,13 @@ def _build_kp_cuspal_rows(
     if not placidus_bounds or len(placidus_bounds) < 12:
         # No fabricated fallback (B.10): emit honest EXTERNAL_COMPUTATION_REQUIRED
         # skip-rows so the drop is visible and no fake cusps ever land.
-        import uuid as _uuid_ext
         for cusp_num in range(1, 13):
             subj = f"CUSP_{cusp_num}"
             rows.append({
-                "fact_id": _uuid_ext.uuid4().hex,
+                "fact_id": _fact_id(
+                    "kp_cuspal_significators", subj, "cusp_longitude_sidereal",
+                    chart_id, ayanamsha_id, build_id,
+                ),
                 "chart_id": chart_id,
                 "build_id": build_id,
                 "ayanamsha_id": ayanamsha_id,
@@ -1911,8 +1913,10 @@ def _build_kp_cuspal_rows(
             ])
         except Exception as exc:
             # Emit a visible skip-row so the drop is never silent (P3: no-silent-drop).
-            import uuid as _uuid_skip
-            skip_fid = _uuid_skip.uuid4().hex
+            skip_fid = _fact_id(
+                "kp_cuspal_significators", subj, "significators_json",
+                chart_id, ayanamsha_id, build_id,
+            )
             rows.append({
                 "fact_id": skip_fid,
                 "chart_id": chart_id,

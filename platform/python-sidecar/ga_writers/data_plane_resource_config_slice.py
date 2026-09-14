@@ -1,0 +1,203 @@
+"""Deterministic non-person proof for L1-SLICE-RESOURCE-CONFIG-01."""
+
+from __future__ import annotations
+
+from dataclasses import asdict
+from datetime import timedelta
+import json
+from pathlib import Path
+from typing import Any, Mapping
+
+from .data_plane_contracts import (
+    CalculationContext,
+    ClockInterval,
+    ConfigurationOccurrence,
+    ContractError,
+    EpistemicClass,
+    FactEnvelope,
+    L0_RESOURCE_CONFIG_DIGEST,
+    L0_RESOURCE_CONFIG_GENERATION_ID,
+    L0_SEMANTIC_RELEASE_DIGEST,
+    L0_SEMANTIC_RELEASE_ID,
+    L1_CONTRACT_VERSION,
+    MissingnessState,
+    OccurrenceState,
+    QualificationState,
+    SensitivityResult,
+    canonical_json,
+    content_sha256,
+    parse_aware_instant,
+)
+
+
+SLICE_ID = "L1-SLICE-RESOURCE-CONFIG-01"
+SLICE_GENERATION_ID = "l1-resource-config-g1"
+_DEFAULT_FIXTURE = Path(__file__).parent / "__tests__" / "fixtures" / "l1_resource_config_non_person_v1.json"
+
+
+def load_fixture(path: str | Path = _DEFAULT_FIXTURE) -> dict[str, Any]:
+    fixture = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not str(fixture.get("fixture_id", "")).startswith("synthetic.non_person."):
+        raise ContractError("the L1 slice accepts deterministic non-person fixtures only")
+    if not str(fixture.get("chart_id", "")).startswith("synthetic:"):
+        raise ContractError("the L1 slice cannot consume a stored/personal chart identity")
+    return fixture
+
+
+def _context(fixture: Mapping[str, Any]) -> CalculationContext:
+    return CalculationContext(
+        subject_id=str(fixture["subject_id"]),
+        chart_id=str(fixture["chart_id"]),
+        build_id=str(fixture["build_id"]),
+        generation_id=SLICE_GENERATION_ID,
+        instant_iso=str(fixture["instant_iso"]),
+        latitude_deg=float(fixture["latitude_deg"]),
+        longitude_deg=float(fixture["longitude_deg"]),
+        timezone_name=str(fixture["timezone_name"]),
+        input_precision=str(fixture["input_precision"]),
+        frame=str(fixture["frame"]),
+        ayanamsha_id=str(fixture["ayanamsha_id"]),
+        node_type=str(fixture["node_type"]),
+        house_convention=str(fixture["house_convention"]),
+        varga=str(fixture["varga"]),
+        varga_formula=str(fixture["varga_formula"]),
+        varga_domain=str(fixture["varga_domain"]),
+        karaka_school=str(fixture["karaka_school"]),
+        engine_version=str(fixture["engine_version"]),
+    )
+
+
+def _fact(context: CalculationContext, spec: Mapping[str, Any]) -> FactEnvelope:
+    return FactEnvelope(
+        context=context,
+        category=str(spec["category"]),
+        subject=str(spec["subject"]),
+        key=str(spec["key"]),
+        grain=str(spec["grain"]),
+        unit=spec.get("unit"),
+        epistemic_class=EpistemicClass(spec["epistemic_class"]),
+        verification_class=str(spec["verification_class"]),
+        missingness=MissingnessState(spec.get("missingness", "present")),
+        value_num=spec.get("value_num"),
+        value_text=spec.get("value_text"),
+        value_json=spec.get("value_json"),
+        reason=spec.get("reason"),
+        source_dependencies=tuple(spec.get("source_dependencies", [])),
+        variant_identity=tuple(spec.get("variant_identity", [])),
+    )
+
+
+def _sensitivity(context: CalculationContext, fact: FactEnvelope, spec: Mapping[str, Any]) -> SensitivityResult:
+    baseline = float(spec["baseline_input"])
+    perturbed = float(spec["perturbed_input"])
+    boundary = float(spec["boundary_deg"])
+    baseline_side = baseline >= boundary
+    perturbed_side = perturbed >= boundary
+    classification = "changed" if baseline_side != perturbed_side else "unchanged"
+    return SensitivityResult(
+        context_id=context.context_id,
+        fact_id=fact.fact_id,
+        perturbation_id=str(spec["perturbation_id"]),
+        baseline_input=baseline,
+        perturbed_input=perturbed,
+        boundary_distance=min(abs(baseline - boundary), abs(perturbed - boundary)),
+        classification=classification,
+        reason=f"boundary={boundary}; baseline_side={baseline_side}; perturbed_side={perturbed_side}",
+    )
+
+
+def build_slice(fixture: Mapping[str, Any]) -> dict[str, Any]:
+    if not str(fixture.get("fixture_id", "")).startswith("synthetic.non_person."):
+        raise ContractError("the L1 slice accepts deterministic non-person fixtures only")
+    if not str(fixture.get("chart_id", "")).startswith("synthetic:"):
+        raise ContractError("the L1 slice cannot consume a stored/personal chart identity")
+    context = _context(fixture)
+    facts = [_fact(context, spec) for spec in fixture["facts"]]
+    facts_by_key = {fact.key: fact for fact in facts}
+    if len(facts_by_key) != len(facts):
+        raise ContractError("fixture fact keys must be unique")
+
+    occurrence_spec = fixture["configuration"]
+    constituent_ids = tuple(facts_by_key[key].fact_id for key in occurrence_spec["constituent_fact_keys"])
+    occurrence = ConfigurationOccurrence(
+        context=context,
+        configuration_id=str(occurrence_spec["configuration_id"]),
+        configuration_version=str(occurrence_spec["configuration_version"]),
+        source_rule_id=str(occurrence_spec["source_rule_id"]),
+        source_rule_version=str(occurrence_spec["source_rule_version"]),
+        qualification_state=QualificationState(occurrence_spec["qualification_state"]),
+        state=OccurrenceState(occurrence_spec["state"]),
+        participants=tuple(occurrence_spec["participants"]),
+        satisfied_clauses=tuple(occurrence_spec["satisfied_clauses"]),
+        failed_clauses=tuple(occurrence_spec["failed_clauses"]),
+        exceptions=tuple(occurrence_spec.get("exceptions", [])),
+        cancellations=tuple(occurrence_spec.get("cancellations", [])),
+        constituent_fact_ids=constituent_ids,
+    )
+
+    sensitivity = [
+        _sensitivity(context, facts_by_key[str(spec["fact_key"])], spec)
+        for spec in fixture["sensitivity"]
+    ]
+
+    clock_start = parse_aware_instant(context.instant_iso)
+    clock_end = clock_start + timedelta(seconds=int(fixture["clock"]["duration_seconds"]))
+    clock = ClockInterval(
+        context=context,
+        system_id=str(fixture["clock"]["system_id"]),
+        interval_id=str(fixture["clock"]["interval_id"]),
+        parent_interval_id=None,
+        level=1,
+        start_iso=clock_start.isoformat(),
+        end_iso=clock_end.isoformat(),
+        applicability=MissingnessState.PRESENT,
+        coverage="synthetic_fixture_only",
+        uncertainty_seconds=float(fixture["clock"]["uncertainty_seconds"]),
+    )
+
+    payload: dict[str, Any] = {
+        "schema_version": "1.0",
+        "contract_version": L1_CONTRACT_VERSION,
+        "slice_id": SLICE_ID,
+        "slice_generation_id": SLICE_GENERATION_ID,
+        "fixture_id": fixture["fixture_id"],
+        "fixture_class": "deterministic_non_person",
+        "accepted_l0": {
+            "semantic_release_id": L0_SEMANTIC_RELEASE_ID,
+            "semantic_release_digest": L0_SEMANTIC_RELEASE_DIGEST,
+            "resource_config_generation_id": L0_RESOURCE_CONFIG_GENERATION_ID,
+            "resource_config_digest": L0_RESOURCE_CONFIG_DIGEST,
+        },
+        "context": {**asdict(context), "context_id": context.context_id, "generation_key": context.generation_key},
+        "facts": [fact.to_dict() for fact in facts],
+        "configuration": occurrence.to_dict(),
+        "sensitivity": [asdict(item) for item in sensitivity],
+        "clock": asdict(clock),
+        "bhavat_bhavam": {
+            "method_id": "bhavat_bhavam.odd_house_nonrecursive.v1",
+            "qualification_state": "UNQUALIFIED_SOURCE",
+            "application_owner": "L2 Bodha",
+            "applied": False,
+            "positive_doctrinal_arm": "NOT_REACHABLE",
+            "primary_house_facts_preserved": True,
+        },
+        "missingness_states_proved": sorted({fact.missingness.value for fact in facts}),
+        "terminal_truth": {
+            "producer_fixture": "PASS",
+            "doctrinal_positive": "NOT_REACHABLE",
+            "integrated": False,
+            "deployed": False,
+            "consumer_value_demonstrated": False,
+            "empirically_evaluated": False,
+        },
+    }
+    payload["content_sha256"] = content_sha256(payload)
+    return payload
+
+
+def build_default_slice() -> dict[str, Any]:
+    return build_slice(load_fixture())
+
+
+if __name__ == "__main__":
+    print(canonical_json(build_default_slice()))
