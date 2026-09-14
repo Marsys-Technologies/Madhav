@@ -41125,3 +41125,87 @@ session_close:
   unblocks: [W6-P1]
   handoff_notes: "Start Wave 6 from the exact delivered Wave 5 close after claiming a fresh remote lease; execute versioned Beyond-Acarya acceptance and close only with independently reviewed residual owners, triggers and source-scope quarantine."
 ```
+
+---
+
+## MADHAV-PURNA-ANVESANA-W6-20260915 — 2026-09-15
+
+```yaml
+session_open:
+  session_id: MADHAV-PURNA-ANVESANA-W6-20260915
+  cowork_thread_name: "Madhav — Purna Anvesana Wave 6"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-acceptance-terminal
+  worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave6
+  step_number_or_layer: "Purna Anvesana Wave 6 — Beyond-Acarya acceptance and source-scope close"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W5-20260914
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PURNA-ANVESANA-W6-20260915
+    lease_status_verified: true
+    lease_verified_at: 2026-09-15T00:44:00+05:30
+    coordination_commit: 0d269402e210aec7c6eae0856a991aec5bef18a2
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)", "99_ARCHIVE/MARSYS_JIS_BOOTSTRAP_HANDOFF.md (SUPERSEDED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md, read_at: 2026-09-15T00:44:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, read_at: 2026-09-15T00:44:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - platform/src/lib/vidhi/inquiry/**
+      - platform/src/lib/pariprashna/**
+      - platform/tests/governance/**
+      - platform/tests/pariprashna/**
+    must_not_touch:
+      - origin/main and protected or release refs
+      - PR 2597 branch history or content
+      - production or shared database, build, deployment, traffic, scheduler, credentials, secrets, or infrastructure
+      - shared or production migration application
+      - frozen WriterBase implementation or orchestrator contract
+      - foreign campaign branches, worktrees, queues, ledgers, or runtime state
+      - doctrine ratification, asset retirement, or destructive cleanup
+      - production health, user acceptance, or empirical production-value claims
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs in Wave 6."
+      acknowledged: true
+  red_team_due: true
+  notes: "Wave 6 begins from governed Wave 5 close 4f2d9c97a. Acceptance is versioned source/local evidence only. W6-P2 can close only after W6-P1 independent approval and must quarantine every authority-bound remainder."
+```
+
+### Opening objective
+
+Execute W6-P1 with versioned novel-combination, omission-rate, route-coverage,
+semantic-edge-coverage, long-inquiry-closure and abstention-quality evidence. Then execute W6-P2
+with complete packet evidence, residual owner/trigger contracts, no-production-claim proof and
+verified lease release.
+
+### Next session objective
+
+Complete both Wave 6 packets, publish the final focused stacked delivery, obtain independent
+acceptance and terminal reviews, and stop at
+`SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER` without widening authority.

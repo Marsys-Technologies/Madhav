@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.9.0
+version: 0.10.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0030
-last_updated: 2026-09-15T00:37:00+05:30
+last_event: PA-E0031
+last_updated: 2026-09-15T00:44:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,13 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 5 complete; Wave 6 acceptance and source-scope close are next.
-- Branch: `codex/purna-anvesana-wave5`, stacked on governed Wave 4 close `841942b3b`.
+- Wave: 0 through Wave 5 complete; Wave 6 Beyond-Acarya acceptance is active.
+- Branch: `codex/purna-anvesana-wave6`, stacked on governed Wave 5 close `4f2d9c97a`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W5-20260914`; release is due after the Wave 5 close is published.
+- PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
+- Lease: `MADHAV-PURNA-ANVESANA-W6-20260915`; active on remote coordination commit `0d269402e`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -229,7 +230,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
 | W5-P1 disposable migration/lifecycle/security proof | COMPLETE | W4-P1 | migration/security reviewer approved exact clean head |
 | W5-P2 three-door parity/failure proof | COMPLETE | W5-P1 | parity reviewer approved bounded shared-surface proof |
-| W6-P1 versioned Beyond-Acarya acceptance | NEXT | W5-P2 | independent acceptance review required |
+| W6-P1 versioned Beyond-Acarya acceptance | IN PROGRESS | W5-P2 | independent acceptance review required |
 | W6-P2 source-scope close and quarantine | QUEUED | W6-P1 | independent terminal review required |
 
 ## Delivery decomposition
