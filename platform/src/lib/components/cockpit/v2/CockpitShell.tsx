@@ -64,6 +64,9 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
   // Whether the clear is part of a Rebuild flow (chains a build POST after clear)
   const [rebuildMode, setRebuildMode] = useState(false)
 
+  // C3: Incrementing this key triggers DataAssetsView to re-fetch live data via count_sql.
+  const [refreshKey, setRefreshKey] = useState(0)
+
   // handleAssetsReady: receives the merged (assets + stats + SSE overlay) list from
   // DataAssetsView. Used for error badge count (Task 7) and header label logic.
   const handleAssetsReady = useCallback((assets: AssetWithState[]) => {
@@ -138,9 +141,7 @@ export function CockpitShell({ chartId, initialChartMeta }: Props) {
 
   const [proMode, setProMode] = useState(false)
 
-  // C3: Incrementing this key triggers DataAssetsView to re-fetch live data via count_sql.
   // Used by the manual Refresh button — bypasses the rows_written cache for accurate counts.
-  const [refreshKey, setRefreshKey] = useState(0)
   const handleRefreshed = useCallback(() => setRefreshKey(k => k + 1), [])
 
   // Error badge count — derived from the merged state list that DataAssetsView

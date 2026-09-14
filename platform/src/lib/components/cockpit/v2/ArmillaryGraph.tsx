@@ -126,10 +126,39 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
   const planetMapRef = useRef<Map<Layer, PlanetRefs>>(new Map())
   const beadMapRef = useRef<Map<string, BeadRefs>>(new Map())
 
-  assetsRef.current = assets
-  activeRunRef.current = activeRun
-  onClickRef.current = onNodeClick
-  onHoverRef.current = onHover
+  useEffect(() => {
+    assetsRef.current = assets
+    activeRunRef.current = activeRun
+    onClickRef.current = onNodeClick
+    onHoverRef.current = onHover
+  }, [activeRun, assets, onHover, onNodeClick])
+
+  // ── Hover handlers (single source: hoverRef) ──
+  function setTip(text: { title: string; sub: string; state: string; color: string } | null) {
+    const tip = tipRef.current; if (!tip) return
+    if (!text) { tip.style.opacity = '0'; return }
+    tip.querySelector('.arm-sa')!.textContent = text.title
+    tip.querySelector('.arm-id')!.textContent = text.sub
+    const st = tip.querySelector('.arm-st') as HTMLElement
+    st.textContent = text.state; st.style.color = text.color
+    tip.style.opacity = '1'
+  }
+  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : (s === 'error' || s === 'service_down') ? '#B5474C' : '#7C725B'
+  function applyAssetHover(id: string | null) {
+    const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
+    hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }
+    setTip(a ? { title: a.sanskrit_name, sub: a.english_name, state: `● ${a.state}  ·  ${LAYER_NAMES[a.layer] ?? a.layer}`, color: stateColor(a.state) } : null)
+  }
+  function layerEnter(L: Layer) {
+    hoverRef.current = { assetId: null, layer: L }
+    const members = assetsRef.current.filter(a => a.layer === L)
+    const agg = aggregate(members)
+    const built = Math.round(agg.builtFrac * members.length)
+    setTip({ title: LAYER_NAMES[L], sub: `${members.length} assets · ${built}/${members.length} built`, state: `● ${agg.state}`, color: stateColor(agg.state) })
+  }
+  function layerLeave() { hoverRef.current = { assetId: null, layer: null }; setTip(null) }
+  function beadEnter(id: string) { applyAssetHover(id); onHoverRef.current?.(id) }
+  function beadLeave() { applyAssetHover(null); onHoverRef.current?.(null) }
 
   const idSignature = assets.map(a => a.asset_id).sort().join(',')
 
@@ -208,33 +237,6 @@ export function ArmillaryGraph({ assets, activeRun, onNodeClick, hoveredId, onHo
       if (refs) refs.g.setAttribute('aria-label', `${a.english_name}, ${stateLabel(a.state)}`)
     }
   }, [assets])
-
-  // ── Hover handlers (single source: hoverRef) ──
-  function setTip(text: { title: string; sub: string; state: string; color: string } | null) {
-    const tip = tipRef.current; if (!tip) return
-    if (!text) { tip.style.opacity = '0'; return }
-    tip.querySelector('.arm-sa')!.textContent = text.title
-    tip.querySelector('.arm-id')!.textContent = text.sub
-    const st = tip.querySelector('.arm-st') as HTMLElement
-    st.textContent = text.state; st.style.color = text.color
-    tip.style.opacity = '1'
-  }
-  const stateColor = (s: string) => (s === 'lit' || s === 'service_ok') ? '#8FD49B' : s === 'building' ? '#E8C878' : s === 'stale' ? '#D2A23C' : (s === 'error' || s === 'service_down') ? '#B5474C' : '#7C725B'
-  function applyAssetHover(id: string | null) {
-    const a = id ? assetsRef.current.find(x => x.asset_id === id) : null
-    hoverRef.current = { assetId: id, layer: a ? (a.layer as Layer) : null }
-    setTip(a ? { title: a.sanskrit_name, sub: a.english_name, state: `● ${a.state}  ·  ${LAYER_NAMES[a.layer] ?? a.layer}`, color: stateColor(a.state) } : null)
-  }
-  function layerEnter(L: Layer) {
-    hoverRef.current = { assetId: null, layer: L }
-    const members = assetsRef.current.filter(a => a.layer === L)
-    const agg = aggregate(members)
-    const built = Math.round(agg.builtFrac * members.length)
-    setTip({ title: LAYER_NAMES[L], sub: `${members.length} assets · ${built}/${members.length} built`, state: `● ${agg.state}`, color: stateColor(agg.state) })
-  }
-  function layerLeave() { hoverRef.current = { assetId: null, layer: null }; setTip(null) }
-  function beadEnter(id: string) { applyAssetHover(id); onHoverRef.current?.(id) }
-  function beadLeave() { applyAssetHover(null); onHoverRef.current?.(null) }
 
   // External bond: table-row hover → bloom that asset's layer + highlight the bead.
   useEffect(() => { applyAssetHover(hoveredId ?? null) }, [hoveredId])

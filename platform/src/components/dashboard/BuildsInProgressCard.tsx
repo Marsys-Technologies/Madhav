@@ -65,9 +65,12 @@ export default function BuildsInProgressCard() {
   }, [])
 
   useEffect(() => {
-    void fetchBuilds()
+    const initialFetch = setTimeout(() => void fetchBuilds(), 0)
     const interval = setInterval(() => void fetchBuilds(), 5000)
-    return () => clearInterval(interval)
+    return () => {
+      clearTimeout(initialFetch)
+      clearInterval(interval)
+    }
   }, [fetchBuilds])
 
   const handleCancel = async (buildId: string) => {

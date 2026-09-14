@@ -459,17 +459,17 @@ export function ConversationSidebarV2({
   // R9-S1: Fetch project conversation IDs for the active project filter
   const [projectConversationIds, setProjectConversationIds] = useState<Set<string>>(new Set())
   useEffect(() => {
-    if (!showProjects || !activeProjectId) {
-      setProjectConversationIds(new Set())
-      return
-    }
-    fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`)
-      .then(r => r.json())
-      .then(data => {
-        const ids: string[] = data?.project?.conversation_ids ?? []
-        setProjectConversationIds(new Set(ids))
-      })
-      .catch(() => setProjectConversationIds(new Set()))
+    if (!showProjects || !activeProjectId) return
+    const initialFetch = setTimeout(() => {
+      fetch(`/api/projects/${encodeURIComponent(activeProjectId)}`)
+        .then(r => r.json())
+        .then(data => {
+          const ids: string[] = data?.project?.conversation_ids ?? []
+          setProjectConversationIds(new Set(ids))
+        })
+        .catch(() => setProjectConversationIds(new Set()))
+    }, 0)
+    return () => clearTimeout(initialFetch)
   }, [showProjects, activeProjectId])
 
   // R9-S1: Filter conversations by project when a project is selected

@@ -98,10 +98,12 @@ function DonutChart({ data }: { data: Array<{ key: string; count: number }> }) {
   const strokeWidth = 14
   const circ = 2 * Math.PI * radius
 
-  let offset = 0
   const segments = data.map((d, i) => {
     const portion = d.count / total
     const dash = circ * portion
+    const offset = data
+      .slice(0, i)
+      .reduce((sum, preceding) => sum + circ * (preceding.count / total), 0)
     const seg = (
       <circle
         key={d.key}
@@ -118,7 +120,6 @@ function DonutChart({ data }: { data: Array<{ key: string; count: number }> }) {
         <title>{`${d.key}: ${d.count} (${Math.round(portion * 100)}%)`}</title>
       </circle>
     )
-    offset += dash
     return seg
   })
 
@@ -313,21 +314,24 @@ export function AnalyticsTab({ visible }: Props) {
 
   useEffect(() => {
     if (!visible || rows !== null || loading) return
-    setLoading(true)
-    fetch('/api/trace/history?mode=analytics&limit=30')
-      .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json()
-      })
-      .then((data: TraceHistoryRow[]) => {
-        setRows(Array.isArray(data) ? data : [])
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('[AnalyticsTab] fetch failed', err)
-        setError(String(err))
-        setLoading(false)
-      })
+    const initialFetch = setTimeout(() => {
+      setLoading(true)
+      fetch('/api/trace/history?mode=analytics&limit=30')
+        .then(r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return r.json()
+        })
+        .then((data: TraceHistoryRow[]) => {
+          setRows(Array.isArray(data) ? data : [])
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error('[AnalyticsTab] fetch failed', err)
+          setError(String(err))
+          setLoading(false)
+        })
+    }, 0)
+    return () => clearTimeout(initialFetch)
   }, [visible, rows, loading])
 
   if (!visible) return null
