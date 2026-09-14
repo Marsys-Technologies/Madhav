@@ -334,7 +334,8 @@ The scoped candidate checks are green under the CI-pinned Node 20 runtime and a
 clean `npm ci`: the exact added platform CI selection passes 87/87; the exact MCP
 lifecycle CI selection passes 27/27; both package typechecks pass; the migration
 number guard passes; the capability snapshot, estate census, MCP envelope and MCP
-registry-shim drift checks pass; and changed platform files have zero lint errors.
+registry-shim drift checks pass; and full platform lint exits zero with no errors
+(590 pre-existing warnings remain).
 The broader focused evidence remains green at 157 platform tests, 56 golden-stream
 cases, 90 independent completion-review tests, and 86 independent security-review
 tests. Independent completion, security, and migration reviews reported no open
@@ -348,14 +349,16 @@ The full MCP suite remains outside CI by an explicit workflow decision because
 it carries pre-existing unrelated failures; the current run reports 184 files
 passed, 25 failed and 1 skipped (2,125 tests passed, 80 failed and 20 skipped).
 
-One mandatory local `run-checks` gate is still not green, so no PR was raised.
-Full platform lint reports 199 errors and 590 warnings. An isolated detached run
-at base revision `b1a0f17eb65494f21a00fd2b22d6264da76c3c38`, using the same Node 20
-runtime and dependency tree, reports the exact same 199 errors and 590 warnings;
-the branch's changed platform files report 0 errors and 11 pre-existing warnings.
-The lint failure is therefore proven baseline-equivalent, but it is not waived:
-it must be restored to green, or dispositioned through the repository's normal
-governance, before this branch can be described as PR-ready under `run-checks`.
+The mandatory local `run-checks` gate is now green. The original block was a
+repository-wide backlog of 199 ESLint errors under the current Next/React compiler
+rules, reproduced identically at the protected base. The branch resolves those
+errors at source without changing lint configuration or adding rule suppressions:
+unsafe casts/CommonJS imports were replaced, render-time mutation was removed,
+portal/media/storage state now uses hydration-safe external stores, lifecycle
+transitions are modeled declaratively or scheduled through cancellable external
+subscriptions, and the affected source guards were updated. Full lint now reports
+0 errors and 590 warnings; TypeScript passes; the full platform unit suite remains
+green at 1,093 files and 11,614 tests passed.
 
 ## 17. Candidate disposition
 
