@@ -3,7 +3,7 @@ artifact: MADHAV_DATA_PLANE_L2_COMPATIBILITY_CORRECTION_ROLLBACK
 version: "1.0"
 status: PRODUCER_READY_ACCEPTED
 authority: DP-SD-015
-migration: platform/migrations/1034_data_plane_l2_producer_generations.sql
+migration: platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql
 ---
 
 # L2 compatibility, correction and rollback

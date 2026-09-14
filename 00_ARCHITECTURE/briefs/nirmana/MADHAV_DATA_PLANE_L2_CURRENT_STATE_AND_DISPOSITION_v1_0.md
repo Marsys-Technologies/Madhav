@@ -183,7 +183,7 @@ context, replay, stable-identity, temporal, cancellation, shared-root, slice,
 and quality-detector failure paths.
 
 Schema/digest: new
-`platform/migrations/1034_data_plane_l2_producer_generations.sql` and existing
+`platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql` and existing
 `platform/src/generated/nirmana-writer-digests.json` only if source changes
 require regeneration.
 

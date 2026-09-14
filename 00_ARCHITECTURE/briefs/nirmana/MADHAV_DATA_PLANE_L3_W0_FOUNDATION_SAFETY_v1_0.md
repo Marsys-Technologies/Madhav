@@ -274,8 +274,9 @@ Protected main still stops at migration 1032. The open planner/Purna stack is:
 - stacked Purna Wave 1 onward: `1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql`.
 
 The accepted data-plane lineage independently contains
-`1033_data_plane_l1_producer_history.sql` and
-`1034_data_plane_l2_producer_generations.sql`. The connected environment lacks
+`1035_data_plane_l1_producer_history.sql` and
+`1036_data_plane_l2_producer_generations.sql` (reserved and relocated by RI-01
+after confirming the accepted 1033/1034 candidates were unapplied). The connected environment lacks
 their head relations, so these data-plane migrations have not been treated as
 applied there. Neither lineage may be merged unchanged into the other. The next
 integration packet must refresh all tips and every authorized environment's

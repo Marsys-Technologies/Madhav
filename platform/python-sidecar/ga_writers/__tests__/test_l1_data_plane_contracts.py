@@ -385,7 +385,12 @@ def test_runtime_boundary_opens_then_completes_a_generation(monkeypatch):
 def test_generation_base_context_is_partition_invariant():
     from pathlib import Path
 
-    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "supabase"
+        / "migrations"
+        / "1035_data_plane_l1_producer_history.sql"
+    ).read_text()
     base_context = migration.split("v_context := jsonb_build_object(", 1)[1].split(
         "INSERT INTO public.l1_data_plane_generations", 1
     )[0]
@@ -400,7 +405,12 @@ def test_generation_base_context_is_partition_invariant():
 def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_views():
     from pathlib import Path
 
-    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "supabase"
+        / "migrations"
+        / "1035_data_plane_l1_producer_history.sql"
+    ).read_text()
     assert "complete generation % cannot admit new row" in migration
     assert "complete generation % replay changed output" in migration
     assert "l1_data_plane_jsonb_has_nonfinite(v_row)" in migration
@@ -431,7 +441,12 @@ def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_view
 def test_partition_receipt_count_is_not_coupled_to_captured_revision_count():
     from pathlib import Path
 
-    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "supabase"
+        / "migrations"
+        / "1035_data_plane_l1_producer_history.sql"
+    ).read_text()
     completion = migration.split(
         "CREATE OR REPLACE FUNCTION public.complete_l1_data_plane_partition(", 1
     )[1].split("CREATE OR REPLACE FUNCTION public.select_l1_data_plane_generation", 1)[0]

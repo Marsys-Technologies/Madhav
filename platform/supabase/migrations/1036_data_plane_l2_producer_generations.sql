@@ -1,4 +1,4 @@
--- 1034_data_plane_l2_producer_generations.sql
+-- Migration 1036: data_plane_l2_producer_generations
 -- DP-SD-015: exact-context L2 producer generations, immutable row history,
 -- deterministic replay, selection and rollback. No row is backfilled and no
 -- L3 activation authority is introduced.

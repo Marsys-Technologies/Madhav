@@ -136,7 +136,13 @@ def validate() -> dict[str, object]:
 
     if set(EXPECTED_WRITERS) != CONTRACTED_L1_ASSETS:
         findings.append("runtime contract denominator differs from the fixed 19 writers")
-    migration = REPO_ROOT / "platform" / "migrations" / "1033_data_plane_l1_producer_history.sql"
+    migration = (
+        REPO_ROOT
+        / "platform"
+        / "supabase"
+        / "migrations"
+        / "1035_data_plane_l1_producer_history.sql"
+    )
     migration_source = migration.read_text(encoding="utf-8") if migration.exists() else ""
     for required in (
         "open_l1_data_plane_generation",

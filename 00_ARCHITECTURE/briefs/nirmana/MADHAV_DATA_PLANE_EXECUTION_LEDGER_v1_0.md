@@ -165,11 +165,12 @@ MED or LOW findings. L2 stops at computational `PRODUCER_READY`; L3 remains
 waiting and every later-state non-claim remains in force.
 
 Open blocker for L3 W0: none. Terminal independent review passed exact source
-tip `00a161195` with zero HIGH/MED/LOW findings. RI-01 is opening. Physical W1
-remains held because accepted L1/L2 generation-head schema is absent from the connected
-environment and migration numbers 1033/1034 collide with the open planner/Purna
-stack. No production L3 build is eligible until a reviewed precursor integration
-and accepted upstream physical vector exist.
+tip `00a161195` with zero HIGH/MED/LOW findings. RI-01 has reserved 1035/1036
+and prepared the confirmed-unapplied L1/L2 migrations in the active directory
+with identical normalized SQL identities, disposable apply/reapply and combined
+database negatives passing. Independent migration/security review and protected
+release proof remain open. Physical W1 stays held until that precursor is
+accepted/deployed and an upstream physical vector exists.
 
 ## 6. Append-only status log
 
@@ -219,6 +220,7 @@ and accepted upstream physical vector exist.
 | 2026-09-15 04:16 | L3 Kāla | W0_PACKET_REVIEW_CHANGES_REQUESTED | Independent packet review found incomplete per-field coverage, unsafe populated Kshetra replacement, unreproducible benchmark evidence, one Vedha count error and push wording drift; migration protocol correction was adequate. |
 | 2026-09-15 04:47 | L3 Kāla | W0_PACKET_CORRECTIONS_INTEGRATED | Kshetra `3f109869d` independently accepted after 27 focused/133 expanded passes; 22-identity/39-partition/699-field register integrated; exact five-run null/preparation/publication/transit baseline and structured row/byte/hash harness recorded. Field/baseline independent review and complete packet re-challenge remain; no production build/mutation/migration/deploy/source push. |
 | 2026-09-15 05:01 | L3 Kāla | W0_ACCEPTED_RI_01_OPENING | Terminal independent review PASS at exact source tip `00a161195`, zero HIGH/MED/LOW; changed-area 307 pass/4 skip, U05 16 pass, migration guard PASS, full W0 diff clean. Open `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`; physical W1 remains held. |
+| 2026-09-15 05:14 | L3 Kāla | RI_01_CANDIDATE_REVIEW | Production read-only tracker/effect reconciliation found all four colliding candidates unapplied; live lease and 1035/1036 claims read back at coordination `ef132c87d`; accepted L1/L2 SQL moved to active directory with exact normalized identities preserved; disposable apply/reapply and 34 combined DB negatives pass. Independent migration/security review next; no shared apply, deploy, build or materialization yet. |
 
 ## 7. Return-to-strategy handoff contract
 

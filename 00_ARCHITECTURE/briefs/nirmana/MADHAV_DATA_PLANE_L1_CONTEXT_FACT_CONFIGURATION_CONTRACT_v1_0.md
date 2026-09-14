@@ -20,7 +20,7 @@ its compatibility and later-consumer obligations; it does not authorize retrieva
 serving.
 
 Runtime authority is shared by `ga_writers/data_plane_runtime.py` and migration
-`1033_data_plane_l1_producer_history.sql`. Exactly the 19 registered GA adapters open a
+`1035_data_plane_l1_producer_history.sql`. Exactly the 19 registered GA adapters open a
 transaction-local generation partition before computation and complete it only after the
 writer returns. Eleven bounded output surfaces use transaction-local row capture. Daśā is
 the high-volume exception: each completed system/ayanāṃśa partition is copied set-wise into

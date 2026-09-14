@@ -142,7 +142,7 @@ def main() -> int:
     if first["condition_ledger"].get("polarity") != "higher_is_more_afflicted":
         violations.append("slice_condition_polarity")
 
-    migration = (ROOT / "migrations" / "1034_data_plane_l2_producer_generations.sql").read_text()
+    migration = (ROOT / "supabase" / "migrations" / "1036_data_plane_l2_producer_generations.sql").read_text()
     for token in (
         "UNAVAILABLE_AT_L2",
         "completed L2 producer generation is immutable",

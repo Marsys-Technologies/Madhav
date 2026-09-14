@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: W0_ACCEPTED_RI_01_OPENING
-observed_at: 2026-09-15T05:01:00+05:30
+status: RI_01_CANDIDATE_REVIEW
+observed_at: 2026-09-15T05:14:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
@@ -12,7 +12,7 @@ protected_retired_identity: ka_gochara_sweep
 active_packet: L3-RI-01-PRECURSOR-GENERATION-INTEGRATION
 implementation_tip: 3f109869dc2fc31842111a61ebf39ef9b1345fb2
 w0_accepted_source_tip: 00a161195
-coordination_lease: MADHAV-DATA-PLANE-L3-W0-20260915
+coordination_lease: MADHAV-DATA-PLANE-L3-RI01-20260915
 heartbeat_id: l3-k-la-execution-recovery
 next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
 ---
@@ -227,25 +227,19 @@ generation packet. This is reviewed design, not physical infrastructure.
 
 ## 5. Migration and release collision
 
-The accepted L1/L2 execution lineage adds migrations `1033` and `1034`, while
-open planner/Pūrṇa Anveṣaṇa branches already use different migrations numbered
-`1033` and `1034`. Protected main stops at `1032`; the live generation-head
-relations are absent. This is a real release-integration collision, not permission
-to edit an applied migration or merge either history wholesale. W0 safety work
-may proceed without a migration. Any L3 schema packet must reserve an unused
-number against refreshed main, all release-bound branches and the shared migration
-guard, and the accepted L1/L2 migrations need an explicit compatible integration
-decision before protected delivery.
+The accepted L1/L2 execution lineage originally used 1033/1034, colliding with
+the open planner/Pūrṇa Anveṣaṇa stack. RI-01 positively confirmed all four
+filenames and their semantic side effects absent from the only authorized
+shared target, reserved 1035/1036 at live coordination commit `ef132c87d`, and
+relocated the two data-plane candidates to the active
+`platform/supabase/migrations` directory. Their repository-defined normalized
+SQL identities are unchanged; no executable statement changed.
 
-The current execution tree's migration guard itself passes and reports 1035 as
-the next local number. That does not resolve the cross-branch 1033/1034 collision;
-the open planner/Pūrṇa stack carries different files under both numbers.
-The binding migration protocol also places new files in
-`platform/supabase/migrations`, while the accepted data-plane candidates are in
-the legacy directory. The integration packet must first prove those filenames
-unapplied in every authorized target, reserve replacement numbers in the live
-coordination claim ledger, and only then relocate/renumber with content-identity,
-disposable apply/reapply and independent migration review.
+The candidate migration guard passes with next number 1037. Direct
+apply/reapply and the combined L1/L2 database negatives pass on disposable
+PostgreSQL. This is not protected delivery: independent migration/security
+review, governed checks, merge-queue integration, exact served-revision proof
+and production `_migrations_applied` proof remain required.
 
 ## 6. Workstream ownership and recovery
 

@@ -55,7 +55,7 @@ interface-contract, elevate, qualify and hold/restrict.
 All 19 adapters opt into `l1.data-plane.contract.1.0` without changing WriterBase,
 caller-owned transactions, numerical kernels, idempotency scopes or the shared
 `SWISS_STATE_LOCK`. Forward-only migration
-`1033_data_plane_l1_producer_history.sql` was required because active tables replace rows
+`1035_data_plane_l1_producer_history.sql` was required because active tables replace rows
 and cannot preserve all generations. It adds append-only partition receipts, immutable row
 revisions, explicitly specified typed condition facts and quarantined configuration observations
 across the 12 L1 output tables, exact/latest-generation selectors and reversible head

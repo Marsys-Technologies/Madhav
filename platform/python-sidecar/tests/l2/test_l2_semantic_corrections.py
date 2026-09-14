@@ -144,10 +144,22 @@ def test_quality_context_detector_database_negative_for_topology_staleness():
         )
         conn.execute(
             """INSERT INTO public.l1_data_plane_generations
-                 (chart_id, asset_id, generation_id, status,
-                  semantic_output_digest, base_context_jsonb)
-               VALUES (%s, 'ga_detector_a', 'l1-a', 'complete', %s, '{}'::jsonb)""",
-            (chart_id, "a" * 64),
+                 (chart_id, asset_id, generation_id, contract_version,
+                  l0_semantic_release_id, l0_semantic_release_digest,
+                  l0_config_generation_id, l0_config_digest,
+                  base_context_jsonb, expected_partitions, completed_partitions,
+                  status, semantic_output_digest, completed_at)
+               VALUES (%s, 'ga_detector_a', 'l1-a',
+                       'l1.data-plane.contract.1.0',
+                       'l0.semantic.2026-09-13.1', %s,
+                       'l0-resource-config-g1', %s,
+                       '{}'::jsonb, 1, 1, 'complete', %s, clock_timestamp())""",
+            (
+                chart_id,
+                "665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1",
+                "d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a",
+                "a" * 64,
+            ),
         )
         conn.execute(
             """INSERT INTO public.l1_data_plane_generation_heads
@@ -259,7 +271,7 @@ def test_samvada_passive_receipt_cannot_promote_legacy_view_rows(monkeypatch):
 
     migration = (
         Path(__file__).resolve().parents[3]
-        / "migrations/1034_data_plane_l2_producer_generations.sql"
+        / "supabase/migrations/1036_data_plane_l2_producer_generations.sql"
     ).read_text()
     assert "count_sql = 'SELECT 0 AS count'" in migration
     assert "asset_output_digest_specs" in migration

@@ -206,7 +206,7 @@ def test_selected_l2_generation_rejects_dependency_topology_drift(expected):
 def test_migration_checks_current_dependency_topology_and_locks_msr_scope():
     migration = (
         Path(__file__).resolve().parents[3]
-        / "migrations/1034_data_plane_l2_producer_generations.sql"
+        / "supabase/migrations/1036_data_plane_l2_producer_generations.sql"
     ).read_text()
     assert "l2_data_plane_dependency_topology_matches" in migration
     assert "L2 generation dependency topology is stale or incomplete" in migration
@@ -482,7 +482,7 @@ def test_slice_rejects_caller_invented_roots_units_and_component_polarity():
 def test_migration_guards_replay_stale_sets_nonfinite_and_cross_layer_delete():
     migration = (
         Path(__file__).resolve().parents[3]
-        / "migrations" / "1034_data_plane_l2_producer_generations.sql"
+        / "supabase" / "migrations" / "1036_data_plane_l2_producer_generations.sql"
     ).read_text()
     assert "l2_data_plane_run_rows" in migration
     assert "observed_row_count" in migration

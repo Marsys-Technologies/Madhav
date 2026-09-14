@@ -1,4 +1,4 @@
--- 1033_data_plane_l1_producer_history.sql
+-- Migration 1035: data_plane_l1_producer_history
 -- L1 Gaṇita data-plane producer context, append-only generations, replay and rollback.
 --
 -- Forward order: apply this migration before deploying the adapters that invoke
