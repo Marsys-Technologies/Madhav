@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.9.0
-status: LIVE
+version: 0.12.0
+status: SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0030
-last_updated: 2026-09-15T00:37:00+05:30
+last_event: PA-E0043
+last_updated: 2026-09-15T01:34:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,15 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 5 complete; Wave 6 acceptance and source-scope close are next.
-- Branch: `codex/purna-anvesana-wave5`, stacked on governed Wave 4 close `841942b3b`.
+- Wave: all declared packets are source-scope complete; the authority-bound remainder is quarantined.
+- Branch: `codex/purna-anvesana-wave6`, stacked on governed Wave 5 close `4f2d9c97a`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W5-20260914`; release is due after the Wave 5 close is published.
+- PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
+- PR #2604: open, stacked on PR #2603; it is a review surface, not merge or deployment proof.
+- Lease: `MADHAV-PURNA-ANVESANA-W6-20260915`; released and verified at remote coordination commit
+  `2c4a99481a3894d7cbad98357557b102b28aeeea`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -192,6 +195,46 @@ recovery, the full-catalog channel gap, a dedicated signing key, deployed cross-
 production/empirical acceptance remain explicit Wave 6 quarantine inputs. No merge, deployment,
 shared/production mutation, credentials/infrastructure action or production-value claim occurred.
 
+## Wave 6 acceptance outcome
+
+The versioned five-case Beyond-Acarya corpus independently freezes concept, route and semantic-edge
+expectations outside planner output. It exercises positive and negative cases for all six declared
+metrics, including Bhāvat Bhāvam, decisive cancellation, the Kāla-to-transit chain, lifecycle
+pagination continuation, earlier-evidence retention and fail-closed abstention. Independent review
+refuted the first candidate's planner-derived route denominator, synthetic batching and incomplete
+ablations. The repaired exact head `201b420d9d1eceb8d119e1792ea15fb748d35e1d` closes all findings
+and passes 11 focused tests, TypeScript and targeted lint.
+
+The governed result is deliberately negative: source/local route coverage is 30/34 because the
+compiler cannot derive the required planet, start_date and end_date arguments for transit retrieval.
+Novel-combination, omission, semantic-edge, verified long-inquiry and abstention gates pass, but the
+aggregate verdict remains `NOT_ACCEPTED_SOURCE_LOCAL`. W6-P2 therefore retains that evidence and
+quarantines the argument-derivation gap instead of rewriting it as acceptance. Production,
+deployed-runtime, expert-domain and empirical answer-quality validation remain `NOT_RUN`.
+
+## Terminal source-scope outcome
+
+W6-P2 maps every declared packet to append-only evidence and preserves the original R1–R12
+register without renumbering. Closed source/local items have no terminal residual; partial and open
+items point to one or more of 13 quarantined residuals, each with an owner, a concrete trigger and
+the additional authority required. Independent terminal review successively rejected missing
+event relevance, negative-verdict binding, lease proof, residual accuracy, release ordering,
+exact-head approval binding and a self-referential final-review marker. Exact pre-release head
+`4e74647007a3fcaa17a8410d48324eb585bfb85d` was approved with no HIGH or MEDIUM finding after all
+of those controls were repaired.
+
+The remote lease was then released from the current coordination tip at
+`2c4a99481a3894d7cbad98357557b102b28aeeea`, and the local event stream records strict approval,
+release and completion order. The immutable final source head still requires an external exact-head
+review; that review is intentionally not represented by a self-certifying in-tree marker. No merge,
+deployment, shared or production mutation, credential or infrastructure action, doctrine change,
+retirement, production-health claim, user acceptance claim or empirical acceptance claim occurred.
+
+The first external final-head review withheld approval because the embedded W6 session-open block
+named an unregistered Codex profile. The metadata now records the approved `madhav-safe` profile;
+the handshake-specific schema validator passes with zero violations. This correction is governance
+metadata only and requires a new immutable external exact-head review before final closure.
+
 ## Reproduction
 
 From the repository root:
@@ -229,8 +272,8 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
 | W5-P1 disposable migration/lifecycle/security proof | COMPLETE | W4-P1 | migration/security reviewer approved exact clean head |
 | W5-P2 three-door parity/failure proof | COMPLETE | W5-P1 | parity reviewer approved bounded shared-surface proof |
-| W6-P1 versioned Beyond-Acarya acceptance | NEXT | W5-P2 | independent acceptance review required |
-| W6-P2 source-scope close and quarantine | QUEUED | W6-P1 | independent terminal review required |
+| W6-P1 versioned Beyond-Acarya acceptance | COMPLETE_WITH_NEGATIVE_ACCEPTANCE_EVIDENCE | W5-P2 | first review refuted three anti-gaming defects; repaired exact head independently approved |
+| W6-P2 source-scope close and quarantine | COMPLETE | W6-P1 | pre-release head independently approved; remote lease released; immutable final-head external review required |
 
 ## Delivery decomposition
 

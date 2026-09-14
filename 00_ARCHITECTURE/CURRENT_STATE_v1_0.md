@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.73
+version: 6.74
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5913,13 +5913,13 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–5 COMPLETE (2026-09-15).** FC0 is frozen at
+> 🟡 **PŪRṆA ANVEṢAṆA — SOURCE SCOPE COMPLETE WITH AUTHORITY-BOUND REMAINDER (2026-09-15).** FC0 is frozen at
 > `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 5 closes disposable
-> lifecycle/security and bounded, genuinely shared Portal/managed/raw route parity at exact reviewed
-> head `9bd525bf0`; it explicitly does not claim full-catalog parity. Next frontier: W6 Beyond-Acarya
-> acceptance and authority-bound source-scope quarantine. This campaign cannot claim
-> merge, deployment, current production rows, empirical acceptance or health.
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. W6 retains the negative
+> `NOT_ACCEPTED_SOURCE_LOCAL` verdict at 30/34 frozen route obligations, completes all source-scope
+> packets, and quarantines 13 residuals with owners, triggers and authority gates. PR #2604 is the
+> final open stacked review surface. No merge, deployment, current production rows, user acceptance,
+> empirical acceptance or health is claimed.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
 > [Madhav Product Definition v3.0](MADHAV_PRODUCT_DEFINITION_v3_0.md) is the final product
@@ -9342,20 +9342,37 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W5-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W6-20260915
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Wave 5 disposable lifecycle/security and bounded genuinely shared three-door parity independently approved at exact clean technical head 9bd525bf0. Focused, database, type, lint and golden gates pass; the full unit run had one five-second census timeout whose isolated rerun passed. No full-catalog, merge, deployment, shared migration, production or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana source scope is complete with authority-bound remainder. W6-P1 is independently approved but intentionally NOT_ACCEPTED_SOURCE_LOCAL at 30/34 frozen route obligations; W6-P2 preserves R1-R12 and quarantines 13 named residuals. Lease released at coordination commit 2c4a99481; PR #2604 is open and stacked. No merge, deployment, shared migration, production, user or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Execute W6-P1 versioned Beyond-Acarya acceptance and adversarial metrics, then W6-P2 source-scope close with explicit residual owners and triggers. Preserve the source/local/disposable ceiling and quarantine all deployment, shared migration, full-channel, signing-key, restart-recovery and production/empirical remainder."
+  next_product_strategy_objective: "Stop this campaign. Any work on the 13 quarantined residuals requires separate authority, beginning with transit argument derivation, pagination and full-channel contracts, durable managed restart recovery, deployed overlay/cross-door proof, signing-key/change control, and expert empirical evaluation."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W6-20260915**, all source-scope packets are complete and
+the authority-bound remainder is quarantined. The five-case Beyond-Acarya corpus independently
+freezes its concept, route and semantic-edge denominators and includes positive and negative
+ablations for every declared metric. Its honest result is `NOT_ACCEPTED_SOURCE_LOCAL`: 30 of 34
+required routes are bindable because transit retrieval still lacks derivable planet and date
+arguments. Verified long inquiry continuation retains earlier evidence, but does not erase that
+material route gap. Independent acceptance review approved exact head `201b420d9`.
+
+The terminal artifact maps every packet and the original R1–R12 register to append-only evidence,
+then quarantines 13 remaining risks with owners, triggers and authority gates. Independent terminal
+review approved exact pre-release head `4e7464700` after successive anti-gaming corrections. The W6
+lease is released at remote coordination commit `2c4a99481`; PR #2604 remains open and stacked on
+Wave 5. No merge, deploy, shared/production migration or mutation, credential/infrastructure action,
+retirement, doctrine change, production trace, runtime-health claim, user acceptance or empirical
+acceptance occurred. The immutable final source head is subject to external exact-head review, with
+no later source mutation permitted.
 
 At the close of **MADHAV-PURNA-ANVESANA-W5-20260914**, migration 1033's durable lifecycle is
 proved only against disposable PostgreSQL: atomic principal/chart-bound creation, RLS isolation,
