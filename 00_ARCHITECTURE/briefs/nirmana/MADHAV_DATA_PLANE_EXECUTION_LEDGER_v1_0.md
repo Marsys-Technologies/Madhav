@@ -25,6 +25,7 @@ l0_implementation_commits:
   - f648d5add
 l1_stage: PRODUCER_READY
 l2_stage: PRODUCER_READY
+l3_stage: W0_FOUNDATION_SAFETY_ACTIVE
 role: >
   Append-only execution control for one reusable documentation/execution task. It consumes only
   separately approved strategic briefs, returns evidence, and never converts task activity into
@@ -46,6 +47,7 @@ changelog:
   - "1.0 update 2026-09-15: Records third L2 challenge FAIL at f828864a7 with 6 HIGH and 2 MED findings; explicit passive Samvada receipt, mutation-free dry runs, serialized MSR deletion, exact dependency-topology compatibility, fail-closed Pramana detectors and set-level Samskara compatibility are locally validated and pending exact re-challenge."
   - "1.0 update 2026-09-15: Records fourth L2 challenge FAIL at 173f9aab5 with one HIGH finding; Pramana context validation is now scoped to declared upstream L2 heads so its transient predecessor cannot make a replacement candidate falsely red; exact re-challenge remains pending."
   - "1.0 update 2026-09-15: Records final independent PASS on exact L2 implementation tip 8aeff12d4 with zero CRITICAL/HIGH/MED/LOW findings and terminal L2 PRODUCER_READY; L3 remains waiting."
+  - "1.0 update 2026-09-15: Consumes DP-SD-017 and immutable L3 pins; opens L3-W0-FOUNDATION-SAFETY-01 with validated session-open, verified coordination lease, active recovery heartbeat, exact 22+retired denominator, deployed/live physical-state recheck, three bounded discovery lanes and no rebuild."
 ---
 
 # Madhav data-plane execution ledger
@@ -78,7 +80,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L0 Brahmagyan | PRODUCER_READY | DP-SD-009/010/011 + approved L0 brief/addenda + continued goal | Validation and acceptance records; independent challenge PASS; stop with L1 waiting |
 | L1 Gaṇita | PRODUCER_READY | DP-SD-013 + approved L1 brief + new bounded goal | Seven L1 artifacts, 19/19 runtime validator, local commits, migration proof and independent challenge PASS |
 | L2 Bodha | PRODUCER_READY | DP-SD-015 + approved L2 brief + new bounded goal | Seven L2 artifacts, 23/23 runtime validation, first slice and independent challenge PASS |
-| L3 Kāla | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L3 brief + new goal | Layer brief exit record |
+| L3 Kāla | W0_FOUNDATION_SAFETY_ACTIVE | DP-SD-017 + immutable L3 brief/strategy/review pins + new persistent L3 goal | W0 reviewed frontier/safety/baseline evidence, then approved W1-W8 gates |
 | L4 Phala | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L4 brief + new goal | Layer brief exit record |
 | L5 Mīmāṃsā | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L5 brief + new goal | Layer brief exit record |
 | Cross-layer integration | WAITING_FOR_STRATEGIC_BRIEF | Approved compatible upstream set + integration brief | End-to-end and managed-channel evidence |
@@ -100,6 +102,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | DP-SD-011 | APPROVED residual-only addendum | Serialize the two live GA-strength transitive spans, re-challenge L0 and close only if zero unresolved remains. |
 | DP-SD-013 | APPROVED L1 strategy and execution brief | Execute exactly 19 L1 writers and adjacent producer capital to `PRODUCER_READY`; do not begin L2 or integration. |
 | DP-SD-015 | APPROVED L2 strategy and execution brief | Execute exactly 23 current L2 writers while preserving the historical 22 denominator; remove L3 runtime/timing output and stop at `PRODUCER_READY`. |
+| DP-SD-017 | APPROVED L3 strategy and execution brief | Execute the 22 active L3 identities while preserving retired `ka_gochara_sweep`; begin with `L3-W0-FOUNDATION-SAFETY-01`, keep L4/L5 waiting and distinguish source, physical data, integration, deployment, consumer value and empirical evidence. |
 
 ## 5. Evidence and blockers
 
@@ -124,6 +127,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L2 third correction / fourth challenge | `173f9aab5e3ed83cfcf3e7a0c068a632b15ce692` / independent FAIL | Closed the third eight families; fourth challenge found one HIGH Pramāṇa runtime-ordering false negative, no CRITICAL/MED/LOW. |
 | L2 implementation | `066fce7a5`, `b7a49f742`, `f828864a7`, `173f9aab5`, `8aeff12d4` | All 23 runtime identities; exact-context compatible generation/replay/rollback; signed/multidomain slice; temporal/private/serving boundaries; four correction rounds; final independent PASS. |
 | L2 acceptance/handoff | `MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md` | `PRODUCER_READY_ACCEPTED`; integration, deployment, population/health, consumer value and empirical evaluation remain unreached. |
+| L3 W0 state | `MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact DP-SD-017 pins, 22 active + protected retired denominator, source/deployment/campaign/DB recheck, no-build frontier, migration collision, ownership and heartbeat truth. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -199,6 +203,7 @@ waiting and every later-state non-claim remains in force.
 | 2026-09-15 (time not recorded) | L2 Bodha | FOURTH_CHALLENGE_FAILED | Independent review of exact `173f9aab5` found one HIGH: Pramāṇa's detector judged its own stale predecessor before candidate completion/selection; all prior findings closed and no CRITICAL/MED/LOW. |
 | 2026-09-15 (time not recorded) | L2 Bodha | FOURTH_CORRECTION_VALIDATED | Pramāṇa context detector now follows only its declared upstream L2 closure; disposable-DB rebuild-order negative proves a stale self-head is ignored while stale declared upstream remains red; focused 57/57, validator/provenance and diff checks pass. Correction subsequently committed at `8aeff12d4`. |
 | 2026-09-15 00:09 | L2 Bodha | PRODUCER_READY | Final independent review of exact implementation tip `8aeff12d4b32174bab1a1352768fc077828c38bd` PASS with zero CRITICAL/HIGH/MED/LOW; seven L2 evidence artifacts terminalized; no push/PR/merge/deploy/live/private/campaign/L3 mutation. L3 remains waiting. |
+| 2026-09-15 03:03 | L3 Kāla | W0_OPENED | DP-SD-017 and immutable pins consumed; session-open exit 0; coordination lease verified; persistent goal and 15-minute heartbeat active; exact 22+retired denominator and current source/deploy/campaign/DB state rechecked; three read-only discovery lanes started; no build, migration, data mutation or deployment. |
 
 ## 7. Return-to-strategy handoff contract
 
@@ -220,3 +225,10 @@ blobs, local implementation/evidence commits, 23/23 dispositions while retaining
 the historical 22/22 receipt, first-slice digest, focused/broad/live/review truth,
 compatibility residuals and later-state non-claims. Stop at `PRODUCER_READY`;
 L3 remains waiting for a separate approved brief and new goal.
+
+At L3 close, return DP-SD-017 plus content/approval pins, the exact accepted
+L0-L2 inputs, 22 active dispositions and protected-retired proof, compatible
+physical generations, per-asset data/service acceptance, deployment and scoped
+consumer-value evidence as distinct states. Empirical outcome performance remains
+excluded. Stop before L4/L5 and return to `WAITING_FOR_STRATEGIC_BRIEF` only after
+genuine L3 completion; otherwise preserve the exact residual and recovery action.
