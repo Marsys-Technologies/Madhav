@@ -40498,3 +40498,76 @@ session_close:
   unblocks: [W3-P1, W3-P2]
   handoff_notes: "Start Wave 3 from the exact delivered Wave 2 head after governance close; implement normalized intent, deterministic ontology/graph traversal, and the independent omission challenger while retaining the source/local/disposable ceiling."
 ```
+
+---
+
+## MADHAV-PURNA-ANVESANA-W3-20260914 — 2026-09-14
+
+```yaml
+session_open:
+  session_id: MADHAV-PURNA-ANVESANA-W3-20260914
+  cowork_thread_name: "Madhav — Purna Anvesana Wave 3"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave3
+  step_number_or_layer: "Purna Anvesana Wave 3 — inquiry compiler and omission challenger"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W2-20260914
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PURNA-ANVESANA-W3-20260914
+    lease_status_verified: true
+    lease_verified_at: 2026-09-14T21:14:00+05:30
+    coordination_commit: 08a183ac0556d3ef192a7ce4a013bdbe424d1523
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)", "99_ARCHIVE/MARSYS_JIS_BOOTSTRAP_HANDOFF.md (SUPERSEDED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, read_at: 2026-09-14T21:14:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - platform/src/lib/vidhi/inquiry/**
+      - platform/src/lib/retrieval/registry/knowledge/**
+      - platform/tests/pariprashna/route_ports/**
+    must_not_touch:
+      - origin/main and protected or release refs
+      - PR 2597 branch history or content
+      - production or shared database, build, deployment, traffic, scheduler, credentials, secrets, or infrastructure
+      - shared or production migration application
+      - frozen WriterBase implementation or orchestrator contract
+      - foreign campaign branches, worktrees, queues, ledgers, or runtime state
+      - doctrine ratification, asset retirement, or destructive cleanup
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs in Wave 3."
+      acknowledged: true
+  red_team_due: true
+  notes: "Wave 3 is source/local only, stacked at governed Wave 2 close 99817ef49. Deterministic floors and finalization remain authoritative over AI proposals."
+```
+
+### Opening validation
+
+`schema_validator.py --handshake` returned zero violations and exit 0 before Wave 3 source mutation.
