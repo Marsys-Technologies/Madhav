@@ -24,17 +24,32 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
     }
     const w6p2 = terminal.packet_evidence.find((packet: { packet_id: string }) => packet.packet_id === 'W6-P2')
     const w6p2Events = events.filter((event: { event_id: string }) => w6p2.event_ids.includes(event.event_id))
-    const approval = w6p2Events.find((event: { type: string, actor: string, packet_id: string }) =>
-      event.type === 'PACKET_REVIEW_APPROVED'
-      && event.actor === 'w6_terminal_review'
-      && event.packet_id === 'W6-P2')
+    expect(terminal.terminal_review).toMatchObject({
+      reviewer: 'w6_terminal_review',
+      status: 'APPROVED_PRE_RELEASE_HEAD',
+      verdict: 'APPROVE',
+      high_or_medium_findings: 0,
+      final_head_review: 'COMPLETE',
+    })
+    expect(terminal.terminal_review.approved_pre_release_head).toMatch(/^[a-f0-9]{40}$/)
+    const approval = w6p2Events.find((event: { event_id: string }) =>
+      event.event_id === terminal.terminal_review.approval_event_id)
+    expect(approval).toMatchObject({
+      type: 'PACKET_REVIEW_APPROVED',
+      actor: terminal.terminal_review.reviewer,
+      packet_id: 'W6-P2',
+      payload: {
+        head: terminal.terminal_review.approved_pre_release_head,
+        verdict: terminal.terminal_review.verdict,
+        high_or_medium_findings: terminal.terminal_review.high_or_medium_findings,
+      },
+    })
     const release = w6p2Events.find((event: { type: string, packet_id: string }) =>
       event.type === 'LEASE_RELEASED' && event.packet_id === 'W6-P2')
     const completion = w6p2Events.find((event: { type: string, packet_id: string, sequence: number }) =>
       ['SOURCE_SCOPE_COMPLETED', 'WAVE_COMPLETED'].includes(event.type)
       && event.packet_id === 'W6-P2'
       && event.sequence > (release?.sequence ?? Number.MAX_SAFE_INTEGER))
-    expect(approval).toBeDefined()
     expect(release).toBeDefined()
     expect(release?.sequence ?? -1).toBeGreaterThan(approval?.sequence ?? Number.MAX_SAFE_INTEGER)
     expect(completion).toBeDefined()
