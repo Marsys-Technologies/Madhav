@@ -41,7 +41,7 @@ const INPUT_CLS =
 
 export function ExportPanel(): React.ReactElement {
   const [open, setOpen] = React.useState(false)
-  const initial = React.useMemo(defaultDateRange, [])
+  const initial = React.useMemo(() => defaultDateRange(), [])
   const [dateStart, setDateStart] = React.useState(initial.start)
   const [dateEnd, setDateEnd] = React.useState(initial.end)
   const [provider, setProvider] = React.useState('')
