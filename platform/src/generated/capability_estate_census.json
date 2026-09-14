@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "f5cab5f32a5f1a0caecd8a85d1c16ee9526e3e002179be3fccf05687de1316ea",
+  "content_sha256": "bb9e7600dec460623ce4a76641ebc1406f23a24d75ae48d2e8ba3b98fb0c7151",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -10655,7 +10655,7 @@
           "relation:brahma_class_priors"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10675,7 +10675,7 @@
           "relation:brahma_class_priors"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10695,7 +10695,7 @@
           "relation:bg_synthetic_cohort"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10715,7 +10715,7 @@
           "relation:brahma_compendium_index"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10735,7 +10735,7 @@
           "relation:classical_attributions"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10755,7 +10755,7 @@
           "relation:brahma_dasha_systems"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10775,7 +10775,7 @@
           "relation:bg_dignity_reference"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10795,7 +10795,7 @@
           "relation:brahma_dosha_catalog"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10815,7 +10815,7 @@
           "relation:ephemeris_daily"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10856,7 +10856,7 @@
           "relation:brahma_formula_constants"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10876,7 +10876,7 @@
           "relation:brahma_event_ontology"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10896,7 +10896,7 @@
           "relation:bg_gochara_arcs"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10916,7 +10916,7 @@
           "relation:bg_gochara_citation_resolution"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10936,7 +10936,7 @@
           "relation:bg_kota_chakra_rings"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10956,7 +10956,7 @@
           "relation:bg_kp_sublord_division"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10976,7 +10976,7 @@
           "relation:bg_medical_mappings"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -10996,7 +10996,7 @@
           "relation:bg_muhurta_lattice"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11016,7 +11016,7 @@
           "relation:reference_nakshatra"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11036,7 +11036,7 @@
           "relation:bg_nakshatra_medical"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11056,7 +11056,7 @@
           "relation:brahma_ontology"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11097,7 +11097,7 @@
           "relation:bg_parihara_rules"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11117,7 +11117,7 @@
           "relation:bg_phaladeepika_latta"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11137,7 +11137,7 @@
           "asset_registry_count_sql:bg_prashna_rules"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11157,7 +11157,7 @@
           "relation:reference_planets"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11177,7 +11177,7 @@
           "relation:brahma_remedy_corpus"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11197,7 +11197,7 @@
           "relation:sutravali_rules"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11217,7 +11217,7 @@
           "relation:bg_sarvatobhadra_grid"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11237,7 +11237,7 @@
           "relation:bg_sign_medical"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11257,7 +11257,7 @@
           "relation:bg_sky_calendar"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11277,7 +11277,7 @@
           "relation:classical_text_chunks"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11297,7 +11297,7 @@
           "relation:classical_text_chunks"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11317,7 +11317,7 @@
           "relation:bg_transit_engine"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11337,7 +11337,7 @@
           "relation:bg_transit_rules"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11357,7 +11357,7 @@
           "relation:bg_vastu_directions"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11377,7 +11377,7 @@
           "relation:bg_vedha_malefic_scale"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11397,7 +11397,7 @@
           "relation:vidhi_floor_items"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11417,7 +11417,7 @@
           "relation:vidhi_primitives"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11437,7 +11437,7 @@
           "relation:brahma_yoga_catalog"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11457,7 +11457,7 @@
           "relation:bodha_discoveries"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11477,7 +11477,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11497,7 +11497,7 @@
           "relation:bodha_cgm_nodes"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11517,7 +11517,7 @@
           "relation:bodha_cdlm_chart_summary"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11537,7 +11537,7 @@
           "relation:bodha_cgm_motifs"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11557,7 +11557,7 @@
           "relation:bodha_cgm_paths"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11577,7 +11577,7 @@
           "relation:bodha_chart_gestalt"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11597,7 +11597,7 @@
           "relation:bodha_question_lenses"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11617,7 +11617,7 @@
           "relation:bodha_grounding_matches"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11637,7 +11637,7 @@
           "relation:bodha_cgm_edges"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11657,7 +11657,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11677,7 +11677,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11697,7 +11697,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11717,7 +11717,7 @@
           "relation:synthesis_quality_scorecard"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11737,7 +11737,7 @@
           "relation:bodha_pratijna"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11757,7 +11757,7 @@
           "relation:bodha_signal_embeddings"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11777,7 +11777,7 @@
           "relation:vw_chart_digest"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11797,7 +11797,7 @@
           "relation:bodha_cdlm_cells"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11817,7 +11817,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11837,7 +11837,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11857,7 +11857,7 @@
           "relation:bodha_rm_resonances"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11877,7 +11877,7 @@
           "relation:bodha_msr_signals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11897,7 +11897,7 @@
           "relation:bodha_mechanisms"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11917,7 +11917,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11937,7 +11937,7 @@
           "relation:ga_condition_composite"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11957,7 +11957,7 @@
           "relation:chart_dashas"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11977,7 +11977,7 @@
           "relation:ga_medical"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -11997,7 +11997,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12017,7 +12017,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12037,7 +12037,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12057,7 +12057,7 @@
           "relation:ga_prashna_judgment"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12077,7 +12077,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12097,7 +12097,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12117,7 +12117,7 @@
           "relation:chart_facts"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12137,7 +12137,7 @@
           "asset_registry_count_sql:ga_strength"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12157,7 +12157,7 @@
           "asset_registry_count_sql:ga_structural"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12177,7 +12177,7 @@
           "relation:l1_tajik_varsha_year_lords"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12197,7 +12197,7 @@
           "relation:ga_transit_anchors"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12217,7 +12217,7 @@
           "relation:chart_divisionals"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12237,7 +12237,7 @@
           "relation:ga_vastu_planet_direction_map"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12257,7 +12257,7 @@
           "relation:chart_vichara"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12277,7 +12277,7 @@
           "relation:ga_yoga_firings"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12297,7 +12297,7 @@
           "relation:kala_avadhi"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12317,7 +12317,7 @@
           "relation:kala_bhavishya"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12358,7 +12358,7 @@
           "relation:kala_gochara_windows"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12378,7 +12378,7 @@
           "relation:gochara_resonance_map"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12437,7 +12437,7 @@
           "relation:kala_jivana_parva"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12457,7 +12457,7 @@
           "relation:kala_darshana"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12477,7 +12477,7 @@
           "relation:kala_activation"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_passed_not_deployed",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12497,7 +12497,7 @@
           "relation:kala_kota_chakra"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12517,7 +12517,7 @@
           "relation:kala_field"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12537,7 +12537,7 @@
           "relation:kala_moorti_nirnaya"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12578,7 +12578,7 @@
           "relation:kala_convergence"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12598,7 +12598,7 @@
           "relation:kala_sudarshana_varsha"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12618,7 +12618,7 @@
           "relation:kala_taranga"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12638,7 +12638,7 @@
           "relation:kala_tithi_pravesha"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12679,7 +12679,7 @@
           "relation:kala_vedha_gochara"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12717,7 +12717,7 @@
           "relation:kala_activation_predicates"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12750,7 +12750,7 @@
         "asset_id": "mi_abhilekha",
         "contract_ref": {
           "authority_state": "source_observed_unratified",
-          "contract_sha256": "bfdaeeabb490e5c89b632cfcb0b023e2e4cd0d5823a3e35b3d6671090c16ac5f",
+          "contract_sha256": "68d384bdca7519835011db4d7942b6d54999d22bf159766cd041ed113b2d3ee5",
           "path": "platform/python-sidecar/scripts/nirmana_service_effect_contracts.json"
         },
         "disposition": "service_effect_contract",
@@ -12759,7 +12759,6 @@
         ],
         "known_gaps": [
           "product_review_required_for_non_confirming_answer_semantics",
-          "disposable_fixture_execution_not_yet_run",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "service",
@@ -12779,7 +12778,7 @@
           "relation:mimamsa_signal_adjustment"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12799,7 +12798,7 @@
           "relation:kala_field_weight_versions"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12819,7 +12818,7 @@
           "relation:mimamsa_predictions"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12839,7 +12838,7 @@
           "relation:mimamsa_insight_units"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12859,7 +12858,7 @@
           "relation:mimamsa_multipliers"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12879,7 +12878,7 @@
           "relation:mimamsa_event_provenance"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12899,7 +12898,7 @@
           "relation:mimamsa_signal_families"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12919,7 +12918,7 @@
           "relation:mimamsa_qa_eval"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12939,7 +12938,7 @@
           "relation:mimamsa_calibration"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12959,7 +12958,7 @@
           "relation:mimamsa_manifestation_grammar"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12979,7 +12978,7 @@
           "relation:mimamsa_intervention_ledger"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -12991,7 +12990,7 @@
         "asset_id": "mi_seva",
         "contract_ref": {
           "authority_state": "source_observed",
-          "contract_sha256": "c4b38c07dad671c4d15ecf9a91be519e009f97ff63b3be5b7834f10239486e5a",
+          "contract_sha256": "75187219130784575fd706dff7bd2039b6d94835b8215fd804de8bfa5c8c2877",
           "path": "platform/python-sidecar/scripts/nirmana_service_effect_contracts.json"
         },
         "disposition": "service_effect_contract",
@@ -12999,7 +12998,6 @@
           "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py"
         ],
         "known_gaps": [
-          "disposable_fixture_execution_not_yet_run",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "service",
@@ -13019,7 +13017,7 @@
           "relation:mimamsa_export_log"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13039,7 +13037,7 @@
           "relation:phala_muhurta"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13082,7 +13080,7 @@
           "relation:phala_phaladesa"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13102,7 +13100,7 @@
           "relation:phala_pramana"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13122,7 +13120,7 @@
           "relation:phala_mitigation"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13142,7 +13140,7 @@
           "relation:phala_rectification"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13162,7 +13160,7 @@
           "relation:phala_sankrama"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13182,7 +13180,7 @@
           "relation:phala_sodhana"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -13202,7 +13200,7 @@
           "relation:phala_suddha_sodhana"
         ],
         "known_gaps": [
-          "disposable_schema_and_key_validation_not_yet_run",
+          "disposable_schema_and_key_validation_not_replayed_this_wave",
           "deployed_current_state_not_read"
         ],
         "producer_kind": "relational",
@@ -20576,7 +20574,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-14T13:50:18.000Z",
+  "generated_at": "2026-09-14T13:52:38.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20593,7 +20591,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "9cf95a651e6917b852e6dcf424103816b0d3e0802623a1dd9f970956c4a8bbc5"
+        "sha256": "575417058ce7a4b73d7ef753df99e7e1adcfd67c44bae08d43487c808a4ecaba"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -21954,12 +21952,17 @@
       {
         "id": "service_effect_contracts",
         "path": "platform/python-sidecar/scripts/nirmana_service_effect_contracts.json",
-        "sha256": "35e25a809731c0ccd95504aeb506b68ada4993202dd4b7c17bce49664634ffaa"
+        "sha256": "1f65bd24014fc87ba578ecf22b4a50e5336ce0f9cd69d18e45cb53f7378c78b4"
       },
       {
         "id": "service_probe_contracts",
         "path": "platform/python-sidecar/scripts/nirmana_probe_contracts.json",
         "sha256": "6f144a500d15b1e037492e78f6b2f32f7dfe586bbab8e16c35a98c5844ac7a7b"
+      },
+      {
+        "id": "wave1_disposable_evidence",
+        "path": "platform/docs/evidence/purna_anvesana_wave1_disposable.json",
+        "sha256": "bd6db8a8e83aa96bfc058fe038e6b1c64d8e1ac3bd8aa00d06ff9ad1c6599b40"
       },
       {
         "id": "writer_digest_inventory",
@@ -21969,5 +21972,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "25af51400247d1bc6d1ff881c34131f47ef7278b"
+  "source_revision": "4cf83d51289372795813c50c73974e3fc78c1562"
 }
