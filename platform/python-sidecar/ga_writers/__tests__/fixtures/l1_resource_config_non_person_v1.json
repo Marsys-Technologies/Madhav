@@ -12,9 +12,9 @@
   "ayanamsha_id": "lahiri_chitrapaksha",
   "node_type": "mean",
   "house_convention": "whole_sign",
-  "varga": "D9",
-  "varga_formula": "parasara_standard_v1",
-  "varga_domain": "relationship",
+  "varga": "D1",
+  "varga_formula": "identity_v1",
+  "varga_domain": "natal",
   "karaka_school": "jaimini_eight_karaka",
   "engine_version": "synthetic-deterministic/1.0",
   "facts": [
@@ -164,16 +164,18 @@
       "perturbation_id": "crosses-varga-boundary",
       "baseline_input": 119.999,
       "perturbed_input": 120.001,
-      "boundary_deg": 120.0,
-      "segment_width_deg": 30.0
+      "target_varga": "D9",
+      "target_varga_formula": "parasara_standard_v1",
+      "target_varga_domain": "relationship"
     },
     {
       "fact_key": "longitude_sidereal",
       "perturbation_id": "stays-within-varga-segment",
       "baseline_input": 119.999,
       "perturbed_input": 119.998,
-      "boundary_deg": 120.0,
-      "segment_width_deg": 30.0
+      "target_varga": "D9",
+      "target_varga_formula": "parasara_standard_v1",
+      "target_varga_domain": "relationship"
     }
   ],
   "clock": {

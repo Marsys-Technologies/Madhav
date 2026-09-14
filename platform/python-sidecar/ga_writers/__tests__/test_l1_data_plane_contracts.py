@@ -254,7 +254,7 @@ def test_default_slice_is_deterministic_non_person_and_preserves_all_states():
     first = build_default_slice()
     second = build_default_slice()
     assert canonical_json(first) == canonical_json(second)
-    assert first["content_sha256"] == "4765ba933fc9c40d375484bfd4d13c2a3c5c8021c2154408a47d55f612972074"
+    assert first["content_sha256"] == "25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279"
     assert first["fixture_class"] == "deterministic_non_person"
     assert first["context"]["chart_id"].startswith("synthetic:")
     assert first["configuration"]["positive_doctrinal_arm"] == "NOT_REACHABLE"
@@ -290,12 +290,32 @@ def test_slice_rejects_personal_subject_identity():
 def test_slice_dependencies_close_and_sensitivity_recomputes_output():
     payload = build_default_slice()
     emitted = {fact["fact_id"] for fact in payload["facts"]}
+    resolved = {
+        item["dependency_id"] for item in payload["resolved_l0_dependencies"]
+    }
     for fact in payload["facts"]:
         for dependency in fact["source_dependencies"]:
-            assert dependency in emitted or dependency.startswith(("l0:", "external:"))
+            assert dependency in emitted or dependency in resolved
     changed, unchanged = payload["sensitivity"]
     assert changed["baseline_output"] != changed["perturbed_output"]
     assert unchanged["baseline_output"] == unchanged["perturbed_output"]
+    assert changed["target_varga_formula"] == "parasara_standard_v1"
+    assert changed["baseline_d1_output"] != changed["baseline_output"]
+    assert unchanged["baseline_d1_output"] == unchanged["perturbed_d1_output"]
+
+
+def test_slice_rejects_unknown_l0_dependency_and_varga_formula():
+    fixture = load_fixture()
+    fixture["facts"][0]["source_dependencies"].append(
+        "l0:definitely_not_a_released_identity"
+    )
+    with pytest.raises(ContractError, match="accepted L0 release"):
+        build_slice(fixture)
+
+    fixture = load_fixture()
+    fixture["sensitivity"][0]["target_varga_formula"] = "not-a-real-varga-formula"
+    with pytest.raises(ContractError, match="unadmitted varga"):
+        build_slice(fixture)
 
 
 def test_all_nineteen_runtime_writers_have_the_contract_boundary():
@@ -362,6 +382,36 @@ def test_runtime_boundary_opens_then_completes_a_generation(monkeypatch):
     assert conn.statements[2][1][-1] == 9
 
 
+def test_generation_base_context_is_partition_invariant():
+    from pathlib import Path
+
+    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    base_context = migration.split("v_context := jsonb_build_object(", 1)[1].split(
+        "INSERT INTO public.l1_data_plane_generations", 1
+    )[0]
+    row_context = migration.split("v_context := v_base || jsonb_build_object(", 1)[1].split(
+        "v_context_id :=", 1
+    )[0]
+    assert "'ayanamsha_id', 'mixed_or_invariant'" in base_context
+    assert "p_partition_key ~ '^ayanamsha[:_]'" not in base_context
+    assert "v_partition ~ '^ayanamsha[:_]'" in row_context
+
+
+def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_views():
+    from pathlib import Path
+
+    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    assert "complete generation % cannot admit new row" in migration
+    assert "complete generation % replay changed output" in migration
+    assert "l1_data_plane_jsonb_has_nonfinite(v_row)" in migration
+    assert "CREATE TABLE IF NOT EXISTS public.l1_data_plane_fact_snapshots" in migration
+    assert "CREATE TABLE IF NOT EXISTS public.l1_data_plane_configuration_snapshots" in migration
+    current_rows = migration.split(
+        "CREATE OR REPLACE VIEW public.l1_data_plane_current_rows AS", 1
+    )[1].split("CREATE OR REPLACE VIEW public.l1_data_plane_current_facts", 1)[0]
+    assert "DISTINCT ON (s.chart_id, s.asset_id, s.source_table, s.row_identity)" in current_rows
+
+
 def test_runtime_boundary_does_not_complete_a_failed_writer(monkeypatch):
     from ga_writers import ga_positions_writer
 
@@ -411,3 +461,40 @@ def test_sensitive_helpers_reject_missing_lagna_and_vara():
             {}, {"LAGNA": 10.0, "SAT": 20.0},
             "chart", "lahiri", "build", "engine", {},
         )
+
+
+def test_sensitive_vara_contract_accepts_numeric_alias_and_rejects_conflict():
+    from ga_writers.ga_sensitive_writer import _require_vara_id
+
+    assert _require_vara_id({"vara": 0}) == 0
+    assert _require_vara_id({"vara_id": 0, "vara": "Sunday"}) == 0
+    with pytest.raises(ValueError, match="conflicts"):
+        _require_vara_id({"vara_id": 0, "vara": 1})
+
+
+def test_sensitive_day_night_uses_astronomical_sunrise_and_sunset():
+    from ga_writers.ga_sensitive_writer import _derive_is_day_birth
+
+    common = {
+        "latitude_deg": 20.27,
+        "longitude_deg": 85.84,
+        "tz_offset_hours": 5.5,
+    }
+    assert _derive_is_day_birth({
+        **common, "datetime_iso": "1984-02-05T10:43:00+05:30",
+    }) is True
+    assert _derive_is_day_birth({
+        **common, "datetime_iso": "1984-02-05T23:00:00+05:30",
+    }) is False
+
+
+def test_sensitive_day_night_rejects_timezone_conflict():
+    from ga_writers.ga_sensitive_writer import _derive_is_day_birth
+
+    with pytest.raises(ValueError, match="conflicts"):
+        _derive_is_day_birth({
+            "datetime_iso": "1984-02-05T10:43:00+00:00",
+            "latitude_deg": 20.27,
+            "longitude_deg": 85.84,
+            "tz_offset_hours": 5.5,
+        })

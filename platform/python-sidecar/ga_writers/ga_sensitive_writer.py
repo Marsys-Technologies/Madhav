@@ -34,7 +34,7 @@ import json
 import logging
 import os
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pyjhora_adapter.compute import compute_chart
@@ -2319,6 +2319,76 @@ DAGDHA_RASHI_BY_VARA: dict[int, list[str]] = {
 }
 
 
+def _require_vara_id(panchanga: dict[str, Any]) -> int:
+    """Return the canonical Sunday-based vara id without inventing a default."""
+    raw_id = panchanga.get("vara_id")
+    raw_alias = panchanga.get("vara")
+    numeric_alias = (
+        raw_alias
+        if isinstance(raw_alias, int) and not isinstance(raw_alias, bool)
+        else None
+    )
+    if raw_id is None:
+        raw_id = numeric_alias
+    if isinstance(raw_id, bool) or not isinstance(raw_id, int):
+        raise ValueError(
+            "ga_sensitive: panchanga vara_id missing; refusing Sunday fallback"
+        )
+    if numeric_alias is not None and numeric_alias != raw_id:
+        raise ValueError(
+            f"ga_sensitive: panchanga vara_id={raw_id!r} conflicts with vara={numeric_alias!r}"
+        )
+    if raw_id not in DAGDHA_RASHI_BY_VARA:
+        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={raw_id!r}")
+    return raw_id
+
+
+def _derive_is_day_birth(birth_params: dict[str, Any]) -> bool:
+    """Classify the birth instant against computed local sunrise and sunset."""
+    from panchang_engine.timings import compute_sunrise_sunset
+
+    required = ("datetime_iso", "latitude_deg", "longitude_deg", "tz_offset_hours")
+    missing = [field for field in required if birth_params.get(field) is None]
+    if missing:
+        raise ValueError(
+            f"ga_sensitive: birth parameters missing for day/night Saham: {missing!r}"
+        )
+
+    try:
+        local_dt = datetime.fromisoformat(str(birth_params["datetime_iso"]))
+        latitude = float(birth_params["latitude_deg"])
+        longitude = float(birth_params["longitude_deg"])
+        tz_hours = float(birth_params["tz_offset_hours"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("ga_sensitive: invalid birth parameters for day/night Saham") from exc
+
+    if not all(math.isfinite(value) for value in (latitude, longitude, tz_hours)):
+        raise ValueError("ga_sensitive: non-finite birth parameters for day/night Saham")
+    if not -90.0 <= latitude <= 90.0 or not -180.0 <= longitude <= 180.0:
+        raise ValueError("ga_sensitive: birth coordinates outside valid range")
+    if not -14.0 <= tz_hours <= 14.0:
+        raise ValueError("ga_sensitive: tz_offset_hours outside supported range")
+
+    tz_minutes_exact = tz_hours * 60.0
+    tz_minutes = round(tz_minutes_exact)
+    if not math.isclose(tz_minutes_exact, tz_minutes, abs_tol=1e-9):
+        raise ValueError("ga_sensitive: tz_offset_hours must resolve to whole minutes")
+    configured_zone = timezone(timedelta(minutes=tz_minutes))
+    if local_dt.utcoffset() is not None:
+        embedded_minutes = local_dt.utcoffset().total_seconds() / 60.0
+        if not math.isclose(embedded_minutes, tz_minutes, abs_tol=1e-9):
+            raise ValueError(
+                "ga_sensitive: datetime_iso UTC offset conflicts with tz_offset_hours"
+            )
+
+    local_wallclock = local_dt.replace(tzinfo=configured_zone)
+    birth_utc = local_wallclock.astimezone(timezone.utc)
+    sunrise_utc, sunset_utc = compute_sunrise_sunset(
+        local_wallclock.date(), latitude, longitude, tz_minutes
+    )
+    return sunrise_utc <= birth_utc < sunset_utc
+
+
 def _build_gulika_mandi_sensitive_rows(
     chart_data: dict, all_longs: dict, chart_id: str, ayanamsha_id: str,
     build_id: str, eng_ver: str, panchanga: dict,
@@ -2329,13 +2399,7 @@ def _build_gulika_mandi_sensitive_rows(
         raise ValueError("ga_sensitive: LAGNA longitude missing; Gulika/Mandi unavailable")
     lagna_long = lagna_long_raw
     sat_long_raw = all_longs.get("SAT")
-    vara = panchanga.get("vara_id")
-    if vara is None:
-        raise ValueError(
-            "ga_sensitive: panchanga vara_id missing; refusing Sunday/Gulika fallback"
-        )
-    if vara not in GULIKA_DAY_SEGMENT:
-        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
+    vara = _require_vara_id(panchanga)
 
     # Try native PyJHora upagrahas first.
     # M-11 fix: correct key is "sensitive_points" (compute_chart never wrote
@@ -2392,13 +2456,7 @@ def _build_sun_derived_upagrahas_rows(
     if lagna_long_raw is None:
         raise ValueError("ga_sensitive: LAGNA longitude missing; Sun-derived upagrahas unavailable")
     lagna_long = lagna_long_raw
-    vara = panchanga.get("vara_id")
-    if vara is None:
-        raise ValueError(
-            "ga_sensitive: panchanga vara_id missing; refusing Sunday/upagraha fallback"
-        )
-    if vara not in DAGDHA_RASHI_BY_VARA:
-        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
+    vara = _require_vara_id(panchanga)
 
     kala_sun = (sun_long + 180.0) % 360.0
     mrityu_sun = (sun_long + vara * 30.0) % 360.0
@@ -2565,13 +2623,7 @@ def _build_yogi_system_completion_rows(
         raise ValueError("ga_sensitive: SUN or MOON longitude missing; Yogi system unavailable")
     sun_long = sun_long_raw
     moon_long = moon_long_raw
-    vara = panchanga.get("vara_id")
-    if vara is None:
-        raise ValueError(
-            "ga_sensitive: panchanga vara_id missing; refusing Sunday/yogi fallback"
-        )
-    if vara not in DAGDHA_RASHI_BY_VARA:
-        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
+    vara = _require_vara_id(panchanga)
 
     yogi_long = (sun_long + moon_long + 93.3333333) % 360.0
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(yogi_long)
@@ -2680,24 +2732,13 @@ def _build_all_sensitive_rows_for_ayanamsha(
         raise ValueError(
             f"ga_sensitive: panchanga absent for chart_id={chart_id} ayanamsha={ayanamsha_key}"
         )
-    vara = panchanga.get("vara_id")
-    if vara not in DAGDHA_RASHI_BY_VARA:
-        raise ValueError(f"ga_sensitive: invalid or missing panchanga vara_id={vara!r}")
+    vara = _require_vara_id(panchanga)
 
     # ── Determine day/night birth ──────────────────────────────────────────────
-    # Primary source: panchanga["is_daytime"] populated by PyJHora (sunrise-aware).
-    # Secondary source: birth hour from birth_params["datetime_iso"] (local time).
-    #   A birth between 06:00–18:00 local is heuristically treated as day birth.
-    #   This heuristic is approximate (actual sunrise/sunset vary by date/location)
-    #   but is far better than a hardcoded True for all charts.
-    # If neither source is available, log a warning and default to day birth with
-    # a clear provenance note — callers may override once sunrise_jd is available.
-    panchanga_is_daytime = panchanga.get("is_daytime")
-    if panchanga_is_daytime is None:
-        raise ValueError(
-            "ga_sensitive: panchanga is_daytime missing; refusing approximate day/night Saham"
-        )
-    is_day_birth = bool(panchanga_is_daytime)
+    # The in-process panchanga payload does not carry a day/night flag. Compute
+    # the astronomical boundary from the same local date, coordinates, and
+    # configured UTC offset; do not substitute a fixed clock-hour heuristic.
+    is_day_birth = _derive_is_day_birth(birth_params)
 
     # ── Derive day lord from birth date weekday ────────────────────────────────
     # _WEEKDAY_LORDS[weekday()] uses Python's Monday=0 convention.

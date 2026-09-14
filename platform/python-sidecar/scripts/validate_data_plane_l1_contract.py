@@ -27,7 +27,7 @@ EXPECTED_WRITERS = (
     "ga_medical", "ga_vastu", "ga_prashna",
 )
 
-EXPECTED_SLICE_DIGEST = "4765ba933fc9c40d375484bfd4d13c2a3c5c8021c2154408a47d55f612972074"
+EXPECTED_SLICE_DIGEST = "25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279"
 
 STABLE_FACT_WRITERS = (
     "ga_positions_writer.py", "ga_vargas_writer.py", "ga_panchanga_writer.py",
@@ -120,6 +120,19 @@ def validate() -> dict[str, object]:
         findings.append("Bhāvat operator was applied in L1")
     if not str(slice_payload["context"]["chart_id"]).startswith("synthetic:"):
         findings.append("first slice is not a non-person synthetic fixture")
+    resolved_dependency_ids = {
+        item["dependency_id"] for item in slice_payload["resolved_l0_dependencies"]
+    }
+    for fact in slice_payload["facts"]:
+        for dependency in fact["source_dependencies"]:
+            if dependency not in resolved_dependency_ids and not dependency.startswith("l1fact:"):
+                # Emitted fixture dependencies are stable fact hashes, not named
+                # strings, so only named external identities reach this branch.
+                if dependency.startswith(("l0:", "external:")):
+                    findings.append(f"unresolved external dependency: {dependency}")
+    for sensitivity in slice_payload["sensitivity"]:
+        if sensitivity["target_varga_formula"] != "parasara_standard_v1":
+            findings.append("first-slice D9 sensitivity did not use admitted formula")
 
     if set(EXPECTED_WRITERS) != CONTRACTED_L1_ASSETS:
         findings.append("runtime contract denominator differs from the fixed 19 writers")
@@ -131,6 +144,11 @@ def validate() -> dict[str, object]:
         "select_l1_data_plane_generation",
         "rollback_l1_data_plane_generation",
         "l1_data_plane_current_rows",
+        "l1_data_plane_current_facts",
+        "l1_data_plane_current_configurations",
+        "l1_data_plane_fact_snapshots",
+        "l1_data_plane_configuration_snapshots",
+        "l1_data_plane_jsonb_has_nonfinite",
         "l1_data_plane_reject_immutable_change",
     ):
         if required not in migration_source:

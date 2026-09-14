@@ -386,8 +386,13 @@ class SensitivityResult:
     context_id: str
     fact_id: str
     perturbation_id: str
+    target_varga: str
+    target_varga_formula: str
+    target_varga_domain: str
     baseline_input: float
     perturbed_input: float
+    baseline_d1_output: int
+    perturbed_d1_output: int
     baseline_output: int | float | str
     perturbed_output: int | float | str
     boundary_distance: float
@@ -395,6 +400,8 @@ class SensitivityResult:
     reason: str
 
     def __post_init__(self) -> None:
+        if not all((self.target_varga, self.target_varga_formula, self.target_varga_domain)):
+            raise ContractError("sensitivity target varga, formula and domain are required")
         if self.classification not in {"changed", "unchanged", "unsupported"}:
             raise ContractError("sensitivity classification must be changed, unchanged or unsupported")
         observed = "changed" if self.baseline_output != self.perturbed_output else "unchanged"
