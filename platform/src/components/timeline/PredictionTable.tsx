@@ -26,6 +26,30 @@ interface PredictionTableProps {
   chartId: string
 }
 
+function SortHeader({
+  k,
+  label,
+  sortKey,
+  sortAsc,
+  onSort,
+}: {
+  k: SortKey
+  label: string
+  sortKey: SortKey
+  sortAsc: boolean
+  onSort: (key: SortKey) => void
+}) {
+  return (
+    <th
+      className="cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
+      onClick={() => onSort(k)}
+    >
+      {label}
+      {sortKey === k && <span className="ml-1 opacity-60">{sortAsc ? '↑' : '↓'}</span>}
+    </th>
+  )
+}
+
 export function PredictionTable({ predictions, canWrite, chartId }: PredictionTableProps) {
   const [sortKey, setSortKey] = useState<SortKey>('made_at')
   const [sortAsc, setSortAsc] = useState(false)
@@ -56,30 +80,18 @@ export function PredictionTable({ predictions, canWrite, chartId }: PredictionTa
     )
   }
 
-  function SortHeader({ k, label }: { k: SortKey; label: string }) {
-    return (
-      <th
-        className="cursor-pointer select-none whitespace-nowrap px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:text-foreground"
-        onClick={() => toggleSort(k)}
-      >
-        {label}
-        {sortKey === k && <span className="ml-1 opacity-60">{sortAsc ? '↑' : '↓'}</span>}
-      </th>
-    )
-  }
-
   return (
     <div className="overflow-x-auto rounded-lg border border-border/50">
       <table className="w-full text-sm">
         <thead className="bg-muted/20">
           <tr>
             <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">ID</th>
-            <SortHeader k="made_at" label="Made at" />
+            <SortHeader k="made_at" label="Made at" sortKey={sortKey} sortAsc={sortAsc} onSort={toggleSort} />
             <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Horizon</th>
-            <SortHeader k="confidence" label="Confidence" />
+            <SortHeader k="confidence" label="Confidence" sortKey={sortKey} sortAsc={sortAsc} onSort={toggleSort} />
             <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Body</th>
             <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Falsifier</th>
-            <SortHeader k="status" label="Status" />
+            <SortHeader k="status" label="Status" sortKey={sortKey} sortAsc={sortAsc} onSort={toggleSort} />
             {canWrite && (
               <th className="px-3 py-2 text-left text-xs font-medium text-muted-foreground">Action</th>
             )}

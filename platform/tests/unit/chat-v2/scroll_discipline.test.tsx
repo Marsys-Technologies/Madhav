@@ -6,7 +6,7 @@
  *   appears → click → scrolls to bottom and resets unread count.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import { ScrollToBottomButton } from '@/components/chat/ScrollToBottomButton'
 
@@ -75,17 +75,20 @@ describe('ScrollToBottomButton — parent-context integration (Amendment 2)', ()
   })
 
   it('transitions from hidden to visible when user scrolls away', () => {
-    let setAtBottom!: (v: boolean) => void
     function ToggleShell() {
       const [atBottom, setAB] = useState(true)
-      setAtBottom = setAB
-      return <ScrollViewportShell isAtBottom={atBottom} unreadCount={0} onScrollToBottom={vi.fn()} />
+      return (
+        <>
+          <button data-testid="leave-bottom" onClick={() => setAB(false)}>leave bottom</button>
+          <ScrollViewportShell isAtBottom={atBottom} unreadCount={0} onScrollToBottom={vi.fn()} />
+        </>
+      )
     }
-    const { container } = render(<ToggleShell />)
+    const { container, getByTestId } = render(<ToggleShell />)
     let btn = container.querySelector('[data-testid="v2-scroll-to-bottom-discipline"]')
     expect(btn?.className).toMatch(/opacity-0/)
 
-    act(() => { setAtBottom(false) })
+    act(() => { fireEvent.click(getByTestId('leave-bottom')) })
     btn = container.querySelector('[data-testid="v2-scroll-to-bottom-discipline"]')
     expect(btn?.className).toMatch(/opacity-100/)
   })
