@@ -14,6 +14,8 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
+    expect(snapshot.census.executable_bindings).toBe(185)
+    expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(second.content_hash).toBe(snapshot.content_hash)
     expect(Object.isFrozen(snapshot)).toBe(true)
@@ -44,6 +46,19 @@ describe('planner capability knowledge', () => {
       planet: 'string:required', start_date: 'string:required', end_date: 'string:required',
     })
     expect(transit?.bindings[0]?.input_contract).not.toHaveProperty('properties')
+  })
+
+  it('requires both stored and computed provenance for hybrid capabilities', () => {
+    const pact = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.pact_query')
+    expect(pact?.provenance_requirements).toEqual([
+      'chart_id_when_chart_scoped',
+      'build_id',
+      'formula_or_writer_version',
+      'computed_at',
+      'engine_version',
+    ])
+    expect(pact?.freshness_policy).toContain('stored evidence')
+    expect(pact?.freshness_policy).toContain('computed evidence')
   })
 
   it('provides staged discovery, graph inspection, and bounded depth', () => {

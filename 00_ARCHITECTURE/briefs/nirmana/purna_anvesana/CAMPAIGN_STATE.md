@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.2.0
+version: 0.3.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0009
-last_updated: 2026-09-14T18:09:30+05:30
+last_event: PA-E0015
+last_updated: 2026-09-14T19:27:36+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 complete; Wave 1 producer-contract packets are the next frontier.
-- Branch: `codex/purna-anvesana-wave0`, stacked exactly on FC0
-  `fccfbb5ab11eadb33259ff987738068753d12ebc`.
+- Wave: 0 and Wave 1 complete; Wave 2 editorial SCU and typed-graph packets are next.
+- Branch: `codex/purna-anvesana-wave1`, stacked on governed Wave 0 head `00397839e33`;
+  technical evidence head `8599c6a51ec484a3aea81c7a60d834401c61a2a1`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
-- Lease: `MADHAV-PURNA-ANVESANA-20260914`, remote claim
-  `5c82e4813336b6454e3b63b485fefe47e84333b7`.
+- Lease: `MADHAV-PURNA-ANVESANA-W1-20260914`, remote claim `a883df959`; release is due
+  after the stacked Wave 1 PR is durably published.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -52,23 +52,44 @@ hashes.
 | Portfolio identities | 129 | Full seed inventory. |
 | Formal frozen receipt set | 128 | Excludes supporting `bo_grounding`; includes retained `ka_gochara_sweep`. |
 | Current source-active set | 128 | Excludes retired `ka_gochara_sweep`; includes supporting `bo_grounding`. |
-| Static-any-spec / current source-active | 111/128; 17 gaps | Ever named by a static INSERT across both migration trees; not current deployed state. |
-| Static-any-spec / formal frozen receipt | 110/128; 18 gaps | Same rule on the different formal membership set. |
+| Static-any-spec / current source-active | 117/128; 11 gaps | Ever named by a static INSERT across both migration trees, including unapplied migration 1034; not current deployed state. |
+| Current-source-intended relational contracts / current source-active | 116/128 | Ordered source intent; remaining assets have other explicit dispositions or named blockers. |
 | Runtime descriptors / planner-addressable | 185 / 182 | Three calibration-only descriptors excluded from planning. |
-| Registrar resolution | 59 verified / 3 ambiguous / 123 unresolved | Source-text route evidence; distinct from SCU metadata. |
+| Runtime route dispositions | 185 total: 71 exposed / 114 not exposed | 70 exact URI and nine parallel same-name routes; zero ambiguous or unresolved. |
+| Served full MCP authority | 129 unique names | Exact authored authority and registration set equality; three lifecycle handlers are profile-gated. |
 | SCUs | 182 | Five editorial, 177 descriptor-derived stubs. |
-| SCU bindings | 185 | 179 executable, six unavailable; seven publicly named across five SCUs. |
+| SCU bindings | 185 | 182 executable, three explicitly unavailable calibration descriptors; semantic quality remains Wave 2 scope. |
 | Semantic graph | 53 edges; 26 incident / 156 isolated nodes | `ORPHAN_DESCRIPTOR=0` does not measure graph connectivity. |
 | Inline concepts | 219 | No typed concept universe; unbound-concept count is currently unmeasurable. |
 
-Current-source-active static-any-spec gaps:
+Current-source-active static-any-spec gaps after migration 1034 source:
 
-`bg_ephemeris_engine`, `bg_gochara_citation_resolution`, `bg_nakshatra_medical`, `bg_panchanga`,
-`bg_sign_medical`, `bg_transit_engine`, `ka_avadhi`, `ka_dasha_kala`,
-`ka_gochara_v3_century_materialize`, `ka_graha_sancara`, `ka_kalasutra`, `ka_muhurta_seva`,
+`bg_ephemeris_engine`, `bg_panchanga`, `ka_dasha_kala`,
+`ka_gochara_v3_century_materialize`, `ka_graha_sancara`, `ka_muhurta_seva`,
 `ka_tulana`, `ka_vighnakara`, `lel_events`, `mi_abhilekha`, `mi_seva`.
 
 The formal frozen receipt gap set adds `ka_gochara_sweep`.
+
+## Wave 1 outcome
+
+Every one of the 128 current-active producers now has an explicit, machine-checked disposition:
+116 current-source-intended relational digest contracts, six service probes, two service-effect
+contracts, one user-authored-source contract, one deliberately nondeterministic exclusion and two
+named relational blockers. All 267 referenced implementation and test paths resolve. Migration
+1034 adds six reviewed digest specifications; a disposable PostgreSQL 16.15 replay proved the
+schema/key contracts and service effects without touching any shared or production database.
+
+The exact served full MCP surface is 129 unique names. Registration now fails closed against an
+authored full-route authority, including the three inquiry lifecycle handlers previously outside
+the profile gate. The 185 runtime descriptors have explicit dispositions: 71 exposed and 114 not
+exposed; 70 exact URI routes and nine parallel same-name routes are source-verified, with zero
+ambiguous or unresolved route records. Pagination is explicit (96 paginated, one reviewed
+exhaustible, 95 non-exhaustible), and inquiry finalization cannot claim completion without an
+exhaustion receipt. Hybrid `pact_query` provenance now unions stored and computed lineage.
+
+These are source/local/disposable results. The deployed-current producer state was not read; the
+older relational contracts were not replayed in this wave; service probes are not release smoke;
+and the `mi_abhilekha` effect remains deliberately unratified product behavior.
 
 ## Reproduction
 
@@ -98,9 +119,11 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W0-P1 authority/control/FC0 freeze | COMPLETE | none | governance/control-plane audit complete |
 | W0-P2 denominator correction/freeze | COMPLETE | W0-P1 | initial review refuted stale provenance; corrected result independently approved |
 | W0-P3 delivery DAG | COMPLETE | W0-P1, W0-P2 | Git/PR decomposition audit complete |
-| W1-P1 producer output contracts | QUEUED | W0-P3 | required at packet close |
-| W1-P2 routes/provenance/pagination/dark states | QUEUED | W0-P3 | required at packet close |
-| W2–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
+| W1-P1 producer output contracts | COMPLETE | W0-P3 | initial refutation corrected; denominator and migration reviews approved |
+| W1-P2 routes/provenance/pagination/dark states | COMPLETE | W0-P3 | initial refutations corrected; exact-route review approved |
+| W2-P1 editorial SCUs | NEXT | W1-P1, W1-P2 | required at packet close |
+| W2-P2 typed semantic graph | QUEUED | W2-P1 | required at packet close |
+| W3–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
 ## Delivery decomposition
 

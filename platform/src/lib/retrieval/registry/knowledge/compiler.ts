@@ -19,8 +19,8 @@ function slug(value: string): string {
 }
 
 function isDescriptorExecutable(cap: CapabilityDescriptor): boolean {
-  const primitiveType = (cap as CapabilityDescriptor & { primitive_type?: string }).primitive_type
-  return (cap.type === 'tool' || primitiveType === 'tool') && typeof cap.handler === 'function'
+  const loader = (cap as CapabilityDescriptor & { loader?: unknown }).loader
+  return typeof cap.handler === 'function' || typeof loader === 'function'
 }
 
 function exclusionReason(cap: CapabilityDescriptor): string | null {
@@ -87,7 +87,7 @@ function primaryBinding(
     execution_channels: ['platform_internal'],
     route_evidence: `CapabilityDescriptor:${cap.uri}`,
     ...details,
-    ...(executable ? {} : { unavailable_reason: 'CapabilityDescriptor has no executable handler.' }),
+    ...(executable ? {} : { unavailable_reason: 'CapabilityDescriptor has no executable handler or loader.' }),
   }
 }
 
@@ -120,10 +120,14 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     })),
     provenance_requirements: cap.data_source === 'computed'
       ? ['chart_id_when_chart_scoped', 'computed_at', 'engine_version']
-      : ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+      : cap.data_source === 'hybrid'
+        ? ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version', 'computed_at', 'engine_version']
+        : ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
     freshness_policy: cap.data_source === 'computed'
       ? 'Must carry computation time and engine version.'
-      : 'Must resolve against the active compatible chart build.',
+      : cap.data_source === 'hybrid'
+        ? 'Must resolve stored evidence against the active compatible chart build and carry computation time plus engine version for computed evidence.'
+        : 'Must resolve against the active compatible chart build.',
     entitlement: 'native',
     safety_notes: cap.mutation
       ? ['Mutation-capable: execution requires explicit authorization and audit receipt.']
@@ -265,9 +269,9 @@ export function inspectCapabilityKnowledge(
       if (binding.kind === 'registry_capability' && !descriptor) {
         findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: 'Binding URI is absent from the runtime catalog.' })
       } else if (binding.kind === 'registry_capability' && binding.executable !== descriptorExecutable) {
-        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: 'Binding executable state disagrees with the handler-backed tool surface.' })
+        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'error', subject: binding.binding_id, detail: 'Binding executable state disagrees with the handler-or-loader runtime surface.' })
       } else if (binding.kind === 'registry_capability' && !binding.executable) {
-        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'warning', subject: binding.binding_id, detail: 'Resource/prompt remains discoverable knowledge but is not executable through the tool dispatcher.' })
+        findings.push({ code: 'NON_EXECUTABLE_BINDING', severity: 'warning', subject: binding.binding_id, detail: 'Descriptor remains discoverable knowledge but has no executable handler or loader.' })
       }
       if (descriptor?.density_contract?.paginated && binding.pagination === 'none') {
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'error', subject: binding.binding_id, detail: 'Paginated descriptor is presented as non-paginated.' })

@@ -24,15 +24,19 @@ describe('capability estate census', () => {
       excluded: 3,
     })
     expect(census.denominators.public_registrar_resolution).toMatchObject({
-      verified: 59,
-      resolved_including_ambiguous: 62,
-      unresolved: 123,
-      ambiguous: 3,
+      verified: 71,
+      resolved_including_ambiguous: 71,
+      unresolved: 0,
+      not_exposed: 114,
+      ambiguous: 0,
+      name_only_unverified: 0,
     })
     expect(
       census.denominators.public_registrar_resolution.verified
       + census.denominators.public_registrar_resolution.unresolved
-      + census.denominators.public_registrar_resolution.ambiguous,
+      + census.denominators.public_registrar_resolution.not_exposed
+      + census.denominators.public_registrar_resolution.ambiguous
+      + census.denominators.public_registrar_resolution.name_only_unverified,
     ).toBe(census.denominators.public_registrar_resolution.descriptor_denominator)
     expect(census.denominators.producer_assets).toMatchObject({
       total: 129,
@@ -44,11 +48,28 @@ describe('capability estate census', () => {
     expect(
       census.denominators.producer_assets.active + census.denominators.producer_assets.retired,
     ).toBe(census.denominators.producer_assets.total)
+    expect(census.denominators.producer_assets.by_layer).toEqual({
+      bodha: 23, brahmagyan: 40, ganita: 19, kala: 22, mimamsa: 15, phala: 9,
+    })
+    expect(census.denominators.producer_assets.by_scope).toEqual({ global: 45, per_chart: 83 })
+    expect(census.denominators.producer_assets.by_storage_type).toEqual({
+      pgvector: 4, postgres_table: 115, postgres_view: 1, service: 8,
+    })
+    expect(census.denominators.producer_assets.by_catalog_status).toEqual({
+      CURRENT: 69, DRAFT: 29, undeclared: 30,
+    })
+    for (const subtotal of [
+      census.denominators.producer_assets.by_layer,
+      census.denominators.producer_assets.by_scope,
+      census.denominators.producer_assets.by_storage_type,
+      census.denominators.producer_assets.by_catalog_status,
+    ]) expect(Object.values(subtotal).reduce((sum, value) => sum + value, 0)).toBe(128)
     expect(census.denominators.reviewed_output_digest_coverage).toMatchObject({
-      assets_with_any_reviewed_spec: 111,
-      assets_without_any_reviewed_spec: 18,
-      active_assets_without_any_reviewed_spec: 17,
-      current_spec_rows: 'not_mechanically_resolved',
+      assets_with_any_reviewed_spec: 117,
+      assets_without_any_reviewed_spec: 12,
+      active_assets_without_any_reviewed_spec: 11,
+      current_source_intended_spec_rows: 116,
+      current_source_intended_active_spec_rows: 116,
     })
 
     expect(census.details.reviewed_output_digest_coverage.migration_files_scanned)
@@ -59,16 +80,10 @@ describe('capability estate census', () => {
     expect(census.details.reviewed_output_digest_coverage.active_assets_without_any_reviewed_spec)
       .toEqual([
         'bg_ephemeris_engine',
-        'bg_gochara_citation_resolution',
-        'bg_nakshatra_medical',
         'bg_panchanga',
-        'bg_sign_medical',
-        'bg_transit_engine',
-        'ka_avadhi',
         'ka_dasha_kala',
         'ka_gochara_v3_century_materialize',
         'ka_graha_sancara',
-        'ka_kalasutra',
         'ka_muhurta_seva',
         'ka_tulana',
         'ka_vighnakara',
@@ -82,6 +97,55 @@ describe('capability estate census', () => {
       .not.toContain('ka_gochara_sweep')
     expect(census.details.reviewed_output_digest_coverage.assets_without_any_reviewed_spec)
       .toContain('ka_gochara_sweep')
+
+    const producerContracts = census.details.producer_output_contracts
+    expect(producerContracts).toHaveLength(128)
+    expect(new Set(producerContracts.map((contract) => contract.asset_id)).size).toBe(128)
+    expect(census.denominators.producer_output_contracts).toEqual({
+      denominator: 128,
+      by_disposition: {
+        excluded_nondeterministic: 1,
+        relational_contract_blocked: 2,
+        relational_digest_current_source_intent: 116,
+        service_effect_contract: 2,
+        service_probe: 6,
+        user_authored_source_contract: 1,
+      },
+      unexplained: 0,
+    })
+    expect(producerContracts.find((contract) => contract.asset_id === 'ph_nimitta')?.disposition)
+      .toBe('excluded_nondeterministic')
+    for (const assetId of ['ka_vighnakara', 'ka_gochara_v3_century_materialize']) {
+      const blocked = producerContracts.find((contract) => contract.asset_id === assetId)
+      expect(blocked?.disposition).toBe('relational_contract_blocked')
+      expect(blocked?.known_gaps.join(' ')).not.toHaveLength(0)
+    }
+
+    expect(census.details.descriptor_route_contracts).toHaveLength(185)
+    expect(census.denominators.descriptor_route_contracts).toMatchObject({
+      denominator: 185,
+      non_exhaustible_paginated: 95,
+      exhaustible_paginated: 1,
+      descriptor_content_untyped: 181,
+      full_profile_allowlist_enforced: true,
+    })
+    expect(Object.values(census.denominators.descriptor_route_contracts.by_public_route_disposition)
+      .reduce((sum, value) => sum + value, 0)).toBe(185)
+    expect(census.details.descriptor_route_contracts.every((contract) => contract.internal_route_evidence.length > 0)).toBe(true)
+    expect(census.details.descriptor_route_contracts.every((contract) => contract.full_profile_enforcement === 'enforced')).toBe(true)
+    expect(census.details.descriptor_route_contracts.every((contract) => contract.public_route_evidence.length > 0)).toBe(true)
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'get_yoga_firings'))
+      .toMatchObject({
+        public_route_disposition: 'reviewed_exposed',
+        public_tool_names: ['ganita_yoga_firings_get'],
+      })
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'list_entities')?.public_routes)
+      .toEqual(expect.arrayContaining([
+        { tool_name: 'list_entities', route_kind: 'parallel_same_name' },
+        { tool_name: 'ref_entities_list', route_kind: 'exact_uri_binding' },
+      ]))
+    expect(census.details.descriptor_route_contracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed'))
+      .toHaveLength(114)
   })
 
   it('is deterministic and binds its SHA-256 to canonical content and source hashes', async () => {

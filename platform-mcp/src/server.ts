@@ -420,7 +420,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
   // P1 short names from the MCP surface so ONLY the canonical `layer_noun_verb` faces
   // resolve. Applied FIRST (before prashna + the profile gate) and UNCONDITIONALLY
-  // for every profile — unlike applyProfileGate, which is a no-op for `full`. Web
+  // for every profile; applyProfileGate independently enforces each reviewed profile. Web
   // replay of old persisted names is unaffected (tool_name_bridge, a different door).
   // See lib/deprecated_tool_gate.ts.
   const deprecatedGate = applyDeprecatedToolGate(server as unknown as ToolRegisteringServer)
@@ -454,8 +454,6 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // The handler binds every lookup to the originating user+key and re-checks
   // chart authorization, so a leaked job id grants nothing.
   registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer, principal)
-  registerInquiryLifecycleTools(server as unknown as import('./tools/register_inquiry_lifecycle.js').InquiryRegisteringServer, principal, mcpProfile)
-
   // EL-13 — mcp_server_info, registered BEFORE applyProfileGate for the same reason as
   // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP
   // surface profile (full/compact/consult), not just whichever ones the generated
@@ -463,6 +461,11 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerServerInfoTool(server)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
+
+  // Pūrṇa Anveṣaṇā W1: full-only lifecycle routes are registered after the profile
+  // gate. They are part of the reviewed full authority and have no callable path in
+  // compact/consult; handler checks remain defense in depth.
+  registerInquiryLifecycleTools(server as unknown as import('./tools/register_inquiry_lifecycle.js').InquiryRegisteringServer, principal, mcpProfile)
 
   // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
   registerL0BrahmagyanTools(server)

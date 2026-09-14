@@ -28,8 +28,8 @@ describe('the consult allowlist carries no sensitive-class tool', () => {
     expect(getAllowedToolNames('consult')!.size).toBeGreaterThan(0)
   })
 
-  it('`full` is untouched (null = no filter) — it is a scope-gated surface', () => {
-    expect(getAllowedToolNames('full')).toBeNull()
+  it('`full` keeps the reviewed canonical sensitive-class route', () => {
+    expect(getAllowedToolNames('full').has('ganita_ayurdaya_get')).toBe(true)
   })
 })
 

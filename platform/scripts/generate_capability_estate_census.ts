@@ -21,18 +21,17 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import { getCatalog } from '../src/lib/retrieval/registry/catalog'
 import type { CapabilityDescriptor } from '../src/lib/retrieval/registry/types'
 import {
-  buildCapabilityPublicNameBridge,
   extractRegistrarCapabilityBindings,
 } from './manifest/extract_registrar_capability_bridge'
 import { resolveType } from './manifest/projection_builders'
 
-const GENERATOR_VERSION = 'capability-estate-census/v1.1'
+const GENERATOR_VERSION = 'capability-estate-census/v1.2'
 const DEFAULT_REPO_ROOT = resolve(__dirname, '..', '..')
 const DEFAULT_OUTPUT_PATH = join(DEFAULT_REPO_ROOT, 'platform', 'src', 'generated', 'capability_estate_census.json')
 const ASSET_ID_PATTERN = /'(?:bg|ga|bo|ka|ph|mi|lel)_[a-z0-9_]+'/g
@@ -47,6 +46,57 @@ interface AssetDefShape {
   scope: string
   is_active: boolean
   catalog_status?: string
+  target_table?: string | null
+  count_sql?: string | null
+  depends_on?: string[]
+  asset_kind?: string
+  english_description?: string
+}
+
+interface CurrentDigestSpec {
+  asset_id: string
+  spec_sha256: string
+  spec: JsonValue
+  migration_path: string
+}
+
+type ProducerContractDisposition =
+  | 'relational_digest_current_source_intent'
+  | 'relational_contract_blocked'
+  | 'excluded_nondeterministic'
+  | 'service_probe'
+  | 'service_effect_contract'
+  | 'user_authored_source_contract'
+
+interface ProducerOutputContract {
+  asset_id: string
+  producer_kind: 'relational' | 'service' | 'user_authored_source'
+  disposition: ProducerContractDisposition
+  contract_ref: Readonly<Record<string, JsonValue>>
+  implementation_refs: string[]
+  tests: string[]
+  known_gaps: string[]
+}
+
+interface DescriptorRouteContract {
+  capability_uri: string
+  descriptor_name: string
+  descriptor_type: string
+  planner_disposition: 'addressable' | 'excluded'
+  planner_reason: string | null
+  internal_route: 'handler' | 'loader'
+  internal_route_evidence: string[]
+  public_route_disposition: 'reviewed_exposed' | 'reviewed_not_exposed'
+  public_tool_names: string[]
+  public_routes: Array<{ tool_name: string; route_kind: 'exact_uri_binding' | 'parallel_same_name' }>
+  public_route_evidence: string[]
+  full_profile_enforcement: 'enforced'
+  input_contract: JsonValue
+  output_contract: JsonValue
+  output_contract_state: 'declared' | 'descriptor_content_untyped'
+  pagination: Readonly<Record<string, JsonValue>>
+  empty_result_state: 'declared' | 'missing'
+  empty_reason_declared: boolean
 }
 
 interface ProvenanceSource {
@@ -85,7 +135,9 @@ export interface CapabilityEstateCensus {
       verified: number
       resolved_including_ambiguous: number
       unresolved: number
+      not_exposed: number
       ambiguous: number
+      name_only_unverified: number
       literal_public_names: number
       unambiguous_uri_bindings: number
       method: string
@@ -107,8 +159,22 @@ export interface CapabilityEstateCensus {
       assets_with_any_reviewed_spec: number
       assets_without_any_reviewed_spec: number
       active_assets_without_any_reviewed_spec: number
-      current_spec_rows: 'not_mechanically_resolved'
+      current_source_intended_spec_rows: number
+      current_source_intended_active_spec_rows: number
       basis: string
+    }
+    producer_output_contracts: {
+      denominator: number
+      by_disposition: CountMap
+      unexplained: number
+    }
+    descriptor_route_contracts: {
+      denominator: number
+      by_public_route_disposition: CountMap
+      non_exhaustible_paginated: number
+      exhaustible_paginated: number
+      descriptor_content_untyped: number
+      full_profile_allowlist_enforced: true
     }
   }
   details: {
@@ -118,6 +184,7 @@ export interface CapabilityEstateCensus {
     public_registrar_resolution: {
       verified: Array<{ descriptor_name: string; capability_uri: string; public_tool_name: string }>
       unresolved_descriptor_names: string[]
+      name_only_unverified: Array<{ descriptor_name: string; capability_uri: string; public_tool_name: string }>
       ambiguous: Array<{ descriptor_name: string; selected_public_tool_name: string; candidates: string[] }>
       known_extractor_limitations: string[]
     }
@@ -136,8 +203,11 @@ export interface CapabilityEstateCensus {
       assets_without_any_reviewed_spec: string[]
       active_assets_without_any_reviewed_spec: string[]
       inserted_asset_tokens_absent_from_asset_seed: string[]
-      current_spec_resolution_note: string
+      current_source_intended_specs: CurrentDigestSpec[]
+      current_source_intended_resolution_note: string
     }
+    producer_output_contracts: ProducerOutputContract[]
+    descriptor_route_contracts: DescriptorRouteContract[]
   }
   provenance: {
     method: string
@@ -170,6 +240,42 @@ export function canonicalJson(value: unknown): string {
 
 function sha256(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function producerContractIsExplained(repoRoot: string, contract: ProducerOutputContract): boolean {
+  const hasRefs = contract.implementation_refs.length > 0
+    && contract.tests.length > 0
+    && contract.implementation_refs.every((ref) =>
+      ref.startsWith('relation:') || ref.startsWith('asset_registry_count_sql:') || existsSync(join(repoRoot, ref)))
+    && contract.tests.every((ref) => existsSync(join(repoRoot, ref)))
+  if (!hasRefs || Object.keys(contract.contract_ref).length === 0) return false
+
+  const ref = contract.contract_ref
+  switch (contract.disposition) {
+    case 'relational_digest_current_source_intent':
+      return typeof ref.spec_sha256 === 'string'
+        && /^[a-f0-9]{64}$/.test(ref.spec_sha256)
+        && typeof ref.migration_path === 'string'
+        && existsSync(join(repoRoot, ref.migration_path))
+    case 'relational_contract_blocked':
+      return typeof ref.blocker === 'string' && ref.blocker.length > 0 && contract.known_gaps.includes(ref.blocker)
+    case 'excluded_nondeterministic':
+      return typeof ref.retirement_migration === 'string'
+        && existsSync(join(repoRoot, ref.retirement_migration))
+        && typeof ref.negative_invariant === 'string'
+    case 'service_probe':
+    case 'service_effect_contract':
+      return typeof ref.path === 'string'
+        && existsSync(join(repoRoot, ref.path))
+        && typeof ref.contract_sha256 === 'string'
+        && /^[a-f0-9]{64}$/.test(ref.contract_sha256)
+    case 'user_authored_source_contract':
+      return typeof ref.relation === 'string'
+        && typeof ref.scope_key === 'string'
+        && typeof ref.contract === 'string'
+    default:
+      return false
+  }
 }
 
 function hashFile(path: string): string {
@@ -267,6 +373,159 @@ function reviewedSpecAssetTokens(files: readonly string[]): string[] {
   return sortedUnique(tokens)
 }
 
+function stripSqlComments(sql: string): string {
+  let out = ''
+  let i = 0
+  let quote: "'" | '"' | null = null
+  while (i < sql.length) {
+    const char = sql[i]!
+    const next = sql[i + 1]
+    if (quote) {
+      out += char
+      if (char === quote) {
+        if (quote === "'" && next === "'") {
+          out += next
+          i += 2
+          continue
+        }
+        quote = null
+      }
+      i += 1
+      continue
+    }
+    if (char === "'" || char === '"') {
+      quote = char
+      out += char
+      i += 1
+      continue
+    }
+    if (char === '-' && next === '-') {
+      while (i < sql.length && sql[i] !== '\n') {
+        out += ' '
+        i += 1
+      }
+      continue
+    }
+    if (char === '/' && next === '*') {
+      out += '  '
+      i += 2
+      while (i < sql.length && !(sql[i] === '*' && sql[i + 1] === '/')) {
+        out += sql[i] === '\n' ? '\n' : ' '
+        i += 1
+      }
+      if (i < sql.length) {
+        out += '  '
+        i += 2
+      }
+      continue
+    }
+    out += char
+    i += 1
+  }
+  return out
+}
+
+function sqlString(value: string): string {
+  return value.replaceAll("''", "'")
+}
+
+/**
+ * Replays only the append/retire state machine for asset_output_digest_specs.
+ * This is deliberately not a database-schema replay and makes no deployed-state
+ * claim; it resolves the source-intended current row after lexically ordered
+ * migrations from both governed trees.
+ */
+function currentSourceIntendedDigestSpecs(repoRoot: string, files: readonly string[]): CurrentDigestSpec[] {
+  const current = new Map<string, CurrentDigestSpec>()
+  const ordered = [...files].sort((a, b) => basename(a).localeCompare(basename(b)) || a.localeCompare(b))
+  for (const path of ordered) {
+    const sql = stripSqlComments(readFileSync(path, 'utf8'))
+    const stringConstants = new Map<string, string>()
+    const jsonConstants = new Map<string, JsonValue>()
+    const constantPattern = /\b([a-z_][a-z0-9_]*)\s+constant\s+(text|jsonb)\s*:=\s*'((?:''|[^'])*)'(?:\s*::\s*jsonb)?\s*;/gi
+    let constantMatch: RegExpExecArray | null
+    while ((constantMatch = constantPattern.exec(sql))) {
+      const name = constantMatch[1]!
+      const value = sqlString(constantMatch[3]!)
+      if (constantMatch[2]!.toLowerCase() === 'jsonb') jsonConstants.set(name, normalizeForCanonicalJson(JSON.parse(value)))
+      else stringConstants.set(name, value)
+    }
+
+    const actions: Array<{ index: number; apply: () => void }> = []
+    const insertPattern = /INSERT\s+INTO\s+(?:public\.)?asset_output_digest_specs\s*\(\s*asset_id\s*,\s*spec_sha256\s*,\s*spec\s*\)([\s\S]*?)(?:ON\s+CONFLICT|;)/gi
+    let insertMatch: RegExpExecArray | null
+    while ((insertMatch = insertPattern.exec(sql))) {
+      const values = insertMatch[1]!
+      const tuplePattern = /\(\s*'((?:''|[^'])+)'\s*,\s*(?:'([a-f0-9]{64})'|([a-z_][a-z0-9_]*))\s*,\s*(?:'((?:''|[^'])*)'\s*::\s*jsonb|([a-z_][a-z0-9_]*))\s*\)/gi
+      let tupleMatch: RegExpExecArray | null
+      while ((tupleMatch = tuplePattern.exec(values))) {
+        const assetId = sqlString(tupleMatch[1]!)
+        const specSha = tupleMatch[2] ?? stringConstants.get(tupleMatch[3] ?? '')
+        const spec = tupleMatch[4] !== undefined
+          ? normalizeForCanonicalJson(JSON.parse(sqlString(tupleMatch[4])))
+          : jsonConstants.get(tupleMatch[5] ?? '')
+        if (!specSha || !spec) throw new Error(`unable to resolve digest spec tuple for ${assetId} in ${relative(repoRoot, path)}`)
+        const record = { asset_id: assetId, spec_sha256: specSha, spec, migration_path: relative(repoRoot, path) }
+        actions.push({ index: insertMatch.index + tupleMatch.index, apply: () => current.set(assetId, record) })
+      }
+    }
+
+    const updatePattern = /UPDATE\s+(?:public\.)?asset_output_digest_specs\s+SET\s+retired_at\s*=[\s\S]*?WHERE([\s\S]*?);/gi
+    let updateMatch: RegExpExecArray | null
+    while ((updateMatch = updatePattern.exec(sql))) {
+      const where = updateMatch[1]!
+      const ids = [
+        ...(where.match(/asset_id\s*=\s*'((?:''|[^'])+)'/i)?.[1]
+          ? [sqlString(where.match(/asset_id\s*=\s*'((?:''|[^'])+)'/i)![1]!)]
+          : []),
+        ...((where.match(/asset_id\s+IN\s*\(([^)]*)\)/i)?.[1] ?? '').match(/'((?:''|[^'])+)'/g) ?? []).map((value) => sqlString(value.slice(1, -1))),
+      ]
+      if (ids.length > 0) actions.push({ index: updateMatch.index, apply: () => ids.forEach((id) => current.delete(id)) })
+    }
+    actions.sort((a, b) => a.index - b.index).forEach((action) => action.apply())
+  }
+  return [...current.values()].sort((a, b) => a.asset_id.localeCompare(b.asset_id))
+}
+
+function descriptorSourceEvidence(
+  repoRoot: string,
+  registryFiles: readonly string[],
+  capabilityUri: string,
+  descriptorName: string,
+): string[] {
+  const escapedUri = capabilityUri.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const escapedName = descriptorName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const uriPattern = new RegExp(`[\\"']${escapedUri}[\\"']`)
+  const namePattern = new RegExp(`\\bname\\s*:\\s*[\\"']${escapedName}[\\"']`)
+  return registryFiles
+    .filter((path) => {
+      const source = readFileSync(path, 'utf8')
+      return uriPattern.test(source) || namePattern.test(source)
+    })
+    .map((path) => relative(repoRoot, path))
+    .sort()
+}
+
+function paginationForDescriptor(cap: CapabilityDescriptor): string {
+  const schema = (cap.input_schema ?? {}) as Record<string, unknown>
+  const properties = schema['type'] === 'object'
+    && schema['properties']
+    && typeof schema['properties'] === 'object'
+    && !Array.isArray(schema['properties'])
+    ? schema['properties'] as Record<string, unknown>
+    : schema
+  if ('cursor' in properties) return 'cursor'
+  if ('offset' in properties) return 'offset'
+  return 'bounded_without_position'
+}
+
+function readReviewedFullProfileToolNames(authorityPath: string): Set<string> {
+  const source = readFileSync(authorityPath, 'utf8')
+  const block = source.match(/REVIEWED_FULL_PROFILE_TOOL_NAMES\s*=\s*\[([\s\S]*?)\]\s*as const/)
+  if (!block) throw new Error(`unable to parse reviewed full-profile authority: ${authorityPath}`)
+  return new Set([...block[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((match) => match[1]!))
+}
+
 function gitValue(repoRoot: string, args: string[]): string {
   return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
 }
@@ -301,7 +560,6 @@ export async function buildCapabilityEstateCensus(options: {
 } = {}): Promise<CapabilityEstateCensus> {
   const repoRoot = resolve(options.repoRoot ?? DEFAULT_REPO_ROOT)
   const catalog = getCatalog()
-  const descriptorByName = new Map(catalog.map((cap) => [cap.name, cap]))
 
   const plannerExcluded = catalog
     .filter((cap) => cap.calibration_context_only === true || !isCallable(cap))
@@ -314,19 +572,6 @@ export async function buildCapabilityEstateCensus(options: {
     .sort((a, b) => a.capability_uri.localeCompare(b.capability_uri))
 
   const extractedRegistrar = extractRegistrarCapabilityBindings()
-  const publicBridge = buildCapabilityPublicNameBridge(catalog)
-  const publicResolved = [...publicBridge.resolved.entries()].map(([descriptorName, publicToolName]) => ({
-    descriptor_name: descriptorName,
-    capability_uri: descriptorByName.get(descriptorName)?.uri ?? '',
-    public_tool_name: publicToolName,
-  })).sort((a, b) => a.descriptor_name.localeCompare(b.descriptor_name))
-  const publicAmbiguous = [...publicBridge.ambiguous.entries()].map(([descriptorName, candidates]) => ({
-    descriptor_name: descriptorName,
-    selected_public_tool_name: publicBridge.resolved.get(descriptorName) ?? '',
-    candidates: [...candidates].sort(),
-  })).sort((a, b) => a.descriptor_name.localeCompare(b.descriptor_name))
-  const ambiguousDescriptorNames = new Set(publicAmbiguous.map((entry) => entry.descriptor_name))
-  const publicVerified = publicResolved.filter((entry) => !ambiguousDescriptorNames.has(entry.descriptor_name))
 
   const assets = await loadAssetSeedWithoutRunningWriter()
   const assetIds = sortedUnique(assets.map((asset) => asset.asset_id))
@@ -355,16 +600,224 @@ export async function buildCapabilityEstateCensus(options: {
   const reviewedAssetIdSet = new Set(reviewedAssetIds)
   const assetsWithoutReviewedSpec = assetIds.filter((id) => !reviewedAssetIdSet.has(id))
   const activeAssetsWithoutReviewedSpec = activeAssetIds.filter((id) => !reviewedAssetIdSet.has(id))
+  const currentSourceSpecs = currentSourceIntendedDigestSpecs(repoRoot, digestMigrationFiles)
+  const currentSourceSpecByAsset = new Map(currentSourceSpecs.map((spec) => [spec.asset_id, spec]))
 
   const registrarDir = join(repoRoot, 'platform-mcp', 'src', 'tools')
   const registrarFiles = walkTypeScriptSources(registrarDir)
   const registryDir = join(repoRoot, 'platform', 'src', 'lib', 'retrieval', 'registry')
   const registryFiles = walkTypeScriptSources(registryDir)
+  const synthesisDir = join(repoRoot, 'platform', 'src', 'lib', 'retrieval', 'synthesis')
+  const descriptorSourceFiles = [...registryFiles, ...walkTypeScriptSources(synthesisDir)]
+    .sort((a, b) => a.localeCompare(b))
   const catalogSourcePath = join(repoRoot, 'platform', 'src', 'lib', 'retrieval', 'registry', 'catalog.ts')
   const assetSeedPath = join(repoRoot, 'platform', 'scripts', 'seed', 'asset_registry_seed.ts')
   const canonicalFacesPath = join(repoRoot, 'platform', 'src', 'lib', 'retrieval', 'registry', 'canonical_faces.json')
   const bridgeExtractorPath = join(repoRoot, 'platform', 'scripts', 'manifest', 'extract_registrar_capability_bridge.ts')
   const generatorPath = join(repoRoot, 'platform', 'scripts', 'generate_capability_estate_census.ts')
+  const serviceProbePath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_probe_contracts.json')
+  const serviceEffectPath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_service_effect_contracts.json')
+  const disposableEvidencePath = join(repoRoot, 'platform', 'docs', 'evidence', 'purna_anvesana_wave1_disposable.json')
+  const fullRouteAuthorityPath = join(repoRoot, 'platform-mcp', 'src', 'lib', 'mcp_full_route_authority.ts')
+  const reviewedFullToolNames = readReviewedFullProfileToolNames(fullRouteAuthorityPath)
+  const serviceProbes = JSON.parse(readFileSync(serviceProbePath, 'utf8')) as Record<string, JsonValue>
+  const serviceEffectsDocument = JSON.parse(readFileSync(serviceEffectPath, 'utf8')) as {
+    schema_version: string
+    contracts: Record<string, JsonValue>
+  }
+
+  const producerOutputContracts: ProducerOutputContract[] = assets
+    .filter((asset) => asset.is_active)
+    .map((asset): ProducerOutputContract => {
+      const shared = {
+        asset_id: asset.asset_id,
+        implementation_refs: [] as string[],
+        tests: [] as string[],
+        known_gaps: ['deployed_current_state_not_read'],
+      }
+      if (asset.asset_id === 'ph_nimitta') {
+        return {
+          ...shared,
+          producer_kind: 'relational',
+          disposition: 'excluded_nondeterministic',
+          contract_ref: {
+            retirement_migration: 'platform/migrations/1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql',
+            negative_invariant: 'no current asset_output_digest_specs row',
+          },
+          implementation_refs: ['platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py'],
+          tests: [
+            'platform/python-sidecar/tests/test_ph_nimitta_base_rate.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_honest_defaults.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_spine.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_writer_date_coercion.py',
+          ],
+          known_gaps: [
+            'posterior metadata collapses an unordered multi-row domain',
+            'discovery selection uses a non-total top-100 ordering',
+            'deployed_current_state_not_read',
+          ],
+        }
+      }
+      if (asset.asset_id === 'lel_events') {
+        return {
+          ...shared,
+          producer_kind: 'user_authored_source',
+          disposition: 'user_authored_source_contract',
+          contract_ref: {
+            relation: 'life_events',
+            scope_key: 'chart_id',
+            contract: 'schema, chart isolation, authorization, provenance, and prediction-generation no-leakage',
+          },
+          implementation_refs: [
+            'platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts',
+            'platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts',
+          ],
+          tests: [
+            'platform/src/lib/retrieval/registry/layers/L5_mimamsa/__tests__/lel_intake_checklist.test.ts',
+            'platform/src/app/api/mcp/writes/__tests__/lel_event_record.test.ts',
+          ],
+          known_gaps: ['deployed_current_state_not_read'],
+        }
+      }
+      if (asset.storage_type === 'service') {
+        const probe = serviceProbes[asset.asset_id]
+        if (probe) {
+          return {
+            ...shared,
+            producer_kind: 'service',
+            disposition: 'service_probe',
+            contract_ref: {
+              path: relative(repoRoot, serviceProbePath),
+              contract_sha256: sha256(canonicalJson({ health_probe: probe })),
+              probe_type: typeof probe === 'object' && probe && !Array.isArray(probe)
+                ? (probe as Record<string, JsonValue>)['probe_type'] ?? null
+                : null,
+            },
+            implementation_refs: ['platform/python-sidecar/pipeline/orchestrator/service_probes.py'],
+            tests: [
+              'platform/python-sidecar/tests/test_service_probes.py',
+              'platform/python-sidecar/tests/test_nirmana_probe_route.py',
+            ],
+            known_gaps: ['deployed_current_state_not_read', 'release_smoke_not_estate_complete'],
+          }
+        }
+        const effect = serviceEffectsDocument.contracts[asset.asset_id]
+        if (!effect) throw new Error(`active service ${asset.asset_id} has no probe or effect contract`)
+        return {
+          ...shared,
+          producer_kind: 'service',
+          disposition: 'service_effect_contract',
+          contract_ref: {
+            path: relative(repoRoot, serviceEffectPath),
+            contract_sha256: sha256(canonicalJson(effect)),
+            authority_state: typeof effect === 'object' && effect && !Array.isArray(effect)
+              ? (effect as Record<string, JsonValue>)['authority_state'] ?? null
+              : null,
+          },
+          implementation_refs: typeof effect === 'object' && effect && !Array.isArray(effect)
+            ? [String((effect as Record<string, JsonValue>)['implementation_ref'])]
+            : [],
+          tests: ['platform/python-sidecar/tests/test_purna_anvesana_service_effect_contracts.py'],
+          known_gaps: asset.asset_id === 'mi_abhilekha'
+            ? ['product_review_required_for_non_confirming_answer_semantics', 'deployed_current_state_not_read']
+            : ['deployed_current_state_not_read'],
+        }
+      }
+      const currentSpec = currentSourceSpecByAsset.get(asset.asset_id)
+      if (currentSpec) {
+        return {
+          ...shared,
+          producer_kind: 'relational',
+          disposition: 'relational_digest_current_source_intent',
+          contract_ref: {
+            spec_sha256: currentSpec.spec_sha256,
+            migration_path: currentSpec.migration_path,
+            source_state: 'ordered_static_replay_not_database_replay',
+          },
+          implementation_refs: asset.target_table
+            ? [`relation:${asset.target_table}`]
+            : asset.count_sql
+              ? [`asset_registry_count_sql:${asset.asset_id}`]
+              : [],
+          tests: ['platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py'],
+          known_gaps: currentSpec.migration_path.endsWith('1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql')
+            ? ['disposable_schema_and_key_validation_passed_not_deployed', 'deployed_current_state_not_read']
+            : ['disposable_schema_and_key_validation_not_replayed_this_wave', 'deployed_current_state_not_read'],
+        }
+      }
+      const blockers: Record<string, string> = {
+        ka_vighnakara: 'kala_obstruction lacks one stable non-null natural key across convergence and dasha anchors',
+        ka_gochara_v3_century_materialize: 'digest v1 cannot hash stable parent hierarchy identity without hashing unstable parent_window_id',
+      }
+      const blocker = blockers[asset.asset_id]
+      if (!blocker) throw new Error(`active relational producer ${asset.asset_id} has no current source-intended spec or named blocker`)
+      return {
+        ...shared,
+        producer_kind: 'relational',
+        disposition: 'relational_contract_blocked',
+        contract_ref: { blocker },
+        implementation_refs: asset.target_table
+          ? [`relation:${asset.target_table}`]
+          : asset.count_sql
+            ? [`asset_registry_count_sql:${asset.asset_id}`]
+            : [],
+        tests: ['platform/scripts/__tests__/generate_capability_estate_census.test.ts'],
+        known_gaps: [blocker, 'deployed_current_state_not_read'],
+      }
+    })
+    .sort((a, b) => a.asset_id.localeCompare(b.asset_id))
+
+  const exactBindingsByUri = new Map<string, Array<{ tool_name: string; source_file: string }>>()
+  for (const binding of extractedRegistrar.bindings) {
+    const currentBindings = exactBindingsByUri.get(binding.capability_uri) ?? []
+    currentBindings.push({ tool_name: binding.tool_name, source_file: relative(repoRoot, binding.source_file) })
+    exactBindingsByUri.set(binding.capability_uri, currentBindings)
+  }
+  const descriptorRouteContracts: DescriptorRouteContract[] = catalog.map((cap): DescriptorRouteContract => {
+    const exactBindings = (exactBindingsByUri.get(cap.uri) ?? [])
+      .filter((binding) => reviewedFullToolNames.has(binding.tool_name))
+      .sort((a, b) => a.tool_name.localeCompare(b.tool_name) || a.source_file.localeCompare(b.source_file))
+    const exactNames = sortedUnique(exactBindings.map((binding) => binding.tool_name))
+    const parallelSameName = reviewedFullToolNames.has(cap.name) && !exactNames.includes(cap.name)
+    const publicRoutes: DescriptorRouteContract['public_routes'] = [
+      ...exactNames.map((tool_name) => ({ tool_name, route_kind: 'exact_uri_binding' as const })),
+      ...(parallelSameName ? [{ tool_name: cap.name, route_kind: 'parallel_same_name' as const }] : []),
+    ]
+    const publicToolNames = sortedUnique(publicRoutes.map((route) => route.tool_name))
+    const exclusion = plannerExcluded.find((entry) => entry.capability_uri === cap.uri)
+    const loader = (cap as CapabilityDescriptor & { loader?: unknown }).loader
+    const paginationVerified = cap.semantic_capabilities?.some((declaration) => declaration.primary_binding_details?.pagination_verified === true) ?? false
+    const declaredPaginated = cap.density_contract?.paginated === true
+    return {
+      capability_uri: cap.uri,
+      descriptor_name: cap.name,
+      descriptor_type: resolveType(cap),
+      planner_disposition: exclusion ? 'excluded' : 'addressable',
+      planner_reason: exclusion?.reason ?? null,
+      internal_route: typeof cap.handler === 'function' ? 'handler' : typeof loader === 'function' ? 'loader' : (() => { throw new Error(`${cap.uri} has no internal handler or loader`) })(),
+      internal_route_evidence: descriptorSourceEvidence(repoRoot, descriptorSourceFiles, cap.uri, cap.name),
+      public_route_disposition: publicRoutes.length > 0 ? 'reviewed_exposed' : 'reviewed_not_exposed',
+      public_tool_names: publicToolNames,
+      public_routes: publicRoutes,
+      public_route_evidence: publicRoutes.length > 0
+        ? sortedUnique([
+          ...exactBindings.map((binding) => `${binding.source_file}:${binding.tool_name}`),
+          `${relative(repoRoot, fullRouteAuthorityPath)}:reviewed_allowlist`,
+        ])
+        : [`${relative(repoRoot, fullRouteAuthorityPath)}:reviewed_not_exposed`],
+      full_profile_enforcement: 'enforced',
+      input_contract: normalizeForCanonicalJson(cap.input_schema ?? null),
+      output_contract: normalizeForCanonicalJson(cap.output_schema ?? null),
+      output_contract_state: cap.output_schema === undefined ? 'descriptor_content_untyped' : 'declared',
+      pagination: declaredPaginated
+        ? paginationVerified
+          ? { disposition: 'exhaustible_reviewed', declared: paginationForDescriptor(cap) }
+          : { disposition: 'non_exhaustible', declared: paginationForDescriptor(cap), blocker: 'response collection and exhaustion paths are not source-reviewed' }
+        : { disposition: 'not_paginated' },
+      empty_result_state: cap.density_contract?.empty_reason ? 'declared' : 'missing',
+      empty_reason_declared: cap.density_contract?.empty_reason === true,
+    }
+  }).sort((a, b) => a.capability_uri.localeCompare(b.capability_uri))
 
   const sources: ProvenanceSource[] = [
     {
@@ -375,10 +828,14 @@ export async function buildCapabilityEstateCensus(options: {
     { id: 'producer_asset_seed', path: relative(repoRoot, assetSeedPath), sha256: hashFile(assetSeedPath) },
     { id: 'writer_digest_inventory', path: relative(repoRoot, writerDigestPath), sha256: hashFile(writerDigestPath) },
     { id: 'analysis_layer_pins', path: relative(repoRoot, pinsPath), sha256: hashFile(pinsPath) },
+    { id: 'service_probe_contracts', path: relative(repoRoot, serviceProbePath), sha256: hashFile(serviceProbePath) },
+    { id: 'service_effect_contracts', path: relative(repoRoot, serviceEffectPath), sha256: hashFile(serviceEffectPath) },
+    { id: 'wave1_disposable_evidence', path: relative(repoRoot, disposableEvidencePath), sha256: hashFile(disposableEvidencePath) },
+    { id: 'reviewed_full_profile_route_authority', path: relative(repoRoot, fullRouteAuthorityPath), sha256: hashFile(fullRouteAuthorityPath) },
     { id: 'canonical_public_faces', path: relative(repoRoot, canonicalFacesPath), sha256: hashFile(canonicalFacesPath) },
     { id: 'census_generator', path: relative(repoRoot, generatorPath), sha256: hashFile(generatorPath) },
     { id: 'registrar_bridge_extractor', path: relative(repoRoot, bridgeExtractorPath), sha256: hashFile(bridgeExtractorPath) },
-    sourceSet(repoRoot, 'runtime_registry_source_set', 'platform/src/lib/retrieval/registry/**/*.ts (excluding tests)', registryFiles),
+    sourceSet(repoRoot, 'runtime_registry_source_set', 'platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)', descriptorSourceFiles),
     sourceSet(repoRoot, 'public_registrar_source_set', 'platform-mcp/src/tools/**/*.ts (excluding tests)', registrarFiles),
     sourceSet(
       repoRoot,
@@ -395,7 +852,11 @@ export async function buildCapabilityEstateCensus(options: {
     canonicalFacesPath,
     generatorPath,
     bridgeExtractorPath,
-    ...registryFiles,
+    serviceProbePath,
+    serviceEffectPath,
+    disposableEvidencePath,
+    fullRouteAuthorityPath,
+    ...descriptorSourceFiles,
     ...registrarFiles,
     ...digestMigrationFiles,
   ])
@@ -408,9 +869,10 @@ export async function buildCapabilityEstateCensus(options: {
     source_revision: sourceCommitMetadata.revision,
     caveats: [
       'This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.',
-      'Public registrar resolution is a source-text audit using the existing extractor. Its documented parser limitations can produce false unresolved results; verified means mechanically evidenced, unresolved does not necessarily mean absent at runtime.',
-      'Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.',
+      'Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.',
+      'Current source-intended output-digest rows replay only the append/retire state machine across lexically ordered migration source. This is not a schema migration execution and is not deployed database proof.',
       'A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.',
+      'The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently.',
     ],
     denominators: {
       runtime_descriptors: {
@@ -432,13 +894,16 @@ export async function buildCapabilityEstateCensus(options: {
       },
       public_registrar_resolution: {
         descriptor_denominator: catalog.length,
-        verified: publicVerified.length,
-        resolved_including_ambiguous: publicResolved.length,
-        unresolved: publicBridge.unresolved.length,
-        ambiguous: publicAmbiguous.length,
-        literal_public_names: extractedRegistrar.liveDirectNames.size,
-        unambiguous_uri_bindings: extractedRegistrar.bindings.length,
-        method: 'existing extract_registrar_capability_bridge.ts source-text scanner over non-test platform-mcp/src/tools TypeScript files',
+        verified: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+        resolved_including_ambiguous: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+        unresolved: 0,
+        not_exposed: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed').length,
+        ambiguous: 0,
+        name_only_unverified: 0,
+        literal_public_names: reviewedFullToolNames.size,
+        unambiguous_uri_bindings: descriptorRouteContracts.flatMap((contract) => contract.public_routes)
+          .filter((route) => route.route_kind === 'exact_uri_binding').length,
+        method: 'authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions',
       },
       producer_assets: {
         total: assets.length,
@@ -446,10 +911,10 @@ export async function buildCapabilityEstateCensus(options: {
         retired: retiredAssetIds.length,
         writer_identities: writerIds.length,
         non_writer_identities: nonWriterIds.length,
-        by_layer: countBy(assets.map((asset) => asset.layer)),
-        by_storage_type: countBy(assets.map((asset) => asset.storage_type)),
-        by_scope: countBy(assets.map((asset) => asset.scope)),
-        by_catalog_status: countBy(assets.map((asset) => asset.catalog_status ?? 'undeclared')),
+        by_layer: countBy(assets.filter((asset) => asset.is_active).map((asset) => asset.layer)),
+        by_storage_type: countBy(assets.filter((asset) => asset.is_active).map((asset) => asset.storage_type)),
+        by_scope: countBy(assets.filter((asset) => asset.is_active).map((asset) => asset.scope)),
+        by_catalog_status: countBy(assets.filter((asset) => asset.is_active).map((asset) => asset.catalog_status ?? 'undeclared')),
       },
       reviewed_output_digest_coverage: {
         asset_denominator: assetIds.length,
@@ -457,19 +922,40 @@ export async function buildCapabilityEstateCensus(options: {
         assets_with_any_reviewed_spec: reviewedAssetIds.length,
         assets_without_any_reviewed_spec: assetsWithoutReviewedSpec.length,
         active_assets_without_any_reviewed_spec: activeAssetsWithoutReviewedSpec.length,
-        current_spec_rows: 'not_mechanically_resolved' as const,
-        basis: 'distinct asset IDs found in static INSERT statements targeting asset_output_digest_specs, intersected with the producer asset seed',
+        current_source_intended_spec_rows: currentSourceSpecs.length,
+        current_source_intended_active_spec_rows: currentSourceSpecs.filter((spec) => activeAssetIds.includes(spec.asset_id)).length,
+        basis: 'distinct static INSERT identities plus ordered append/retire source replay across both governed migration trees; no database was queried',
+      },
+      producer_output_contracts: {
+        denominator: producerOutputContracts.length,
+        by_disposition: countBy(producerOutputContracts.map((contract) => contract.disposition)),
+        unexplained: producerOutputContracts.filter((contract) => !producerContractIsExplained(repoRoot, contract)).length,
+      },
+      descriptor_route_contracts: {
+        denominator: descriptorRouteContracts.length,
+        by_public_route_disposition: countBy(descriptorRouteContracts.map((contract) => contract.public_route_disposition)),
+        non_exhaustible_paginated: descriptorRouteContracts.filter((contract) => contract.pagination['disposition'] === 'non_exhaustible').length,
+        exhaustible_paginated: descriptorRouteContracts.filter((contract) => contract.pagination['disposition'] === 'exhaustible_reviewed').length,
+        descriptor_content_untyped: descriptorRouteContracts.filter((contract) => contract.output_contract_state === 'descriptor_content_untyped').length,
+        full_profile_allowlist_enforced: true as const,
       },
     },
     details: {
       planner_addressability: { excluded: plannerExcluded },
       public_registrar_resolution: {
-        verified: publicVerified,
-        unresolved_descriptor_names: [...publicBridge.unresolved].sort(),
-        ambiguous: publicAmbiguous,
+        verified: descriptorRouteContracts
+          .filter((contract) => contract.public_route_disposition === 'reviewed_exposed')
+          .map((contract) => ({
+            descriptor_name: contract.descriptor_name,
+            capability_uri: contract.capability_uri,
+            public_tool_name: contract.public_tool_names[0]!,
+          })),
+        unresolved_descriptor_names: [],
+        name_only_unverified: [],
+        ambiguous: [],
         known_extractor_limitations: [
-          'regAlias/globalAlias parsing examines a bounded sequence of string literals, so concatenated descriptions can hide an otherwise real URI binding.',
           'Dynamic or table-driven registrations without a unique literal capability URI cannot be attributed 1:1 by source-text inspection.',
+          'A reviewed public same-name route without unique URI source evidence is recorded as parallel_same_name, not promoted to exact_uri_binding.',
         ],
       },
       producer_assets: {
@@ -487,8 +973,11 @@ export async function buildCapabilityEstateCensus(options: {
         assets_without_any_reviewed_spec: assetsWithoutReviewedSpec,
         active_assets_without_any_reviewed_spec: activeAssetsWithoutReviewedSpec,
         inserted_asset_tokens_absent_from_asset_seed: insertedSpecTokens.filter((id) => !assetIdSet.has(id)),
-        current_spec_resolution_note: 'not_mechanically_resolved: determining each deployed current row requires ordered migration replay or a live read of asset_output_digest_specs WHERE retired_at IS NULL; this static census does neither',
+        current_source_intended_specs: currentSourceSpecs,
+        current_source_intended_resolution_note: 'Source-intended state only: ordered append/retire migration source replay. A disposable database replay is required for schema/key validation; an authorized live read is required for deployed-current truth.',
       },
+      producer_output_contracts: producerOutputContracts,
+      descriptor_route_contracts: descriptorRouteContracts,
     },
     provenance: {
       method: 'DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints',
