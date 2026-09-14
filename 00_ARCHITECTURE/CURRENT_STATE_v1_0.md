@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.69
+version: 6.70
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,15 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.70 (2026-09-14, MADHAV-PURNA-ANVESANA-W0-20260914): governed Wave 0 source-only
+    reconciliation stacked on frozen FC0 `fccfbb5ab`. The estate census now scans both governed
+    migration trees and reproducibly reports 111/128 current-source-active assets ever named by a
+    static reviewed output-digest spec, with 17 exact gaps; this is not deployed-current or semantic
+    coverage. The campaign control plane freezes distinct 129 portfolio, 128 formal-receipt and 128
+    current-active membership sets, plus descriptor, route, SCU and graph denominators. Independent
+    review first refuted stale revision provenance, then approved the corrected two-commit sequence.
+    PR #2597 remains frozen unchanged. No merge, deployment, migration application, production or
+    shared mutation, credential/infrastructure action, retirement, or doctrine ratification occurred.
   - v6.69 (2026-09-14, MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914):
     source/review close for the planner-facing federated Semantic Capability Unit
     knowledge and inquiry candidate on `codex/planner-knowledge-inquiry` / PR #2597.
@@ -5892,6 +5901,13 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVE 0 COMPLETE (2026-09-14).** FC0 is frozen at
+> `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 0 corrected a census
+> source-set defect and froze non-vacuous portfolio, receipt, current-active, route, SCU and graph
+> denominators. Next frontier: W1-P1/W1-P2 producer contracts and routes/provenance. This source/local
+> campaign cannot claim merge, deployment, current production rows, empirical acceptance or health.
+
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
 > [Madhav Product Definition v3.0](MADHAV_PRODUCT_DEFINITION_v3_0.md) is the final product
 > planning reference under [CCD-010](CROSS_CUTTING_DECISION_REGISTER_v1_0.md#ccd-010--madhav-product-definition-v30-adoption).
@@ -9313,19 +9329,31 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W0-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
   last_session_drift_verdict: "Planner knowledge/inquiry source candidate review-ready at PR #2597; local schema42/drift79 exactly match the inherited baseline and are booked in the implementation residual record. No merge, deployment, migration application, production, credential or infrastructure claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
-  next_product_strategy_objective: "Review PR #2597 and, under separate authority, rehearse migration 1033 and cross-door lifecycle/receipt parity in throwaway or staging environments. Preserve R1-R12 and make no deployment or complete-estate claim until their evidence gates close."
+  purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+  next_product_strategy_objective: "Execute W1-P1/W1-P2 as focused successor packets: freeze one exact producer output contract per current-active producer and reconcile routes, provenance, pagination and dark states. Preserve R1-R12 and make no deployment or complete-estate claim until their evidence gates close."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W0-20260914**, execution resumed by investigating the
+blocking denominator rather than accepting FC0's generated headline. The generator had scanned
+only `platform/supabase/migrations` and omitted the governed `platform/migrations` tree. The fixed
+dual-tree census, its exact 17-gap regression, and a provenance-correct two-commit regeneration now
+form the Wave 0 source record. Separate 128-member receipt and current-active sets are preserved as
+different memberships despite equal cardinality; deployed-current rows remain unresolved. The
+campaign definition, append-only events and human projection establish the six-wave packet DAG and
+stacked-PR boundary without mutating PR #2597. Independent review refuted the first package because
+its artifact named a pre-fix revision; after correction, that reviewer approved it. No prohibited
+production, deployment, migration, infrastructure, retirement or doctrine action occurred.
 
 At the close of **PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22**, a fresh Claude Code session with
 no memory of any prior conversation was handed a native ruling ("CONTINUE INTO PARTS G AND H

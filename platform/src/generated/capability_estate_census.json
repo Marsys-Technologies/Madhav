@@ -5,7 +5,7 @@
     "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
   ],
-  "content_sha256": "d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c",
+  "content_sha256": "a4db60caeb0ef3dbb09ca78e6d34eac1d1abd5896d5751dad212d8a439308258",
   "denominators": {
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -55,10 +55,10 @@
     },
     "reviewed_output_digest_coverage": {
       "active_asset_denominator": 128,
-      "active_assets_without_any_reviewed_spec": 95,
+      "active_assets_without_any_reviewed_spec": 17,
       "asset_denominator": 129,
-      "assets_with_any_reviewed_spec": 33,
-      "assets_without_any_reviewed_spec": 96,
+      "assets_with_any_reviewed_spec": 111,
+      "assets_without_any_reviewed_spec": 18,
       "basis": "distinct asset IDs found in static INSERT statements targeting asset_output_digest_specs, intersected with the producer asset seed",
       "current_spec_rows": "not_mechanically_resolved"
     },
@@ -847,97 +847,19 @@
         "bg_gochara_citation_resolution",
         "bg_nakshatra_medical",
         "bg_panchanga",
-        "bg_sarvatobhadra_grid",
         "bg_sign_medical",
         "bg_transit_engine",
-        "bo_anveshana",
-        "bo_arudha",
-        "bo_bimba",
-        "bo_cdlm_summary",
-        "bo_cgm_motifs",
-        "bo_cgm_paths",
-        "bo_chart_gestalt",
-        "bo_drishti",
-        "bo_grounding",
-        "bo_karanajala",
-        "bo_laksana",
-        "bo_laksana_rerank",
-        "bo_nakshatra_semantic",
-        "bo_pramana_mapa",
-        "bo_pratijna",
-        "bo_samskara",
-        "bo_samvada",
-        "bo_sangati",
-        "bo_special_lagna",
-        "bo_sudarshana",
-        "bo_upaya",
-        "bo_vargottama_dhana",
-        "bo_yantra_mechanism",
-        "ga_ayurdaya",
-        "ga_condition",
-        "ga_dashas",
-        "ga_medical",
-        "ga_nakshatra",
-        "ga_panchanga",
-        "ga_positions",
-        "ga_prashna",
-        "ga_sade_sati",
-        "ga_sensitive",
-        "ga_sensitive_degree",
-        "ga_strength",
-        "ga_structural",
-        "ga_tajaka",
-        "ga_transit_anchors",
-        "ga_vargas",
-        "ga_vastu",
-        "ga_vichara",
-        "ga_yoga",
         "ka_avadhi",
-        "ka_bhavishya_lekha",
         "ka_dasha_kala",
-        "ka_gochara",
-        "ka_gochara_resonance",
         "ka_gochara_v3_century_materialize",
         "ka_graha_sancara",
-        "ka_jivana_parva",
-        "ka_kala_darshana",
         "ka_kalasutra",
-        "ka_kota_chakra",
-        "ka_kshetra",
-        "ka_moorti_nirnaya",
         "ka_muhurta_seva",
-        "ka_sangam",
-        "ka_sudarshana_varsha",
-        "ka_taranga",
-        "ka_tithi_pravesha",
         "ka_tulana",
-        "ka_vedha_gochara",
         "ka_vighnakara",
-        "ka_yojaka",
         "lel_events",
         "mi_abhilekha",
-        "mi_adhilepa",
-        "mi_bhara",
-        "mi_bhavisya",
-        "mi_darshana",
-        "mi_gunanaka",
-        "mi_jivanaghatana",
-        "mi_kula",
-        "mi_pariksha",
-        "mi_pramana",
-        "mi_sambandha",
-        "mi_sankalpa",
-        "mi_seva",
-        "mi_vistara",
-        "ph_muhurta",
-        "ph_nimitta",
-        "ph_phaladesa",
-        "ph_pramana",
-        "ph_pratikara",
-        "ph_rectification",
-        "ph_sankrama",
-        "ph_sodhana",
-        "ph_suddha_sodhana"
+        "mi_seva"
       ],
       "assets_with_any_reviewed_spec": [
         "bg_class_lifetime_counts",
@@ -964,6 +886,7 @@
         "bg_reference",
         "bg_remedies",
         "bg_rules",
+        "bg_sarvatobhadra_grid",
         "bg_sky_calendar",
         "bg_text_index",
         "bg_texts",
@@ -972,16 +895,7 @@
         "bg_vedha_malefic_scale",
         "bg_vidhi_floors",
         "bg_vidhi_primitives",
-        "bg_yogas"
-      ],
-      "assets_without_any_reviewed_spec": [
-        "bg_ephemeris_engine",
-        "bg_gochara_citation_resolution",
-        "bg_nakshatra_medical",
-        "bg_panchanga",
-        "bg_sarvatobhadra_grid",
-        "bg_sign_medical",
-        "bg_transit_engine",
+        "bg_yogas",
         "bo_anveshana",
         "bo_arudha",
         "bo_bimba",
@@ -1024,31 +938,20 @@
         "ga_vastu",
         "ga_vichara",
         "ga_yoga",
-        "ka_avadhi",
         "ka_bhavishya_lekha",
-        "ka_dasha_kala",
         "ka_gochara",
         "ka_gochara_resonance",
-        "ka_gochara_sweep",
-        "ka_gochara_v3_century_materialize",
-        "ka_graha_sancara",
         "ka_jivana_parva",
         "ka_kala_darshana",
-        "ka_kalasutra",
         "ka_kota_chakra",
         "ka_kshetra",
         "ka_moorti_nirnaya",
-        "ka_muhurta_seva",
         "ka_sangam",
         "ka_sudarshana_varsha",
         "ka_taranga",
         "ka_tithi_pravesha",
-        "ka_tulana",
         "ka_vedha_gochara",
-        "ka_vighnakara",
         "ka_yojaka",
-        "lel_events",
-        "mi_abhilekha",
         "mi_adhilepa",
         "mi_bhara",
         "mi_bhavisya",
@@ -1060,7 +963,6 @@
         "mi_pramana",
         "mi_sambandha",
         "mi_sankalpa",
-        "mi_seva",
         "mi_vistara",
         "ph_muhurta",
         "ph_nimitta",
@@ -1072,9 +974,106 @@
         "ph_sodhana",
         "ph_suddha_sodhana"
       ],
+      "assets_without_any_reviewed_spec": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_nakshatra_medical",
+        "bg_panchanga",
+        "bg_sign_medical",
+        "bg_transit_engine",
+        "ka_avadhi",
+        "ka_dasha_kala",
+        "ka_gochara_sweep",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_kalasutra",
+        "ka_muhurta_seva",
+        "ka_tulana",
+        "ka_vighnakara",
+        "lel_events",
+        "mi_abhilekha",
+        "mi_seva"
+      ],
       "current_spec_resolution_note": "not_mechanically_resolved: determining each deployed current row requires ordered migration replay or a live read of asset_output_digest_specs WHERE retired_at IS NULL; this static census does neither",
       "inserted_asset_tokens_absent_from_asset_seed": [],
       "migration_files_scanned": [
+        "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
+        "platform/migrations/1002_nirmana_l3_ka_kshetra_output_digest_spec.sql",
+        "platform/migrations/1007_nirmana_l5_mi_sankalpa_output_digest_spec.sql",
+        "platform/migrations/1008_nirmana_l5_mi_gunanaka_output_digest_spec.sql",
+        "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql",
+        "platform/migrations/1011_nirmana_l5_mi_bhara_output_digest_spec.sql",
+        "platform/migrations/1012_nirmana_l2_bo_upaya_output_digest_spec.sql",
+        "platform/migrations/1014_nirmana_l4_ph_nimitta_output_digest_spec.sql",
+        "platform/migrations/1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql",
+        "platform/migrations/1017_nirmana_l2_bo_upaya_digest_spec_narrow_fk_columns.sql",
+        "platform/migrations/1018_nirmana_l3_ka_gochara_output_digest_spec.sql",
+        "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql",
+        "platform/migrations/1021_nirmana_l3_ka_taranga_ka_jivana_parva_output_digest_specs.sql",
+        "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
+        "platform/migrations/1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
+        "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
+        "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
+        "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
+        "platform/migrations/822_nirmana_l5_mi_kula_output_digest_spec.sql",
+        "platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql",
+        "platform/migrations/876_nirmana_l1_ga_positions_sandhi_flag_correction.sql",
+        "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql",
+        "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql",
+        "platform/migrations/886_nirmana_l1_ga_sensitive_output_digest_spec.sql",
+        "platform/migrations/887_nirmana_l1_ga_panchanga_output_digest_spec.sql",
+        "platform/migrations/888_nirmana_l1_ga_prashna_output_digest_spec.sql",
+        "platform/migrations/889_nirmana_l1_ga_nakshatra_output_digest_spec.sql",
+        "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
+        "platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql",
+        "platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql",
+        "platform/migrations/894_nirmana_l1_ga_condition_output_digest_spec.sql",
+        "platform/migrations/895_nirmana_l1_ga_transit_anchors_output_digest_spec.sql",
+        "platform/migrations/896_nirmana_l2_bo_sudarshana_output_digest_spec.sql",
+        "platform/migrations/900_nirmana_l3_wave0_overlay_output_digest_specs.sql",
+        "platform/migrations/901_nirmana_l3_ka_gochara_resonance_output_digest_spec.sql",
+        "platform/migrations/905_nirmana_l2_bo_nakshatra_semantic_output_digest_spec.sql",
+        "platform/migrations/906_nirmana_l2_bo_special_lagna_output_digest_spec.sql",
+        "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql",
+        "platform/migrations/912_nirmana_l0_bg_sarvatobhadra_grid_provenance_receipt.sql",
+        "platform/migrations/914_nirmana_l1_ga_structural_output_digest_spec.sql",
+        "platform/migrations/915_nirmana_l1_ga_tajaka_output_digest_spec.sql",
+        "platform/migrations/916_nirmana_l1_ga_medical_output_digest_spec.sql",
+        "platform/migrations/917_nirmana_l1_ga_vastu_output_digest_spec.sql",
+        "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql",
+        "platform/migrations/919_nirmana_l1_ga_sade_sati_output_digest_spec.sql",
+        "platform/migrations/920_nirmana_l1_ga_vichara_output_digest_spec.sql",
+        "platform/migrations/926_nirmana_l2_bo_arudha_output_digest_spec.sql",
+        "platform/migrations/929_nirmana_l2_bo_laksana_output_digest_spec.sql",
+        "platform/migrations/937_nirmana_l2_bo_bimba_output_digest_spec.sql",
+        "platform/migrations/939_nirmana_l2_bo_laksana_rerank_output_digest_spec.sql",
+        "platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql",
+        "platform/migrations/943_nirmana_l2_bo_pratijna_output_digest_spec.sql",
+        "platform/migrations/946_nirmana_l2_bo_grounding_output_digest_spec.sql",
+        "platform/migrations/948_nirmana_l2_bo_pramana_mapa_output_digest_spec.sql",
+        "platform/migrations/950_nirmana_l5_mi_darshana_output_digest_spec.sql",
+        "platform/migrations/952_nirmana_l5_mi_sambandha_output_digest_spec.sql",
+        "platform/migrations/954_nirmana_l4_ph_sodhana_output_digest_spec.sql",
+        "platform/migrations/956_nirmana_l4_ph_suddha_sodhana_output_digest_spec.sql",
+        "platform/migrations/958_nirmana_l4_ph_pramana_output_digest_spec.sql",
+        "platform/migrations/960_nirmana_l4_ph_sankrama_output_digest_spec.sql",
+        "platform/migrations/962_nirmana_l4_ph_pratikara_output_digest_spec.sql",
+        "platform/migrations/964_nirmana_l4_ph_phaladesa_output_digest_spec.sql",
+        "platform/migrations/968_nirmana_l4_ph_muhurta_output_digest_spec.sql",
+        "platform/migrations/970_nirmana_l4_ph_rectification_output_digest_spec.sql",
+        "platform/migrations/972_nirmana_l3_ka_kala_darshana_output_digest_spec.sql",
+        "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql",
+        "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql",
+        "platform/migrations/978_nirmana_l2_bo_samskara_output_digest_spec.sql",
+        "platform/migrations/980_nirmana_l3_ka_sangam_output_digest_spec.sql",
+        "platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql",
+        "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql",
+        "platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql",
+        "platform/migrations/988_nirmana_l5_mi_adhilepa_output_digest_spec.sql",
+        "platform/migrations/990_nirmana_l5_mi_bhavisya_output_digest_spec.sql",
+        "platform/migrations/994_nirmana_l5_mi_pramana_output_digest_spec.sql",
+        "platform/migrations/996_nirmana_l2_bo_sangati_output_digest_spec.sql",
+        "platform/migrations/998_nirmana_l5_mi_pariksha_output_digest_spec.sql",
         "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
         "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
         "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
@@ -1085,7 +1084,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-14T08:15:17.000Z",
+  "generated_at": "2026-09-14T12:36:38.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -1102,7 +1101,7 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "1f0774c02c07efb81497f7b42ddbc278821ca08806be5d0d93d3a79a39ba9c61"
+        "sha256": "c5dcd6891a28ed1ce9869d7e8c041b446cc6b2104d44ef7136f30c4049131470"
       },
       {
         "id": "live_runtime_catalog_projection",
@@ -1111,8 +1110,316 @@
       },
       {
         "id": "output_digest_migration_source_set",
-        "member_count": 7,
+        "member_count": 84,
         "members": [
+          {
+            "path": "platform/migrations/1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
+            "sha256": "58c48c1d08c2a6232789ae605445a6b11313741fc8949abab8ac26b201576adc"
+          },
+          {
+            "path": "platform/migrations/1002_nirmana_l3_ka_kshetra_output_digest_spec.sql",
+            "sha256": "b0f50c2dd195a9566183e18ef90d78881fe6dc63aaf7d75a4410b4aa28ac04be"
+          },
+          {
+            "path": "platform/migrations/1007_nirmana_l5_mi_sankalpa_output_digest_spec.sql",
+            "sha256": "964863805ca4842c8322199e8547a8efd49bdb2d8d58d9f4d0ca9b00982bb5f6"
+          },
+          {
+            "path": "platform/migrations/1008_nirmana_l5_mi_gunanaka_output_digest_spec.sql",
+            "sha256": "d2a8461df9e61ac0eedd14517bad68e3ccfc2a39ebed3499ce13499fcae55730"
+          },
+          {
+            "path": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql",
+            "sha256": "9448efc7707ef5034a7ee7071839efcf11210fbcb59994ca0cc77a83b5a8739d"
+          },
+          {
+            "path": "platform/migrations/1011_nirmana_l5_mi_bhara_output_digest_spec.sql",
+            "sha256": "64bcbac2984806e8734599a961636862f393586c4a54b2fb4dfa639e9289925c"
+          },
+          {
+            "path": "platform/migrations/1012_nirmana_l2_bo_upaya_output_digest_spec.sql",
+            "sha256": "e17529473411c07007718b51a1b7a27407fb714a2efa54a32164f4e59be0a4b1"
+          },
+          {
+            "path": "platform/migrations/1014_nirmana_l4_ph_nimitta_output_digest_spec.sql",
+            "sha256": "3b401eaff720de426b5c94c3f5c2dc1337676aa86c593a227910213678b0fedd"
+          },
+          {
+            "path": "platform/migrations/1016_nirmana_l4_ph_nimitta_digest_spec_retire.sql",
+            "sha256": "ab9a22d05e14b08dc9226e4428ca47a1f375cc6c4f1fc18529f12c4609ad9d52"
+          },
+          {
+            "path": "platform/migrations/1017_nirmana_l2_bo_upaya_digest_spec_narrow_fk_columns.sql",
+            "sha256": "35a24d947882b8840c1e3cae174a9f39e7868246df8fed2ce57478561b90a1f7"
+          },
+          {
+            "path": "platform/migrations/1018_nirmana_l3_ka_gochara_output_digest_spec.sql",
+            "sha256": "4ce1c9050ceff1559cf485dcec424e269e01e0da7258538cd74e3f790cb8cfcc"
+          },
+          {
+            "path": "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql",
+            "sha256": "4578205887d05fb45f68716b47e21d123c72e00f642875a24b5e918aa6950c4b"
+          },
+          {
+            "path": "platform/migrations/1021_nirmana_l3_ka_taranga_ka_jivana_parva_output_digest_specs.sql",
+            "sha256": "e6f27b305f1c864ae8f01e9548f59b879cdae198310e3df591b5f3159d876db5"
+          },
+          {
+            "path": "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql",
+            "sha256": "b9d91b06cdb07b6db2db0ce8591b3b4ea9c4d14915c8ec7dc41d8dcbdd11b5f4"
+          },
+          {
+            "path": "platform/migrations/1028_nirmana_l2_bo_samvada_output_digest_spec.sql",
+            "sha256": "aaebbf62c8fe7f429ce0c41aebf3daf990d74c15702136a6b73da2dca08ee46e"
+          },
+          {
+            "path": "platform/migrations/632_nirmana_evidence_server_writer_guard.sql",
+            "sha256": "8c97ee45ed0e1b9d0cb0d464193bcffe9d4480bbe081c05e603e4a0e40ee7101"
+          },
+          {
+            "path": "platform/migrations/820_nirmana_l5_mi_jivanaghatana_output_digest_spec.sql",
+            "sha256": "e836bd847bd65fd81a25e89bca767cbe7583525676a87ef7622acd2a2076f3eb"
+          },
+          {
+            "path": "platform/migrations/821_nirmana_l5_mi_vistara_output_digest_spec.sql",
+            "sha256": "0570737e26657c24b2db69257962f7058d9cc59346c06d1d430e866fbfbb09af"
+          },
+          {
+            "path": "platform/migrations/822_nirmana_l5_mi_kula_output_digest_spec.sql",
+            "sha256": "29085b15d4b3930ea43c6e3f05d1ff14de5e8c26f73bcc65430f12a4f06cfa8c"
+          },
+          {
+            "path": "platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql",
+            "sha256": "a698608c2a24e3ba0300562880079a7aa3ae7570e72897d3ecd437839659413f"
+          },
+          {
+            "path": "platform/migrations/876_nirmana_l1_ga_positions_sandhi_flag_correction.sql",
+            "sha256": "a08f7c3ca652fb55fe182617a0b6e694cb958399b079aba17b378c49edb46ca3"
+          },
+          {
+            "path": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql",
+            "sha256": "524647cd180d5420e159e7d6fbf022b5d17d390d1d4a96d78799f0b849a0725e"
+          },
+          {
+            "path": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql",
+            "sha256": "3e55d1696d37ea86e5228351ae7e71b4d606e90fb7ace323447302ee99028c06"
+          },
+          {
+            "path": "platform/migrations/886_nirmana_l1_ga_sensitive_output_digest_spec.sql",
+            "sha256": "42b4014f127f8a10957120360efe0c5e41bce2cf22c990452996951eeb41fe95"
+          },
+          {
+            "path": "platform/migrations/887_nirmana_l1_ga_panchanga_output_digest_spec.sql",
+            "sha256": "c18d60a3297e0bafbddb0ade8823d86be4cf6077c07f59a16c7175de088a6c89"
+          },
+          {
+            "path": "platform/migrations/888_nirmana_l1_ga_prashna_output_digest_spec.sql",
+            "sha256": "24f740c90d029a5057d8425d3f9a0d7e5ffb65caf0f662e81097c582fe189f9b"
+          },
+          {
+            "path": "platform/migrations/889_nirmana_l1_ga_nakshatra_output_digest_spec.sql",
+            "sha256": "9691010700147d876721beb7650dedf1be9b2014f24fff97a4cf33bfdf2f7a6b"
+          },
+          {
+            "path": "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql",
+            "sha256": "e5bd93328a753727cc14c42dcadc4bb930b38cddbed25ff27a84acc7d91a0761"
+          },
+          {
+            "path": "platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql",
+            "sha256": "8a4b3a6725c2015cb0c10b9e41db924447d876a49469636c9706a4120fe4c51c"
+          },
+          {
+            "path": "platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql",
+            "sha256": "e4f4a8e4559ca1bc5d3d40ea8685513ea7fd87aeaa5d0332bccf3b5407c93b4a"
+          },
+          {
+            "path": "platform/migrations/894_nirmana_l1_ga_condition_output_digest_spec.sql",
+            "sha256": "a0675589595d8e44a7b2ae0ac87b2695c5bc46502f3eeb6c47a2216cef786af0"
+          },
+          {
+            "path": "platform/migrations/895_nirmana_l1_ga_transit_anchors_output_digest_spec.sql",
+            "sha256": "fe03ac9a64c7ab2deea8ab45b200d0c1d7156f805278a0221addca253835d97e"
+          },
+          {
+            "path": "platform/migrations/896_nirmana_l2_bo_sudarshana_output_digest_spec.sql",
+            "sha256": "39cddcca765dff37e78bc25e217e8c39a9f9b23a58e7f515cfcdeb2983c9a71f"
+          },
+          {
+            "path": "platform/migrations/900_nirmana_l3_wave0_overlay_output_digest_specs.sql",
+            "sha256": "94d37737260532091de62489c0c7837dca2de7442b0a7a8edcf0346adbcdf19a"
+          },
+          {
+            "path": "platform/migrations/901_nirmana_l3_ka_gochara_resonance_output_digest_spec.sql",
+            "sha256": "ac5f520f9ed663a3ed7b1edd2dee976cd802b951eaa084a56dee0ef3f8bc83d3"
+          },
+          {
+            "path": "platform/migrations/905_nirmana_l2_bo_nakshatra_semantic_output_digest_spec.sql",
+            "sha256": "0b14ed6e9174eaa13c0ffc20162518baa55f63103dfb05f340bf359a4a52d2f9"
+          },
+          {
+            "path": "platform/migrations/906_nirmana_l2_bo_special_lagna_output_digest_spec.sql",
+            "sha256": "1528e2ce2b2748f6683106156c7989ee6ae1b93143e2a0f8fa29a3df7c8e71ae"
+          },
+          {
+            "path": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql",
+            "sha256": "84a635da581ed479d017d73ddf3f8e599d5535d7d54ca5e1c96aa610c04676d1"
+          },
+          {
+            "path": "platform/migrations/912_nirmana_l0_bg_sarvatobhadra_grid_provenance_receipt.sql",
+            "sha256": "bc4f90fa420d24354617eb8a45408d5722068f4b24a168efa26f9326dd1261b6"
+          },
+          {
+            "path": "platform/migrations/914_nirmana_l1_ga_structural_output_digest_spec.sql",
+            "sha256": "e75c295e5b0771d4620952a97fe187d89a03b829c9bbf0b8fecb7b9ed40cd36e"
+          },
+          {
+            "path": "platform/migrations/915_nirmana_l1_ga_tajaka_output_digest_spec.sql",
+            "sha256": "df13e861367e8e885fa01f8664edf0b03e72f3720aab511a7c28c5a0ee2c318c"
+          },
+          {
+            "path": "platform/migrations/916_nirmana_l1_ga_medical_output_digest_spec.sql",
+            "sha256": "0261fdf9cd069c5c6c218f2d943b9d808c0e3c094b8fe2afe0fad2cab967cfb6"
+          },
+          {
+            "path": "platform/migrations/917_nirmana_l1_ga_vastu_output_digest_spec.sql",
+            "sha256": "1e301c4034685b881cf06ed2fdabb497296603f010779099e802b268f7c6dce4"
+          },
+          {
+            "path": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql",
+            "sha256": "53130b9644da6ab4844092eeae0338d0298de2be42ac43311757769c409d8904"
+          },
+          {
+            "path": "platform/migrations/919_nirmana_l1_ga_sade_sati_output_digest_spec.sql",
+            "sha256": "212f82deefe8a48386d56a1ddeb33d85a9ae5976fbb8f2514c1613cddeb87ce3"
+          },
+          {
+            "path": "platform/migrations/920_nirmana_l1_ga_vichara_output_digest_spec.sql",
+            "sha256": "b84b30093b2796f997259ece06f6239b64c0b097356c2317ef7bfa8445d9501b"
+          },
+          {
+            "path": "platform/migrations/926_nirmana_l2_bo_arudha_output_digest_spec.sql",
+            "sha256": "7b027fa6b30045552b1cca30f1959ece2f0153ad83f44817cb8ff182527c9532"
+          },
+          {
+            "path": "platform/migrations/929_nirmana_l2_bo_laksana_output_digest_spec.sql",
+            "sha256": "b2b8f9c5a72feda42c31c2fc64508b1eaa442f7a6ef1622d84eb40488009bade"
+          },
+          {
+            "path": "platform/migrations/937_nirmana_l2_bo_bimba_output_digest_spec.sql",
+            "sha256": "44c713d95e7f76f1a18b8467cf3da7f1c609cbf34b40d1619f37cd25fff44be6"
+          },
+          {
+            "path": "platform/migrations/939_nirmana_l2_bo_laksana_rerank_output_digest_spec.sql",
+            "sha256": "653053635b627cb22cd9866e0a73bfb31ed62ebdb204b1b6b6a4b6307d9795d7"
+          },
+          {
+            "path": "platform/migrations/941_nirmana_l2_bo_drishti_output_digest_spec.sql",
+            "sha256": "fcaf76c5372caf558249f1b48811c24e5c7e936bfa49dd0b2e9fbd2f5002b899"
+          },
+          {
+            "path": "platform/migrations/943_nirmana_l2_bo_pratijna_output_digest_spec.sql",
+            "sha256": "b04bc84b299643c0dc9b045e68d2c47fc81c6be488506519e4588647818d4a56"
+          },
+          {
+            "path": "platform/migrations/946_nirmana_l2_bo_grounding_output_digest_spec.sql",
+            "sha256": "21a59bb69e69a04a3cb93facaad51c1222a5dbcb89d99d82245742111d55e081"
+          },
+          {
+            "path": "platform/migrations/948_nirmana_l2_bo_pramana_mapa_output_digest_spec.sql",
+            "sha256": "ae6b80b746c9d134fc308e9c8fcc2ce02ff619a6be01278016af5a94d28ad226"
+          },
+          {
+            "path": "platform/migrations/950_nirmana_l5_mi_darshana_output_digest_spec.sql",
+            "sha256": "0215eebe10cb9f8c7b7ba352a90a00fd30a694c9829e757e00977e524a1bab2e"
+          },
+          {
+            "path": "platform/migrations/952_nirmana_l5_mi_sambandha_output_digest_spec.sql",
+            "sha256": "3906f701696df65442b7d5d74e0c3bc89ed955f331e4eb345136997120c0a63d"
+          },
+          {
+            "path": "platform/migrations/954_nirmana_l4_ph_sodhana_output_digest_spec.sql",
+            "sha256": "fccc9e48f86745cb74d5ef367f43675b72b02a64d35e93e382f47ba24a67695d"
+          },
+          {
+            "path": "platform/migrations/956_nirmana_l4_ph_suddha_sodhana_output_digest_spec.sql",
+            "sha256": "1a3b38962445366804b44caf7b80dc9f868eaa35f0e03dba07a2991c6d27e0ef"
+          },
+          {
+            "path": "platform/migrations/958_nirmana_l4_ph_pramana_output_digest_spec.sql",
+            "sha256": "2984e6a6bc2e98f064f04a37dc45c776a60b11c057c2df2d2735203934109f77"
+          },
+          {
+            "path": "platform/migrations/960_nirmana_l4_ph_sankrama_output_digest_spec.sql",
+            "sha256": "e8e534fd0952e44402e7c57657260d908ff248355adceb871d33bc77127629e1"
+          },
+          {
+            "path": "platform/migrations/962_nirmana_l4_ph_pratikara_output_digest_spec.sql",
+            "sha256": "3d3dbee9cd6ccbeeb0239a9a0522aeeee3c03339399a4986c10dfcbeb601aed2"
+          },
+          {
+            "path": "platform/migrations/964_nirmana_l4_ph_phaladesa_output_digest_spec.sql",
+            "sha256": "86d2d82107dd80b034e52d3e7723fdf05cd41dd82d6cb76a830288b573e2b34c"
+          },
+          {
+            "path": "platform/migrations/968_nirmana_l4_ph_muhurta_output_digest_spec.sql",
+            "sha256": "59e88d785bc978deca5871d72cb68bb2e491482385d72c6d1f4169cb052bfafb"
+          },
+          {
+            "path": "platform/migrations/970_nirmana_l4_ph_rectification_output_digest_spec.sql",
+            "sha256": "33f012a90e10ff853facdd3d75499f83eff775e0c9015482e653abc7967ac5d0"
+          },
+          {
+            "path": "platform/migrations/972_nirmana_l3_ka_kala_darshana_output_digest_spec.sql",
+            "sha256": "6b15a1e8b3e46db09aef5fe6d68a8b9fb71227933662aa900301f98f23b9014d"
+          },
+          {
+            "path": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql",
+            "sha256": "bcb895da9342b6d1e0e1124c535ce2d6588ceb324303a9e73402bd0ae95769b5"
+          },
+          {
+            "path": "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql",
+            "sha256": "66bc2e701b3580ac07b7bcf8e8dc53e108199425bbe9d6f15c5e3508099b8366"
+          },
+          {
+            "path": "platform/migrations/978_nirmana_l2_bo_samskara_output_digest_spec.sql",
+            "sha256": "1224c23a8a250f669a7026d8e57b3bd56999241c35266c79a455c434598354bd"
+          },
+          {
+            "path": "platform/migrations/980_nirmana_l3_ka_sangam_output_digest_spec.sql",
+            "sha256": "1f3124e55b2f4126a28134cfdb2ef38e4fe4c13aedc79d7b4c0b0ab265f076c5"
+          },
+          {
+            "path": "platform/migrations/982_nirmana_l2_bo_cgm_paths_output_digest_spec.sql",
+            "sha256": "415d5f59aebd55b2cfb1069088abf27055678c28101d11005f90a65a9af85f84"
+          },
+          {
+            "path": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql",
+            "sha256": "2c5b1a71ce13263a7c83088c9158cbf88cc83649b70e320168dc3417e52a3f9e"
+          },
+          {
+            "path": "platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql",
+            "sha256": "5cd789c7712faed34c7042bfd01e64b9717f85e31f5c7a62073f6cce24315ae9"
+          },
+          {
+            "path": "platform/migrations/988_nirmana_l5_mi_adhilepa_output_digest_spec.sql",
+            "sha256": "311984b0fd4ae23381c394cd740e68c8bf328bd3466427a40c04c0c5fb64adbb"
+          },
+          {
+            "path": "platform/migrations/990_nirmana_l5_mi_bhavisya_output_digest_spec.sql",
+            "sha256": "7d0ff205729f85d3aa7ad0d7e5cff5a95077e416909f78dff018f86dc89220d7"
+          },
+          {
+            "path": "platform/migrations/994_nirmana_l5_mi_pramana_output_digest_spec.sql",
+            "sha256": "0c162355eaa0d4b01c70409752ded30bce96b76868401434e8154a7ded282974"
+          },
+          {
+            "path": "platform/migrations/996_nirmana_l2_bo_sangati_output_digest_spec.sql",
+            "sha256": "7f929289f6ed4736322cf0bafcbe17f2c538420284fee61be2d511b5e0675fe9"
+          },
+          {
+            "path": "platform/migrations/998_nirmana_l5_mi_pariksha_output_digest_spec.sql",
+            "sha256": "53d7238e7c0e972424c7f18d6a347bea6f0c3b1f64da63fabaff0f9beb7975de"
+          },
           {
             "path": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
             "sha256": "ed7e6be80bf53180e99527c12c8747cc7e1b6448aa6308efa5caa8eace28ef34"
@@ -1142,8 +1449,8 @@
             "sha256": "cfde9c478fb86eade5109755ff6c2f8e174098986ef320001939221bb7fa4522"
           }
         ],
-        "path": "platform/supabase/migrations/* containing asset_output_digest_specs",
-        "sha256": "bb04032e15a25be276277e929046ad1c535067e2237572bfd17faeb03a3d9e30"
+        "path": "platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs",
+        "sha256": "5bf22e24cac790344cd44af11f5f273c7e02563079d18ddb305dc4f26f2caf01"
       },
       {
         "id": "producer_asset_seed",
@@ -2126,6 +2433,6 @@
       }
     ]
   },
-  "schema_version": "capability-estate-census/v1",
-  "source_revision": "fdf042ef4d30a001c8e5c449aa8e7d6ecc6af6c2"
+  "schema_version": "capability-estate-census/v1.1",
+  "source_revision": "4fe02619ea1a7eb670888e9329a9d40c39f6baf2"
 }
