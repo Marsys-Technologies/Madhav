@@ -432,7 +432,7 @@ function ResonanceFeedback({ chartId }: { chartId: string }) {
           className="rounded-md border border-border px-3 py-1.5 text-xs text-foreground
                      hover:bg-accent disabled:opacity-40 transition-colors"
         >
-          Doesn't
+          Doesn&apos;t
         </button>
       </div>
     </div>
