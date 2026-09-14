@@ -105,6 +105,90 @@ Physical W1 remains held on compatible L0-L2 generations, exact source/release
 integration and accepted dependency vectors. Century v3 retains its named hold.
 No full-chart rebuild is authorized by this packet.
 
+### 4.1 Source-derived DAG and producer/use map
+
+The current source and corrected registry migrations contain 81 declared
+dependency entries, of which 32 are active-L3-to-active-L3 edges. Historical
+edge-audit counts are not reused as current truth. The first physical row frontier,
+after accepted L0-L2 data exists, is `ka_gochara_resonance`, `ka_kota_chakra`,
+`ka_moorti_nirnaya`, `ka_vedha_gochara`, `ka_tithi_pravesha`,
+`ka_sudarshana_varsha`, `ka_yojaka` and `ka_avadhi`. Service qualification can
+independently cover `ka_graha_sancara`, `ka_dasha_kala`, `ka_muhurta_seva` and
+the pure Tulana kernel. This is packet eligibility, not rebuild authority.
+
+| Identity | Physical/service output owner | Actual material L3 input / principal use | W0 disposition |
+|---|---|---|---|
+| `ka_gochara_resonance` | `gochara_resonance_map` | L0-L2 transit/fact/clock/rule capital; used by gen2, century and Kshetra | first frontier after upstream data |
+| `ka_kota_chakra` | `kala_kota_chakra` | no L3 input; century dependency is declared but not read | preserve; integration decision owed |
+| `ka_moorti_nirnaya` | `kala_moorti_nirnaya` | no L3 input; read by century v3 | first frontier |
+| `ka_vedha_gochara` | `kala_vedha_gochara` | no L3 input; read by century v3 and undeclared by Sangam | first frontier; close hidden edge |
+| `ka_tithi_pravesha` | `kala_tithi_pravesha` | no L3 input; declared century dependency not read | preserve; method/use decision owed |
+| `ka_sudarshana_varsha` | `kala_sudarshana_varsha` | no L3 input; annual evidence | preserve; receiving operator owed |
+| `ka_yojaka` | `kala_activation_predicates` | broad L0-L2 graph/proposition inputs; used by Sangam/Kalasutra/Vighnakara/Jivana and consumers | first frontier; non-FK signal refs guarded |
+| `ka_avadhi` | `kala_avadhi` | L1 clocks plus L2 propositions; current Taranga code does not read it | first frontier; false edge removed from execution DAG |
+| `ka_gochara` | `kala_gochara_windows_v2`, generation 2.0 | resonance plus global arcs; downstream catalog/consumer use | after resonance; seed target mismatch held |
+| `ka_gochara_v3_century_materialize` | `kala_gochara_windows_v2` staging, `kala_gochara_windows` generation 3, shared build state | resonance, Vedha, Moorti plus L0-L2; not Kota/Tithi in current source | specific hold; protected v1 coexistence required |
+| `ka_sangam` | `kala_convergence` | Yojaka, Vedha, services and L1-L2; invokes on-demand Gochara, not materialized `ka_gochara` | dependent; registry edges corrected before build |
+| `ka_kalasutra` | `kala_activation` | Yojaka + Sangam + L2 | dependent; recurrence coverage required |
+| `ka_vighnakara` | `kala_obstruction` | Sangam + Yojaka + Muhurta + L0/L1 | dependent; cascade/referrer protection required |
+| `ka_taranga` | `kala_taranga` shared with opt-in service upsert | Sangam + clocks + propositions; no Avadhi read | dependent; shared-owner fence required |
+| `ka_kala_darshana` | `kala_darshana` | Sangam + Vighnakara; does not read Kalasutra activation | dependent; false edge removed from execution DAG |
+| `ka_jivana_parva` | `kala_jivana_parva` | Darshana + Sangam + Yojaka + clocks/services | dependent |
+| `ka_bhavishya_lekha` | `kala_bhavishya` | Darshana + Vighnakara + Sangam + L2 | P0 history repair before dependent build |
+| `ka_kshetra` | 15-table field family | staged L0-L3 inputs and internal S0→S2→S3→S1→S4→S5/6/6.5/8/snapshot DAG | P0 planning repair before any trial |
+| `ka_graha_sancara` | service only | ephemeris; service consumers | independent proof |
+| `ka_dasha_kala` | service only | accepted L1 clocks; Sangam/Jivana/Kshetra | independent proof after physical clock data |
+| `ka_muhurta_seva` | service only | pure/reference inputs; Sangam/Vighnakara | independent proof |
+| `ka_tulana` | comparative service/result | Sangam + Vighnakara + Darshana | kernel tests early; data-bound acceptance late |
+
+Shared ownership that must be fenced: gen2 and century v3 share
+`kala_gochara_windows_v2`; protected sweep v1 and century v3 share
+`kala_gochara_windows`; Gochara generations share `kala_gochara_v2_build_state`;
+Kshetra owns `kala_insights.lel_derived=false` while `mi_bhara` owns true rows;
+the opt-in Taranga service can write the same natural keys as the writer; registry
+and substep-progress rows are shared control surfaces.
+
+### 4.2 Replacement blast radius
+
+Deleting/replacing `bodha_msr_signals` cascades to `kala_activation`,
+`kala_bhavishya`, `kala_convergence`, `kala_darshana` and `kala_obstruction`, as
+well as L2 embeddings/contradictions. Deleting convergence cascades obstruction
+and Darshana, nulls Bhavishya convergence, and cascades through `phala_anchors`
+into multiple L4 tables. Deleting Bhavishya nulls `phala_anchors.bhavishya_id`.
+These are preservation obligations, not authorization to edit L4.
+
+Non-FK referrers include Yojaka signal IDs; Avadhi JSON roots; resonance target
+refs; Gochara fact/source/parent structures; activation clock/contribution
+structures; Jivana summaries; Bhavishya source chains; Taranga components;
+overlay fact/source refs; all Kshetra cross-stage IDs and snapshot substrate
+maps; and Phala signal/discovery/top-anchor IDs. Kshetra's fifteen tables have no
+database-enforced internal DAG, so deletion/reconstruction order and content-bound
+resume must be proved explicitly.
+
+### 4.3 W0 P0 hazards and bounded baselines
+
+Kshetra planning currently calls four destructive stage planners, then reaches
+dry-run and resume handling, and can issue central chart-wide cleanup before
+resume filtering. A normal plan can issue up to 16 deletes; a no-op completeness
+probe can release the planning savepoint and persist them. The bounded repair is
+one execution-owned `prepare:replace` substep, zero-DML planning, a resume-version
+bump and savepoint/progress proof. Immutable generation/publication remains a
+separate later packet.
+
+Bhavishya currently loads outcomes, deletes the partition, then queries candidate
+Darshana. An empty candidate returns before the unmatched-history guard; the
+vacuous integrity contract can pass and downstream anchor linkage is nulled. The
+bounded repair constructs/validates the full candidate replacement before any
+delete, preserves empty-input state, rejects ambiguous history identity and proves
+rollback. Stable issued-history identity/generation remains a later packet.
+
+Reproduced source-baseline tests passed 145 with 1 skipped despite both hazards,
+confirming the old suite was not an adequate safety oracle. Measured small
+Kshetra baselines from the isolated discovery lane: stage0/integrator 47 pass + 1
+skip in 0.56 s pytest; writer 61 pass + 1 skip in 15.08 s; streaming loaders 7
+pass in 0.20 s; publication/hash subset 27 pass / 56 deselected in 37.02 s. These
+are local test workloads, not production runtime or optimization evidence.
+
 ## 5. Migration and release collision
 
 The accepted L1/L2 execution lineage adds migrations `1033` and `1034`, while
@@ -116,6 +200,10 @@ may proceed without a migration. Any L3 schema packet must reserve an unused
 number against refreshed main, all release-bound branches and the shared migration
 guard, and the accepted L1/L2 migrations need an explicit compatible integration
 decision before protected delivery.
+
+The current execution tree's migration guard itself passes and reports 1035 as
+the next local number. That does not resolve the cross-branch 1033/1034 collision;
+the open planner/Pūrṇa stack carries different files under both numbers.
 
 ## 6. Workstream ownership and recovery
 
@@ -141,4 +229,3 @@ this file, the execution ledger and the exact next eligible action above.
 | protected deployment | accepted L2/L3 `NOT_DEPLOYED` |
 | consumer value | `NOT_EVALUATED` |
 | empirical predictive performance | excluded and not claimed |
-
