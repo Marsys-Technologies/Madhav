@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
+import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { compileInquiryContract, finalizeInquiryContract, validateInquiryContract } from './compiler'
 import { challengeInquirySelection } from './omission_challenger'
 
@@ -114,6 +115,82 @@ describe('Purna Anvesana Wave 3 acceptance', () => {
     expect(finalizeInquiryContract(contract).status).toBe('INCOMPLETE')
   })
 
+  it('does not let a supporting AI facet weaken a required graph dependency', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-1',
+      question: 'mechanism network',
+      scope_tuple: { ...scope, intent: 'explain', domains: ['all'], depth: 'standard', width: 'narrow' },
+      planning_budget: { max_graph_hops: 3 },
+      ai_proposal: {
+        question_facets: [{ label: 'Divisional context', terms: ['divisional chart'], materiality: 'supporting' }],
+        uncommon_adjacencies: [],
+        hypotheses: [],
+      },
+    })
+    expect(contract.graph_traversal?.steps).toContainEqual(expect.objectContaining({
+      from_scu_id: 'scu.bodha.mechanism.network',
+      relation: 'requires',
+      to_scu_id: 'scu.catalog.get_divisionals',
+      materiality: 'required',
+    }))
+    expect(contract.obligations).toContainEqual(expect.objectContaining({
+      materiality: 'required',
+      scu_ids: ['scu.catalog.get_divisionals'],
+    }))
+  })
+
+  it('promotes a supporting graph frontier when the challenger finds the same target material', () => {
+    const collisionSnapshot = {
+      ...snapshot,
+      edges: [...snapshot.edges, {
+        from_scu_id: 'scu.finance.prosperity_assessment',
+        relation: 'related' as const,
+        to_scu_id: 'scu.catalog.query_contradictions',
+        rationale: 'Reviewed supporting path used to exercise strongest-materiality frontier merging.',
+        edge_source: 'authored_declaration' as const,
+        source_ref: 'SemanticCapabilityDeclaration:test/frontier-materiality-collision',
+      }],
+    }
+    const contract = compileInquiryContract({
+      snapshot: collisionSnapshot,
+      chart_id: 'chart-1',
+      question: 'complete wealth outlook',
+      scope_tuple: {
+        intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive',
+        horizon: 'multi_year', intervention: false, entitlement: 'native',
+      },
+      planning_budget: { max_search_hits: 1, max_graph_hops: 0, max_graph_nodes: 24, max_challenger_additions: 0 },
+    })
+    const contradiction = contract.material_frontier.find((item) => item.scu_id === 'scu.catalog.query_contradictions')
+    expect(contradiction).toMatchObject({ materiality: 'required', disposition: 'open' })
+    expect(contradiction?.reason).toContain('graph_')
+    expect(contradiction?.reason).toContain('challenger_addition_budget_exhausted:OMIT-CROSS-DOMAIN')
+    expect(contradiction?.source_ref).toContain('omission-rule:OMIT-CROSS-DOMAIN')
+  })
+
+  it('keeps declared search and graph budgets immutable across many AI facets', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-1',
+      question: 'complete wealth outlook',
+      scope_tuple: scope,
+      ai_proposal: {
+        question_facets: Array.from({ length: 16 }, (_, index) => ({
+          label: `Facet ${index}`,
+          terms: [`${['career', 'health', 'marriage', 'timing'][index % 4]} ${index}`],
+          materiality: 'supporting' as const,
+        })),
+        uncommon_adjacencies: [],
+        hypotheses: [],
+      },
+    })
+    expect(contract.planning_budget).toMatchObject({ max_search_hits: 20, max_graph_nodes: 24 })
+    expect(contract.graph_traversal!.seed_scu_ids.length).toBeLessThanOrEqual(28)
+    expect(contract.planning_budget!.search_hits_considered).toBeLessThanOrEqual(20)
+    expect(contract.planning_budget!.graph_expansion_nodes_selected).toBeLessThanOrEqual(24)
+  })
+
   it('rejects a planning-budget receipt whose content was changed without rehashing', () => {
     const contract = compileInquiryContract({ snapshot, chart_id: 'chart-1', question: 'Complete wealth outlook', scope_tuple: scope })
     const forged = {
@@ -121,6 +198,15 @@ describe('Purna Anvesana Wave 3 acceptance', () => {
       planning_budget: { ...contract.planning_budget!, max_graph_hops: contract.planning_budget!.max_graph_hops + 1 },
     }
     expect(validateInquiryContract(forged)).toMatchObject({ valid: false })
+  })
+
+  it('rejects a self-consistent receipt that reports selection beyond its declared cap', () => {
+    const contract = compileInquiryContract({ snapshot, chart_id: 'chart-1', question: 'Complete wealth outlook', scope_tuple: scope })
+    const { budget_hash: _budgetHash, ...budget } = contract.planning_budget!
+    void _budgetHash
+    const overCap = { ...budget, search_hits_considered: budget.max_search_hits + 1 }
+    const forged = { ...contract, planning_budget: { ...overCap, budget_hash: stableFingerprint(overCap) } }
+    expect(validateInquiryContract(forged).errors).toContain('search selection exceeded planning budget')
   })
 
   it('pins the route harness career floor expansion', () => {

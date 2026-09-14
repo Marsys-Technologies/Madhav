@@ -29,7 +29,7 @@ export function traverseCapabilityGraph(
 ): GraphTraversalReceipt {
   const ids = new Set(snapshot.scus.map((scu) => scu.scu_id))
   const maxHops = Math.max(0, Math.min(Math.trunc(budget.max_hops), 3))
-  const maxNodes = Math.max(1, Math.min(Math.trunc(budget.max_nodes), 48))
+  const maxNodes = Math.max(1, Math.min(Math.trunc(budget.max_nodes), ids.size))
   const seeds = [...new Set(seedScuIds)].filter((id) => ids.has(id))
   const selected = new Set(seeds)
   const queue = seeds.map((scuId) => ({ scu_id: scuId, hop: 0 }))

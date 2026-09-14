@@ -67,12 +67,12 @@ function normalizeAiProposal(ai: AiInquiryProposal | undefined): AiInquiryPropos
       ...facet,
       label: facet.label.trim(),
       terms: unique(facet.terms.map((term) => term.trim()).filter(Boolean)).sort(),
-    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))),
+    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))).slice(0, 16),
     uncommon_adjacencies: ai.uncommon_adjacencies.map((adjacency) => ({
       ...adjacency,
       rationale: adjacency.rationale.trim(),
-    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))),
-    hypotheses: unique(ai.hypotheses.map((hypothesis) => hypothesis.trim()).filter(Boolean)).sort(),
+    })).sort((a, b) => stableFingerprint(a).localeCompare(stableFingerprint(b))).slice(0, 16),
+    hypotheses: unique(ai.hypotheses.map((hypothesis) => hypothesis.trim()).filter(Boolean)).sort().slice(0, 16),
   }
 }
 
@@ -129,28 +129,70 @@ function selectedScus(args: {
   scope: InquiryScopeTuple
   ai?: AiInquiryProposal
   budget: InquiryPlanningBudget
-}): { selected: string[]; obligations: InquiryObligation[]; search_hits_considered: number; search_truncated: boolean } {
+}): {
+  selected: string[]
+  obligations: InquiryObligation[]
+  floor_nodes_selected: number
+  search_hits_considered: number
+  ai_adjacency_nodes_selected: number
+  search_truncated: boolean
+  planning_frontier: readonly Omit<MaterialFrontierItem, 'frontier_id' | 'disposition'>[]
+} {
   const availableIds = new Set(args.snapshot.scus.map((scu) => scu.scu_id))
   const floor = deterministicFloor(args.snapshot, args.scope)
   const rawQueryHits = searchSemanticCapabilities(
     args.snapshot,
     `${args.question} ${args.scope.intent} ${args.scope.domains.join(' ')}`,
-    args.budget.max_search_hits + 1,
+    100,
   )
-  const queryHits = rawQueryHits.slice(0, args.budget.max_search_hits).map((hit) => hit.scu_id)
+  const facetHits = (args.ai?.question_facets ?? []).map((facet) => ({
+    facet,
+    hits: searchSemanticCapabilities(args.snapshot, facet.terms.join(' '), 3).map((hit) => hit.scu_id),
+  }))
+  const floorSet = new Set(floor)
+  const searchCandidates = unique([
+    ...facetHits.filter(({ facet }) => facet.materiality === 'required').flatMap(({ hits }) => hits),
+    ...rawQueryHits.map((hit) => hit.scu_id),
+    ...facetHits.filter(({ facet }) => facet.materiality === 'supporting').flatMap(({ hits }) => hits),
+  ]).filter((scuId) => !floorSet.has(scuId))
+  const admittedSearch = searchCandidates.slice(0, args.budget.max_search_hits)
+  const admittedSearchSet = new Set(admittedSearch)
   const obligations: InquiryObligation[] = []
+  const planningFrontier: Array<Omit<MaterialFrontierItem, 'frontier_id' | 'disposition'>> = []
   for (const scuId of floor) {
     obligations.push(makeObligation(obligations.length, { label: `Required capability: ${scuId}`, source: 'deterministic_floor', materiality: 'required', scu_ids: [scuId], rationale: `Deterministic floor for ${args.scope.intent}.` }))
   }
-  for (const facet of args.ai?.question_facets ?? []) {
-    const hits = searchSemanticCapabilities(args.snapshot, facet.terms.join(' '), 3).map((hit) => hit.scu_id)
+  for (const { facet, hits: rawHits } of facetHits) {
+    const hits = rawHits.filter((scuId) => floorSet.has(scuId) || admittedSearchSet.has(scuId))
     if (hits.length) obligations.push(makeObligation(obligations.length, { label: facet.label, source: 'ai_decomposition', materiality: facet.materiality, scu_ids: hits, rationale: 'AI-proposed question facet; capability ids were deterministically resolved against the snapshot.' }))
+    if (facet.materiality === 'required') {
+      for (const scuId of rawHits.filter((scuId) => !floorSet.has(scuId) && !admittedSearchSet.has(scuId))) {
+        planningFrontier.push({
+          discovered_from: `ai_facet:${facet.label}`,
+          scu_id: scuId,
+          materiality: 'required',
+          reason: 'search_hit_budget_exhausted',
+          source_ref: `ai-facet:${stableFingerprint(facet)}`,
+        })
+      }
+    }
   }
-  const selected = unique([...floor, ...queryHits, ...obligations.flatMap((obligation) => obligation.scu_ids)]).filter((id) => availableIds.has(id))
+  const selected = unique([...floor, ...admittedSearch, ...obligations.flatMap((obligation) => obligation.scu_ids)]).filter((id) => availableIds.has(id))
   const selectedSet = new Set(selected)
+  let adjacencyAdditions = 0
   for (const adjacency of args.ai?.uncommon_adjacencies ?? []) {
     const edge = sourceBackedEdge(args.snapshot, adjacency.from_scu_id, adjacency.to_scu_id)
     if (!selectedSet.has(adjacency.from_scu_id) || !availableIds.has(adjacency.to_scu_id) || selectedSet.has(adjacency.to_scu_id) || !edge) continue
+    if (adjacencyAdditions >= args.budget.max_graph_nodes) {
+      if (edge.relation === 'requires' || edge.relation === 'contradicts') planningFrontier.push({
+        discovered_from: adjacency.from_scu_id,
+        scu_id: adjacency.to_scu_id,
+        materiality: 'required',
+        reason: 'ai_adjacency_budget_exhausted',
+        source_ref: edge.source_ref!,
+      })
+      continue
+    }
     obligations.push(makeObligation(obligations.length, {
       label: `Validated adjacency: ${adjacency.to_scu_id}`,
       source: 'ai_decomposition',
@@ -160,12 +202,16 @@ function selectedScus(args: {
     }))
     selected.push(adjacency.to_scu_id)
     selectedSet.add(adjacency.to_scu_id)
+    adjacencyAdditions += 1
   }
   return {
     selected,
     obligations,
-    search_hits_considered: Math.min(rawQueryHits.length, args.budget.max_search_hits),
-    search_truncated: rawQueryHits.length > args.budget.max_search_hits,
+    floor_nodes_selected: floor.length,
+    search_hits_considered: admittedSearch.length,
+    ai_adjacency_nodes_selected: adjacencyAdditions,
+    search_truncated: searchCandidates.length > args.budget.max_search_hits,
+    planning_frontier: planningFrontier,
   }
 }
 
@@ -264,16 +310,18 @@ export function compileInquiryContract(args: {
   const executionChannel = args.execution_channel ?? 'platform_internal'
   if (args.overlay) assertOverlayCompatibility(args.snapshot, args.overlay, args.chart_id)
   const selection = selectedScus({ snapshot: args.snapshot, question, scope, ai: aiProposal, budget })
-  const effectiveGraphNodeBudget = Math.max(budget.max_graph_nodes, selection.selected.length)
+  const remainingGraphNodeBudget = Math.max(0, budget.max_graph_nodes - selection.ai_adjacency_nodes_selected)
   const traversal = traverseCapabilityGraph(args.snapshot, selection.selected, {
     max_hops: budget.max_graph_hops,
-    max_nodes: effectiveGraphNodeBudget,
+    max_nodes: selection.selected.length + remainingGraphNodeBudget,
   })
   const selected = [...traversal.selected_scu_ids]
   const selectedSet = new Set(selected)
 
   for (const step of traversal.steps) {
-    if (selection.obligations.some((obligation) => obligation.scu_ids.includes(step.to_scu_id))) continue
+    const alreadyCovered = selection.obligations.some((obligation) => obligation.scu_ids.includes(step.to_scu_id)
+      && (step.materiality === 'supporting' || obligation.materiality === 'required'))
+    if (alreadyCovered) continue
     selection.obligations.push(makeObligation(selection.obligations.length, {
       label: `Graph ${step.relation}: ${step.to_scu_id}`,
       source: 'graph_traversal',
@@ -308,9 +356,27 @@ export function compileInquiryContract(args: {
   }
 
   const materialFrontier: MaterialFrontierItem[] = []
+  const upsertFrontier = (candidate: Omit<MaterialFrontierItem, 'frontier_id'>): void => {
+    const index = materialFrontier.findIndex((item) => item.scu_id === candidate.scu_id)
+    if (index < 0) {
+      materialFrontier.push({ frontier_id: `frontier-${String(materialFrontier.length + 1).padStart(3, '0')}`, ...candidate })
+      return
+    }
+    const existing = materialFrontier[index]!
+    const sourceRefs = unique([existing.source_ref, candidate.source_ref]
+      .filter((sourceRef): sourceRef is string => Boolean(sourceRef))).sort()
+    materialFrontier[index] = {
+      ...existing,
+      materiality: existing.materiality === 'required' || candidate.materiality === 'required' ? 'required' : 'supporting',
+      reason: unique([existing.reason, candidate.reason]).sort().join(' | '),
+      ...(sourceRefs.length ? { source_ref: sourceRefs.join(' | ') } : {}),
+    }
+  }
+  for (const frontier of selection.planning_frontier.filter((item) => !selectedSet.has(item.scu_id))) {
+    upsertFrontier({ ...frontier, disposition: 'open' })
+  }
   for (const frontier of traversal.frontier.filter((item) => !selectedSet.has(item.to_scu_id))) {
-    materialFrontier.push({
-      frontier_id: `frontier-${String(materialFrontier.length + 1).padStart(3, '0')}`,
+    upsertFrontier({
       discovered_from: frontier.from_scu_id,
       scu_id: frontier.to_scu_id,
       materiality: frontier.materiality,
@@ -320,9 +386,7 @@ export function compileInquiryContract(args: {
     })
   }
   for (const finding of challenge.findings.filter((item) => !selectedSet.has(item.missing_scu_id))) {
-    if (materialFrontier.some((item) => item.scu_id === finding.missing_scu_id)) continue
-    materialFrontier.push({
-      frontier_id: `frontier-${String(materialFrontier.length + 1).padStart(3, '0')}`,
+    upsertFrontier({
       discovered_from: 'independent_omission_challenger',
       scu_id: finding.missing_scu_id,
       materiality: finding.severity === 'material' ? 'required' : 'supporting',
@@ -344,9 +408,13 @@ export function compileInquiryContract(args: {
   })
   const budgetBase = {
     ...budget,
-    max_graph_nodes: effectiveGraphNodeBudget,
+    floor_nodes_selected: selection.floor_nodes_selected,
     search_hits_considered: selection.search_hits_considered,
+    ai_adjacency_nodes_selected: selection.ai_adjacency_nodes_selected,
+    graph_seed_nodes: traversal.seed_scu_ids.length,
     graph_nodes_selected: traversal.selected_scu_ids.length,
+    graph_expansion_nodes_selected: selection.ai_adjacency_nodes_selected
+      + Math.max(0, traversal.selected_scu_ids.length - traversal.seed_scu_ids.length),
     graph_edges_followed: traversal.steps.length,
     challenger_findings: challenge.findings.length,
     challenger_additions: challengerTargets.length,
@@ -571,6 +639,15 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
     if (contract.planning_budget) {
       const { budget_hash: budgetHash, ...budget } = contract.planning_budget
       if (budgetHash !== stableFingerprint(budget)) errors.push('planning budget receipt hash mismatch')
+      if (budget.search_hits_considered > budget.max_search_hits) errors.push('search selection exceeded planning budget')
+      if (budget.graph_expansion_nodes_selected > budget.max_graph_nodes) errors.push('graph expansion exceeded planning budget')
+      if (contract.graph_traversal) {
+        if (budget.graph_seed_nodes !== contract.graph_traversal.seed_scu_ids.length) errors.push('graph seed count does not match traversal receipt')
+        if (budget.graph_nodes_selected !== contract.graph_traversal.selected_scu_ids.length) errors.push('graph node count does not match traversal receipt')
+        const expectedExpansion = budget.ai_adjacency_nodes_selected
+          + Math.max(0, contract.graph_traversal.selected_scu_ids.length - contract.graph_traversal.seed_scu_ids.length)
+        if (budget.graph_expansion_nodes_selected !== expectedExpansion) errors.push('graph expansion count does not match traversal receipt')
+      }
     }
   }
   const obligationIds = new Set<string>()

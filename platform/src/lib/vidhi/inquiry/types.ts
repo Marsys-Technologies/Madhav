@@ -115,8 +115,12 @@ export interface InquiryPlanningBudget {
 }
 
 export interface InquiryPlanningBudgetReceipt extends InquiryPlanningBudget {
+  readonly floor_nodes_selected: number
   readonly search_hits_considered: number
+  readonly ai_adjacency_nodes_selected: number
+  readonly graph_seed_nodes: number
   readonly graph_nodes_selected: number
+  readonly graph_expansion_nodes_selected: number
   readonly graph_edges_followed: number
   readonly challenger_findings: number
   readonly challenger_additions: number
