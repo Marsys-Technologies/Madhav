@@ -5,8 +5,8 @@
  * [PHASE-C-03 sub]
  */
 
-import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { useMounted } from '@/hooks/useMounted'
 
 interface GraphNode {
   id: string
@@ -24,8 +24,7 @@ interface Props {
 export function NodeDetailModal({ node, onClose }: Props) {
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useMounted()
   if (!mounted) return null
 
   return createPortal(
