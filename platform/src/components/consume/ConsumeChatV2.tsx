@@ -1435,8 +1435,9 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
     const unsub = runtime.subscribe(() => {
       const state = runtime.getState()
       const isRunning = state.isRunning
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const lastMsg = (state as any).messages?.at?.(-1) as UIMessage | undefined
+      const lastMsg = (state as unknown as {
+        messages?: Array<UIMessage & { content?: Array<{ type: string; text?: string }> }>
+      }).messages?.at(-1)
 
       if (isRunning && lastMsg?.role === 'assistant') {
         const meta = lastMsg.metadata as Record<string, unknown> | undefined
@@ -1445,9 +1446,10 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
         if (queryId) {
           // runtime.getState().messages returns ThreadMessage objects whose text
           // lives in .content, not .parts. Guard with ?? [] to avoid crashes.
-          const text = (lastMsg.parts ?? (lastMsg as any).content ?? [])
-            .filter((p: { type: string }): p is { type: 'text'; text: string } => p.type === 'text')
-            .map((p: { text: string }) => p.text)
+          const text = (lastMsg.parts ?? lastMsg.content ?? [])
+            .filter((part): part is typeof part & { type: 'text'; text: string } =>
+              part.type === 'text' && typeof part.text === 'string')
+            .map(part => part.text)
             .join('')
           const entry: PendingStreamEntry = {
             queryId,

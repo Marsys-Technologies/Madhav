@@ -33,7 +33,7 @@ vi.mock('next/navigation', () => ({
 
 function authOk() {
   const ctx = {
-    user: { uid: 'admin-uid', email: 'admin@test' } as any,
+    user: { uid: 'admin-uid', email: 'admin@test' } as never,
     profile: { id: 'admin-uid', role: 'super_admin', status: 'active' } as const,
   }
   mockRequireSuperAdmin.mockResolvedValue(ctx)
@@ -45,7 +45,7 @@ function authForbidden() {
     NextResponse.json({ error: { code: 'forbidden' } }, { status: 403 }),
   )
   mockGetServerUserWithProfile.mockResolvedValue({
-    user: { uid: 'u', email: 'u@test' } as any,
+    user: { uid: 'u', email: 'u@test' } as never,
     profile: { id: 'u', role: 'guest', status: 'active' } as const,
   })
 }
@@ -122,7 +122,7 @@ describe('configService.setGate', () => {
 
     // 2 DB calls: pre-read SELECT + UPSERT. gate_change_log write retired WS-0.
     expect(mockQuery).toHaveBeenCalledTimes(2)
-    const sqls = mockQuery.mock.calls.map((c: any[]) => c[0] as string)
+    const sqls = mockQuery.mock.calls.map(c => c[0] as string)
     expect(sqls.some((s) => s.includes('INSERT INTO runtime_config'))).toBe(true)
   })
 
