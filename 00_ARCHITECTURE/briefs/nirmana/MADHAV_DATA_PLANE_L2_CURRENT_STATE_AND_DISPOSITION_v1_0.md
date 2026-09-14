@@ -92,8 +92,8 @@ must validate this semantic closure, not merely the registry arrays.
 
 ## 4. Cross-layer and consumer backcast
 
-Two live L2 boundary inversions were found at WP0 and are corrected in the
-current local review candidate:
+Two live L2 boundary inversions were found at WP0 and are corrected in accepted
+implementation tip `8aeff12d4b32174bab1a1352768fc077828c38bd`:
 
 1. `bo_karanajala.py` no longer imports `services.ka_temporal`; new rows leave
    `active_dasha_periods_jsonb` null. Legacy columns/history remain readable and
