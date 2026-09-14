@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   classify: vi.fn(),
   compile: vi.fn(),
   overlay: vi.fn(),
+  snapshot: vi.fn(),
 }))
 
 vi.mock('@/lib/mcp/service_token', () => ({ validateServiceToken: () => true }))
@@ -24,7 +25,7 @@ vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: mocks.
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => ({
-  assertPinnedCapabilityKnowledgeCurrent: () => ({ content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', scus: [{ scu_id: 'scu.test', bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true, execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'offset' } }] }] }),
+  assertPinnedCapabilityKnowledgeCurrent: mocks.snapshot,
   loadChartCapabilityOverlay: mocks.overlay,
 }))
 vi.mock('@/lib/retrieval/registry/knowledge/stable', () => ({ stableFingerprint: (value: unknown) => `sha256:${JSON.stringify(value).length}` }))
@@ -83,6 +84,27 @@ function stateHash(value: InquiryContract): string {
   return `sha256:${JSON.stringify(value).length}`
 }
 
+function primeStoredLifecycle(overrides: Record<string, unknown> = {}): InquiryContract {
+  const value = contract()
+  mocks.verify.mockReturnValue({
+    sub: 'user-1:key-1', inquiry_id: 'inquiry-1', chart_id: chartId,
+    contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+    catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+    overlay_version: null, chart_build_id: null, contract_state_hash: stateHash(value),
+    revision: 0, allowed_transition: 'execute', next_action_ids: ['item-001'],
+    jti: 'current-jti', exp: 2_000_000_000, ...overrides,
+  })
+  mocks.get.mockResolvedValue({
+    inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
+    semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+    capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+    chart_overlay_version: null, chart_build_id: null,
+    authorization_jsonb: value, contract_jsonb: value, status: 'INCOMPLETE', revision: 0,
+    current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
+  })
+  return value
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.INQUIRY_LIFECYCLE_SIGNING_KEY = 'test-inquiry-signing-key-with-at-least-thirty-two-bytes'
@@ -95,6 +117,7 @@ beforeEach(() => {
   mocks.apply.mockImplementation((value: InquiryContract) => ({ ...value, plan_items: value.plan_items.map((item) => ({ ...item, state: 'observed' })), iteration: value.iteration + 1 }))
   mocks.commitObservation.mockResolvedValue('receipt-1')
   mocks.overlay.mockResolvedValue({ overlay_version: null, build_id: null })
+  mocks.snapshot.mockReturnValue({ content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', scus: [{ scu_id: 'scu.test', bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true, execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'offset' } }] }] })
 })
 
 describe('raw MCP inquiry route', () => {
@@ -111,21 +134,31 @@ describe('raw MCP inquiry route', () => {
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ principal_uid: 'user-1', jti_hash: 'sha256:next-jti' }))
   })
 
+  it('rejects revoked chart access before compiling or loading lifecycle state', async () => {
+    mocks.authorize.mockResolvedValue('deny')
+    const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ ok: false, error: 'AUTHZ_DENIED' })
+    expect(mocks.compile).not.toHaveBeenCalled()
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
+  it('binds token verification to both user and API-key identity', async () => {
+    mocks.verify.mockImplementation((_token, _key, subject) => {
+      if (subject !== 'user-1:key-1') throw new Error('INQUIRY_TOKEN_WRONG_SUBJECT')
+      return {}
+    })
+    const response = await POST(request(
+      { action: 'finalize', lifecycle_token: 'current-token' },
+      { 'x-mcp-key-id': 'key-2' },
+    ))
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ ok: false, error: 'INQUIRY_TOKEN_WRONG_SUBJECT' })
+    expect(mocks.get).not.toHaveBeenCalled()
+  })
+
   it('keeps the same action authorized until a verified next page is exhausted', async () => {
-    const value = contract()
-    mocks.verify.mockReturnValue({
-      sub: 'user-1:key-1', inquiry_id: 'inquiry-1', chart_id: chartId, contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
-      catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', overlay_version: null,
-      chart_build_id: null,
-      contract_state_hash: stateHash(value),
-      revision: 0, allowed_transition: 'execute', next_action_ids: ['item-001'], jti: 'current-jti', exp: 2_000_000_000,
-    })
-    mocks.get.mockResolvedValue({
-      inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
-      semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', capability_content_hash: 'sha256:catalog',
-      capability_compatibility_version: 'planner-scu-v1', chart_overlay_version: null, chart_build_id: null,
-      authorization_jsonb: value, contract_jsonb: value, status: 'INCOMPLETE', revision: 0, current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
-    })
+    primeStoredLifecycle()
     const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
     expect(response.status).toBe(200)
     expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.any(String))
@@ -137,6 +170,37 @@ describe('raw MCP inquiry route', () => {
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))
     expect(response.status).toBe(200)
     expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'finalize', next_action_ids: [] }), expect.any(String))
+  })
+
+  it('rejects a token-authorized lifecycle when the pinned knowledge snapshot changed', async () => {
+    primeStoredLifecycle()
+    mocks.snapshot.mockReturnValueOnce({ content_hash: 'sha256:changed', compatibility_version: 'planner-scu-v1', scus: [] })
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ ok: false, error: 'CAPABILITY_KNOWLEDGE_STALE' })
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+  })
+
+  it('rejects an action outside the signed next-action set before reservation', async () => {
+    primeStoredLifecycle()
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-999' }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ ok: false, error: 'INQUIRY_ACTION_NOT_AUTHORIZED' })
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+  })
+
+  it('records a failed dispatch as failed evidence without completing the obligation', async () => {
+    primeStoredLifecycle()
+    mocks.retrieve.mockRejectedValueOnce(new Error('retriever unavailable'))
+    mocks.classify.mockReturnValueOnce('failed')
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({ ok: true, disposition: 'failed' })
+    expect(mocks.commitObservation).toHaveBeenCalledWith(expect.objectContaining({
+      evidence: expect.objectContaining({ disposition: 'failed' }),
+    }))
   })
 
   it('consumes a replayed action before dispatch so only one concurrent request executes', async () => {
@@ -206,5 +270,18 @@ describe('raw MCP inquiry route', () => {
     expect(await response.json()).toMatchObject({ error: 'CAPABILITY_OVERLAY_CHANGED' })
     expect(mocks.commitFinalization).toHaveBeenCalledTimes(1)
     expect(mocks.commitObservation).not.toHaveBeenCalled()
+  })
+
+  it('returns a terminal blocked closure without relabeling it complete', async () => {
+    const value = primeStoredLifecycle({ allowed_transition: 'finalize', next_action_ids: [] })
+    const blocked = { ...value, status: 'BLOCKED' as const, status_reasons: ['required_obligation_failed'] }
+    mocks.finalize.mockReturnValue(blocked)
+    const response = await POST(request({ action: 'finalize', lifecycle_token: 'current-token' }))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      ok: true,
+      closure: { status: 'BLOCKED', status_reasons: ['required_obligation_failed'] },
+    })
+    expect(mocks.commitFinalization).toHaveBeenCalledWith(expect.objectContaining({ contract: blocked }))
   })
 })
