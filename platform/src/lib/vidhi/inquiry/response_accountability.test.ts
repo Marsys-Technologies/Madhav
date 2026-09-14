@@ -123,6 +123,18 @@ describe('Wave 4 response accountability', () => {
     expect(register.validation_errors).toEqual([])
   })
 
+  it('fails closed rather than applying result paths from a different knowledge snapshot', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads, {
+      ...snapshot,
+      content_hash: `sha256:${'0'.repeat(64)}`,
+    })
+
+    expect(register.validation_errors).toContain(
+      'knowledge snapshot does not match the inquiry contract capability identity',
+    )
+  })
+
   it('fails mandatory delivery when one relevant fact is absent from all response parts', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads)
@@ -377,6 +389,57 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.coverage.interpretation_mapped)
       .toBe(register.facts.filter((fact) => fact.kind === 'finding').length)
     expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('completes a singleton finding through an exact single-finding response span', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Give me a complete wealth outlook',
+      scope_tuple: wealthScope,
+    })
+    const evidencePayloads = initial.plan_items.map((item, index) => ({
+      item_id: item.item_id,
+      results: index === 0 ? [{ content: 'the only material finding' }] : [],
+    }))
+    const contract = finalizeInquiryContract(applyInquiryObservations(initial, initial.plan_items.map((item, index) => ({
+      item_id: item.item_id,
+      disposition: index === 0 ? 'served' as const : 'empty' as const,
+      evidence_refs: [`retrieval:${stableFingerprint(evidencePayloads[index])}`],
+    }))))
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: 'the only material finding',
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.fact_register.facts.filter((fact) => fact.kind === 'finding')).toHaveLength(1)
+    expect(envelope.delivery_parts).toContainEqual(expect.objectContaining({
+      kind: 'finding_interpretation',
+      fact_ids: [envelope.fact_register.facts.find((fact) => fact.kind === 'finding')!.fact_id],
+    }))
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
+  })
+
+  it('registers one physical finding once when a plan item serves multiple obligations', () => {
+    const careerScope: InquiryScopeTuple = { ...wealthScope, intent: 'career_deepdive', domains: ['career'] }
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Give me a complete career outlook',
+      scope_tuple: careerScope,
+    })
+    const item = initial.plan_items.find((candidate) => candidate.obligation_ids.length > 1)!
+    const payload = { item_id: item.item_id, results: [{ content: 'one shared physical row' }] }
+    const contract = applyInquiryObservations(initial, [{
+      item_id: item.item_id,
+      disposition: 'served',
+      evidence_refs: [`retrieval:${stableFingerprint(payload)}`],
+    }])
+    const findings = buildInquiryFactRegister(contract, [payload]).facts.filter((fact) => fact.kind === 'finding')
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.obligation_ids).toEqual([...item.obligation_ids].sort())
+    expect(findings[0]!.obligation_id).toBeNull()
   })
 
   it('detects one omitted finding inside an otherwise mapped multi-finding evidence set', () => {

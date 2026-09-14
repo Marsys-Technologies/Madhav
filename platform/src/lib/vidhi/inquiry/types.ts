@@ -212,6 +212,9 @@ export interface InquiryClosureReceipt {
 export interface InquiryRegisteredFact {
   readonly fact_id: string
   readonly kind: 'obligation' | 'frontier' | 'finding'
+  /** Every obligation this physical fact supports; findings may serve several. */
+  readonly obligation_ids: readonly string[]
+  /** Singular compatibility projection; null when a finding serves several obligations. */
   readonly obligation_id: string | null
   readonly frontier_id: string | null
   readonly materiality: 'required' | 'supporting'
@@ -238,7 +241,7 @@ export interface InquiryFactRegister {
 
 export interface InquiryResponseDeliveryPart {
   readonly part_id: string
-  readonly kind: 'prose' | 'structured_findings' | 'conjoint_interpretation' | 'permitted_exclusion'
+  readonly kind: 'prose' | 'structured_findings' | 'finding_interpretation' | 'conjoint_interpretation' | 'permitted_exclusion'
   readonly content_hash: string
   readonly content: string | null
   readonly fact_ids: readonly string[]

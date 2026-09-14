@@ -40795,6 +40795,24 @@ scope_amendment:
   claim_ceiling: "source/local fixture compatibility only; no durable lifecycle, migration, deployment or production claim"
 ```
 
+### Scope amendment W4-A2 — response-accountability golden projection
+
+The repaired response-accountability schema associates each physical evidence finding with every
+obligation it supports and distinguishes exact singleton interpretation from conjoint
+interpretation. The two route-port branch fixtures serialize that reader-visible receipt, so their
+committed projections must advance with the reviewed W4 contract. The deterministic recapture
+changed only those two fixtures; all 56 route-port scenarios pass after recapture.
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json
+    - platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json
+  reason: "Advance the two response-accountability projections for singleton interpretation and non-duplicating multi-obligation finding identity."
+  authority: "MADHAV-PURNA-ANVESANA-W4-20260914 remote source/local Wave 4 lease"
+  claim_ceiling: "deterministic local route projection only; no deployed stream, production, or empirical claim"
+```
+
 ### Next session objective
 
 Implement W4-P1 with tests that prove complete fact registration, mandatory fact delivery,

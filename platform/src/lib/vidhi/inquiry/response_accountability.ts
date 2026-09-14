@@ -57,6 +57,7 @@ export function buildInquiryFactRegister(
     facts.push({
       fact_id: factIdentity('obligation', contract, obligation.obligation_id),
       kind: 'obligation',
+      obligation_ids: [obligation.obligation_id],
       obligation_id: obligation.obligation_id,
       frontier_id: null,
       materiality: obligation.materiality,
@@ -78,6 +79,7 @@ export function buildInquiryFactRegister(
     facts.push({
       fact_id: factIdentity('frontier', contract, frontier.frontier_id),
       kind: 'frontier',
+      obligation_ids: [],
       obligation_id: null,
       frontier_id: frontier.frontier_id,
       materiality: frontier.materiality,
@@ -93,45 +95,56 @@ export function buildInquiryFactRegister(
   }
 
   const payloadByHash = new Map(evidencePayloads.map((payload) => [stableFingerprint(payload), payload]))
-  const evidenceBindings = knowledgeSnapshot
+  const snapshotMatchesContract = !knowledgeSnapshot
+    || (knowledgeSnapshot.content_hash === contract.capability_content_hash
+      && knowledgeSnapshot.compatibility_version === contract.capability_compatibility_version)
+  if (!snapshotMatchesContract) {
+    validationErrors.push('knowledge snapshot does not match the inquiry contract capability identity')
+  }
+  const evidenceBindings = knowledgeSnapshot && snapshotMatchesContract
     ? indexInquiryEvidenceBindings(knowledgeSnapshot, contract, evidencePayloads)
     : {}
+  const obligationsByPayload = new Map<string, InquiryContract['obligations'][number][]>()
+  const evidenceRefsByPayload = new Map<string, string[]>()
   for (const obligation of contract.obligations) {
     for (const evidenceRef of uniqueSorted(obligation.evidence_refs)) {
       const payloadHash = evidenceHashFromRef(evidenceRef)
-      const payload = payloadHash ? payloadByHash.get(payloadHash) : undefined
-      if (!payloadHash || payload === undefined) continue
-      const extraction = extractInquirySemanticFindings(evidenceBindings[payloadHash], payload)
-      if (extraction.mode === 'reviewed_collection_missing') {
-        validationErrors.push(`reviewed result collection ${extraction.result_collection_path} is absent from evidence ${payloadHash}`)
-      }
-      const rows = extraction.rows
-      const normalizedRows = rows.length > 0
-        ? rows.map(normalizedFindingContent)
-        : obligation.disposition === 'empty'
-          ? [`No results returned for ${obligation.label}.`]
-          : []
-      normalizedRows.forEach((content, index) => {
-        const rowHash = stableFingerprint(content)
-        facts.push({
-          fact_id: factIdentity('finding', contract, `${obligation.obligation_id}:${payloadHash}:${index}:${rowHash}`),
-          kind: 'finding',
-          obligation_id: obligation.obligation_id,
-          frontier_id: null,
-          materiality: obligation.materiality,
-          meaning: {
-            label: `Evidence finding ${index + 1} for ${obligation.label}`,
-            rationale: extraction.mode === 'opaque_adapter_items'
-              ? `Opaque adapter item from canonical evidence payload ${payloadHash}; no independently reviewed result collection path was available.`
-              : `Semantic row at reviewed collection ${extraction.result_collection_path} in canonical evidence payload ${payloadHash}.`,
-            scu_ids: uniqueSorted(obligation.scu_ids),
-            disposition: obligation.disposition,
-          },
-          evidence_refs: [evidenceRef, `result:${rowHash}`],
-          normalized_content: content,
-        })
-      })
+      if (!payloadHash) continue
+      obligationsByPayload.set(payloadHash, [...(obligationsByPayload.get(payloadHash) ?? []), obligation])
+      evidenceRefsByPayload.set(payloadHash, [...(evidenceRefsByPayload.get(payloadHash) ?? []), evidenceRef])
     }
+  }
+
+  for (const payloadHash of [...obligationsByPayload.keys()].sort()) {
+    const payload = payloadByHash.get(payloadHash)
+    if (payload === undefined) continue
+    const obligations = obligationsByPayload.get(payloadHash) ?? []
+    const obligationIds = uniqueSorted(obligations.map((obligation) => obligation.obligation_id))
+    const extraction = extractInquirySemanticFindings(evidenceBindings[payloadHash], payload)
+    if (extraction.mode === 'reviewed_collection_missing') {
+      validationErrors.push(`reviewed result collection ${extraction.result_collection_path} is absent from evidence ${payloadHash}`)
+    }
+    extraction.rows.map(normalizedFindingContent).forEach((content, index) => {
+      const rowHash = stableFingerprint(content)
+      facts.push({
+        fact_id: factIdentity('finding', contract, `${payloadHash}:${extraction.result_collection_path ?? 'opaque'}:${index}:${rowHash}`),
+        kind: 'finding',
+        obligation_ids: obligationIds,
+        obligation_id: obligationIds.length === 1 ? obligationIds[0]! : null,
+        frontier_id: null,
+        materiality: obligations.some((obligation) => obligation.materiality === 'required') ? 'required' : 'supporting',
+        meaning: {
+          label: `Evidence finding ${index + 1} for ${obligations.map((obligation) => obligation.label).sort().join(' / ')}`,
+          rationale: extraction.mode === 'opaque_adapter_items'
+            ? `Opaque adapter item from canonical evidence payload ${payloadHash}; no independently reviewed result collection path was available.`
+            : `Semantic row at reviewed collection ${extraction.result_collection_path} in canonical evidence payload ${payloadHash}.`,
+          scu_ids: uniqueSorted(obligations.flatMap((obligation) => obligation.scu_ids)),
+          disposition: obligations.some((obligation) => obligation.disposition === 'served') ? 'served' : obligations[0]?.disposition ?? 'pending',
+        },
+        evidence_refs: [...uniqueSorted(evidenceRefsByPayload.get(payloadHash) ?? []), `result:${rowHash}`],
+        normalized_content: content,
+      })
+    })
   }
 
   const normalizedFacts = [...facts].sort((a, b) => a.fact_id.localeCompare(b.fact_id))
@@ -255,12 +268,15 @@ export function buildResponseCoverageReceipt(args: {
         invalid.push(`prose delivery part ${part.part_id} cannot self-attest fact or interpretation coverage`)
       }
     }
-    if (part.kind === 'conjoint_interpretation') {
+    if (part.kind === 'finding_interpretation' || part.kind === 'conjoint_interpretation') {
       if (!part.content?.trim() || !canonicalResponseText.includes(part.content)
         || part.content_hash !== expectedPartHash) {
-        invalid.push(`conjoint interpretation ${part.part_id} is not an exact canonical response span`)
+        invalid.push(`finding interpretation ${part.part_id} is not an exact canonical response span`)
       }
-      if (part.fact_ids.length < 2) {
+      if (part.kind === 'finding_interpretation' && part.fact_ids.length !== 1) {
+        invalid.push(`finding interpretation ${part.part_id} must map exactly one finding`)
+      }
+      if (part.kind === 'conjoint_interpretation' && part.fact_ids.length < 2) {
         invalid.push(`conjoint interpretation ${part.part_id} must map at least two findings`)
       }
     }
@@ -282,10 +298,10 @@ export function buildResponseCoverageReceipt(args: {
         excluded.add(factId)
       } else if (part.kind === 'prose') {
         continue
-      } else if (part.kind === 'conjoint_interpretation') {
+      } else if (part.kind === 'finding_interpretation' || part.kind === 'conjoint_interpretation') {
         if (fact.kind !== 'finding' || !fact.normalized_content
           || !part.content?.includes(fact.normalized_content)) {
-          invalid.push(`conjoint interpretation ${part.part_id} does not contain mapped finding ${factId}`)
+          invalid.push(`finding interpretation ${part.part_id} does not contain mapped finding ${factId}`)
           continue
         }
         interpretationMapped.add(factId)
@@ -458,15 +474,18 @@ export function buildStructuredResponseAccountability(
     && findingFacts.every((fact) => responseText.includes(fact.normalized_content!))
     ? [{ text: responseText, fact_ids: findingFacts.map((fact) => fact.fact_id) }]
     : []
-  const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? inferredInterpretations).map((item, index) => ({
-    part_id: `conjoint-interpretation:${index + 1}:${stableFingerprint(item.text)}`,
-    kind: 'conjoint_interpretation',
-    content_hash: inquiryResponsePartContentHash(factRegister, item.fact_ids, 'conjoint_interpretation', null, [], item.text),
-    content: item.text,
-    fact_ids: uniqueSorted(item.fact_ids),
-    evidence_payload_hashes: [],
-    exclusion_reason: null,
-  }))
+  const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? inferredInterpretations).map((item, index) => {
+    const kind = item.fact_ids.length === 1 ? 'finding_interpretation' as const : 'conjoint_interpretation' as const
+    return {
+      part_id: `${kind.replace('_', '-')}:${index + 1}:${stableFingerprint(item.text)}`,
+      kind,
+      content_hash: inquiryResponsePartContentHash(factRegister, item.fact_ids, kind, null, [], item.text),
+      content: item.text,
+      fact_ids: uniqueSorted(item.fact_ids),
+      evidence_payload_hashes: [],
+      exclusion_reason: null,
+    }
+  })
   const deliveryParts = prosePart ? [deliveryPart, prosePart, ...conjointParts] : [deliveryPart, ...conjointParts]
   return {
     accountability_version: 'inquiry-response-accountability-v1',
