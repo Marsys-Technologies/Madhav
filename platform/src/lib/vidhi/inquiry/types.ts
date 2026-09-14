@@ -206,3 +206,78 @@ export interface InquiryClosureReceipt {
   readonly omission_challenge_hash?: string
   readonly planning_budget?: InquiryPlanningBudgetReceipt
 }
+
+export interface InquiryRegisteredFact {
+  readonly fact_id: string
+  readonly kind: 'obligation' | 'frontier'
+  readonly obligation_id: string | null
+  readonly frontier_id: string | null
+  readonly materiality: 'required' | 'supporting'
+  readonly meaning: {
+    readonly label: string
+    readonly rationale: string
+    readonly scu_ids: readonly string[]
+    readonly disposition: ObligationDisposition | MaterialFrontierItem['disposition']
+  }
+  readonly evidence_refs: readonly string[]
+}
+
+export interface InquiryFactRegister {
+  readonly register_version: 'inquiry-fact-register-v1'
+  readonly contract_id: string
+  readonly semantic_contract_hash: string
+  readonly facts: readonly InquiryRegisteredFact[]
+  readonly required_fact_ids: readonly string[]
+  readonly validation_errors: readonly string[]
+  readonly register_hash: string
+}
+
+export interface InquiryResponseDeliveryPart {
+  readonly part_id: string
+  readonly kind: 'prose' | 'structured_findings' | 'permitted_exclusion'
+  readonly content_hash: string
+  readonly fact_ids: readonly string[]
+  readonly exclusion_reason: string | null
+}
+
+export interface InquiryContinuationReceipt {
+  readonly iteration: number
+  readonly max_iterations: number
+  readonly exhausted: boolean
+  readonly next_action_ids: readonly string[]
+  readonly blocked_item_ids: readonly string[]
+  readonly unresolved_obligation_ids: readonly string[]
+  readonly frontier_ids: readonly string[]
+}
+
+export interface InquiryResponseCoverageReceipt {
+  readonly receipt_version: 'inquiry-response-coverage-v1'
+  readonly contract_id: string
+  readonly semantic_contract_hash: string
+  readonly fact_register_hash: string
+  readonly status: 'COMPLETE' | 'INCOMPLETE_RESUMABLE' | 'BLOCKED'
+  readonly coverage: {
+    readonly synthesis_present: boolean
+    readonly all_total: number
+    readonly all_delivered: number
+    readonly all_permitted_exclusions: number
+    readonly required_total: number
+    readonly required_delivered: number
+  }
+  readonly delivered_fact_ids: readonly string[]
+  readonly permitted_exclusion_fact_ids: readonly string[]
+  readonly missing_fact_ids: readonly string[]
+  readonly missing_required_fact_ids: readonly string[]
+  readonly delivery_part_ids: readonly string[]
+  readonly invalid_delivery_claims: readonly string[]
+  readonly continuation: InquiryContinuationReceipt
+  readonly resume_required: boolean
+  readonly receipt_hash: string
+}
+
+export interface InquiryResponseAccountability {
+  readonly accountability_version: 'inquiry-response-accountability-v1'
+  readonly fact_register: InquiryFactRegister
+  readonly delivery_parts: readonly InquiryResponseDeliveryPart[]
+  readonly response_coverage_receipt: InquiryResponseCoverageReceipt
+}

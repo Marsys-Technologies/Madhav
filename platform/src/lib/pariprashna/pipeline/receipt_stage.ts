@@ -29,7 +29,12 @@ import {
 } from '@/lib/pariprashna/provenance/stamp'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
-import { buildInquiryClosureReceipt, type InquiryContract } from '@/lib/vidhi/inquiry'
+import {
+  buildInquiryClosureReceipt,
+  buildStructuredResponseAccountability,
+  type InquiryContract,
+  type InquiryResponseAccountability,
+} from '@/lib/vidhi/inquiry'
 
 export interface TurnReceiptProvenance {
   provenanceStamp: TurnProvenanceStamp
@@ -64,6 +69,7 @@ export function emitCompletenessReceipt(args: {
   em: PariprashnaEmitter
   completenessReceipt: WebCompletenessReceipt | null
   inquiryContract?: InquiryContract | null
+  responseAccountability?: InquiryResponseAccountability | null
 }): void {
   const { em, completenessReceipt } = args
   if (completenessReceipt) {
@@ -84,6 +90,14 @@ export function emitCompletenessReceipt(args: {
       subject: 'inquiry_contract',
       grade: args.inquiryContract.status,
       detail: `${dispositioned}/${required.length} required obligations dispositioned; ${unresolvedMaterialFrontier.length} required frontier items unresolved; receipt ${closureReceipt.receipt_hash}`,
+    })
+    const accountability = args.responseAccountability
+      ?? buildStructuredResponseAccountability(args.inquiryContract)
+    const responseReceipt = accountability.response_coverage_receipt
+    em.grade({
+      subject: 'response_accountability',
+      grade: responseReceipt.status,
+      detail: JSON.stringify(accountability),
     })
   }
 }

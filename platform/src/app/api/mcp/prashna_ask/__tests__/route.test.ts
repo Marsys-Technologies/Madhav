@@ -377,6 +377,13 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     expect(inquiry.chart_build_id).toBe('build-1')
     expect(inquiry.obligations.some((item) => item.disposition === 'empty')).toBe(true)
     expect((body.completeness as { empty_result_tools: string[] }).empty_result_tools).toContain('authorized_test')
+    expect(body.response_accountability).toMatchObject({
+      accountability_version: 'inquiry-response-accountability-v1',
+      response_coverage_receipt: {
+        receipt_version: 'inquiry-response-coverage-v1',
+        status: 'INCOMPLETE_RESUMABLE',
+      },
+    })
   })
 
   it('runs the engine, dispatches every planned tool, and returns a complete result', async () => {

@@ -91,7 +91,7 @@ import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -928,10 +928,15 @@ export async function POST(request: Request) {
       }
       judgmentFlags.push(...synthesis.judgment_flags)
 
+      const responseAccountability = inquiryContract
+        ? buildStructuredResponseAccountability(inquiryContract, { response_text: synthesis.reading })
+        : null
+
       const dispatchErrors = toolEventLog.filter((item) => item.status === 'error')
       const isPartial = costCapTripped !== null || unresolvedTools.length > 0 ||
         dispatchErrors.length > 0 ||
-        compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE')
+        compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE') ||
+        (responseAccountability !== null && responseAccountability.response_coverage_receipt.status !== 'COMPLETE')
 
       // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
       // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
@@ -960,6 +965,7 @@ export async function POST(request: Request) {
         },
         inquiry_contract: inquiryContract,
         inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
+        response_accountability: responseAccountability,
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
         // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`
