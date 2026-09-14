@@ -5,7 +5,7 @@
     "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
   ],
-  "content_sha256": "2d3b6e1d1523f92c876608fb30bf30585b95b7a3b6210e985d0b2ff5758bc93d",
+  "content_sha256": "d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c",
   "denominators": {
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -1085,7 +1085,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-14T06:28:40.000Z",
+  "generated_at": "2026-09-14T08:15:17.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -2127,5 +2127,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1",
-  "source_revision": "0c3303909e83c6a82d52ea20b4cac8b4928112c4"
+  "source_revision": "fdf042ef4d30a001c8e5c449aa8e7d6ecc6af6c2"
 }

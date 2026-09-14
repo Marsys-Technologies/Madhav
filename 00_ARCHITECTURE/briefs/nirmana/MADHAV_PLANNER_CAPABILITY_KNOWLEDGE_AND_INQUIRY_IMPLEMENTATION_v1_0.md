@@ -138,7 +138,7 @@ Seven producer-output links above pin exact migration-authored output-digest com
 
 ## 7. Estate census
 
-`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `2d3b6e1d1523f92c876608fb30bf30585b95b7a3b6210e985d0b2ff5758bc93d`.
+`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c`.
 
 | Denominator | Current source-tree result |
 |---|---:|
