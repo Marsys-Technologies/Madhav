@@ -319,11 +319,20 @@ class KaKshetraWriter(WriterBase):
         self._event_classes = self._discover_event_classes(conn, self._chart_id)
         if not self._event_classes:
             logger.info(
-                'ka_kshetra: no kala_field_routes event classes for chart %s — honest '
-                'empty plan, zero substeps. Stage 2 (Lane A) has not produced a promise '
-                'graph for this chart yet.', self._chart_id,
+                'ka_kshetra: no bodha_pratijna event classes for chart %s — honest '
+                'empty computation. The prepare-only plan will clear stale writer-owned '
+                'outputs and progress under the orchestrator savepoint.', self._chart_id,
             )
-            return []
+            steps = [SubStep(key='prepare:replace',
+                             label='replace prior Kshetra generation')]
+            if self._dry_run:
+                return steps
+            completed = self._load_completed_substeps(
+                conn, self._chart_id, self._fingerprint(),
+            )
+            if completed is None:
+                return steps
+            return [step for step in steps if step.key not in completed]
 
         # §2's pipeline order, top to bottom. Stages 0–3 lead: stage 4 consumes
         # their tables, so a plugin lane's substeps belong BEFORE stage4, not
@@ -2320,9 +2329,10 @@ class KaKshetraWriter(WriterBase):
                 )
             return classes
         except Exception as exc:
-            logger.warning('ka_kshetra: event-class discovery failed for %s: %s',
-                           chart_id, exc)
-            return []
+            logger.exception('ka_kshetra: event-class discovery failed for %s', chart_id)
+            raise RuntimeError(
+                f'ka_kshetra: event-class discovery failed for chart {chart_id}'
+            ) from exc
 
     def _delete_prior_rows(self, conn, chart_id) -> None:
         """§N.3 idempotency, ONCE, in `prepare:replace`.
