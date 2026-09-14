@@ -87,13 +87,17 @@ const insertLifecycle = `
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,now() + interval '1 hour')
 `
 
-const downSql = `
-  DROP TABLE IF EXISTS planner_inquiry_evidence_receipts;
-  DROP TABLE IF EXISTS planner_inquiry_lifecycles;
-  DROP FUNCTION IF EXISTS purge_expired_planner_inquiries_global();
-  DROP FUNCTION IF EXISTS prepare_planner_inquiry_creation(text, uuid);
-  DROP FUNCTION IF EXISTS planner_inquiry_immutable_guard();
-`
+function documentedDownSql(sql: string): string {
+  const section = sql.split('-- DOWN (manual, destructive; retain/export evidence before use):')[1]
+  const statements = section?.split('\n').flatMap((line) => {
+    const match = line.match(/^-- (DROP .+;)$/)
+    return match ? [match[1]] : []
+  }) ?? []
+  if (statements.length !== 5) throw new Error('migration 1033 documented DOWN block is incomplete')
+  return statements.join('\n')
+}
+
+const downSql = documentedDownSql(migrationSql)
 
 function lifecycleContract(): InquiryContract {
   return {
