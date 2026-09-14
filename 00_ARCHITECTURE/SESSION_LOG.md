@@ -40366,3 +40366,29 @@ session_open:
   red_team_due: false
   notes: "Wave 2 is source/local only, stacked at governed Wave 1 close 0c4a6e341. Editorial generation must be meaningful and source-linked, not a flag flip."
 ```
+
+### Scope amendment W2-A1 — deterministic inquiry-receipt baselines
+
+The completed editorial semantic estate changes the deterministic planner selection for the two
+career branch golden streams: `scu.catalog.judgment_query` now directly satisfies the relevant
+bhava obligation, so the compiled contract contains one required omission obligation rather than
+two. The semantic contract content hash therefore changes as well. The full unit gate cannot
+validate the Wave 2 behavior while retaining receipts for the superseded semantic contract.
+
+The remote Wave 2 lease expressly permits source/local changes and tests needed to deliver the
+editorial SCUs and typed graph. Following the same narrow, gate-required amendment mechanism used
+in Wave 1, only the two affected deterministic golden files are added to `may_touch`:
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json
+    - platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json
+  reason: "Wave 2 editorial semantics legitimately reduce the compiled career-branch contract from two required omission obligations to one and rotate its content-bound receipt hash."
+  authority: "MADHAV-PURNA-ANVESANA-W2-20260914 remote source/local Wave 2 lease"
+  evidence:
+    disposable_recapture: "exactly two files and one line per file changed"
+    focused_gate_after_recapture: "2 passed, 54 skipped"
+    full_unit_gate_after_recapture: "1094 files passed, 71 skipped; 11640 tests passed, 662 skipped, 2 todo"
+  claim_ceiling: "deterministic source/local baseline compatibility only; no production or empirical acceptance claim"
+```
