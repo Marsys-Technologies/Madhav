@@ -43,7 +43,10 @@ count with a constant-zero count and retires the view-based output-digest spec,
 so pre-existing/query-time rows cannot earn current producer output. Pramāṇa Mapa consumes
 only declared L1/L2 structural inputs; it no longer reads `life_events` or
 refreshes shared materialized views. Its detectors reject stale selected heads,
-absent/non-Gaṇita source provenance and nested LEL-shaped payload keys.
+absent/non-Gaṇita source provenance and nested LEL-shaped payload keys. The
+context detector follows Pramāṇa's declared upstream L2 closure and excludes its
+own previous head, because the replacement candidate is completed and selected
+only after the writer returns; envelope completion validates the candidate.
 Rollback is application-code rollback plus explicit selection of a retained
 completed generation. No delivered evidence is rewritten.
 

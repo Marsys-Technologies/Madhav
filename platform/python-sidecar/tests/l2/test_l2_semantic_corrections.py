@@ -117,6 +117,8 @@ def test_lel_detector_is_self_contained_and_serving_refresh_is_passive():
 
 def test_quality_context_detector_rejects_stale_selected_heads():
     assert "l2_data_plane_generation_is_compatible" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
+    assert "declared_upstream" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
+    assert "JOIN selected_upstream" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
 
 
 def test_quality_context_detector_database_negative_for_topology_staleness():
@@ -136,7 +138,8 @@ def test_quality_context_detector_database_negative_for_topology_staleness():
             """INSERT INTO public.asset_registry(asset_id, depends_on)
                VALUES ('ga_detector_a', ARRAY[]::text[]),
                       ('ga_detector_b', ARRAY[]::text[]),
-                      ('bo_detector_probe', ARRAY['ga_detector_a']::text[])
+                      ('bo_detector_probe', ARRAY['ga_detector_a']::text[]),
+                      ('bo_pramana_mapa', ARRAY['bo_detector_probe']::text[])
                ON CONFLICT (asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on"""
         )
         conn.execute(
@@ -177,8 +180,36 @@ def test_quality_context_detector_database_negative_for_topology_staleness():
                VALUES (%s, 'bo_detector_probe', 'l2-a')""",
             (chart_id,),
         )
+        # Runtime ordering: while a replacement scorecard is being built, the
+        # producer's own previous head may be stale. It is not an upstream
+        # dependency and must not make the candidate scorecard falsely red.
+        conn.execute(
+            """INSERT INTO public.data_plane_l2_producer_generations
+                 (chart_id, asset_id, generation_id, initial_build_id,
+                  contract_version, accepted_l0_release, accepted_l1_terminal,
+                  calculation_context_id, calculation_context_jsonb,
+                  dependency_vector_jsonb, producer_role, source_digest,
+                  expected_partitions, completed_partitions, state,
+                  semantic_output_digest, completed_at)
+               VALUES (%s, 'bo_pramana_mapa', 'l2-stale-self', 'build-old',
+                       'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0', %s, %s,
+                       'ctx-old', '{}'::jsonb, '[]'::jsonb, 'quality', %s,
+                       1, 1, 'complete', %s, clock_timestamp())""",
+            (
+                chart_id,
+                "f6fed12c794224329f6b3b436f8b1b814499d06d",
+                "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+                "d" * 64, "e" * 64,
+            ),
+        )
+        conn.execute(
+            """INSERT INTO public.l2_data_plane_generation_heads
+                 (chart_id, asset_id, current_generation_id)
+               VALUES (%s, 'bo_pramana_mapa', 'l2-stale-self')""",
+            (chart_id,),
+        )
         assert bo_pramana_mapa._count_one(
-            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id, chart_id],
+            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id],
         ) == 0
 
         conn.execute(
@@ -187,7 +218,7 @@ def test_quality_context_detector_database_negative_for_topology_staleness():
                WHERE asset_id='bo_detector_probe'"""
         )
         assert bo_pramana_mapa._count_one(
-            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id, chart_id],
+            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id],
         ) == 1
         conn.rollback()
 

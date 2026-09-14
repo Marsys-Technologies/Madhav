@@ -63,7 +63,7 @@ not retained data-plane history.
 | 19 | `bo_drishti` / `bo_drishti.py` | `bodha_question_lenses(chart,aya,question_type)` (942) | signals and edges | inquiry obligation/navigation | P/I/E/Q; no pre-answer |
 | 20 | `bo_chart_gestalt` / `bo_chart_gestalt.py` | `bodha_chart_gestalt(chart,aya)` (985) | signals, CDLM, nodes, paths, discoveries | whole-chart pointer | P/I/Q; summary cannot adjudicate |
 | 21 | `bo_samvada` / `bo_samvada.py` | passive compatibility participant; legacy `vw_chart_digest` preserved, no producer-owned durable table | explicit generation-owned zero-row receipt; no serving-view count/digest credit | legacy navigation compatibility | P/Q/H; `target_floor=0`, constant-zero count, legacy digest retired |
-| 22 | `bo_pramana_mapa` / `bo_pramana_mapa.py` | `synthesis_quality_scorecard(chart)` (949) | exact declared L1/L2 structural inputs and reachable integrity checks; no private events | scoped quality detector | P/I/E/Q; stale topology/head and nested/null provenance fail closed |
+| 22 | `bo_pramana_mapa` / `bo_pramana_mapa.py` | `synthesis_quality_scorecard(chart)` (949) | exact declared L1/L2 structural inputs and reachable integrity checks; no private events | scoped quality detector | P/I/E/Q; declared upstream stale heads and nested/null provenance fail closed; prior self-head excluded during replacement |
 | 23 | `bo_grounding` / `bo_grounding.py` | `bodha_grounding_matches(chart,aya,target_kind,target_id)` (947) | yoga firings, signals, exact Sūtrāvalī rules | source/rule matcher | P/I/E/Q; support identity outside historical 22 |
 
 All 23 identities occur in `platform/src/generated/nirmana-writer-digests.json`.

@@ -29,6 +29,7 @@ authority: DP-SD-015
 | First independent read-only challenge of `066fce7a5` | FAIL: 9 HIGH families plus test/documentation gaps; no CRITICAL |
 | Second independent read-only challenge of `b7a49f742` | FAIL: 8 HIGH and 2 MED findings; no CRITICAL |
 | Third independent read-only challenge of `f828864a7` | FAIL: 6 HIGH and 2 MED findings; no CRITICAL |
+| Fourth independent read-only challenge of `173f9aab5` | FAIL: 1 HIGH finding; no CRITICAL/MED/LOW |
 | Independent read-only re-challenge | PENDING exact correction commit |
 
 The first exact-commit challenge found under-constrained upstream context,
@@ -51,7 +52,12 @@ provenance as clean; and Samskara evaluated compatibility per snapshot row. The
 current candidate closes those eight findings with an explicit passive receipt,
 mutation-free dry runs, parent-row serialization, exact live topology
 comparison, fail-closed quality SQL and one materialized compatible Samskara
-head. No product, L0/L1/L3+, retrieval, campaign, workflow, protected pin, credential or
+head. The fourth challenge found that the strengthened Pramāṇa detector also
+judged its own legitimately stale predecessor before the candidate generation
+could be completed and selected. The current candidate scopes that detector to
+Pramāṇa's declared upstream L2 closure; a database negative proves a stale self
+head is ignored during rebuild while a stale declared upstream head remains a
+violation. No product, L0/L1/L3+, retrieval, campaign, workflow, protected pin, credential or
 secret surface changed.
 
 ## Review gate

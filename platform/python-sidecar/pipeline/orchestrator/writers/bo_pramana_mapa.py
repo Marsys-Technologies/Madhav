@@ -542,11 +542,26 @@ SELECT count(*) FROM bodha_discoveries
 """
 
 _CONTEXT_GENERATION_SQL = """
+WITH RECURSIVE declared_upstream(asset_id) AS (
+  SELECT unnest(COALESCE(depends_on, ARRAY[]::text[]))
+  FROM public.asset_registry WHERE asset_id = 'bo_pramana_mapa'
+  UNION
+  SELECT unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+  FROM public.asset_registry r
+  JOIN declared_upstream d ON d.asset_id = r.asset_id
+), selected_upstream AS (
+  SELECT h.chart_id, h.asset_id, h.current_generation_id
+  FROM public.l2_data_plane_generation_heads h
+  JOIN declared_upstream d ON d.asset_id = h.asset_id
+  WHERE h.chart_id = %s AND h.asset_id LIKE 'bo_%%'
+)
 SELECT count(*) FROM (
   SELECT s.snapshot_id::text AS violation
-  FROM l2_data_plane_row_snapshots s
-  WHERE s.chart_id = %s
-    AND (
+  FROM public.l2_data_plane_row_snapshots s
+  JOIN selected_upstream h
+    ON h.chart_id = s.chart_id AND h.asset_id = s.asset_id
+   AND h.current_generation_id = s.generation_id
+  WHERE (
       s.calculation_context_jsonb->>'chart_id' IS DISTINCT FROM s.chart_id::text
       OR s.calculation_context_jsonb->>'calculation_context_id'
          IS DISTINCT FROM s.calculation_context_id
@@ -557,12 +572,11 @@ SELECT count(*) FROM (
     )
   UNION ALL
   SELECT h.asset_id
-  FROM l2_data_plane_generation_heads h
-  JOIN data_plane_l2_producer_generations g
+  FROM selected_upstream h
+  JOIN public.data_plane_l2_producer_generations g
     ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
    AND g.generation_id = h.current_generation_id
-  WHERE h.chart_id = %s
-    AND (
+  WHERE (
       g.state <> 'complete'
       OR g.semantic_output_digest IS NULL
       OR NOT public.l2_data_plane_generation_is_compatible(
@@ -616,12 +630,12 @@ def detect_l2_contract_integrity(conn: Any, chart_id: str) -> dict[str, dict]:
             conn, chart_id, _DISCOVERY_GROUNDING_SQL, "discovery_grounding"
         ),
     }
-    for name, sql in (
-        ("context_generation", _CONTEXT_GENERATION_SQL),
-        ("signed_relation_and_cancellation", _SIGNED_RELATION_SQL),
+    for name, sql, params in (
+        ("context_generation", _CONTEXT_GENERATION_SQL, [chart_id]),
+        ("signed_relation_and_cancellation", _SIGNED_RELATION_SQL, [chart_id, chart_id]),
     ):
         try:
-            count = _count_one(conn, sql, [chart_id, chart_id])
+            count = _count_one(conn, sql, params)
             results[name] = {
                 "pass": count == 0, "violation_count": count, "error": None,
             }
