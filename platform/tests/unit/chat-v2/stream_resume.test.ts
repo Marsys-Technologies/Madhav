@@ -9,6 +9,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 
 // ─── pending_streams_writer shape tests ──────────────────────────────────────
 
@@ -123,8 +125,8 @@ describe('stream resume endpoint contract', () => {
 describe('sessionStorage key stability', () => {
   it('pendingStreamKey is deterministic per chartId', () => {
     // The key is `v2_pending_${chartId}` — verified via the ConsumeChatV2 source.
-    const src = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/components/consume/ConsumeChatV2.tsx'),
+    const src = readFileSync(
+      path.join(process.cwd(), 'src/components/consume/ConsumeChatV2.tsx'),
       'utf8',
     )
     expect(src).toContain('v2_pending_${chartId}')
@@ -137,8 +139,8 @@ describe('sessionStorage key stability', () => {
 describe('chaos: clean disconnect (stream completes normally)', () => {
   it.skip('[CI-AUDIT-2026-05-30 unimplemented in route.ts] writer.clear() is called in onFinish after persistence', () => {
     // Verified via route.ts source inspection.
-    const src = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/app/api/chat/consult/route.ts'),
+    const src = readFileSync(
+      path.join(process.cwd(), 'src/app/api/chat/consult/route.ts'),
       'utf8',
     )
     expect(src).toContain('pendingStreamWriter.clear()')
@@ -179,8 +181,8 @@ describe('chaos: network partition (disconnect before first chunk)', () => {
 
   it('resume endpoint returns 204 for empty suffix', async () => {
     // The resume route returns 204 when suffix is empty — verified via source.
-    const src = require('fs').readFileSync(
-      require('path').join(process.cwd(), 'src/app/api/chat/consult/resume/route.ts'),
+    const src = readFileSync(
+      path.join(process.cwd(), 'src/app/api/chat/consult/resume/route.ts'),
       'utf8',
     )
     expect(src).toContain("status: 204")
