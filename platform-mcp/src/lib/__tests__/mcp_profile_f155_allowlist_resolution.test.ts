@@ -34,6 +34,10 @@ import type { Principal } from '../../types.js'
 import { applyDeprecatedToolGate } from '../deprecated_tool_gate.js'
 import { applyProfileGate, type ToolRegisteringServer } from '../mcp_profile.js'
 import { MCP_SURFACE_PROFILES } from '../../generated/mcp_surface_profiles.generated.js'
+import {
+  PRE_PROFILE_GATE_BOOTSTRAP_TOOLS,
+  REVIEWED_FULL_PROFILE_TOOL_NAMES,
+} from '../mcp_full_route_authority.js'
 
 import { registerL0BrahmagyanTools } from '../../tools/l0_brahmagyan.js'
 import { registerEphemerisTools } from '../../tools/l0_ephemeris.js'
@@ -175,7 +179,7 @@ describe('F-155 — MCP profile allowlists resolve against the real registration
     },
   )
 
-  it('the "full" profile allowlist also resolves (the profile gate is a no-op for full, but the generated manifest should still be honest)', () => {
+  it('the generated full registry projection resolves within the reviewed served authority', () => {
     const { server, names } = makeCapturingServer()
     registerFullServerSurface(server, 'full')
     const allowlist = MCP_SURFACE_PROFILES.full.tool_names
@@ -184,9 +188,23 @@ describe('F-155 — MCP profile allowlists resolve against the real registration
     expect(unresolved).toEqual([])
   })
 
+  it('the real full served surface exactly equals the reviewed authority', () => {
+    const { server, names } = makeCapturingServer()
+    registerFullServerSurface(server, 'full')
+    expect([...names].sort()).toEqual([...REVIEWED_FULL_PROFILE_TOOL_NAMES])
+  })
+
+  it('an unreviewed full-profile registration fails closed', () => {
+    const { server, names } = makeCapturingServer()
+    applyProfileGate(server as unknown as ToolRegisteringServer, 'full')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    server.tool('unreviewed_future_tool', (() => undefined) as any)
+    expect(names.has('unreviewed_future_tool')).toBe(false)
+  })
+
   // ── Companion assertion: the 3 pre-gate-bypass tools' exemption, declared explicitly ──
 
-  const PRE_GATE_BYPASS_TOOLS = ['prashna_ask', 'prashna_status', 'mcp_server_info'] as const
+  const PRE_GATE_BYPASS_TOOLS = PRE_PROFILE_GATE_BOOTSTRAP_TOOLS
 
   it('the 3 documented pre-gate-bypass tools (prashna_ask, prashna_status, mcp_server_info) are absent from the generated manifest under every profile — they are not part of the retrieval-registry catalog it is built from', () => {
     for (const profile of ['full', 'compact', 'consult'] as const) {

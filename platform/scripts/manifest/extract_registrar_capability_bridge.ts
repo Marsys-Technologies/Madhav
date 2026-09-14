@@ -205,19 +205,23 @@ function scanAliasHelperPairs(text: string): { name: string; uri: string }[] {
       while (i < text.length && /\s/.test(text[i]!)) i++
       if (!"'\"`".includes(text[i] ?? '')) continue
       const { content: name, end } = scanStringLiteral(text, i)
-      // Walk the next up-to-two string literals: description, then URI.
+      // The description may be a concatenation of many string literals. Scan the
+      // complete helper call for the first literal capability URI instead of assuming
+      // the URI is the second following literal (the old bound missed yoga firings).
       let p = end
-      const literals: string[] = []
-      for (let n = 0; n < 2 && p < text.length; n++) {
+      let uri: string | null = null
+      const callScanEnd = Math.min(text.length, end + 12_000)
+      while (p < callScanEnd) {
         while (p < text.length && !"'\"`".includes(text[p]!) && text[p] !== ')') p++
         if (text[p] === ')') break
         const lit = scanStringLiteral(text, p)
-        literals.push(lit.content)
+        if (lit.content.startsWith('marsys://')) {
+          uri = lit.content
+          break
+        }
         p = lit.end
       }
-      if (literals.length >= 2 && literals[1]!.startsWith('marsys://')) {
-        out.push({ name, uri: literals[1]! })
-      }
+      if (uri) out.push({ name, uri })
     }
   }
   return out

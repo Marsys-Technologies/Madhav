@@ -24,7 +24,7 @@
  * gate only removes the names from THIS MCP server's `tools/list`.
  *
  * Applied UNCONDITIONALLY (all profiles, including `full`) — unlike the profile gate
- * (`mcp_profile.ts::applyProfileGate`), which is a no-op for `full`. Call ONCE, right
+ * (`mcp_profile.ts::applyProfileGate`), which now also gates `full`. Call ONCE, right
  * after constructing the per-request McpServer, before any `register*Tools()` runs.
  */
 

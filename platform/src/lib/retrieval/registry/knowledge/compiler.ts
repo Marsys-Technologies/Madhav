@@ -120,10 +120,14 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
     })),
     provenance_requirements: cap.data_source === 'computed'
       ? ['chart_id_when_chart_scoped', 'computed_at', 'engine_version']
-      : ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+      : cap.data_source === 'hybrid'
+        ? ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version', 'computed_at', 'engine_version']
+        : ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
     freshness_policy: cap.data_source === 'computed'
       ? 'Must carry computation time and engine version.'
-      : 'Must resolve against the active compatible chart build.',
+      : cap.data_source === 'hybrid'
+        ? 'Must resolve stored evidence against the active compatible chart build and carry computation time plus engine version for computed evidence.'
+        : 'Must resolve against the active compatible chart build.',
     entitlement: 'native',
     safety_notes: cap.mutation
       ? ['Mutation-capable: execution requires explicit authorization and audit receipt.']

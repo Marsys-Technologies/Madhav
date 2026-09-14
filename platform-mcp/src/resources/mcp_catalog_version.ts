@@ -128,8 +128,8 @@ export interface ServedToolCensus {
  *
  * PER-PROFILE BY DESIGN: a `consult`-profile OAuth caller sees a smaller catalog than a
  * first-party Bearer caller, and this returns each caller's OWN number — the honest answer to
- * "how many tools can I call". A first-party Bearer key resolves to `full`, for which
- * `applyProfileGate` is an explicit no-op, so it yields the unfiltered served surface.
+ * "how many tools can I call". A first-party Bearer key resolves to the reviewed, explicitly
+ * gated `full` route authority.
  *
  * B.10 — NEVER FABRICATED: if the registry cannot be read (an SDK internal rename), this
  * returns `count: null` with a note saying so. It does not fall back to the manifest figure;

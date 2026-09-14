@@ -48,6 +48,19 @@ describe('planner capability knowledge', () => {
     expect(transit?.bindings[0]?.input_contract).not.toHaveProperty('properties')
   })
 
+  it('requires both stored and computed provenance for hybrid capabilities', () => {
+    const pact = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.pact_query')
+    expect(pact?.provenance_requirements).toEqual([
+      'chart_id_when_chart_scoped',
+      'build_id',
+      'formula_or_writer_version',
+      'computed_at',
+      'engine_version',
+    ])
+    expect(pact?.freshness_policy).toContain('stored evidence')
+    expect(pact?.freshness_policy).toContain('computed evidence')
+  })
+
   it('provides staged discovery, graph inspection, and bounded depth', () => {
     expect(searchSemanticCapabilities(snapshot, 'finance prosperity mechanisms', 5)[0]?.scu_id).toBe('scu.finance.prosperity_assessment')
     const graph = inspectSemanticCapability(snapshot, 'scu.finance.prosperity_assessment', 2)

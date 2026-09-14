@@ -24,15 +24,17 @@ describe('capability estate census', () => {
       excluded: 3,
     })
     expect(census.denominators.public_registrar_resolution).toMatchObject({
-      verified: 50,
-      resolved_including_ambiguous: 62,
-      unresolved: 123,
-      ambiguous: 3,
-      name_only_unverified: 9,
+      verified: 71,
+      resolved_including_ambiguous: 71,
+      unresolved: 0,
+      not_exposed: 114,
+      ambiguous: 0,
+      name_only_unverified: 0,
     })
     expect(
       census.denominators.public_registrar_resolution.verified
       + census.denominators.public_registrar_resolution.unresolved
+      + census.denominators.public_registrar_resolution.not_exposed
       + census.denominators.public_registrar_resolution.ambiguous
       + census.denominators.public_registrar_resolution.name_only_unverified,
     ).toBe(census.denominators.public_registrar_resolution.descriptor_denominator)
@@ -125,11 +127,25 @@ describe('capability estate census', () => {
       non_exhaustible_paginated: 95,
       exhaustible_paginated: 1,
       descriptor_content_untyped: 181,
-      full_profile_allowlist_enforced: false,
+      full_profile_allowlist_enforced: true,
     })
     expect(Object.values(census.denominators.descriptor_route_contracts.by_public_route_disposition)
       .reduce((sum, value) => sum + value, 0)).toBe(185)
     expect(census.details.descriptor_route_contracts.every((contract) => contract.internal_route_evidence.length > 0)).toBe(true)
+    expect(census.details.descriptor_route_contracts.every((contract) => contract.full_profile_enforcement === 'enforced')).toBe(true)
+    expect(census.details.descriptor_route_contracts.every((contract) => contract.public_route_evidence.length > 0)).toBe(true)
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'get_yoga_firings'))
+      .toMatchObject({
+        public_route_disposition: 'reviewed_exposed',
+        public_tool_names: ['ganita_yoga_firings_get'],
+      })
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'list_entities')?.public_routes)
+      .toEqual(expect.arrayContaining([
+        { tool_name: 'list_entities', route_kind: 'parallel_same_name' },
+        { tool_name: 'ref_entities_list', route_kind: 'exact_uri_binding' },
+      ]))
+    expect(census.details.descriptor_route_contracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed'))
+      .toHaveLength(114)
   })
 
   it('is deterministic and binds its SHA-256 to canonical content and source hashes', async () => {

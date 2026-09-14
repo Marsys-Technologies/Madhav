@@ -27,7 +27,6 @@ import { pathToFileURL } from 'node:url'
 import { getCatalog } from '../src/lib/retrieval/registry/catalog'
 import type { CapabilityDescriptor } from '../src/lib/retrieval/registry/types'
 import {
-  buildCapabilityPublicNameBridge,
   extractRegistrarCapabilityBindings,
 } from './manifest/extract_registrar_capability_bridge'
 import { resolveType } from './manifest/projection_builders'
@@ -87,10 +86,11 @@ interface DescriptorRouteContract {
   planner_reason: string | null
   internal_route: 'handler' | 'loader'
   internal_route_evidence: string[]
-  public_route_disposition: 'exact_uri_binding' | 'exact_alias_set_review_required' | 'name_only_parallel_unverified' | 'not_source_proven'
+  public_route_disposition: 'reviewed_exposed' | 'reviewed_not_exposed'
   public_tool_names: string[]
+  public_routes: Array<{ tool_name: string; route_kind: 'exact_uri_binding' | 'parallel_same_name' }>
   public_route_evidence: string[]
-  full_profile_enforcement: 'not_enforced'
+  full_profile_enforcement: 'enforced'
   input_contract: JsonValue
   output_contract: JsonValue
   output_contract_state: 'declared' | 'descriptor_content_untyped'
@@ -135,6 +135,7 @@ export interface CapabilityEstateCensus {
       verified: number
       resolved_including_ambiguous: number
       unresolved: number
+      not_exposed: number
       ambiguous: number
       name_only_unverified: number
       literal_public_names: number
@@ -173,7 +174,7 @@ export interface CapabilityEstateCensus {
       non_exhaustible_paginated: number
       exhaustible_paginated: number
       descriptor_content_untyped: number
-      full_profile_allowlist_enforced: false
+      full_profile_allowlist_enforced: true
     }
   }
   details: {
@@ -239,6 +240,42 @@ export function canonicalJson(value: unknown): string {
 
 function sha256(value: string | Buffer): string {
   return createHash('sha256').update(value).digest('hex')
+}
+
+function producerContractIsExplained(repoRoot: string, contract: ProducerOutputContract): boolean {
+  const hasRefs = contract.implementation_refs.length > 0
+    && contract.tests.length > 0
+    && contract.implementation_refs.every((ref) =>
+      ref.startsWith('relation:') || ref.startsWith('asset_registry_count_sql:') || existsSync(join(repoRoot, ref)))
+    && contract.tests.every((ref) => existsSync(join(repoRoot, ref)))
+  if (!hasRefs || Object.keys(contract.contract_ref).length === 0) return false
+
+  const ref = contract.contract_ref
+  switch (contract.disposition) {
+    case 'relational_digest_current_source_intent':
+      return typeof ref.spec_sha256 === 'string'
+        && /^[a-f0-9]{64}$/.test(ref.spec_sha256)
+        && typeof ref.migration_path === 'string'
+        && existsSync(join(repoRoot, ref.migration_path))
+    case 'relational_contract_blocked':
+      return typeof ref.blocker === 'string' && ref.blocker.length > 0 && contract.known_gaps.includes(ref.blocker)
+    case 'excluded_nondeterministic':
+      return typeof ref.retirement_migration === 'string'
+        && existsSync(join(repoRoot, ref.retirement_migration))
+        && typeof ref.negative_invariant === 'string'
+    case 'service_probe':
+    case 'service_effect_contract':
+      return typeof ref.path === 'string'
+        && existsSync(join(repoRoot, ref.path))
+        && typeof ref.contract_sha256 === 'string'
+        && /^[a-f0-9]{64}$/.test(ref.contract_sha256)
+    case 'user_authored_source_contract':
+      return typeof ref.relation === 'string'
+        && typeof ref.scope_key === 'string'
+        && typeof ref.contract === 'string'
+    default:
+      return false
+  }
 }
 
 function hashFile(path: string): string {
@@ -482,6 +519,13 @@ function paginationForDescriptor(cap: CapabilityDescriptor): string {
   return 'bounded_without_position'
 }
 
+function readReviewedFullProfileToolNames(authorityPath: string): Set<string> {
+  const source = readFileSync(authorityPath, 'utf8')
+  const block = source.match(/REVIEWED_FULL_PROFILE_TOOL_NAMES\s*=\s*\[([\s\S]*?)\]\s*as const/)
+  if (!block) throw new Error(`unable to parse reviewed full-profile authority: ${authorityPath}`)
+  return new Set([...block[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((match) => match[1]!))
+}
+
 function gitValue(repoRoot: string, args: string[]): string {
   return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
 }
@@ -516,7 +560,6 @@ export async function buildCapabilityEstateCensus(options: {
 } = {}): Promise<CapabilityEstateCensus> {
   const repoRoot = resolve(options.repoRoot ?? DEFAULT_REPO_ROOT)
   const catalog = getCatalog()
-  const descriptorByName = new Map(catalog.map((cap) => [cap.name, cap]))
 
   const plannerExcluded = catalog
     .filter((cap) => cap.calibration_context_only === true || !isCallable(cap))
@@ -529,25 +572,6 @@ export async function buildCapabilityEstateCensus(options: {
     .sort((a, b) => a.capability_uri.localeCompare(b.capability_uri))
 
   const extractedRegistrar = extractRegistrarCapabilityBindings()
-  const publicBridge = buildCapabilityPublicNameBridge(catalog)
-  const publicResolved = [...publicBridge.resolved.entries()].map(([descriptorName, publicToolName]) => ({
-    descriptor_name: descriptorName,
-    capability_uri: descriptorByName.get(descriptorName)?.uri ?? '',
-    public_tool_name: publicToolName,
-  })).sort((a, b) => a.descriptor_name.localeCompare(b.descriptor_name))
-  const publicAmbiguous = [...publicBridge.ambiguous.entries()].map(([descriptorName, candidates]) => ({
-    descriptor_name: descriptorName,
-    selected_public_tool_name: publicBridge.resolved.get(descriptorName) ?? '',
-    candidates: [...candidates].sort(),
-  })).sort((a, b) => a.descriptor_name.localeCompare(b.descriptor_name))
-  const ambiguousDescriptorNames = new Set(publicAmbiguous.map((entry) => entry.descriptor_name))
-  const exactBindingPairs = new Set(extractedRegistrar.bindings.map((binding) => `${binding.capability_uri}\u0000${binding.tool_name}`))
-  const publicNameOnly = publicResolved.filter((entry) =>
-    !ambiguousDescriptorNames.has(entry.descriptor_name)
-    && !exactBindingPairs.has(`${entry.capability_uri}\u0000${entry.public_tool_name}`))
-  const publicNameOnlyNames = new Set(publicNameOnly.map((entry) => entry.descriptor_name))
-  const publicVerified = publicResolved.filter((entry) =>
-    !ambiguousDescriptorNames.has(entry.descriptor_name) && !publicNameOnlyNames.has(entry.descriptor_name))
 
   const assets = await loadAssetSeedWithoutRunningWriter()
   const assetIds = sortedUnique(assets.map((asset) => asset.asset_id))
@@ -593,6 +617,8 @@ export async function buildCapabilityEstateCensus(options: {
   const generatorPath = join(repoRoot, 'platform', 'scripts', 'generate_capability_estate_census.ts')
   const serviceProbePath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_probe_contracts.json')
   const serviceEffectPath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_service_effect_contracts.json')
+  const fullRouteAuthorityPath = join(repoRoot, 'platform-mcp', 'src', 'lib', 'mcp_full_route_authority.ts')
+  const reviewedFullToolNames = readReviewedFullProfileToolNames(fullRouteAuthorityPath)
   const serviceProbes = JSON.parse(readFileSync(serviceProbePath, 'utf8')) as Record<string, JsonValue>
   const serviceEffectsDocument = JSON.parse(readFileSync(serviceEffectPath, 'utf8')) as {
     schema_version: string
@@ -618,7 +644,12 @@ export async function buildCapabilityEstateCensus(options: {
             negative_invariant: 'no current asset_output_digest_specs row',
           },
           implementation_refs: ['platform/python-sidecar/pipeline/orchestrator/writers/ph_nimitta.py'],
-          tests: ['platform/python-sidecar/tests/test_ph_nimitta.py'],
+          tests: [
+            'platform/python-sidecar/tests/test_ph_nimitta_base_rate.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_honest_defaults.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_spine.py',
+            'platform/python-sidecar/tests/test_ph_nimitta_writer_date_coercion.py',
+          ],
           known_gaps: [
             'posterior metadata collapses an unordered multi-row domain',
             'discovery selection uses a non-total top-100 ordering',
@@ -640,7 +671,10 @@ export async function buildCapabilityEstateCensus(options: {
             'platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts',
             'platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts',
           ],
-          tests: [],
+          tests: [
+            'platform/src/lib/retrieval/registry/layers/L5_mimamsa/__tests__/lel_intake_checklist.test.ts',
+            'platform/src/app/api/mcp/writes/__tests__/lel_event_record.test.ts',
+          ],
           known_gaps: ['deployed_current_state_not_read'],
         }
       }
@@ -653,7 +687,7 @@ export async function buildCapabilityEstateCensus(options: {
             disposition: 'service_probe',
             contract_ref: {
               path: relative(repoRoot, serviceProbePath),
-              contract_sha256: sha256(canonicalJson(probe)),
+              contract_sha256: sha256(canonicalJson({ health_probe: probe })),
               probe_type: typeof probe === 'object' && probe && !Array.isArray(probe)
                 ? (probe as Record<string, JsonValue>)['probe_type'] ?? null
                 : null,
@@ -699,8 +733,12 @@ export async function buildCapabilityEstateCensus(options: {
             migration_path: currentSpec.migration_path,
             source_state: 'ordered_static_replay_not_database_replay',
           },
-          implementation_refs: asset.target_table ? [`relation:${asset.target_table}`] : [],
-          tests: ['platform/python-sidecar/tests/test_output_digest.py'],
+          implementation_refs: asset.target_table
+            ? [`relation:${asset.target_table}`]
+            : asset.count_sql
+              ? [`asset_registry_count_sql:${asset.asset_id}`]
+              : [],
+          tests: ['platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py'],
           known_gaps: ['disposable_schema_and_key_validation_not_yet_run', 'deployed_current_state_not_read'],
         }
       }
@@ -715,7 +753,11 @@ export async function buildCapabilityEstateCensus(options: {
         producer_kind: 'relational',
         disposition: 'relational_contract_blocked',
         contract_ref: { blocker },
-        implementation_refs: asset.target_table ? [`relation:${asset.target_table}`] : [],
+        implementation_refs: asset.target_table
+          ? [`relation:${asset.target_table}`]
+          : asset.count_sql
+            ? [`asset_registry_count_sql:${asset.asset_id}`]
+            : [],
         tests: ['platform/scripts/__tests__/generate_capability_estate_census.test.ts'],
         known_gaps: [blocker, 'deployed_current_state_not_read'],
       }
@@ -730,9 +772,15 @@ export async function buildCapabilityEstateCensus(options: {
   }
   const descriptorRouteContracts: DescriptorRouteContract[] = catalog.map((cap): DescriptorRouteContract => {
     const exactBindings = (exactBindingsByUri.get(cap.uri) ?? [])
+      .filter((binding) => reviewedFullToolNames.has(binding.tool_name))
       .sort((a, b) => a.tool_name.localeCompare(b.tool_name) || a.source_file.localeCompare(b.source_file))
     const exactNames = sortedUnique(exactBindings.map((binding) => binding.tool_name))
-    const nameOnly = exactNames.length === 0 && extractedRegistrar.liveDirectNames.has(cap.name)
+    const parallelSameName = reviewedFullToolNames.has(cap.name) && !exactNames.includes(cap.name)
+    const publicRoutes: DescriptorRouteContract['public_routes'] = [
+      ...exactNames.map((tool_name) => ({ tool_name, route_kind: 'exact_uri_binding' as const })),
+      ...(parallelSameName ? [{ tool_name: cap.name, route_kind: 'parallel_same_name' as const }] : []),
+    ]
+    const publicToolNames = sortedUnique(publicRoutes.map((route) => route.tool_name))
     const exclusion = plannerExcluded.find((entry) => entry.capability_uri === cap.uri)
     const loader = (cap as CapabilityDescriptor & { loader?: unknown }).loader
     const paginationVerified = cap.semantic_capabilities?.some((declaration) => declaration.primary_binding_details?.pagination_verified === true) ?? false
@@ -745,16 +793,16 @@ export async function buildCapabilityEstateCensus(options: {
       planner_reason: exclusion?.reason ?? null,
       internal_route: typeof cap.handler === 'function' ? 'handler' : typeof loader === 'function' ? 'loader' : (() => { throw new Error(`${cap.uri} has no internal handler or loader`) })(),
       internal_route_evidence: descriptorSourceEvidence(repoRoot, descriptorSourceFiles, cap.uri, cap.name),
-      public_route_disposition: exactNames.length === 1
-        ? 'exact_uri_binding'
-        : exactNames.length > 1
-          ? 'exact_alias_set_review_required'
-          : nameOnly
-            ? 'name_only_parallel_unverified'
-            : 'not_source_proven',
-      public_tool_names: exactNames.length > 0 ? exactNames : nameOnly ? [cap.name] : [],
-      public_route_evidence: exactBindings.map((binding) => `${binding.source_file}:${binding.tool_name}`),
-      full_profile_enforcement: 'not_enforced',
+      public_route_disposition: publicRoutes.length > 0 ? 'reviewed_exposed' : 'reviewed_not_exposed',
+      public_tool_names: publicToolNames,
+      public_routes: publicRoutes,
+      public_route_evidence: publicRoutes.length > 0
+        ? sortedUnique([
+          ...exactBindings.map((binding) => `${binding.source_file}:${binding.tool_name}`),
+          `${relative(repoRoot, fullRouteAuthorityPath)}:reviewed_allowlist`,
+        ])
+        : [`${relative(repoRoot, fullRouteAuthorityPath)}:reviewed_not_exposed`],
+      full_profile_enforcement: 'enforced',
       input_contract: normalizeForCanonicalJson(cap.input_schema ?? null),
       output_contract: normalizeForCanonicalJson(cap.output_schema ?? null),
       output_contract_state: cap.output_schema === undefined ? 'descriptor_content_untyped' : 'declared',
@@ -779,6 +827,7 @@ export async function buildCapabilityEstateCensus(options: {
     { id: 'analysis_layer_pins', path: relative(repoRoot, pinsPath), sha256: hashFile(pinsPath) },
     { id: 'service_probe_contracts', path: relative(repoRoot, serviceProbePath), sha256: hashFile(serviceProbePath) },
     { id: 'service_effect_contracts', path: relative(repoRoot, serviceEffectPath), sha256: hashFile(serviceEffectPath) },
+    { id: 'reviewed_full_profile_route_authority', path: relative(repoRoot, fullRouteAuthorityPath), sha256: hashFile(fullRouteAuthorityPath) },
     { id: 'canonical_public_faces', path: relative(repoRoot, canonicalFacesPath), sha256: hashFile(canonicalFacesPath) },
     { id: 'census_generator', path: relative(repoRoot, generatorPath), sha256: hashFile(generatorPath) },
     { id: 'registrar_bridge_extractor', path: relative(repoRoot, bridgeExtractorPath), sha256: hashFile(bridgeExtractorPath) },
@@ -801,6 +850,7 @@ export async function buildCapabilityEstateCensus(options: {
     bridgeExtractorPath,
     serviceProbePath,
     serviceEffectPath,
+    fullRouteAuthorityPath,
     ...descriptorSourceFiles,
     ...registrarFiles,
     ...digestMigrationFiles,
@@ -814,10 +864,10 @@ export async function buildCapabilityEstateCensus(options: {
     source_revision: sourceCommitMetadata.revision,
     caveats: [
       'This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.',
-      'Public registrar resolution is a source-text audit using the existing extractor. Its documented parser limitations can produce false unresolved results; verified means mechanically evidenced, unresolved does not necessarily mean absent at runtime.',
+      'Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.',
       'Current source-intended output-digest rows replay only the append/retire state machine across lexically ordered migration source. This is not a schema migration execution and is not deployed database proof.',
       'A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.',
-      'The full MCP profile is currently ungated. Public registrar evidence in this census describes source-proven mappings, not an enforced full-profile allowlist.',
+      'The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently.',
     ],
     denominators: {
       runtime_descriptors: {
@@ -839,14 +889,16 @@ export async function buildCapabilityEstateCensus(options: {
       },
       public_registrar_resolution: {
         descriptor_denominator: catalog.length,
-        verified: publicVerified.length,
-        resolved_including_ambiguous: publicResolved.length,
-        unresolved: publicBridge.unresolved.length,
-        ambiguous: publicAmbiguous.length,
-        name_only_unverified: publicNameOnly.length,
-        literal_public_names: extractedRegistrar.liveDirectNames.size,
-        unambiguous_uri_bindings: extractedRegistrar.bindings.length,
-        method: 'existing extract_registrar_capability_bridge.ts source-text scanner over non-test platform-mcp/src/tools TypeScript files',
+        verified: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+        resolved_including_ambiguous: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+        unresolved: 0,
+        not_exposed: descriptorRouteContracts.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed').length,
+        ambiguous: 0,
+        name_only_unverified: 0,
+        literal_public_names: reviewedFullToolNames.size,
+        unambiguous_uri_bindings: descriptorRouteContracts.flatMap((contract) => contract.public_routes)
+          .filter((route) => route.route_kind === 'exact_uri_binding').length,
+        method: 'authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions',
       },
       producer_assets: {
         total: assets.length,
@@ -872,7 +924,7 @@ export async function buildCapabilityEstateCensus(options: {
       producer_output_contracts: {
         denominator: producerOutputContracts.length,
         by_disposition: countBy(producerOutputContracts.map((contract) => contract.disposition)),
-        unexplained: producerOutputContracts.filter((contract) => contract.known_gaps.length === 0 && Object.keys(contract.contract_ref).length === 0).length,
+        unexplained: producerOutputContracts.filter((contract) => !producerContractIsExplained(repoRoot, contract)).length,
       },
       descriptor_route_contracts: {
         denominator: descriptorRouteContracts.length,
@@ -880,19 +932,25 @@ export async function buildCapabilityEstateCensus(options: {
         non_exhaustible_paginated: descriptorRouteContracts.filter((contract) => contract.pagination['disposition'] === 'non_exhaustible').length,
         exhaustible_paginated: descriptorRouteContracts.filter((contract) => contract.pagination['disposition'] === 'exhaustible_reviewed').length,
         descriptor_content_untyped: descriptorRouteContracts.filter((contract) => contract.output_contract_state === 'descriptor_content_untyped').length,
-        full_profile_allowlist_enforced: false as const,
+        full_profile_allowlist_enforced: true as const,
       },
     },
     details: {
       planner_addressability: { excluded: plannerExcluded },
       public_registrar_resolution: {
-        verified: publicVerified,
-        unresolved_descriptor_names: [...publicBridge.unresolved].sort(),
-        name_only_unverified: publicNameOnly,
-        ambiguous: publicAmbiguous,
+        verified: descriptorRouteContracts
+          .filter((contract) => contract.public_route_disposition === 'reviewed_exposed')
+          .map((contract) => ({
+            descriptor_name: contract.descriptor_name,
+            capability_uri: contract.capability_uri,
+            public_tool_name: contract.public_tool_names[0]!,
+          })),
+        unresolved_descriptor_names: [],
+        name_only_unverified: [],
+        ambiguous: [],
         known_extractor_limitations: [
-          'regAlias/globalAlias parsing examines a bounded sequence of string literals, so concatenated descriptions can hide an otherwise real URI binding.',
           'Dynamic or table-driven registrations without a unique literal capability URI cannot be attributed 1:1 by source-text inspection.',
+          'A reviewed public same-name route without unique URI source evidence is recorded as parallel_same_name, not promoted to exact_uri_binding.',
         ],
       },
       producer_assets: {

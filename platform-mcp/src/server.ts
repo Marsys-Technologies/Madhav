@@ -420,7 +420,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
   // P1 short names from the MCP surface so ONLY the canonical `layer_noun_verb` faces
   // resolve. Applied FIRST (before prashna + the profile gate) and UNCONDITIONALLY
-  // for every profile — unlike applyProfileGate, which is a no-op for `full`. Web
+  // for every profile; applyProfileGate independently enforces each reviewed profile. Web
   // replay of old persisted names is unaffected (tool_name_bridge, a different door).
   // See lib/deprecated_tool_gate.ts.
   const deprecatedGate = applyDeprecatedToolGate(server as unknown as ToolRegisteringServer)
