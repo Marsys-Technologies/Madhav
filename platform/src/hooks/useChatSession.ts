@@ -64,7 +64,9 @@ export function useChatSession({
   })
 
   // Keep messagesRef current so onFinish captures the latest messages.
-  messagesRef.current = chat.messages
+  useEffect(() => {
+    messagesRef.current = chat.messages
+  }, [chat.messages, messagesRef])
 
   // Watch messages in real-time: the 'start' stream part populates assistant message
   // metadata immediately, well before synthesis begins — so queryId is available

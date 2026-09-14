@@ -43,15 +43,18 @@ export function EventsClient(): React.ReactElement {
 
   React.useEffect(() => {
     if (!groupByQuery) return
-    setGroupedLoading(true)
-    const params = new URLSearchParams({ from: fetchParams.from, to: fetchParams.to, groupByQuery: 'true' })
-    fetch(`/api/admin/observatory/events?${params.toString()}`)
-      .then((r) => r.json())
-      .then((data: { type: string; rows: GroupedRow[] }) => {
-        if (data.type === 'grouped') setGroupedRows(data.rows)
-      })
-      .catch(() => setGroupedRows([]))
-      .finally(() => setGroupedLoading(false))
+    const initialFetch = setTimeout(() => {
+      setGroupedLoading(true)
+      const params = new URLSearchParams({ from: fetchParams.from, to: fetchParams.to, groupByQuery: 'true' })
+      fetch(`/api/admin/observatory/events?${params.toString()}`)
+        .then((r) => r.json())
+        .then((data: { type: string; rows: GroupedRow[] }) => {
+          if (data.type === 'grouped') setGroupedRows(data.rows)
+        })
+        .catch(() => setGroupedRows([]))
+        .finally(() => setGroupedLoading(false))
+    }, 0)
+    return () => clearTimeout(initialFetch)
   }, [groupByQuery, fetchParams.from, fetchParams.to])
 
   const tableKey = React.useMemo(

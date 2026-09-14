@@ -56,7 +56,8 @@ export function SharingPanel({ chartId, initialGrants, fetcher }: SharingPanelPr
 
   useEffect(() => {
     if (initialGrants === undefined) {
-      void refresh()
+      const initialFetch = setTimeout(() => void refresh(), 0)
+      return () => clearTimeout(initialFetch)
     }
   }, [initialGrants, refresh])
 

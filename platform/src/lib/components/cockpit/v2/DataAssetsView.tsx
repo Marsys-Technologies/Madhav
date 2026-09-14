@@ -72,7 +72,9 @@ export function DataAssetsView({ chartId, onAssetsReady, header, refreshKey, cle
   const { stats, refetch: refetchStats, refetchLive } = useAssetStats({ chartId, isBuilding: activeRun !== null })
   // Keep ref in sync — use the LIVE refetch so a completed run's final counts (incl. global
   // assets that bypass the rows_written cache) match the DB, not a stale build-time cache.
-  refetchStatsRef.current = refetchLive
+  useEffect(() => {
+    refetchStatsRef.current = refetchLive
+  }, [refetchLive])
 
   // C3: When the global Refresh button is pressed, CockpitShell increments refreshKey.
   // Fire all three re-fetches so counts, states, and registry meta are all fresh.

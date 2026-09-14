@@ -1428,7 +1428,10 @@ function V2RuntimeTracker() {
 function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; conversationId: string | null }) {
   const runtime = useThreadRuntime()
   const conversationIdRef = useRef(conversationId)
-  conversationIdRef.current = conversationId
+
+  useEffect(() => {
+    conversationIdRef.current = conversationId
+  }, [conversationId])
 
   useEffect(() => {
     const key = pendingStreamKey(chartId)
@@ -1802,9 +1805,6 @@ export function ConsumeChatV2({ chartId, chartName, chartMeta, costVisibilityEna
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [])
-
-  const chartIdRef = useRef(chartId)
-  chartIdRef.current = chartId
 
   // γ7: On mount, check sessionStorage for an in-progress stream from a prior page load.
   // If found, call the resume endpoint and restore the partial message.
@@ -2209,25 +2209,15 @@ interface PendingStreamEntry {
 }
 
 function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, onQueryId, onConversationId, onTitle, slashEnabled = false, tokensEnabled = false }: V2ChatRuntimeProps & { onQueryId?: (id: string) => void }) {
-  const chartIdRef = useRef(chartId)
-  chartIdRef.current = chartId
-  const conversationIdRef = useRef(conversationId)
-  conversationIdRef.current = conversationId
-
   // B-S7: Citation side panel retired. Citations are inline-only via NumberedCitation.
   // β5: attachment manager — tokens injected into each request body
   const attachmentManager = useAttachmentManager()
-  const attachmentsRef = useRef(attachmentManager.attachments)
-  attachmentsRef.current = attachmentManager.attachments
 
   // O2: panel mode opt-in — persists in sessionStorage per conversation
   const panelStorageKey = conversationId ? `v2_panel_opt_in_${conversationId}` : 'v2_panel_opt_in_new'
   const [panelOptIn, setPanelOptInRaw] = useState(() => {
     try { return sessionStorage.getItem(panelStorageKey) === 'true' } catch { return false }
   })
-  const panelOptInRef = useRef(panelOptIn)
-  panelOptInRef.current = panelOptIn
-
   const setPanelOptIn = useCallback((v: boolean) => {
     setPanelOptInRaw(v)
     try { sessionStorage.setItem(panelStorageKey, String(v)) } catch { /* SSR/private */ }
@@ -2236,43 +2226,44 @@ function V2ChatRuntime({ chartId, chartName, conversationId, initialMessages, on
   const panelOptInCtxValue = useMemo(() => ({ panelOptIn, setPanelOptIn }), [panelOptIn, setPanelOptIn])
 
   const { stack, style, lelEnabled, activePersonaId: activePersonaIdCtx } = useContext(V2PrefsCtx)
-  const stackRef = useRef(stack)
-  stackRef.current = stack
-  const styleRef = useRef(style)
-  styleRef.current = style
-  const lelEnabledRef = useRef(lelEnabled)
-  lelEnabledRef.current = lelEnabled
-  // R9-S3: Track active persona via ref so the body() closure reads the latest value.
-  const activePersonaIdRef = useRef(activePersonaIdCtx)
-  activePersonaIdRef.current = activePersonaIdCtx
+  const transport = useMemo(() => new DefaultChatTransport({
+    api: '/api/chat/consume',
+    body: () => {
+      // β5: include ready attachment tokens in the request body, then clear
+      const readyAttachments = attachmentManager.attachments
+        .filter(a => a.status === 'ready')
+        .map(a => ({ token: a.token, filename: a.filename, contentType: a.contentType }))
+
+      if (readyAttachments.length > 0) {
+        // Clear after capturing so the next message starts fresh
+        attachmentManager.clearAttachments()
+      }
+
+      return {
+        chartId,
+        ...(conversationId ? { conversationId } : {}),
+        ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
+        ...(panelOptIn ? { panel_opt_in: true } : {}),
+        stack,
+        style,
+        lel_context_enabled: lelEnabled,
+        // R9-S3: Include active persona so synthesis can prepend its system_prompt.
+        ...(activePersonaIdCtx ? { persona_id: activePersonaIdCtx } : {}),
+      }
+    },
+  }), [
+    activePersonaIdCtx,
+    attachmentManager,
+    chartId,
+    conversationId,
+    lelEnabled,
+    panelOptIn,
+    stack,
+    style,
+  ])
 
   const runtime = useChatRuntime({
-    transport: new DefaultChatTransport({
-      api: '/api/chat/consume',
-      body: () => {
-        // β5: include ready attachment tokens in the request body, then clear
-        const readyAttachments = attachmentsRef.current
-          .filter(a => a.status === 'ready')
-          .map(a => ({ token: a.token, filename: a.filename, contentType: a.contentType }))
-
-        if (readyAttachments.length > 0) {
-          // Clear after capturing so the next message starts fresh
-          attachmentManager.clearAttachments()
-        }
-
-        return {
-          chartId: chartIdRef.current,
-          ...(conversationIdRef.current ? { conversationId: conversationIdRef.current } : {}),
-          ...(readyAttachments.length > 0 ? { attachments: readyAttachments } : {}),
-          ...(panelOptInRef.current ? { panel_opt_in: true } : {}),
-          stack: stackRef.current,
-          style: styleRef.current,
-          lel_context_enabled: lelEnabledRef.current,
-          // R9-S3: Include active persona so synthesis can prepend its system_prompt.
-          ...(activePersonaIdRef.current ? { persona_id: activePersonaIdRef.current } : {}),
-        }
-      },
-    }),
+    transport,
     messages: initialMessages,
   })
 

@@ -79,7 +79,7 @@ export function useAssetStats({
     const controller = new AbortController()
     inFlightRef.current = false
 
-    fetchStats(controller.signal)
+    const initialFetch = setTimeout(() => void fetchStats(controller.signal), 0)
     // SSE covers live state transitions; stats polling only needs to refresh row counts.
     // 10s during builds is sufficient — aggressive sub-5s polling queues slow DB requests.
     const pollMs = isBuilding ? 10_000 : 30_000
@@ -87,6 +87,7 @@ export function useAssetStats({
 
     return () => {
       controller.abort()
+      clearTimeout(initialFetch)
       controllersRef.current.forEach(c => c.abort())
       controllersRef.current = []
       clearInterval(id)

@@ -88,7 +88,8 @@ export function OverviewClient({
   )
 
   React.useEffect(() => {
-    void refetch(filters)
+    const initialFetch = setTimeout(() => void refetch(filters), 0)
+    return () => clearTimeout(initialFetch)
   }, [filters, refetch])
 
   // Auto-refresh every 30s while the tab is visible. The "live" pill is a

@@ -18,7 +18,10 @@ export function usePersonas() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { reload() }, [reload])
+  useEffect(() => {
+    const initialFetch = setTimeout(reload, 0)
+    return () => clearTimeout(initialFetch)
+  }, [reload])
 
   const create = useCallback(async (payload: PersonaCreate): Promise<Persona | null> => {
     try {

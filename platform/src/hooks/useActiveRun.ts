@@ -39,7 +39,10 @@ export function useActiveRun(
   const [assets, setAssets] = useState<ActiveRunAsset[]>([])
   const prevRunRef = useRef<ActiveRun | null>(null)
   const onCompletedRef = useRef(options?.onCompleted)
-  onCompletedRef.current = options?.onCompleted
+
+  useEffect(() => {
+    onCompletedRef.current = options?.onCompleted
+  }, [options?.onCompleted])
 
   const fetch_ = useCallback(async (signal?: AbortSignal) => {
     try {
@@ -69,12 +72,13 @@ export function useActiveRun(
 
   useEffect(() => {
     const controller = new AbortController()
-    fetch_(controller.signal)
+    const initialFetch = setTimeout(() => void fetch_(controller.signal), 0)
     // Poll at 5s during active run, 15s during idle — reduces 24 req/min to 8 req/min at idle
     const isRunning = prevRunRef.current !== null
     const t = setInterval(() => fetch_(controller.signal), isRunning ? 5_000 : 15_000)
     return () => {
       controller.abort()
+      clearTimeout(initialFetch)
       clearInterval(t)
     }
   }, [fetch_])
