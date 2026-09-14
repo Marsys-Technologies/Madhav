@@ -15,8 +15,13 @@ def _reattach_outcome(preserved: dict, signal_id, peak_date) -> tuple:
     Defaults to `(False, None)` — an unmatched projection is a NEW prediction, and giving it
     someone else's outcome would be worse than losing one.
     """
-    key = (str(signal_id) if signal_id is not None else None, peak_date)
+    key = _outcome_identity(signal_id, peak_date)
     return preserved.pop(key, (False, None))
+
+
+def _outcome_identity(signal_id, peak_date) -> tuple:
+    """Return the stable identity used to preserve observed projection outcomes."""
+    return (str(signal_id) if signal_id is not None else None, peak_date)
 
 
 @register('ka_bhavishya_lekha')
@@ -59,17 +64,17 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 (chart_id,),
             )
             for orow in cur.fetchall():
-                key = (
-                    str(orow['signal_id']) if orow['signal_id'] is not None else None,
-                    orow['peak_date'],
-                )
+                key = _outcome_identity(orow['signal_id'], orow['peak_date'])
+                if key in preserved_outcomes:
+                    raise RuntimeError(
+                        "ka_bhavishya_lekha: duplicate recorded outcome history for "
+                        f"(signal_id, peak_date)={key!r}; rebuilding would make outcome "
+                        "re-attachment ambiguous. Resolve the duplicate history before rebuilding."
+                    )
                 preserved_outcomes[key] = (
                     bool(orow['outcome_recorded']),
                     orow['outcome_notes'],
                 )
-
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
 
         # Read top-ranked darshana windows in the future (next 5 years).
         # B4-consume: also SELECT kc.domain (added by A3 migration 361).
@@ -128,6 +133,38 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 for sig_row in cur.fetchall():
                     if sig_row['signal_type_id']:
                         signal_type_map[str(sig_row['signal_id'])] = str(sig_row['signal_type_id'])
+
+        # Validate every non-regenerable observation against the complete candidate plan BEFORE
+        # destructive SQL.  The old writer discovered an unmatched outcome only after DELETE and
+        # INSERT, relying on the caller to notice the exception and roll the transaction back.  A
+        # plan with no candidates was worse: it returned immediately after DELETE and reported a
+        # successful empty result.  Both paths now remain mutation-free.
+        candidate_identity_counts: dict[tuple, int] = {}
+        for row in darshana_rows:
+            key = _outcome_identity(row['signal_id'], row['peak_date'])
+            candidate_identity_counts[key] = candidate_identity_counts.get(key, 0) + 1
+
+        unmatched_outcomes = [
+            key for key in preserved_outcomes if candidate_identity_counts.get(key, 0) == 0
+        ]
+        ambiguous_outcomes = [
+            key for key in preserved_outcomes if candidate_identity_counts.get(key, 0) > 1
+        ]
+        if unmatched_outcomes or ambiguous_outcomes:
+            details = []
+            if unmatched_outcomes:
+                details.append(
+                    f"unmatched keys={sorted(map(str, unmatched_outcomes))[:10]}"
+                )
+            if ambiguous_outcomes:
+                details.append(
+                    f"ambiguous keys={sorted(map(str, ambiguous_outcomes))[:10]}"
+                )
+            raise RuntimeError(
+                "ka_bhavishya_lekha: recorded outcome history cannot be preserved by the "
+                f"candidate plan ({'; '.join(details)}). No rows were deleted; resolve the "
+                "history/candidate identity mismatch before rebuilding."
+            )
 
         rows = []
         for rank, row in enumerate(darshana_rows, start=1):
@@ -188,33 +225,30 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 f"ka_bhavishya_lekha:v1.0:rank={rank}",
             ))
 
-        if rows:
-            with conn.cursor() as cur:
-                cur.executemany("""
-                    INSERT INTO kala_bhavishya (
-                        chart_id, projection_rank, probability_tier, domain,
-                        peak_date, window_start, window_end,
-                        convergence_id, signal_id, effective_score,
-                        falsifiability, source_chain, narrative,
-                        outcome_recorded, outcome_notes, source_citation
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                """, rows)
-
-        # L3-W3: anything still in `preserved_outcomes` is a recorded observation that this
-        # rebuild could not re-attach to any projection — real data about the world that the
-        # DELETE above has just removed. Refuse rather than report success: a writer that
-        # silently eats an outcome is precisely what the P7 seam must never do, and
-        # `WriterResult.notes` is not a signal anything reads (#1738). This cannot fire
-        # spuriously today — 200/200 rows carry no outcome — so it costs nothing until it
-        # matters, which is the point of putting it in before outcomes start being recorded.
+        # This assertion is intentionally still before DELETE. It guards future changes to the
+        # row builder from weakening the preflight preservation proof above.
         if preserved_outcomes:
             raise RuntimeError(
-                f"ka_bhavishya_lekha: {len(preserved_outcomes)} recorded outcome(s) could not be "
-                f"re-attached after the rebuild and would have been destroyed. Unmatched "
-                f"(signal_id, peak_date) keys: {sorted(map(str, preserved_outcomes))[:10]}. "
-                f"The projections they belong to no longer exist in this build — resolve before "
-                f"rebuilding (L3-W3, P7 falsifiability seam)."
+                f"ka_bhavishya_lekha: {len(preserved_outcomes)} recorded outcome(s) were not "
+                "consumed by candidate construction. No rows were deleted; resolve before "
+                "rebuilding (L3-W3, P7 falsifiability seam)."
             )
+
+        # The candidate plan and every recorded outcome are now validated. Keep replacement in
+        # the caller-owned transaction: writers never commit or roll back ctx.db_conn.
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
+
+        with conn.cursor() as cur:
+            cur.executemany("""
+                INSERT INTO kala_bhavishya (
+                    chart_id, projection_rank, probability_tier, domain,
+                    peak_date, window_start, window_end,
+                    convergence_id, signal_id, effective_score,
+                    falsifiability, source_chain, narrative,
+                    outcome_recorded, outcome_notes, source_citation
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, rows)
 
         return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=len(rows))
 

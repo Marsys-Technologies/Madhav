@@ -104,13 +104,14 @@ class TestB4ConsumeKaBhavishya:
         # Darshana row with kc.domain = 'relationship'
         darshana_row = self._make_darshana_row('relationship')
 
-        # Cursor sequence (writer order: timeout, DELETE, probe, SELECT, signals, INSERT):
+        # Cursor sequence (writer order: timeout, outcomes, probe, SELECT, signals, DELETE, INSERT):
         # 0. SET LOCAL statement_timeout = 0
-        # 1. DELETE kala_bhavishya  (idempotency)
+        # 1. SELECT preserved outcomes
         # 2. schema probe (information_schema.columns) -> domain col present
         # 3. SELECT darshana + convergence JOIN  -> returns our row with domain col
         # 4. SELECT signal_type_id from bodha_msr_signals  -> machine code, no keyword match
-        # 5. INSERT kala_bhavishya
+        # 5. DELETE kala_bhavishya after candidate/history validation
+        # 6. INSERT kala_bhavishya
         cur_timeout = _make_cursor()
         # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
         # survive the rebuild (outcome_recorded / outcome_notes are observations of the world,
@@ -123,7 +124,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:gochara:0042'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_delete, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -155,13 +156,14 @@ class TestB4ConsumeKaBhavishya:
 
         darshana_row = self._make_darshana_row(None)  # domain IS NULL
 
-        # Cursor sequence (writer order: timeout, DELETE, probe, SELECT, signals, INSERT):
+        # Cursor sequence (writer order: timeout, outcomes, probe, SELECT, signals, DELETE, INSERT):
         # 0. SET LOCAL statement_timeout = 0
-        # 1. DELETE kala_bhavishya
+        # 1. SELECT preserved outcomes
         # 2. schema probe -> domain col present (but value in row is NULL, so keyword kicks in)
         # 3. SELECT darshana + convergence JOIN
         # 4. SELECT signal_type_id from bodha_msr_signals
-        # 5. INSERT kala_bhavishya
+        # 5. DELETE kala_bhavishya after candidate/history validation
+        # 6. INSERT kala_bhavishya
         cur_timeout = _make_cursor()
         # NIRMĀṆA L3-W3: the writer now reads recorded outcomes BEFORE the DELETE, so they
         # survive the rebuild (outcome_recorded / outcome_notes are observations of the world,
@@ -175,7 +177,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'kalatra_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_delete, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
@@ -214,7 +216,7 @@ class TestB4ConsumeKaBhavishya:
             cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'L3:ka:0001'}])
             cur_insert = _make_cursor()
 
-            conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+            conn = _make_conn(cur_timeout, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_delete, cur_insert)
             ctx = SimpleNamespace(
                 db_conn=conn,
                 config={'chart_id': 'chart-abc', 'birth_params': {}},
@@ -238,11 +240,12 @@ class TestB4ConsumeKaBhavishya:
         ever calling conn.rollback() (which violates the FROZEN orchestrator contract).
 
         Cursor sequence:
-          1. schema probe -> fetchone() returns None (column absent)
-          2. DELETE kala_bhavishya (idempotency)
+          1. preserve-outcomes SELECT
+          2. schema probe -> fetchone() returns None (column absent)
           3. SELECT darshana with NULL AS domain -> returns rows
           4. SELECT signal_type_id from bodha_msr_signals
-          5. INSERT kala_bhavishya
+          5. DELETE kala_bhavishya (after the plan is validated)
+          6. INSERT kala_bhavishya
         """
         from pipeline.orchestrator.writers.ka_bhavishya_lekha import (
             KaBhavishyaLekhaWriter,
@@ -278,7 +281,7 @@ class TestB4ConsumeKaBhavishya:
         cur_signals = _make_cursor([{'signal_id': 'sig-001', 'signal_type_id': 'raja_yoga_v1'}])
         cur_insert = _make_cursor()
 
-        conn = _make_conn(cur_timeout, cur_outcomes, cur_delete, cur_probe, cur_darshana, cur_signals, cur_insert)
+        conn = _make_conn(cur_timeout, cur_outcomes, cur_probe, cur_darshana, cur_signals, cur_delete, cur_insert)
 
         ctx = SimpleNamespace(
             db_conn=conn,
