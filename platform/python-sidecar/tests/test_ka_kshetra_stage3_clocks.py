@@ -356,7 +356,7 @@ class TestWriteClockRows:
         assert SC.write_clock_rows(CHART_ID, [], conn) == 0
         assert conn.calls == []
 
-    def test_deletes_then_inserts_scoped_to_chart_and_systems(self):
+    def test_upserts_without_stage_local_cleanup(self):
         conn = _FakeConn()
         applicabilities = [
             SC.ClockApplicability(
@@ -374,9 +374,10 @@ class TestWriteClockRows:
         assert n == 2
         delete_calls = [c for c in conn.calls if c[0].strip().startswith("DELETE")]
         insert_calls = [c for c in conn.calls if c[0].strip().startswith("INSERT")]
-        assert len(delete_calls) == 1
-        assert delete_calls[0][1] == [CHART_ID, ["vimshottari", "naisargika"]]
+        assert delete_calls == []
         assert len(insert_calls) == 2
+        assert all('ON CONFLICT (chart_id, system_id) DO UPDATE' in c[0]
+                   for c in insert_calls)
 
 
 # ── full_lord_period_days ────────────────────────────────────────────────────
@@ -655,13 +656,11 @@ class TestComputeBoundariesForSystem:
 
 
 class TestWriteBoundaryRows:
-    def test_empty_list_still_deletes_scope(self):
+    def test_empty_list_is_zero_dml(self):
         conn = _FakeConn()
         n = SC.write_boundary_rows(CHART_ID, "vimshottari", [], conn)
         assert n == 0
-        assert len(conn.calls) == 1
-        assert conn.calls[0][0].strip().startswith("DELETE")
-        assert conn.calls[0][1] == [CHART_ID, "vimshottari"]
+        assert conn.calls == []
 
     def test_writes_one_insert_per_row(self):
         from unittest.mock import MagicMock
@@ -683,6 +682,8 @@ class TestWriteBoundaryRows:
         ]
         n = SC.write_boundary_rows(CHART_ID, "vimshottari", rows, mock_conn)
         assert n == 1
-        # DELETE goes through conn.execute; batch INSERT goes through cursor.executemany (L1d fix)
-        mock_conn.execute.assert_called_once()
+        # Cleanup belongs to writer.prepare:replace; INSERT stays batched (L1d fix).
+        mock_conn.execute.assert_not_called()
         mock_cursor.executemany.assert_called_once()
+        sql = mock_cursor.executemany.call_args.args[0]
+        assert 'ON CONFLICT (chart_id, system_id, level, t_boundary) DO UPDATE' in sql
