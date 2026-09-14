@@ -15,7 +15,7 @@
  * C-S1: R11.C streaming + thinking indicator.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export interface PreTokenIndicatorProps {
@@ -48,25 +48,14 @@ export function PreTokenIndicator({
   className,
 }: PreTokenIndicatorProps) {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
-  const startRef = useRef<number>(Date.now())
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [startedAt] = useState(() => Date.now())
 
   useEffect(() => {
-    // Reset timer when component mounts (new streaming turn)
-    startRef.current = Date.now()
-    setElapsedSeconds(0)
-
-    intervalRef.current = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startRef.current) / 1000))
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000))
     }, 1000)
-
-    return () => {
-      if (intervalRef.current !== null) {
-        clearInterval(intervalRef.current)
-        intervalRef.current = null
-      }
-    }
-  }, [])
+    return () => clearInterval(interval)
+  }, [startedAt])
 
   // Gate: once first text_delta arrives, render nothing
   if (hasFirstTextDelta) return null

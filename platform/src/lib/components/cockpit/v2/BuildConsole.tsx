@@ -45,6 +45,17 @@ function scopeChipLabel(scope: string, scopeTarget: string | null, planLength: n
   return scope
 }
 
+function ElapsedTimer({ startedAt }: { startedAt: string | null }) {
+  const [elapsed, setElapsed] = useState(() => formatElapsed(startedAt))
+
+  useEffect(() => {
+    const timer = setInterval(() => setElapsed(formatElapsed(startedAt)), 1000)
+    return () => clearInterval(timer)
+  }, [startedAt])
+
+  return elapsed
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -125,18 +136,6 @@ function LayerMiniBar({ assets }: { assets: { asset_id: string; state: string }[
 // ---------------------------------------------------------------------------
 
 export function BuildConsole({ activeRun, assets, isBuilding, sidecarHealthy }: BuildConsoleProps) {
-  const [elapsed, setElapsed] = useState<string>('00:00')
-
-  useEffect(() => {
-    if (!isBuilding || !activeRun?.started_at) {
-      setElapsed('00:00')
-      return
-    }
-    setElapsed(formatElapsed(activeRun.started_at))
-    const t = setInterval(() => setElapsed(formatElapsed(activeRun.started_at)), 1000)
-    return () => clearInterval(t)
-  }, [isBuilding, activeRun?.started_at])
-
   // Metrics
   const planAssets = activeRun?.plan ?? []
   const litAssets = assets.filter(a => isLit(a.state)).length
@@ -198,7 +197,9 @@ export function BuildConsole({ activeRun, assets, isBuilding, sidecarHealthy }: 
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
             <span style={{ fontSize: 10, color: 'var(--on-dark-faint)', letterSpacing: '0.04em' }}>
               <span style={{ fontSize: 8, textTransform: 'uppercase', marginRight: 3 }}>Elapsed</span>
-              <span style={{ color: 'var(--on-dark-mut)', fontVariantNumeric: 'tabular-nums' }}>{elapsed}</span>
+              <span style={{ color: 'var(--on-dark-mut)', fontVariantNumeric: 'tabular-nums' }}>
+                <ElapsedTimer startedAt={activeRun.started_at} />
+              </span>
             </span>
             <span style={{ fontSize: 10, color: 'var(--on-dark-faint)', letterSpacing: '0.04em' }}>
               <span style={{ fontSize: 8, textTransform: 'uppercase', marginRight: 3 }}>Assets</span>

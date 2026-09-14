@@ -21,14 +21,32 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 export const PARITY_STORAGE_KEY = 'marsys.chatShellMode';
+const PARITY_CHANGE_EVENT = 'marsys:chat-shell-mode-change';
 export type ChatShellMode = 'classic' | 'multi-provider';
+
+function readMode(): ChatShellMode {
+  return localStorage.getItem(PARITY_STORAGE_KEY) === 'multi-provider'
+    ? 'multi-provider'
+    : 'classic';
+}
+
+function subscribeToMode(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange);
+  window.addEventListener(PARITY_CHANGE_EVENT, onChange);
+  return () => {
+    window.removeEventListener('storage', onChange);
+    window.removeEventListener(PARITY_CHANGE_EVENT, onChange);
+  };
+}
+
+const getServerMode = (): ChatShellMode => 'classic';
 
 /**
  * Build-time kill-switch. True only when the operator sets the env-var to 'true'.
@@ -74,31 +92,12 @@ export interface ChatShellModeState {
  * Client hydration reads localStorage and updates the state synchronously.
  */
 export function useChatShellMode(): ChatShellModeState {
-  // Start with 'classic' — safe for SSR / pre-hydration.
-  const [mode, setModeState] = useState<ChatShellMode>('classic');
+  const mode = useSyncExternalStore(subscribeToMode, readMode, getServerMode);
 
-  useEffect(() => {
-    // Read initial value from localStorage on mount
-    const stored = localStorage.getItem(PARITY_STORAGE_KEY);
-    if (stored === 'multi-provider') {
-      setModeState('multi-provider');
-    }
-
-    // Cross-tab sync via storage event
-    function onStorage(e: StorageEvent) {
-      if (e.key !== PARITY_STORAGE_KEY) return;
-      const newVal = e.newValue;
-      setModeState(newVal === 'multi-provider' ? 'multi-provider' : 'classic');
-    }
-
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, []);
-
-  function setMode(m: ChatShellMode) {
-    setModeState(m);
+  const setMode = useCallback((m: ChatShellMode) => {
     localStorage.setItem(PARITY_STORAGE_KEY, m);
-  }
+    window.dispatchEvent(new Event(PARITY_CHANGE_EVENT));
+  }, []);
 
   return { mode, setMode, envEnabled: PARITY_ENV_ENABLED };
 }
