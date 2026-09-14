@@ -75,6 +75,7 @@ import { registerChartSelectionTools } from '../../tools/chart_selection.js'
 import { registerSessionTools } from '../../tools/session_tools.js'
 import { registerVidhiPlanTool } from '../../tools/register_vidhi_plan.js'
 import { registerDossierTool } from '../../tools/dossier.js'
+import { registerInquiryLifecycleTools } from '../../tools/register_inquiry_lifecycle.js'
 import { registerPrashnaAskTool } from '../../tools/register_prashna_ask.js'
 import { registerPrashnaStatusTool } from '../../tools/register_prashna_status.js'
 import { registerServerInfoTool } from '../../tools/register_server_info.js'
@@ -116,6 +117,12 @@ function registerFullServerSurface(server: McpServer, profile: 'full' | 'compact
   registerServerInfoTool(server)
 
   applyProfileGate(server as unknown as ToolRegisteringServer, profile)
+
+  registerInquiryLifecycleTools(
+    server as unknown as import('../../tools/register_inquiry_lifecycle.js').InquiryRegisteringServer,
+    PRINCIPAL,
+    profile,
+  )
 
   registerL0BrahmagyanTools(server)
   registerEphemerisTools(server)
