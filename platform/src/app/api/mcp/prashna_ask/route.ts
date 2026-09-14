@@ -929,7 +929,10 @@ export async function POST(request: Request) {
       judgmentFlags.push(...synthesis.judgment_flags)
 
       const responseAccountability = inquiryContract
-        ? buildStructuredResponseAccountability(inquiryContract, { response_text: synthesis.reading })
+        ? buildStructuredResponseAccountability(inquiryContract, {
+            response_text: synthesis.reading,
+            evidence_payloads: toolResults.map((result) => result.bundle),
+          })
         : null
 
       const dispatchErrors = toolEventLog.filter((item) => item.status === 'error')

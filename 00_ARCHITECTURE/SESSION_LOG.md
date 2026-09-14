@@ -40778,6 +40778,23 @@ session_open:
 
 `schema_validator.py --handshake` returned zero violations and exit 0 before Wave 4 source mutation.
 
+### Scope amendment W4-A1 — raw lifecycle contract fixture
+
+The independent Wave 4 review required immutable authorization arguments to survive pagination
+state changes, which advances the Inquiry Contract schema from 1.1.0 to 1.2.0. The raw lifecycle
+route test owns one hand-authored contract fixture whose version must follow that source contract.
+This amendment changes only the fixture version; raw lifecycle behavior and migration scope remain
+reserved for Wave 5.
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/src/app/api/mcp/inquiry/__tests__/route.test.ts
+  reason: "Advance the hand-authored raw lifecycle test fixture to Inquiry Contract 1.2.0 after Wave 4 adds immutable authorization_args."
+  authority: "MADHAV-PURNA-ANVESANA-W4-20260914 remote source/local Wave 4 lease"
+  claim_ceiling: "source/local fixture compatibility only; no durable lifecycle, migration, deployment or production claim"
+```
+
 ### Next session objective
 
 Implement W4-P1 with tests that prove complete fact registration, mandatory fact delivery,

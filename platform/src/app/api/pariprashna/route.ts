@@ -294,7 +294,10 @@ export async function POST(request: Request): Promise<Response> {
           judgmentFlags.push('injection_tool_sequence_anomaly')
         }
         const responseAccountability = evidence.inquiryContract
-          ? buildStructuredResponseAccountability(evidence.inquiryContract, { response_text: accumulatedText })
+          ? buildStructuredResponseAccountability(evidence.inquiryContract, {
+              response_text: accumulatedText,
+              evidence_payloads: evidence.validToolResults,
+            })
           : null
 
         // ── Validation: the B.11 citation gate (adapter-path parity). ────────

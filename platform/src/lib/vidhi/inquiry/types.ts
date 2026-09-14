@@ -1,6 +1,6 @@
 import type { ExecutionChannel } from '../../retrieval/registry/knowledge/types'
 
-export const INQUIRY_CONTRACT_VERSION = '1.1.0' as const
+export const INQUIRY_CONTRACT_VERSION = '1.2.0' as const
 
 /**
  * Channel-neutral scope carried by an Inquiry Contract. Both the Portal
@@ -44,6 +44,8 @@ export interface InquiryPlanItem {
   readonly scu_id: string
   readonly binding_id: string | null
   readonly args: Readonly<Record<string, unknown>>
+  /** Immutable compiler-time arguments; runtime pagination may advance args. */
+  readonly authorization_args?: Readonly<Record<string, unknown>>
   readonly depends_on: readonly string[]
   readonly state: 'ready' | 'blocked' | 'observed'
   readonly blocked_reason: string | null
@@ -237,6 +239,8 @@ export interface InquiryResponseDeliveryPart {
   readonly kind: 'prose' | 'structured_findings' | 'permitted_exclusion'
   readonly content_hash: string
   readonly fact_ids: readonly string[]
+  /** Hashes of the canonical retrieval payloads that substantiate these claims. */
+  readonly evidence_payload_hashes: readonly string[]
   readonly exclusion_reason: string | null
 }
 
@@ -263,11 +267,13 @@ export interface InquiryResponseCoverageReceipt {
     readonly all_permitted_exclusions: number
     readonly required_total: number
     readonly required_delivered: number
+    readonly interpretation_mapped: number
   }
   readonly delivered_fact_ids: readonly string[]
   readonly permitted_exclusion_fact_ids: readonly string[]
   readonly missing_fact_ids: readonly string[]
   readonly missing_required_fact_ids: readonly string[]
+  readonly interpretation_unmapped_fact_ids: readonly string[]
   readonly delivery_part_ids: readonly string[]
   readonly invalid_delivery_claims: readonly string[]
   readonly continuation: InquiryContinuationReceipt
