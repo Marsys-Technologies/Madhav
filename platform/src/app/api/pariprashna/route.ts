@@ -70,6 +70,7 @@ import { emitCompletenessReceipt } from '@/lib/pariprashna/pipeline/receipt_stag
 import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stage'
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
 import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
+import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 
 export const maxDuration = 120
 
@@ -297,6 +298,7 @@ export async function POST(request: Request): Promise<Response> {
           ? buildStructuredResponseAccountability(evidence.inquiryContract, {
               response_text: accumulatedText,
               evidence_payloads: evidence.validToolResults,
+              knowledge_snapshot: getPinnedCapabilityKnowledgeSnapshot(),
             })
           : null
 

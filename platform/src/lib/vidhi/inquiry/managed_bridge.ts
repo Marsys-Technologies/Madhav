@@ -1,6 +1,7 @@
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import { resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
-import type { CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge/types'
+import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import type { CapabilityKnowledgeSnapshot, SemanticCapabilityBinding } from '@/lib/retrieval/registry/knowledge/types'
 import type { AiInquiryProposal, InquiryContract } from './types'
 
 function words(value: unknown): string[] {
@@ -65,4 +66,22 @@ export function bindingForInquiryItem(snapshot: CapabilityKnowledgeSnapshot, con
   if (!item?.binding_id) return undefined
   return snapshot.scus.find((scu) => scu.scu_id === item.scu_id)
     ?.bindings.find((binding) => binding.binding_id === item.binding_id)
+}
+
+/** Bind canonical evidence payload hashes to the source-reviewed registry view. */
+export function indexInquiryEvidenceBindings(
+  snapshot: CapabilityKnowledgeSnapshot,
+  contract: InquiryContract,
+  evidencePayloads: readonly unknown[],
+): Readonly<Record<string, SemanticCapabilityBinding>> {
+  const entries = evidencePayloads.flatMap((payload) => {
+    if (!payload || typeof payload !== 'object') return []
+    const toolName = (payload as { tool_name?: unknown }).tool_name
+    if (typeof toolName !== 'string') return []
+    const capabilityUri = resolveToolUri(toolName)
+    const item = contract.plan_items.find((candidate) => candidate.binding_id === `registry:${capabilityUri}`)
+    const binding = item ? bindingForInquiryItem(snapshot, contract, item.item_id) : undefined
+    return binding ? [[stableFingerprint(payload), binding] as const] : []
+  })
+  return Object.fromEntries(entries)
 }

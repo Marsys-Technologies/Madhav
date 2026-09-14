@@ -932,6 +932,7 @@ export async function POST(request: Request) {
         ? buildStructuredResponseAccountability(inquiryContract, {
             response_text: synthesis.reading,
             evidence_payloads: toolResults.map((result) => result.bundle),
+            knowledge_snapshot: inquirySnapshot ?? undefined,
           })
         : null
 

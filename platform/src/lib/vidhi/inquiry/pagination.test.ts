@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { SemanticCapabilityBinding } from '../../retrieval/registry/knowledge/types'
-import { classifyInquiryResult, deriveInquiryPaginationReceipt, semanticInquiryResultCount } from './pagination'
+import { classifyInquiryResult, deriveInquiryPaginationReceipt, extractInquirySemanticFindings, semanticInquiryResultCount } from './pagination'
 
 function binding(overrides: Partial<SemanticCapabilityBinding> = {}): SemanticCapabilityBinding {
   return {
@@ -28,6 +28,26 @@ describe('inquiry pagination receipts', () => {
     expect(semanticInquiryResultCount(binding(), raw)).toBe(0)
     expect(deriveInquiryPaginationReceipt(binding(), raw, { offset: 0, limit: 50 }))
       .toEqual({ semantics: 'offset', exhausted: true, next: null })
+  })
+
+  it('extracts each reviewed semantic row rather than treating the adapter envelope as one finding', () => {
+    const raw = { results: [{ content: JSON.stringify({ rows: [{ id: 'a' }, { id: 'b' }], more_available: false }) }] }
+
+    expect(extractInquirySemanticFindings(binding(), raw)).toEqual({
+      mode: 'reviewed_collection',
+      result_collection_path: 'content.rows',
+      rows: [{ id: 'a' }, { id: 'b' }],
+    })
+  })
+
+  it('keeps adapter items opaque when no result collection path was independently reviewed', () => {
+    const raw = { results: [{ content: JSON.stringify({ rows: [{ id: 'a' }, { id: 'b' }] }) }] }
+
+    expect(extractInquirySemanticFindings(binding({ result_collection_verified: false }), raw)).toEqual({
+      mode: 'opaque_adapter_items',
+      result_collection_path: null,
+      rows: raw.results,
+    })
   })
 
   it('does not invent a semantic empty for an unreviewed wrapped response', () => {

@@ -1,4 +1,5 @@
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
+import type { CapabilityKnowledgeSnapshot } from '../../retrieval/registry/knowledge/types'
 import type {
   InquiryContract,
   InquiryFactRegister,
@@ -8,6 +9,8 @@ import type {
   InquiryResponseDeliveryPart,
 } from './types'
 import { inquiryAuthorizationHashes, validateInquiryContract } from './compiler'
+import { indexInquiryEvidenceBindings } from './managed_bridge'
+import { extractInquirySemanticFindings } from './pagination'
 
 const HASH_RE = /^sha256:[a-f0-9]{64}$/
 
@@ -32,17 +35,10 @@ function normalizedFindingContent(value: unknown): string {
   return JSON.stringify(value) ?? String(value)
 }
 
-function evidenceRows(payload: unknown): readonly unknown[] {
-  if (typeof payload === 'object' && payload !== null && 'results' in payload
-    && Array.isArray((payload as { results?: unknown }).results)) {
-    return (payload as { results: unknown[] }).results
-  }
-  return [payload]
-}
-
 export function buildInquiryFactRegister(
   contract: InquiryContract,
   evidencePayloads: readonly unknown[] = [],
+  knowledgeSnapshot?: CapabilityKnowledgeSnapshot,
 ): InquiryFactRegister {
   const validationErrors: string[] = []
   const obligationIds = new Set<string>()
@@ -97,12 +93,19 @@ export function buildInquiryFactRegister(
   }
 
   const payloadByHash = new Map(evidencePayloads.map((payload) => [stableFingerprint(payload), payload]))
+  const evidenceBindings = knowledgeSnapshot
+    ? indexInquiryEvidenceBindings(knowledgeSnapshot, contract, evidencePayloads)
+    : {}
   for (const obligation of contract.obligations) {
     for (const evidenceRef of uniqueSorted(obligation.evidence_refs)) {
       const payloadHash = evidenceHashFromRef(evidenceRef)
       const payload = payloadHash ? payloadByHash.get(payloadHash) : undefined
       if (!payloadHash || payload === undefined) continue
-      const rows = evidenceRows(payload)
+      const extraction = extractInquirySemanticFindings(evidenceBindings[payloadHash], payload)
+      if (extraction.mode === 'reviewed_collection_missing') {
+        validationErrors.push(`reviewed result collection ${extraction.result_collection_path} is absent from evidence ${payloadHash}`)
+      }
+      const rows = extraction.rows
       const normalizedRows = rows.length > 0
         ? rows.map(normalizedFindingContent)
         : obligation.disposition === 'empty'
@@ -118,7 +121,9 @@ export function buildInquiryFactRegister(
           materiality: obligation.materiality,
           meaning: {
             label: `Evidence finding ${index + 1} for ${obligation.label}`,
-            rationale: `Canonical evidence payload ${payloadHash}.`,
+            rationale: extraction.mode === 'opaque_adapter_items'
+              ? `Opaque adapter item from canonical evidence payload ${payloadHash}; no independently reviewed result collection path was available.`
+              : `Semantic row at reviewed collection ${extraction.result_collection_path} in canonical evidence payload ${payloadHash}.`,
             scu_ids: uniqueSorted(obligation.scu_ids),
             disposition: obligation.disposition,
           },
@@ -180,10 +185,11 @@ export function buildResponseCoverageReceipt(args: {
   fact_register: InquiryFactRegister
   delivery_parts: readonly InquiryResponseDeliveryPart[]
   evidence_payloads?: readonly unknown[]
+  knowledge_snapshot?: CapabilityKnowledgeSnapshot
   response_text?: string | null
 }): InquiryResponseCoverageReceipt {
   const { contract } = args
-  const expectedRegister = buildInquiryFactRegister(contract, args.evidence_payloads)
+  const expectedRegister = buildInquiryFactRegister(contract, args.evidence_payloads, args.knowledge_snapshot)
   const suppliedRegister = args.fact_register
   const register = expectedRegister
   const factsById = new Map(register.facts.map((fact) => [fact.fact_id, fact]))
@@ -397,10 +403,11 @@ export function buildStructuredResponseAccountability(
   options: {
     response_text?: string | null
     evidence_payloads?: readonly unknown[]
+    knowledge_snapshot?: CapabilityKnowledgeSnapshot
     conjoint_interpretations?: readonly { text: string; fact_ids: readonly string[] }[]
   } = {},
 ): InquiryResponseAccountability {
-  const factRegister = buildInquiryFactRegister(contract, options.evidence_payloads)
+  const factRegister = buildInquiryFactRegister(contract, options.evidence_payloads, options.knowledge_snapshot)
   const evidencePayloads = options.evidence_payloads ?? []
   const actualEvidenceHashes = uniqueSorted(evidencePayloads.map((payload) => stableFingerprint(payload)))
   const deliveredFactIds = factRegister.facts
@@ -446,7 +453,12 @@ export function buildStructuredResponseAccountability(
         exclusion_reason: null,
       }
     : null
-  const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? []).map((item, index) => ({
+  const findingFacts = factRegister.facts.filter((fact) => fact.kind === 'finding' && fact.normalized_content)
+  const inferredInterpretations = findingFacts.length > 0
+    && findingFacts.every((fact) => responseText.includes(fact.normalized_content!))
+    ? [{ text: responseText, fact_ids: findingFacts.map((fact) => fact.fact_id) }]
+    : []
+  const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? inferredInterpretations).map((item, index) => ({
     part_id: `conjoint-interpretation:${index + 1}:${stableFingerprint(item.text)}`,
     kind: 'conjoint_interpretation',
     content_hash: inquiryResponsePartContentHash(factRegister, item.fact_ids, 'conjoint_interpretation', null, [], item.text),
@@ -465,6 +477,7 @@ export function buildStructuredResponseAccountability(
       fact_register: factRegister,
       delivery_parts: deliveryParts,
       evidence_payloads: evidencePayloads,
+      knowledge_snapshot: options.knowledge_snapshot,
       response_text: responseText,
     }),
   }

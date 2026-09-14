@@ -3,6 +3,7 @@ import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { applyInquiryObservations, compileInquiryContract, finalizeInquiryContract, recordInquiryExecution } from './compiler'
+import { bindingForInquiryItem } from './managed_bridge'
 import {
   buildInquiryFactRegister,
   buildResponseCoverageReceipt,
@@ -72,10 +73,6 @@ function completeAccountability(contract: InquiryContract, evidencePayloads: rea
   return buildStructuredResponseAccountability(contract, {
     response_text: interpretation,
     evidence_payloads: evidencePayloads,
-    conjoint_interpretations: [{
-      text: interpretation,
-      fact_ids: findings.map((fact) => fact.fact_id),
-    }],
   })
 }
 
@@ -92,6 +89,38 @@ describe('Wave 4 response accountability', () => {
       .map((fact) => fact.fact_id))
     expect(register.validation_errors).toEqual([])
     expect(register.register_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
+  })
+
+  it('registers every semantic row at the binding reviewed collection path', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Give me a complete wealth outlook',
+      scope_tuple: wealthScope,
+    })
+    const item = initial.plan_items.find((candidate) => {
+      const candidateBinding = bindingForInquiryItem(snapshot, initial, candidate.item_id)
+      return candidateBinding?.result_collection_verified
+        && candidateBinding.pagination_contract?.result_collection_path === 'content.rows'
+    })!
+    const binding = bindingForInquiryItem(snapshot, initial, item.item_id)!
+    const payload = {
+      tool_name: binding.capability_uri,
+      results: [{ content: JSON.stringify({ rows: [{ id: 'row-a' }, { id: 'row-b' }] }) }],
+    }
+    const contract = applyInquiryObservations(initial, [{
+      item_id: item.item_id,
+      disposition: 'served',
+      evidence_refs: [`retrieval:${stableFingerprint(payload)}`],
+    }])
+    const register = buildInquiryFactRegister(contract, [payload], snapshot)
+    const findingContents = register.facts
+      .filter((fact) => fact.kind === 'finding')
+      .map((fact) => fact.normalized_content)
+
+    expect(findingContents).toEqual(expect.arrayContaining(['{"id":"row-a"}', '{"id":"row-b"}']))
+    expect(findingContents).not.toContain(payload.results[0].content)
+    expect(register.validation_errors).toEqual([])
   })
 
   it('fails mandatory delivery when one relevant fact is absent from all response parts', () => {
@@ -330,6 +359,24 @@ describe('Wave 4 response accountability', () => {
     expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
     expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(0)
     expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids.length).toBeGreaterThan(0)
+  })
+
+  it('derives verified production mappings when the canonical synthesis contains every finding', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const responseText = register.facts
+      .filter((fact) => fact.kind === 'finding')
+      .map((fact) => fact.normalized_content)
+      .join('\n')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: responseText,
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.delivery_parts.some((part) => part.kind === 'conjoint_interpretation')).toBe(true)
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped)
+      .toBe(register.facts.filter((fact) => fact.kind === 'finding').length)
+    expect(envelope.response_coverage_receipt.status).toBe('COMPLETE')
   })
 
   it('detects one omitted finding inside an otherwise mapped multi-finding evidence set', () => {
