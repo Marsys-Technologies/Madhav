@@ -41035,3 +41035,93 @@ coverage, reservation recovery after a process crash, a dedicated signing key, d
 traces and production/empirical acceptance remain explicit residuals for Wave 6 quarantine. No
 merge, deployment, shared/production migration or mutation, credential/infrastructure action,
 doctrine ratification, retirement or production-value claim occurred.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV-PURNA-ANVESANA-W5-20260914
+  closed_at: 2026-09-15T00:41:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/migrations/1033_planner_inquiry_lifecycle.sql, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/inquiry/__tests__/route.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/inquiry/route.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_ask/route.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/__tests__/door_parity.integration.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/__tests__/receipt_stage.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/evidence_stage.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/receipt_stage.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/__fixtures__/door_parity.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/door_parity.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/door_parity.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/index.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_store.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_token.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_token.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/migration_1033.db.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/migration_contract.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: MADHAV_PURNA_ANVESANA_WAVE5_LIFECYCLE_PARITY
+        change: no_registry_update_required
+        rationale: "Wave-local lifecycle and parity modules remain governed by the registered planner implementation brief and campaign control surfaces."
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_AFTER_CORRECTIONS
+    artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: /tmp/purna_w5_drift.md, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: /tmp/purna_w5_schema_after_close.md, violations_found: 42}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: b1cbe415eefa5bc59c8407abb40485d4d7f68649
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered:
+    - "Independent review refuted lifecycle privilege boundaries, fixture authenticity, projection preservation and failure taxonomy in intermediate candidates; every finding was repaired and re-reviewed."
+    - "The full unit runner timed out one census file at five seconds; its isolated two-test rerun passed in 4.69 seconds, so the aggregate gate remains explicitly qualified."
+    - "The intermediate schema gate reported one additional violation because this required session-close block was not yet present; the closed state returns to the inherited baseline."
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: MADHAV-PURNA-ANVESANA-W5-20260914
+      obligation_addressed: true
+      evidence: "No MP revision or health-crisis/mental-health serving change occurred."
+  known_residuals:
+    - finding_id: inherited_drift_detector_baseline_79
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 77 MEDIUM and 2 LOW findings, no Wave 5 increase"
+    - finding_id: inherited_schema_validator_baseline_42
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 42 MEDIUM/LOW violations after session close"
+    - finding_id: full_catalog_channel_gap
+      severity: MEDIUM
+      booking_reference: "W5-P2 proves only six genuinely shared bindings out of 184 platform-executable bindings; owner and authorization trigger must be frozen by W6-P2."
+    - finding_id: reservation_restart_recovery
+      severity: LOW
+      booking_reference: "At-most-once reservation fails closed until expiry after a process crash before dispatch; restart recovery requires separate design and acceptance."
+    - finding_id: authority_bound_runtime_remainder
+      severity: LOW
+      booking_reference: "No merge, deployment, shared migration, dedicated signing key, deployed cross-door trace, current production state or empirical acceptance proof was authorized or claimed."
+  close_criteria_met: true
+  unblocks: [W6-P1]
+  handoff_notes: "Start Wave 6 from the exact delivered Wave 5 close after claiming a fresh remote lease; execute versioned Beyond-Acarya acceptance and close only with independently reviewed residual owners, triggers and source-scope quarantine."
+```
