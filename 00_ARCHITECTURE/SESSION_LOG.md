@@ -40167,3 +40167,133 @@ scope_amendment:
   reason: "W1-P1 found eight exact active relational producer gaps; metadata cannot substitute for source-reviewed deterministic output specifications."
   authority: "MADHAV PURNA ANVESANA Wave 1 user brief"
 ```
+
+### Scope amendment W1-A2 — exact route and evidence implementation
+
+Independent route review demonstrated that W1-P2 could not be closed by editing tool modules
+alone: the actual profile gate, server registration, generated registrar bridge and catalogue
+version are the enforcing surfaces. Disposable proof also requires a durable, explicitly bounded
+evidence artifact. The following paths are added to `may_touch`; this records the real
+implementation surface and does not expand the Wave 1 outcome or claim ceiling:
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform-mcp/src/lib/**
+    - platform-mcp/src/resources/mcp_catalog_version.ts
+    - platform-mcp/src/server.ts
+    - platform/docs/evidence/purna_anvesana_wave1_disposable.json
+    - platform/scripts/manifest/extract_registrar_capability_bridge.ts
+  reason: "W1-P2 exact route authority and W1-P1 disposable proof live on these enforcement and evidence surfaces."
+  authority: "MADHAV PURNA ANVESANA Wave 1 user brief"
+  retained_prohibitions:
+    - no merge or deployment
+    - no shared or production mutation
+    - no production or empirical acceptance claim
+```
+
+### Wave 1 outcome
+
+W1-P1 and W1-P2 closed after independent refutations were corrected. All 128 current-active
+producers have explicit machine-checked contract dispositions and all 267 referenced source/test
+paths resolve. Migration 1034 contributes six reviewed digest specifications and passed isolated
+PostgreSQL 16.15 schema/key replay. The two service effects were executed against that disposable
+database: `mi_seva` remained a read-only readiness probe; `mi_abhilekha` inserted two pending
+rows once, inserted none on repeat, preserved cross-chart isolation and left non-pending and
+unlinked rows untouched.
+
+The exact served full MCP authority is 129 unique names. Registration fails closed against that
+authority; all three inquiry lifecycle handlers now pass through the profile gate. All 185 runtime
+descriptors carry explicit exposure and route dispositions, with zero ambiguous or unresolved
+route records. Pagination and dark-state states are explicit, and inquiry completion remains
+fail-closed without exhaustion proof. Independent W1-P1, W1-P2 and migration reviews approved the
+final technical head `8599c6a51ec484a3aea81c7a60d834401c61a2a1`.
+
+The branch is published as stacked PR #2599. PR #2597 remains frozen unchanged. No merge,
+deployment, shared/production migration or data mutation, credential/infrastructure action,
+retirement, doctrine ratification or deployed-current/production acceptance claim occurred.
+
+### Next session objective
+
+Open W2-P1 and W2-P2 from the exact governed Wave 1 close head. Replace all 177 descriptor-derived
+SCU stubs with meaningful source-linked editorial units, establish a typed concept universe and
+semantic graph, and close zero-unexplained-stub/gap/orphan/unbound-concept gates. Retain the
+source/local/disposable ceiling and preserve R1–R12.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV-PURNA-ANVESANA-W1-20260914
+  closed_at: 2026-09-14T19:34:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/__tests__/mcp_profile.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/__tests__/mcp_profile_f155_allowlist_resolution.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/__tests__/sensitive_capability_class.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/deprecated_tool_gate.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/mcp_full_route_authority.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/mcp_profile.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/resources/mcp_catalog_version.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/server.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/docs/evidence/purna_anvesana_wave1_disposable.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql, mutation_type: created, within_declared_scope: true}
+    - {path: platform/python-sidecar/scripts/nirmana_service_effect_contracts.json, mutation_type: created, within_declared_scope: true}
+    - {path: platform/python-sidecar/tests/test_purna_anvesana_output_digest_specs.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/python-sidecar/tests/test_purna_anvesana_service_effect_contracts.py, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/__tests__/generate_capability_estate_census.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/scripts/generate_capability_estate_census.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/scripts/manifest/extract_registrar_capability_bridge.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/capability_estate_census.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/capability_knowledge.snapshot.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/compiler.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/knowledge.test.ts, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: MADHAV_PURNA_ANVESANA_WAVE1_CONTRACTS
+        change: no_registry_update_required
+        rationale: "Wave-local source contracts and generated evidence remain governed by the registered planner implementation brief and campaign control surfaces."
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_WITH_FIXES
+    artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260914T140128Z.md, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: null, violations_found: 42}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: bb465dd831313cc03e591cef89a0b481c515f9bb
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered: []
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: MADHAV-PURNA-ANVESANA-W1-20260914
+      obligation_addressed: true
+      evidence: "No MP revision or health-crisis/mental-health serving change occurred."
+  known_residuals:
+    - finding_id: inherited_drift_detector_baseline_79
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 77 MEDIUM and 2 LOW findings, no Wave 1 increase"
+    - finding_id: inherited_schema_validator_baseline_42
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 42 MEDIUM/LOW violations, no Wave 1 increase after session close"
+  close_criteria_met: true
+  unblocks: [W2-P1, W2-P2]
+  handoff_notes: "Start Wave 2 from the exact delivered Wave 1 head after governance close; replace all 177 derived SCU stubs and then close typed graph gaps, retaining the source/local/disposable ceiling."
+```
