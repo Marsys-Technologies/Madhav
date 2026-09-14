@@ -66,6 +66,69 @@ describe('versioned inquiry compiler', () => {
     expect(second.execution_plan_hash).toBe(first.execution_plan_hash)
   })
 
+  it('normalizes classifier aliases before hashing or floor selection', () => {
+    const classifier = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Detailed career outlook',
+      scope_tuple: {
+        intent: 'DOMAIN-ASSESSMENT', domains: ['job', 'CAREER'], width: 'broad', depth: 'deep',
+        horizon: 'far', intervention: 'none', entitlement: 'native',
+      },
+    })
+    const canonical = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Detailed career outlook',
+      scope_tuple: {
+        intent: 'career_deepdive', domains: ['career'], width: 'panoramic', depth: 'deepdive',
+        horizon: 'multi_year', intervention: false, entitlement: 'native',
+      },
+    })
+
+    expect(classifier.scope_tuple).toEqual(canonical.scope_tuple)
+    expect(classifier.semantic_contract_hash).toBe(canonical.semantic_contract_hash)
+    expect(classifier.scope_normalization?.normalization_version).toBe('inquiry-scope-normalization-v1')
+    expect(classifier.plan_items.some((item) => item.scu_id === 'scu.catalog.assess_career')).toBe(true)
+  })
+
+  it('uses only source-backed graph edges for AI adjacency and deterministic traversal', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'mechanism network',
+      scope_tuple: { ...wealthScope, intent: 'explain', domains: ['all'], depth: 'standard' },
+      planning_budget: { max_graph_hops: 0 },
+      ai_proposal: {
+        question_facets: [],
+        uncommon_adjacencies: [
+          { from_scu_id: 'scu.bodha.mechanism.network', to_scu_id: 'scu.kala.temporal_activation', rationale: 'reviewed edge' },
+          { from_scu_id: 'scu.bodha.mechanism.network', to_scu_id: 'scu.catalog.asset_registry_all', rationale: 'invented pair' },
+        ],
+        hypotheses: [],
+      },
+    })
+
+    expect(contract.plan_items.some((item) => item.scu_id === 'scu.kala.temporal_activation')).toBe(true)
+    expect(contract.obligations.some((obligation) => obligation.source === 'ai_decomposition'
+      && obligation.scu_ids.includes('scu.catalog.asset_registry_all'))).toBe(false)
+    expect(contract.graph_traversal?.steps.every((step) => step.source_ref.length > 0)).toBe(true)
+  })
+
+  it('fails closed with a material frontier and budget receipt when widening is capped', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'mechanism network',
+      scope_tuple: { ...wealthScope, intent: 'explain', domains: ['all'], depth: 'standard' },
+      planning_budget: { max_search_hits: 1, max_graph_hops: 1, max_graph_nodes: 1, max_challenger_additions: 0 },
+    })
+
+    expect(contract.planning_budget?.truncated).toBe(true)
+    expect(contract.material_frontier.some((item) => item.materiality === 'required')).toBe(true)
+    expect(finalizeInquiryContract(contract).status).not.toBe('COMPLETE')
+  })
+
   it('blocks unresolved required JSON Schema arguments and internal-only raw MCP bindings', () => {
     const internal = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth transit timing', scope_tuple: wealthScope })
     const transit = internal.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')
@@ -86,22 +149,20 @@ describe('versioned inquiry compiler', () => {
   })
 
   it('admits a validated AI adjacency as a supporting obligation', () => {
-    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
-    const source = initial.plan_items[0]!.scu_id
-    const target = snapshot.scus.find((scu) => !initial.plan_items.some((item) => item.scu_id === scu.scu_id))!.scu_id
     const contract = compileInquiryContract({
       snapshot,
       chart_id: 'chart-fixture',
-      question: 'Complete wealth outlook',
-      scope_tuple: wealthScope,
+      question: 'career assessment',
+      scope_tuple: { ...wealthScope, intent: 'domain_assessment', domains: ['career'], depth: 'standard' },
+      planning_budget: { max_search_hits: 1, max_graph_hops: 0 },
       ai_proposal: {
         question_facets: [],
-        uncommon_adjacencies: [{ from_scu_id: source, to_scu_id: target, rationale: 'uncommon but relevant' }],
+        uncommon_adjacencies: [{ from_scu_id: 'scu.catalog.assess_career', to_scu_id: 'scu.catalog.query_signals', rationale: 'uncommon but relevant' }],
         hypotheses: [],
       },
     })
-    expect(contract.obligations).toContainEqual(expect.objectContaining({ source: 'ai_decomposition', materiality: 'supporting', scu_ids: [target] }))
-    expect(contract.plan_items.some((item) => item.scu_id === target)).toBe(true)
+    expect(contract.obligations).toContainEqual(expect.objectContaining({ source: 'ai_decomposition', materiality: 'supporting', scu_ids: ['scu.catalog.query_signals'] }))
+    expect(contract.plan_items.some((item) => item.scu_id === 'scu.catalog.query_signals')).toBe(true)
   })
 
   it('keeps a multi-capability obligation pending until every plan item is observed', () => {
@@ -208,6 +269,19 @@ describe('versioned inquiry compiler', () => {
     expect(receipt.receipt_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(receipt.obligation_coverage).toHaveLength(final.obligations.length)
     expect(receipt.status).toBe('INCOMPLETE')
+    expect(receipt.graph_traversal_hash).toBe(initial.graph_traversal?.traversal_hash)
+    expect(receipt.omission_challenge_hash).toBe(initial.omission_challenge?.challenge_hash)
+  })
+
+  it('rejects forged normalization, traversal, challenge, and budget receipts', () => {
+    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    const forgeries = [
+      { ...initial, scope_normalization: { ...initial.scope_normalization!, normalized_scope_hash: 'sha256:forged' } },
+      { ...initial, graph_traversal: { ...initial.graph_traversal!, traversal_hash: 'sha256:forged' } },
+      { ...initial, omission_challenge: { ...initial.omission_challenge!, challenge_hash: 'sha256:forged' } },
+      { ...initial, planning_budget: { ...initial.planning_budget!, budget_hash: 'sha256:forged' } },
+    ]
+    for (const forged of forgeries) expect(validateInquiryContract(forged).valid).toBe(false)
   })
 
   it('never treats a required failed observation as complete', () => {

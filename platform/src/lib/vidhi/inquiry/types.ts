@@ -17,13 +17,19 @@ export interface InquiryScopeTuple {
   readonly entitlement: string
 }
 
+export interface InquiryScopeNormalizationReceipt {
+  readonly normalization_version: 'inquiry-scope-normalization-v1'
+  readonly applied_rules: readonly string[]
+  readonly normalized_scope_hash: string
+}
+
 export type InquiryStatus = 'INCOMPLETE' | 'COMPLETE' | 'BLOCKED'
 export type ObligationDisposition = 'pending' | 'served' | 'empty' | 'dark' | 'failed' | 'not_applicable'
 
 export interface InquiryObligation {
   readonly obligation_id: string
   readonly label: string
-  readonly source: 'deterministic_floor' | 'ai_decomposition' | 'omission_rule' | 'adaptive_frontier'
+  readonly source: 'deterministic_floor' | 'ai_decomposition' | 'graph_traversal' | 'omission_challenger' | 'omission_rule' | 'adaptive_frontier'
   readonly materiality: 'required' | 'supporting'
   readonly scu_ids: readonly string[]
   readonly rationale: string
@@ -55,6 +61,7 @@ export interface MaterialFrontierItem {
   readonly materiality: 'required' | 'supporting'
   readonly reason: string
   readonly disposition: 'open' | 'absorbed' | 'capped' | 'not_applicable'
+  readonly source_ref?: string
 }
 
 export interface OmissionFinding {
@@ -62,6 +69,60 @@ export interface OmissionFinding {
   readonly severity: 'material' | 'advisory'
   readonly missing_scu_id: string
   readonly rationale: string
+  readonly source: 'rule' | 'graph'
+  readonly relation: string | null
+  readonly source_ref: string
+}
+
+export interface GraphTraversalStep {
+  readonly from_scu_id: string
+  readonly relation: string
+  readonly to_scu_id: string
+  readonly hop: number
+  readonly materiality: 'required' | 'supporting'
+  readonly edge_source: string
+  readonly source_ref: string
+}
+
+export interface GraphTraversalFrontier extends GraphTraversalStep {
+  readonly reason: 'graph_hop_budget_exhausted' | 'graph_node_budget_exhausted'
+}
+
+export interface GraphTraversalReceipt {
+  readonly traversal_version: 'inquiry-graph-traversal-v1'
+  readonly seed_scu_ids: readonly string[]
+  readonly selected_scu_ids: readonly string[]
+  readonly steps: readonly GraphTraversalStep[]
+  readonly frontier: readonly GraphTraversalFrontier[]
+  readonly max_hops: number
+  readonly max_nodes: number
+  readonly truncated: boolean
+  readonly traversal_hash: string
+}
+
+export interface OmissionChallengeReceipt {
+  readonly challenge_version: 'inquiry-omission-challenger-v1'
+  readonly selected_scu_ids: readonly string[]
+  readonly findings: readonly OmissionFinding[]
+  readonly challenge_hash: string
+}
+
+export interface InquiryPlanningBudget {
+  readonly max_search_hits: number
+  readonly max_graph_hops: number
+  readonly max_graph_nodes: number
+  readonly max_challenger_additions: number
+}
+
+export interface InquiryPlanningBudgetReceipt extends InquiryPlanningBudget {
+  readonly search_hits_considered: number
+  readonly graph_nodes_selected: number
+  readonly graph_edges_followed: number
+  readonly challenger_findings: number
+  readonly challenger_additions: number
+  readonly frontier_items: number
+  readonly truncated: boolean
+  readonly budget_hash: string
 }
 
 /** AI is allowed to decompose/associate; deterministic validation owns authority. */
@@ -94,6 +155,10 @@ export interface InquiryContract {
   readonly status_reasons: readonly string[]
   readonly iteration: number
   readonly max_iterations: number
+  readonly scope_normalization?: InquiryScopeNormalizationReceipt
+  readonly graph_traversal?: GraphTraversalReceipt
+  readonly omission_challenge?: OmissionChallengeReceipt
+  readonly planning_budget?: InquiryPlanningBudgetReceipt
 }
 
 export interface InquiryObservation {
@@ -132,4 +197,8 @@ export interface InquiryClosureReceipt {
   }[]
   readonly residual_frontier: readonly MaterialFrontierItem[]
   readonly receipt_hash: string
+  readonly scope_normalization?: InquiryScopeNormalizationReceipt
+  readonly graph_traversal_hash?: string
+  readonly omission_challenge_hash?: string
+  readonly planning_budget?: InquiryPlanningBudgetReceipt
 }
