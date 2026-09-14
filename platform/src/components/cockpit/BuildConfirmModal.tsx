@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { useMounted } from '@/hooks/useMounted'
 
 interface BuildConfirmModalProps {
   assetIds: string[]          // plan_waves.flat() — the assets that will be built
@@ -20,8 +21,7 @@ function formatDuration(seconds: number): string {
 export function BuildConfirmModal({ assetIds, estimatedSeconds, onConfirm, onCancel }: BuildConfirmModalProps) {
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useMounted()
 
   // Close on Escape
   useEffect(() => {
