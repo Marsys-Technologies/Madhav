@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.10.0
+version: 0.11.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0031
-last_updated: 2026-09-15T00:44:00+05:30
+last_event: PA-E0034
+last_updated: 2026-09-15T01:08:30+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,7 +19,8 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 5 complete; Wave 6 Beyond-Acarya acceptance is active.
+- Wave: W6-P1 is independently approved with a retained negative source/local verdict; W6-P2
+  terminal quarantine review is active.
 - Branch: `codex/purna-anvesana-wave6`, stacked on governed Wave 5 close `4f2d9c97a`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
@@ -193,6 +194,23 @@ recovery, the full-catalog channel gap, a dedicated signing key, deployed cross-
 production/empirical acceptance remain explicit Wave 6 quarantine inputs. No merge, deployment,
 shared/production mutation, credentials/infrastructure action or production-value claim occurred.
 
+## Wave 6 acceptance outcome
+
+The versioned five-case Beyond-Acarya corpus independently freezes concept, route and semantic-edge
+expectations outside planner output. It exercises positive and negative cases for all six declared
+metrics, including Bhāvat Bhāvam, decisive cancellation, the Kāla-to-transit chain, lifecycle
+pagination continuation, earlier-evidence retention and fail-closed abstention. Independent review
+refuted the first candidate's planner-derived route denominator, synthetic batching and incomplete
+ablations. The repaired exact head `201b420d9d1eceb8d119e1792ea15fb748d35e1d` closes all findings
+and passes 11 focused tests, TypeScript and targeted lint.
+
+The governed result is deliberately negative: source/local route coverage is 30/34 because the
+compiler cannot derive the required planet, start_date and end_date arguments for transit retrieval.
+Novel-combination, omission, semantic-edge, verified long-inquiry and abstention gates pass, but the
+aggregate verdict remains `NOT_ACCEPTED_SOURCE_LOCAL`. W6-P2 therefore retains that evidence and
+quarantines the argument-derivation gap instead of rewriting it as acceptance. Production,
+deployed-runtime, expert-domain and empirical answer-quality validation remain `NOT_RUN`.
+
 ## Reproduction
 
 From the repository root:
@@ -230,8 +248,8 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
 | W5-P1 disposable migration/lifecycle/security proof | COMPLETE | W4-P1 | migration/security reviewer approved exact clean head |
 | W5-P2 three-door parity/failure proof | COMPLETE | W5-P1 | parity reviewer approved bounded shared-surface proof |
-| W6-P1 versioned Beyond-Acarya acceptance | IN PROGRESS | W5-P2 | independent acceptance review required |
-| W6-P2 source-scope close and quarantine | QUEUED | W6-P1 | independent terminal review required |
+| W6-P1 versioned Beyond-Acarya acceptance | COMPLETE_WITH_NEGATIVE_ACCEPTANCE_EVIDENCE | W5-P2 | first review refuted three anti-gaming defects; repaired exact head independently approved |
+| W6-P2 source-scope close and quarantine | IN PROGRESS | W6-P1 | independent terminal review required before lease release |
 
 ## Delivery decomposition
 

@@ -1,0 +1,167 @@
+{
+  "schema_version": "madhav-purna-anvesana/terminal-quarantine/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "terminal_contract": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "terminal_status": "PENDING_INDEPENDENT_REVIEWS_AND_LEASE_RELEASE",
+  "source_scope_only": true,
+  "packet_evidence": [
+    {"packet_id":"W0-P1","status":"COMPLETE","event_ids":["PA-E0001","PA-E0002","PA-E0009"]},
+    {"packet_id":"W0-P2","status":"COMPLETE","event_ids":["PA-E0003","PA-E0004","PA-E0006","PA-E0007","PA-E0008","PA-E0009"]},
+    {"packet_id":"W0-P3","status":"COMPLETE","event_ids":["PA-E0005","PA-E0009"]},
+    {"packet_id":"W1-P1","status":"COMPLETE","event_ids":["PA-E0010","PA-E0011","PA-E0013","PA-E0014","PA-E0015"]},
+    {"packet_id":"W1-P2","status":"COMPLETE","event_ids":["PA-E0010","PA-E0012","PA-E0014","PA-E0015"]},
+    {"packet_id":"W2-P1","status":"COMPLETE","event_ids":["PA-E0016","PA-E0017","PA-E0018","PA-E0019"]},
+    {"packet_id":"W2-P2","status":"COMPLETE","event_ids":["PA-E0016","PA-E0018","PA-E0019"]},
+    {"packet_id":"W3-P1","status":"COMPLETE","event_ids":["PA-E0020","PA-E0021","PA-E0022"]},
+    {"packet_id":"W3-P2","status":"COMPLETE","event_ids":["PA-E0020","PA-E0021","PA-E0022"]},
+    {"packet_id":"W4-P1","status":"COMPLETE","event_ids":["PA-E0023","PA-E0024","PA-E0025","PA-E0026"]},
+    {"packet_id":"W5-P1","status":"COMPLETE","event_ids":["PA-E0027","PA-E0028","PA-E0029","PA-E0030"]},
+    {"packet_id":"W5-P2","status":"COMPLETE","event_ids":["PA-E0028","PA-E0029","PA-E0030"]},
+    {"packet_id":"W6-P1","status":"COMPLETE","event_ids":["PA-E0031","PA-E0032","PA-E0033"],"artifact":"BEYOND_ACARYA_ACCEPTANCE_v1.json"},
+    {"packet_id":"W6-P2","status":"INDEPENDENT_REVIEW_PENDING","event_ids":["PA-E0034"]}
+  ],
+  "acceptance_disposition": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v1.json",
+    "verdict": "NOT_ACCEPTED_SOURCE_LOCAL",
+    "report_hash": "sha256:f3e28ecc006fab43087dc3f372907f37e982cb0e8e9d553ae61039e4d162c510",
+    "rule": "Negative acceptance evidence is retained; campaign closure must not rewrite it as a pass."
+  },
+  "original_residual_disposition": [
+    {"original_id":"R1","status":"CLOSED_SOURCE_LOCAL","event_ids":["PA-E0018","PA-E0019"],"terminal_residual_ids":[]},
+    {"original_id":"R2","status":"PARTIALLY_CLOSED_SOURCE_ONLY","event_ids":["PA-E0008","PA-E0014"],"terminal_residual_ids":["PA-R01-DEPLOYED-CURRENT-DENOMINATOR"]},
+    {"original_id":"R3","status":"CLOSED_SOURCE_LOCAL","event_ids":["PA-E0014","PA-E0015"],"terminal_residual_ids":[]},
+    {"original_id":"R4","status":"CLOSED_SOURCE_LOCAL","event_ids":["PA-E0014","PA-E0015"],"terminal_residual_ids":[]},
+    {"original_id":"R5","status":"PARTIALLY_CLOSED_SOURCE_ONLY","event_ids":["PA-E0014","PA-E0015"],"terminal_residual_ids":["PA-R11-PAGINATION-EXHAUSTION"]},
+    {"original_id":"R6","status":"PARTIALLY_CLOSED_DISPOSABLE_ONLY","event_ids":["PA-E0013","PA-E0029"],"terminal_residual_ids":["PA-R01-DEPLOYED-CURRENT-DENOMINATOR","PA-R07-DEPLOYED-CROSS-DOOR-TRACE"]},
+    {"original_id":"R7","status":"OPEN_AUTHORITY_BOUND","event_ids":["PA-E0021"],"terminal_residual_ids":["PA-R12-FLAT-MANIFEST-COMPATIBILITY"]},
+    {"original_id":"R8","status":"CLOSED_SOURCE_LOCAL_ONLY","event_ids":["PA-E0029","PA-E0030"],"terminal_residual_ids":["PA-R07-DEPLOYED-CROSS-DOOR-TRACE"]},
+    {"original_id":"R9","status":"PARTIALLY_CLOSED_DISPOSABLE_ONLY","event_ids":["PA-E0029","PA-E0030"],"terminal_residual_ids":["PA-R04-RESERVATION-RESTART-RECOVERY","PA-R05-DURABLE-MANAGED-JOBS"]},
+    {"original_id":"R10","status":"PARTIALLY_CLOSED_DISPOSABLE_ONLY","event_ids":["PA-E0029","PA-E0030"],"terminal_residual_ids":["PA-R06-MIGRATION-AND-SIGNING-KEY"]},
+    {"original_id":"R11","status":"OPEN_AUTHORITY_BOUND","event_ids":["PA-E0030"],"terminal_residual_ids":["PA-R05-DURABLE-MANAGED-JOBS"]},
+    {"original_id":"R12","status":"OPEN_AUTHORITY_BOUND","event_ids":["PA-E0030","PA-E0031"],"terminal_residual_ids":["PA-R01-DEPLOYED-CURRENT-DENOMINATOR","PA-R07-DEPLOYED-CROSS-DOOR-TRACE","PA-R08-EMPIRICAL-ANSWER-QUALITY"]}
+  ],
+  "residuals": [
+    {
+      "residual_id": "PA-R01-DEPLOYED-CURRENT-DENOMINATOR",
+      "severity": "MEDIUM",
+      "owner": "production-data-governance",
+      "trigger": "A separately authorized ordered migration replay or read-only live query establishes deployed-current membership and counts.",
+      "authority_required": "shared-or-production read/change authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R02-FULL-CATALOG-CHANNEL-COVERAGE",
+      "severity": "MEDIUM",
+      "owner": "mcp-capability-registry",
+      "trigger": "Every intended public SCU has reviewed channel declarations and identical staging inquiries prove normalized Portal, managed MCP and raw MCP receipts.",
+      "authority_required": "route-ownership review and staging execution authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R03-TRANSIT-ARGUMENT-DERIVATION",
+      "severity": "MEDIUM",
+      "owner": "inquiry-planner-compiler",
+      "trigger": "A reviewed argument-derivation or clarification contract supplies planet, start_date and end_date for required transit retrieval and the pinned acceptance corpus reaches 34/34 frozen route obligations while the affected domain inquiries close.",
+      "authority_required": "new planner contract and independent semantic review",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R04-RESERVATION-RESTART-RECOVERY",
+      "severity": "MEDIUM",
+      "owner": "inquiry-lifecycle-delivery",
+      "trigger": "A reviewed restart/cross-instance recovery design preserves at-most-once dispatch and passes crash-between-reservation-and-dispatch staging tests.",
+      "authority_required": "managed delivery design and staging execution authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R05-DURABLE-MANAGED-JOBS",
+      "severity": "MEDIUM",
+      "owner": "managed-prashna-delivery",
+      "trigger": "The process-local prashna_ask job wrapper adopts an approved durable principal-bound store and passes restart/cross-instance tests.",
+      "authority_required": "managed job persistence and deployment authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R06-MIGRATION-AND-SIGNING-KEY",
+      "severity": "MEDIUM",
+      "owner": "platform-security-release",
+      "trigger": "Approved change control provisions and rotates the dedicated signing key, applies migration 1033 in staging, and validates service role context without exposing the key.",
+      "authority_required": "credentials infrastructure migration and staging authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R07-DEPLOYED-CROSS-DOOR-TRACE",
+      "severity": "MEDIUM",
+      "owner": "release-quality-engineering",
+      "trigger": "The exact pinned inquiry is executed through deployed Portal, managed MCP and raw MCP paths and normalized receipts match under approved staging access.",
+      "authority_required": "deployment and staging runtime authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R08-EMPIRICAL-ANSWER-QUALITY",
+      "severity": "MEDIUM",
+      "owner": "product-research-and-domain-review",
+      "trigger": "A predeclared held-out corpus receives independent expert applicability review and separately authorized empirical evaluation without outcome leakage.",
+      "authority_required": "expert review research data and empirical acceptance authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R09-UNMERGED-UNDEPLOYED-STACK",
+      "severity": "LOW",
+      "owner": "protected-delivery-owner",
+      "trigger": "An authorized owner independently reviews the stacked PR chain, obtains protected checks, and performs any merge/deploy under normal release control.",
+      "authority_required": "merge and deployment authority",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R10-INHERITED-GOVERNANCE-BASELINE",
+      "severity": "MEDIUM",
+      "owner": "governance-maintenance",
+      "trigger": "A separately scoped remediation resolves the inherited 79 drift findings and 42 schema violations without bundling unrelated changes into this campaign.",
+      "authority_required": "cross-governance remediation scope",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R11-PAGINATION-EXHAUSTION",
+      "severity": "MEDIUM",
+      "owner": "route-contract-governance",
+      "trigger": "All material paginated routes have reviewed total next exhaustion and ordering contracts and first middle last page golden evidence; the 95 explicitly non-exhaustible bindings are either completed or dispositioned.",
+      "authority_required": "route ownership contract expansion and compatibility review",
+      "status": "QUARANTINED"
+    },
+    {
+      "residual_id": "PA-R12-FLAT-MANIFEST-COMPATIBILITY",
+      "severity": "LOW",
+      "owner": "capability-architecture-governance",
+      "trigger": "Every compatibility consumer has migrated to the reviewed semantic capability graph and separate authority approves retirement of flat manifest semantic assumptions.",
+      "authority_required": "cross-consumer migration and asset retirement authority",
+      "status": "QUARANTINED"
+    }
+  ],
+  "prohibited_actions": {
+    "merge_performed": false,
+    "deployment_performed": false,
+    "shared_or_production_migration_applied": false,
+    "shared_or_production_data_mutated": false,
+    "credentials_secrets_or_infrastructure_changed": false,
+    "asset_retirement_performed": false,
+    "doctrine_ratified_or_changed": false,
+    "frozen_writerbase_or_orchestrator_changed": false,
+    "foreign_campaign_state_mutated": false,
+    "production_health_claimed": false,
+    "user_or_empirical_acceptance_claimed": false
+  },
+  "delivery": {
+    "foundation_candidate_pull_request": 2597,
+    "foundation_candidate_policy": "FROZEN_UNCHANGED",
+    "stacked_pull_requests": [2598, 2599, 2600, 2601, 2602, 2603],
+    "wave6_pull_request": null,
+    "merge_status": "NOT_RUN",
+    "deployment_status": "NOT_RUN"
+  },
+  "lease_release": {
+    "lease_id": "MADHAV-PURNA-ANVESANA-W6-20260915",
+    "status": "PENDING",
+    "remote_coordination_commit": null
+  }
+}
