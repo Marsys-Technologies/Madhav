@@ -41137,7 +41137,7 @@ session_open:
   agent_name: codex
   agent_version: gpt-5
   tool: Codex
-  tool_profile: madhav-acceptance-terminal
+  tool_profile: madhav-safe
   worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave6
   step_number_or_layer: "Purna Anvesana Wave 6 — Beyond-Acarya acceptance and source-scope close"
   predecessor_session: MADHAV-PURNA-ANVESANA-W5-20260914
@@ -41231,6 +41231,12 @@ remote coordination commit `2c4a99481a3894d7cbad98357557b102b28aeeea`; PR #2604 
 stacked on Wave 5. The immutable final source head requires external exact-head review and must not
 be followed by another source mutation.
 
+The first external review of final head `d17ab0aa9643572d72d3813ecd4e9c23e91d5777` found that the
+embedded session-open block named an unregistered Codex tool profile. That invalid handshake was a
+real halt which the broad inherited-baseline scan did not surface. The profile metadata was
+corrected to the approved `madhav-safe` value and the handshake-specific validator then passed with
+zero violations. A new immutable exact-head review is required after this correction.
+
 Focused acceptance and terminal tests pass 16/16, the inquiry/Pariprashna suite passes 98 with eight
 skipped, TypeScript passes, route golden streams pass 56/56, and full lint reports zero errors with
 590 inherited warnings. The final full unit run passes 1,103 files and 11,721 tests, with 72 files
@@ -41268,7 +41274,8 @@ session_close:
     verdict: PASS_AFTER_CORRECTIONS
     artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
   drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: /tmp/purna_w6_drift_after_close.md, divergences_found: 79}
-  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: /tmp/purna_w6_schema_after_close.md, violations_found: 42}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: /tmp/purna_w6_schema_final.md, violations_found: 42}
+  handshake_validator_run: {script: platform/scripts/governance/schema_validator.py, tool_profile: madhav-safe, exit_code: 0, report_path: /tmp/purna_w6_handshake.md, violations_found: 0}
   current_state_updated: true
   session_log_appended: true
   cross_tool_sync:
@@ -41291,6 +41298,7 @@ session_close:
     - "W6-P2 independent review refuted event relevance, acceptance binding, lease proof, residual completeness, event ordering, exact-head binding and self-referential final review across four candidates; all were repaired and the pre-release head was approved."
     - "The source/local acceptance verdict is negative at 30/34 routes; the missing transit argument-derivation contract is quarantined rather than treated as accepted."
     - "The pre-close schema scan reported 43 violations because the required session-close block was not yet present; the closed state returns to the inherited baseline."
+    - "External final-head review found the embedded session-open tool profile was unregistered; it was corrected to madhav-safe and the handshake-specific validator passed with zero violations."
   native_directive_per_step_verification:
     - directive_id: ND.2
       step: MADHAV-PURNA-ANVESANA-W6-20260915

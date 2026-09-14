@@ -6,8 +6,8 @@ status: SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0041
-last_updated: 2026-09-15T01:28:00+05:30
+last_event: PA-E0043
+last_updated: 2026-09-15T01:34:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -229,6 +229,11 @@ release and completion order. The immutable final source head still requires an 
 review; that review is intentionally not represented by a self-certifying in-tree marker. No merge,
 deployment, shared or production mutation, credential or infrastructure action, doctrine change,
 retirement, production-health claim, user acceptance claim or empirical acceptance claim occurred.
+
+The first external final-head review withheld approval because the embedded W6 session-open block
+named an unregistered Codex profile. The metadata now records the approved `madhav-safe` profile;
+the handshake-specific schema validator passes with zero violations. This correction is governance
+metadata only and requires a new immutable external exact-head review before final closure.
 
 ## Reproduction
 
