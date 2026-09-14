@@ -131,12 +131,13 @@ class TestPlan:
 
     def test_no_event_classes_is_an_honest_empty_plan(self):
         # Lane A (bo_pratijna) has not promised or conditionally-promised anything
-        # for this chart yet. Zero substeps and a log line — not a crash, and not
-        # a fabricated class list.
+        # for this chart yet. The only executable work is replacement cleanup —
+        # not a crash, and not a fabricated class list.
         tables = F.build_tables()
         tables['bodha_pratijna'] = []
         conn = FakeConn(tables)
-        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        assert [step.key for step in steps] == ['prepare:replace']
 
     def test_denied_pratijna_rows_do_not_count_as_event_classes(self):
         # A chart can have bo_pratijna rows that are all `denied` — real Bodha
@@ -151,7 +152,8 @@ class TestPlan:
             {'chart_id': F.CHART_ID, 'event_class_id': 'never_promised', 'status': 'denied'},
         ]
         conn = FakeConn(tables)
-        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        assert [step.key for step in steps] == ['prepare:replace']
 
     def test_idempotency_delete_happens_exactly_once_in_prepare_substep(self):
         # THE ka_gochara_sweep D-5 RED-C LESSON. A computational-substep delete can fire
