@@ -70,7 +70,7 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
 // requirement as /api/mcp/primitives/[tool]/route.ts.
-import { getCatalog } from '@/lib/retrieval/registry/catalog'
+import '@/lib/retrieval/registry/catalog'
 import { validateServiceToken } from '@/lib/mcp/service_token'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'

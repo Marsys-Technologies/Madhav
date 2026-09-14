@@ -12,7 +12,6 @@ import {
   type InquiryPlanItem,
   type InquiryScopeTuple,
   type InquiryValidationResult,
-  type MaterialFrontierItem,
   type OmissionFinding,
 } from './types'
 import type { InquiryPaginationReceipt } from './pagination'
