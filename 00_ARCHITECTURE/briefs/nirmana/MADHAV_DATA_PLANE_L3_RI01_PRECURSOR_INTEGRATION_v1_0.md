@@ -98,4 +98,3 @@ protected merge it must refresh origin/main, the full open-PR migration sweep,
 the production applied-identity query and the coordination lease/claims.
 Protected CI is not deployment proof: RI-01 closes only after the exact served
 source revision and both _migrations_applied rows are independently observed.
-
