@@ -6,7 +6,7 @@ approved_on: 2026-09-14
 strategy_decision: DP-SD-015
 strategic_parent_task: "Strategy — Data Plane / 01a0996e-6ca0-7642-ac31-f968fee214b3"
 execution_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
-approval_record: "DP-SD-015 at strategy content commit TO_BE_PINNED"
+approval_record: "DP-SD-015 at strategy content commit 86374d65f3dc742085783e352a9999e2edb48715"
 product_authority: "MADHAV_PRODUCT_DEFINITION v3.0 / CCD-010"
 strategy_version: "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE v2.0 amended by DP-SD-009, accepted L0 DP-SD-012, accepted L1 DP-SD-014 and MADHAV_DATA_PLANE_L2_BODHA_STRATEGY v1.0 / DP-SD-015"
 layer: "L2 Bodha"
