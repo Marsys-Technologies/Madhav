@@ -28,6 +28,19 @@ def _plan(conn: FakeConn, *, dry_run: bool = False):
     return writer, ctx, writer.plan_substeps(ctx)
 
 
+def _without_owned_outputs(tables: dict[str, list[dict]]) -> dict[str, list[dict]]:
+    """Keep source fixtures but remove every output owned by this writer."""
+    for table, _predicate in W._OWNED_TABLES:
+        if table == 'kala_insights':
+            tables[table] = [
+                row for row in tables.get(table, [])
+                if row.get('lel_derived') is True
+            ]
+        else:
+            tables[table] = []
+    return tables
+
+
 class _TransactionalCursor(FakeCursor):
     """Add the real driver's transaction statements to the strict Kshetra fake."""
 
@@ -85,7 +98,7 @@ def test_planning_is_zero_dml_and_prepare_is_first() -> None:
 
 
 def test_prepare_clears_every_owned_table_once_in_dependency_safe_order() -> None:
-    conn = FakeConn(F.build_tables())
+    conn = FakeConn(_without_owned_outputs(F.build_tables()))
     writer, ctx, steps = _plan(conn)
 
     writer.run_substep(ctx, steps[0])
@@ -102,8 +115,47 @@ def test_prepare_clears_every_owned_table_once_in_dependency_safe_order() -> Non
     assert progress[0]['build_fingerprint'] == writer._fingerprint()
 
 
+@pytest.mark.parametrize('table,predicate', W._OWNED_TABLES)
+def test_any_preexisting_writer_owned_output_holds_replacement_without_dml(
+    table: str, predicate: str | None,
+) -> None:
+    tables = _without_owned_outputs(F.build_tables())
+    row = {'chart_id': F.CHART_ID}
+    if table == 'kala_insights':
+        assert predicate == 'lel_derived = FALSE'
+        row['lel_derived'] = False
+    tables[table].append(row)
+    conn = FakeConn(tables)
+    prior_slice = copy.deepcopy(conn.tables)
+    writer, ctx, steps = _plan(conn)
+
+    with pytest.raises(W.KshetraReplacementHeld, match=table):
+        writer.run_substep(ctx, steps[0])
+
+    assert conn.advisory_locks == [(W.ASSET_ID, F.CHART_ID)]
+    assert conn.tables == prior_slice
+    assert _mutating_statements(conn) == []
+    assert conn.deletes == []
+
+
+def test_lane_e_only_insight_does_not_block_and_survives_empty_slice_prepare() -> None:
+    tables = _without_owned_outputs(F.build_tables())
+    lane_e_row = {
+        'chart_id': F.CHART_ID, 'insight_id': 'kin_laneE_biographical',
+        'insight_type': 'biographical_echo', 'lel_derived': True,
+    }
+    tables['kala_insights'].append(lane_e_row)
+    conn = FakeConn(tables)
+    writer, ctx, steps = _plan(conn)
+
+    writer.run_substep(ctx, steps[0])
+
+    assert conn.tables['kala_insights'] == [lane_e_row]
+    assert conn.advisory_locks == [(W.ASSET_ID, F.CHART_ID)]
+
+
 def test_matching_resume_is_zero_dml_and_does_not_prepare_twice() -> None:
-    conn = FakeConn(F.build_tables())
+    conn = FakeConn(_without_owned_outputs(F.build_tables()))
     writer, ctx, steps = _plan(conn)
     writer.run_substep(ctx, steps[0])
     deletes_after_prepare = list(conn.deletes)
@@ -141,11 +193,18 @@ def test_dhara_semantic_version_changes_snapshot_and_resume_identity(monkeypatch
     assert fingerprint_v11 != fingerprint_v12_same_snapshot
 
 
-def test_stale_resume_defers_replacement_until_prepare_execution() -> None:
-    tables = F.build_tables()
+def test_later_stage_crash_replan_preserves_prior_slice_without_dml() -> None:
+    tables = _without_owned_outputs(F.build_tables())
     tables['kala_field'].append({
         'chart_id': F.CHART_ID, 'event_class': F.EVENT_CLASS,
         'segment_index': 99, 't_start': 0.0,
+    })
+    tables['kala_field_snapshots'].append({
+        'chart_id': F.CHART_ID, 'field_snapshot_id': 'prior-servable',
+    })
+    tables['kala_insights'].append({
+        'chart_id': F.CHART_ID, 'insight_id': 'prior-field-insight',
+        'lel_derived': False,
     })
     tables['build_substep_progress'] = [{
         'chart_id': F.CHART_ID,
@@ -155,22 +214,22 @@ def test_stale_resume_defers_replacement_until_prepare_execution() -> None:
         'rows_written': 1,
     }]
     conn = FakeConn(tables)
+    prior_slice = copy.deepcopy(conn.tables)
 
     writer, ctx, steps = _plan(conn)
 
     assert steps[0].key == 'prepare:replace'
-    assert conn.tables['kala_field'], 'stale output must survive read-only validation'
     assert _mutating_statements(conn) == []
 
-    writer.run_substep(ctx, steps[0])
-    assert conn.tables['kala_field'] == []
-    assert [row['substep_key'] for row in conn.tables['build_substep_progress']] == [
-        'prepare:replace'
-    ]
+    with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+        writer.run_substep(ctx, steps[0])
+    assert conn.tables == prior_slice
+    assert _mutating_statements(conn) == []
+    assert conn.deletes == []
 
 
 def test_driver_rollback_removes_failed_plugin_output_and_receipt(monkeypatch) -> None:
-    conn = _TransactionalFakeConn(F.build_tables())
+    conn = _TransactionalFakeConn(_without_owned_outputs(F.build_tables()))
     writer, ctx, steps = _plan(conn)
     prepare = steps[0]
     stage0_sun = next(step for step in steps if step.key == 'stage0:Sun')
@@ -255,11 +314,18 @@ def test_dry_run_complete_isolated_plan_is_zero_dml(monkeypatch) -> None:
     assert dry_conn.tables == before
 
 
-def test_successful_empty_discovery_returns_executable_prepare_only_plan(monkeypatch) -> None:
-    empty_tables = F.build_tables()
+def test_empty_discovery_preserves_preexisting_output_without_dml(monkeypatch) -> None:
+    empty_tables = _without_owned_outputs(F.build_tables())
     empty_tables['bodha_pratijna'] = []
     empty_tables['kala_field'].append({
         'chart_id': F.CHART_ID, 'event_class': 'stale', 'segment_index': 1,
+    })
+    empty_tables['kala_field_snapshots'].append({
+        'chart_id': F.CHART_ID, 'field_snapshot_id': 'prior-servable',
+    })
+    empty_tables['kala_insights'].append({
+        'chart_id': F.CHART_ID, 'insight_id': 'prior-field-insight',
+        'lel_derived': False,
     })
     empty_tables['build_substep_progress'].append({
         'chart_id': F.CHART_ID, 'asset_id': W.ASSET_ID,
@@ -267,23 +333,40 @@ def test_successful_empty_discovery_returns_executable_prepare_only_plan(monkeyp
         'rows_written': 1,
     })
     empty_conn = _TransactionalFakeConn(empty_tables)
+    prior_slice = copy.deepcopy(empty_conn.tables)
 
     writer, ctx, empty_steps = _plan(empty_conn)
 
     assert [step.key for step in empty_steps] == ['prepare:replace']
     assert _mutating_statements(empty_conn) == []
     monkeypatch.setattr(asset_runner, 'emit_event', lambda *_args, **_kwargs: None)
-    asset_runner._drive_substeps(
-        empty_conn, empty_conn.cursor(), ctx.build_id, F.CHART_ID,
-        W.ASSET_ID, writer, ctx,
-    )
-    assert empty_conn.commits == 1
+    with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+        asset_runner._drive_substeps(
+            empty_conn, empty_conn.cursor(), ctx.build_id, F.CHART_ID,
+            W.ASSET_ID, writer, ctx,
+        )
+    assert empty_conn.commits == 0
     assert 'SAVEPOINT writer_exec' in empty_conn.executed
-    assert 'RELEASE SAVEPOINT writer_exec' in empty_conn.executed
-    assert empty_conn.tables['kala_field'] == []
-    assert [row['substep_key'] for row in empty_conn.tables['build_substep_progress']] == [
-        'prepare:replace'
-    ]
+    assert 'ROLLBACK TO SAVEPOINT writer_exec' in empty_conn.executed
+    assert empty_conn.tables == prior_slice
+    assert _mutating_statements(empty_conn) == []
+
+
+def test_actually_empty_discovery_noops_prepare_without_dml() -> None:
+    tables = _without_owned_outputs(F.build_tables())
+    tables['bodha_pratijna'] = []
+    tables['build_substep_progress'] = []
+    conn = FakeConn(tables)
+    prior_slice = copy.deepcopy(conn.tables)
+
+    writer, ctx, steps = _plan(conn)
+    result = writer.run_substep(ctx, steps[0])
+
+    assert result.rows_inserted == 0
+    assert result.notes == 'honest_empty:no_event_classes; replacement not required'
+    assert conn.tables == prior_slice
+    assert _mutating_statements(conn) == []
+    assert conn.deletes == []
 
 
 def test_event_class_discovery_error_is_not_an_honest_empty() -> None:
@@ -300,6 +383,6 @@ def test_event_class_discovery_error_is_not_an_honest_empty() -> None:
 
 def test_prepare_does_not_own_transaction_lifecycle() -> None:
     # FakeConn raises if commit/rollback/close is called.
-    conn = FakeConn(F.build_tables())
+    conn = FakeConn(_without_owned_outputs(F.build_tables()))
     writer, ctx, steps = _plan(conn)
     writer.run_substep(ctx, steps[0])

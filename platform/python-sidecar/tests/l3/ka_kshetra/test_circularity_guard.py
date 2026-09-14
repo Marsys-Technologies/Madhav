@@ -200,6 +200,18 @@ class TestDynamicInvariance:
         monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage0_kinematics', None)
         monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage1_symbolization', None)
         monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage3_clocks', None)
+        # These wiring tests substitute fixture rows for the excluded stages.
+        # They are inputs to this isolated build, not a populated prior slice.
+        fixture_input_tables = {
+            'kala_field_kinematics', 'kala_field_primitives',
+            'kala_field_promise_nodes', 'kala_field_promise_edges',
+            'kala_field_routes', 'kala_field_clocks', 'kala_field_boundaries',
+        }
+        monkeypatch.setattr(
+            W, '_OWNED_TABLES',
+            tuple(item for item in W._OWNED_TABLES
+                  if item[0] not in fixture_input_tables),
+        )
         conn = FakeConn(F.build_tables(life_event_rows=life_event_rows))
         ctx = FakeCtx(conn, F.CHART_ID)
         writer = W.KaKshetraWriter()

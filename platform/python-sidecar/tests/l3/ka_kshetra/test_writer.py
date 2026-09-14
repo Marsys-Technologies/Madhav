@@ -17,6 +17,7 @@ test_hazard.py / test_integrator.py / test_stage4_field.py / test_stage5_null.py
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 import sys
@@ -484,15 +485,24 @@ class TestDeterminism:
         hb = b.tables['kala_field_snapshots'][0]['field_content_hash']
         assert ha == hb
 
-    def test_a_rebuild_over_existing_rows_replaces_rather_than_accretes(self):
+    def test_a_fresh_rebuild_over_existing_rows_is_held_until_w7(self):
         tables = F.build_tables()
         _, conn = _run_full_build(tables)
-        first = len(conn.tables['kala_field'])
+        conn.tables['build_substep_progress'] = []
+        conn.executed.clear()
+        conn.deletes.clear()
+        prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
-        for step in writer.plan_substeps(ctx):
-            writer.run_substep(ctx, step)
-        assert len(conn.tables['kala_field']) == first
+        steps = writer.plan_substeps(ctx)
+
+        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+            writer.run_substep(ctx, steps[0])
+
+        assert conn.tables == prior_slice
+        assert conn.deletes == []
+        assert not any(re.match(r'\s*(?:DELETE|INSERT|UPDATE|TRUNCATE)\b', sql, re.I)
+                       for sql in conn.executed)
 
     def test_a_changed_weights_version_changes_the_snapshot_identity(self):
         tables = F.build_tables()
@@ -574,7 +584,7 @@ class TestStage65Insights:
         assert all(r['insight_type'] != 'biographical_echo' for r in rows)
         assert all(r['field_snapshot_id'] == writer._snapshot_id for r in rows)
 
-    def test_a_lane_E_biographical_row_survives_a_field_rebuild(self):
+    def test_a_lane_E_biographical_row_survives_a_held_populated_rebuild(self):
         # THE SHARED-TABLE HAZARD. `kala_insights` is written by two authors; a
         # blanket per-chart delete on a field rebuild would silently destroy
         # Lane E's LEL-derived rows, which are outside this writer's authorship
@@ -591,18 +601,20 @@ class TestStage65Insights:
         # assertion below would pass while proving nothing — which is exactly
         # what a mutation run caught this test doing.
         conn.tables['build_substep_progress'] = []
+        conn.executed.clear()
         conn.deletes.clear()
+        prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
         steps = writer.plan_substeps(ctx)
         assert conn.deletes == [], 'planning must be read-only'
         assert steps[0].key == 'prepare:replace'
-        writer.run_substep(ctx, steps[0])
-        assert 'kala_insights' in conn.deletes, 'the prepare delete path must actually run'
-        for step in steps[1:]:
-            writer.run_substep(ctx, step)
-        ids = {r['insight_id'] for r in conn.tables['kala_insights']}
-        assert 'kin_laneE_biographical' in ids
+        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+            writer.run_substep(ctx, steps[0])
+        assert conn.tables == prior_slice
+        assert conn.deletes == []
+        assert not any(re.match(r'\s*(?:DELETE|INSERT|UPDATE|TRUNCATE)\b', sql, re.I)
+                       for sql in conn.executed)
 
     def test_a_lel_derived_row_never_enters_the_content_hash(self):
         # The other half of the carve-out: the insight is SERVED and the field
