@@ -23,8 +23,10 @@ export const ganitaStrengthGetGeneratedInputSchema = {
   ayanamsha_id: z.string().describe("Filter by ayanamsha_id. Omit for all.").optional(),
   categories: z.array(z.string()).describe("Subset of strength categories (default: all 21).").optional(),
   graha_key: z.string().describe("Filter to one graha (e.g. \"SU\" for Sun). Omit for all.").optional(),
+  frame: z.string().describe("Reference frame (default: lagna). When non-lagna, the response includes a `frame_context` map of each graha's ACTIVE house under that frame (e.g. from Moon) — so a graha_in_house_composite_strength row for the graha's real from-frame house can be picked out of the returned table in this same call, without a second get_positions lookup. The strength VALUES themselves are frozen build-time formula output and are never recomputed.").optional().default("lagna"),
   offset: z.number().optional().default(0),
   limit: z.number().optional().default(500),
+  all: z.boolean().describe("ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` (the one category with a row per graha PER HOUSE, 12x a graha's real placement) is filtered to each graha's single ACTUAL house under `frame` by default, dropping the other 11 counterfactual \"what if this graha sat in house N\" rows per graha. Every other strength category (Shadbala, Vimsopaka, Ishta/Kashta, etc.) is one row per graha already and is unaffected either way. Pass true to get every counterfactual placement row for every graha (the pre-fix behavior).").optional().default(false),
 } as const
 
 /** Generated from ../../platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts (export getSadeSatiCapability), uri=marsys://tool/L1/get_sade_sati. */
@@ -32,6 +34,7 @@ export const ganitaSadeSatiGetGeneratedInputSchema = {
   chart_id: z.string().uuid().describe("Chart UUID"),
   ayanamsha_id: z.string().describe("Filter by ayanamsha. Omit for all.").optional(),
   categories: z.array(z.string()).describe("Subset of Sade Sati categories.").optional(),
+  all: z.boolean().describe("ŚODHANA T3 (MC-014): default false — serves only the CURRENT + adjacent period(s) for every dated category (cycles/phases/quarters/periods/retrograde subsets), not the full historical+future sweep spanning ~1950-2100. Pass true to get every row across every period this chart has ever had or will ever have (the pre-fix behavior) — useful for a rectification/historical-events pass, not a \"how is Saturn affecting me now\" question. Rows with no start/end date pair (flags/modifiers/overlays keyed off a parent cycle) are always served regardless of this flag.").optional().default(false),
   offset: z.number().optional().default(0),
   limit: z.number().optional().default(500),
 } as const
@@ -41,9 +44,12 @@ export const ganitaTajakaGetGeneratedInputSchema = {
   chart_id: z.string().uuid().describe("Chart UUID"),
   ayanamsha_id: z.string().describe("Filter by ayanamsha. Omit for all.").optional(),
   include_varsha: z.boolean().describe("Include l1_tajik_varsha_year_lords rows (default true)").optional().default(true),
+  include_hadda: z.boolean().describe("MC-021/024 fix: include the hadda_lord_facts / triraashipathi / vargottama chart_facts rows (245 static, non-year-varying rows). Default FALSE — these rows drowned the envelope by default while the actually-wanted current-year varsha row was unreachable. The total count is still always reported (hadda_lord_facts.total); pass include_hadda=true to fetch the rows.").optional().default(false),
   year_min: z.number().describe("Filter varsha lords to year >= this.").optional(),
   year_max: z.number().describe("Filter varsha lords to year <= this.").optional(),
-  offset: z.number().optional().default(0),
+  varsha_year: z.number().describe("R6 3b-budgets (R-25): filter varsha_year_lords to this EXACT year (e.g. current age for the native). Preferred over year_min/year_max when a single year is wanted — it is the only way to reach a specific solar-return year without paging through every prior year. Takes precedence over varsha_date if both are given.").optional(),
+  varsha_date: z.string().describe("MC-021/024 \"current year\" convenience: an ISO date (YYYY-MM-DD); resolved server-side to the solar-return varsha_year whose window [birth_date + (N-1)y, birth_date + N*y) contains this date, then applied as an exact-year filter (same as passing that varsha_year directly). Ignored if varsha_year is also given. The resolved year is echoed back in varsha_year_lords.varsha_year_resolved_from_date.").optional(),
+  offset: z.number().describe("R6 3b-budgets (R-25) fix: offset/limit now page EACH source independently — hadda-lord chart_facts rows and varsha_year_lords rows are returned as two separately-paginated sections (hadda_lord_facts / varsha_year_lords), each with its own {offset, limit, total, returned_count}. Previously a single shared offset/limit applied to the EAV hadda rows while the varsha list silently ignored offset and always restarted at year 1 — total flipped 16→6 across offsets because the two sources drained at different rates.").optional().default(0),
   limit: z.number().optional().default(200),
 } as const
 
