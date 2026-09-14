@@ -23,6 +23,7 @@ changelog:
   - "1.0 update 2026-09-14: Pins DP-SD-013 approval to immutable L1 strategy/brief content commit 7e101ffc31e28ca902265def6de733a5286705e5; dispatch is the next action."
   - "1.0 update 2026-09-14: Dispatches the pinned DP-SD-013 L1 brief to the permanent Execution — Data Plane task on codex/madhav-data-plane-execution."
   - "1.0 update 2026-09-14: Accepts the independently challenged L1 PRODUCER_READY packet at execution commit 18503e9c2; opens L2 for strategy only under DP-SD-014."
+  - "1.0 update 2026-09-14: Approves the independently challenged complete L2 Bodha producer-ready strategy and execution brief under DP-SD-015; immutable approval pin and dispatch remain separate next actions, and L3 stays waiting."
 ---
 
 # Madhav data-plane strategic ledger
@@ -126,6 +127,7 @@ separately admitted next-generation artifact. Product backcasting is not runtime
 | DP-SD-012 | Accept the L0 Brahmagyan terminal packet at `f6fed12c794224329f6b3b436f8b1b814499d06d` as `PRODUCER_READY`, with all later delivery states explicitly unreached. | ACCEPTED on 2026-09-13 after independent challenge; authorizes L1 strategy preparation only, not L1 execution. |
 | DP-SD-013 | Approve the complete L1 Gaṇita producer-ready strategy and paired immutable execution brief against accepted L0 revision `f6fed12c7`: reconcile all 19 current writers plus adjacent numerical service/projection capital; implement exact context/fact/configuration/condition/relation/clock/sensitivity/generation contracts and `L1-SLICE-RESOURCE-CONFIG-01`; preserve the L0 `UNQUALIFIED_SOURCE` Bhāvat boundary, frozen producer architecture and all later-state gates. | APPROVED on 2026-09-14 at immutable content commit `7e101ffc31e28ca902265def6de733a5286705e5`; authorizes only the permanent execution task on `codex/madhav-data-plane-execution` to execute the pinned L1 brief and stop at `PRODUCER_READY`. |
 | DP-SD-014 | Accept the L1 Gaṇita terminal packet at `18503e9c2dbb140f5d17b4bc34a5f6d087f97c38` as `PRODUCER_READY`, with reviewed implementation tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053`, exactly 19/19 runtime producer boundaries, slice digest `25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279`, independent challenge PASS and every later delivery state unreached. | ACCEPTED on 2026-09-14 after strategy-side commit/scope/artifact review, independent rerun of the 19/19 validator and 52 focused contract tests. Authorizes L2 strategy preparation only; it does not authorize L2 execution, integration, deployment, production mutation, consumer-value or empirical claims. |
+| DP-SD-015 | Approve the complete L2 Bodha producer-ready strategy and paired execution brief against accepted L0 `f6fed12c7` and L1 terminal `18503e9c2`: reconcile all 23 current `bo_*` writers including supporting `bo_grounding` while preserving the historical formal denominator of 22; disposition adjacent engines/helpers/stores/projections; implement stable signed/multidomain proposition, configuration, occurrence/condition/cancellation, graph/mechanism, contradiction/rival, evidence-dependence, epistemic/grounding, discovery/investigator, practice-eligibility and generation contracts; remove L3 runtime/activation-window authority from new L2 generations; and prove `L2-SLICE-RESOURCE-MECHANISM-01` without fabricating a qualified doctrine case. | APPROVED on 2026-09-14 after independent challenge and correction of authority-pin, adjacent-surface, L3-boundary and zero-positive-rule completion gaps. The immutable content pin is recorded by a separate approval commit before dispatch. Authorizes only the permanent execution task on `codex/madhav-data-plane-execution` to stop at `PRODUCER_READY`; no L3, integration, deployment, production mutation, consumer-value or empirical authority. |
 
 The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
@@ -191,19 +193,22 @@ the repeatedly studied charts.
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
 | DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
 | DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | COMPLETE — `PRODUCER_READY` accepted by DP-SD-014; integration/deployment/value/evaluation remain unreached | L1 strategy/brief pins `7e101ffc3`/`e846baf3c`; reviewed tip `a9c44c298`; terminal evidence `18503e9c2` |
-| DP-P4 | L2 Bodha definition: 23 writers including support, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | READY FOR STRATEGIC PLANNING; execution remains unauthorized | Accepted L0 `f6fed12c7`; accepted L1 terminal `18503e9c2`; L2 strategy/brief pending |
+| DP-P4 | L2 Bodha definition: 23 writers including support, adjacent answer authorities, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | APPROVED FOR EXECUTION by DP-SD-015; dispatch waits for immutable content/approval pins | Accepted L0 `f6fed12c7`; accepted L1 terminal `18503e9c2`; L2 strategy/brief v1.0 |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
-| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 and L1 terminals accepted; L2-L5 briefs pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
+| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 and L1 terminals accepted; L2 brief approved with pin/dispatch pending; L3-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
 
 The first proposed vertical slice remains:
 
 `L0 canonical meaning and qualified rule -> L1 exact configuration/condition facts -> L2 complete signed structural distinction -> managed delivered finding`
 
-Use a financial/configuration question with a qualified Bhāvat Bhāvam or cancellation case.
+Use a financial/configuration question with a source-qualified cancellation case when one is
+already admitted; otherwise preserve the Bhāvat Bhāvam arm as `UNQUALIFIED_SOURCE` and prove
+state machinery only with a non-promotable engineering fixture. Zero qualified positive doctrinal
+propositions is an honest valid producer outcome when the accepted L0 release supplies none.
 Only after that structural slice is accepted should its L3 activation, L4 manifestation/claim and
 L5 evaluation extensions proceed. Producer-ready, integrated, deployed and empirically validated
 remain separate statuses.
