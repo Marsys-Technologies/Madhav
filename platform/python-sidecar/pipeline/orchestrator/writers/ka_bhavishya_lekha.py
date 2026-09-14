@@ -5,6 +5,14 @@ from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 
+_PARTITION_LOCK_SQL = """
+    SELECT pg_advisory_xact_lock(
+        hashtext('madhav:ka_bhavishya_lekha:partition:v1'),
+        hashtext(%s::text)
+    )
+"""
+
+
 def _reattach_outcome(preserved: dict, signal_id, peak_date) -> tuple:
     """Return `(outcome_recorded, outcome_notes)` for a rebuilt projection row.
 
@@ -24,6 +32,49 @@ def _outcome_identity(signal_id, peak_date) -> tuple:
     return (str(signal_id) if signal_id is not None else None, peak_date)
 
 
+def _json_value(value):
+    """Normalize psycopg JSONB values and serialized candidate JSON for comparison."""
+    return json.loads(value) if isinstance(value, str) else value
+
+
+def _existing_claim(row: dict) -> dict:
+    """Return writer-owned claim content, excluding observation and surrogate metadata."""
+    return {
+        'projection_rank': row['projection_rank'],
+        'probability_tier': row['probability_tier'],
+        'domain': row['domain'],
+        'peak_date': str(row['peak_date']) if row['peak_date'] is not None else None,
+        'window_start': str(row['window_start']) if row['window_start'] is not None else None,
+        'window_end': str(row['window_end']) if row['window_end'] is not None else None,
+        'convergence_id': row['convergence_id'],
+        'signal_id': str(row['signal_id']) if row['signal_id'] is not None else None,
+        'effective_score': row['effective_score'],
+        'falsifiability': _json_value(row['falsifiability']),
+        'source_chain': _json_value(row['source_chain']),
+        'narrative': _json_value(row['narrative']),
+        'source_citation': row['source_citation'],
+    }
+
+
+def _planned_claim(row: tuple) -> dict:
+    """Return the same claim projection from a planned INSERT-shaped tuple."""
+    return {
+        'projection_rank': row[1],
+        'probability_tier': row[2],
+        'domain': row[3],
+        'peak_date': row[4],
+        'window_start': row[5],
+        'window_end': row[6],
+        'convergence_id': row[7],
+        'signal_id': str(row[8]) if row[8] is not None else None,
+        'effective_score': row[9],
+        'falsifiability': _json_value(row[10]),
+        'source_chain': _json_value(row[11]),
+        'narrative': _json_value(row[12]),
+        'source_citation': row[15],
+    }
+
+
 @register('ka_bhavishya_lekha')
 class KaBhavishyaLekhaWriter(WriterBase):
     def run(self, ctx) -> WriterResult:
@@ -34,6 +85,13 @@ class KaBhavishyaLekhaWriter(WriterBase):
         # Idempotency
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
+
+        # Serialize the complete read/plan/write window for this chart, including the true-empty
+        # and first-insert cases where no row exists for SELECT ... FOR UPDATE to lock. Transaction
+        # advisory locks are re-entrant on the same connection and release with the orchestrator's
+        # commit/rollback. The namespaced two-key form cannot collide with its outer build lock.
+        with conn.cursor() as lock_cur:
+            lock_cur.execute(_PARTITION_LOCK_SQL, (chart_id,))
 
         # NIRMĀṆA L3-W3 — preserve the P7 falsifiability seam across the rebuild.
         #
@@ -57,7 +115,11 @@ class KaBhavishyaLekhaWriter(WriterBase):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, signal_id, peak_date, outcome_recorded, outcome_notes
+                SELECT id, projection_rank, probability_tier, domain,
+                       peak_date, window_start, window_end,
+                       convergence_id, signal_id, effective_score,
+                       falsifiability, source_chain, narrative,
+                       outcome_recorded, outcome_notes, source_citation
                   FROM kala_bhavishya
                  WHERE chart_id = %s
                  ORDER BY id
@@ -181,8 +243,10 @@ class KaBhavishyaLekhaWriter(WriterBase):
 
         candidate_identities = set(candidate_identity_counts)
         stale_identities = set(existing_rows) - candidate_identities
-        stale_ids = [existing_rows[key]['id'] for key in stale_identities]
-        if stale_ids:
+        stale_ids = sorted(existing_rows[key]['id'] for key in stale_identities)
+        existing_ids = sorted(row['id'] for row in existing_rows.values())
+        referenced_existing_ids: set[int] = set()
+        if existing_ids:
             with conn.cursor() as probe_cur:
                 probe_cur.execute(
                     """
@@ -199,7 +263,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 )
 
             if phala_anchors_exists:
-                placeholders = ','.join(['%s'] * len(stale_ids))
+                placeholders = ','.join(['%s'] * len(existing_ids))
                 with conn.cursor() as cur:
                     cur.execute(
                         f"""
@@ -207,11 +271,13 @@ class KaBhavishyaLekhaWriter(WriterBase):
                           FROM phala_anchors
                          WHERE bhavishya_id IN ({placeholders})
                          ORDER BY bhavishya_id
-                         LIMIT 10
                         """,
-                        stale_ids,
+                        existing_ids,
                     )
-                    referenced_stale_ids = [row['bhavishya_id'] for row in cur.fetchall()]
+                    referenced_existing_ids = {
+                        row['bhavishya_id'] for row in cur.fetchall()
+                    }
+                referenced_stale_ids = sorted(referenced_existing_ids.intersection(stale_ids))
                 if referenced_stale_ids:
                     raise RuntimeError(
                         "ka_bhavishya_lekha: stale projection ids are still referenced by "
@@ -293,13 +359,42 @@ class KaBhavishyaLekhaWriter(WriterBase):
         # stale ids. All statements remain in the caller-owned transaction.
         matched_rows = []
         new_rows = []
+        unchanged_rows = 0
+        protected_changes = []
         for row, source in zip(rows, darshana_rows):
             key = _outcome_identity(source['signal_id'], source['peak_date'])
             existing = existing_rows.get(key)
             if existing is None:
                 new_rows.append(row)
-            else:
-                matched_rows.append(row[1:] + (chart_id, existing['id']))
+                continue
+
+            existing_claim = _existing_claim(existing)
+            planned_claim = _planned_claim(row)
+            changed_fields = [
+                field for field in planned_claim
+                if planned_claim[field] != existing_claim[field]
+            ]
+            if not changed_fields:
+                unchanged_rows += 1
+                continue
+
+            protected = (
+                bool(existing['outcome_recorded'])
+                or existing['outcome_notes'] is not None
+                or existing['id'] in referenced_existing_ids
+            )
+            if protected:
+                protected_changes.append((existing['id'], changed_fields))
+                continue
+            matched_rows.append(row[1:] + (chart_id, existing['id']))
+
+        if protected_changes:
+            raise RuntimeError(
+                "ka_bhavishya_lekha: immutable matched projection claim(s) would change: "
+                f"{protected_changes[:10]}. Rows carrying an observed outcome or referenced by "
+                "phala_anchors cannot be rewritten before immutable generations exist; no rows "
+                "were mutated."
+            )
 
         if stale_ids:
             placeholders = ','.join(['%s'] * len(stale_ids))
@@ -344,7 +439,12 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """, new_rows)
 
-        return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=len(rows))
+        return WriterResult(
+            asset_id='ka_bhavishya_lekha',
+            rows_inserted=len(new_rows),
+            rows_updated=len(matched_rows),
+            rows_skipped=unchanged_rows,
+        )
 
 
 def _assign_tier(effective_score: float, net_label: str) -> str:
