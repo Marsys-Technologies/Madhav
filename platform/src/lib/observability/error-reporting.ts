@@ -4,6 +4,10 @@
  * No-ops in development/test.
  */
 
+import { createRequire } from 'node:module'
+
+const loadOptionalModule = createRequire(import.meta.url)
+
 let _initialized = false
 
 export function initErrorReporting(): void {
@@ -20,9 +24,11 @@ export function initErrorReporting(): void {
   })
 
   try {
-    // Dynamic import to avoid build-time errors if package not installed
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { ErrorReporting } = require('@google-cloud/error-reporting')
+    // Synchronous optional load preserves fire-and-forget initialization without
+    // creating a hard build-time dependency in deployments that omit this package.
+    const { ErrorReporting } = loadOptionalModule('@google-cloud/error-reporting') as {
+      ErrorReporting: new (options: { projectId: string; reportMode: string }) => object
+    }
     new ErrorReporting({
       projectId: process.env.GOOGLE_CLOUD_PROJECT,
       reportMode: 'production',

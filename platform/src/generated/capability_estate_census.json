@@ -1,0 +1,2131 @@
+{
+  "caveats": [
+    "This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.",
+    "Public registrar resolution is a source-text audit using the existing extractor. Its documented parser limitations can produce false unresolved results; verified means mechanically evidenced, unresolved does not necessarily mean absent at runtime.",
+    "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
+    "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
+  ],
+  "content_sha256": "d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c",
+  "denominators": {
+    "planner_addressable_descriptors": {
+      "excluded": 3,
+      "policy": "live descriptor has a callable handler/loader and calibration_context_only is not true; public dispatchability is reported separately",
+      "total": 182
+    },
+    "producer_assets": {
+      "active": 128,
+      "by_catalog_status": {
+        "CURRENT": 69,
+        "DRAFT": 29,
+        "RETIRED": 1,
+        "undeclared": 30
+      },
+      "by_layer": {
+        "bodha": 23,
+        "brahmagyan": 40,
+        "ganita": 19,
+        "kala": 23,
+        "mimamsa": 15,
+        "phala": 9
+      },
+      "by_scope": {
+        "global": 45,
+        "per_chart": 84
+      },
+      "by_storage_type": {
+        "pgvector": 4,
+        "postgres_table": 116,
+        "postgres_view": 1,
+        "service": 8
+      },
+      "non_writer_identities": 6,
+      "retired": 1,
+      "total": 129,
+      "writer_identities": 123
+    },
+    "public_registrar_resolution": {
+      "ambiguous": 3,
+      "descriptor_denominator": 185,
+      "literal_public_names": 112,
+      "method": "existing extract_registrar_capability_bridge.ts source-text scanner over non-test platform-mcp/src/tools TypeScript files",
+      "resolved_including_ambiguous": 62,
+      "unambiguous_uri_bindings": 61,
+      "unresolved": 123,
+      "verified": 59
+    },
+    "reviewed_output_digest_coverage": {
+      "active_asset_denominator": 128,
+      "active_assets_without_any_reviewed_spec": 95,
+      "asset_denominator": 129,
+      "assets_with_any_reviewed_spec": 33,
+      "assets_without_any_reviewed_spec": 96,
+      "basis": "distinct asset IDs found in static INSERT statements targeting asset_output_digest_specs, intersected with the producer asset seed",
+      "current_spec_rows": "not_mechanically_resolved"
+    },
+    "runtime_descriptors": {
+      "by_data_source": {
+        "computed": 20,
+        "hybrid": 1,
+        "stored": 164
+      },
+      "by_layer": {
+        "L0": 66,
+        "L1": 40,
+        "L2": 32,
+        "L3": 21,
+        "L4": 11,
+        "L5": 15
+      },
+      "by_scope": {
+        "global": 72,
+        "per_chart": 113
+      },
+      "callable": 185,
+      "output_schema_declared": 4,
+      "paginated_declared": 96,
+      "prompts": 1,
+      "resources": 5,
+      "tools": 179,
+      "total": 185
+    }
+  },
+  "details": {
+    "planner_addressability": {
+      "excluded": [
+        {
+          "capability_uri": "marsys://tool/L5/lel_query",
+          "reason": "calibration_context_only"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/mechanism_retrodiction_get",
+          "reason": "calibration_context_only"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/query_predictions",
+          "reason": "calibration_context_only"
+        }
+      ]
+    },
+    "producer_assets": {
+      "active_asset_ids": [
+        "bg_class_lifetime_counts",
+        "bg_class_priors",
+        "bg_cohort",
+        "bg_compendium_index",
+        "bg_concordance",
+        "bg_dasha_systems",
+        "bg_dignity_reference",
+        "bg_doshas",
+        "bg_ephemeris",
+        "bg_ephemeris_engine",
+        "bg_formula_constants",
+        "bg_ghatana",
+        "bg_gochara_arcs",
+        "bg_gochara_citation_resolution",
+        "bg_kota_chakra_rings",
+        "bg_kp_sublord_division",
+        "bg_medical_mappings",
+        "bg_muhurta_lattice",
+        "bg_nakshatra",
+        "bg_nakshatra_medical",
+        "bg_ontology",
+        "bg_panchanga",
+        "bg_parihara_rules",
+        "bg_phaladeepika_latta",
+        "bg_prashna_rules",
+        "bg_reference",
+        "bg_remedies",
+        "bg_rules",
+        "bg_sarvatobhadra_grid",
+        "bg_sign_medical",
+        "bg_sky_calendar",
+        "bg_text_index",
+        "bg_texts",
+        "bg_transit_engine",
+        "bg_transit_rules",
+        "bg_vastu_directions",
+        "bg_vedha_malefic_scale",
+        "bg_vidhi_floors",
+        "bg_vidhi_primitives",
+        "bg_yogas",
+        "bo_anveshana",
+        "bo_arudha",
+        "bo_bimba",
+        "bo_cdlm_summary",
+        "bo_cgm_motifs",
+        "bo_cgm_paths",
+        "bo_chart_gestalt",
+        "bo_drishti",
+        "bo_grounding",
+        "bo_karanajala",
+        "bo_laksana",
+        "bo_laksana_rerank",
+        "bo_nakshatra_semantic",
+        "bo_pramana_mapa",
+        "bo_pratijna",
+        "bo_samskara",
+        "bo_samvada",
+        "bo_sangati",
+        "bo_special_lagna",
+        "bo_sudarshana",
+        "bo_upaya",
+        "bo_vargottama_dhana",
+        "bo_yantra_mechanism",
+        "ga_ayurdaya",
+        "ga_condition",
+        "ga_dashas",
+        "ga_medical",
+        "ga_nakshatra",
+        "ga_panchanga",
+        "ga_positions",
+        "ga_prashna",
+        "ga_sade_sati",
+        "ga_sensitive",
+        "ga_sensitive_degree",
+        "ga_strength",
+        "ga_structural",
+        "ga_tajaka",
+        "ga_transit_anchors",
+        "ga_vargas",
+        "ga_vastu",
+        "ga_vichara",
+        "ga_yoga",
+        "ka_avadhi",
+        "ka_bhavishya_lekha",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_gochara_resonance",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_jivana_parva",
+        "ka_kala_darshana",
+        "ka_kalasutra",
+        "ka_kota_chakra",
+        "ka_kshetra",
+        "ka_moorti_nirnaya",
+        "ka_muhurta_seva",
+        "ka_sangam",
+        "ka_sudarshana_varsha",
+        "ka_taranga",
+        "ka_tithi_pravesha",
+        "ka_tulana",
+        "ka_vedha_gochara",
+        "ka_vighnakara",
+        "ka_yojaka",
+        "lel_events",
+        "mi_abhilekha",
+        "mi_adhilepa",
+        "mi_bhara",
+        "mi_bhavisya",
+        "mi_darshana",
+        "mi_gunanaka",
+        "mi_jivanaghatana",
+        "mi_kula",
+        "mi_pariksha",
+        "mi_pramana",
+        "mi_sambandha",
+        "mi_sankalpa",
+        "mi_seva",
+        "mi_vistara",
+        "ph_muhurta",
+        "ph_nimitta",
+        "ph_phaladesa",
+        "ph_pramana",
+        "ph_pratikara",
+        "ph_rectification",
+        "ph_sankrama",
+        "ph_sodhana",
+        "ph_suddha_sodhana"
+      ],
+      "asset_ids_without_writer_digest_absent_from_generated_pins": [],
+      "generated_pin_non_writer_ids": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_panchanga",
+        "bg_sarvatobhadra_grid",
+        "ka_gochara_sweep",
+        "lel_events"
+      ],
+      "non_writer_identity_ids": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_panchanga",
+        "bg_sarvatobhadra_grid",
+        "ka_gochara_sweep",
+        "lel_events"
+      ],
+      "retired_asset_ids": [
+        "ka_gochara_sweep"
+      ],
+      "writer_identity_ids": [
+        "bg_class_lifetime_counts",
+        "bg_class_priors",
+        "bg_cohort",
+        "bg_compendium_index",
+        "bg_concordance",
+        "bg_dasha_systems",
+        "bg_dignity_reference",
+        "bg_doshas",
+        "bg_ephemeris",
+        "bg_formula_constants",
+        "bg_ghatana",
+        "bg_gochara_arcs",
+        "bg_kota_chakra_rings",
+        "bg_kp_sublord_division",
+        "bg_medical_mappings",
+        "bg_muhurta_lattice",
+        "bg_nakshatra",
+        "bg_nakshatra_medical",
+        "bg_ontology",
+        "bg_parihara_rules",
+        "bg_phaladeepika_latta",
+        "bg_prashna_rules",
+        "bg_reference",
+        "bg_remedies",
+        "bg_rules",
+        "bg_sign_medical",
+        "bg_sky_calendar",
+        "bg_text_index",
+        "bg_texts",
+        "bg_transit_engine",
+        "bg_transit_rules",
+        "bg_vastu_directions",
+        "bg_vedha_malefic_scale",
+        "bg_vidhi_floors",
+        "bg_vidhi_primitives",
+        "bg_yogas",
+        "bo_anveshana",
+        "bo_arudha",
+        "bo_bimba",
+        "bo_cdlm_summary",
+        "bo_cgm_motifs",
+        "bo_cgm_paths",
+        "bo_chart_gestalt",
+        "bo_drishti",
+        "bo_grounding",
+        "bo_karanajala",
+        "bo_laksana",
+        "bo_laksana_rerank",
+        "bo_nakshatra_semantic",
+        "bo_pramana_mapa",
+        "bo_pratijna",
+        "bo_samskara",
+        "bo_samvada",
+        "bo_sangati",
+        "bo_special_lagna",
+        "bo_sudarshana",
+        "bo_upaya",
+        "bo_vargottama_dhana",
+        "bo_yantra_mechanism",
+        "ga_ayurdaya",
+        "ga_condition",
+        "ga_dashas",
+        "ga_medical",
+        "ga_nakshatra",
+        "ga_panchanga",
+        "ga_positions",
+        "ga_prashna",
+        "ga_sade_sati",
+        "ga_sensitive",
+        "ga_sensitive_degree",
+        "ga_strength",
+        "ga_structural",
+        "ga_tajaka",
+        "ga_transit_anchors",
+        "ga_vargas",
+        "ga_vastu",
+        "ga_vichara",
+        "ga_yoga",
+        "ka_avadhi",
+        "ka_bhavishya_lekha",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_gochara_resonance",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_jivana_parva",
+        "ka_kala_darshana",
+        "ka_kalasutra",
+        "ka_kota_chakra",
+        "ka_kshetra",
+        "ka_moorti_nirnaya",
+        "ka_muhurta_seva",
+        "ka_sangam",
+        "ka_sudarshana_varsha",
+        "ka_taranga",
+        "ka_tithi_pravesha",
+        "ka_tulana",
+        "ka_vedha_gochara",
+        "ka_vighnakara",
+        "ka_yojaka",
+        "mi_abhilekha",
+        "mi_adhilepa",
+        "mi_bhara",
+        "mi_bhavisya",
+        "mi_darshana",
+        "mi_gunanaka",
+        "mi_jivanaghatana",
+        "mi_kula",
+        "mi_pariksha",
+        "mi_pramana",
+        "mi_sambandha",
+        "mi_sankalpa",
+        "mi_seva",
+        "mi_vistara",
+        "ph_muhurta",
+        "ph_nimitta",
+        "ph_phaladesa",
+        "ph_pramana",
+        "ph_pratikara",
+        "ph_rectification",
+        "ph_sankrama",
+        "ph_sodhana",
+        "ph_suddha_sodhana"
+      ],
+      "writer_ids_absent_from_asset_seed": []
+    },
+    "public_registrar_resolution": {
+      "ambiguous": [
+        {
+          "candidates": [
+            "catalog_assets_all",
+            "catalog_assets_list"
+          ],
+          "descriptor_name": "asset_registry_all",
+          "selected_public_tool_name": "catalog_assets_all"
+        },
+        {
+          "candidates": [
+            "ref_classical_citation_get",
+            "ref_dignity_reference_get",
+            "ref_nakshatra_get",
+            "ref_rules_search",
+            "ref_vector_search"
+          ],
+          "descriptor_name": "query_classical_texts",
+          "selected_public_tool_name": "ref_classical_citation_get"
+        },
+        {
+          "candidates": [
+            "bodha_graph_subgraph_get",
+            "bodha_graph_traverse_get"
+          ],
+          "descriptor_name": "traverse_chart_graph",
+          "selected_public_tool_name": "bodha_graph_subgraph_get"
+        }
+      ],
+      "known_extractor_limitations": [
+        "regAlias/globalAlias parsing examines a bounded sequence of string literals, so concatenated descriptions can hide an otherwise real URI binding.",
+        "Dynamic or table-driven registrations without a unique literal capability URI cannot be attributed 1:1 by source-text inspection."
+      ],
+      "unresolved_descriptor_names": [
+        "call_dasha_eligibility",
+        "call_ephemeris_at_t",
+        "call_muhurta_score",
+        "call_panchanga_service",
+        "call_priority_ranking",
+        "call_transit_search",
+        "channel_chat_dispatch",
+        "channel_mcp_wiring",
+        "classical_attribution_lookup",
+        "compose_large_n",
+        "ephemeris_cache_native_lifetime",
+        "ephemeris_cache_year",
+        "get_argala",
+        "get_ashtakavarga",
+        "get_aspects",
+        "get_av_transit_gating",
+        "get_avasthas",
+        "get_ayurdaya",
+        "get_bhava_bala",
+        "get_chart_header",
+        "get_condition_composite",
+        "get_dashas",
+        "get_dignity",
+        "get_dispositors",
+        "get_divisionals",
+        "get_eclipse_flags",
+        "get_karakas",
+        "get_medical_indications",
+        "get_nakshatra",
+        "get_panchanga",
+        "get_prashna_lagna",
+        "get_sensitive_degrees",
+        "get_structural",
+        "get_vichara",
+        "get_yoga_dosha",
+        "get_yoga_firings",
+        "lel_intake_checklist",
+        "list_sutravali_rules_by_text",
+        "maro_mcp_surface",
+        "maro_orchestrate",
+        "maro_profiles",
+        "prediction_lifecycle_sweep",
+        "query_activation_waveform",
+        "query_active_dashas",
+        "query_anomaly_flags",
+        "query_aspects_at_time",
+        "query_attribution",
+        "query_auspicious_windows",
+        "query_avastha_schemes",
+        "query_cdlm_summary",
+        "query_cgm_motifs",
+        "query_cgm_paths",
+        "query_chart_gestalt",
+        "query_class_priors",
+        "query_cleansed_anchors",
+        "query_combustion_orbs",
+        "query_compendium_index",
+        "query_contradictions",
+        "query_convergence_windows",
+        "query_dasha_dossier",
+        "query_domain_reading",
+        "query_domain_result",
+        "query_falsifiers",
+        "query_formula_constants",
+        "query_graha_dik",
+        "query_graha_naisargika_friendship",
+        "query_insight_embeddings",
+        "query_journal",
+        "query_kala_paddhati_profile",
+        "query_kota_chakra",
+        "query_load_bearing",
+        "query_manifestation_grammar",
+        "query_manifestation_sets",
+        "query_medical_mappings",
+        "query_mimamsa_discoveries",
+        "query_moorti_nirnaya",
+        "query_motion_state_thresholds",
+        "query_muhurat",
+        "query_muhurta_lattice",
+        "query_nakshatra_medical",
+        "query_obstruction_periods",
+        "query_parihara_graph",
+        "query_planet_position",
+        "query_planet_transit",
+        "query_prashna_fructification_rules",
+        "query_prashna_lagna_methods",
+        "query_prashna_significators",
+        "query_prashna_special_techniques",
+        "query_prashna_tajik_yogas",
+        "query_predictions",
+        "query_prospective_ledger",
+        "query_question_lenses",
+        "query_remedy_program",
+        "query_retrograde_periods",
+        "query_rm_chart_summary",
+        "query_rm_dasha_windowed_prescriptions",
+        "query_rm_dosha_remedy_bundles",
+        "query_rm_pattern_remedies",
+        "query_rm_prescriptions",
+        "query_rm_resonances",
+        "query_shashtiamsha_deities",
+        "query_signal_families",
+        "query_sky_calendar",
+        "query_spillover_cascades",
+        "query_spine_bundle",
+        "query_sudarshana_varsha",
+        "query_sutravali_rules",
+        "query_sutravali_rules_for_planet",
+        "query_temporal_view",
+        "query_tithi_pravesha",
+        "query_transit_av_gates",
+        "query_transit_engine",
+        "query_transit_moorti",
+        "query_transit_vedha",
+        "query_triangulation",
+        "query_vastu_direction_remedials",
+        "query_vastu_directions",
+        "query_vedha_gochara",
+        "query_vichara_constants",
+        "read_sutravali_rule",
+        "route",
+        "synergy_cross_layer",
+        "synergy_pipeline"
+      ],
+      "verified": [
+        {
+          "capability_uri": "marsys://tool/L-DOMAIN/assess_career",
+          "descriptor_name": "assess_career",
+          "public_tool_name": "assess_career"
+        },
+        {
+          "capability_uri": "marsys://tool/L-DOMAIN/assess_health",
+          "descriptor_name": "assess_health",
+          "public_tool_name": "assess_health"
+        },
+        {
+          "capability_uri": "marsys://tool/L-DOMAIN/assess_marriage",
+          "descriptor_name": "assess_marriage",
+          "public_tool_name": "assess_marriage"
+        },
+        {
+          "capability_uri": "marsys://tool/L-DOMAIN/assess_wealth",
+          "descriptor_name": "assess_wealth",
+          "public_tool_name": "assess_wealth"
+        },
+        {
+          "capability_uri": "marsys://resource/asset-registry/L0",
+          "descriptor_name": "asset_registry_l0",
+          "public_tool_name": "catalog_assets_l0"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/chart_facts_query",
+          "descriptor_name": "chart_facts_query",
+          "public_tool_name": "ganita_chart_facts_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/chart_snapshot",
+          "descriptor_name": "chart_snapshot",
+          "public_tool_name": "chart_snapshot"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/concept_locate",
+          "descriptor_name": "concept_locate",
+          "public_tool_name": "ganita_concept_locate"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/find_verses_about",
+          "descriptor_name": "find_verses_about",
+          "public_tool_name": "find_verses_about"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_dasha_lord_capability",
+          "descriptor_name": "get_dasha_lord_capability",
+          "public_tool_name": "ganita_dasha_lord_capability_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_database_schema",
+          "descriptor_name": "get_database_schema",
+          "public_tool_name": "ganita_database_schema_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_graha_yuddha",
+          "descriptor_name": "get_graha_yuddha",
+          "public_tool_name": "get_graha_yuddha"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_kp_cusps",
+          "descriptor_name": "get_kp_cusps",
+          "public_tool_name": "ganita_kp_cusps_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_positions",
+          "descriptor_name": "get_positions",
+          "public_tool_name": "ganita_positions_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_sade_sati",
+          "descriptor_name": "get_sade_sati",
+          "public_tool_name": "ganita_sade_sati_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_sensitive_points",
+          "descriptor_name": "get_sensitive_points",
+          "public_tool_name": "ganita_special_lagnas_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_strength",
+          "descriptor_name": "get_strength",
+          "public_tool_name": "ganita_strength_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_tajik",
+          "descriptor_name": "get_tajik",
+          "public_tool_name": "ganita_tajaka_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_tara_chandra_bala",
+          "descriptor_name": "get_tara_chandra_bala",
+          "public_tool_name": "ganita_nakshatra_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_transit_anchors",
+          "descriptor_name": "get_transit_anchors",
+          "public_tool_name": "ganita_transit_anchors_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/get_vastu_directions",
+          "descriptor_name": "get_vastu_directions",
+          "public_tool_name": "ganita_vastu_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/graha_portrait",
+          "descriptor_name": "graha_portrait",
+          "public_tool_name": "graha_portrait"
+        },
+        {
+          "capability_uri": "marsys://prompt/intent-classify",
+          "descriptor_name": "intent_classify",
+          "public_tool_name": "intent_classify"
+        },
+        {
+          "capability_uri": "marsys://tool/L-JUDGMENT/judgment_query",
+          "descriptor_name": "judgment_query",
+          "public_tool_name": "judgment_query"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/lel_query",
+          "descriptor_name": "lel_query",
+          "public_tool_name": "mimamsa_lel_query"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/list_classical_texts",
+          "descriptor_name": "list_classical_texts",
+          "public_tool_name": "list_classical_texts"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/list_entities",
+          "descriptor_name": "list_entities",
+          "public_tool_name": "list_entities"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/list_remedies_by_category",
+          "descriptor_name": "list_remedies_by_category",
+          "public_tool_name": "ref_remedies_by_category_list"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/mechanism_retrodiction_get",
+          "descriptor_name": "mechanism_retrodiction_get",
+          "public_tool_name": "mechanism_retrodiction_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L-PACT/pact_query",
+          "descriptor_name": "pact_query",
+          "public_tool_name": "pact_query"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/query_calibration",
+          "descriptor_name": "query_calibration",
+          "public_tool_name": "mimamsa_calibration_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_dasha_systems",
+          "descriptor_name": "query_dasha_systems",
+          "public_tool_name": "ref_dasha_systems_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_discoveries",
+          "descriptor_name": "query_discoveries",
+          "public_tool_name": "bodha_discoveries_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_dosha_catalog",
+          "descriptor_name": "query_dosha_catalog",
+          "public_tool_name": "ref_doshas_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L5/query_insights",
+          "descriptor_name": "query_insights",
+          "public_tool_name": "mimamsa_insight_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/query_life_arc",
+          "descriptor_name": "query_life_arc",
+          "public_tool_name": "kala_life_arc_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_mantras",
+          "descriptor_name": "query_mantras",
+          "public_tool_name": "ref_mantras_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_mechanisms",
+          "descriptor_name": "query_mechanisms",
+          "public_tool_name": "bodha_mechanisms_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L1/query_planet",
+          "descriptor_name": "query_planet",
+          "public_tool_name": "ganita_planet_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_pratijna",
+          "descriptor_name": "query_pratijna",
+          "public_tool_name": "bodha_pratijna_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L4/query_predictive_anchors",
+          "descriptor_name": "query_predictive_anchors",
+          "public_tool_name": "phala_predictive_anchors_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/query_projections",
+          "descriptor_name": "query_projections",
+          "public_tool_name": "kala_projections_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_quality_scorecard",
+          "descriptor_name": "query_quality_scorecard",
+          "public_tool_name": "bodha_quality_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L4/query_rectification",
+          "descriptor_name": "query_rectification",
+          "public_tool_name": "phala_rectification_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_remedies",
+          "descriptor_name": "query_remedies",
+          "public_tool_name": "bodha_remedies_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_remedies_by_planet",
+          "descriptor_name": "query_remedies_by_planet",
+          "public_tool_name": "ref_remedies_by_planet_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_remedies_for_chart",
+          "descriptor_name": "query_remedies_for_chart",
+          "public_tool_name": "ref_remedies_chart_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_remedy_corpus",
+          "descriptor_name": "query_remedy_corpus",
+          "public_tool_name": "ref_remedies_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_sign_medical",
+          "descriptor_name": "query_sign_medical",
+          "public_tool_name": "ref_sign_medical_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_signals",
+          "descriptor_name": "query_signals",
+          "public_tool_name": "bodha_signals_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_tantric_remedies",
+          "descriptor_name": "query_tantric_remedies",
+          "public_tool_name": "ref_tantric_remedies_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L3/query_temporal_activation",
+          "descriptor_name": "query_temporal_activation",
+          "public_tool_name": "kala_windows_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L2/query_ucd",
+          "descriptor_name": "query_ucd",
+          "public_tool_name": "bodha_chart_digest_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/query_yoga_catalog",
+          "descriptor_name": "query_yoga_catalog",
+          "public_tool_name": "ref_yogas_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/read_chapter",
+          "descriptor_name": "read_chapter",
+          "public_tool_name": "read_chapter"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/read_remedy",
+          "descriptor_name": "read_remedy",
+          "public_tool_name": "ref_remedy_get"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/resolve_entity",
+          "descriptor_name": "resolve_entity",
+          "public_tool_name": "resolve_entity"
+        },
+        {
+          "capability_uri": "marsys://tool/L0/tool_search",
+          "descriptor_name": "tool_search",
+          "public_tool_name": "tool_search"
+        },
+        {
+          "capability_uri": "marsys://tool/L-TIMING/yoga_activation_by_dasha",
+          "descriptor_name": "yoga_activation_by_dasha",
+          "public_tool_name": "kala_yoga_activation_get"
+        }
+      ]
+    },
+    "reviewed_output_digest_coverage": {
+      "active_assets_without_any_reviewed_spec": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_nakshatra_medical",
+        "bg_panchanga",
+        "bg_sarvatobhadra_grid",
+        "bg_sign_medical",
+        "bg_transit_engine",
+        "bo_anveshana",
+        "bo_arudha",
+        "bo_bimba",
+        "bo_cdlm_summary",
+        "bo_cgm_motifs",
+        "bo_cgm_paths",
+        "bo_chart_gestalt",
+        "bo_drishti",
+        "bo_grounding",
+        "bo_karanajala",
+        "bo_laksana",
+        "bo_laksana_rerank",
+        "bo_nakshatra_semantic",
+        "bo_pramana_mapa",
+        "bo_pratijna",
+        "bo_samskara",
+        "bo_samvada",
+        "bo_sangati",
+        "bo_special_lagna",
+        "bo_sudarshana",
+        "bo_upaya",
+        "bo_vargottama_dhana",
+        "bo_yantra_mechanism",
+        "ga_ayurdaya",
+        "ga_condition",
+        "ga_dashas",
+        "ga_medical",
+        "ga_nakshatra",
+        "ga_panchanga",
+        "ga_positions",
+        "ga_prashna",
+        "ga_sade_sati",
+        "ga_sensitive",
+        "ga_sensitive_degree",
+        "ga_strength",
+        "ga_structural",
+        "ga_tajaka",
+        "ga_transit_anchors",
+        "ga_vargas",
+        "ga_vastu",
+        "ga_vichara",
+        "ga_yoga",
+        "ka_avadhi",
+        "ka_bhavishya_lekha",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_gochara_resonance",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_jivana_parva",
+        "ka_kala_darshana",
+        "ka_kalasutra",
+        "ka_kota_chakra",
+        "ka_kshetra",
+        "ka_moorti_nirnaya",
+        "ka_muhurta_seva",
+        "ka_sangam",
+        "ka_sudarshana_varsha",
+        "ka_taranga",
+        "ka_tithi_pravesha",
+        "ka_tulana",
+        "ka_vedha_gochara",
+        "ka_vighnakara",
+        "ka_yojaka",
+        "lel_events",
+        "mi_abhilekha",
+        "mi_adhilepa",
+        "mi_bhara",
+        "mi_bhavisya",
+        "mi_darshana",
+        "mi_gunanaka",
+        "mi_jivanaghatana",
+        "mi_kula",
+        "mi_pariksha",
+        "mi_pramana",
+        "mi_sambandha",
+        "mi_sankalpa",
+        "mi_seva",
+        "mi_vistara",
+        "ph_muhurta",
+        "ph_nimitta",
+        "ph_phaladesa",
+        "ph_pramana",
+        "ph_pratikara",
+        "ph_rectification",
+        "ph_sankrama",
+        "ph_sodhana",
+        "ph_suddha_sodhana"
+      ],
+      "assets_with_any_reviewed_spec": [
+        "bg_class_lifetime_counts",
+        "bg_class_priors",
+        "bg_cohort",
+        "bg_compendium_index",
+        "bg_concordance",
+        "bg_dasha_systems",
+        "bg_dignity_reference",
+        "bg_doshas",
+        "bg_ephemeris",
+        "bg_formula_constants",
+        "bg_ghatana",
+        "bg_gochara_arcs",
+        "bg_kota_chakra_rings",
+        "bg_kp_sublord_division",
+        "bg_medical_mappings",
+        "bg_muhurta_lattice",
+        "bg_nakshatra",
+        "bg_ontology",
+        "bg_parihara_rules",
+        "bg_phaladeepika_latta",
+        "bg_prashna_rules",
+        "bg_reference",
+        "bg_remedies",
+        "bg_rules",
+        "bg_sky_calendar",
+        "bg_text_index",
+        "bg_texts",
+        "bg_transit_rules",
+        "bg_vastu_directions",
+        "bg_vedha_malefic_scale",
+        "bg_vidhi_floors",
+        "bg_vidhi_primitives",
+        "bg_yogas"
+      ],
+      "assets_without_any_reviewed_spec": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_nakshatra_medical",
+        "bg_panchanga",
+        "bg_sarvatobhadra_grid",
+        "bg_sign_medical",
+        "bg_transit_engine",
+        "bo_anveshana",
+        "bo_arudha",
+        "bo_bimba",
+        "bo_cdlm_summary",
+        "bo_cgm_motifs",
+        "bo_cgm_paths",
+        "bo_chart_gestalt",
+        "bo_drishti",
+        "bo_grounding",
+        "bo_karanajala",
+        "bo_laksana",
+        "bo_laksana_rerank",
+        "bo_nakshatra_semantic",
+        "bo_pramana_mapa",
+        "bo_pratijna",
+        "bo_samskara",
+        "bo_samvada",
+        "bo_sangati",
+        "bo_special_lagna",
+        "bo_sudarshana",
+        "bo_upaya",
+        "bo_vargottama_dhana",
+        "bo_yantra_mechanism",
+        "ga_ayurdaya",
+        "ga_condition",
+        "ga_dashas",
+        "ga_medical",
+        "ga_nakshatra",
+        "ga_panchanga",
+        "ga_positions",
+        "ga_prashna",
+        "ga_sade_sati",
+        "ga_sensitive",
+        "ga_sensitive_degree",
+        "ga_strength",
+        "ga_structural",
+        "ga_tajaka",
+        "ga_transit_anchors",
+        "ga_vargas",
+        "ga_vastu",
+        "ga_vichara",
+        "ga_yoga",
+        "ka_avadhi",
+        "ka_bhavishya_lekha",
+        "ka_dasha_kala",
+        "ka_gochara",
+        "ka_gochara_resonance",
+        "ka_gochara_sweep",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_jivana_parva",
+        "ka_kala_darshana",
+        "ka_kalasutra",
+        "ka_kota_chakra",
+        "ka_kshetra",
+        "ka_moorti_nirnaya",
+        "ka_muhurta_seva",
+        "ka_sangam",
+        "ka_sudarshana_varsha",
+        "ka_taranga",
+        "ka_tithi_pravesha",
+        "ka_tulana",
+        "ka_vedha_gochara",
+        "ka_vighnakara",
+        "ka_yojaka",
+        "lel_events",
+        "mi_abhilekha",
+        "mi_adhilepa",
+        "mi_bhara",
+        "mi_bhavisya",
+        "mi_darshana",
+        "mi_gunanaka",
+        "mi_jivanaghatana",
+        "mi_kula",
+        "mi_pariksha",
+        "mi_pramana",
+        "mi_sambandha",
+        "mi_sankalpa",
+        "mi_seva",
+        "mi_vistara",
+        "ph_muhurta",
+        "ph_nimitta",
+        "ph_phaladesa",
+        "ph_pramana",
+        "ph_pratikara",
+        "ph_rectification",
+        "ph_sankrama",
+        "ph_sodhana",
+        "ph_suddha_sodhana"
+      ],
+      "current_spec_resolution_note": "not_mechanically_resolved: determining each deployed current row requires ordered migration replay or a live read of asset_output_digest_specs WHERE retired_at IS NULL; this static census does neither",
+      "inserted_asset_tokens_absent_from_asset_seed": [],
+      "migration_files_scanned": [
+        "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
+        "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
+        "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
+        "platform/supabase/migrations/604_nirmana_l0_registry_scope_contract.sql",
+        "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql",
+        "platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql",
+        "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql"
+      ]
+    }
+  },
+  "generated_at": "2026-09-14T08:15:17.000Z",
+  "provenance": {
+    "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
+    "sources": [
+      {
+        "id": "analysis_layer_pins",
+        "path": "platform/src/generated/nirmana-analysis-layer-pins.json",
+        "sha256": "2bdbdd753cc30d3f6c2168a6d9778f1a710c87f1089eef963d57bc3e39cc1650"
+      },
+      {
+        "id": "canonical_public_faces",
+        "path": "platform/src/lib/retrieval/registry/canonical_faces.json",
+        "sha256": "7476696c90d32dab64ba92c4cc160dd298e440aa6767228cce0bb840fa396669"
+      },
+      {
+        "id": "census_generator",
+        "path": "platform/scripts/generate_capability_estate_census.ts",
+        "sha256": "1f0774c02c07efb81497f7b42ddbc278821ca08806be5d0d93d3a79a39ba9c61"
+      },
+      {
+        "id": "live_runtime_catalog_projection",
+        "path": "platform/src/lib/retrieval/registry/catalog.ts",
+        "sha256": "c391e22ffa344988900281d229c62df80e6381874a0dbfabe8503d1a444b4518"
+      },
+      {
+        "id": "output_digest_migration_source_set",
+        "member_count": 7,
+        "members": [
+          {
+            "path": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql",
+            "sha256": "ed7e6be80bf53180e99527c12c8747cc7e1b6448aa6308efa5caa8eace28ef34"
+          },
+          {
+            "path": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql",
+            "sha256": "afcc732d1d4b28b5011af19129d0eabcbf37415fb65e7a867cf598ca2bb529fd"
+          },
+          {
+            "path": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql",
+            "sha256": "319cf806ac0fc3b3e4ac2f2ac48c6577d1ba2bc3dc6cf550f6742aa2f2175fae"
+          },
+          {
+            "path": "platform/supabase/migrations/604_nirmana_l0_registry_scope_contract.sql",
+            "sha256": "7b1fadc7ed8759e0538bedca49fd6a44db9e31fc3b3fc1c025c171ca2cfd0c74"
+          },
+          {
+            "path": "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql",
+            "sha256": "5581d84761eeeee038da06488759d90b7182f03c424f9deab7a233a72eaf1eed"
+          },
+          {
+            "path": "platform/supabase/migrations/628_nirmana_l0_wave0_remaining_integrity_contracts.sql",
+            "sha256": "fcb9072d5801b5675c8616166280a1b62f686039dc93a3ec8da8e2becb185392"
+          },
+          {
+            "path": "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql",
+            "sha256": "cfde9c478fb86eade5109755ff6c2f8e174098986ef320001939221bb7fa4522"
+          }
+        ],
+        "path": "platform/supabase/migrations/* containing asset_output_digest_specs",
+        "sha256": "bb04032e15a25be276277e929046ad1c535067e2237572bfd17faeb03a3d9e30"
+      },
+      {
+        "id": "producer_asset_seed",
+        "path": "platform/scripts/seed/asset_registry_seed.ts",
+        "sha256": "b5077bc2219ee5a34b50fe80fac2c5c87e59ee9abd3eb3710bcd5df342379ed7"
+      },
+      {
+        "id": "public_registrar_source_set",
+        "member_count": 48,
+        "members": [
+          {
+            "path": "platform-mcp/src/tools/bo_2-8.ts",
+            "sha256": "cfeaf4887abfc8fd5f0333f54d12055adcad56f3fc5b80338123ebbbaca46d42"
+          },
+          {
+            "path": "platform-mcp/src/tools/chart_selection.ts",
+            "sha256": "81af9d319d704e9465da53bc58a305bb32e2f8a1f8cb529c26db40952d103ae0"
+          },
+          {
+            "path": "platform-mcp/src/tools/dossier.ts",
+            "sha256": "55cc23b608cdfc5473bb52d0cf71b300d8357b1199eac399c1c99076ab44201a"
+          },
+          {
+            "path": "platform-mcp/src/tools/errors_that_teach.ts",
+            "sha256": "2722f6f3d2de06bafa37e4dab08bd6c6065b359295a472bc76c8d0b7b4053d3c"
+          },
+          {
+            "path": "platform-mcp/src/tools/intent_scope_classifier.ts",
+            "sha256": "16385bd592b21f4ea04ba27e2fc88b1ef25014aa5bb861f2016d90adfaa83d25"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_timeline.ts",
+            "sha256": "ccb1a8296c21898198fd4798e236c7692bbfc2f0692d79b6432aa6719e820d3e"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/ahead.ts",
+            "sha256": "f5f63f56d4cb98c32e9f9dc4603eb15c3f9f694694057adfd335b9ce16e86ce7"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/dasha_sandhi.ts",
+            "sha256": "179a3e626e6dffecfffb9a0aca2e6c504a705c8ab36fb10034d64023f6615e31"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/elect.ts",
+            "sha256": "7105b65cc9f00368bf321984fe6bb4afde27ea4f95363f7c96d2ab5f0d923b6c"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/explain.ts",
+            "sha256": "f8043fcb726a866034871718e7c23df0f9c8f18e04d3009b9a0e3b317eaf6873"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/now.ts",
+            "sha256": "67d507ae293483ab1933b915a28b22646ba2cfc6d0540e8991f1c8c1e0949f6e"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/priority.ts",
+            "sha256": "2799af8a505663207999ec0f70cebd8177b84bc94260b08a47b60c8a324611ac"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/promise_gate.ts",
+            "sha256": "4b1e262bbb8f196cca5d1aa6a34bbce2248df70dbbff98002ca955f8a24d1a90"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/register_all.ts",
+            "sha256": "d224a51c27037ede2e0a96c1eb56b34efcf8567c5c111b4e070a8c9912806455"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/ritual.ts",
+            "sha256": "be10ba5e7b1ca6858a440287699595dedde36b22579b68c37c21634fd88032da"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/shared.ts",
+            "sha256": "9300a9e2c014cbe47728854078bdd3627c4a7914c38c71bd0b94e694cbab2e69"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/story.ts",
+            "sha256": "ae43167f6e96bc67566194f8d7e368461d01d296181c4b151962c2345df82940"
+          },
+          {
+            "path": "platform-mcp/src/tools/kala_views/upaya.ts",
+            "sha256": "e291cd6895ea39c178993c720ebd37cd534ad74c7a26ff0964e0ea88c2584e7c"
+          },
+          {
+            "path": "platform-mcp/src/tools/l0_brahmagyan.ts",
+            "sha256": "b27004ce0e1cf5e1e2710e7a4e7cbbfa270be98e087c1e95189251d346daa3bc"
+          },
+          {
+            "path": "platform-mcp/src/tools/l0_ephemeris.ts",
+            "sha256": "353b35b146d3a5fb0d674ab07a7dd24dfe24c006ae6b4e81224368049b6b718e"
+          },
+          {
+            "path": "platform-mcp/src/tools/mechanism_retrodiction.ts",
+            "sha256": "7b631d7ecf6f5853f9728a78b9e09a78cb235141f9e5f19bb04d02d7426e9d73"
+          },
+          {
+            "path": "platform-mcp/src/tools/mimamsa_lel_intake.ts",
+            "sha256": "09df0b5faa32c02431e3e76e63dad832a1f91178a958d45df4d19635618e2a2e"
+          },
+          {
+            "path": "platform-mcp/src/tools/mimamsa_outcome.ts",
+            "sha256": "7321bdffdf6f6a3e4283703b3cce26bafcff4f45975c0c5495269d7d4249f114"
+          },
+          {
+            "path": "platform-mcp/src/tools/muhurta_finder.ts",
+            "sha256": "f4a14a75394b976acaf84a7c2cf8f50702abda65a93a67e7aaa55288a5a1ec03"
+          },
+          {
+            "path": "platform-mcp/src/tools/phala_event_anchors.ts",
+            "sha256": "97dfe64a7c383dfe9d7426026f7bddc092e27f6fb630724479e363b52a8f223b"
+          },
+          {
+            "path": "platform-mcp/src/tools/phala_mitigation_map.ts",
+            "sha256": "4413605edb2d3d78c7a68956e29073fa852314148ddefa36585e19a2c8e6999b"
+          },
+          {
+            "path": "platform-mcp/src/tools/phala_muhurta_finder.ts",
+            "sha256": "a6b34d1e5d818fe502026f24537f2d4987f9d6e51f600cc7cda24a49b304210a"
+          },
+          {
+            "path": "platform-mcp/src/tools/phala_outlook.ts",
+            "sha256": "fe51d65a16ca2cdcd46af100b79ac2eba82279ac81eab952357537519a3a437a"
+          },
+          {
+            "path": "platform-mcp/src/tools/read_classical_text.ts",
+            "sha256": "faa89e2871e8b1280264992bcc8c5a6741f31c34a1477b354815b048c07c4967"
+          },
+          {
+            "path": "platform-mcp/src/tools/reading_notes.ts",
+            "sha256": "348da25c9da2864379f935a130f62dd859e30b3f22337de7fabe8a0c247ece83"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_inquiry_lifecycle.ts",
+            "sha256": "eacb620e098e5cfb5e1ca4dfe0e093a865ae4c04b0d7a5b22c84ddbc6da739e0"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_p1_aliases.ts",
+            "sha256": "04dc04af29fe130ee243746abd9dc91552ba42e6968b5adc564bb1e769a009b0"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_p1_ganita.ts",
+            "sha256": "02bee61649464ed7285e19a024930174140a09c65596620bb0555da5bde74e4b"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_p1_reference.ts",
+            "sha256": "d9181fcecacb387cc2530ea6d7e9966255e3094e1367909387cc4b0cb28c4593"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_p1_synthesis.ts",
+            "sha256": "d3778eeb851376159098d6822a9d562f5acfc51859b0c8f88d7dafb0a6840b29"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_p2_dasha_lord.ts",
+            "sha256": "d5de36a314163b4fdef9de94df9eb31a77c777721eb0fd57fe78277f1585584e"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_prashna_ask.ts",
+            "sha256": "9911b8fbe910ab97b8506d51555fa7090fff9801d129e6cf28f9bc2d3affcef5"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_prashna_status.ts",
+            "sha256": "bfda13783d7b6b5960851a50d1a1cf3b48700300865aad0d8f057e565efc8fed"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_server_info.ts",
+            "sha256": "fa113a6bb43e58c93e1aab3757607c8fd14df58f1012d1bf108517147299158c"
+          },
+          {
+            "path": "platform-mcp/src/tools/register_vidhi_plan.ts",
+            "sha256": "e73527a1488ef42d0401089868c0e1c3ad4d7029f7f24b2645e6a757ac94703c"
+          },
+          {
+            "path": "platform-mcp/src/tools/registry_bridge.ts",
+            "sha256": "cd4ec4281bb0fa3260f7c95c8f0f679bb65d84cedea129a35f1f96ac242e8250"
+          },
+          {
+            "path": "platform-mcp/src/tools/retrieval/holistic_bundle.ts",
+            "sha256": "93b4a85eb551d5d5004ca61066dfcceb28044d9c4b17efc7a0429b334cddeace"
+          },
+          {
+            "path": "platform-mcp/src/tools/retrieval/kala_temporal.ts",
+            "sha256": "2b672978787b4493bb0b746f4bff50e19fe45b94564469b638311df967355dee"
+          },
+          {
+            "path": "platform-mcp/src/tools/retrieval/pyhora_natal.ts",
+            "sha256": "4d9eda143a9cd878564dee64a1f40f084c7a9550761b21bf096f189cf4b03cd1"
+          },
+          {
+            "path": "platform-mcp/src/tools/retrieval/register_gochara_windows.ts",
+            "sha256": "12410c70a1a7df3a47de0235b9c2edafc3d2e91996609c6ad1f5640c7200dfdb"
+          },
+          {
+            "path": "platform-mcp/src/tools/retrieval/remedy_tools.ts",
+            "sha256": "eda65f025cb2d9c5b6d472510719221a678c08942d6f8af8f96884cd2d2784f8"
+          },
+          {
+            "path": "platform-mcp/src/tools/scan_fetch_signals.ts",
+            "sha256": "4450e3f934d6b40c021c57cc1795c64737268f02ccd12e6964facd18648355fb"
+          },
+          {
+            "path": "platform-mcp/src/tools/session_tools.ts",
+            "sha256": "f01d363fcc5825a14206a42151a4f574c6e8e9e1633c7e9329801fdb39f60edc"
+          }
+        ],
+        "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
+        "sha256": "9d3e58893e0996f453b0575239d128d611a0a6fbbe7674b7552b8cf7393f8d15"
+      },
+      {
+        "id": "registrar_bridge_extractor",
+        "path": "platform/scripts/manifest/extract_registrar_capability_bridge.ts",
+        "sha256": "761d4233cb661cc71dfc739cf93147f77bc941b68d66d12725808d65de3b56ad"
+      },
+      {
+        "id": "runtime_registry_source_set",
+        "member_count": 189,
+        "members": [
+          {
+            "path": "platform/src/lib/retrieval/registry/catalog.ts",
+            "sha256": "9eabb20b87f5a92c8fc00b8576e3c109ee657c77b4216bf11a02bfa01c5e017d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/chart_agnostic_gate.ts",
+            "sha256": "7230f4430c3ecb816f37db29e284f639eab015cfbdfd9e141d709ad8bf06e427"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/constants.ts",
+            "sha256": "6b776b83ee5a4b9f915db0eafe3d6e34967f6a725515c2cae15a6b8dd6cf14cc"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/description_payload_audit.ts",
+            "sha256": "f90135fef641e098df8cfa1aa644338d4bdf7fc95f2889d390ec05e8cb9ba991"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/descriptor_defaults.ts",
+            "sha256": "0a4a3a0fe84d331951a280f9dcd2fe9f6a5944bf7881ceceae254624bfa7bc42"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/generated_web_tool_bridge.ts",
+            "sha256": "7e1e716500db5f048024d0b63633381dfa64b492d0d28ec8e6c4a195b32a8c23"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/index.ts",
+            "sha256": "dfbe9856bfc456fbd9931c27b0d8630a30c3c5145a043f990c7fc5d548165db9"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
+            "sha256": "52586fe67a1a64c6cec1821fd384e40489369e78a3c01b5b3d58e4c4e854feeb"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
+            "sha256": "fd366e18a16fb6c9fc70d5655ace24a0be0781418019f04a63d4b0703c252f92"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
+            "sha256": "f81518a720f53172dd4ee32f5c88ff30b1cff37e7a7466881f361cc968ab0034"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
+            "sha256": "6d7b2c09f366167b2b528284570e32c2da9370a8bfb90329cb991ba2a6377b80"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
+            "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/planner_projection.ts",
+            "sha256": "b7d7f8a06b0591619c131e5478071dbf0aeb86a42d7ab845f673cd1bc79db628"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/query.ts",
+            "sha256": "cc717510a979bbfe7947d0aa3cd3ed104180d42d53dfa0ac3eef0f4812e6725b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/snapshot.ts",
+            "sha256": "019d6f42563b9383a9bb653e854e2a6ae17b31e1d924916fed6318aca15dbfd3"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
+            "sha256": "b264637520628c9a8f9a0678ed0fc357cc9b3278f4792c6b1684c04ad6a2fcd6"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
+            "sha256": "0e7569d7fdc7ae42852b3e76030eeed2b102b80f0b9f81a02b6d2ac568ce8a52"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
+            "sha256": "9d57a071de9582ade9bda9f2795dca0125764c4fa398770e1ac9292336039f2c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_all.ts",
+            "sha256": "ac599b9dd5691e564e698c0b0c4adf1d3d1a5850c3df9c5cffc3e02640644cbe"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/asset_registry_l0.ts",
+            "sha256": "fd31beef87006071528d27c799f7c3cbaf8cfd0723ef299b0ff86f5bd0e2c4dd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/call_panchanga_service.ts",
+            "sha256": "6f533433f0e450592956abfc405719c57a0c9cf6231a1a47643276d3c1902e20"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_native_lifetime.ts",
+            "sha256": "3d44ac30e7ad947c1d47b7b5361eb92b33b1d8b57d17c41bf054b18800b8cddb"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/ephemeris_cache_year.ts",
+            "sha256": "f42a1a254f88e6088c4aaf3cd8c94c0683ef6fa47f816aa5c45cf7e5b1ff9d12"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
+            "sha256": "34a21e3da8f36ebaa386f57601769fd37733a9afc5a4ac73fe350bea60ce2c9e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts",
+            "sha256": "304eca7a275eee1e417c43e02a4303e2197bff00fc314dde8c5b9da90493247e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/list_entities.ts",
+            "sha256": "9d0e1ed51c000e72c85d2c1d650511b71df6a50c9113decf4b9f395765a0ebeb"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_aspects_at_time.ts",
+            "sha256": "d9b518531442ce427176db1a22074daa5645d302dd3eb79b011701d479752dd2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_avastha_schemes.ts",
+            "sha256": "8e4924b83482202425074b5e2ae2ce54d9008fb4be54ba4e9ec30fd5048cfc60"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_class_priors.ts",
+            "sha256": "6ce0b5fbcaf55a9254f9462639e47d73228529885833e4bc04b88ebf99483dde"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
+            "sha256": "9e783bcf68dc055fe9c1b9a0931c95ecfad6e664f6f3baf784614df3098515d1"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts",
+            "sha256": "c96f882f6b4546cae7616ac05e11f0a76379ef41997a8f867cf1989108532830"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
+            "sha256": "3fa81ee07629dc93273316f305e9136a558bef8332f898d745802769a5690d91"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
+            "sha256": "d3117124a4bc84fd3489f488f0bedfc206f15b5810c520a38c4ea01787046499"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts",
+            "sha256": "5b881f2045f1e30a4ca0457b6d08fcced69a9df55ee632bc892b66106997f848"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_formula_constants.ts",
+            "sha256": "6b09c1c3b613058ec80c5056a8632310b559b3fc16463743fc82de98861dae75"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_dik.ts",
+            "sha256": "8259bf5333a4f111ae997f25e9a4eec1d4a4cd4beba581cfd71daaedb0ba09ae"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_graha_naisargika_friendship.ts",
+            "sha256": "1236a4f9dc2a31f1d16c30dc664b91109d4fa62768f36f13ca15af7d1273c581"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_medical_mappings.ts",
+            "sha256": "502c02535c1c0a5bee73e066586ea59036c07c3b87c0a1cc142bda34a5298454"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_motion_state_thresholds.ts",
+            "sha256": "f06797e45f26fdb9c42fb57dc92efcea2daff755154b7ea162da16e7aebbb80f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_muhurta_lattice.ts",
+            "sha256": "6f302cb2fa9bf8e2f17469fc11e1978033a08285ad34ab025197c1e4249c256c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_nakshatra_medical.ts",
+            "sha256": "9d0e18f352f64e99c3f815adf66d96ba6d630ee1c192a24f3ee422aa0a1f1bc2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_parihara_graph.ts",
+            "sha256": "f748e728170871d39479991da3e428f4006c02aa72993de4e8635b7a0fc2e1d4"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_position.ts",
+            "sha256": "4f84313824a3993bb9bbef3e625bb739c14334cc2624e5161d76ebb5e527c612"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
+            "sha256": "6e1a684b7655154dfa16a09080958b4c28371a21584a2ff70ec8b8b0f88b9d9c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
+            "sha256": "9b816b2e190ea8e6633703aefc7d4b2787a049f48a7bb67127fd81c298d79693"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_lagna_methods.ts",
+            "sha256": "f5388e1b2abc5e42c7a67decec7961d49929097ac631fa805b9e40efca241b0a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_significators.ts",
+            "sha256": "0a6d88a3474b1b18ed0c46b43a2e9189a4a3c59e7a4d9fe0f5c53cfb287ed809"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_special_techniques.ts",
+            "sha256": "c16962eb8a8a2477064729e798134a070370e1b2d4e14fbc99fe0f40a7c595a0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_tajik_yogas.ts",
+            "sha256": "9dd6a42d2c1b196ba5f92fb2a732ec59f9e885ef5d831e948354128038f13df0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_remedy_corpus.ts",
+            "sha256": "76465d396afbf86b6c603a9c1152d9590e74f82a38392bac7b7dcdbd82aeb9b8"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_retrograde_periods.ts",
+            "sha256": "2a4e5d726def601399efab3788b9127e2ac25677f25ef6b9fc1a8ff5f5bd7435"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_shashtiamsha_deities.ts",
+            "sha256": "a45f8d4552128a84043fddd46a03e01a964cc9e3532369040d61c2055fab78b7"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sign_medical.ts",
+            "sha256": "24a057ee6d1a17ac168c9a36ea2a234e36f8a89fc9b101905eec9982472e2d79"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_sky_calendar.ts",
+            "sha256": "b36d72bea0bab4929f83de22acfb9662b02466cff935e949eebde8f0f77efd97"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_av_gates.ts",
+            "sha256": "db8d874ebfd0d80bf852827bbc91841fbbc0e6c56d6c061c3c7b6afa6004e2e0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_engine.ts",
+            "sha256": "00d1681cf7339593e4c9f5352a88c36814d144a66e3803757d51c9ea4657ad01"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_moorti.ts",
+            "sha256": "ae50fa3748997dac59b4f8fe032b83c1e0e0ace2025d95f9a414ad91f158071e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_transit_vedha.ts",
+            "sha256": "48f0032ccef0c907af7aa38e6874bcacae4d08dae1ecc03b3d3938b1b7f886f0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_direction_remedials.ts",
+            "sha256": "3aa2c85436ce622496f0680fc6a14143a85097ec9cb5e39d829a1196ef323a68"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vastu_directions.ts",
+            "sha256": "ddc3025818706b8349fa69548068e2fe04a514b8f2de711e0c871a6a5f921e27"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_vichara_constants.ts",
+            "sha256": "5d7611c2ad84f8bac8463e87e1fde7f44005e1e462e37a11e59c4daa3480e608"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts",
+            "sha256": "ecc947ee624c62cc512cc30324852621ebed96f720df9b75fb13ff11a211f40d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/resolve_entity.ts",
+            "sha256": "6563c8c8e1ab42790bba38bb0fce7d49470791d295f45c87e9e2437e9e6abed8"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/tool_search.ts",
+            "sha256": "0054e2f01930a8174778a661d25b68811c423ca16d50d97b1af3feab86e015d0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_aliases.ts",
+            "sha256": "b4549bdace0f67e11724740f155fb200d402a97887fdab7852cf1feb3b29bd5f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/concept_locate.ts",
+            "sha256": "932f9e08866acc9be75f7f055ede58695e72b725fc6d08f2cd954071d0653b22"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
+            "sha256": "8c34e1b76b1f05d5cc93902e5aff89454aca56dfea3b49116fe31f644a0c69f3"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_argala.ts",
+            "sha256": "74099778c03c637440271eedc77d54d3ab43949fb12d53e30cde53671b546752"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ashtakavarga.ts",
+            "sha256": "98c8543fc4d7366e44d6dd14cbfded5eec02005de86fa5b6ed4aada6d15078dc"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_aspects.ts",
+            "sha256": "1fa2d6ccf260d0b8ff1cfddcc5e8be203ca1fde3b08138961ace1c1c579cdda1"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_av_transit_gating.ts",
+            "sha256": "ea0b8b672d7724baee3dc8f89f7e9e2c7e1cafe889ed41e0e13ff526839edcd5"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_avasthas.ts",
+            "sha256": "a068c2bd692568ee6eb0e787c3a9b2549198f031be2ac3e57cf56312adc93f10"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts",
+            "sha256": "f2eb9c4f51b89aeaa008aa471b7b77de34619528bedf8576c039eab133851713"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_bhava_bala.ts",
+            "sha256": "56e8c9be0bfffbb7444c61ddad798a04d56e28ece06066d488db369dcd48e52b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_header.ts",
+            "sha256": "c3d200e0fa2d41852ed778949f9dea7862ed7d7aa0144aa2bbc6a421ac604bc6"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_chart_snapshot.ts",
+            "sha256": "3d4b5e2604b0ddc372f8230603a436d0339d4afb5e2b140e46e12ada57f1b6ce"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_condition_composite.ts",
+            "sha256": "d879196139c9591435451b35ef22292b3a56e9430673082f3746f0b3fef776a9"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dasha_lord_capability.ts",
+            "sha256": "9cd009cb7ad37da7aa0898b48f2d00fb0b22e82942bfc01bf71eddae6a78f17e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
+            "sha256": "b0fb9b18a1a9158b3b84da8578b2d54f91f4624cf9cb3c8450b23dcfb3f46873"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
+            "sha256": "c91915aa7b398e2e58a584463590b871ed9146b8c93603d569fb2a78bf612a18"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dignity.ts",
+            "sha256": "38ef7f2ccdf9c705a6ce4f91bdc73e86a2db0f64a15f47ca36e49f0a17b83528"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dispositors.ts",
+            "sha256": "dfcc6d68d82b203f1986a837029e2726568bf47b4a8f880168b3b9a3064bb9c2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
+            "sha256": "492d84e8dcdddafd86425f43c952dd8087568f183176ffb31c122b9ffc348074"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
+            "sha256": "5d0ed3dd87113298e5cc24695d3d244c92298c2ae1003cb1994dda76f8f8d875"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_graha_yuddha.ts",
+            "sha256": "7be753fcb7ecb40d6ef494b3cc493692a47c47393103e571975d1a464042e9bd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_karakas.ts",
+            "sha256": "4255680b6955b008f1cfcd29448e13e99519e3866685c9b330ecdadc6ee63780"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_kp_cusps.ts",
+            "sha256": "499ee1c2414e335d6b10252220957415b9bf2096b609d54f4783270cbfe1340f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_medical_indications.ts",
+            "sha256": "cd5d60969494d93b3b4fce61c7346716cc8090fae3468178a365d36bdfd171da"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_nakshatra.ts",
+            "sha256": "c886b525b5da16b38d11fa8fa02c5d7378bd405a3d80a8ce0b048c201c9f4f55"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_panchanga.ts",
+            "sha256": "d7d482b7ac0c1e6ec0ae1add59cc2b69696e5fe78f32b938e86f282272fc6503"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_positions.ts",
+            "sha256": "cef3d2bf0fe79e71a1758d02556ceeb858873957622c8eae53ac0d910993e179"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_prashna_lagna.ts",
+            "sha256": "6093c220c703eccbd38b369dc5ed8bf2fe69ef289313ea90a4a2f0a9d12e5a5c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sade_sati.ts",
+            "sha256": "b2798b0697f84975f28f402e2b4b58755e17080d00ed800b2d1830d078f38966"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts",
+            "sha256": "dc8270d7676e69a6b832da1e8983eedd3c624dc0d5426dabdef5234ecd925f31"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_points.ts",
+            "sha256": "2e2b68b491998ceccffbb51925af8bf60d7488744c4f2cd97595aa038176dfc6"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts",
+            "sha256": "52a2d7cf962819ef2a37368d923c338941d20894322ffc4fa280ec7ac6bbc242"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_structural_signals.ts",
+            "sha256": "9828d1ee131a559ac2c198560695636239faa90c7ae67b5afe4dfb66d397bd45"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tajik.ts",
+            "sha256": "686dbaacc4c3abea6745a21aeb828dbc779ac2a63cfbb2ceaab70c495c4c1f9c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_tara_chandra_bala.ts",
+            "sha256": "2cd81d1c54b55c486b98b67cabcf246dcb21baadb6da3d8550c36488ecee4d30"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_transit_anchors.ts",
+            "sha256": "df804a4b12675e710216b2bf07849b65d2f3c0529802aa88e0a2be63ac6efe7d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vastu_directions.ts",
+            "sha256": "ec2a979384243fb4243fd007b71481015086d1dc739a2129715df1b32d4a626e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_vichara.ts",
+            "sha256": "132832ba6a5e5cee4ced26c0b45d6ad4089651cec1b65d1daae45bf4dec388a5"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_dosha.ts",
+            "sha256": "a0d67441815c6ac91c6c60235a0a9c0b109a7233e898be45b8de1dbf63fa5eec"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_yoga_firings.ts",
+            "sha256": "0d5a149e3a8107092b6b2830fdaaf2c335c0a4b87e999e0e2138f097a7fc1d4c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/index.ts",
+            "sha256": "b1d9d60d3f49676e197662eb1b5d75f70cfaa83ca073290226b0f4f7d9de72d7"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/query_planet.ts",
+            "sha256": "3420b6747309c60ef279b7d8514416825a22d850c20ca3c20230c660335549c2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/resolve_concept.ts",
+            "sha256": "b6288c83ee2bf83bb428b72f23fc87d2dc9e1a2cd4f64ca2b36c2f31fc354445"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
+            "sha256": "c599258d512337148637231f65d5aec3664c935d4246c43c12aecb7297fa315d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/index.ts",
+            "sha256": "92686d6255461be8f207d0ef4985410eff629162028c0b3d162c5d07d4becccb"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cdlm_summary.ts",
+            "sha256": "0083a542160b7ac081d766309058f2f8a7fdd3959441b0c97a6dc5cf609fd5c1"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_motifs.ts",
+            "sha256": "a483b6e073d35c36b893f11f9d41612e1c91940d0d5d8c71faa6c68f4e8d03e3"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_cgm_paths.ts",
+            "sha256": "1c99050c3f592417bfd855c8d574ee8fca7ab650c1ca9d0eebabd8cb24fa04e3"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
+            "sha256": "89edfa6e65b53597af0e1c4fbeec801acf636012793a5f5437cef0857cc5ae8d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
+            "sha256": "a7c7d910148dd8234f9e953a0863a34b99ddd7a8a9974d9d771e15f07854d7c5"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_discoveries.ts",
+            "sha256": "e3bde181d9fc156e824fa0aabc30e6060aaa422ab919b1f4b5a022c10fdcf895"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts",
+            "sha256": "b67b91fe0b77f6957876d330522934ee75df69e14b1ea4960151c383355aea82"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
+            "sha256": "61dc9a7abe38663842b96d5000d768e339a5498c585075ae0aeed7d1ddb4b758"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
+            "sha256": "865131a91aa78cc1fb5f156b48a20de43792541da4bd014c64c9150095fcf1ed"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_quality_scorecard.ts",
+            "sha256": "397457ba112d7ef9033d89a629116b53cea742b20acbbc5f5aa2f99887946bd2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_question_lenses.ts",
+            "sha256": "8e653bf2be204c3314afc76d71df231ec20b54b270c4e6f4b0e6a58b35c0e0d4"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_remedies.ts",
+            "sha256": "83f253f47ba5725660f3453d365235f4b1d8a986dff729948959f88281b3a978"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_chart_summary.ts",
+            "sha256": "ef211f36f272e9bc96672d42e4166289e9df8e1252fcd14a56aae85caed09403"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dasha_windowed_prescriptions.ts",
+            "sha256": "c372bf403000f67658af9d36334bd43288f0cd27de18feff4c8c1abfa598904f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_dosha_remedy_bundles.ts",
+            "sha256": "da9298c813322d699ef6d45fb57ad89294a142cde636b8461abc05c3008dff42"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_pattern_remedies.ts",
+            "sha256": "bc78e132a363c9c3ac6be4ad8f352f3d87056a4e782b9bd1f90d412a686848b7"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_prescriptions.ts",
+            "sha256": "34024d7ed46b17c9542583c35fa93a5c872219b0aeab0dfc032810c7565660fc"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_rm_resonances.ts",
+            "sha256": "44d01c747a19581d404410d34900aaaac4ad8c324c2d26ffa1f7e299cf5e567f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_signals.ts",
+            "sha256": "61fb61dbaed18eb8c739f43274bcee07ea2c96a0eea345945c47ece6dd5bd84c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_triangulation.ts",
+            "sha256": "41f27f820fcd9b69822026adfd8d142aba20a6e30c1d853de7ffcdcc4cd58c3a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_ucd.ts",
+            "sha256": "d79982f694adcc50024efc0d0eaea09e100860f93fd1eb97da0edf0d8527ded4"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/register_d4_graph.ts",
+            "sha256": "08ad9e4132c8377eedc1478e1f5cb0e349bbb500e68785791aa143dd12e1e3e3"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/traverse_chart_graph.ts",
+            "sha256": "c390d21ff3064697777336601af5f0d3706a5548a010fcefa8dafa15a7ed368b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/call_service_wrappers.ts",
+            "sha256": "67a6bdac7379039109112c1f2cf9d038da3c93b22983118625a91ecbcf1702f5"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/index.ts",
+            "sha256": "644ea70909c2519dd81c4a896d34ad2ee9ca6bc8e109b3dbc42f32003bc72620"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_activation_waveform.ts",
+            "sha256": "433e1162f696fed75868c592761d4185522abd27746c6dcf5ab150d0d245747f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_active_dashas.ts",
+            "sha256": "fd1c5696235bf1ac80cde42e8828c3a6d9b07b01562bb7fce32f6844789653bf"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_convergence_windows.ts",
+            "sha256": "11cffe3fc94d8e73a6f77edb041218f269f55906660e1a24845bb2d9bb05e727"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_dasha_dossier.ts",
+            "sha256": "4769dac59b785e887e6a4092788b2eeaa238e53fe016b7d6846327e56a50f670"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kala_paddhati_profile.ts",
+            "sha256": "cab302a5a40471907019b3158c60af04290be39071c24ee189696cdfdb8d1161"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_kota_chakra.ts",
+            "sha256": "eabc63e87eb46329917f8918477a92592a9aa9e4af7567f405f87e41d77b873d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_life_arc.ts",
+            "sha256": "22dfe6535395183939b099b7e6f0f8e92cfefe470649f598b205c5348ff04fae"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_moorti_nirnaya.ts",
+            "sha256": "6e3961458c0c1b4ea88edd1843bfab32a6ae9aae8820e68fcb8f4aaed03fb6ee"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_obstruction_periods.ts",
+            "sha256": "140f5554dbee34dff1aab84fd7022e738824e1a7ba0742071452a5c763dc2676"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_projections.ts",
+            "sha256": "42b430d7960a3fdfcdcd82ec1b6551c988f9cf6cda80c843200637e35cc9f101"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_sudarshana_varsha.ts",
+            "sha256": "737b969228208a29db85a7679824531726dc6d662828005bf80ca28099680cab"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+            "sha256": "9ca3dd8fe787003e805f1bfdfabb50f65ee1d21e878871d7ee2700eaec7b9a9c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
+            "sha256": "570ec95eeb724d384d27dad3b35cc09ebc6253c975fd2f8f59c001b27877d72d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_tithi_pravesha.ts",
+            "sha256": "fac90ba9a8e5c22f1da36438a90a0ff127542f9c5695045a1c5e17ec3edacf5e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_vedha_gochara.ts",
+            "sha256": "5a1cc7853c530df35b1ad2794e37818424c47afc26f22488241552606eb1284c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/index.ts",
+            "sha256": "075ed5b53072f81c8ebc5643ad2474f7559ece32e66ad6fd56f19098382962db"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_domain_result.ts",
+            "sha256": "4c68d7829c71d513b174ad4b2ff9751515950a813d105d61f1f833d24ae61b5d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_muhurat.ts",
+            "sha256": "043cfb0ff9ca29db8aebc6c7dc68f5658d200b4dd62a9ffdb21618f4abc8fe1a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_phala_calibration.ts",
+            "sha256": "fd71e047e9a5654c9609d32b27539b5ea3f31e4547a24f2d1f37de26574827af"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_predictive_anchors.ts",
+            "sha256": "f86a3103f817314269b41ad29cead32d6f7f93f2b81d7990d56e4332e1fc6a11"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/query_prospective_ledger.ts",
+            "sha256": "01b0a02ba3e715128804882044a18ce34cde35e20d7a4cc5dab6a575b25c6cfb"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L4_phala/salience_order.ts",
+            "sha256": "5ab8d9ad3ec2d882619901300c1572ddb56c530a93305cb1aa7618c5758d0863"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/index.ts",
+            "sha256": "dcda7c29b2f17a52acd22c4045cebcf385e9ad158926841c4e2df611ea0383c7"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/lel_intake_checklist.ts",
+            "sha256": "e32acc4aae2313ea15d891492d832510510aa39e96e8e86aca51a0785f1de8f0"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts",
+            "sha256": "2332a3823e3b1eba11d5ef96dc82b872ea8e32bdab0b271d3da4b640733f35b6"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_attribution.ts",
+            "sha256": "49b2080584e721b8e9f0a6be79a51c934752012a083fa43a9e6e86220a3cce12"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_calibration.ts",
+            "sha256": "fd968465ecff6e2e3342773dac5c00254294f26d934d8b9226b4958338a43bed"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insight_embeddings.ts",
+            "sha256": "fd3f34081a8143f8de9da588eaa88cd25b86ad0f32ef747ae50127697312da64"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_insights.ts",
+            "sha256": "74c5e100fdfdbf3126dd65ed772a203dfb84bda1018cf2684334fbddcd655d35"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_journal.ts",
+            "sha256": "0ac295971f6161a4e9a8cd6cdc45421e14b88fc4293f4596f738d2f25a2fc93a"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_life_events.ts",
+            "sha256": "9724a58a6951fac2609fae65757f07d7273bb4fda1f02f60eb06505a003cfb00"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_load_bearing.ts",
+            "sha256": "a3d464c485361b001179f0d3b4a3b551a10b3eec03bb97d6a09783f6e7aadc5c"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_grammar.ts",
+            "sha256": "8ec5997db3a7ca6ae1ff38a5a45fe085f77898146c23380ad4c405ee9f52a03d"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_manifestation_sets.ts",
+            "sha256": "3a256f43b2199d8f7ecd7deca0584dd827b0e98b740affd737c3b53831f16839"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mechanism_retrodiction.ts",
+            "sha256": "dbb6e2e27fca1da183599f62323a921a0ac938e8da39a52dd2ce5d9807d3c291"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_mimamsa_discoveries.ts",
+            "sha256": "0d5890eb60b80b23ad87ec8f30b2e2b216a39e454ece3fcb73aaf7adec82fde8"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_predictions.ts",
+            "sha256": "a8d3c8da20529c12a41c43c799aaf7bd2bc734f3f573e0000d4b9d046e078be6"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L5_mimamsa/query_signal_families.ts",
+            "sha256": "aee71ad5ffe64d2efb2bc11a008ec67577298ca5a18c2030c50cb9c645d3981f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/reading_checklist.ts",
+            "sha256": "767837743e914c383e5f140f55516d2049d96377a2740bc04de987bdd65c6006"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d10_pact.ts",
+            "sha256": "9e7ec4bc61d9b821802e8795f3a827d67072d3e58c13017d8903791fbbeb3b61"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d5_fanout.ts",
+            "sha256": "461168e5a1e2d7a98e821d412d3c764dfbf5007b18d4fab87f3225a05101561e"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d6_synergy.ts",
+            "sha256": "e32f46b465de65b13ceb8fc8fe2bc1bf7f50cddbd126b8f5b71ee9477aea3ccd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d7_channel.ts",
+            "sha256": "f3aaa553b0cad6b4d1ab553983dafc90d6688161663b4bce3348e0aac63c0701"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
+            "sha256": "c07a1fe9b83c98034d5e6c80397face2d2ec5445b51a9f08ca903a60e63ac615"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
+            "sha256": "20174263f002d0e3fd8f55e42ee694f2c5d80568a5383c26652b3cf8119551b2"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/register_spine_bundle.ts",
+            "sha256": "c20268b9f52fbed36c4699be5e7146d774b39596e18ef4d33e527eef70fa0fbd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/router_registration.ts",
+            "sha256": "33f8652575485ab30bb1cfff1c27b59fc5be76469f62bd9f9b567d617f4824b7"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/significator_condition.ts",
+            "sha256": "d911507022afae8564053ce26bb3c60ebb4989302dbcd43d5ba9ba79f5ee8e67"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts",
+            "sha256": "d35b9d7e9b284e1794149c975c6f7353aedbe50aa68471ea8f48c9780691b0dd"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/parity_check.ts",
+            "sha256": "88695d8b8b5ed949d3d24a6f3e2be7ef5fc5899694f4af71cce1d526ebe33747"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/schema_utils.ts",
+            "sha256": "e2a000c1d69d66e9df08e3da4f187aeeb857a966fd21c1ede88d11486ea39275"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/service_manifest/index.ts",
+            "sha256": "fe58c65de2a4e31b256a122cea5dbe539f6887bb404a52c0da84193f047f1815"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
+            "sha256": "43ff426b4285d2536f1f63bdf3e50cd581f2c19c02c035d8c800bc6990de374b"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/tool_search.ts",
+            "sha256": "13e9e9dcd7190b0fe04469089ba208bb8632704fb6cdb1de87b4cd3916611b94"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/types.ts",
+            "sha256": "45df8632d51a5641e0a6b1a35e1868b44a7ceab26631f7de46f48545927f8ca3"
+          }
+        ],
+        "path": "platform/src/lib/retrieval/registry/**/*.ts (excluding tests)",
+        "sha256": "05eb702b2f41a55dec5deb9dce49d73cd29cd7d1ffbdb9823dc36e9f2e19c34e"
+      },
+      {
+        "id": "writer_digest_inventory",
+        "path": "platform/src/generated/nirmana-writer-digests.json",
+        "sha256": "eeda56018985b18994aae0b6802e7db8988cb4257a9a7e96956497ef184edb7a"
+      }
+    ]
+  },
+  "schema_version": "capability-estate-census/v1",
+  "source_revision": "fdf042ef4d30a001c8e5c449aa8e7d6ecc6af6c2"
+}

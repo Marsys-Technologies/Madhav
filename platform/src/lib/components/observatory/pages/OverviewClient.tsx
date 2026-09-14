@@ -88,7 +88,8 @@ export function OverviewClient({
   )
 
   React.useEffect(() => {
-    void refetch(filters)
+    const initialFetch = setTimeout(() => void refetch(filters), 0)
+    return () => clearTimeout(initialFetch)
   }, [filters, refetch])
 
   // Auto-refresh every 30s while the tab is visible. The "live" pill is a
@@ -319,17 +320,16 @@ function RefreshButton({
   lastUpdated: Date | null
   onClick: () => void
 }) {
-  const [tick, setTick] = React.useState(0)
+  const [now, setNow] = React.useState(() => Date.now())
   React.useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 15_000)
+    const id = setInterval(() => setNow(Date.now()), 15_000)
     return () => clearInterval(id)
   }, [])
-  void tick
 
   const label = (() => {
     if (loading) return 'Refreshing…'
     if (!lastUpdated) return 'Refresh'
-    const sec = Math.max(0, Math.floor((Date.now() - lastUpdated.getTime()) / 1000))
+    const sec = Math.max(0, Math.floor((now - lastUpdated.getTime()) / 1000))
     if (sec < 5) return 'Just now'
     if (sec < 60) return `${sec}s ago`
     const min = Math.floor(sec / 60)

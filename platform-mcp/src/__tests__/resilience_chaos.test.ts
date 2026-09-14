@@ -36,6 +36,8 @@ import { registerPrashnaStatusTool, type PrashnaStatusRegisteringServer } from '
 import { __resetPrashnaAskBridgeTokenCacheForTests } from '../lib/prashna_ask_bridge.js'
 import type { Principal } from '../types.js'
 
+vi.mock('../lib/authz.js', () => ({ remoteAuthorize: vi.fn(async () => true) }))
+
 const CHART_ID = 'aaaaaaaa-1111-4000-8000-000000000099'
 
 const mockFetch = vi.fn()
@@ -68,7 +70,7 @@ function makeStatusHandler(): (args: unknown) => Promise<unknown> {
       handler = cb
     },
   }
-  registerPrashnaStatusTool(server)
+  registerPrashnaStatusTool(server, makePrincipal())
   if (!handler) throw new Error('prashna_status tool() was never called')
   return handler
 }

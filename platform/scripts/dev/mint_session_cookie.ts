@@ -91,7 +91,7 @@ async function main() {
 
   // Set-Cookie header may be a string or array depending on runtime; normalize.
   const rawSetCookie =
-    (sessResp.headers as any).getSetCookie?.() ??
+    (sessResp.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ??
     sessResp.headers.get('set-cookie') ??
     ''
   const setCookieStr = Array.isArray(rawSetCookie) ? rawSetCookie.join('\n') : String(rawSetCookie)

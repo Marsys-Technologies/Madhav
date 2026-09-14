@@ -88,7 +88,10 @@ import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
 import { enforceTurnLimits } from '@/lib/limits'
-import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
+import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
+import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -119,6 +122,10 @@ interface ToolDispatchOutcome {
   tool_name: string
   status: 'done' | 'error'
   result_count: number
+  /** `result_count` counts compatibility-adapter items, not semantic rows. */
+  result_count_semantics: 'adapter_items'
+  /** Null unless a reviewed semantic collection path makes a row count honest. */
+  semantic_result_count: number | null
   latency_ms: number
 }
 
@@ -480,9 +487,13 @@ export async function POST(request: Request) {
   // ── toolsAuthorized derivation + B.11/dasha floor adoption (identical sequence
   // to consult/route.ts) ───────────────────────────────────────────────────────
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map((tc) => tc.tool_name)))
+  let compiledFloorFailed = false
+  let unmappedFloorItems = 0
 
   if (plan.scope_tuple) {
     const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
+    compiledFloorFailed = compiledFloor.compileFailed
+    unmappedFloorItems = compiledFloor.unmappedPrimitives.length
     for (const tc of compiledFloor.toolCalls) {
       if (!toolsAuthorized.includes(tc.tool_name)) {
         plan.tool_calls.push(tc)
@@ -510,6 +521,25 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+  let inquirySnapshot: CapabilityKnowledgeSnapshot | null = null
+  const initialInquiryContract = plan.scope_tuple
+    ? await (async () => {
+        inquirySnapshot = assertPinnedCapabilityKnowledgeCurrent()
+        const overlay = await loadChartCapabilityOverlay(inquirySnapshot, chartId)
+        const contract = compileInquiryContract({
+          snapshot: inquirySnapshot,
+          overlay,
+          chart_id: chartId,
+          question,
+          scope_tuple: plan.scope_tuple!,
+          ai_proposal: managedPlanToAiInquiryProposal(plan),
+          execution_channel: 'platform_internal',
+        })
+        const adopted = adoptInquiryPlanItems(plan, contract)
+        toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
+        return contract
+      })()
+    : null
 
   // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
   //
@@ -717,9 +747,12 @@ export async function POST(request: Request) {
         try {
           const bundle = await tool.retrieve(queryPlanLike, paramsByTool.get(toolName))
           toolResults.push({ tool_name: toolName, bundle })
-          toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, latency_ms: Date.now() - toolStart })
+          const capabilityUri = resolveToolUri(toolName)
+          const contractItem = initialInquiryContract?.plan_items.find((item) => item.binding_id === `registry:${capabilityUri}`)
+          const binding = contractItem && inquirySnapshot ? bindingForInquiryItem(inquirySnapshot, initialInquiryContract!, contractItem.item_id) : undefined
+          toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
         } catch (err) {
-          toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, latency_ms: Date.now() - toolStart })
+          toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - toolStart })
           console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
         }
 
@@ -743,10 +776,89 @@ export async function POST(request: Request) {
       // visibly disclosed, not left for a caller to notice by reading every row of
       // tools_dispatched themselves.
       const emptyResultTools = toolEventLog
-        .filter((t) => t.status === 'done' && t.result_count === 0)
+        .filter((t) => t.status === 'done' && (t.semantic_result_count === 0
+          || (!initialInquiryContract && t.result_count === 0)))
         .map((t) => t.tool_name)
       if (emptyResultTools.length > 0) {
         judgmentFlags.push('empty_tool_results')
+      }
+
+      let inquiryContract: InquiryContract | null = initialInquiryContract
+      if (inquiryContract && inquirySnapshot) {
+        const bundleByTool = new Map(toolResults.map((result) => [result.tool_name, result.bundle]))
+        const eventByUri = new Map(toolEventLog.flatMap((event) => {
+          const uri = resolveToolUri(event.tool_name)
+          return uri ? [[uri, { event, bundle: bundleByTool.get(event.tool_name) }] as const] : []
+        }))
+        for (const item of [...inquiryContract.plan_items]) {
+          const capabilityUri = item.binding_id?.replace(/^registry:/, '')
+          const observed = capabilityUri ? eventByUri.get(capabilityUri) : undefined
+          if (!observed) continue
+          const binding = bindingForInquiryItem(inquirySnapshot, inquiryContract, item.item_id)
+          if (observed.event.status === 'error' || !observed.bundle) {
+            inquiryContract = recordInquiryExecution(inquiryContract, {
+              item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+              pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+              request_position_path: binding?.pagination_contract?.request_position_path,
+            })
+            continue
+          }
+          const disposition = classifyInquiryResult(binding, observed.bundle)
+          const pagination = deriveInquiryPaginationReceipt(binding, observed.bundle, item.args)
+          inquiryContract = recordInquiryExecution(inquiryContract, {
+            item_id: item.item_id, disposition,
+            evidence_refs: [`retrieval:${observed.event.tool_name}:${stableFingerprint(observed.bundle)}`],
+            ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+            pagination, request_position_path: binding?.pagination_contract?.request_position_path,
+          })
+        }
+
+        while (inquiryContract.iteration < inquiryContract.max_iterations) {
+          const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
+            && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+          if (!item?.binding_id) break
+          const capabilityUri = item.binding_id.slice('registry:'.length)
+          const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
+          const tool = toolName ? getToolByName(toolName) : undefined
+          const binding = bindingForInquiryItem(inquirySnapshot, inquiryContract, item.item_id)
+          if (!toolName || !tool || !binding) break
+          const check = tracker.checkAndRecordCall()
+          if (check.stopped) {
+            costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
+            judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
+            break
+          }
+          const started = Date.now()
+          try {
+            const bundle = await tool.retrieve(queryPlanLike, item.args)
+            toolResults.push({ tool_name: toolName, bundle })
+            const disposition = classifyInquiryResult(binding, bundle)
+            toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
+            const pagination = deriveInquiryPaginationReceipt(binding, bundle, item.args)
+            inquiryContract = recordInquiryExecution(inquiryContract, {
+              item_id: item.item_id, disposition,
+              evidence_refs: [`retrieval:${toolName}:${stableFingerprint(bundle)}`],
+              ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+              pagination, request_position_path: binding.pagination_contract?.request_position_path,
+            })
+          } catch (error) {
+            console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
+            toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
+            inquiryContract = recordInquiryExecution(inquiryContract, {
+              item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+              pagination: { semantics: binding.pagination, exhausted: true, next: null },
+              request_position_path: binding.pagination_contract?.request_position_path,
+            })
+          }
+        }
+        const currentOverlay = await loadChartCapabilityOverlay(inquirySnapshot, inquiryContract.chart_id)
+        if (currentOverlay.overlay_version !== inquiryContract.chart_availability_version
+          || currentOverlay.build_id !== inquiryContract.chart_build_id) {
+          judgmentFlags.push('capability_overlay_changed_during_inquiry')
+          inquiryContract = failInquiryForOverlayDrift(inquiryContract)
+        } else {
+          inquiryContract = finalizeInquiryContract(inquiryContract)
+        }
       }
 
       // W6.3 fix-cycle (native-directed, live trace d08d823a): chart_header must be
@@ -816,7 +928,10 @@ export async function POST(request: Request) {
       }
       judgmentFlags.push(...synthesis.judgment_flags)
 
-      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+      const dispatchErrors = toolEventLog.filter((item) => item.status === 'error')
+      const isPartial = costCapTripped !== null || unresolvedTools.length > 0 ||
+        dispatchErrors.length > 0 ||
+        compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE')
 
       // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
       // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
@@ -840,7 +955,11 @@ export async function POST(request: Request) {
           stripped_leaked_capabilities: leakedTools,
           empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
+          compiled_floor_failed: compiledFloorFailed,
+          unmapped_floor_item_count: unmappedFloorItems,
         },
+        inquiry_contract: inquiryContract,
+        inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
         // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`

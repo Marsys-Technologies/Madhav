@@ -38,9 +38,12 @@ export function useCockpitSSE(
   onReconnect?: () => void,
 ): void {
   const onEventRef = useRef(onEvent)
-  onEventRef.current = onEvent
   const onReconnectRef = useRef(onReconnect)
-  onReconnectRef.current = onReconnect
+
+  useEffect(() => {
+    onEventRef.current = onEvent
+    onReconnectRef.current = onReconnect
+  }, [onEvent, onReconnect])
 
   useEffect(() => {
     let es: EventSource | null = null

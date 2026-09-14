@@ -436,17 +436,20 @@ export function AtlasView({
   }, [])
 
   useEffect(() => {
-    setStatsLoading(true)
-    fetch(`/api/cockpit/stats?chart_id=${encodeURIComponent(chartId)}`)
-      .then((r) => r.json())
-      .then((d) => {
-        const map = new Map<string, AssetStat>()
-        for (const s of d.data?.assets ?? []) map.set(s.asset_id, s)
-        setStats(map)
-        setStatsFetchedAt(d.fetched_at ?? null)
-        setStatsLoading(false)
-      })
-      .catch(() => setStatsLoading(false))
+    const initialFetch = setTimeout(() => {
+      setStatsLoading(true)
+      fetch(`/api/cockpit/stats?chart_id=${encodeURIComponent(chartId)}`)
+        .then((r) => r.json())
+        .then((d) => {
+          const map = new Map<string, AssetStat>()
+          for (const s of d.data?.assets ?? []) map.set(s.asset_id, s)
+          setStats(map)
+          setStatsFetchedAt(d.fetched_at ?? null)
+          setStatsLoading(false)
+        })
+        .catch(() => setStatsLoading(false))
+    }, 0)
+    return () => clearTimeout(initialFetch)
   }, [chartId])
 
   const grouped = useMemo(() => {

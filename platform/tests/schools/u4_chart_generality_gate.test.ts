@@ -20,6 +20,8 @@
  */
 
 import { describe, it, expect, vi } from 'vitest'
+import fs from 'node:fs'
+import path from 'node:path'
 import { ABHISEK_CHART } from '@/lib/schools/types'
 import { SYNTHETIC_CHART } from '@/lib/schools/__fixtures__/synthetic_chart'
 import { runFullTriangulation, runSchoolsForDomain } from '@/lib/schools/school_runner'
@@ -182,8 +184,6 @@ describe('Anti-drift: runner stays DB-free', () => {
   it('school_runner.ts does not import from db/client directly', () => {
     // The runner imports from chart_data_adapter (DOMAIN_AUTHORITY_WEIGHTS) — fine.
     // It must NOT import query/getPool from db/client.
-    const fs = require('fs')
-    const path = require('path')
     const src = fs.readFileSync(
       path.join(__dirname, '../../src/lib/schools/school_runner.ts'),
       'utf-8'

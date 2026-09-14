@@ -261,6 +261,19 @@ describe('EL-45 — direct varga/AV consumption, never a stub', () => {
     expect(String(perVarga['D11']!['empty_reason'])).toMatch(/data-plane gap|not.*computed/i)
     // D11's sign/house/dignity ARE real and directly consumed even though AV isn't built yet.
     expect((perVarga['D11']!['graha_dignity'] as unknown[]).length).toBeGreaterThan(0)
+
+    const dignityCall = queryMock.mock.calls.find((call) =>
+      String(call[0]).includes("fact_category = 'graha_dignity_per_varga'")
+      && String(call[0]).includes("fact_value_jsonb->>'varga'"),
+    )
+    expect(String(dignityCall?.[0])).toContain("fact_key = 'dignity_state'")
+
+    const induCall = queryMock.mock.calls.find((call) =>
+      String(call[0]).includes("fact_category = 'special_lagna'")
+      && String(call[0]).includes("fact_subject = 'INDU_LAGNA'"),
+    )
+    expect(String(induCall?.[0])).toContain('fact_key = ANY($3)')
+    expect(induCall?.[1]?.[2]).toEqual(['sign', 'sign_lord', 'house_d1', 'nakshatra'])
   })
 
   it('CI-assertable rule: every DOMAIN_DIRECT_VARGAS entry produces direct_consumption:true (no classical-layer stub)', async () => {

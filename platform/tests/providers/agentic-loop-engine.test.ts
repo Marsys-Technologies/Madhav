@@ -354,7 +354,7 @@ describe('executeMCPTool — real tool results via mocked MCP backend (AC.G1.3)'
         ],
       }),
     }
-    vi.mocked(getTool).mockReturnValue(mockTool as any)
+    vi.mocked(getTool).mockReturnValue(mockTool as never)
 
     const ctx = makeCtx()
     const toolCall = { id: 'tc-1', name: 'msr_sql', input: { signal_type: ['yoga'] } }
@@ -385,7 +385,7 @@ describe('executeMCPTool — real tool results via mocked MCP backend (AC.G1.3)'
       version: '1.0',
       retrieve: vi.fn().mockRejectedValue(new Error('DB connection failed')),
     }
-    vi.mocked(getTool).mockReturnValue(mockTool as any)
+    vi.mocked(getTool).mockReturnValue(mockTool as never)
 
     const ctx = makeCtx()
     const toolCall = { id: 'tc-3', name: 'msr_sql', input: {} }
@@ -415,7 +415,7 @@ describe('executeMCPTool — real tool results via mocked MCP backend (AC.G1.3)'
         results: [{ content: 'Saturn 10H yoga active', significance: 0.9, source_canonical_id: 'MSR.001', confidence: 0.85, result_hash: 'sha256:abc', schema_version: '1.0' }],
       }),
     }
-    vi.mocked(getTool).mockReturnValue(mockTool as any)
+    vi.mocked(getTool).mockReturnValue(mockTool as never)
 
     const chatCallArgs: ChatRequest[] = []
     const adapter: CapabilityAdapter = {
@@ -497,7 +497,7 @@ describe('executeMCPTool — tool error recovery in loop (AC.G1.4)', () => {
       version: '1.0',
       retrieve: vi.fn().mockRejectedValue(new Error('Simulated DB failure')),
     }
-    vi.mocked(getTool).mockReturnValue(mockTool as any)
+    vi.mocked(getTool).mockReturnValue(mockTool as never)
 
     const chatCallArgs: ChatRequest[] = []
     const adapter: CapabilityAdapter = {
@@ -566,7 +566,7 @@ describe('executeMCPTool — tool error recovery in loop (AC.G1.4)', () => {
       version: '1.0',
       retrieve: vi.fn().mockRejectedValue(new Error('persistent failure')),
     }
-    vi.mocked(getTool).mockReturnValue(mockTool as any)
+    vi.mocked(getTool).mockReturnValue(mockTool as never)
 
     const sequences = Array.from({ length: MAX_ITERATIONS + 2 }, () => [...singleIterEvents])
     const adapter = makeMockAdapter(sequences)

@@ -62,18 +62,16 @@ export function useBuildProgress(chartId: string | null): BuildProgressState {
   }, [chartId])
 
   useEffect(() => {
-    if (!chartId) {
-      setState(INITIAL)
-      return
-    }
+    if (!chartId) return
 
-    fetchProgress()
+    const initialFetch = setTimeout(() => void fetchProgress(), 0)
     timerRef.current = setInterval(fetchProgress, POLL_INTERVAL_MS)
 
     return () => {
+      clearTimeout(initialFetch)
       if (timerRef.current) clearInterval(timerRef.current)
     }
   }, [chartId, fetchProgress])
 
-  return state
+  return chartId ? state : INITIAL
 }

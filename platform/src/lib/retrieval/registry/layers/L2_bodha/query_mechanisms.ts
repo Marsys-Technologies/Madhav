@@ -44,6 +44,7 @@ import { query } from '@/lib/db/client'
 // this note used to be a hand-copied literal (`['D1','D2','D9','D11']`) — read live instead,
 // same discipline as reading_checklist.ts's DOMAIN_DIRECT_VARGAS.
 import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading_checklist'
+import { MECHANISM_SCUS } from '../../knowledge/editorial'
 
 const MAX_LIMIT = 50
 
@@ -155,6 +156,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
   type:  'tool',
   layer: 'L2',
   name:  'query_mechanisms',
+  semantic_capabilities: MECHANISM_SCUS,
 
   description: [
     'Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the',

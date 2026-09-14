@@ -20,7 +20,7 @@
  * types only — the hook handles unknown event types silently (no errors).
  */
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { GraphNode, GraphEdge } from '@/components/cockpit/LiveDependencyGraph'
 
 export interface SseState {
@@ -35,15 +35,8 @@ export function useSseSubscription(buildId: string | null): SseState {
   const [state, setState] = useState<SseState>(INITIAL)
   const esRef = useRef<EventSource | null>(null)
 
-  const reset = useCallback(() => {
-    setState(INITIAL)
-  }, [])
-
   useEffect(() => {
-    if (!buildId) {
-      reset()
-      return
-    }
+    if (!buildId) return
 
     const url = `/api/build/events/${buildId}`
     const es = new EventSource(url)
@@ -99,7 +92,7 @@ export function useSseSubscription(buildId: string | null): SseState {
       es.close()
       esRef.current = null
     }
-  }, [buildId, reset])
+  }, [buildId])
 
-  return state
+  return buildId ? state : INITIAL
 }

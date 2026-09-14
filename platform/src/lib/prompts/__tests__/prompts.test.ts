@@ -617,7 +617,7 @@ describe('Synthesis templates — multi_school_triangulation + classical_groundi
 
   it('registry throws when looking up an UNKNOWN class (regression — must still fail loud)', () => {
     const registry = getDefaultRegistry()
-    expect(() => registry.get('unknown_class' as any, 'single_model'))
+    expect(() => registry.get('unknown_class' as never, 'single_model'))
       .toThrow(/no template found/)
   })
 })

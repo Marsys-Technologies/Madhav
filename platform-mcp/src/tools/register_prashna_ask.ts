@@ -305,7 +305,7 @@ export function registerPrashnaAskTool(
         )
       }
 
-      const job = prashnaAskJobs.create({ chartId: parsed.chart_id })
+      const job = prashnaAskJobs.create({ chartId: parsed.chart_id, ownerKey: `${principal.user_uid}:${principal.key_id}` })
       const progressToken = extra._meta?.progressToken
 
       // Fire-and-forget: do NOT await — the job-handle-first contract (OT-2)

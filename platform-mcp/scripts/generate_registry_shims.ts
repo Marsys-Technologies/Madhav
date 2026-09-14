@@ -20,7 +20,9 @@
  * tsconfig — it CANNOT resolve `@/lib/db/client` at build or run time, and must NEVER try
  * to `import()` or `require()` these files. Instead this script parses the descriptor
  * file's SOURCE TEXT with the TypeScript compiler API and evaluates only the literal
- * (string/number/boolean/array/object literal) AST nodes of the `input_schema` /
+ * (string/number/boolean/array/object literal, including static string concatenation and
+ * references to top-level `const` literals)
+ * AST nodes of the `input_schema` /
  * `required_inputs` / `uri` / `name` properties — no module resolution, no execution,
  * no side effects. If a descriptor's schema is expressed in a form this literal-evaluator
  * doesn't understand (e.g. a computed property, a spread, a non-literal default), the
@@ -60,14 +62,50 @@ const GENERATOR_REL_PATH = 'platform-mcp/scripts/generate_registry_shims.ts'
 
 type JsonLiteral = string | number | boolean | null | JsonLiteral[] | { [k: string]: JsonLiteral }
 
-function evalLiteral(node: ts.Node, sf: ts.SourceFile, ctxLabel: string): JsonLiteral {
+function evalLiteral(
+  node: ts.Node,
+  sf: ts.SourceFile,
+  ctxLabel: string,
+  resolvingIdentifiers: ReadonlySet<string> = new Set(),
+): JsonLiteral {
   if (ts.isStringLiteralLike(node)) return node.text
   if (ts.isNumericLiteral(node)) return Number(node.text)
+  if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.PlusToken) {
+    const left = evalLiteral(node.left, sf, ctxLabel, resolvingIdentifiers)
+    const right = evalLiteral(node.right, sf, ctxLabel, resolvingIdentifiers)
+    if (typeof left === 'string' && typeof right === 'string') return left + right
+    throw new Error(
+      `[generate_registry_shims] HALT (${ctxLabel}): only string-literal concatenation is ` +
+      `supported; received ${typeof left} + ${typeof right}.`,
+    )
+  }
+  if (ts.isIdentifier(node)) {
+    if (resolvingIdentifiers.has(node.text)) {
+      throw new Error(`[generate_registry_shims] HALT (${ctxLabel}): cyclic const reference "${node.text}".`)
+    }
+    let initializer: ts.Expression | undefined
+    for (const statement of sf.statements) {
+      if (!ts.isVariableStatement(statement) ||
+          !(statement.declarationList.flags & ts.NodeFlags.Const)) continue
+      const match = statement.declarationList.declarations.find(
+        declaration => ts.isIdentifier(declaration.name) && declaration.name.text === node.text,
+      )
+      if (match?.initializer) {
+        initializer = match.initializer
+        break
+      }
+    }
+    if (initializer) {
+      const nextResolving = new Set(resolvingIdentifiers)
+      nextResolving.add(node.text)
+      return evalLiteral(initializer, sf, `${ctxLabel} -> const ${node.text}`, nextResolving)
+    }
+  }
   if (node.kind === ts.SyntaxKind.TrueKeyword) return true
   if (node.kind === ts.SyntaxKind.FalseKeyword) return false
   if (node.kind === ts.SyntaxKind.NullKeyword) return null
   if (ts.isArrayLiteralExpression(node)) {
-    return node.elements.map(el => evalLiteral(el, sf, ctxLabel))
+    return node.elements.map(el => evalLiteral(el, sf, ctxLabel, resolvingIdentifiers))
   }
   if (ts.isObjectLiteralExpression(node)) {
     const out: Record<string, JsonLiteral> = {}
@@ -81,7 +119,7 @@ function evalLiteral(node: ts.Node, sf: ts.SourceFile, ctxLabel: string): JsonLi
         ? prop.name.text
         : (() => { throw new Error(`[generate_registry_shims] HALT (${ctxLabel}): computed property key ` +
             `not supported: ${prop.name.getText(sf)}`) })()
-      out[key] = evalLiteral(prop.initializer, sf, `${ctxLabel}.${key}`)
+      out[key] = evalLiteral(prop.initializer, sf, `${ctxLabel}.${key}`, resolvingIdentifiers)
     }
     return out
   }

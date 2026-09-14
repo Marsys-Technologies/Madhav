@@ -182,7 +182,8 @@ export function AssetInspector({ chartId, assetKey, onClose }: AssetInspectorPro
   }, [chartId, assetKey])
 
   useEffect(() => {
-    void fetchAsset()
+    const initialFetch = setTimeout(() => void fetchAsset(), 0)
+    return () => clearTimeout(initialFetch)
   }, [fetchAsset])
 
   // Dismiss on Escape

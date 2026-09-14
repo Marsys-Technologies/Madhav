@@ -49,6 +49,7 @@ function makeClient(applied: AppliedRow[] = [], failOn?: string) {
   const queries: Array<{ text: string; values?: unknown[] }> = []
 
   const client = {
+    queries,
     query: vi.fn(async (text: string, values?: unknown[]) => {
       const q = typeof text === 'string' ? text.trim() : text
       queries.push({ text: q, values })
@@ -90,8 +91,6 @@ function makeClient(applied: AppliedRow[] = [], failOn?: string) {
     release: vi.fn(),
   } as unknown as PoolClient & { queries: typeof queries }
 
-  // Attach for inspection
-  ;(client as any).queries = queries
   return client
 }
 
@@ -164,7 +163,7 @@ describe('runMigrations', () => {
     const client = makeClient()
     await runMigrations(client, [dir])
 
-    const ddlCall = (client as any).queries.find((q: any) =>
+    const ddlCall = client.queries.find(q =>
       q.text.includes('CREATE TABLE IF NOT EXISTS _migrations_applied')
     )
     expect(ddlCall).toBeDefined()
@@ -181,7 +180,7 @@ describe('runMigrations', () => {
 
     expect(ran).toEqual(['002_second.sql'])
     // Should NOT have a BEGIN for 001
-    const beginCalls = (client as any).queries.filter((q: any) => q.text === 'BEGIN')
+    const beginCalls = client.queries.filter(q => q.text === 'BEGIN')
     expect(beginCalls).toHaveLength(1)
   })
 
@@ -208,7 +207,7 @@ describe('runMigrations', () => {
 
     await expect(runMigrations(client, [dir])).rejects.toThrow('Simulated failure')
 
-    const rollbackCall = (client as any).queries.find((q: any) => q.text === 'ROLLBACK')
+    const rollbackCall = client.queries.find(q => q.text === 'ROLLBACK')
     expect(rollbackCall).toBeDefined()
   })
 
@@ -223,7 +222,7 @@ describe('runMigrations', () => {
     expect(pending).toEqual(['002_b.sql'])
 
     // No BEGIN / COMMIT / INSERT should have been called
-    const writes = (client as any).queries.filter((q: any) =>
+    const writes = client.queries.filter(q =>
       ['BEGIN', 'COMMIT', 'ROLLBACK'].includes(q.text) ||
       q.text.includes('INSERT INTO _migrations_applied')
     )
@@ -256,7 +255,7 @@ describe('runMigrations', () => {
     await expect(runMigrations(client, [dir])).rejects.toThrow('001_first.sql')
 
     // Never re-applied: no BEGIN/COMMIT/INSERT should have been issued for it
-    const writes = (client as any).queries.filter((q: any) =>
+    const writes = client.queries.filter(q =>
       ['BEGIN', 'COMMIT'].includes(q.text) || q.text.includes('INSERT INTO _migrations_applied')
     )
     expect(writes).toHaveLength(0)
@@ -359,7 +358,7 @@ describe('runMigrations', () => {
     }
 
     // Never (re-)applied: no BEGIN/COMMIT/INSERT should have been issued for it
-    const writes = (client as any).queries.filter((q: any) =>
+    const writes = client.queries.filter(q =>
       ['BEGIN', 'COMMIT'].includes(q.text) || q.text.includes('INSERT INTO _migrations_applied')
     )
     expect(writes).toHaveLength(0)
@@ -534,9 +533,9 @@ describe('runMigrations — renumbered-migration guard', () => {
     )
 
     // The whole point: the SQL must NOT have run a second time.
-    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    const executed = client.queries.filter(q => q.text === migrationSql)
     expect(executed).toHaveLength(0)
-    const inserts = (client as any).queries.filter((q: any) =>
+    const inserts = client.queries.filter(q =>
       q.text.includes('INSERT INTO _migrations_applied')
     )
     expect(inserts).toHaveLength(0)
@@ -658,9 +657,9 @@ describe('runMigrations — renumbered-migration guard', () => {
     }
 
     expect(ran).toEqual([]) // reported as NOT applied — it did not run
-    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    const executed = client.queries.filter(q => q.text === migrationSql)
     expect(executed).toHaveLength(0) // the SQL never ran a second time
-    const inserts = (client as any).queries.filter((q: any) =>
+    const inserts = client.queries.filter(q =>
       q.text.includes('INSERT INTO _migrations_applied')
     )
     expect(inserts).toHaveLength(1) // but the new filename IS now tracked
@@ -683,7 +682,7 @@ describe('runMigrations — renumbered-migration guard', () => {
       warnSpy.mockRestore()
     }
     expect(ran).toEqual(['474_x.sql'])
-    const executed = (client as any).queries.filter((q: any) => q.text === migrationSql)
+    const executed = client.queries.filter(q => q.text === migrationSql)
     expect(executed).toHaveLength(1)
   })
 

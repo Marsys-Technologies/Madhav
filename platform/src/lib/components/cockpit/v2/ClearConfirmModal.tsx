@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DUR, EASE } from './motion'
+import { useMounted } from '@/hooks/useMounted'
 
 interface TableCount {
   table: string
@@ -235,10 +236,8 @@ export function ClearConfirmModal({
   const [execPct, setExecPct] = useState(0)
   const [execLabel, setExecLabel] = useState('')
   const [error, setError] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const mounted = useMounted()
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  useEffect(() => { setMounted(true) }, [])
 
   // Close on Escape
   useEffect(() => {

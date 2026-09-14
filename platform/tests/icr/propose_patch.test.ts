@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildProposePatchArtifact } from '@/lib/icr/propose_patch';
@@ -181,7 +181,6 @@ describe('munta_propose_patch_emitted gate (ICR-S4)', () => {
     const patchFile = existsSync(proposedFile) ? proposedFile : resolvedFile;
     if (!existsSync(patchFile)) return;
 
-    const { readFileSync } = require('node:fs');
     const content = readFileSync(patchFile, 'utf-8') as string;
 
     // Must reference MSR.377

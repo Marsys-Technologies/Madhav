@@ -190,6 +190,7 @@ export async function POST(request: Request): Promise<Response> {
           plannerModelId,
           plannerLatencyMs,
           judgmentFlags,
+          inquiryContract,
         } = planned.value
         // The plan-time pass may have ESCALATED the decision (a plan revealing a
         // health or longevity domain the question's wording hid). If it crossed
@@ -224,6 +225,7 @@ export async function POST(request: Request): Promise<Response> {
           manifest,
           toolsAuthorized,
           orientationPromise,
+          inquiryContract,
         })
 
         // ── Synthesis: prompt assembly, then the streaming interpretation. ───
@@ -332,7 +334,7 @@ export async function POST(request: Request): Promise<Response> {
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).
-        emitCompletenessReceipt({ em, completenessReceipt: evidence.completenessReceipt })
+        emitCompletenessReceipt({ em, completenessReceipt: evidence.completenessReceipt, inquiryContract: evidence.inquiryContract })
 
         em.phase({ phase: 'finalize', status: 'end' })
         return finish('ok')

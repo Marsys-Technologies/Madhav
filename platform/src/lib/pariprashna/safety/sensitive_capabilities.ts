@@ -1,3 +1,6 @@
+import { getCatalog } from '@/lib/retrieval/registry/catalog'
+import { resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
+
 /**
  * Paripraśna safety — THE SENSITIVE CAPABILITY CLASS (lane G1-A).
  *
@@ -154,9 +157,19 @@ export function applyCapabilityExclusion(
   excluded: readonly string[],
 ): { kept: string[]; stripped: string[] } {
   if (excluded.length === 0) return { kept: [...toolNames], stripped: [] }
-  const excludedSet = new Set(excluded)
+  const catalog = getCatalog()
+  const canonicalUri = (name: string) => resolveToolUri(name)
+    ?? catalog.find((capability) => capability.name === name)?.uri
+  const excludedSet = new Set(excluded.flatMap((name) => {
+    const uri = canonicalUri(name)
+    return uri ? [name, uri] : [name]
+  }))
   const kept: string[] = []
   const stripped: string[] = []
-  for (const t of toolNames) (excludedSet.has(t) ? stripped : kept).push(t)
+  for (const t of toolNames) {
+    const uri = canonicalUri(t)
+    const target = excludedSet.has(t) || (uri ? excludedSet.has(uri) : false) ? stripped : kept
+    target.push(t)
+  }
   return { kept, stripped }
 }

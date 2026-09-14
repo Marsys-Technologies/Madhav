@@ -43,7 +43,6 @@ describe('E-S7: safeExecuteTool — error recovery', () => {
 
   it('returns isError=true when executor throws string', async () => {
     const result = await safeExecuteTool(mockToolCall, async () => {
-      // eslint-disable-next-line @typescript-eslint/no-throw-literal
       throw 'network error'
     })
     expect(result.isError).toBe(true)

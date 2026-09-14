@@ -206,6 +206,8 @@ export function useChartBuildState(chartId: string): ChartBuildStateResult {
 
   // ── SSE subscription ─────────────────────────────────────────────────────────
 
+  const openSSERef = useRef<(buildId: string) => void>(() => {})
+
   const openSSE = useCallback(
     (buildId: string) => {
       if (esRef.current) {
@@ -240,13 +242,17 @@ export function useChartBuildState(chartId: string): ChartBuildStateResult {
         reconnectTimerRef.current = setTimeout(() => {
           // Only reconnect if build is still active
           if (activeBuildIdRef.current === buildId) {
-            openSSE(buildId)
+            openSSERef.current(buildId)
           }
         }, delay)
       }
     },
     [fetchState, refetchLayers],
   )
+
+  useEffect(() => {
+    openSSERef.current = openSSE
+  }, [openSSE])
 
   // ── Main effect ──────────────────────────────────────────────────────────────
 

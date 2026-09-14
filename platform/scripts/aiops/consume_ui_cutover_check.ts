@@ -16,6 +16,9 @@
  * AC.CO7.1: exits 0 on success, non-zero on failure.
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+
 process.env.NEXT_RUNTIME = 'nodejs'
 
 // ── Assertion runner ──────────────────────────────────────────────────────────
@@ -40,9 +43,7 @@ function assert(check: string, flagValue: string, expected: boolean, actual: boo
 // ── New CO.6 hook exports — structural check ──────────────────────────────────
 
 function checkFileExists(label: string, relPath: string) {
-  const { existsSync } = require('fs')
-  const { join } = require('path')
-  const abs = join(__dirname, '..', '..', relPath)
+  const abs = path.join(__dirname, '..', '..', relPath)
   const exists = existsSync(abs)
   rows.push({ check: label, flag: 'n/a', expected: true, actual: exists, pass: exists })
   if (!exists) failures++
@@ -108,10 +109,8 @@ checkFileExists(
 // ── A11y audit guard ─────────────────────────────────────────────────────────
 
 function checkAuditClean(label: string, relPath: string) {
-  const { existsSync, readFileSync } = require('fs')
-  const { join } = require('path')
   // __dirname = platform/scripts/aiops → ../../.. = repo root (madhav-phase-3-tmp)
-  const abs = join(__dirname, '..', '..', '..', relPath)
+  const abs = path.join(__dirname, '..', '..', '..', relPath)
   if (!existsSync(abs)) {
     rows.push({ check: label, flag: 'n/a', expected: true, actual: false, pass: false })
     failures++

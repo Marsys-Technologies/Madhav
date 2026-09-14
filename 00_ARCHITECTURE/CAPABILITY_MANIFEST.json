@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-25T00:00:00Z",
+  "generated_at": "2026-09-12T18:24:25.278Z",
   "generator_version": "1.0",
-  "entry_count": 130,
-  "fingerprint": "4ae7534d3b0faf48e7b028f48cc856846c7d84b5523ae350a2b2dccac929339c",
+  "entry_count": 131,
+  "fingerprint": "4e42ca0486dea1971c2854e0152eea28d370f8bb0b5ddb4ea57a582d276e581a",
   "entries": [
     {
       "canonical_id": "CGP_AUDIT_v1_0",
@@ -1634,10 +1634,10 @@
         "file"
       ],
       "interface_version": "1.0",
-      "fingerprint": "ac60e81c198434263ae1b4559d7c3ece6219f9da111121ad69a473c3fc560903",
+      "fingerprint": "60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a",
       "native_id": "project",
-      "last_verified_session": "PARISESA-V4-CONDUCTOR-20260820T191407Z",
-      "last_verified_on": "2026-08-21"
+      "last_verified_session": "MADHAV-PRODUCT-V3-20260912",
+      "last_verified_on": "2026-09-12"
     },
     {
       "canonical_id": "RETRIEVAL_TOOL_prashna_status",
@@ -1857,6 +1857,20 @@
       "native_id": "project",
       "last_verified_session": "NIRMANA-ELEVATION-V6-TAKEOVER-20260825",
       "last_verified_on": "2026-08-25"
+    },
+    {
+      "canonical_id": "MADHAV_PRODUCT_DEFINITION",
+      "path": "00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md",
+      "version": "3.0",
+      "status": "CURRENT",
+      "layer": "governance",
+      "expose_to_chat": false,
+      "representations": ["file"],
+      "interface_version": "1.0",
+      "fingerprint": "610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47",
+      "native_id": "project",
+      "last_verified_session": "MADHAV-PRODUCT-V3-20260912",
+      "last_verified_on": "2026-09-12"
     }
   ]
 }

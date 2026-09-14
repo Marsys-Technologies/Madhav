@@ -1447,6 +1447,11 @@ jobs:
         working-directory: platform
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The capability knowledge and estate census generators derive provenance
+          # from the latest commit touching their source sets. A depth-1 checkout
+          # cannot resolve that commit when HEAD only refreshes generated artifacts.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -1568,6 +1573,15 @@ jobs:
         # between generated and hand-written surfaces is EXPECTED and not itself a failure —
         # see R1_PROJECTION_COMPILER_REPORT.md.
         run: npx vitest run src/lib/retrieval/registry/__tests__/projection_compiler_parity.test.ts
+      - name: Planner capability knowledge snapshot drift and integrity gate
+        run: npm run codegen:capability-knowledge:check
+      - name: Capability estate census drift gate
+        run: npm run codegen:capability-estate-census:check
+      - name: Planner capability knowledge, census, and Inquiry Contract tests
+        run: npx vitest run src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/compiler.test.ts src/lib/vidhi/inquiry/lifecycle_token.test.ts src/lib/vidhi/inquiry/pagination.test.ts src/lib/vidhi/inquiry/migration_contract.test.ts scripts/__tests__/generate_capability_estate_census.test.ts src/app/api/mcp/inquiry/__tests__/route.test.ts src/app/api/mcp/prashna_ask/__tests__/route.test.ts
+      - name: MCP inquiry lifecycle and principal-bound polling tests
+        working-directory: platform-mcp
+        run: npx vitest run src/tools/__tests__/register_inquiry_lifecycle.test.ts src/tools/register_prashna_status.test.ts src/tools/register_prashna_ask.test.ts src/__tests__/server_tool_registration.test.ts
 
   census-battery:
     # D-2 Lane V-0 (BRIEF_D2.md §F1 Lane V-0 / BIND_D-2.md §F1.7 ledger rows 1-5). Runs the

@@ -62,10 +62,9 @@ describe('§A — GET /api/admin/observatory/analytics/pricing-diff', () => {
 
   it('403 — non-super-admin', async () => {
     vi.doMock('@/lib/auth/access-control', () => {
-      const { NextResponse: NR } = require('next/server')
       return {
         requireSuperAdmin: async () =>
-          NR.json(
+          NextResponse.json(
             { error: { code: 'AUTH_FORBIDDEN', message: 'forbidden' } },
             { status: 403 },
           ),

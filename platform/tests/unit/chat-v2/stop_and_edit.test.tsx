@@ -185,12 +185,16 @@ describe('Stop-and-edit while streaming — parent-context (Y-S5)', () => {
   })
 
   it('successive stop+edit cycles update the truncated message ID', () => {
-    let setTruncId: ((id: string | null) => void) | null = null
     function CaptureSetter() {
-      setTruncId = useContext(SetTruncatedMsgCtx)
-      return null
+      const setTruncId = useContext(SetTruncatedMsgCtx)
+      return (
+        <>
+          <button data-testid="truncate-first" onClick={() => setTruncId?.('msg-first')}>first</button>
+          <button data-testid="truncate-second" onClick={() => setTruncId?.('msg-second')}>second</button>
+        </>
+      )
     }
-    const { queryByTestId } = render(
+    const { queryByTestId, getByTestId } = render(
       <ThreadShell>
         <CaptureSetter />
         <TruncatedChip messageId="msg-first" />
@@ -198,10 +202,10 @@ describe('Stop-and-edit while streaming — parent-context (Y-S5)', () => {
       </ThreadShell>,
     )
     // First stop on msg-first
-    act(() => { setTruncId?.('msg-first') })
+    act(() => { fireEvent.click(getByTestId('truncate-first')) })
     expect(queryByTestId('v2-truncated-by-edit-chip')).toBeTruthy()
     // Second stop on msg-second replaces the truncated target
-    act(() => { setTruncId?.('msg-second') })
+    act(() => { fireEvent.click(getByTestId('truncate-second')) })
     const chips = document.querySelectorAll('[data-testid="v2-truncated-by-edit-chip"]')
     expect(chips.length).toBe(1)
   })

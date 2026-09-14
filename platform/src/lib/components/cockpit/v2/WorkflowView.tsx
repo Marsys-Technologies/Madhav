@@ -33,7 +33,7 @@ interface LogEntry {
 
 let logCounter = 0
 
-function PlanTimeline({ assets, currentAssetId }: { assets: ActiveRunAsset[]; currentAssetId: string | null }) {
+function PlanTimeline({ assets, currentAssetId, now }: { assets: ActiveRunAsset[]; currentAssetId: string | null; now: number }) {
   if (assets.length === 0) {
     return <div style={{ color: 'var(--on-dark-faint)', fontSize: '13px' }}>No plan assets yet.</div>
   }
@@ -44,7 +44,7 @@ function PlanTimeline({ assets, currentAssetId }: { assets: ActiveRunAsset[]; cu
         const isBuilding = ra.state === 'building' || ra.asset_id === currentAssetId
         const stateColor = STATE_COLOR[ra.state] ?? STATE_COLOR.queued
         const elapsedMs = ra.started_at
-          ? (ra.ended_at ? new Date(ra.ended_at).getTime() : Date.now()) - new Date(ra.started_at).getTime()
+          ? (ra.ended_at ? new Date(ra.ended_at).getTime() : now) - new Date(ra.started_at).getTime()
           : null
         const elapsedStr = elapsedMs != null
           ? elapsedMs < 60_000 ? `${Math.round(elapsedMs / 1000)}s` : `${Math.round(elapsedMs / 60_000)}m`
@@ -130,6 +130,12 @@ function EventLogTail({ entries }: { entries: LogEntry[] }) {
 export function WorkflowView({ chartId }: Props) {
   const { run: activeRun, assets: runAssets } = useActiveRun(chartId)
   const [logEntries, setLogEntries] = useState<LogEntry[]>([])
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1_000)
+    return () => window.clearInterval(id)
+  }, [])
 
   const handleEvent = useCallback((e: CockpitEvent) => {
     const time = new Date().toISOString().slice(11, 19)
@@ -183,7 +189,7 @@ export function WorkflowView({ chartId }: Props) {
           <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--on-dark-faint)', marginBottom: '8px' }}>
             Plan timeline
           </div>
-          <PlanTimeline assets={runAssets} currentAssetId={activeRun.current_asset_id} />
+          <PlanTimeline assets={runAssets} currentAssetId={activeRun.current_asset_id} now={now} />
         </div>
         <div>
           <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--on-dark-faint)', marginBottom: '8px' }}>

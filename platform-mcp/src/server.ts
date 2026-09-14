@@ -144,6 +144,7 @@ import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
 // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
+import { registerInquiryLifecycleTools } from './tools/register_inquiry_lifecycle.js'
 // Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier: gather-then-compose paging
 // engine with a structural synthesis gate (NATIVE-RULED-001, scoped server.ts exception —
 // registerDossierTool itself lives in tools/dossier.ts, γ's own file; this import+registration
@@ -450,10 +451,10 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // profile gate, for the same reason: it is not part of the retrieval-registry
   // catalog the generated MCP_SURFACE_PROFILES manifest is built from, so
   // registering it after the gate would silently block it for 'compact' too.
-  // Polling is harmless for every profile (including 'consult', which could
-  // never have produced a job_id in the first place — it just gets the honest
-  // "unknown or expired job_id" error), so no handler-level profile gate here.
-  registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer)
+  // The handler binds every lookup to the originating user+key and re-checks
+  // chart authorization, so a leaked job id grants nothing.
+  registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer, principal)
+  registerInquiryLifecycleTools(server as unknown as import('./tools/register_inquiry_lifecycle.js').InquiryRegisteringServer, principal, mcpProfile)
 
   // EL-13 — mcp_server_info, registered BEFORE applyProfileGate for the same reason as
   // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP

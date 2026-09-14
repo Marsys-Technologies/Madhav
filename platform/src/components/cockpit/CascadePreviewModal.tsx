@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { DUR, EASE } from '@/lib/components/cockpit/v2/motion'
+import { useMounted } from '@/hooks/useMounted'
 
 export interface PlanAssetInfo {
   asset_id: string
@@ -56,8 +57,7 @@ export function CascadePreviewModal({
 }: CascadePreviewModalProps) {
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useMounted()
 
   // Close on Escape
   useEffect(() => {

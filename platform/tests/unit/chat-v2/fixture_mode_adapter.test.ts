@@ -9,6 +9,7 @@
  *  - listFixtures returns available scenarios for a provider
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import fs from 'node:fs'
 import path from 'path'
 import {
   isFixtureModeEnabled,
@@ -83,7 +84,6 @@ describe('fixture_mode_adapter', () => {
     })
 
     it('throws error for invalid JSON (mocked fs)', () => {
-      const fs = require('fs')
       const existsSpy = vi.spyOn(fs, 'existsSync').mockReturnValueOnce(true)
       const readSpy = vi.spyOn(fs, 'readFileSync').mockReturnValueOnce('not valid json }{')
 
@@ -108,11 +108,10 @@ describe('fixture_mode_adapter', () => {
     })
 
     it('returns only .json file names without extension', () => {
-      const fs = require('fs')
       const existsSpy = vi.spyOn(fs, 'existsSync').mockReturnValueOnce(true)
       const readdirSpy = vi
         .spyOn(fs, 'readdirSync')
-        .mockReturnValueOnce(['default.json', 'thinking.json', '.gitkeep'])
+        .mockReturnValueOnce(['default.json', 'thinking.json', '.gitkeep'] as never)
 
       const result = listFixtures('anthropic')
       expect(result).toEqual(['default', 'thinking'])

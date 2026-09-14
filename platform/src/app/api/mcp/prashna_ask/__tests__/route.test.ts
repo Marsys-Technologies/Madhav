@@ -25,7 +25,26 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
+vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
+vi.mock('@/lib/retrieval/registry/knowledge', () => {
+  const snapshot = {
+    schema_version: '1.0.0', compatibility_version: 'planner-scu-v1', generated_at: '2026-09-13T00:00:00.000Z',
+    content_hash: 'sha256:test', source_catalog_fingerprint: 'sha256:test', edges: [],
+    scus: [{
+      scu_id: 'scu.test.wealth', version: 1, label: 'Wealth evidence', description: 'wealth evidence rows', kind: 'datum',
+      domains: ['wealth'], concepts: ['wealth'], intents: ['domain_assessment'], horizons: ['natal'], scope: 'chart',
+      inputs: ['chart_id'], outputs: ['rows'], primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [],
+      freshness_policy: 'current build', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
+      bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', relation: 'primary', capability_uri: 'marsys://tool/L1/test', input_contract: { chart_id: 'string:required' }, output_contract: { rows: 'array' }, pagination: 'bounded_complete', pagination_verified: false, result_collection_verified: true, pagination_contract: { result_collection_path: 'content.rows', deterministic_order: ['id'] }, executable: true, execution_channels: ['platform_internal'] }],
+      source_descriptor_uris: ['marsys://tool/L1/test'],
+    }],
+    census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 0, reviewed_output_claims: 0, exclusions: [] },
+  }
+  return {
+    assertPinnedCapabilityKnowledgeCurrent: () => snapshot,
+    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
+  }
+})
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
@@ -61,7 +80,10 @@ vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
   ensureDashaContextFloor: vi.fn(() => false),
 }))
 
-vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({ getToolByName: mockGetToolByName }))
+vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
+  getToolByName: mockGetToolByName,
+  resolveToolUri: (name: string) => name === 'authorized_test' ? 'marsys://tool/L1/test' : name.startsWith('marsys://') ? name : undefined,
+}))
 
 // Real filter — Part A — exercised for real so the leakage assertion is genuine.
 vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
@@ -134,7 +156,7 @@ async function readNdjson(res: Response): Promise<Array<Record<string, unknown>>
     .map((line) => JSON.parse(line))
 }
 
-function planOutcome(toolNames: string[]) {
+function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>) {
   return {
     outcome: 'plan' as const,
     plan: {
@@ -149,7 +171,7 @@ function planOutcome(toolNames: string[]) {
         priority: 1 as const,
         reason: 'test',
       })),
-      scope_tuple: undefined,
+      scope_tuple,
       history_mode: 'synthesized' as const,
       expected_output_shape: 'structured_data' as const,
     },
@@ -322,6 +344,36 @@ describe('POST /api/mcp/prashna_ask — planning-stage latency disclosure (S6-V3
 })
 
 describe('POST /api/mcp/prashna_ask — happy path', () => {
+  it('dispatches only ready Inquiry Contract actions and retains overlay-bound semantic empty evidence', async () => {
+    const inquiryScope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'present', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test', 'planner_extra'], inquiryScope))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        tool_bundle_id: 'b1', tool_name: name, tool_version: '1.0', invocation_params: {},
+        results: [{ content: JSON.stringify({ rows: [] }) }], served_from_cache: false,
+        latency_ms: 1, result_hash: 'sha256:empty', schema_version: '1.0',
+      }),
+    }))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'Show wealth evidence', scope_tuple: inquiryScope }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+    const dispatched = body.results as Array<{ tool_name: string }>
+    const inquiry = body.inquiry_contract as { chart_availability_version: string; chart_build_id: string; obligations: Array<{ disposition: string }> }
+
+    expect(dispatched.map((item) => item.tool_name)).toEqual(['authorized_test'])
+    expect(mockGetToolByName).toHaveBeenCalledTimes(1)
+    expect(inquiry.chart_availability_version).toBe('sha256:overlay')
+    expect(inquiry.chart_build_id).toBe('build-1')
+    expect(inquiry.obligations.some((item) => item.disposition === 'empty')).toBe(true)
+    expect((body.completeness as { empty_result_tools: string[] }).empty_result_tools).toContain('authorized_test')
+  })
+
   it('runs the engine, dispatches every planned tool, and returns a complete result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
