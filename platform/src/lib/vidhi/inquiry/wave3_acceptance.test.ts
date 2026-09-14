@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
-import { compileInquiryContract, finalizeInquiryContract, validateInquiryContract } from './compiler'
+import { compileInquiryContract, finalizeInquiryContract, inquiryAuthorizationHashes, validateInquiryContract } from './compiler'
 import { challengeInquirySelection } from './omission_challenger'
 
 const scope = {
@@ -207,6 +207,27 @@ describe('Purna Anvesana Wave 3 acceptance', () => {
     const overCap = { ...budget, search_hits_considered: budget.max_search_hits + 1 }
     const forged = { ...contract, planning_budget: { ...overCap, budget_hash: stableFingerprint(overCap) } }
     expect(validateInquiryContract(forged).errors).toContain('search selection exceeded planning budget')
+  })
+
+  it('keeps compiler-time capped facet frontier inside immutable authorization hashes', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-1',
+      question: 'chart overview',
+      scope_tuple: { ...scope, intent: 'chart_overview', domains: ['general'], depth: 'standard', width: 'narrow' },
+      planning_budget: { max_search_hits: 1 },
+      ai_proposal: {
+        question_facets: [{ label: 'Required timing', terms: ['temporal activation dasha'], materiality: 'required' }],
+        uncommon_adjacencies: [],
+        hypotheses: [],
+      },
+    })
+    expect(contract.material_frontier).toContainEqual(expect.objectContaining({ reason: 'search_hit_budget_exhausted', materiality: 'required' }))
+    expect(inquiryAuthorizationHashes(contract)).toEqual({
+      semantic_contract_hash: contract.semantic_contract_hash,
+      execution_plan_hash: contract.execution_plan_hash,
+      contract_id: contract.contract_id,
+    })
   })
 
   it('pins the route harness career floor expansion', () => {

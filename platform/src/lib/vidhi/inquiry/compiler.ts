@@ -123,6 +123,14 @@ function semanticNormalizationProjection(receipt: InquiryContract['scope_normali
   } : undefined
 }
 
+function isCompilerFrontier(item: MaterialFrontierItem): boolean {
+  return item.discovered_from === 'independent_omission_challenger'
+    || item.reason.startsWith('graph_')
+    || item.reason.startsWith('challenger_')
+    || item.reason.startsWith('search_hit_')
+    || item.reason.startsWith('ai_adjacency_')
+}
+
 function selectedScus(args: {
   snapshot: CapabilityKnowledgeSnapshot
   question: string
@@ -490,8 +498,7 @@ export function inquiryAuthorizationHashes(contract: InquiryContract): {
     graph_traversal: contract.graph_traversal,
     omission_challenge: contract.omission_challenge,
     planning_budget: contract.planning_budget,
-    material_frontier: contract.material_frontier.filter((item) => item.discovered_from === 'independent_omission_challenger'
-      || item.reason.startsWith('graph_') || item.reason.startsWith('challenger_')),
+    material_frontier: contract.material_frontier.filter(isCompilerFrontier),
   })
   const executionPlanHash = stableFingerprint({
     semantic_contract_hash: semanticContractHash,
