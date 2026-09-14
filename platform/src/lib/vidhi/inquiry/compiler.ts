@@ -21,7 +21,7 @@ import { traverseCapabilityGraph, sourceBackedEdge } from './graph_traversal'
 import { normalizeInquiryScope } from './intent_normalization'
 import { challengeInquirySelection } from './omission_challenger'
 
-export const INQUIRY_COMPILER_VERSION = '2.0.0'
+export const INQUIRY_COMPILER_VERSION = '2.1.0'
 
 const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
   wealth_deepdive: [
@@ -121,6 +121,19 @@ function semanticNormalizationProjection(receipt: InquiryContract['scope_normali
     normalization_version: receipt.normalization_version,
     normalized_scope_hash: receipt.normalized_scope_hash,
   } : undefined
+}
+
+function executionPlanAuthorizationProjection(planItems: readonly InquiryPlanItem[]) {
+  return planItems.map((item) => ({
+    item_id: item.item_id,
+    obligation_ids: item.obligation_ids,
+    scu_id: item.scu_id,
+    binding_id: item.binding_id,
+    args: item.authorization_args ?? item.args,
+    depends_on: item.depends_on,
+    state: item.blocked_reason ? 'blocked' as const : 'ready' as const,
+    blocked_reason: item.blocked_reason,
+  }))
 }
 
 function isCompilerFrontier(item: MaterialFrontierItem): boolean {
@@ -289,6 +302,7 @@ function planFor(
         scu_id: scuId,
         binding_id: executable ? binding!.binding_id : null,
         args: itemArgs,
+        authorization_args: itemArgs,
         depends_on: [],
         state: executable ? 'ready' : 'blocked',
         blocked_reason: blockedReason,
@@ -444,7 +458,12 @@ export function compileInquiryContract(args: {
     planning_budget: budgetReceipt,
     material_frontier: materialFrontier,
   })
-  const executionPlanHash = stableFingerprint({ semantic_contract_hash: semanticContractHash, chart_id: args.chart_id, execution_channel: executionChannel, plan_items: plan })
+  const executionPlanHash = stableFingerprint({
+    semantic_contract_hash: semanticContractHash,
+    chart_id: args.chart_id,
+    execution_channel: executionChannel,
+    plan_items: executionPlanAuthorizationProjection(plan),
+  })
   const contractId = stableFingerprint({ semantic_contract_hash: semanticContractHash, execution_plan_hash: executionPlanHash })
   return {
     contract_version: INQUIRY_CONTRACT_VERSION,
@@ -504,7 +523,7 @@ export function inquiryAuthorizationHashes(contract: InquiryContract): {
     semantic_contract_hash: semanticContractHash,
     chart_id: contract.chart_id,
     execution_channel: contract.execution_channel,
-    plan_items: contract.plan_items,
+    plan_items: executionPlanAuthorizationProjection(contract.plan_items),
   })
   return {
     semantic_contract_hash: semanticContractHash,
@@ -665,6 +684,9 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
     if (obligation.materiality === 'required' && ['dark', 'failed'].includes(obligation.disposition) && !obligation.gap_reason) errors.push(`required gap ${obligation.obligation_id} lacks a reason`)
   }
   for (const item of contract.plan_items) for (const id of item.obligation_ids) if (!obligationIds.has(id)) errors.push(`plan item ${item.item_id} references unknown obligation ${id}`)
+  if (contract.compiler_version.startsWith('2.') && contract.plan_items.some((item) => !item.authorization_args)) {
+    errors.push('compiler v2 contract plan item lacks immutable authorization args')
+  }
   return { valid: errors.length === 0, errors }
 }
 

@@ -60,7 +60,7 @@ const scope = { intent: 'domain_assessment', domains: ['wealth'], width: 'broad'
 
 function contract(): InquiryContract {
   return {
-    contract_version: '1.1.0', compiler_version: '1.1.0', contract_id: 'sha256:combined',
+    contract_version: '1.2.0', compiler_version: '1.1.0', contract_id: 'sha256:combined',
     semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
     chart_id: chartId, execution_channel: 'mcp_full', question: 'wealth outlook', scope_tuple: scope,
     capability_compatibility_version: 'planner-scu-v1', capability_content_hash: 'sha256:catalog',

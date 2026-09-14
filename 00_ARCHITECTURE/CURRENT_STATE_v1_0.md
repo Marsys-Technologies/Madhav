@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.71
+version: 6.72
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5913,12 +5913,12 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–3 COMPLETE (2026-09-14).** FC0 is frozen at
+> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–4 COMPLETE (2026-09-14).** FC0 is frozen at
 > `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 3 closes normalized
-> intent, deterministic floors, source-backed graph traversal, an independent omission challenger,
-> immutable planning budgets and fail-closed material frontier receipts at source scope. Next
-> frontier: W4-P1 iterative evidence and response accountability. This campaign cannot claim
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 4 closes canonical
+> evidence finding identity, mandatory delivery, exact-span interpretation and fail-closed response
+> coverage across Portal and raw MCP assembly at source scope. Next frontier: W5-P1 disposable
+> migration/lifecycle/security proof, then W5-P2 three-door parity. This campaign cannot claim
 > merge, deployment, current production rows, empirical acceptance or health.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9342,20 +9342,33 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W3-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W4-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Wave 3 normalized inquiry compiler, reviewed graph traversal and omission/frontier closure independently approved at exact technical head b19be1b7a after four fail-closed review findings were repaired; full unit, type, lint, golden and codegen gates pass. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Wave 4 response accountability independently approved at exact technical head c7d9b021a after all content-binding, semantic-row, singleton, multi-obligation, retry-idempotency and canonicalization findings were repaired; full unit, type, lint and golden gates pass. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Execute W4-P1 from the exact delivered Wave 3 close: implement the iterative evidence loop and response accountability with complete fact registration, mandatory fact delivery, continuation closure and normalized response-coverage receipts. Preserve R1-R12 and the source/local/disposable claim ceiling."
+  next_product_strategy_objective: "Execute W5-P1 from the exact delivered Wave 4 close: prove migration 1033, RLS subject isolation, append-only evidence receipts, compare-and-swap/replay and overlay fail-closed behavior only in a disposable local environment; then execute W5-P2 three-door parity. Preserve R1-R12 and the source/local/disposable claim ceiling."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W4-20260914**, response accountability is derived from
+the immutable inquiry denominator, canonical evidence and exact response spans rather than prose
+self-assertion. Reviewed collection paths expose each semantic row; unreviewed adapters remain
+opaque. One physical row has one canonical identity even when it serves multiple obligations,
+arrives through retries with volatile bundle metadata, or has reordered object keys. Singleton and
+conjoint interpretations are validated independently, and any missing finding or open continuation
+keeps the receipt incomplete. Independent review drove and then approved all repairs at exact
+technical head `c7d9b021a86007bfc80a90cc2e0ba5921609ed93`, with no HIGH or MEDIUM finding.
+The exact-head unit gate passed 11,687 tests in 1,099 files; TypeScript, 56 golden streams and lint
+(zero errors, 590 inherited warnings) also pass. PR #2602 is stacked on #2601. This is source/local
+evidence only and does not merge, deploy, apply migration 1033, touch shared/production state, or
+establish runtime health or empirical value.
 
 At the close of **MADHAV-PURNA-ANVESANA-W3-20260914**, compiler 2.0 canonicalizes inquiry scope,
 applies mandatory domain floors, traverses only reviewed source-backed graph edges, and runs an

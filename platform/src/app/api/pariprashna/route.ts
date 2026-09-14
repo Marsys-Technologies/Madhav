@@ -69,6 +69,8 @@ import { runValidationStage } from '@/lib/pariprashna/pipeline/validation_stage'
 import { emitCompletenessReceipt } from '@/lib/pariprashna/pipeline/receipt_stage'
 import { runPersistenceStage } from '@/lib/pariprashna/pipeline/persistence_stage'
 import { buildGroundingSummary } from '@/lib/pariprashna/citations/grounding_summary'
+import { buildStructuredResponseAccountability } from '@/lib/vidhi/inquiry'
+import { getPinnedCapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 
 export const maxDuration = 120
 
@@ -292,6 +294,13 @@ export async function POST(request: Request): Promise<Response> {
         if (synthesized.value.toolSequenceMonitor?.anomalous) {
           judgmentFlags.push('injection_tool_sequence_anomaly')
         }
+        const responseAccountability = evidence.inquiryContract
+          ? buildStructuredResponseAccountability(evidence.inquiryContract, {
+              response_text: accumulatedText,
+              evidence_payloads: evidence.validToolResults,
+              knowledge_snapshot: getPinnedCapabilityKnowledgeSnapshot(),
+            })
+          : null
 
         // ── Validation: the B.11 citation gate (adapter-path parity). ────────
         const citationGate = runValidationStage({
@@ -331,10 +340,16 @@ export async function POST(request: Request): Promise<Response> {
           // when PARIPRASHNA_RECEIPT_EMISSION_ENABLED is off (the default).
           completenessReceipt: evidence.completenessReceipt,
           citationHallucinationCount: synthesized.value.citationHallucinationCount,
+          responseAccountability,
         })
 
         // Completeness + aggregated judgment flags (grade/flag — always emitted).
-        emitCompletenessReceipt({ em, completenessReceipt: evidence.completenessReceipt, inquiryContract: evidence.inquiryContract })
+        emitCompletenessReceipt({
+          em,
+          completenessReceipt: evidence.completenessReceipt,
+          inquiryContract: evidence.inquiryContract,
+          responseAccountability,
+        })
 
         em.phase({ phase: 'finalize', status: 'end' })
         return finish('ok')

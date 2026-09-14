@@ -55,5 +55,15 @@ describe('inquiry completeness receipt', () => {
       grade: 'BLOCKED',
       detail: expect.stringContaining('1 required frontier items unresolved'),
     }))
+    const responseCall = grade.mock.calls.find(([value]) => value.subject === 'response_accountability')
+    expect(responseCall?.[0]).toMatchObject({
+      subject: 'response_accountability',
+      grade: 'BLOCKED',
+    })
+    const accountability = JSON.parse(responseCall![0].detail)
+    expect(accountability.fact_register.facts).toHaveLength(
+      contract.obligations.length + contract.material_frontier.length,
+    )
+    expect(accountability.response_coverage_receipt.continuation.frontier_ids).not.toEqual([])
   })
 })

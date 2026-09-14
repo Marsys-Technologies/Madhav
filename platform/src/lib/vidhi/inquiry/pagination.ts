@@ -6,6 +6,12 @@ export interface InquiryPaginationReceipt {
   readonly next: unknown
 }
 
+export interface InquirySemanticFindingExtraction {
+  readonly mode: 'reviewed_collection' | 'reviewed_collection_missing' | 'opaque_adapter_items'
+  readonly result_collection_path: string | null
+  readonly rows: readonly unknown[]
+}
+
 function nestedValues(raw: unknown): Record<string, unknown>[] {
   const queue: unknown[] = [raw]
   const objects: Record<string, unknown>[] = []
@@ -62,6 +68,38 @@ export function semanticInquiryResultCount(
     if (Array.isArray(collection)) return collection.length
   }
   return null
+}
+
+/**
+ * Extract the semantic findings that a response-accountability receipt may
+ * name. A source-reviewed result collection is decomposed at exactly that
+ * path. Without an independently reviewed path, adapter items remain opaque:
+ * their internal shape is not promoted into an invented semantic contract.
+ */
+export function extractInquirySemanticFindings(
+  binding: SemanticCapabilityBinding | undefined,
+  raw: unknown,
+): InquirySemanticFindingExtraction {
+  const resultPath = binding?.result_collection_verified
+    ? binding.pagination_contract?.result_collection_path
+    : undefined
+  if (resultPath) {
+    for (const object of nestedValues(raw)) {
+      const collection = atPath(object, resultPath)
+      if (Array.isArray(collection)) {
+        return { mode: 'reviewed_collection', result_collection_path: resultPath, rows: collection }
+      }
+    }
+    return { mode: 'reviewed_collection_missing', result_collection_path: resultPath, rows: [] }
+  }
+  const adapterItems = raw && typeof raw === 'object'
+    ? (raw as Record<string, unknown>)['results']
+    : undefined
+  return {
+    mode: 'opaque_adapter_items',
+    result_collection_path: null,
+    rows: Array.isArray(adapterItems) ? adapterItems : [raw],
+  }
 }
 
 function atPath(value: unknown, path: string | undefined): unknown {
