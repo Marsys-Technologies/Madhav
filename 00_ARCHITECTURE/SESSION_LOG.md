@@ -39678,3 +39678,216 @@ session_close:
 ### Next session objective
 
 Review/adopt or amend the data-plane proposal; then author the L0 layer definition and exact asset/consumer contracts. Subsequent L1–L5 plans preserve the integrated requirements. Execution remains in separately authorized sessions; no active campaign authority is replaced.
+
+## MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914 — 2026-09-14
+
+```yaml
+session_open:
+  session_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+  cowork_thread_name: "Madhav — Planner Knowledge & Inquiry Completion"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: "Codex"
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/a4d5/Madhav
+  step_number_or_layer: "Planner knowledge and inquiry foundation continuation"
+  predecessor_session: MADHAV-DATA-PLANE-V2-20260913
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+    lease_status_verified: true
+    lease_verified_at: 2026-09-14T13:30:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: []
+  mandatory_reading_confirmation:
+    - file: CLAUDE.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: MARSYS_JIS_BOOTSTRAP_HANDOFF.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md
+      read_at: 2026-09-14T13:30:00+05:30
+    - file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+      read_at: 2026-09-14T13:30:00+05:30
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - platform/src/generated/capability_estate_census.json
+      - platform/src/generated/capability_knowledge.snapshot.json
+      - platform/src/lib/pariprashna/pipeline/receipt_stage.ts
+      - platform/src/lib/pariprashna/pipeline/__tests__/receipt_stage.test.ts
+      - platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts
+      - platform/src/lib/retrieval/registry/knowledge/overlay_loader.test.ts
+      - platform/src/lib/vidhi/inquiry/compiler.ts
+      - platform/src/lib/vidhi/inquiry/compiler.test.ts
+      - platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json
+      - platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json
+    must_not_touch:
+      - protected main or release refs
+      - deployment and production runtime state
+      - applied database schema or production data
+      - credentials, secrets, and infrastructure
+      - frozen WriterBase implementation
+      - foreign campaign branches and worktrees
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: false
+  notes: >
+    Native directed autonomous completion of the already-open planner knowledge and
+    inquiry candidate. Authority permits source review, fixes, tests, documentation,
+    commits and pushes on codex/planner-knowledge-inquiry only; it does not authorize
+    merge, deployment, migration application, production mutation, secrets or infrastructure.
+```
+
+### Outcome
+
+Reconciled the branch, protected base, implementation authority, PR state, generated
+artifacts, local gates, and remote checks. The continuation audit found one real
+false-completion path: a required pagination frontier correctly became `capped` when
+the last allowed iteration still exposed another page, but finalization counted only
+`open` frontier items. Compiler 1.1.1 now treats required `open` and `capped` frontier
+items as unresolved, the reader receipt discloses both, and regression coverage proves
+that the lifecycle remains `BLOCKED`. Equal-time latest-build overlay selection now has
+a deterministic `id DESC` tie-break.
+
+Regenerated the knowledge snapshot and estate census only after the source commit had
+a stable identity, preserving both provenance gates. The resulting candidate contains
+182 SCUs and a 185-descriptor/129-asset census. Mandatory local checks are green:
+lint exits zero with 0 errors and 590 inherited warnings, TypeScript passes, and the
+full platform run passes 1,094 files / 11,616 tests (71 files and 662 tests skipped,
+2 todo). Focused continuation tests pass 18/18, generated route goldens 56/56, exact
+platform CI selection 88/88, and MCP lifecycle selection 27/27. At source checkpoint
+`daa813f9a5f78a31b791f3e73aa035c2ad7fbbe1`, PR #2597 has 50 terminal protected checks:
+37 pass, 13 intentional skip, 0 fail/pending; it is open, mergeable and clean.
+
+The candidate remains source/review evidence only. Migration 1033 was not applied;
+no merge, deploy, production DB/build, credential, signing-key, infrastructure or
+foreign campaign mutation occurred. The implementation record retains R1-R12 and the
+required pre-merge/staging gates rather than converting unavailable live proof into a pass.
+
+```yaml
+session_close:
+  session_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+  closed_at: 2026-09-14T14:13:30+05:30
+  tool: "Codex"
+  files_touched:
+    - path: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+      mutation_type: modified
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      mutation_type: modified
+      within_declared_scope: true
+    - path: 00_ARCHITECTURE/SESSION_LOG.md
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/src/generated/capability_estate_census.json
+      mutation_type: regenerated
+      within_declared_scope: true
+    - path: platform/src/generated/capability_knowledge.snapshot.json
+      mutation_type: regenerated
+      within_declared_scope: true
+    - path: platform/src/lib/pariprashna/pipeline/receipt_stage.ts
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/src/lib/pariprashna/pipeline/__tests__/receipt_stage.test.ts
+      mutation_type: created
+      within_declared_scope: true
+    - path: platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/src/lib/retrieval/registry/knowledge/overlay_loader.test.ts
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/src/lib/vidhi/inquiry/compiler.ts
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/src/lib/vidhi/inquiry/compiler.test.ts
+      mutation_type: modified
+      within_declared_scope: true
+    - path: platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json
+      mutation_type: regenerated
+      within_declared_scope: true
+    - path: platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json
+      mutation_type: regenerated
+      within_declared_scope: true
+  registry_updates_made:
+    no_registry_update_required: >
+      The implementation brief is the owning candidate record; generated artifacts and
+      governed close pointers changed in place, with no new canonical registry identity.
+  red_team_pass:
+    due: false
+    performed: false
+    verdict: n/a
+    artifact_path: null
+  drift_detector_run:
+    script: platform/scripts/governance/drift_detector.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260914T081355Z.md
+    divergences_found: 79
+  schema_validator_run:
+    script: platform/scripts/governance/schema_validator.py
+    exit_code: 3
+    report_path: 00_ARCHITECTURE/schema_reports/SCHEMA_VALIDATION_REPORT_adhoc_20260914T081355Z.md
+    violations_found: 42
+  known_residuals:
+    - finding_id: SCHEMA-BASELINE-42
+      severity: MEDIUM
+      booking_reference: "Implementation brief R1-R12 and current branch verification boundary: inherited 42-finding schema baseline; no ceiling increase"
+    - finding_id: DRIFT-BASELINE-79
+      severity: MEDIUM
+      booking_reference: "Implementation brief R1-R12 and current branch verification boundary: inherited 79-finding drift baseline; no ceiling increase"
+  current_state_updated: true
+  session_log_appended: true
+  session_log_append_mode: "Atomic session-open, outcome and session-close record"
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+    lease_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    lease_release_commit: 2d848e1ff9fc703c67e2a96b1f5cceac1c97dc51
+    coordination_ref: origin/campaign-coordination
+  native_overrides: []
+  halts_encountered:
+    - halt_id: HLT.1
+      description: "Repository-wide lint gate initially blocked delivery with 199 inherited errors."
+      resolution: "Resolved source violations without suppressions or lint-configuration weakening; final lint is 0 errors."
+    - halt_id: HLT.2
+      description: "Continuation audit found a required capped pagination frontier could finalize COMPLETE."
+      resolution: "Fixed compiler and receipt semantics and added regression tests; capped required frontier now remains BLOCKED."
+    - halt_id: HLT.3
+      description: "Remote generated-artifact gates rejected pre-commit provenance stamps."
+      resolution: "Regenerated both provenance-bearing artifacts from stable committed source; all 50 protected checks then became terminal green/intentional-skip."
+  build_state_serialized:
+    serialized: false
+    uploaded: false
+    applicability: "N/A: source/review candidate only; no production build state action."
+  native_directive_per_step_verification: []
+  close_criteria_met: true
+  unblocks:
+    - "Independent review and protected merge decision for PR #2597."
+    - "Separately authorized throwaway/staging migration and cross-door parity rehearsal."
+  handoff_notes: >
+    Resume from PR #2597 and the implementation brief. Preserve R1-R12, dark-by-default
+    availability, principal/token binding, append-only receipts, and the no-live-proof
+    boundary. Review/merge authority does not imply deployment, migration, signing-key,
+    production or complete-estate authority.
+```
+
+### Next session objective
+
+Review PR #2597 and, under separate authority, rehearse migration 1033 plus identical
+Portal, managed MCP and raw MCP inquiry/receipt journeys in throwaway or staging
+environments. Do not claim deployment, complete semantic coverage or production parity
+until the implementation record's explicit gates are evidenced.

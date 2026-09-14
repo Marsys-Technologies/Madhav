@@ -374,6 +374,19 @@ continuation tests pass 18/18, generated golden streams pass 56/56 after intenti
 receipt refresh, the exact platform CI selection passes 88/88, and the complete
 platform suite remains green at the counts above.
 
+Remote protected checks at source checkpoint
+`daa813f9a5f78a31b791f3e73aa035c2ad7fbbe1` are fully terminal: 50 total,
+37 passed, 13 intentionally skipped, 0 failed and 0 pending; PR #2597 is open,
+mergeable and reports a clean merge state. Two earlier remote census/snapshot checks
+correctly rejected artifacts generated before their source commit had a stable identity.
+Regenerating the census after `fdf042ef4d30e66235e2f7625d21bed969f9e56f`
+and then regenerating both provenance-bearing artifacts from the committed source state
+closed that sequencing defect without weakening either drift gate. The final snapshot
+content hash remains
+`sha256:5a2c37b7fefa30cd18769baa2138933eadf628187564dc38b41cff99cf65dd11`;
+the census hash is
+`d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c`.
+
 ## 17. Candidate disposition
 
 The branch is reviewable as a coherent foundation and is intentionally incomplete as an estate-wide semantic mapping. Its durable claims are the implemented contracts, generated source-tree snapshots, tests and static migration review. It makes no claim of merge, deployment, migration application, production health, complete public reachability, live chart availability, or full producer-output semantic coverage.

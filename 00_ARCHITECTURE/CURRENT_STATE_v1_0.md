@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.68
+version: 6.69
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,16 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.69 (2026-09-14, MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914):
+    source/review close for the planner-facing federated Semantic Capability Unit
+    knowledge and inquiry candidate on `codex/planner-knowledge-inquiry` / PR #2597.
+    The continuation audit closed a required capped-frontier false-completion defect,
+    aligned reader receipts, made equal-time latest-build selection deterministic, and
+    regenerated provenance-bearing snapshot/census artifacts. At source checkpoint
+    `daa813f9a5f78a31b791f3e73aa035c2ad7fbbe1`, all 50 protected checks were terminal
+    (37 pass, 13 intentional skip, 0 fail/pending); mandatory local lint/typecheck/full
+    tests were green. This is a branch candidate only: no merge, deployment, migration
+    application, production mutation, credential or infrastructure action occurred.
   - v6.68 (2026-09-13, MADHAV-DATA-PLANE-V2-20260913): documentation-only planning aside.
     Data-plane value architecture v2.0, 129-identity provisional asset register and source/review
     record prepared against Product Definition v3.0; proposed and committed locally on dedicated
@@ -9161,8 +9171,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-09-12T20:03:33Z
-  file_updated_by_session: MADHAV-DATA-PLANE-V2-20260913
+  file_updated_at: 2026-09-14T08:43:00Z
+  file_updated_by_session: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
@@ -9303,12 +9313,14 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-DATA-PLANE-V2-20260913
+  last_session_id: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Documentation-only data-plane proposal under explicit native managed-profile extension; baseline schema42/drift79 and scoped validation in data-plane review/evidence and paired close. No canonical adoption, campaign acceptance or deployment claim."
+  last_session_drift_verdict: "Planner knowledge/inquiry source candidate review-ready at PR #2597; local schema42/drift79 exactly match the inherited baseline and are booked in the implementation residual record. No merge, deployment, migration application, production, credential or infrastructure claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
-  next_product_strategy_objective: "Review/adopt or amend the proposed data-plane value architecture, then derive the L0 definition and remaining layer/asset contracts. No implementation authority follows from this aside."
+  planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+  planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
+  next_product_strategy_objective: "Review PR #2597 and, under separate authority, rehearse migration 1033 and cross-door lifecycle/receipt parity in throwaway or staging environments. Preserve R1-R12 and make no deployment or complete-estate claim until their evidence gates close."
 ```
 
 ---
