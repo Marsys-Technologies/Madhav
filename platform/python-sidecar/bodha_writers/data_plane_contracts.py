@@ -141,9 +141,12 @@ def stable_semantic_uuid(kind: str, semantic_payload: Mapping[str, Any]) -> str:
 
 
 def _contract_sql_enabled(conn: Any) -> bool:
-    if getattr(conn, "_l2_contract_test_double", False):
+    if getattr(conn, "_l2_contract_test_double", False) is True:
         return True
-    return conn.__class__.__module__.split(".", 1)[0] == "psycopg"
+    # ``MagicMock(spec=psycopg.Connection)`` can spoof ``__class__``. Inspect
+    # the real runtime type so ordinary unit doubles never become persistence
+    # evidence accidentally.
+    return type(conn).__module__.split(".", 1)[0] == "psycopg"
 
 
 def _as_mapping(row: Any, description: Any = None) -> dict[str, Any]:
@@ -160,6 +163,38 @@ def _fetchall(cur: Any) -> list[dict[str, Any]]:
         _as_mapping(row, getattr(cur, "description", None))
         for row in cur.fetchall()
     ]
+
+
+def _validate_compatible_l2_set(
+    l1_rows: Sequence[Mapping[str, Any]],
+    l2_rows: Sequence[Mapping[str, Any]],
+) -> None:
+    """Require every selected L2 generation's stored transitive vector to
+    agree with the one simultaneous set of selected heads."""
+    selected: dict[tuple[str, str], tuple[str, str]] = {}
+    for layer, rows in (("L1", l1_rows), ("L2", l2_rows)):
+        for row in rows:
+            selected[(layer, str(row["asset_id"]))] = (
+                str(row["generation_id"]), str(row.get("output_digest") or ""),
+            )
+    for row in l2_rows:
+        vector = row.get("dependency_vector")
+        if not isinstance(vector, list) or not vector:
+            raise ContractError(
+                f"selected L2 dependency {row['asset_id']} has no stored dependency vector"
+            )
+        for dependency in vector:
+            key = (str(dependency.get("layer")), str(dependency.get("asset_id")))
+            expected = selected.get(key)
+            observed = (
+                str(dependency.get("generation_id")),
+                str(dependency.get("semantic_output_digest") or ""),
+            )
+            if expected is None or observed != expected:
+                raise ContractError(
+                    f"selected L2 dependency {row['asset_id']} has stale transitive "
+                    f"dependency {key[0]}/{key[1]}"
+                )
 
 
 def _resolve_upstream_context(
@@ -220,7 +255,8 @@ def _resolve_upstream_context(
                 """
                 SELECT h.asset_id, h.current_generation_id AS generation_id,
                        g.semantic_output_digest AS output_digest,
-                       g.calculation_context_jsonb AS calculation_context
+                       g.calculation_context_jsonb AS calculation_context,
+                       g.dependency_vector_jsonb AS dependency_vector
                 FROM public.l2_data_plane_generation_heads h
                 JOIN public.data_plane_l2_producer_generations g
                   ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
@@ -236,6 +272,8 @@ def _resolve_upstream_context(
             if observed_bo != set(bo_assets):
                 missing = sorted(set(bo_assets) - observed_bo)
                 raise ContractError(f"missing completed selected L2 dependencies: {missing}")
+
+    _validate_compatible_l2_set(l1_rows, l2_rows)
 
     context_fields = (
         "subject_id", "chart_id", "instant_iso", "latitude_deg", "longitude_deg",

@@ -34,6 +34,26 @@ def _delete(conn: Any, sql: str, params: list) -> int:
     return getattr(cur, "rowcount", 0) or 0
 
 
+def _assert_msr_delete_safe(
+    conn: Any,
+    *,
+    chart_id: str,
+    ayanamsha_ids: list[str] | None = None,
+    signal_type_ids: list[str] | None = None,
+    signal_type_classes: list[str] | None = None,
+) -> None:
+    """Fail before an MSR replacement could mutate a later layer."""
+    module = type(conn).__module__.split(".", 1)[0]
+    if module != "psycopg" and getattr(conn, "_l2_contract_test_double", False) is not True:
+        return
+    conn.execute(
+        """SELECT public.assert_l2_msr_delete_safe(
+               %s::uuid, %s::text[], %s::text[], %s::text[]
+             )""",
+        [chart_id, ayanamsha_ids, signal_type_ids, signal_type_classes],
+    )
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # A10 — bodha_msr_signals
 # Natural key scope: (chart_id, ayanamsha_id, signal_type_id)
@@ -52,6 +72,12 @@ def replace_prior_msr_signals(conn: Any, rows: list[dict]) -> int:
         return 0
     deleted = 0
     for cid in _distinct(rows, "chart_id"):
+        _assert_msr_delete_safe(
+            conn,
+            chart_id=cid,
+            ayanamsha_ids=ayanamshas,
+            signal_type_ids=signal_types,
+        )
         # ⚠ EVERY FK onto bodha_msr_signals IS `ON DELETE CASCADE` — NOT `NO ACTION`.
         #
         # This comment previously said "FKs are NO ACTION". It was false, and it is the
@@ -139,6 +165,12 @@ def replace_prior_msr_for_chart(conn: Any, chart_id: str, ayanamsha_id: str,
             "owned_signal_type_classes allowlist — refusing to fall back to a "
             "blanket delete (see D-1.5b bo_sudarshana data-loss postmortem)."
         )
+    _assert_msr_delete_safe(
+        conn,
+        chart_id=chart_id,
+        ayanamsha_ids=[ayanamsha_id],
+        signal_type_classes=owned_signal_type_classes,
+    )
     # Scoped to signal_id via the same owned-classes subquery so child rows belonging
     # to OTHER writers' signals are never touched either.
     #

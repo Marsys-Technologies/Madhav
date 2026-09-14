@@ -141,7 +141,7 @@ def _refresh_mv(conn: Any, mv_name: str) -> None:
 # writer stamps `lel_origin=False` by design (bo_laksana.py:11). A leak is
 # therefore observable three independent ways, and ANY of them failing flips the
 # gate. Term B and Term C do not depend on a writer having flagged itself
-# honestly — they read the leaked payload directly.
+# honestly — they inspect declared L2 provenance/payload only.
 _LEL_PAYLOAD_KEYS = [
     # jsonb key shapes that carry LEL rows out of `life_events` — the exact
     # payload bo_upaya legitimately writes at ITS layer (milestone_event_ids) and
@@ -155,14 +155,14 @@ SELECT count(*) FROM bodha_msr_signals
  WHERE chart_id = %s AND lel_origin IS TRUE
 """
 
-# Term B: a constituent "fact_id" that actually resolves to a life_events row —
-# an LEL primary key smuggled into the L1 grounding chain (§N.5 violation).
+# Term B: provenance that declares anything other than an L1 Gaṇita producer.
+# L2 must never consult private/later-layer life_events state to decide whether
+# deterministic producer output is clean.
 _LEL_TERM_B_SQL = """
-SELECT count(DISTINCT s.signal_id)
-  FROM bodha_msr_signals s
-  CROSS JOIN LATERAL unnest(s.constituent_facts_array) AS r(ref)
-  JOIN life_events le ON le.event_id::text = r.ref
- WHERE s.chart_id = %s
+SELECT count(*) FROM bodha_msr_signals
+ WHERE chart_id = %s
+   AND source_l1_asset IS NOT NULL
+   AND source_l1_asset NOT LIKE 'ga_%%'
 """
 
 # Term C: an LEL-shaped payload key present in the deterministic configuration.
@@ -182,14 +182,14 @@ def detect_lel_leak(conn: Any, chart_id: str) -> dict:
     unevaluable check is an unknown, not a clean pass (§N.8).
 
     Can-fail: set any bodha_msr_signals row's `lel_origin` to true (term A),
-    put a real `life_events.event_id` into its `constituent_facts_array`
-    (term B), or add a `milestone_event_ids` key to its `configuration_jsonb`
+    declare a non-Gaṇita source asset (term B), or add a
+    `milestone_event_ids` key to its `configuration_jsonb`
     (term C) — each independently flips `pass` to False.
     """
     terms: dict[str, Any] = {}
     try:
         terms["lel_origin_signals"] = _count_one(conn, _LEL_TERM_A_SQL, [chart_id])
-        terms["life_event_ids_in_constituent_chain"] = _count_one(
+        terms["non_l1_source_provenance"] = _count_one(
             conn, _LEL_TERM_B_SQL, [chart_id]
         )
         terms["lel_payload_keys_in_configuration"] = _count_one(
@@ -896,19 +896,9 @@ class BoPramanaMapa(WriterBase):
         )
 
         # ── Materialised view refresh (G5: all 8 Bodha MVs) ─────────────────
-        for mv in [
-            # MSR MVs (3)
-            "mv_msr_top_signals_per_chart",
-            "mv_msr_recurring_patterns_per_chart",
-            "mv_msr_domain_summary",
-            # CDLM MVs (5) — previously not refreshed; added by G5 fix
-            "mv_cdlm_static_summary",
-            "mv_cdlm_top_K_links_per_chart",
-            "mv_cdlm_per_tradition_summary",
-            "mv_cdlm_dasha_window_lookup",
-            "mv_cdlm_pattern_summary",
-        ]:
-            _refresh_mv(conn, mv)
+        # Shared materialized views are serving projections, not per-chart L2
+        # producer rows. Preserve them until an integration brief owns a
+        # versioned refresh/cutover; the dasha-window view is also L3-temporal.
 
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"msr={msr_count} cdlm={cdlm_count} nodes={node_count} trap1={trap1_count}")

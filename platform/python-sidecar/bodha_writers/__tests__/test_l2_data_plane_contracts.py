@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import pytest
 
 import bodha_writers.data_plane_contracts as contract_module
+from bodha_writers import _idempotency
 
 from bodha_writers.data_plane_contracts import (
     ACCEPTED_L0_RELEASE,
@@ -20,6 +21,7 @@ from bodha_writers.data_plane_contracts import (
     l2_producer,
     stable_semantic_uuid,
     stable_structural_id,
+    _validate_compatible_l2_set,
 )
 from bodha_writers.data_plane_resource_mechanism_slice import (
     build_resource_mechanism_slice,
@@ -137,6 +139,39 @@ def test_multi_partition_writer_uses_one_generation_with_exact_partition_context
     assert first.partition_key != second.partition_key
 
 
+def test_selected_l2_generation_rejects_stale_transitive_head():
+    l1_rows = [{
+        "asset_id": "ga_positions", "generation_id": "l1-new",
+        "output_digest": "b" * 64,
+    }]
+    l2_rows = [{
+        "asset_id": "bo_laksana", "generation_id": "l2-old",
+        "output_digest": "c" * 64,
+        "dependency_vector": [{
+            "layer": "L1", "asset_id": "ga_positions",
+            "generation_id": "l1-old", "semantic_output_digest": "a" * 64,
+        }],
+    }]
+    with pytest.raises(ContractError, match="stale transitive"):
+        _validate_compatible_l2_set(l1_rows, l2_rows)
+
+
+def test_selected_l2_generation_accepts_one_compatible_set():
+    l1_rows = [{
+        "asset_id": "ga_positions", "generation_id": "l1-current",
+        "output_digest": "a" * 64,
+    }]
+    l2_rows = [{
+        "asset_id": "bo_laksana", "generation_id": "l2-current",
+        "output_digest": "b" * 64,
+        "dependency_vector": [{
+            "layer": "L1", "asset_id": "ga_positions",
+            "generation_id": "l1-current", "semantic_output_digest": "a" * 64,
+        }],
+    }]
+    _validate_compatible_l2_set(l1_rows, l2_rows)
+
+
 def test_heavy_writer_records_each_substep_partition_in_callers_transaction(monkeypatch):
     executed = []
 
@@ -199,7 +234,12 @@ def test_slice_is_deterministic_complete_non_temporal_and_non_promotable():
     assert a["temporal_semantics_status"] == "UNAVAILABLE_AT_L2"
     assert {x["role"] for x in a["domains"]} == {"creation", "receipts", "retention", "relief"}
     assert {x["polarity"] for x in a["relationships"]} == {-1, 1}
-    assert a["independent_support_count"] == 2
+    assert a["independent_support_count"] == 1
+    assert a["independent_opposition_count"] == 1
+    assert {root["epistemic_class"] for root in a["evidence_roots"]} == {
+        "rule_derived", "deterministic_derivation",
+    }
+    assert all("magnitude_semantics" in rel for rel in a["relationships"])
     assert any(x["rank"] == 999 and x["decisive"] for x in a["discovery_pointers"])
 
 
@@ -269,3 +309,44 @@ def test_slice_rejects_caller_invented_roots_units_and_component_polarity():
     fixture["selected_configuration"]["condition_ledger"]["components"][0]["polarity"] = 0
     with pytest.raises(ValueError, match=r"exactly -1 or \+1"):
         build_resource_mechanism_slice(fixture)
+
+    fixture = load_fixture()
+    del fixture["selected_configuration"]["paths"][0]["magnitude_semantics"]
+    with pytest.raises(ValueError, match="magnitude semantics"):
+        build_resource_mechanism_slice(fixture)
+
+
+def test_migration_guards_replay_stale_sets_nonfinite_and_cross_layer_delete():
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "migrations" / "1034_data_plane_l2_producer_generations.sql"
+    ).read_text()
+    assert "l2_data_plane_run_rows" in migration
+    assert "observed_row_count" in migration
+    assert "replay changed counts or semantic output" in migration
+    assert "l2_data_plane_generation_is_compatible" in migration
+    assert "l2_data_plane_jsonb_has_nonfinite(v_row)" in migration
+    assert "assert_l2_msr_delete_safe" in migration
+
+
+def test_msr_replacement_invokes_cross_layer_guard_before_delete():
+    class Cursor:
+        rowcount = 1
+
+    class Conn:
+        _l2_contract_test_double = True
+
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, sql, params=None):
+            self.calls.append((sql, params))
+            return Cursor()
+
+    conn = Conn()
+    _idempotency.replace_prior_msr_for_chart(
+        conn, "11111111-1111-1111-1111-111111111111", "lahiri", ["yoga"],
+    )
+    guard = next(i for i, (sql, _) in enumerate(conn.calls) if "assert_l2_msr_delete_safe" in sql)
+    first_delete = next(i for i, (sql, _) in enumerate(conn.calls) if sql.startswith("DELETE"))
+    assert guard < first_delete

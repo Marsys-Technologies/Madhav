@@ -67,12 +67,90 @@ CREATE TABLE IF NOT EXISTS public.l2_data_plane_generation_runs (
   rows_inserted  bigint NOT NULL CHECK (rows_inserted >= 0),
   rows_updated   bigint NOT NULL CHECK (rows_updated >= 0),
   rows_skipped   bigint NOT NULL CHECK (rows_skipped >= 0),
+  observed_row_count bigint NOT NULL CHECK (observed_row_count >= 0),
+  semantic_output_digest text NOT NULL CHECK (semantic_output_digest ~ '^[0-9a-f]{64}$'),
   replayed_at    timestamptz NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY (chart_id, asset_id, generation_id, partition_key, build_id),
   FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
     REFERENCES public.l2_data_plane_generation_partitions(
       chart_id, asset_id, generation_id, partition_key
     ) ON DELETE RESTRICT
+);
+
+ALTER TABLE public.l2_data_plane_generation_runs
+  ADD COLUMN IF NOT EXISTS observed_row_count bigint,
+  ADD COLUMN IF NOT EXISTS semantic_output_digest text;
+
+-- A prior local application of this still-unreleased migration may already
+-- have installed the append-only trigger. Remove it only inside this migration
+-- transaction so the compatibility backfill below can run; it is recreated
+-- before COMMIT.
+DROP TRIGGER IF EXISTS l2_data_plane_runs_immutable
+  ON public.l2_data_plane_generation_runs;
+
+UPDATE public.l2_data_plane_generation_runs r
+SET observed_row_count = COALESCE(r.observed_row_count, 0),
+    semantic_output_digest = COALESCE(
+      r.semantic_output_digest,
+      p.semantic_output_digest,
+      encode(digest('[]', 'sha256'), 'hex')
+    )
+FROM public.l2_data_plane_generation_partitions p
+WHERE p.chart_id = r.chart_id AND p.asset_id = r.asset_id
+  AND p.generation_id = r.generation_id AND p.partition_key = r.partition_key
+  AND (r.observed_row_count IS NULL OR r.semantic_output_digest IS NULL);
+
+UPDATE public.l2_data_plane_generation_runs
+SET observed_row_count = COALESCE(observed_row_count, 0),
+    semantic_output_digest = COALESCE(
+      semantic_output_digest, encode(digest('[]', 'sha256'), 'hex')
+    )
+WHERE observed_row_count IS NULL OR semantic_output_digest IS NULL;
+
+ALTER TABLE public.l2_data_plane_generation_runs
+  ALTER COLUMN observed_row_count SET NOT NULL,
+  ALTER COLUMN semantic_output_digest SET NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_generation_runs_observed_count_check'
+      AND conrelid = 'public.l2_data_plane_generation_runs'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_generation_runs
+      ADD CONSTRAINT l2_generation_runs_observed_count_check
+      CHECK (observed_row_count >= 0);
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_generation_runs_digest_check'
+      AND conrelid = 'public.l2_data_plane_generation_runs'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_generation_runs
+      ADD CONSTRAINT l2_generation_runs_digest_check
+      CHECK (semantic_output_digest ~ '^[0-9a-f]{64}$');
+  END IF;
+END;
+$$;
+
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_run_rows (
+  chart_id       uuid NOT NULL,
+  asset_id       text NOT NULL,
+  generation_id text NOT NULL,
+  partition_key text NOT NULL,
+  build_id       text NOT NULL,
+  source_table   text NOT NULL,
+  row_identity  text NOT NULL,
+  semantic_digest text NOT NULL CHECK (semantic_digest ~ '^[0-9a-f]{64}$'),
+  observed_at   timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (
+    chart_id, asset_id, generation_id, partition_key, build_id,
+    source_table, row_identity
+  ),
+  FOREIGN KEY (chart_id, asset_id, generation_id)
+    REFERENCES public.data_plane_l2_producer_generations(chart_id, asset_id, generation_id)
+    ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS public.l2_data_plane_partition_contexts (
@@ -196,6 +274,33 @@ CREATE TRIGGER l2_data_plane_runs_immutable
 BEFORE UPDATE OR DELETE ON public.l2_data_plane_generation_runs
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
+CREATE OR REPLACE FUNCTION public.l2_data_plane_guard_completed_run_rows()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  v_chart uuid := COALESCE(NEW.chart_id, OLD.chart_id);
+  v_asset text := COALESCE(NEW.asset_id, OLD.asset_id);
+  v_generation text := COALESCE(NEW.generation_id, OLD.generation_id);
+  v_partition text := COALESCE(NEW.partition_key, OLD.partition_key);
+  v_build text := COALESCE(NEW.build_id, OLD.build_id);
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM public.l2_data_plane_generation_runs
+    WHERE chart_id = v_chart AND asset_id = v_asset
+      AND generation_id = v_generation AND partition_key = v_partition
+      AND build_id = v_build
+  ) THEN
+    RAISE EXCEPTION 'completed L2 replay run rows are immutable';
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS l2_data_plane_run_rows_immutable
+  ON public.l2_data_plane_run_rows;
+CREATE TRIGGER l2_data_plane_run_rows_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON public.l2_data_plane_run_rows
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_guard_completed_run_rows();
+
 DROP TRIGGER IF EXISTS l2_data_plane_partition_contexts_immutable
   ON public.l2_data_plane_partition_contexts;
 CREATE TRIGGER l2_data_plane_partition_contexts_immutable
@@ -286,6 +391,135 @@ BEGIN
     ELSE
       RETURN p_value;
   END CASE;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.l2_data_plane_jsonb_has_nonfinite(p_value jsonb)
+RETURNS boolean LANGUAGE plpgsql IMMUTABLE AS $$
+DECLARE
+  v_child jsonb;
+  v_scalar text;
+BEGIN
+  CASE jsonb_typeof(p_value)
+    WHEN 'object' THEN
+      FOR v_child IN SELECT value FROM jsonb_each(p_value) LOOP
+        IF public.l2_data_plane_jsonb_has_nonfinite(v_child) THEN RETURN true; END IF;
+      END LOOP;
+    WHEN 'array' THEN
+      FOR v_child IN SELECT value FROM jsonb_array_elements(p_value) LOOP
+        IF public.l2_data_plane_jsonb_has_nonfinite(v_child) THEN RETURN true; END IF;
+      END LOOP;
+    WHEN 'string' THEN
+      v_scalar := lower(p_value #>> '{}');
+      RETURN v_scalar IN ('nan', 'infinity', '-infinity', 'inf', '-inf');
+    ELSE
+      RETURN false;
+  END CASE;
+  RETURN false;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.l2_data_plane_generation_is_compatible(
+  p_chart_id uuid,
+  p_asset_id text,
+  p_generation_id text
+) RETURNS boolean LANGUAGE plpgsql STABLE AS $$
+DECLARE
+  v_vector jsonb;
+  v_dep jsonb;
+  v_digest text;
+BEGIN
+  SELECT dependency_vector_jsonb INTO v_vector
+  FROM public.data_plane_l2_producer_generations
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id AND state = 'complete';
+  IF NOT FOUND THEN RETURN false; END IF;
+
+  FOR v_dep IN SELECT value FROM jsonb_array_elements(v_vector) LOOP
+    v_digest := NULL;
+    IF v_dep->>'layer' = 'L1' THEN
+      SELECT g.semantic_output_digest INTO v_digest
+      FROM public.l1_data_plane_generation_heads h
+      JOIN public.l1_data_plane_generations g
+        ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
+       AND g.generation_id = h.current_generation_id
+      WHERE h.chart_id = p_chart_id AND h.asset_id = v_dep->>'asset_id'
+        AND h.current_generation_id = v_dep->>'generation_id'
+        AND g.status = 'complete';
+    ELSIF v_dep->>'layer' = 'L2' THEN
+      SELECT g.semantic_output_digest INTO v_digest
+      FROM public.l2_data_plane_generation_heads h
+      JOIN public.data_plane_l2_producer_generations g
+        ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
+       AND g.generation_id = h.current_generation_id
+      WHERE h.chart_id = p_chart_id AND h.asset_id = v_dep->>'asset_id'
+        AND h.current_generation_id = v_dep->>'generation_id'
+        AND g.state = 'complete';
+    ELSE
+      RETURN false;
+    END IF;
+    IF v_digest IS DISTINCT FROM v_dep->>'semantic_output_digest' THEN
+      RETURN false;
+    END IF;
+  END LOOP;
+  RETURN true;
+END;
+$$;
+
+-- Delete-then-insert is permitted only while it remains inside L2. Discover
+-- every current FK from the catalogue so a future L3/L4 reference also fails
+-- closed without relying on a stale hand-maintained table list.
+CREATE OR REPLACE FUNCTION public.assert_l2_msr_delete_safe(
+  p_chart_id uuid,
+  p_ayanamsha_ids text[] DEFAULT NULL,
+  p_signal_type_ids text[] DEFAULT NULL,
+  p_signal_type_classes text[] DEFAULT NULL
+) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_fk record;
+  v_exists boolean;
+BEGIN
+  FOR v_fk IN
+    SELECT n.nspname AS schema_name, c.relname AS table_name,
+           a.attname AS column_name, cardinality(k.conkey) AS key_count,
+           ra.attname AS referenced_column
+    FROM pg_constraint k
+    JOIN pg_class c ON c.oid = k.conrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    LEFT JOIN pg_attribute a
+      ON a.attrelid = k.conrelid AND a.attnum = k.conkey[1]
+    LEFT JOIN pg_attribute ra
+      ON ra.attrelid = k.confrelid AND ra.attnum = k.confkey[1]
+    WHERE k.contype = 'f'
+      AND k.confrelid = 'public.bodha_msr_signals'::regclass
+  LOOP
+    IF v_fk.schema_name = 'public'
+       AND v_fk.table_name IN ('bodha_signal_embeddings', 'bodha_contradictions') THEN
+      CONTINUE;
+    END IF;
+    IF v_fk.key_count <> 1 OR v_fk.referenced_column <> 'signal_id'
+       OR v_fk.column_name IS NULL THEN
+      RAISE EXCEPTION 'unsupported cross-layer MSR foreign key %.%',
+        v_fk.schema_name, v_fk.table_name;
+    END IF;
+    EXECUTE format(
+      'SELECT EXISTS ('
+      ' SELECT 1 FROM %I.%I d'
+      ' JOIN public.bodha_msr_signals s ON d.%I = s.signal_id'
+      ' WHERE s.chart_id = $1'
+      '   AND ($2 IS NULL OR s.ayanamsha_id = ANY($2))'
+      '   AND ($3 IS NULL OR s.signal_type_id = ANY($3))'
+      '   AND ($4 IS NULL OR s.signal_type_class = ANY($4))'
+      ')',
+      v_fk.schema_name, v_fk.table_name, v_fk.column_name
+    ) INTO v_exists
+      USING p_chart_id, p_ayanamsha_ids, p_signal_type_ids, p_signal_type_classes;
+    IF v_exists THEN
+      RAISE EXCEPTION
+        'L2 MSR replacement blocked by cross-layer dependent rows in %.%',
+        v_fk.schema_name, v_fk.table_name;
+    END IF;
+  END LOOP;
 END;
 $$;
 
@@ -427,7 +661,10 @@ BEGIN
     RAISE EXCEPTION 'L2 generation requires a non-empty L1 dependency vector';
   END IF;
 
-  FOR v_dep IN SELECT value FROM jsonb_array_elements(p_dependency_vector) LOOP
+  FOR v_dep IN
+    SELECT value FROM jsonb_array_elements(p_dependency_vector)
+    ORDER BY value->>'layer', value->>'asset_id'
+  LOOP
     IF v_dep->>'layer' = 'L1' THEN
       SELECT g.semantic_output_digest INTO v_digest
       FROM public.l1_data_plane_generation_heads h
@@ -452,6 +689,25 @@ BEGIN
     IF v_digest IS DISTINCT FROM v_dep->>'semantic_output_digest' THEN
       RAISE EXCEPTION 'dependency %/% is absent, stale or digest-mismatched',
         v_dep->>'layer', v_dep->>'asset_id';
+    END IF;
+    IF v_dep->>'layer' = 'L2' AND NOT public.l2_data_plane_generation_is_compatible(
+      p_chart_id, v_dep->>'asset_id', v_dep->>'generation_id'
+    ) THEN
+      RAISE EXCEPTION 'L2 dependency %/% has a stale transitive closure',
+        v_dep->>'asset_id', v_dep->>'generation_id';
+    END IF;
+
+    -- Serialize this producer transaction with dependency head changes. The
+    -- caller supplies its vector in canonical layer/asset order, so all L2
+    -- producers acquire these locks in the same order.
+    IF v_dep->>'layer' = 'L1' THEN
+      PERFORM 1 FROM public.l1_data_plane_generation_heads
+      WHERE chart_id = p_chart_id AND asset_id = v_dep->>'asset_id'
+      FOR SHARE;
+    ELSE
+      PERFORM 1 FROM public.l2_data_plane_generation_heads
+      WHERE chart_id = p_chart_id AND asset_id = v_dep->>'asset_id'
+      FOR SHARE;
     END IF;
   END LOOP;
 
@@ -551,11 +807,10 @@ BEGIN
     RAISE EXCEPTION 'writer row chart % mismatches L2 producer chart %',
       v_row->>'chart_id', v_chart_text;
   END IF;
-  IF v_row ? 'build_id' AND v_row->>'build_id' IS NOT NULL
-     AND v_row->>'build_id' <> v_build THEN
-    RAISE EXCEPTION 'writer row build % mismatches L2 invocation build %',
-      v_row->>'build_id', v_build;
-  END IF;
+  -- Row-level build_id is legacy active-table provenance and update-only
+  -- producers (notably bo_laksana_rerank) intentionally preserve the root
+  -- producer's value. Invocation build identity lives in this immutable
+  -- generation/run envelope, so it must not be inferred from the active row.
 
   SELECT * INTO v_generation_row
   FROM public.data_plane_l2_producer_generations
@@ -582,6 +837,22 @@ BEGIN
   v_identity := array_to_string(v_identity_parts, '|');
   v_semantic := public.l2_data_plane_strip_volatile(v_row);
   v_digest := encode(digest(v_semantic::text, 'sha256'), 'hex');
+
+  IF public.l2_data_plane_jsonb_has_nonfinite(v_row) THEN
+    RAISE EXCEPTION 'non-finite L2 numeric output from %', v_asset;
+  END IF;
+
+  INSERT INTO public.l2_data_plane_run_rows (
+    chart_id, asset_id, generation_id, partition_key, build_id,
+    source_table, row_identity, semantic_digest
+  ) VALUES (
+    v_chart_text::uuid, v_asset, v_generation, v_partition, v_build,
+    TG_TABLE_NAME, v_identity, v_digest
+  ) ON CONFLICT (
+    chart_id, asset_id, generation_id, partition_key, build_id,
+    source_table, row_identity
+  ) DO UPDATE SET semantic_digest = EXCLUDED.semantic_digest,
+                  observed_at = clock_timestamp();
 
   SELECT semantic_digest INTO v_existing_digest
   FROM public.l2_data_plane_row_snapshots
@@ -633,6 +904,7 @@ CREATE OR REPLACE FUNCTION public.complete_l2_data_plane_partition(
 ) RETURNS void LANGUAGE plpgsql AS $$
 DECLARE
   v_partition_digest text;
+  v_observed_row_count bigint;
   v_existing public.l2_data_plane_generation_partitions%ROWTYPE;
   v_completed integer;
   v_expected integer;
@@ -649,13 +921,19 @@ BEGIN
          ), '[]'::jsonb)::text, 'sha256'), 'hex')
   INTO v_partition_digest
   FROM (
-    SELECT DISTINCT ON (source_table, row_identity)
-      source_table, row_identity, semantic_digest
-    FROM public.l2_data_plane_row_snapshots
+    SELECT source_table, row_identity, semantic_digest
+    FROM public.l2_data_plane_run_rows
     WHERE chart_id = p_chart_id AND asset_id = p_asset_id
       AND generation_id = p_generation_id AND partition_key = p_partition_key
-    ORDER BY source_table, row_identity, captured_at DESC, snapshot_id DESC
+      AND build_id = p_build_id
+    ORDER BY source_table, row_identity
   ) latest;
+
+  SELECT count(*) INTO v_observed_row_count
+  FROM public.l2_data_plane_run_rows
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id AND partition_key = p_partition_key
+    AND build_id = p_build_id;
 
   INSERT INTO public.l2_data_plane_generation_partitions (
     chart_id, asset_id, generation_id, partition_key,
@@ -678,10 +956,12 @@ BEGIN
 
   INSERT INTO public.l2_data_plane_generation_runs (
     chart_id, asset_id, generation_id, partition_key, build_id,
-    rows_inserted, rows_updated, rows_skipped
+    rows_inserted, rows_updated, rows_skipped,
+    observed_row_count, semantic_output_digest
   ) VALUES (
     p_chart_id, p_asset_id, p_generation_id, p_partition_key, p_build_id,
-    p_rows_inserted, p_rows_updated, p_rows_skipped
+    p_rows_inserted, p_rows_updated, p_rows_skipped,
+    v_observed_row_count, v_partition_digest
   ) ON CONFLICT DO NOTHING;
 
   SELECT count(*), max(g.expected_partitions), max(g.state),
@@ -722,6 +1002,13 @@ BEGIN
         completed_at = clock_timestamp()
     WHERE chart_id = p_chart_id AND asset_id = p_asset_id
       AND generation_id = p_generation_id;
+  END IF;
+
+  IF NOT public.l2_data_plane_generation_is_compatible(
+    p_chart_id, p_asset_id, p_generation_id
+  ) THEN
+    RAISE EXCEPTION 'L2 generation % became stale before head selection',
+      p_generation_id;
   END IF;
 
   INSERT INTO public.l2_data_plane_generation_heads (
@@ -780,6 +1067,12 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'rollback target % is absent or incomplete', p_generation_id;
   END IF;
+  IF NOT public.l2_data_plane_generation_is_compatible(
+    p_chart_id, p_asset_id, p_generation_id
+  ) THEN
+    RAISE EXCEPTION 'rollback target % has a stale dependency closure',
+      p_generation_id;
+  END IF;
   SELECT current_generation_id INTO v_current
   FROM public.l2_data_plane_generation_heads
   WHERE chart_id = p_chart_id AND asset_id = p_asset_id FOR UPDATE;
@@ -800,6 +1093,9 @@ FROM public.l2_data_plane_generation_heads h
 JOIN public.l2_data_plane_row_snapshots s
   ON s.chart_id = h.chart_id AND s.asset_id = h.asset_id
  AND s.generation_id = h.current_generation_id
+WHERE public.l2_data_plane_generation_is_compatible(
+  h.chart_id, h.asset_id, h.current_generation_id
+)
 ORDER BY s.chart_id, s.asset_id, s.source_table, s.row_identity,
          s.captured_at DESC, s.snapshot_id DESC;
 

@@ -63,9 +63,13 @@ def build_resource_mechanism_slice(fixture: Mapping[str, Any]) -> dict[str, Any]
         deepcopy(selected["participants"]), key=lambda x: (x["role"], x["subject"]),
     )
     domains = _domains(deepcopy(selected["domains"]))
-    roots = {r["root_id"]: r for r in selected["evidence_roots"]}
+    evidence_roots = sorted(
+        deepcopy(selected["evidence_roots"]), key=lambda item: item["root_id"],
+    )
+    roots = {r["root_id"]: r for r in evidence_roots}
     paths = []
-    independent_groups: set[str] = set()
+    support_groups: set[str] = set()
+    opposition_groups: set[str] = set()
     for path in selected["paths"]:
         root_id = path["root_id"]
         if root_id not in roots:
@@ -77,7 +81,16 @@ def build_resource_mechanism_slice(fixture: Mapping[str, Any]) -> dict[str, Any]
         supplied_group = path.get("shared_root_group")
         if supplied_group is not None and str(supplied_group) != root_group:
             raise ValueError("path shared-root label disagrees with root ancestry")
-        independent_groups.add(root_group)
+        magnitude = path.get("magnitude_semantics")
+        if not isinstance(magnitude, Mapping):
+            raise ValueError("relationship magnitude semantics are required")
+        if magnitude.get("unit") != "normalized_structural_contribution_0_1":
+            raise ValueError("relationship magnitude has the wrong unit")
+        if magnitude.get("polarity") != "absolute_value_higher_is_stronger":
+            raise ValueError("relationship magnitude has the wrong polarity")
+        if not 0.0 <= float(magnitude.get("value")) <= 1.0:
+            raise ValueError("relationship magnitude must use [0,1]")
+        (support_groups if polarity > 0 else opposition_groups).add(root_group)
         paths.append({
             **deepcopy(path),
             "polarity": polarity,
@@ -152,13 +165,17 @@ def build_resource_mechanism_slice(fixture: Mapping[str, Any]) -> dict[str, Any]
         "proposition_id": proposition_id,
         "mechanism_id": mechanism_id,
         "participants": participants,
+        "evidence_roots": evidence_roots,
         "configuration_roles": deepcopy(selected["configuration_roles"]),
         "domains": domains,
         "occurrence_ledger": occurrence,
         "condition_ledger": condition,
         "relationships": relationships,
-        "independent_support_count": len(independent_groups),
-        "shared_root_groups": sorted(independent_groups),
+        "independent_support_count": len(support_groups),
+        "independent_opposition_count": len(opposition_groups),
+        "support_root_groups": sorted(support_groups),
+        "opposition_root_groups": sorted(opposition_groups),
+        "shared_root_groups": sorted(support_groups | opposition_groups),
         "cancellation": cancellation,
         "contradictions": deepcopy(selected["contradictions"]),
         "rivals": deepcopy(selected["rivals"]),

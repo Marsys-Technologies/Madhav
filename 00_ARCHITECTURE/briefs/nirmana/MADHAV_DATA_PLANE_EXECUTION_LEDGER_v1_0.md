@@ -42,6 +42,7 @@ changelog:
   - "1.0 update 2026-09-14: Records final independent PASS on exact tip a9c44c298 with zero HIGH/MED/LOW findings and terminal L1 PRODUCER_READY; L2 remains waiting."
   - "1.0 update 2026-09-14: Consumes DP-SD-015 and the approved L2 brief; records validated unrestricted session open, exact 23/22 denominator reconciliation, semantic DAG/backcast and frozen WP0 mutation manifest; L3 remains waiting."
   - "1.0 update 2026-09-14: Records first L2 implementation commit 066fce7a5 and independent challenge FAIL with no CRITICAL; exact-context, stable-identity, immutable generation/replay/rollback, temporal, Bhavat, cancellation/root, slice, quality and evidence corrections are locally validated and pending exact re-challenge."
+  - "1.0 update 2026-09-14: Records second L2 challenge FAIL at b7a49f742 with 8 HIGH and 2 MED findings; cross-layer MSR deletion, passive serving projection, transitive stale-generation closure, exact replay row sets, private/temporal quality inputs, loud partial failure, complete slice semantics, persisted axis units/polarity, database non-finite capture and immutable self-reuse corrections are locally validated and pending exact re-challenge."
 ---
 
 # Madhav data-plane execution ledger
@@ -115,7 +116,8 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L1 evidence artifacts | Seven `MADHAV_DATA_PLANE_L1_*_v1_0.md` records | Complete 19-writer disposition, contracts, slice, compatibility, validation/review and acceptance state. |
 | L2 WP0 evidence | `MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact 23/22 reconciliation, two-pass semantic DAG, consumer backcast, adjacent authority and frozen mutation manifest. |
 | L2 first implementation / challenge | `066fce7a5611981aeb57f0b7129fa1c5d46495b6` / independent FAIL | Established the 23-writer boundary and exposed nine material correction families; no CRITICAL. |
-| L2 correction candidate | local validated tree, exact commit pending | Contract v2, stable semantic identities, transitive source/dependency provenance, immutable row history, exact L1/L2 snapshot binding, multi-partition context, non-temporal output, signed cancellation/root logic, reachable quality detectors and corrected first slice. |
+| L2 first correction / second challenge | `b7a49f74289f1714118003c7bea78527d665ffa8` / independent FAIL | Closed the first nine families; second challenge found 8 HIGH and 2 MED residuals, no CRITICAL. |
+| L2 second correction candidate | local validated tree, exact commit pending | Adds catalog-guarded MSR replacement, passive Samvada/Pramāṇa serving behavior, transitive stale-generation compatibility, exact replay row sets, loud partial failure, complete slice semantics, persisted Pratijñā axes, recursive database non-finite rejection and immutable Samskara reuse. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -134,8 +136,12 @@ unreached. L2 remains waiting for its separately approved brief and new bounded 
 Open blocker for L2: terminal independent PASS is pending. DP-SD-015 is
 consumed. The first implementation was challenged at `066fce7a5` and failed on
 owned context, identity, generation, temporal, relation/root, detector, slice
-and evidence gaps. Those findings are corrected and locally validated; an exact
-correction commit and read-only re-challenge remain. L3 remains waiting.
+and evidence gaps. The second challenge at `b7a49f742` found 8 HIGH and 2 MED
+residuals across deletion safety, serving ownership, stale/replay closure,
+private inputs, partial failure, slice semantics, Pratijñā field semantics,
+database numeric safety and Samskara reuse. Those findings are corrected and
+locally validated; an exact correction commit and read-only re-challenge remain.
+L3 remains waiting.
 
 ## 6. Append-only status log
 
@@ -172,7 +178,9 @@ correction commit and read-only re-challenge remain. L3 remains waiting.
 | 2026-09-14 21:05 | L2 Bodha | WP0_COMPLETE | Exact 23 registered writers across 22 files reconciled against historical formal 22; accepted pins, DAG, outputs/keys, adjacent authority, consumer loss and two temporal inversions recorded; mutation manifest frozen. |
 | 2026-09-14 (time not recorded) | L2 Bodha | IMPLEMENTATION_COMMITTED | First local implementation committed at `066fce7a5`; 23/23 boundary and initial evidence prepared; no push/PR/merge/deploy. |
 | 2026-09-14 (time not recorded) | L2 Bodha | FIRST_CHALLENGE_FAILED | Independent review found nine owned HIGH correction families plus test/documentation gaps; no CRITICAL. |
-| 2026-09-14 22:18 | L2 Bodha | CORRECTIONS_VALIDATED | Focused 178 and contained 135 tests pass; complete L2 attempt yields 472 passed/14 skipped with only absent-DB integration cases not run; validator 23/23/0; provenance check and disposable PostgreSQL exact-input/multi-partition/replay/rollback proofs pass. Exact correction commit and re-challenge next. |
+| 2026-09-14 22:18 | L2 Bodha | FIRST_CORRECTIONS_COMMITTED | First correction committed at `b7a49f742`; focused 178 and contained 135 tests pass; complete L2 attempt yields 472 passed/14 skipped with only absent-DB integration cases not run; validator 23/23/0; provenance check and disposable PostgreSQL exact-input/multi-partition/replay/rollback proofs pass. |
+| 2026-09-14 (time not recorded) | L2 Bodha | SECOND_CHALLENGE_FAILED | Independent review of exact `b7a49f742` found 8 HIGH and 2 MED residuals: cross-layer MSR deletion, Samvada DDL, stale compatibility, omitted-row replay, Pramāṇa private/temporal inputs, partial Laksana/Samskara completion, incomplete slice epistemic/magnitude/root semantics, unpersisted Pratijñā axes, database non-finite capture and mutable Samskara self-reuse; no CRITICAL. |
+| 2026-09-14 23:23 | L2 Bodha | SECOND_CORRECTIONS_VALIDATED | Focused 48, contained 140 and non-integration L2 450/13 pass; complete L2 attempt yields 476 passed/14 skipped with only absent-DB 2 failures/36 errors `NOT_RUN`; validator 23/23/0 and provenance check pass; disposable PostgreSQL proves apply/reapply, exact run-row replay, omitted-row rejection, generic cross-layer delete rejection, nested non-finite rejection and stale-descendant hiding. Exact correction commit and re-challenge next. |
 
 ## 7. Return-to-strategy handoff contract
 

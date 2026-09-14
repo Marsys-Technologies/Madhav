@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import inspect
+from types import SimpleNamespace
 
 from bodha_writers.formulas import ResonanceInputs, resonance_score_v1
 from pipeline.orchestrator.writers import bo_pramana_mapa
+from pipeline.orchestrator.writers import bo_pratijna, bo_samskara, bo_samvada
 from pipeline.orchestrator.writers.bo_sangati import _build_cdlm_cells
 
 
@@ -97,3 +100,67 @@ def test_quality_detectors_have_reachable_false_branches(monkeypatch):
     assert result["discovery_grounding"]["pass"] is False
     assert result["context_generation"]["pass"] is False
     assert result["signed_relation_and_cancellation"]["pass"] is False
+
+
+def test_lel_detector_is_self_contained_and_serving_refresh_is_passive():
+    assert "life_events" not in bo_pramana_mapa._LEL_TERM_B_SQL
+    assert "source_l1_asset" in bo_pramana_mapa._LEL_TERM_B_SQL
+    run_source = inspect.getsource(bo_pramana_mapa.BoPramanaMapa.run)
+    assert "_refresh_mv(" not in run_source
+    assert "mv_cdlm_dasha_window_lookup" not in run_source
+
+
+def test_samvada_preserves_serving_view_without_ddl():
+    class Conn:
+        def __init__(self):
+            self.calls = []
+
+        def execute(self, sql, params=None):
+            self.calls.append((sql, params))
+
+    conn = Conn()
+    result = bo_samvada.BoSamvadaWriter().run(SimpleNamespace(
+        dry_run=False, db_conn=conn, config={}, build_id="test-build",
+    ))
+    assert result.rows_inserted == 0
+    assert result.rows_skipped == 1
+    assert conn.calls == []
+
+
+def test_samskara_reuse_is_immutable_and_partial_batches_fail_closed():
+    reuse_source = inspect.getsource(bo_samskara._fetch_existing_embeddings)
+    assert "l2_data_plane_row_snapshots" in reuse_source
+    assert "l2_data_plane_generation_is_compatible" in reuse_source
+    run_source = inspect.getsource(bo_samskara.BoSamskaraWriter.run_substep)
+    assert "refusing a partial generation" in run_source
+
+
+def _pratijna_score(status: str):
+    return SimpleNamespace(
+        status=status,
+        rubric_version="rubric-v1",
+        occurrence_label="MODERATE",
+        condition_label="AFFLICTED",
+        occurrence_pre_denial=0.5,
+        occurrence=0.5,
+        condition=2.0,
+        engine_version="engine-v1",
+        weights={},
+        factor_ledger=[],
+        denials=[],
+        condition_ledger=[],
+        provenance={},
+    )
+
+
+def test_pratijna_persists_units_and_polarities_for_value_and_missingness():
+    for status in ("scored", "no_evidence"):
+        row = bo_pratijna._row_for_score(
+            chart_id="chart", aya="lahiri", build_id="build",
+            event_class_id="event", score=_pratijna_score(status), now="now",
+        )
+        derivation = json.loads(row["derivation"])
+        assert derivation["occurrence_unit"] == "probability_like_structural_score_0_1"
+        assert derivation["occurrence_polarity"] == "higher_is_more_formed"
+        assert derivation["condition_unit"] == "affliction_0_10"
+        assert derivation["condition_polarity"] == "higher_is_more_afflicted"

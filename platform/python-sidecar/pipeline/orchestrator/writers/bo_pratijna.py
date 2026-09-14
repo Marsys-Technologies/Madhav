@@ -376,6 +376,10 @@ def _row_for_score(
                 "engine_version": ENGINE_VERSION,
                 "rubric_version": score.rubric_version,
                 "reason": "no KaryatvaMap registered for this event_class_id",
+                "occurrence_unit": "probability_like_structural_score_0_1",
+                "occurrence_polarity": "higher_is_more_formed",
+                "condition_unit": "affliction_0_10",
+                "condition_polarity": "higher_is_more_afflicted",
             }),
             "formula_version": FORMULA_VERSION,
             "computed_at": now,
@@ -390,6 +394,10 @@ def _row_for_score(
         "occurrence_label": score.occurrence_label,
         "condition_label": score.condition_label,
         "occurrence_pre_denial": score.occurrence_pre_denial,
+        "occurrence_unit": "probability_like_structural_score_0_1",
+        "occurrence_polarity": "higher_is_more_formed",
+        "condition_unit": "affliction_0_10",
+        "condition_polarity": "higher_is_more_afflicted",
         "status_mapping_rule": (
             "V4_RUBRIC_SPEC_v1_0.md §6.1 occurrence band -> status: "
             "DENIED->denied, WEAK/MODERATE->conditional, "

@@ -23,7 +23,9 @@ mixed or stale inputs. The caller owns transaction, savepoint, commit and close.
 Stable `configuration`, `proposition`, `relationship`, `contradiction` and
 `mechanism` identities are SHA-256 content identities over semantic payloads.
 Build IDs and observation/query timestamps are forbidden identity material;
-non-finite numbers fail closed. The surrounding producer observation carries
+non-finite numbers fail closed in both application validation and database
+capture. Replay equality covers the exact per-run row identity set as well as
+the semantic-output digest, so row omission cannot pass. The surrounding producer observation carries
 contract, accepted releases, generation/partition context, build and the
 dependency-aware transitive writer-source digest.
 
@@ -50,7 +52,9 @@ magnitude semantics, basis, direct/transitive/candidate class, configuration
 membership, exact evidence roots and shared-root group. Cancelled edges remain
 visible. Opposition is never converted to unsigned conductance. Ordered paths
 retain ordered edge identities; repeated wrappers/paths sharing a root count as
-one independent support group. Domain or display ordering is non-semantic.
+one independent group. Support and opposition roots are grouped and counted
+separately; opposition never inflates independent support. Domain or display
+ordering is non-semantic.
 
 ## Failure and compatibility
 

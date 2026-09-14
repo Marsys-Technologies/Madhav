@@ -3499,6 +3499,11 @@ class BoLaksanaWriter(WriterBase):
                 f"[bo_laksana] G3: chart_id={chart_id} ayanamsha={ayanamsha} — "
                 f"all {len(fact_rows)} facts were skipped; no MSR signals produced"
             )
+        if skipped:
+            raise RuntimeError(
+                f"[bo_laksana] {ayanamsha} — {skipped}/{len(fact_rows)} facts "
+                "failed signal construction; refusing a partial root generation"
+            )
 
         # O3: Append Navamsha D9 cross-check signals
         # SAVEPOINT-guarded (same fix as salience_pctl_in_class below): a DB error inside
@@ -3518,13 +3523,15 @@ class BoLaksanaWriter(WriterBase):
             logger.info("[bo_laksana] %s — O3 navamsha cross-check: %d signals",
                         ayanamsha, len(navamsha_signals))
         except Exception as exc:
-            logger.warning("[bo_laksana] %s — O3 navamsha cross-check skipped: %s",
-                           ayanamsha, exc)
             try:
                 with conn.cursor() as _sp_cur:
                     _sp_cur.execute(f"ROLLBACK TO SAVEPOINT {sp_nav}")
             except Exception:
                 pass
+            raise RuntimeError(
+                f"[bo_laksana] {ayanamsha} — navamsha cross-check failed; "
+                "refusing a partial root generation"
+            ) from exc
 
         # Night-1 Lane 4 — Change 2.4 (CR-57): varga_ratification_divergence
         # signals. ga_vichara-backed — [] only when chart_vichara is
@@ -3592,6 +3599,11 @@ class BoLaksanaWriter(WriterBase):
 
         # Batch insert (salience_pctl_in_class now carried on each row — no second pass)
         inserted = _batch_insert(conn, signal_rows)
+        if inserted != len(signal_rows):
+            raise RuntimeError(
+                f"[bo_laksana] {ayanamsha} — {inserted}/{len(signal_rows)} "
+                "signals written; refusing a partial root generation"
+            )
 
         lane4_notes = (
             f";class_prior_hit_rate={prior_hit_rate:.3f}"
@@ -3606,6 +3618,7 @@ class BoLaksanaWriter(WriterBase):
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=inserted,
+            rows_skipped=0,
             notes=f"aya={ayanamsha};facts={len(fact_rows)};skipped={skipped}{lane4_notes}",
         )
 
