@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "compatibility_version": "planner-scu-v1",
-  "generated_at": "2026-09-14T08:15:17.000Z",
-  "content_hash": "sha256:5a2c37b7fefa30cd18769baa2138933eadf628187564dc38b41cff99cf65dd11",
+  "generated_at": "2026-09-14T13:29:29.000Z",
+  "content_hash": "sha256:c9c8520f5a63007587f4c8565298046ce82bec6b0f4210960e6fd028d2cca158",
   "source_catalog_fingerprint": "sha256:82d70ce366f65577513e5f6ba0bcbdff764e518efd20b26dea689d534136ad75",
   "scus": [
     {
@@ -536,12 +536,11 @@
           },
           "pagination": "offset",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all"
         }
       ],
       "source_descriptor_uris": [
@@ -619,12 +618,11 @@
           },
           "pagination": "offset",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0"
         }
       ],
       "source_descriptor_uris": [
@@ -1690,12 +1688,11 @@
           },
           "pagination": "none",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime"
         }
       ],
       "source_descriptor_uris": [
@@ -1755,12 +1752,11 @@
           },
           "pagination": "none",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}"
         }
       ],
       "source_descriptor_uris": [
@@ -4804,12 +4800,11 @@
           },
           "pagination": "none",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify"
         }
       ],
       "source_descriptor_uris": [
@@ -5502,12 +5497,11 @@
           },
           "pagination": "none",
           "pagination_verified": null,
-          "executable": false,
+          "executable": true,
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles",
-          "unavailable_reason": "CapabilityDescriptor has no executable handler."
+          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles"
         }
       ],
       "source_descriptor_uris": [
@@ -14873,8 +14867,8 @@
     "semantic_capabilities": 182,
     "editorial_scus": 5,
     "derived_scus": 177,
-    "executable_bindings": 179,
-    "unavailable_bindings": 6,
+    "executable_bindings": 185,
+    "unavailable_bindings": 0,
     "publicly_named_bindings": 7,
     "reviewed_pagination_bindings": 1,
     "producer_output_claims": 8,
