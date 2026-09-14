@@ -8,6 +8,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from pipeline.orchestrator.writers.mi_abhilekha import MiAbhilekhaWriter
+from pipeline.orchestrator.writers.mi_seva import MiSevaWriter
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -58,3 +64,105 @@ def test_mi_abhilekha_effect_contract_matches_source_and_stays_unratified() -> N
 
 def test_contract_inventory_is_exact() -> None:
     assert sorted(CONTRACTS) == ["mi_abhilekha", "mi_seva"]
+
+
+class _Cursor:
+    def __init__(self, connection):
+        self.connection = connection
+        self.rowcount = 0
+        self._one = None
+        self._many = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def execute(self, sql, params=None):
+        normalized = " ".join(sql.split())
+        self.connection.queries.append((normalized, params))
+        if "information_schema.tables" in normalized:
+            self._one = (1,) if params[0] in self.connection.present_tables else None
+        elif "COUNT(*) AS total" in normalized:
+            rows = self.connection.journal
+            self._one = {
+                "total": len(rows),
+                "answered": sum(row["answered_at"] is not None for row in rows),
+                "linked": sum(row["resulting_event_id"] is not None for row in rows),
+            }
+        elif normalized.startswith("SELECT j.chart_id"):
+            self._many = [
+                {key: row[key] for key in ("chart_id", "prediction_id", "resulting_event_id", "native_answer")}
+                for row in self.connection.journal
+                if row["answered_at"] is not None and row["resulting_event_id"] is not None
+            ]
+        elif normalized.startswith("UPDATE mimamsa_predictions"):
+            new_status, chart_id, prediction_id = params
+            key = (chart_id, prediction_id)
+            self.rowcount = int(self.connection.predictions.get(key) == "pending")
+            if self.rowcount:
+                self.connection.predictions[key] = new_status
+
+    def fetchone(self):
+        return self._one
+
+    def fetchall(self):
+        return self._many
+
+
+class _Connection:
+    def __init__(self, *, present_tables=(), journal=(), predictions=None):
+        self.present_tables = set(present_tables)
+        self.journal = list(journal)
+        self.predictions = dict(predictions or {})
+        self.queries = []
+
+    def cursor(self, **_kwargs):
+        return _Cursor(self)
+
+
+def test_mi_seva_contract_executes_fail_closed_without_writes() -> None:
+    required = CONTRACTS["mi_seva"]["required_public_relations"]
+    connection = _Connection(present_tables=required)
+    result = MiSevaWriter().run(SimpleNamespace(db_conn=connection))
+    assert result.rows_inserted == 0
+    assert all(query.startswith("SELECT 1 FROM information_schema.tables") for query, _ in connection.queries)
+
+    missing = _Connection(present_tables=required[:-1])
+    with pytest.raises(RuntimeError, match="required service tables absent"):
+        MiSevaWriter().run(SimpleNamespace(db_conn=missing))
+
+
+def test_mi_abhilekha_effect_is_chart_scoped_pending_only_and_idempotent() -> None:
+    journal = [
+        {"chart_id": "chart-a", "prediction_id": "p1", "resulting_event_id": "e1", "native_answer": "YES", "answered_at": "now"},
+        {"chart_id": "chart-b", "prediction_id": "p1", "resulting_event_id": "e2", "native_answer": "no", "answered_at": "now"},
+        {"chart_id": "chart-a", "prediction_id": "p2", "resulting_event_id": "e3", "native_answer": "confirmed", "answered_at": "now"},
+        {"chart_id": "chart-a", "prediction_id": "p3", "resulting_event_id": None, "native_answer": "yes", "answered_at": "now"},
+    ]
+    connection = _Connection(
+        journal=journal,
+        predictions={
+            ("chart-a", "p1"): "pending",
+            ("chart-b", "p1"): "pending",
+            ("chart-a", "p2"): "pending",
+            ("chart-a", "p3"): "confirmed",
+        },
+    )
+    context = SimpleNamespace(db_conn=connection)
+
+    first = MiAbhilekhaWriter().run(context)
+    assert first.rows_inserted == 3
+    assert connection.predictions == {
+        ("chart-a", "p1"): "confirmed",
+        ("chart-b", "p1"): "denied",
+        ("chart-a", "p2"): "confirmed",
+        ("chart-a", "p3"): "confirmed",
+    }
+
+    second = MiAbhilekhaWriter().run(context)
+    assert second.rows_inserted == 0
+    update_queries = [query for query, _ in connection.queries if query.startswith("UPDATE mimamsa_predictions")]
+    assert update_queries
+    assert all("WHERE chart_id = %s AND prediction_id = %s AND lifecycle_status = 'pending'" in query for query in update_queries)
