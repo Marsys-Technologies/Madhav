@@ -442,6 +442,44 @@ describe('Wave 4 response accountability', () => {
     expect(findings[0]!.obligation_id).toBeNull()
   })
 
+  it('deduplicates retried semantic evidence across volatile ToolBundle metadata', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Give me a complete wealth outlook',
+      scope_tuple: wealthScope,
+    })
+    const item = initial.plan_items.find((candidate) => {
+      const candidateBinding = bindingForInquiryItem(snapshot, initial, candidate.item_id)
+      return candidateBinding?.result_collection_verified
+        && candidateBinding.pagination_contract?.result_collection_path === 'content.rows'
+    })!
+    const binding = bindingForInquiryItem(snapshot, initial, item.item_id)!
+    const semanticResult = [{ content: JSON.stringify({ rows: [{ value: 'the same semantic result' }] }) }]
+    const first = {
+      tool_bundle_id: '11111111-1111-4111-8111-111111111111',
+      tool_name: binding.capability_uri,
+      latency_ms: 7,
+      result_hash: stableFingerprint(semanticResult),
+      results: semanticResult,
+    }
+    const retry = { ...first, tool_bundle_id: '22222222-2222-4222-8222-222222222222', latency_ms: 41 }
+    const contract = applyInquiryObservations(initial, [{
+      item_id: item.item_id,
+      disposition: 'served',
+      evidence_refs: [`retrieval:${stableFingerprint(first)}`, `retrieval:${stableFingerprint(retry)}`],
+    }])
+    const findings = buildInquiryFactRegister(contract, [first, retry], snapshot).facts
+      .filter((fact) => fact.kind === 'finding')
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]!.evidence_refs).toEqual(expect.arrayContaining([
+      `retrieval:${stableFingerprint(first)}`,
+      `retrieval:${stableFingerprint(retry)}`,
+      `result:${stableFingerprint('{"value":"the same semantic result"}')}`,
+    ]))
+  })
+
   it('detects one omitted finding inside an otherwise mapped multi-finding evidence set', () => {
     const { contract, evidencePayloads } = completeFixture()
     const register = buildInquiryFactRegister(contract, evidencePayloads)

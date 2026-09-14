@@ -115,35 +115,66 @@ export function buildInquiryFactRegister(
     }
   }
 
+  const findingsBySemanticCoordinate = new Map<string, {
+    content: string
+    row_hash: string
+    mode: ReturnType<typeof extractInquirySemanticFindings>['mode']
+    result_collection_path: string | null
+    obligations: Map<string, InquiryContract['obligations'][number]>
+    evidence_refs: Set<string>
+  }>()
   for (const payloadHash of [...obligationsByPayload.keys()].sort()) {
     const payload = payloadByHash.get(payloadHash)
     if (payload === undefined) continue
     const obligations = obligationsByPayload.get(payloadHash) ?? []
-    const obligationIds = uniqueSorted(obligations.map((obligation) => obligation.obligation_id))
-    const extraction = extractInquirySemanticFindings(evidenceBindings[payloadHash], payload)
+    const binding = evidenceBindings[payloadHash]
+    const extraction = extractInquirySemanticFindings(binding, payload)
     if (extraction.mode === 'reviewed_collection_missing') {
       validationErrors.push(`reviewed result collection ${extraction.result_collection_path} is absent from evidence ${payloadHash}`)
     }
-    extraction.rows.map(normalizedFindingContent).forEach((content, index) => {
+    const toolName = payload && typeof payload === 'object'
+      ? (payload as { tool_name?: unknown }).tool_name
+      : undefined
+    const sourceCoordinate = binding?.binding_id
+      ?? (typeof toolName === 'string' ? `opaque-tool:${toolName}` : 'opaque-unbound')
+    extraction.rows.map(normalizedFindingContent).forEach((content) => {
       const rowHash = stableFingerprint(content)
-      facts.push({
-        fact_id: factIdentity('finding', contract, `${payloadHash}:${extraction.result_collection_path ?? 'opaque'}:${index}:${rowHash}`),
-        kind: 'finding',
-        obligation_ids: obligationIds,
-        obligation_id: obligationIds.length === 1 ? obligationIds[0]! : null,
-        frontier_id: null,
-        materiality: obligations.some((obligation) => obligation.materiality === 'required') ? 'required' : 'supporting',
-        meaning: {
-          label: `Evidence finding ${index + 1} for ${obligations.map((obligation) => obligation.label).sort().join(' / ')}`,
-          rationale: extraction.mode === 'opaque_adapter_items'
-            ? `Opaque adapter item from canonical evidence payload ${payloadHash}; no independently reviewed result collection path was available.`
-            : `Semantic row at reviewed collection ${extraction.result_collection_path} in canonical evidence payload ${payloadHash}.`,
-          scu_ids: uniqueSorted(obligations.flatMap((obligation) => obligation.scu_ids)),
-          disposition: obligations.some((obligation) => obligation.disposition === 'served') ? 'served' : obligations[0]?.disposition ?? 'pending',
-        },
-        evidence_refs: [...uniqueSorted(evidenceRefsByPayload.get(payloadHash) ?? []), `result:${rowHash}`],
-        normalized_content: content,
-      })
+      const semanticCoordinate = `${sourceCoordinate}:${extraction.result_collection_path ?? 'opaque'}:${rowHash}`
+      const accumulated = findingsBySemanticCoordinate.get(semanticCoordinate) ?? {
+        content,
+        row_hash: rowHash,
+        mode: extraction.mode,
+        result_collection_path: extraction.result_collection_path,
+        obligations: new Map(),
+        evidence_refs: new Set<string>(),
+      }
+      obligations.forEach((obligation) => accumulated.obligations.set(obligation.obligation_id, obligation))
+      evidenceRefsByPayload.get(payloadHash)?.forEach((ref) => accumulated.evidence_refs.add(ref))
+      findingsBySemanticCoordinate.set(semanticCoordinate, accumulated)
+    })
+  }
+
+  for (const [semanticCoordinate, finding] of [...findingsBySemanticCoordinate.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    const obligations = [...finding.obligations.values()].sort((a, b) => a.obligation_id.localeCompare(b.obligation_id))
+    const obligationIds = obligations.map((obligation) => obligation.obligation_id)
+    const payloadHashes = uniqueSorted([...finding.evidence_refs].flatMap((ref) => evidenceHashFromRef(ref) ?? []))
+    facts.push({
+      fact_id: factIdentity('finding', contract, semanticCoordinate),
+      kind: 'finding',
+      obligation_ids: obligationIds,
+      obligation_id: obligationIds.length === 1 ? obligationIds[0]! : null,
+      frontier_id: null,
+      materiality: obligations.some((obligation) => obligation.materiality === 'required') ? 'required' : 'supporting',
+      meaning: {
+        label: `Evidence finding for ${obligations.map((obligation) => obligation.label).sort().join(' / ')}`,
+        rationale: finding.mode === 'opaque_adapter_items'
+          ? `Opaque adapter item from canonical evidence payloads ${payloadHashes.join(', ')}; no independently reviewed result collection path was available.`
+          : `Semantic row at reviewed collection ${finding.result_collection_path} in canonical evidence payloads ${payloadHashes.join(', ')}.`,
+        scu_ids: uniqueSorted(obligations.flatMap((obligation) => obligation.scu_ids)),
+        disposition: obligations.some((obligation) => obligation.disposition === 'served') ? 'served' : obligations[0]?.disposition ?? 'pending',
+      },
+      evidence_refs: [...uniqueSorted([...finding.evidence_refs]), `result:${finding.row_hash}`],
+      normalized_content: finding.content,
     })
   }
 
