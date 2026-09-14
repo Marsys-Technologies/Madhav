@@ -1,7 +1,7 @@
 ---
 artifact: MADHAV_DATA_PLANE_L2_STRUCTURAL_PROPOSITION_AND_RELATION_CONTRACT
 version: "1.0"
-status: IMPLEMENTED_LOCAL
+status: PRODUCER_READY_ACCEPTED
 authority: DP-SD-015
 runtime_contract: platform/python-sidecar/bodha_writers/data_plane_contracts.py
 accepted_l0_release: f6fed12c794224329f6b3b436f8b1b814499d06d
