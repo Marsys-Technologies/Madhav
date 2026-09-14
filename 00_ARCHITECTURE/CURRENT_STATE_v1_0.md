@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.72
+version: 6.73
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5913,12 +5913,12 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–4 COMPLETE (2026-09-14).** FC0 is frozen at
+> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–5 COMPLETE (2026-09-15).** FC0 is frozen at
 > `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 4 closes canonical
-> evidence finding identity, mandatory delivery, exact-span interpretation and fail-closed response
-> coverage across Portal and raw MCP assembly at source scope. Next frontier: W5-P1 disposable
-> migration/lifecycle/security proof, then W5-P2 three-door parity. This campaign cannot claim
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 5 closes disposable
+> lifecycle/security and bounded, genuinely shared Portal/managed/raw route parity at exact reviewed
+> head `9bd525bf0`; it explicitly does not claim full-catalog parity. Next frontier: W6 Beyond-Acarya
+> acceptance and authority-bound source-scope quarantine. This campaign cannot claim
 > merge, deployment, current production rows, empirical acceptance or health.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9342,20 +9342,33 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W4-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W5-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Wave 4 response accountability independently approved at exact technical head c7d9b021a after all content-binding, semantic-row, singleton, multi-obligation, retry-idempotency and canonicalization findings were repaired; full unit, type, lint and golden gates pass. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Wave 5 disposable lifecycle/security and bounded genuinely shared three-door parity independently approved at exact clean technical head 9bd525bf0. Focused, database, type, lint and golden gates pass; the full unit run had one five-second census timeout whose isolated rerun passed. No full-catalog, merge, deployment, shared migration, production or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Execute W5-P1 from the exact delivered Wave 4 close: prove migration 1033, RLS subject isolation, append-only evidence receipts, compare-and-swap/replay and overlay fail-closed behavior only in a disposable local environment; then execute W5-P2 three-door parity. Preserve R1-R12 and the source/local/disposable claim ceiling."
+  next_product_strategy_objective: "Execute W6-P1 versioned Beyond-Acarya acceptance and adversarial metrics, then W6-P2 source-scope close with explicit residual owners and triggers. Preserve the source/local/disposable ceiling and quarantine all deployment, shared migration, full-channel, signing-key, restart-recovery and production/empirical remainder."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W5-20260914**, migration 1033's durable lifecycle is
+proved only against disposable PostgreSQL: atomic principal/chart-bound creation, RLS isolation,
+append-only receipts, compare-and-swap/replay, immutable authorization and overlay fields, quota,
+retention and reversible down behavior. Portal, managed `prashna_ask` and raw inquiry routes execute
+one genuinely shared fixture and emit the same exact evidence projection, including continuation.
+Independent migration/security and parity reviewers approved exact clean head
+`9bd525bf0cd46ea076da9a26928075a4af4c845c` with no HIGH or MEDIUM finding. The shared denominator
+is only six of 184 platform-executable bindings; full-catalog parity is therefore expressly open.
+Focused, database, TypeScript, 56 golden-stream and lint gates pass. The full unit run passed 11,704
+tests in 1,100 files but one census file exceeded its five-second timeout; the isolated two-test
+rerun passed in 4.69 seconds. No merge, deployment, shared migration, credential/infrastructure
+action, production trace, runtime-health or empirical-value claim occurred.
 
 At the close of **MADHAV-PURNA-ANVESANA-W4-20260914**, response accountability is derived from
 the immutable inquiry denominator, canonical evidence and exact response spans rather than prose

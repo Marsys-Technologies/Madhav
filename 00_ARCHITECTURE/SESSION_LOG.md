@@ -41007,5 +41007,31 @@ binding, pagination/continuation and failure states.
 
 ### Next session objective
 
-Complete W5-P1 and W5-P2 under the active remote lease, publish focused stacked delivery, obtain
-the required independent reviews, and preserve the source/local/disposable claim ceiling.
+Open W6-P1 from the exact governed Wave 5 close head. Execute the versioned Beyond-Acarya
+acceptance suite for novel combinations, omission rate, route and semantic-edge coverage,
+long-inquiry closure and abstention quality. Then close W6-P2 only after independent terminal review
+confirms complete packet evidence, explicit residual owners/triggers, no production claim and lease
+release.
+
+### Wave 5 review corrections and outcome
+
+The initial Wave 5 candidates were not accepted. Independent review found that direct lifecycle
+inserts could bypass quota, retention and trusted timestamps; a static migration test retained stale
+assertions; the first parity fixture fabricated full-channel declarations; Portal discarded its
+projection; and missing-argument failures were normalized too loosely. The repaired implementation
+makes lifecycle creation atomic and privilege-bounded, proves grants and policy behavior against
+disposable PostgreSQL, and drives each actual route path from one genuine shared fixture while
+preserving the exact canonical projection and distinct failure fingerprints.
+
+Both independent reviewers approved exact clean technical head
+`9bd525bf0cd46ea076da9a26928075a4af4c845c` with no HIGH or MEDIUM finding. The combined focused
+gate passed 18 files / 214 tests; disposable database tests, TypeScript, 56/56 route goldens and
+full lint at zero errors / 590 inherited warnings pass. The full unit run passed 1,100 files and
+11,704 tests, with one census determinism file timing out at five seconds; its isolated two-test
+rerun passed in 4.69 seconds. This is a qualified local gate, not an unqualified full-suite pass.
+
+The exact shared denominator is six of 184 platform-executable bindings. Full-catalog channel
+coverage, reservation recovery after a process crash, a dedicated signing key, deployed cross-door
+traces and production/empirical acceptance remain explicit residuals for Wave 6 quarantine. No
+merge, deployment, shared/production migration or mutation, credential/infrastructure action,
+doctrine ratification, retirement or production-value claim occurred.
