@@ -17,6 +17,24 @@ import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
 
+type ForwardWindowState =
+  | 'not_needed'
+  | 'served'
+  | 'searched_empty'
+  | 'unbuilt'
+  | 'incompatible_filters'
+  | 'db_failure'
+
+interface ForwardWindowStatus {
+  state: ForwardWindowState
+  source_table: 'kala_bhavishya'
+  requested_filters: Record<string, unknown>
+  effective_filters: Record<string, unknown> | null
+  incompatible_filters: string[]
+  source_row_count: number | null
+  error: string | null
+}
+
 export const queryTemporalActivationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_temporal_activation',
   type:  'tool',
@@ -110,6 +128,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
     }
 
     const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
+    const explicitAyanamsha   = args['ayanamsha_id'] !== undefined && args['ayanamsha_id'] !== null
     // WP-1.3(e): track whether the caller supplied an explicit window so the echo can
     // honestly disclose when a default (today..+1y) was silently applied.
     const explicitFrom        = args['date_from'] !== undefined && args['date_from'] !== null
@@ -304,6 +323,28 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       // reads. When the primary activation query is empty, surface the projection windows that
       // overlap the SAME requested window so forward queries return reachable stored windows.
       let forward_windows: Record<string, unknown>[] = []
+      const requestedForwardFilters = {
+        date_from: as_of ? null : date_from,
+        date_to: as_of ? null : date_to,
+        as_of: as_of ?? null,
+        signal_ids: signal_ids ?? null,
+        domain: domain ?? null,
+        min_activation_strength: min_strength,
+        ayanamsha_id: {
+          value: ayanamsha_id,
+          source: explicitAyanamsha ? 'caller' : 'default',
+        },
+        limit: top_k,
+      }
+      let forward_window_status: ForwardWindowStatus = {
+        state: 'not_needed',
+        source_table: 'kala_bhavishya',
+        requested_filters: requestedForwardFilters,
+        effective_filters: null,
+        incompatible_filters: [],
+        source_row_count: null,
+        error: null,
+      }
       if (activations.rows.length === 0) {
         const disc = await query<{ total: number; dated: number }>(
           `SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
@@ -335,35 +376,98 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         }
 
         // Fallback: mirror get_projections (kala_bhavishya) for overlapping forward windows.
-        // kala_bhavishya is per-chart (not ayanamsha-scoped, like query_projections).
-        const fwConds = ['chart_id = $1']
-        const fwParams: unknown[] = [chart_id]
-        let fp = 2
-        if (as_of) {
-          fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(as_of)
-          fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(as_of)
+        // The two tables do not have identical dimensions. In particular, kala_bhavishya is
+        // not ayanamsha-scoped and effective_score is not activation orb_strength. Never drop
+        // either constraint while echoing it as honored: an explicit ayanamsha or positive
+        // activation-strength request makes this fallback incompatible and therefore closed.
+        const incompatibleFilters: string[] = []
+        if (explicitAyanamsha) incompatibleFilters.push('ayanamsha_id')
+        if (min_strength > 0) incompatibleFilters.push('min_activation_strength')
+
+        if (incompatibleFilters.length > 0) {
+          forward_window_status = {
+            ...forward_window_status,
+            state: 'incompatible_filters',
+            incompatible_filters: incompatibleFilters,
+          }
         } else {
-          if (date_from) { fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(date_from) }
-          if (date_to)   { fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(date_to) }
-        }
-        fwParams.push(top_k)
-        const fwLimitPh = `$${fp++}`
-        try {
-          const fw = await query<Record<string, unknown>>(
-            `SELECT id, signal_id, domain, probability_tier, effective_score,
-                    to_char(window_start, 'YYYY-MM-DD') AS window_start,
-                    to_char(window_end, 'YYYY-MM-DD')   AS window_end,
-                    to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
-                    narrative, source_citation
-               FROM kala_bhavishya
-              WHERE ${fwConds.join(' AND ')}
-              ORDER BY window_start
-              LIMIT ${fwLimitPh}`,
-            fwParams,
-          )
-          forward_windows = fw.rows
-        } catch {
-          // kala_bhavishya may be unbuilt for a chart — leave forward_windows empty (honest).
+          const fwConds = ['chart_id = $1']
+          const fwParams: unknown[] = [chart_id]
+          let fp = 2
+          if (as_of) {
+            fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(as_of)
+            fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(as_of)
+          } else {
+            if (date_from) { fwConds.push(`window_end   >= $${fp++}::date`); fwParams.push(date_from) }
+            if (date_to)   { fwConds.push(`window_start <= $${fp++}::date`); fwParams.push(date_to) }
+          }
+          if (signal_ids && signal_ids.length > 0) {
+            const phs = signal_ids.map(() => `$${fp++}`).join(', ')
+            fwConds.push(`signal_id IN (${phs})`)
+            fwParams.push(...signal_ids)
+          }
+          if (domain) {
+            fwConds.push(`domain = $${fp++}`)
+            fwParams.push(domain)
+          }
+          fwParams.push(top_k)
+          const fwLimitPh = `$${fp++}`
+          const effectiveFilters = {
+            date_from: as_of ? null : date_from,
+            date_to: as_of ? null : date_to,
+            as_of: as_of ?? null,
+            signal_ids: signal_ids ?? null,
+            domain: domain ?? null,
+            min_activation_strength: null,
+            ayanamsha_id: null,
+            limit: top_k,
+          }
+          try {
+            const fw = await query<Record<string, unknown>>(
+              `SELECT id, signal_id, domain, probability_tier, effective_score,
+                      to_char(window_start, 'YYYY-MM-DD') AS window_start,
+                      to_char(window_end, 'YYYY-MM-DD')   AS window_end,
+                      to_char(peak_date, 'YYYY-MM-DD')    AS peak_date,
+                      narrative, source_citation
+                 FROM kala_bhavishya
+                WHERE ${fwConds.join(' AND ')}
+                ORDER BY window_start
+                LIMIT ${fwLimitPh}`,
+              fwParams,
+            )
+            forward_windows = fw.rows
+            if (forward_windows.length > 0) {
+              forward_window_status = {
+                ...forward_window_status,
+                state: 'served',
+                effective_filters: effectiveFilters,
+              }
+            } else {
+              // An empty filtered search is not the same as an unbuilt source. One bounded
+              // aggregate classifies the state; no projection rows are dumped or inferred.
+              const source = await query<{ total: number }>(
+                `SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1`,
+                [chart_id],
+              )
+              const sourceRowCount = Number(source.rows[0]?.total ?? 0)
+              forward_window_status = {
+                ...forward_window_status,
+                state: sourceRowCount === 0 ? 'unbuilt' : 'searched_empty',
+                effective_filters: effectiveFilters,
+                source_row_count: sourceRowCount,
+              }
+            }
+          } catch (err) {
+            // The primary activation query succeeded. Preserve it, but expose fallback
+            // failure as a distinct state instead of collapsing failure into an empty search.
+            forward_windows = []
+            forward_window_status = {
+              ...forward_window_status,
+              state: 'db_failure',
+              effective_filters: effectiveFilters,
+              error: String(err),
+            }
+          }
         }
       }
 
@@ -383,10 +487,18 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
           // activation set is empty — makes forward "what's activating?" queries useful.
           forward_windows,
           forward_window_count: forward_windows.length,
+          // DP-SD-017 L3-U05: explicit fallback receipt. `filters` below remains the
+          // activation-table compatibility echo; this receipt is authoritative for the
+          // semantically different kala_bhavishya fallback.
+          forward_window_status,
           predicates,
           predicate_count:   predicates.length,
           signal_id_refs:    signalRefs,
-          filters: { date_from, date_to, as_of: as_of ?? null, signal_ids, top_k, min_strength, domain: domain ?? null },
+          filters: {
+            date_from, date_to, as_of: as_of ?? null, signal_ids, top_k, min_strength,
+            domain: domain ?? null,
+            applies_to: 'activations',
+          },
           // WP-1.3(e): explicit, always-present echo of the date filter actually applied,
           // including whether the range fell back to its today..+1y default.
           date_filter: {
