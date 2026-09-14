@@ -18,7 +18,7 @@
     {"packet_id":"W5-P1","status":"COMPLETE","event_ids":["PA-E0027","PA-E0028","PA-E0029","PA-E0030"]},
     {"packet_id":"W5-P2","status":"COMPLETE","event_ids":["PA-E0028","PA-E0029","PA-E0030"]},
     {"packet_id":"W6-P1","status":"COMPLETE","event_ids":["PA-E0031","PA-E0032","PA-E0033"],"artifact":"BEYOND_ACARYA_ACCEPTANCE_v1.json"},
-    {"packet_id":"W6-P2","status":"INDEPENDENT_REVIEW_PENDING","event_ids":["PA-E0034","PA-E0035"]}
+    {"packet_id":"W6-P2","status":"INDEPENDENT_REVIEW_PENDING","event_ids":["PA-E0034","PA-E0035","PA-E0036"]}
   ],
   "acceptance_disposition": {
     "artifact": "BEYOND_ACARYA_ACCEPTANCE_v1.json",

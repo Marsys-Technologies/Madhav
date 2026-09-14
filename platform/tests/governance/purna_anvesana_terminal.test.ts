@@ -28,11 +28,15 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
       event.type === 'PACKET_REVIEW_APPROVED'
       && event.actor === 'w6_terminal_review'
       && event.packet_id === 'W6-P2')
+    const release = w6p2Events.find((event: { type: string, packet_id: string }) =>
+      event.type === 'LEASE_RELEASED' && event.packet_id === 'W6-P2')
     const completion = w6p2Events.find((event: { type: string, packet_id: string, sequence: number }) =>
       ['SOURCE_SCOPE_COMPLETED', 'WAVE_COMPLETED'].includes(event.type)
       && event.packet_id === 'W6-P2'
-      && event.sequence > (approval?.sequence ?? Number.MAX_SAFE_INTEGER))
+      && event.sequence > (release?.sequence ?? Number.MAX_SAFE_INTEGER))
     expect(approval).toBeDefined()
+    expect(release).toBeDefined()
+    expect(release?.sequence ?? -1).toBeGreaterThan(approval?.sequence ?? Number.MAX_SAFE_INTEGER)
     expect(completion).toBeDefined()
 
     const acceptanceApproval = events.find((event: { event_id: string }) =>
