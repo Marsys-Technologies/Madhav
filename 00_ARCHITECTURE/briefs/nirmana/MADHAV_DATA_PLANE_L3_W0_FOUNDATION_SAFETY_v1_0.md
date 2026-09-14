@@ -1,14 +1,16 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY
 version: "1.0"
-status: FINAL_REVIEW_PENDING
-observed_at: 2026-09-15T04:02:00+05:30
+status: ACCEPTED
+observed_at: 2026-09-15T05:01:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 packet: L3-W0-FOUNDATION-SAFETY-01
 implementation_tip: 3f109869d
+accepted_source_tip: 00a161195
+independent_review: PASS_ZERO_FINDINGS
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 production_builds: 0
@@ -20,7 +22,7 @@ next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
 
 ## 1. Acceptance boundary
 
-This is the final-review candidate for the first DP-SD-017 packet. W0 establishes
+This is the accepted record for the first DP-SD-017 packet. W0 establishes
 a safe, measurable source/local foundation. It does not establish physical L0-L2
 generation availability, L3 data acceptance, protected integration, deployment,
 consumer value or empirical performance. No production build, rebuild, database
@@ -31,17 +33,20 @@ coordination-lease push is governance state, not an execution/source delivery.
 | Required W0 output | Evidence at candidate tip | Candidate disposition |
 |---|---|---|
 | authority, source, environment, campaign, ownership and holds | validated session-open; exact pins; protected/deployed/live recheck; verified lease | COMPLETE |
-| exact denominator and first safe frontier | 22 active plus protected retired sweep; 39-partition/699-field register; DAG/owner map | COMPLETE CANDIDATE |
+| exact denominator and first safe frontier | 22 active plus protected retired sweep; 39-partition/699-field register; DAG/owner map | INDEPENDENTLY ACCEPTED |
 | Kshetra planning/recovery safety | fail-before-DML populated-slice preservation, zero-DML planning and real savepoint crash/resume proof | INDEPENDENTLY ACCEPTED |
 | Bhavishya empty/history safety | prevalidated replacement, stable protected identity/content and partition serialization | INDEPENDENTLY ACCEPTED |
-| measured baseline and independent reference | reproducible five-run Kshetra/transit record, DHARA decimal oracle, source-qualified Vedha case | COMPLETE CANDIDATE |
+| measured baseline and independent reference | reproducible five-run Kshetra/transit record, DHARA decimal oracle, source-qualified Vedha case | INDEPENDENTLY ACCEPTED |
 | generation/publication/recovery design | section 6 | COMPLETE AS DESIGN; physical schema/data remain held |
 | consumer sentinels | L3-U05 requested/effective filter and fallback-state tests | INDEPENDENTLY ACCEPTED |
 | exact next packets | section 8 | FROZEN |
 
-W0 may be marked accepted only after an independent reviewer checks this complete
-record and exact candidate tip. Green tests or the authoring agents' reports do
-not self-certify the packet.
+Independent review of exact source tip `00a161195` returned terminal PASS with
+zero HIGH, MED or LOW findings. Its final changed-area run passed 307 tests with
+four skips; U05 passed 16; the migration guard passed; the benchmark harness
+reproduced 22 substeps, 61 rows, 263,206 bytes and both pinned hashes; and the
+full W0 diff from accepted L2 passed `git diff --check`. This accepts W0 only;
+it does not accept a physical generation, integration, deployment or value.
 
 ## 2. Pinned current truth
 

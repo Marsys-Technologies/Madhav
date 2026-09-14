@@ -1,16 +1,17 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: W0_FINAL_REVIEW_PENDING
-observed_at: 2026-09-15T04:04:00+05:30
+status: W0_ACCEPTED_RI_01_OPENING
+observed_at: 2026-09-15T05:01:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-W0-FOUNDATION-SAFETY-01
+active_packet: L3-RI-01-PRECURSOR-GENERATION-INTEGRATION
 implementation_tip: 3f109869dc2fc31842111a61ebf39ef9b1345fb2
+w0_accepted_source_tip: 00a161195
 coordination_lease: MADHAV-DATA-PLANE-L3-W0-20260915
 heartbeat_id: l3-k-la-execution-recovery
 next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
@@ -263,7 +264,7 @@ this file, the execution ledger and the exact next eligible action above.
 
 | State | Evidence |
 |---|---|
-| source producer readiness | accepted L0-L2 contracts; W0 L3 safety subpackets accepted, field/baseline candidate corrected, final packet review pending |
+| source producer readiness | accepted L0-L2 contracts; W0 terminal PASS at `00a161195`; precursor release integration opening |
 | physical upstream data | `HELD`; required generation-head relations absent |
 | L3 physical data | legacy capital exists, but current t3 acceptance is absent and six canonical outputs are empty |
 | consumer integration | `NOT_RUN` |
@@ -273,9 +274,8 @@ this file, the execution ledger and the exact next eligible action above.
 
 ## 8. Exact recovery action
 
-Final-review candidate `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md`
-must receive one independent packet-level challenge. On PASS, terminalize W0 and
-start `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`: resolve the un-applied 1033/
+W0 terminal PASS is recorded at exact source tip `00a161195`. The active recovery
+action is `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`: resolve the un-applied 1033/
 1034 collision across the data-plane and planner/Purna lineages, obtain migration
 review, and establish a protected precursor release before W1 physical generation
 work. No L3 build is eligible until compatible L0-L2 physical heads exist.
