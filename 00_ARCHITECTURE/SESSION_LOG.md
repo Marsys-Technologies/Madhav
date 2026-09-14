@@ -40498,3 +40498,207 @@ session_close:
   unblocks: [W3-P1, W3-P2]
   handoff_notes: "Start Wave 3 from the exact delivered Wave 2 head after governance close; implement normalized intent, deterministic ontology/graph traversal, and the independent omission challenger while retaining the source/local/disposable ceiling."
 ```
+
+---
+
+## MADHAV-PURNA-ANVESANA-W3-20260914 — 2026-09-14
+
+```yaml
+session_open:
+  session_id: MADHAV-PURNA-ANVESANA-W3-20260914
+  cowork_thread_name: "Madhav — Purna Anvesana Wave 3"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave3
+  step_number_or_layer: "Purna Anvesana Wave 3 — inquiry compiler and omission challenger"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W2-20260914
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PURNA-ANVESANA-W3-20260914
+    lease_status_verified: true
+    lease_verified_at: 2026-09-14T21:14:00+05:30
+    coordination_commit: 08a183ac0556d3ef192a7ce4a013bdbe424d1523
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)", "99_ARCHIVE/MARSYS_JIS_BOOTSTRAP_HANDOFF.md (SUPERSEDED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md, read_at: 2026-09-14T21:14:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, read_at: 2026-09-14T21:14:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - platform/src/lib/vidhi/inquiry/**
+      - platform/src/lib/retrieval/registry/knowledge/**
+      - platform/tests/pariprashna/route_ports/**
+    must_not_touch:
+      - origin/main and protected or release refs
+      - PR 2597 branch history or content
+      - production or shared database, build, deployment, traffic, scheduler, credentials, secrets, or infrastructure
+      - shared or production migration application
+      - frozen WriterBase implementation or orchestrator contract
+      - foreign campaign branches, worktrees, queues, ledgers, or runtime state
+      - doctrine ratification, asset retirement, or destructive cleanup
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs in Wave 3."
+      acknowledged: true
+  red_team_due: true
+  notes: "Wave 3 is source/local only, stacked at governed Wave 2 close 99817ef49. Deterministic floors and finalization remain authoritative over AI proposals."
+```
+
+### Opening validation
+
+`schema_validator.py --handshake` returned zero violations and exit 0 before Wave 3 source mutation.
+
+### Scope amendment W3-A1 — raw MCP inquiry integration fixture
+
+The full platform unit gate exposed two raw MCP route tests whose deliberately minimal capability
+snapshot contains only `scu.test.wealth`. Wave 3 makes recognized domain floors mandatory and
+fails closed when their SCUs are absent, so those fixtures now stop before exercising the route
+behavior they own. This is a test-fixture compatibility change only: the production route and
+runtime contracts are not changed, and the mandatory-floor failure behavior remains asserted in
+the Wave 3 acceptance suite.
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts
+  reason: "Add the two mandatory floor identities used by the existing wealth and career route tests to their synthetic capability snapshot."
+  authority: "MADHAV-PURNA-ANVESANA-W3-20260914 remote source/local Wave 3 lease"
+  evidence:
+    pre_amendment_full_unit_gate: "2 failed, 11657 passed; both failures were INQUIRY_REQUIRED_FLOOR_MISSING from the synthetic one-SCU snapshot"
+    retained_fail_closed_detector: "platform/src/lib/vidhi/inquiry/wave3_acceptance.test.ts"
+  claim_ceiling: "synthetic source/local integration-fixture compatibility only; no production or empirical acceptance claim"
+```
+
+### Wave 3 review corrections and outcome
+
+The first complete candidate at `05939c0c04f7701ff660218a4e811975ea09529c` was not accepted.
+Independent review reproduced three fail-closed defects: a supporting AI facet could suppress a
+required graph obligation; first-wins frontier de-duplication could suppress a material challenger
+finding; and the configured graph-node cap was rewritten after AI facet selection. The repaired
+candidate then exposed a fourth defect: compiler-time search/adjacency cap frontiers were omitted
+from immutable authorization recomputation.
+
+All four defects now have direct acceptance regressions. Required materiality dominates supporting
+duplicates, frontier merges preserve all reasons and source references, semantic search is globally
+bounded across base and AI facets, graph expansion is separately and immutably accounted, and all
+compiler-time frontier classes remain inside the authorization hash projection. Both independent
+reviewers approved exact technical head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9` with no remaining
+HIGH or MEDIUM finding.
+
+W3-P1 and W3-P2 are source/local complete. Inquiry scope aliases converge before hashes and floor
+selection; recognized missing floors fail closed; traversal follows only source-backed reviewed
+edges; the omission challenger is independent of planner proposals; and cap exhaustion produces a
+required frontier rather than a completion claim. The exact-head gates passed 1,098 unit files with
+71 skipped and 11,664 tests with 662 skipped and two todo; TypeScript, capability-knowledge codegen
+freshness, 56/56 route golden streams and full lint at zero errors / 590 inherited warnings also
+pass. The focused stack is PR #2601 on PR #2600. No merge, deployment, shared/production mutation,
+migration application, credential/infrastructure action, doctrine ratification, retirement or
+production/empirical acceptance claim occurred.
+
+### Next session objective
+
+Open W4-P1 from the exact governed Wave 3 close head. Implement the iterative evidence loop and
+response accountability: complete fact registration, mandatory fact delivery, continuation closure
+and a normalized response-coverage receipt, while preserving R1-R12 and the source/local/disposable
+ceiling.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV-PURNA-ANVESANA-W3-20260914
+  closed_at: 2026-09-14T21:54:42+05:30
+  tool: Codex
+  files_touched:
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/compiler.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/compiler.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/graph_traversal.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/graph_traversal.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/index.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/intent_normalization.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/intent_normalization.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/omission_challenger.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/omission_challenger.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/wave3_acceptance.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: MADHAV_PURNA_ANVESANA_WAVE3_INQUIRY_COMPILER
+        change: no_registry_update_required
+        rationale: "Wave-local compiler modules remain governed by the registered planner implementation brief and campaign control surfaces."
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_AFTER_CORRECTIONS
+    artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: 00_ARCHITECTURE/drift_reports/DRIFT_REPORT_adhoc_20260914T162322Z.md, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: null, violations_found: 42}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: ef46c91cefd2b45e3830903c2a42c053b3c34ec1
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides: []
+  halts_encountered:
+    - "Initial full unit gate found two synthetic raw-MCP snapshots missing newly mandatory floors; W3-A1 amended only that test fixture."
+    - "Independent review refuted the first candidate on obligation/frontier materiality and budget integrity; all findings were repaired and re-reviewed."
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: MADHAV-PURNA-ANVESANA-W3-20260914
+      obligation_addressed: true
+      evidence: "No MP revision or health-crisis/mental-health serving change occurred."
+  known_residuals:
+    - finding_id: inherited_drift_detector_baseline_79
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 77 MEDIUM and 2 LOW findings, no Wave 3 increase"
+    - finding_id: inherited_schema_validator_baseline_42
+      severity: MEDIUM
+      booking_reference: "MADHAV-PLANNER-KNOWLEDGE R12; inherited 42 MEDIUM/LOW violations after session close"
+    - finding_id: source_scope_only
+      severity: LOW
+      booking_reference: "No merge, deployment, current production state or empirical acceptance proof was authorized or claimed."
+  close_criteria_met: true
+  unblocks: [W4-P1]
+  handoff_notes: "Start Wave 4 from the exact delivered Wave 3 close after claiming a fresh remote lease; implement fact registration, mandatory fact delivery, continuation closure and response coverage without broadening the source/local/disposable ceiling."
+```

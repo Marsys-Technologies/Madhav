@@ -132,7 +132,7 @@
       "t": "<ms>",
       "subject": "inquiry_contract",
       "grade": "INCOMPLETE",
-      "detail": "1/1 required obligations dispositioned; 0 required frontier items unresolved; receipt sha256:e53c71cae4290f98856ea05635d8f4bccee5442124b53516cc94a32e267790c7"
+      "detail": "5/5 required obligations dispositioned; 0 required frontier items unresolved; receipt sha256:e5d4621f8ae981f77be2c864a9452468dcd9fea54fe6fa9dc8b8012b85e2e5db"
     },
     {
       "type": "phase",
