@@ -40062,3 +40062,108 @@ session_close:
   unblocks: [W1-P1, W1-P2]
   handoff_notes: "Start Wave 1 from the exact delivered Wave 0 head; keep PR 2597 frozen and retain the source/local/disposable ceiling."
 ```
+
+---
+
+## MADHAV-PURNA-ANVESANA-W1-20260914 — 2026-09-14
+
+```yaml
+session_open:
+  session_id: MADHAV-PURNA-ANVESANA-W1-20260914
+  cowork_thread_name: "Madhav — Purna Anvesana Wave 1"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave1
+  step_number_or_layer: "Purna Anvesana Wave 1 — producer contracts and route dispositions"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W0-20260914
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PURNA-ANVESANA-W1-20260914
+    lease_status_verified: true
+    lease_verified_at: 2026-09-14T18:19:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)", "99_ARCHIVE/MARSYS_JIS_BOOTSTRAP_HANDOFF.md (SUPERSEDED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-14T17:38:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, read_at: 2026-09-14T17:40:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, read_at: 2026-09-14T17:40:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, read_at: 2026-09-14T17:41:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, read_at: 2026-09-14T17:42:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-14T17:42:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, read_at: 2026-09-14T17:44:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, read_at: 2026-09-14T17:44:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, read_at: 2026-09-14T17:45:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md, read_at: 2026-09-14T18:20:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, read_at: 2026-09-14T18:19:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**
+      - 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - platform/scripts/generate_capability_estate_census.ts
+      - platform/scripts/generate_capability_knowledge.ts
+      - platform/scripts/__tests__/generate_capability_estate_census.test.ts
+      - platform/scripts/__tests__/generate_capability_knowledge.test.ts
+      - platform/src/generated/capability_estate_census.json
+      - platform/src/generated/capability_knowledge.snapshot.json
+      - platform/src/lib/retrieval/capability_knowledge/**
+      - platform/src/lib/retrieval/registry/**
+      - platform-mcp/src/tools/**
+    must_not_touch:
+      - origin/main and protected or release refs
+      - PR 2597 branch history or content
+      - production or shared database, build, deployment, traffic, scheduler, credentials, secrets, or infrastructure
+      - shared or production migration application
+      - frozen WriterBase implementation or orchestrator contract
+      - foreign campaign branches, worktrees, queues, ledgers, or runtime state
+      - doctrine ratification, asset retirement, or destructive cleanup
+      - migration files or applied schema in Wave 1
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs in Wave 1."
+      acknowledged: true
+  red_team_due: true
+  notes: "Wave 1 is source-only and stacked at Wave 0 commit 00397839e; independent reviewers are read-only."
+```
+
+### Opening validation
+
+`schema_validator.py --handshake /tmp/MADHAV_PURNA_ANVESANA_W1_SESSION_OPEN.yaml` returned 0
+violations and exit 0 before Wave 1 source mutation.
+
+### Scope amendment — 2026-09-14T18:39:09+05:30
+
+The independent W1-P1 denominator review showed that eight active relational producers
+cannot receive exact output contracts without adding reviewed `asset_output_digest_specs`
+rows. The user-authorized Wave 1 objective expressly requires those contracts, while the
+opening exclusion of migration files would make that gate impossible. The source-only
+scope is therefore amended to permit one new, unapplied migration source and its focused
+tests:
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql
+    - platform/python-sidecar/tests/**
+    - platform/python-sidecar/scripts/nirmana_service_effect_contracts.json
+  remove_from_must_not_touch:
+    - migration files or applied schema in Wave 1
+  retained_prohibition:
+    - no migration may be applied to any shared or production database
+  reason: "W1-P1 found eight exact active relational producer gaps; metadata cannot substitute for source-reviewed deterministic output specifications."
+  authority: "MADHAV PURNA ANVESANA Wave 1 user brief"
+```

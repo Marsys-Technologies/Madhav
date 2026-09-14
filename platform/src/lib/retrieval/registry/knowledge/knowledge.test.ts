@@ -14,6 +14,8 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
+    expect(snapshot.census.executable_bindings).toBe(185)
+    expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(second.content_hash).toBe(snapshot.content_hash)
     expect(Object.isFrozen(snapshot)).toBe(true)

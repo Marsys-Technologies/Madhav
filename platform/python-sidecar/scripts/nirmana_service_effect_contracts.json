@@ -1,0 +1,69 @@
+{
+  "schema_version": "nirmana-service-effect-contract/v1",
+  "contracts": {
+    "mi_seva": {
+      "contract_kind": "readiness_read",
+      "authority_state": "source_observed",
+      "reads": [
+        "information_schema.tables"
+      ],
+      "required_public_relations": [
+        "mimamsa_insight_units",
+        "mimamsa_journal",
+        "mimamsa_multipliers",
+        "mimamsa_signal_adjustment"
+      ],
+      "writes": [],
+      "success_postconditions": {
+        "all_required_relations_present": true,
+        "rows_inserted": 0
+      },
+      "failure_postconditions": {
+        "missing_relation_raises": "RuntimeError",
+        "partial_success_forbidden": true
+      },
+      "implementation_ref": "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py",
+      "known_limits": [
+        "This verifies build-time service readiness only; it does not prove serve-time overlay behavior or deployment."
+      ]
+    },
+    "mi_abhilekha": {
+      "contract_kind": "fixture_scoped_effect",
+      "authority_state": "source_observed_unratified",
+      "reads": [
+        "mimamsa_journal"
+      ],
+      "writes": [
+        "mimamsa_predictions.lifecycle_status"
+      ],
+      "selection": {
+        "journal_answered_at": "not_null",
+        "journal_resulting_event_id": "not_null",
+        "prediction_match": [
+          "chart_id",
+          "prediction_id"
+        ],
+        "prediction_prior_lifecycle_status": "pending"
+      },
+      "observed_classification": {
+        "confirmed_when_casefolded_answer_contains_any": [
+          "confirmed",
+          "yes"
+        ],
+        "denied_otherwise": true
+      },
+      "postconditions": {
+        "cross_chart_update_forbidden": true,
+        "non_pending_update_forbidden": true,
+        "repeat_run_is_idempotent_after_transition": true,
+        "rows_inserted_reports_updated_prediction_count": true
+      },
+      "execution_boundary": "disposable_fixture_only_until_product_review",
+      "implementation_ref": "platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py",
+      "known_limits": [
+        "The source currently maps every non-confirming answer to denied; this behavior is recorded, not ratified, and requires explicit product review before durable serving acceptance.",
+        "This effect contract must never be probed against real user outcomes."
+      ]
+    }
+  }
+}
