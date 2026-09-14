@@ -5,8 +5,8 @@
  * one or more executable registry descriptors without collapsing either side.
  */
 
-export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '1.0.0' as const
-export const CAPABILITY_COMPATIBILITY_VERSION = 'planner-scu-v1' as const
+export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '2.0.0' as const
+export const CAPABILITY_COMPATIBILITY_VERSION = 'planner-scu-v2' as const
 
 export type SemanticCapabilityKind =
   | 'datum'
@@ -29,6 +29,58 @@ export type CapabilityRelation =
 export type ExecutionBindingKind = 'registry_capability' | 'mcp_native'
 export type PaginationSemantics = 'none' | 'cursor' | 'offset' | 'bounded_complete' | 'bounded_unverified'
 export type ExecutionChannel = 'platform_internal' | 'mcp_full' | 'mcp_compact' | 'mcp_consult'
+
+export type SemanticConceptType =
+  | 'capability'
+  | 'domain_concept'
+  | 'retrieval_archetype'
+  | 'tool_role'
+  | 'projection'
+
+export interface SemanticConceptBinding {
+  readonly concept_id: string
+  readonly concept_type: SemanticConceptType
+  readonly source_ref: string
+}
+
+export interface SemanticConcept {
+  readonly concept_id: string
+  readonly types: readonly SemanticConceptType[]
+  readonly source_refs: readonly string[]
+}
+
+export interface SemanticEditorialSource {
+  readonly source_ref: string
+  readonly source_fields: readonly string[]
+}
+
+export interface SemanticGapDisposition {
+  readonly gap: string
+  readonly status: 'accepted_boundary' | 'deferred_contract' | 'blocked_authority'
+  readonly rationale: string
+  readonly source_ref: string
+}
+
+export interface SemanticGraphDisposition {
+  readonly status: 'connected' | 'isolated_dispositioned'
+  readonly rationale: string
+  readonly source_refs: readonly string[]
+}
+
+export interface ProducerSemanticBinding {
+  readonly asset_id: string
+  readonly target_scu_id: string
+  readonly relation: 'provides_evidence_for'
+  readonly rationale: string
+  readonly source_refs: readonly string[]
+}
+
+export interface ProducerSemanticDisposition {
+  readonly status: 'linked' | 'not_applicable'
+  readonly asset_ids: readonly string[]
+  readonly rationale: string
+  readonly source_refs: readonly string[]
+}
 
 export interface PaginationContract {
   readonly request_position_path?: string
@@ -111,6 +163,12 @@ export interface ProducerOutputClaim {
 export interface SemanticCapabilityUnit extends SemanticCapabilityDeclaration {
   readonly bindings: readonly SemanticCapabilityBinding[]
   readonly source_descriptor_uris: readonly string[]
+  readonly editorial_method: 'authored_declaration' | 'descriptor_metadata_review'
+  readonly editorial_sources: readonly SemanticEditorialSource[]
+  readonly concept_bindings: readonly SemanticConceptBinding[]
+  readonly gap_dispositions: readonly SemanticGapDisposition[]
+  readonly graph_disposition: SemanticGraphDisposition
+  readonly producer_semantic_disposition: ProducerSemanticDisposition
 }
 
 export interface SemanticCapabilityEdge {
@@ -118,6 +176,8 @@ export interface SemanticCapabilityEdge {
   readonly relation: CapabilityRelation
   readonly to_scu_id: string
   readonly rationale: string
+  readonly edge_source?: 'authored_declaration' | 'drill_child_contract'
+  readonly source_ref?: string
 }
 
 export interface CapabilityKnowledgeCensus {
@@ -133,6 +193,16 @@ export interface CapabilityKnowledgeCensus {
   readonly reviewed_pagination_bindings: number
   readonly producer_output_claims: number
   readonly reviewed_output_claims: number
+  readonly typed_concepts: number
+  readonly unbound_concepts: number
+  readonly isolated_scus: number
+  readonly graph_components: number
+  readonly dispositioned_isolated_scus: number
+  readonly unresolved_isolated_scus: number
+  readonly producer_semantic_bindings: number
+  readonly unbound_active_producers: number
+  readonly undispositioned_producer_scus: number
+  readonly undispositioned_gaps: number
   readonly exclusions: readonly { capability_uri: string; reason: string }[]
 }
 
@@ -142,8 +212,12 @@ export interface CapabilityKnowledgeSnapshot {
   readonly generated_at: string
   readonly content_hash: string
   readonly source_catalog_fingerprint: string
+  readonly semantic_review_fingerprint: string
+  readonly producer_contract_fingerprint: string
   readonly scus: readonly SemanticCapabilityUnit[]
   readonly edges: readonly SemanticCapabilityEdge[]
+  readonly concept_universe: readonly SemanticConcept[]
+  readonly producer_semantic_bindings: readonly ProducerSemanticBinding[]
   readonly census: CapabilityKnowledgeCensus
 }
 
@@ -189,6 +263,18 @@ export interface KnowledgeIntegrityFinding {
     | 'BAD_PAGINATION_CONTRACT'
     | 'BAD_PRODUCER_OUTPUT_CLAIM'
     | 'ORPHAN_DESCRIPTOR'
+    | 'UNBOUND_CONCEPT'
+    | 'ISOLATED_SCU'
+    | 'DISCONNECTED_GRAPH'
+    | 'UNDISPOSITIONED_GAP'
+    | 'UNSOURCED_EDITORIAL_SCU'
+    | 'CONCEPT_BINDING_MISMATCH'
+    | 'INVALID_SEMANTIC_EDGE'
+    | 'INVALID_GRAPH_DISPOSITION'
+    | 'UNBOUND_ACTIVE_PRODUCER'
+    | 'INVALID_PRODUCER_SEMANTIC_BINDING'
+    | 'INVALID_PRODUCER_SEMANTIC_DISPOSITION'
+    | 'CHANGE_SYNC_DRIFT'
     | 'COMPATIBILITY_MISMATCH'
   readonly severity: 'error' | 'warning'
   readonly subject: string

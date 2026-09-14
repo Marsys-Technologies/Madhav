@@ -49,13 +49,24 @@ export function buildPlannerCapabilityKnowledgeProjection(
   scope: InquiryScopeTuple,
   limit = 32,
 ): PlannerCapabilityKnowledgeProjection {
-  const search = searchSemanticCapabilities(snapshot, `${query} ${scope.intent} ${scope.domains.join(' ')}`, Math.max(1, Math.min(limit, 48)))
+  const boundedLimit = Math.max(1, Math.min(limit, 48))
+  const search = searchSemanticCapabilities(snapshot, `${query} ${scope.intent} ${scope.domains.join(' ')}`, boundedLimit)
   const selected = new Map(search.map((hit) => [hit.scu_id, snapshot.scus.find((scu) => scu.scu_id === hit.scu_id)]))
-  for (const scu of [...selected.values()]) {
+  const protectedSeeds = new Set([...selected.keys()].slice(0, Math.min(8, selected.size)))
+  const expansionTargets = new Set<string>()
+  const evictionCandidates = [...selected.keys()].reverse()
+  // Expand only the strongest seeds. If text search filled the bound, replace
+  // the weakest seed so source-backed adjacency is not silently unreachable.
+  for (const scu of [...selected.values()].slice(0, Math.min(8, selected.size))) {
     if (!scu) continue
     for (const edge of scu.edges ?? []) {
-      if (selected.size >= limit) break
+      if (selected.has(edge.target_scu_id)) continue
+      if (selected.size >= boundedLimit) {
+        const weakest = evictionCandidates.find((candidate) => selected.has(candidate) && !protectedSeeds.has(candidate) && !expansionTargets.has(candidate))
+        if (weakest) selected.delete(weakest)
+      }
       selected.set(edge.target_scu_id, snapshot.scus.find((candidate) => candidate.scu_id === edge.target_scu_id))
+      expansionTargets.add(edge.target_scu_id)
     }
   }
   return {
@@ -63,6 +74,6 @@ export function buildPlannerCapabilityKnowledgeProjection(
     compatibility_version: snapshot.compatibility_version,
     authority: 'compiled_registry_scu_snapshot',
     caveat: 'editorial=false entries are conservative registry-derived routing stubs, not reviewed output-semantic coverage',
-    capabilities: [...selected.values()].filter((value): value is SemanticCapabilityUnit => Boolean(value)).slice(0, limit).map(project),
+    capabilities: [...selected.values()].filter((value): value is SemanticCapabilityUnit => Boolean(value)).slice(0, boundedLimit).map(project),
   }
 }

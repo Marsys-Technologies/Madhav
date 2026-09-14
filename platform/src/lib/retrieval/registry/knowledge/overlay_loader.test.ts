@@ -8,15 +8,17 @@ import { loadChartCapabilityOverlay } from './overlay_loader'
 
 const claimHash = 'a'.repeat(64)
 const snapshot = {
-  schema_version: '1.0.0', compatibility_version: 'planner-scu-v1', generated_at: '2026-09-13T00:00:00.000Z',
-  content_hash: 'sha256:content', source_catalog_fingerprint: 'sha256:catalog', edges: [],
-  census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 1, reviewed_output_claims: 1, exclusions: [] },
+  schema_version: '2.0.0', compatibility_version: 'planner-scu-v2', generated_at: '2026-09-13T00:00:00.000Z',
+  content_hash: 'sha256:content', source_catalog_fingerprint: 'sha256:catalog', semantic_review_fingerprint: 'sha256:review', producer_contract_fingerprint: 'sha256:producer', edges: [], concept_universe: [],
+  producer_semantic_bindings: [],
+  census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 1, reviewed_output_claims: 1, typed_concepts: 0, unbound_concepts: 0, isolated_scus: 1, graph_components: 1, dispositioned_isolated_scus: 1, unresolved_isolated_scus: 0, producer_semantic_bindings: 0, unbound_active_producers: 0, undispositioned_producer_scus: 0, undispositioned_gaps: 0, exclusions: [] },
   scus: [{
     scu_id: 'scu.test', version: 1, label: 'Test', description: 'Test', kind: 'datum', domains: ['all'], concepts: [], intents: [], horizons: ['natal'], scope: 'chart', inputs: [], outputs: [],
     primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [], freshness_policy: 'fresh', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
     producer_output_claims: [{ asset_id: 'ga_test', component: 'rows', output_digest_spec_sha256: claimHash, disposition: 'reviewed_output', evidence: 'fixture' }],
     bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', relation: 'primary', capability_uri: 'marsys://tool/L1/test', input_contract: {}, output_contract: {}, pagination: 'none', executable: true }],
     source_descriptor_uris: ['marsys://tool/L1/test'],
+    editorial_method: 'authored_declaration', editorial_sources: [{ source_ref: 'fixture', source_fields: ['description'] }], concept_bindings: [], gap_dispositions: [], graph_disposition: { status: 'isolated_dispositioned', rationale: 'fixture', source_refs: ['fixture'] }, producer_semantic_disposition: { status: 'not_applicable', asset_ids: [], rationale: 'No producer applies to this isolated fixture.', source_refs: ['fixture'] },
   }],
 } as CapabilityKnowledgeSnapshot
 

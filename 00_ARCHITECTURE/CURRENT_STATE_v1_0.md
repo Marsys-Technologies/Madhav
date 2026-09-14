@@ -5913,11 +5913,12 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–1 COMPLETE (2026-09-14).** FC0 is frozen at
+> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–2 COMPLETE (2026-09-14).** FC0 is frozen at
 > `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 1 closes exact producer
-> and route dispositions at source/local/disposable scope, with independent approvals after fixes.
-> Next frontier: W2-P1/W2-P2 editorial SCUs and typed graph closure. This campaign cannot claim
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 2 closes 182 editorial
+> SCUs, 250 typed concepts, 53 source-backed edges and 128 producer semantic bindings with zero
+> unexplained stubs, gaps, orphans or unbound concepts. Next frontier: W3-P1/W3-P2 inquiry compiler,
+> ontology traversal, omission challenger and bounded frontier closure. This campaign cannot claim
 > merge, deployment, current production rows, empirical acceptance or health.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9341,20 +9342,33 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W1-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W2-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Wave 1 producer and exact-route contracts independently approved at source/local/disposable scope; deployed-current state remains unread and migration 1034 remains unapplied outside its disposable proof. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Wave 2 editorial SCUs and typed graph independently approved at exact source head 402319736; full unit, type, lint and codegen gates pass within the inherited warning ceiling. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Execute W2-P1/W2-P2 from the exact delivered Wave 1 head: replace all 177 descriptor-derived SCU stubs with meaningful source-linked editorial units, then close the typed semantic graph with zero unexplained stubs, gaps, orphans or unbound concepts. Preserve R1-R12 and the source/local/disposable claim ceiling."
+  next_product_strategy_objective: "Execute W3-P1/W3-P2 from the exact delivered Wave 2 head: normalize inquiry intent, traverse the reviewed ontology and graph with deterministic floors, then add an independent omission challenger, bounded widening and fail-closed frontier receipts. Preserve R1-R12 and the source/local/disposable claim ceiling."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W2-20260914**, all 182 planner-addressable Semantic
+Capability Units are editorial, including 177 reviewed descriptor units and five authored units;
+none remain descriptor-derived stubs. The source-linked typed estate contains 250 concepts with
+zero unbound concepts, 53 exact source-backed edges, explicit dispositions for all 156 isolated
+SCUs and unique semantic bindings for all 128 current-active producers. Both independent packet
+reviewers approved the exact technical head. A narrowly documented scope amendment recaptured two
+career-branch golden receipts after the improved semantics directly satisfied one former omission
+obligation; only one line per baseline changed, and the full 12,304-test unit gate passed. TypeScript,
+codegen freshness and lint also pass, with the inherited 590-warning lint ceiling unchanged. This
+is source/local compatibility evidence only: it does not merge or deploy the branch, read current
+production state, establish empirical acceptance, or alter PR #2597. W3 inquiry compilation and
+independent omission challenging are the next governed frontier.
 
 At the close of **MADHAV-PURNA-ANVESANA-W1-20260914**, the producer and route contract frontier is
 machine-closed at source/local/disposable scope. Every current-active producer has a testable
