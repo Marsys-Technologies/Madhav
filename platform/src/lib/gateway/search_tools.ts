@@ -16,7 +16,7 @@ export function searchTools(q: ToolSearchQuery = {}): ToolSearchResult[] {
   const limit = q.limit ?? DEFAULT_LIMIT
   const needle = q.query ? q.query.trim().toLowerCase() : null
 
-  let out: ToolSearchResult[] = []
+  const out: ToolSearchResult[] = []
   for (const c of TOOL_CONTRACTS) {
     if (q.family && c.family !== q.family) continue
     if (q.role && c.role !== q.role) continue

@@ -159,7 +159,7 @@ export function PredictionLogModal({
               {/* Horizon */}
               <div>
                 <label htmlFor="pred-horizon" className="block text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">
-                  Horizon <span className="text-zinc-600 normal-case font-normal">(e.g. "6 months", "by 2027")</span>
+                  Horizon <span className="text-zinc-600 normal-case font-normal">(e.g. &quot;6 months&quot;, &quot;by 2027&quot;)</span>
                 </label>
                 <input
                   id="pred-horizon"
