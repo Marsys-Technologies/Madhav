@@ -49,32 +49,37 @@ class KaBhavishyaLekhaWriter(WriterBase):
         # a rebuild that eats outcomes is exactly that.
         #
         # Re-attachment is by `(signal_id, peak_date)` — "a prediction about THIS signal peaking on
-        # THIS date" — not by `id` (a sequence, so it changes on every rebuild) and not by
-        # `projection_rank` (re-ranking moves it). Conservative on purpose: an outcome is
-        # re-attached only on an exact match, never onto a nearby projection.
+        # THIS date" — not by `projection_rank` (re-ranking moves it). The row `id` is retained for
+        # that identity: phala_anchors.bhavishya_id is an ON DELETE SET NULL FK, so delete/reinsert
+        # would sever accepted downstream provenance even inside a successful transaction.
+        existing_rows: dict[tuple, dict] = {}
         preserved_outcomes: dict[tuple, tuple] = {}
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT signal_id, peak_date, outcome_recorded, outcome_notes
+                SELECT id, signal_id, peak_date, outcome_recorded, outcome_notes
                   FROM kala_bhavishya
                  WHERE chart_id = %s
-                   AND (outcome_recorded IS TRUE OR outcome_notes IS NOT NULL)
+                 ORDER BY id
+                 FOR UPDATE
                 """,
                 (chart_id,),
             )
             for orow in cur.fetchall():
                 key = _outcome_identity(orow['signal_id'], orow['peak_date'])
-                if key in preserved_outcomes:
+                if key in existing_rows:
                     raise RuntimeError(
-                        "ka_bhavishya_lekha: duplicate recorded outcome history for "
+                        "ka_bhavishya_lekha: duplicate existing projection history for "
                         f"(signal_id, peak_date)={key!r}; rebuilding would make outcome "
-                        "re-attachment ambiguous. Resolve the duplicate history before rebuilding."
+                        "and row-id preservation ambiguous. Resolve the duplicate history before "
+                        "rebuilding. No rows were mutated."
                     )
-                preserved_outcomes[key] = (
-                    bool(orow['outcome_recorded']),
-                    orow['outcome_notes'],
-                )
+                existing_rows[key] = orow
+                if bool(orow['outcome_recorded']) or orow['outcome_notes'] is not None:
+                    preserved_outcomes[key] = (
+                        bool(orow['outcome_recorded']),
+                        orow['outcome_notes'],
+                    )
 
         # Read top-ranked darshana windows in the future (next 5 years).
         # B4-consume: also SELECT kc.domain (added by A3 migration 361).
@@ -113,8 +118,34 @@ class KaBhavishyaLekhaWriter(WriterBase):
             """, (chart_id, today, date(today.year + 5, today.month, today.day)))
             darshana_rows = cur.fetchall()
 
+        candidate_identity_counts: dict[tuple, int] = {}
+        for row in darshana_rows:
+            key = _outcome_identity(row['signal_id'], row['peak_date'])
+            candidate_identity_counts[key] = candidate_identity_counts.get(key, 0) + 1
+
+        duplicate_candidates = [
+            key for key, count in candidate_identity_counts.items() if count > 1
+        ]
+        if duplicate_candidates:
+            raise RuntimeError(
+                "ka_bhavishya_lekha: duplicate candidate (signal_id, peak_date) identities "
+                f"would make row/history preservation ambiguous: "
+                f"{sorted(map(str, duplicate_candidates))[:10]}. No rows were mutated."
+            )
+
         if not darshana_rows:
-            return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=0, notes='No future darshana windows — run ka_kala_darshana first')
+            if existing_rows:
+                raise RuntimeError(
+                    "ka_bhavishya_lekha: candidate plan is empty while "
+                    f"{len(existing_rows)} existing projection row(s) remain. Refusing to report "
+                    "a successful empty rebuild or leave stale rows silently servable; no rows "
+                    "were mutated. Run ka_kala_darshana or explicitly reconcile the stale rows."
+                )
+            return WriterResult(
+                asset_id='ka_bhavishya_lekha',
+                rows_inserted=0,
+                notes='No future darshana windows and no existing projections — run ka_kala_darshana first',
+            )
 
         # Store flag on local scope so the loop can access it without a global
         has_domain_col = _convergence_has_domain
@@ -135,36 +166,59 @@ class KaBhavishyaLekhaWriter(WriterBase):
                         signal_type_map[str(sig_row['signal_id'])] = str(sig_row['signal_type_id'])
 
         # Validate every non-regenerable observation against the complete candidate plan BEFORE
-        # destructive SQL.  The old writer discovered an unmatched outcome only after DELETE and
-        # INSERT, relying on the caller to notice the exception and roll the transaction back.  A
-        # plan with no candidates was worse: it returned immediately after DELETE and reported a
-        # successful empty result.  Both paths now remain mutation-free.
-        candidate_identity_counts: dict[tuple, int] = {}
-        for row in darshana_rows:
-            key = _outcome_identity(row['signal_id'], row['peak_date'])
-            candidate_identity_counts[key] = candidate_identity_counts.get(key, 0) + 1
-
+        # write SQL. Unrecorded stale rows may be removed only after proving that no downstream
+        # phala anchor refers to their ids; recorded or referenced history fails closed.
         unmatched_outcomes = [
             key for key in preserved_outcomes if candidate_identity_counts.get(key, 0) == 0
         ]
-        ambiguous_outcomes = [
-            key for key in preserved_outcomes if candidate_identity_counts.get(key, 0) > 1
-        ]
-        if unmatched_outcomes or ambiguous_outcomes:
-            details = []
-            if unmatched_outcomes:
-                details.append(
-                    f"unmatched keys={sorted(map(str, unmatched_outcomes))[:10]}"
-                )
-            if ambiguous_outcomes:
-                details.append(
-                    f"ambiguous keys={sorted(map(str, ambiguous_outcomes))[:10]}"
-                )
+        if unmatched_outcomes:
             raise RuntimeError(
                 "ka_bhavishya_lekha: recorded outcome history cannot be preserved by the "
-                f"candidate plan ({'; '.join(details)}). No rows were deleted; resolve the "
-                "history/candidate identity mismatch before rebuilding."
+                f"candidate plan (unmatched keys={sorted(map(str, unmatched_outcomes))[:10]}). "
+                "No rows were mutated; resolve the history/candidate identity mismatch before "
+                "rebuilding."
             )
+
+        candidate_identities = set(candidate_identity_counts)
+        stale_identities = set(existing_rows) - candidate_identities
+        stale_ids = [existing_rows[key]['id'] for key in stale_identities]
+        if stale_ids:
+            with conn.cursor() as probe_cur:
+                probe_cur.execute(
+                    """
+                    SELECT to_regclass('phala_anchors') IS NOT NULL AS present
+                    """
+                )
+                probe_row = probe_cur.fetchone()
+                phala_anchors_exists = bool(
+                    probe_row and (
+                        probe_row.get('present')
+                        if hasattr(probe_row, 'get')
+                        else probe_row[0]
+                    )
+                )
+
+            if phala_anchors_exists:
+                placeholders = ','.join(['%s'] * len(stale_ids))
+                with conn.cursor() as cur:
+                    cur.execute(
+                        f"""
+                        SELECT bhavishya_id
+                          FROM phala_anchors
+                         WHERE bhavishya_id IN ({placeholders})
+                         ORDER BY bhavishya_id
+                         LIMIT 10
+                        """,
+                        stale_ids,
+                    )
+                    referenced_stale_ids = [row['bhavishya_id'] for row in cur.fetchall()]
+                if referenced_stale_ids:
+                    raise RuntimeError(
+                        "ka_bhavishya_lekha: stale projection ids are still referenced by "
+                        f"phala_anchors.bhavishya_id: {referenced_stale_ids}. Deleting them would "
+                        "null accepted provenance; no rows were mutated. Rebuild/reconcile the "
+                        "dependent layer first."
+                    )
 
         rows = []
         for rank, row in enumerate(darshana_rows, start=1):
@@ -234,13 +288,53 @@ class KaBhavishyaLekhaWriter(WriterBase):
                 "rebuilding (L3-W3, P7 falsifiability seam)."
             )
 
-        # The candidate plan and every recorded outcome are now validated. Keep replacement in
-        # the caller-owned transaction: writers never commit or roll back ctx.db_conn.
-        with conn.cursor() as cur:
-            cur.execute("DELETE FROM kala_bhavishya WHERE chart_id = %s", (chart_id,))
+        # The complete plan is valid. Preserve the BIGSERIAL id of every matched identity via
+        # UPDATE, insert genuinely new identities, and delete only preflight-proven unreferenced
+        # stale ids. All statements remain in the caller-owned transaction.
+        matched_rows = []
+        new_rows = []
+        for row, source in zip(rows, darshana_rows):
+            key = _outcome_identity(source['signal_id'], source['peak_date'])
+            existing = existing_rows.get(key)
+            if existing is None:
+                new_rows.append(row)
+            else:
+                matched_rows.append(row[1:] + (chart_id, existing['id']))
 
-        with conn.cursor() as cur:
-            cur.executemany("""
+        if stale_ids:
+            placeholders = ','.join(['%s'] * len(stale_ids))
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"DELETE FROM kala_bhavishya WHERE chart_id = %s AND id IN ({placeholders})",
+                    [chart_id, *stale_ids],
+                )
+
+        if matched_rows:
+            with conn.cursor() as cur:
+                cur.executemany("""
+                    UPDATE kala_bhavishya
+                       SET projection_rank = %s,
+                           probability_tier = %s,
+                           domain = %s,
+                           peak_date = %s,
+                           window_start = %s,
+                           window_end = %s,
+                           convergence_id = %s,
+                           signal_id = %s,
+                           effective_score = %s,
+                           falsifiability = %s,
+                           source_chain = %s,
+                           narrative = %s,
+                           outcome_recorded = %s,
+                           outcome_notes = %s,
+                           source_citation = %s,
+                           computed_at = NOW()
+                     WHERE chart_id = %s AND id = %s
+                """, matched_rows)
+
+        if new_rows:
+            with conn.cursor() as cur:
+                cur.executemany("""
                 INSERT INTO kala_bhavishya (
                     chart_id, projection_rank, probability_tier, domain,
                     peak_date, window_start, window_end,
@@ -248,7 +342,7 @@ class KaBhavishyaLekhaWriter(WriterBase):
                     falsifiability, source_chain, narrative,
                     outcome_recorded, outcome_notes, source_citation
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, rows)
+                """, new_rows)
 
         return WriterResult(asset_id='ka_bhavishya_lekha', rows_inserted=len(rows))
 
