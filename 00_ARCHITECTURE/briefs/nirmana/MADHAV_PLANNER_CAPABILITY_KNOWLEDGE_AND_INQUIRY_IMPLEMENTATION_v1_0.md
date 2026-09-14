@@ -328,6 +328,33 @@ Before any “complete data estate” claim:
 4. Join producer-output hashes and chart/build receipts.
 5. Re-run the mechanical census and independent omission/mutation tests.
 
+### Current branch verification boundary (2026-09-14)
+
+The scoped candidate checks are green: both generated-artifact drift checks, the
+platform TypeScript check, changed-file lint for `platform` and `platform-mcp`,
+the migration-number guard, 157 focused platform tests, 3 focused MCP lifecycle
+tests, 90 independent completion-review tests, and 86 independent security-review
+tests. Independent completion, security, and migration reviews reported no open
+HIGH or MEDIUM blocker in the changed surface.
+
+The mandatory repository-wide gates are not green, so no PR was raised:
+
+- full platform lint reports 199 errors and 593 warnings; changed-file lint is
+  clean, and the sampled errors are in pre-existing unrelated files;
+- the full platform unit run reports 1,079 passing files, 71 skipped files, 5
+  failing timeout files, 11,540 passing tests, 662 skipped tests, 7 failing tests,
+  2 todo tests, and 9 worker-start errors; the candidate golden-stream suite is
+  separately green at 56/56 after approving the overlay-gated contract change;
+- the full `platform-mcp` typecheck remains red across the package with SDK/Zod
+  incompatibilities, including unchanged registration/type patterns in two
+  touched prompt/registration files; and
+- `platform-mcp` envelope codegen check reports a stale generated envelope whose
+  source and generated files are unchanged by this branch.
+
+These failures are not waived. They must be restored to green, or dispositioned
+through the repository's normal governance, before this branch can be described
+as PR-ready.
+
 ## 17. Candidate disposition
 
 The branch is reviewable as a coherent foundation and is intentionally incomplete as an estate-wide semantic mapping. Its durable claims are the implemented contracts, generated source-tree snapshots, tests and static migration review. It makes no claim of merge, deployment, migration application, production health, complete public reachability, live chart availability, or full producer-output semantic coverage.
