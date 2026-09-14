@@ -898,6 +898,13 @@ def _load_dasha_periods(
                 LIMIT 3
             """, (chart_id, ayanamsha_id, build_id, graha))
             rows = cur.fetchall()
+            if any(
+                row[2] != ayanamsha_id or str(row[3]) != build_id
+                for row in rows
+            ):
+                raise RuntimeError(
+                    "dasha lookup returned a row outside the requested context"
+                )
             cur.execute(f"RELEASE SAVEPOINT {sp}")
             if not rows:
                 return None, None
@@ -908,18 +915,21 @@ def _load_dasha_periods(
 
             def _period_payload(row: tuple, reason: str) -> dict:
                 (
-                    row_id, system_id, source_ayanamsha_id, source_build_id,
+                    row_id, system_id, source_ayanamsha_id, _source_build_id,
                     _level, lord, start, end,
                 ) = row
                 payload = {
                     "dasha_label": f"{lord} Mahadasha",
                     "system_id": system_id,
                     "source_ayanamsha_id": source_ayanamsha_id,
-                    "source_build_id": str(source_build_id),
                     "start_date": start.isoformat() if hasattr(start, "isoformat") else str(start),
                     "end_date": end.isoformat() if hasattr(end, "isoformat") else str(end),
                     "reason": reason,
                 }
+                # source_build_id is deliberately not nested in the semantic
+                # period value. The enclosing condition row/context already
+                # carries the exact observation build, while the stable dasha
+                # row ID + ayanamsha identify the semantic upstream interval.
                 payload["source_dasha_row_id"] = str(row_id)
                 return payload
 

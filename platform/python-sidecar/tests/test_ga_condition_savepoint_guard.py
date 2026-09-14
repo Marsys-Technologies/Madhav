@@ -106,7 +106,7 @@ def test_dasha_lookup_preserves_exact_source_row_identity():
     assert weak is None
     assert peak[0]["source_dasha_row_id"] == "11111111-1111-4111-8111-111111111111"
     assert peak[0]["source_ayanamsha_id"] == "lahiri_chitrapaksha"
-    assert peak[0]["source_build_id"] == "build-1"
+    assert "source_build_id" not in peak[0]
 
 
 def test_dasha_lookup_is_scoped_to_exact_ayanamsha_and_build():
@@ -130,7 +130,7 @@ def test_dasha_lookup_is_scoped_to_exact_ayanamsha_and_build():
     )
     assert peak_a[0]["source_dasha_row_id"] != peak_b[0]["source_dasha_row_id"]
     assert peak_a[0]["source_ayanamsha_id"] == "aya-a"
-    assert peak_b[0]["source_build_id"] == "build-b"
+    assert "source_build_id" not in peak_b[0]
     _load_dasha_periods(
         conn, "chart-1", "Sun", "lahiri_chitrapaksha", "build-1",
         condition_score=0.9,
@@ -143,6 +143,31 @@ def test_dasha_lookup_is_scoped_to_exact_ayanamsha_and_build():
     ]
     assert ("chart-1", "aya-a", "build-a", "Sun") in select_params
     assert ("chart-1", "aya-b", "build-b", "Sun") in select_params
+
+
+def test_dasha_period_semantics_are_cross_build_invariant():
+    stable_row_id = "11111111-1111-4111-8111-111111111111"
+    row_a = (
+        stable_row_id, "vimshottari", "aya-a", "build-a",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )
+    row_b = (
+        stable_row_id, "vimshottari", "aya-a", "build-b",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )
+    conn = _FakeConn(rows_by_params={
+        ("chart-1", "aya-a", "build-a", "Sun"): [row_a],
+        ("chart-1", "aya-a", "build-b", "Sun"): [row_b],
+    })
+
+    peak_a, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-a", "build-a", condition_score=0.9,
+    )
+    peak_b, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-a", "build-b", condition_score=0.9,
+    )
+
+    assert peak_a == peak_b
 
 
 def test_varga_spread_rolls_back_savepoint_on_timeout():
