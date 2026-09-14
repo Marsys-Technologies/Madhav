@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: W0_FOUNDATION_SAFETY_ACTIVE
-observed_at: 2026-09-15T03:03:00+05:30
+status: W0_FINAL_REVIEW_PENDING
+observed_at: 2026-09-15T04:04:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
@@ -10,6 +10,7 @@ accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 active_packet: L3-W0-FOUNDATION-SAFETY-01
+implementation_tip: 1f9cedbb06d2a29692c8740da23d3aa86ccdf790
 coordination_lease: MADHAV-DATA-PLANE-L3-W0-20260915
 heartbeat_id: l3-k-la-execution-recovery
 next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
@@ -165,29 +166,51 @@ maps; and Phala signal/discovery/top-anchor IDs. Kshetra's fifteen tables have n
 database-enforced internal DAG, so deletion/reconstruction order and content-bound
 resume must be proved explicitly.
 
-### 4.3 W0 P0 hazards and bounded baselines
+### 4.3 W0 P0 corrections and bounded baselines
 
-Kshetra planning currently calls four destructive stage planners, then reaches
-dry-run and resume handling, and can issue central chart-wide cleanup before
-resume filtering. A normal plan can issue up to 16 deletes; a no-op completeness
-probe can release the planning savepoint and persist them. The bounded repair is
-one execution-owned `prepare:replace` substep, zero-DML planning, a resume-version
-bump and savepoint/progress proof. Immutable generation/publication remains a
-separate later packet.
+Kshetra planning/recovery is corrected at `2246ff4ac`: destructive preparation
+is one execution-owned `prepare:replace` substep; planning and dry-run are
+read-only; empty discovery still prepares replacement; discovery errors fail
+loudly; and the real substep driver/savepoint test proves output and receipt
+rollback together. Root maintained validation passed 443 with 8 skips and 2
+expected failures; independent review returned ACCEPT with no HIGH/MED/LOW.
+Immutable generation/publication remains a later packet.
 
-Bhavishya currently loads outcomes, deletes the partition, then queries candidate
-Darshana. An empty candidate returns before the unmatched-history guard; the
-vacuous integrity contract can pass and downstream anchor linkage is nulled. The
-bounded repair constructs/validates the full candidate replacement before any
-delete, preserves empty-input state, rejects ambiguous history identity and proves
-rollback. Stable issued-history identity/generation remains a later packet.
+Bhavishya is corrected at `a3e518864`: a chart transaction lock covers the full
+read/plan/write span; the entire candidate and referrer set is validated before
+DML; unchanged protected rows retain identity/content; any changed or stale
+outcome/notes-bearing or Phala-anchored row fails closed. Root focused validation
+passed 25 with one environment-gated skip; a disposable two-connection lock proof
+and broad suite were reported by the implementation owner; independent review
+returned ACCEPT. Stable issued-history generation remains a W6 packet.
 
-Reproduced source-baseline tests passed 145 with 1 skipped despite both hazards,
-confirming the old suite was not an adequate safety oracle. Measured small
-Kshetra baselines from the isolated discovery lane: stage0/integrator 47 pass + 1
-skip in 0.56 s pytest; writer 61 pass + 1 skip in 15.08 s; streaming loaders 7
-pass in 0.20 s; publication/hash subset 27 pass / 56 deselected in 37.02 s. These
-are local test workloads, not production runtime or optimization evidence.
+DHARA's clock-knot endpoint defect is corrected through `1f9cedbb0` and the
+`MADHAV_DATA_PLANE_L3_DHARA_NUMERICAL_CONTRACT_v1_0.md` contract. The preceding
+interval uses the left limit and the next interval the exact right-continuous
+value; v1.2 enters field snapshot and resume identity. Independent review passed
+44 focused tests. The broad corrected L3 suite passed 1,471, skipped 41
+environment-gated cases and retained 2 expected failures.
+
+Measured small Kshetra baselines from the isolated discovery lane: stage0/
+integrator 47 pass + 1 skip in 0.56 s; writer 61 pass + 1 skip in 15.08 s;
+streaming loaders 7 pass in 0.20 s; publication/hash subset 27 pass / 56
+deselected in 37.02 s. The corrected maintained Kshetra run passed 443/8 skip/2
+expected failures in 88.17 s. The transit cache fixture passed 7 tests: 3.90 ms
+uncached, 2.14 ms cold cached and 1.72 ms warm cached, with a 93.5% multi-call
+hit rate. These are local test workloads, not production runtime or a general
+optimization claim.
+
+### 4.4 W0 generation/publication design
+
+The complete frozen design and exact next packets are recorded in
+`MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md`. Generations are
+content-addressed by source/contract/context, the exact transitive upstream vector,
+partition plan and semantic versions; empty partitions are explicit. Immutable
+candidate and selected heads remain separate, layer publication is an atomic
+compatible manifest, corrections create new generations, and rollback repoints a
+head rather than rewriting history. Kshetra's fifteen tables share one content-
+bound stage plan; Bhavishya fails closed on protected content until its W6 stable-
+generation packet. This is reviewed design, not physical infrastructure.
 
 ## 5. Migration and release collision
 
@@ -209,9 +232,9 @@ the open planner/Pūrṇa stack carries different files under both numbers.
 
 | Lane | Current bounded owner | State |
 |---|---|---|
-| A — meaning/data/DAG | `l3_w0_dag_inventory` read-only discovery; conductor integrates evidence | ACTIVE; no mutation |
-| B — performance/architecture | `l3_w0_kshetra_safety` read-only discovery; one later isolated writer owns overlapping Kshetra source | ACTIVE; no mutation |
-| C — consumer integration/value | `l3_w0_bhavishya_consumer` read-only discovery; producer/data acceptance remains a gate | ACTIVE; no mutation |
+| A — meaning/data/DAG | bounded source-local Bhavishya and contract owners; conductor integrates evidence | SAFETY ACCEPTED; physical data held |
+| B — performance/architecture | bounded Kshetra/DHARA owners and independent reviewers | SAFETY/REFERENCE ACCEPTED; production trial held |
+| C — consumer integration/value | L3-U05 implementation and independent reviewer | SENTINELS ACCEPTED; integration/value not run |
 
 Heartbeat `l3-k-la-execution-recovery` is ACTIVE at a 15-minute cadence and is
 thread-attached. Recovery proof is deliberately `PENDING_FIRST_SCHEDULED_WAKE`;
@@ -222,10 +245,19 @@ this file, the execution ledger and the exact next eligible action above.
 
 | State | Evidence |
 |---|---|
-| source producer readiness | accepted L0-L2 local contracts; L3 not yet repaired/accepted |
+| source producer readiness | accepted L0-L2 contracts; W0 L3 safety candidate independently accepted by subpacket and pending final packet review |
 | physical upstream data | `HELD`; required generation-head relations absent |
 | L3 physical data | legacy capital exists, but current t3 acceptance is absent and six canonical outputs are empty |
 | consumer integration | `NOT_RUN` |
 | protected deployment | accepted L2/L3 `NOT_DEPLOYED` |
 | consumer value | `NOT_EVALUATED` |
 | empirical predictive performance | excluded and not claimed |
+
+## 8. Exact recovery action
+
+Final-review candidate `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md`
+must receive one independent packet-level challenge. On PASS, terminalize W0 and
+start `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`: resolve the un-applied 1033/
+1034 collision across the data-plane and planner/Purna lineages, obtain migration
+review, and establish a protected precursor release before W1 physical generation
+work. No L3 build is eligible until compatible L0-L2 physical heads exist.
