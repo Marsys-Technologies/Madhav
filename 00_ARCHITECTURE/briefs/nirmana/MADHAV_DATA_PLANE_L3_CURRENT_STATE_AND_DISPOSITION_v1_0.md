@@ -227,6 +227,12 @@ decision before protected delivery.
 The current execution tree's migration guard itself passes and reports 1035 as
 the next local number. That does not resolve the cross-branch 1033/1034 collision;
 the open planner/Pūrṇa stack carries different files under both numbers.
+The binding migration protocol also places new files in
+`platform/supabase/migrations`, while the accepted data-plane candidates are in
+the legacy directory. The integration packet must first prove those filenames
+unapplied in every authorized target, reserve replacement numbers in the live
+coordination claim ledger, and only then relocate/renumber with content-identity,
+disposable apply/reapply and independent migration review.
 
 ## 6. Workstream ownership and recovery
 

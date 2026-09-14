@@ -254,19 +254,25 @@ The accepted data-plane lineage independently contains
 `1034_data_plane_l2_producer_generations.sql`. The connected environment lacks
 their head relations, so these data-plane migrations have not been treated as
 applied there. Neither lineage may be merged unchanged into the other. The next
-integration packet must refresh all tips, choose unused numbers under the shared
-migration guard, update every source/test/evidence reference coherently, prove
-apply/reapply on disposable PostgreSQL and obtain independent migration review.
-It must not edit an actually applied migration or assume an open PR's green CI
-means protected integration/deployment.
+integration packet must refresh all tips and every authorized environment's
+applied-migration ledger, then reserve two unused numbers in the live
+`origin/campaign-coordination` claim table from a leased scratch worktree before
+authoring. It must also reconcile the current files' legacy
+`platform/migrations` location with the binding protocol's active
+`platform/supabase/migrations` directory, update every source/test/evidence
+reference coherently, prove content identity plus apply/reapply on disposable
+PostgreSQL and obtain independent migration review. It must not rename, relocate
+or edit an actually applied migration, widen the legacy collision baseline, or
+assume an open PR's green CI means protected integration/deployment.
 
 ## 8. Exact next packets and holds
 
 1. `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`: reconcile fresh main and the
-   open planner/Purna migration namespace; prepare a reviewable, compatible
-   release of already accepted L0/L1/L2 source plus generation migrations. No
-   semantic reopening of those layers. Exit requires migration/security review,
-   protected checks and exact deployed/source proof.
+   open planner/Purna migration namespace; verify applied identities, reserve
+   the live coordination slots, and prepare a reviewable, compatible release of
+   already accepted L0/L1/L2 source plus generation migrations in the active
+   directory. No semantic reopening of those layers. Exit requires migration/
+   security review, protected checks and exact deployed/source proof.
 2. `L3-W1-UPSTREAM-GENERATIONS-01`: only after the precursor release is accepted
    and deployed, reacquire the exact production lease, verify environment/
    identity, backup/restore/canary and materialize/select L0 -> L1 -> L2 in the
