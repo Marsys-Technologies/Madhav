@@ -198,6 +198,7 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
           completed_cases: report.metrics.long_inquiry_closure.completed_cases,
           total_cases: report.metrics.long_inquiry_closure.total_cases,
           minimum_iterations_observed: report.metrics.long_inquiry_closure.minimum_iterations_observed,
+          pagination_continuations: report.metrics.long_inquiry_closure.pagination_continuations,
           retained_earlier_evidence: report.metrics.long_inquiry_closure.retained_earlier_evidence,
         },
         abstention_quality: {
