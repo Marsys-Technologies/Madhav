@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.7.0
+version: 0.8.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0026
-last_updated: 2026-09-14T23:43:00+05:30
+last_event: PA-E0027
+last_updated: 2026-09-14T23:47:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 4 complete; Wave 5 disposable lifecycle and three-door parity packets are next.
-- Branch: `codex/purna-anvesana-wave4`, stacked on governed Wave 3 close `f6b4d1733`.
+- Wave: 0 through Wave 4 complete; Wave 5 disposable lifecycle packet is active.
+- Branch: `codex/purna-anvesana-wave5`, stacked on governed Wave 4 close `841942b3b`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W4-20260914`; release is due after this close is published.
+- Lease: `MADHAV-PURNA-ANVESANA-W5-20260914`; active on remote coordination commit `97ab4d8ed`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -196,7 +196,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W3-P1 normalized intent and ontology traversal | COMPLETE | W2-P2 | planner reviewer approved repaired exact head |
 | W3-P2 omission challenger and frontier closure | COMPLETE | W3-P1 | omission reviewer approved repaired exact head |
 | W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
-| W5-P1 disposable migration/lifecycle/security proof | NEXT | W4-P1 | migration guard and security review required |
+| W5-P1 disposable migration/lifecycle/security proof | IN PROGRESS | W4-P1 | migration guard and security review required |
 | W5-P2 three-door parity/failure proof | QUEUED | W5-P1 | independent parity review required |
 | W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
