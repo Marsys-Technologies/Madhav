@@ -330,30 +330,32 @@ Before any “complete data estate” claim:
 
 ### Current branch verification boundary (2026-09-14)
 
-The scoped candidate checks are green: both generated-artifact drift checks, the
-platform TypeScript check, changed-file lint for `platform` and `platform-mcp`,
-the migration-number guard, 157 focused platform tests, 3 focused MCP lifecycle
-tests, 90 independent completion-review tests, and 86 independent security-review
+The scoped candidate checks are green under the CI-pinned Node 20 runtime and a
+clean `npm ci`: the exact added platform CI selection passes 87/87; the exact MCP
+lifecycle CI selection passes 27/27; both package typechecks pass; the migration
+number guard passes; the capability snapshot, estate census, MCP envelope and MCP
+registry-shim drift checks pass; and changed platform files have zero lint errors.
+The broader focused evidence remains green at 157 platform tests, 56 golden-stream
+cases, 90 independent completion-review tests, and 86 independent security-review
 tests. Independent completion, security, and migration reviews reported no open
 HIGH or MEDIUM blocker in the changed surface.
 
-The mandatory repository-wide gates are not green, so no PR was raised:
+The CI-faithful full platform unit run is also green: 1,093 files passed and 71
+were skipped; 11,614 tests passed, 662 were skipped and 2 are todo. Reinstalling
+`platform-mcp` from its committed lockfile also removed the apparent SDK/Zod
+typecheck failure, and the two stale generated MCP contracts were regenerated.
+The full MCP suite remains outside CI by an explicit workflow decision because
+it carries pre-existing unrelated failures; the current run reports 184 files
+passed, 25 failed and 1 skipped (2,125 tests passed, 80 failed and 20 skipped).
 
-- full platform lint reports 199 errors and 593 warnings; changed-file lint is
-  clean, and the sampled errors are in pre-existing unrelated files;
-- the full platform unit run reports 1,079 passing files, 71 skipped files, 5
-  failing timeout files, 11,540 passing tests, 662 skipped tests, 7 failing tests,
-  2 todo tests, and 9 worker-start errors; the candidate golden-stream suite is
-  separately green at 56/56 after approving the overlay-gated contract change;
-- the full `platform-mcp` typecheck remains red across the package with SDK/Zod
-  incompatibilities, including unchanged registration/type patterns in two
-  touched prompt/registration files; and
-- `platform-mcp` envelope codegen check reports a stale generated envelope whose
-  source and generated files are unchanged by this branch.
-
-These failures are not waived. They must be restored to green, or dispositioned
-through the repository's normal governance, before this branch can be described
-as PR-ready.
+One mandatory local `run-checks` gate is still not green, so no PR was raised.
+Full platform lint reports 199 errors and 590 warnings. An isolated detached run
+at base revision `b1a0f17eb65494f21a00fd2b22d6264da76c3c38`, using the same Node 20
+runtime and dependency tree, reports the exact same 199 errors and 590 warnings;
+the branch's changed platform files report 0 errors and 11 pre-existing warnings.
+The lint failure is therefore proven baseline-equivalent, but it is not waived:
+it must be restored to green, or dispositioned through the repository's normal
+governance, before this branch can be described as PR-ready under `run-checks`.
 
 ## 17. Candidate disposition
 
