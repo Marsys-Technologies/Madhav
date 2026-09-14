@@ -84,7 +84,11 @@ def _transit_ephemeris_context() -> dict[str, Any]:
             file_path = Path(candidate) / "sepl_18.se1"
             exists = file_path.is_file()
             record = {"path": str(file_path), "exists": exists}
-            if exists and str(file_path.parent) == resolved:
+            if (
+                exists
+                and resolved is not None
+                and file_path.parent.resolve() == Path(resolved).resolve()
+            ):
                 with file_path.open("rb") as ephemeris_file:
                     record["sha256"] = hashlib.file_digest(
                         ephemeris_file, "sha256"
