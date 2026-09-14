@@ -30,25 +30,27 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
     expect(report.corpus_version).toBe('beyond-acarya-inquiry-corpus-v1')
     expect(report.metrics.novel_combination_suite).toMatchObject({
       passed: true,
-      cases: 4,
-      expected_novel_capabilities: 12,
+      cases: 5,
+      expected_novel_capabilities: 13,
       missing_novel_capabilities: 0,
     })
-    expect(report.metrics.omission_rate).toMatchObject({ passed: true, omitted: 0, expected: 23, rate: 0 })
-    expect(report.metrics.route_coverage).toEqual({ passed: false, covered: 28, expected: 32, rate: 0.875 })
-    expect(report.metrics.semantic_edge_coverage).toMatchObject({ passed: true, covered: 5, expected: 5, rate: 1 })
-    expect(report.cases.every((item) =>
+    expect(report.metrics.omission_rate).toMatchObject({ passed: true, omitted: 0, expected: 25, rate: 0 })
+    expect(report.metrics.route_coverage).toEqual({ passed: false, covered: 30, expected: 34, rate: 30 / 34 })
+    expect(report.metrics.semantic_edge_coverage).toMatchObject({ passed: true, covered: 9, expected: 9, rate: 1 })
+    expect(report.cases.filter((item) => item.case_id !== 'long_divisional_continuation').every((item) =>
       item.missing_required_route_scu_ids.includes('scu.catalog.query_planet_transit'))).toBe(true)
     expect(report.metrics.long_inquiry_closure).toMatchObject({
-      passed: false,
-      completed_cases: 0,
-      total_cases: 4,
-      blocked_case_ids: BEYOND_ACARYA_ACCEPTANCE_CASES.map((item) => item.case_id),
+      passed: true,
+      completed_cases: 1,
+      total_cases: 1,
+      blocked_case_ids: [],
+      minimum_iterations_observed: 11,
+      retained_earlier_evidence: true,
     })
-    expect(report.metrics.long_inquiry_closure.minimum_iterations_observed).toBeGreaterThanOrEqual(2)
+    expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(false)
-    expect(report.report_hash).toBe('sha256:325ef2306090b3e326d6fc4effbf4382f96bf81d3484e0840c0b6c068cb5cc06')
+    expect(report.report_hash).toBe('sha256:f3e28ecc006fab43087dc3f372907f37e982cb0e8e9d553ae61039e4d162c510')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -59,6 +61,18 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
 
     expect(report.metrics.omission_rate.omitted).toBeGreaterThan(0)
     expect(report.metrics.omission_rate.passed).toBe(false)
+    expect(report.metrics.novel_combination_suite.passed).toBe(false)
+    expect(report.passed).toBe(false)
+  })
+
+  it.each([
+    ['Bhavat Bhavam', 'scu.catalog.judgment_query'],
+    ['decisive cancellation', 'scu.yoga.firing_and_cancellation'],
+  ])('turns the externally denominated omission gate red for %s ablation', (_label, scuId) => {
+    const report = evaluateBeyondAcaryaAcceptance(withoutScu(snapshot, scuId), BEYOND_ACARYA_ACCEPTANCE_CASES)
+
+    expect(report.metrics.omission_rate.passed).toBe(false)
+    expect(report.metrics.novel_combination_suite.passed).toBe(false)
     expect(report.passed).toBe(false)
   })
 
@@ -83,7 +97,7 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
   })
 
   it('detects a severed reviewed semantic edge', () => {
-    const edge = BEYOND_ACARYA_ACCEPTANCE_CASES.flatMap((item) => item.expected_edge_keys)[0]!
+    const edge = 'scu.kala.temporal_activation|requires|scu.catalog.query_planet_transit'
     const altered: CapabilityKnowledgeSnapshot = {
       ...snapshot,
       edges: snapshot.edges.filter((candidate) =>
@@ -94,6 +108,59 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.semantic_edge_coverage.covered)
       .toBeLessThan(report.metrics.semantic_edge_coverage.expected)
     expect(report.metrics.semantic_edge_coverage.passed).toBe(false)
+    expect(report.metrics.route_coverage.expected).toBe(34)
+    expect(report.passed).toBe(false)
+  })
+
+  it('allows the route gate to turn green only when all frozen route obligations are bindable', () => {
+    const routable: CapabilityKnowledgeSnapshot = {
+      ...snapshot,
+      scus: snapshot.scus.map((scu) => scu.scu_id === 'scu.catalog.query_planet_transit'
+        ? {
+            ...scu,
+            bindings: scu.bindings.map((binding) => ({
+              ...binding,
+              input_contract: Object.fromEntries(Object.entries(binding.input_contract)
+                .map(([key, declaration]) => [key, declaration.replace(':required', ':optional')])),
+            })),
+          }
+        : scu),
+    }
+    const report = evaluateBeyondAcaryaAcceptance(routable, BEYOND_ACARYA_ACCEPTANCE_CASES)
+
+    expect(report.metrics.route_coverage).toEqual({ passed: true, covered: 34, expected: 34, rate: 1 })
+    expect(report.passed).toBe(true)
+  })
+
+  it('turns long-inquiry closure red when continuation metadata is removed', () => {
+    const noContinuations: CapabilityKnowledgeSnapshot = {
+      ...snapshot,
+      scus: snapshot.scus.map((scu) => ({
+        ...scu,
+        bindings: scu.bindings.map((binding) => ({
+          ...binding,
+          pagination_contract: binding.pagination_contract
+            ? { ...binding.pagination_contract, request_position_path: undefined }
+            : undefined,
+        })),
+      })),
+    }
+    const report = evaluateBeyondAcaryaAcceptance(noContinuations, BEYOND_ACARYA_ACCEPTANCE_CASES)
+
+    expect(report.metrics.long_inquiry_closure).toMatchObject({
+      passed: false,
+      pagination_continuations: 0,
+    })
+    expect(report.passed).toBe(false)
+  })
+
+  it('turns abstention quality red when the adversarial floor no longer matches the declared intent', () => {
+    const weakenedCorpus = BEYOND_ACARYA_ACCEPTANCE_CASES.map((item, index) => index === 0
+      ? { ...item, scope_tuple: { ...item.scope_tuple, intent: 'unknown' } }
+      : item)
+    const report = evaluateBeyondAcaryaAcceptance(snapshot, weakenedCorpus)
+
+    expect(report.metrics.abstention_quality).toMatchObject({ passed: false, passed_cases: 2, total_cases: 3 })
     expect(report.passed).toBe(false)
   })
 

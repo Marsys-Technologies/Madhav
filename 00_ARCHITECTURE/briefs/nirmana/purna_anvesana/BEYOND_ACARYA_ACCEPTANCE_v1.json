@@ -5,39 +5,40 @@
   "acceptance_version": "beyond-acarya-source-acceptance-v1",
   "corpus_version": "beyond-acarya-inquiry-corpus-v1",
   "capability_content_hash": "sha256:c4a57a8c97ff646d40a315440c3f2bcd98b74bca53cea166064dd31f7839d58c",
-  "report_hash": "sha256:325ef2306090b3e326d6fc4effbf4382f96bf81d3484e0840c0b6c068cb5cc06",
+  "report_hash": "sha256:f3e28ecc006fab43087dc3f372907f37e982cb0e8e9d553ae61039e4d162c510",
   "evidence_kind": "synthetic_source_local",
   "verdict": "NOT_ACCEPTED_SOURCE_LOCAL",
   "metrics": {
     "novel_combination_suite": {
       "passed": true,
-      "cases": 4,
-      "expected_novel_capabilities": 12,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
       "missing_novel_capabilities": 0
     },
     "omission_rate": {
       "passed": true,
       "omitted": 0,
-      "expected": 23,
+      "expected": 25,
       "rate": 0
     },
     "route_coverage": {
       "passed": false,
-      "covered": 28,
-      "expected": 32,
-      "rate": 0.875
+      "covered": 30,
+      "expected": 34,
+      "rate": 0.8823529411764706
     },
     "semantic_edge_coverage": {
       "passed": true,
-      "covered": 5,
-      "expected": 5,
+      "covered": 9,
+      "expected": 9,
       "rate": 1
     },
     "long_inquiry_closure": {
-      "passed": false,
-      "completed_cases": 0,
-      "total_cases": 4,
-      "minimum_iterations_observed": 3,
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "minimum_iterations_observed": 11,
+      "pagination_continuations": 3,
       "retained_earlier_evidence": true
     },
     "abstention_quality": {
@@ -51,7 +52,7 @@
       "finding_id": "W6-A1-UNRESOLVED-TRANSIT-ARGS",
       "severity": "MEDIUM",
       "observation": "All four corpus cases select the source-reviewed required edge to scu.catalog.query_planet_transit, but its required planet, start_date and end_date arguments cannot be derived by the current compiler contract.",
-      "effect": "The route-coverage denominator is 28/32 and every synthetic long inquiry remains INCOMPLETE rather than fabricating closure.",
+      "effect": "The frozen route-coverage denominator is 30/34. The dedicated continuation case closes with earlier evidence retained, while the four affected domain inquiries remain INCOMPLETE rather than fabricating closure.",
       "disposition": "QUARANTINE_FOR_SEPARATE_PLANNER_ARGUMENT_DERIVATION_AUTHORITY"
     }
   ],

@@ -3,10 +3,11 @@ import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import type { BeyondAcaryaAcceptanceCase } from './beyond_acarya_acceptance.corpus'
 import { BEYOND_ACARYA_CORPUS_VERSION } from './beyond_acarya_acceptance.corpus'
 import {
-  applyInquiryObservations,
   compileInquiryContract,
   finalizeInquiryContract,
+  recordInquiryExecution,
 } from './compiler'
+import { bindingForInquiryItem } from './managed_bridge'
 import type { InquiryContract } from './types'
 
 export const BEYOND_ACARYA_ACCEPTANCE_VERSION = 'beyond-acarya-source-acceptance-v1' as const
@@ -33,7 +34,7 @@ function compileCase(snapshot: CapabilityKnowledgeSnapshot, item: BeyondAcaryaAc
     ai_proposal: item.ai_proposal,
     execution_channel: 'platform_internal',
     max_iterations: 64,
-    planning_budget: {
+    planning_budget: item.planning_budget ?? {
       max_search_hits: 32,
       max_graph_hops: 3,
       max_graph_nodes: 48,
@@ -42,28 +43,55 @@ function compileCase(snapshot: CapabilityKnowledgeSnapshot, item: BeyondAcaryaAc
   })
 }
 
-function closeAcrossBatches(contract: InquiryContract): {
+function closeThroughVerifiedContinuations(
+  snapshot: CapabilityKnowledgeSnapshot,
+  contract: InquiryContract,
+): {
   status: InquiryContract['status']
   status_reasons: readonly string[]
   iterations: number
   evidence_retained: boolean
+  pagination_continuations: number
 } {
   const ready = contract.plan_items.filter((item) => item.state === 'ready')
-  const batchSize = Math.max(1, Math.ceil(ready.length / 3))
   let current = contract
-  let firstBatchEvidence: string[] = []
-  for (let offset = 0; offset < ready.length; offset += batchSize) {
-    const batch = ready.slice(offset, offset + batchSize).map((item) => ({
-      item_id: item.item_id,
-      disposition: 'served' as const,
-      evidence_refs: [`acceptance:${stableFingerprint({
+  const retainedEvidence: string[] = []
+  let paginationContinuations = 0
+  for (const item of ready) {
+    const binding = bindingForInquiryItem(snapshot, current, item.item_id)
+    const evidence = (page: number) => `acceptance:${stableFingerprint({
         acceptance_version: BEYOND_ACARYA_ACCEPTANCE_VERSION,
         contract_id: contract.contract_id,
         item_id: item.item_id,
-      })}`],
-    }))
-    if (offset === 0) firstBatchEvidence = batch.flatMap((observation) => observation.evidence_refs)
-    current = applyInquiryObservations(current, batch)
+        page,
+      })}`
+    const positionPath = binding?.pagination_contract?.request_position_path
+    if (positionPath) {
+      const firstPageEvidence = evidence(1)
+      retainedEvidence.push(firstPageEvidence)
+      current = recordInquiryExecution(current, {
+        item_id: item.item_id,
+        disposition: 'served',
+        evidence_refs: [firstPageEvidence],
+        pagination: { semantics: binding.pagination, exhausted: false, next: 50 },
+        request_position_path: positionPath,
+      })
+      current = recordInquiryExecution(current, {
+        item_id: item.item_id,
+        disposition: 'served',
+        evidence_refs: [evidence(2)],
+        pagination: { semantics: binding.pagination, exhausted: true, next: null },
+        request_position_path: positionPath,
+      })
+      paginationContinuations += 1
+    } else {
+      current = recordInquiryExecution(current, {
+        item_id: item.item_id,
+        disposition: 'served',
+        evidence_refs: [evidence(1)],
+        pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+      })
+    }
   }
   const finalized = finalizeInquiryContract(current)
   const finalEvidence = new Set(finalized.obligations.flatMap((obligation) => obligation.evidence_refs))
@@ -71,7 +99,8 @@ function closeAcrossBatches(contract: InquiryContract): {
     status: finalized.status,
     status_reasons: finalized.status_reasons,
     iterations: finalized.iteration,
-    evidence_retained: firstBatchEvidence.every((reference) => finalEvidence.has(reference)),
+    evidence_retained: retainedEvidence.every((reference) => finalEvidence.has(reference)),
+    pagination_continuations: paginationContinuations,
   }
 }
 
@@ -89,47 +118,59 @@ function assessAbstention(snapshot: CapabilityKnowledgeSnapshot, firstCase: Beyo
     missingFloorRejected = error instanceof Error && error.message.startsWith('INQUIRY_REQUIRED_FLOOR_MISSING:')
   }
 
-  const capped = compileInquiryContract({
-    snapshot,
-    chart_id: 'source-acceptance:capped-frontier',
-    question: 'Complete wealth outlook with every adjacent mechanism.',
-    scope_tuple: firstCase.scope_tuple,
-    execution_channel: 'platform_internal',
-    max_iterations: 1,
-    planning_budget: {
-      max_search_hits: 1,
-      max_graph_hops: 0,
-      max_graph_nodes: 1,
-      max_challenger_additions: 0,
-    },
-  })
-  const cappedBlocked = finalizeInquiryContract({ ...capped, iteration: capped.max_iterations }).status === 'BLOCKED'
+  let cappedBlocked = false
+  try {
+    const capped = compileInquiryContract({
+      snapshot,
+      chart_id: 'source-acceptance:capped-frontier',
+      question: 'Complete wealth outlook with every adjacent mechanism.',
+      scope_tuple: firstCase.scope_tuple,
+      execution_channel: 'platform_internal',
+      max_iterations: 1,
+      planning_budget: {
+        max_search_hits: 1,
+        max_graph_hops: 0,
+        max_graph_nodes: 1,
+        max_challenger_additions: 0,
+      },
+    })
+    cappedBlocked = finalizeInquiryContract({ ...capped, iteration: capped.max_iterations }).status === 'BLOCKED'
+  } catch (error) {
+    cappedBlocked = error instanceof Error && error.message.startsWith('INQUIRY_REQUIRED_FLOOR_MISSING:')
+  }
 
-  const unavailable = compileInquiryContract({
-    snapshot,
-    chart_id: 'source-acceptance:unavailable-channel',
-    question: firstCase.question,
-    scope_tuple: firstCase.scope_tuple,
-    execution_channel: 'mcp_full',
-    max_iterations: 1,
-    planning_budget: {
-      max_search_hits: 32,
-      max_graph_hops: 3,
-      max_graph_nodes: 48,
-      max_challenger_additions: 24,
-    },
-  })
-  const unavailableObserved = applyInquiryObservations(unavailable, unavailable.plan_items
-    .filter((item) => item.state === 'ready')
-    .map((item) => ({
-      item_id: item.item_id,
-      disposition: 'served' as const,
-      evidence_refs: [`acceptance:${stableFingerprint({ item_id: item.item_id })}`],
-    })))
-  const unavailableAbstained = finalizeInquiryContract({
-    ...unavailableObserved,
-    iteration: unavailableObserved.max_iterations,
-  }).status !== 'COMPLETE'
+  let unavailableAbstained = false
+  try {
+    const unavailable = compileInquiryContract({
+      snapshot,
+      chart_id: 'source-acceptance:unavailable-channel',
+      question: firstCase.question,
+      scope_tuple: firstCase.scope_tuple,
+      execution_channel: 'mcp_full',
+      max_iterations: 1,
+      planning_budget: {
+        max_search_hits: 32,
+        max_graph_hops: 3,
+        max_graph_nodes: 48,
+        max_challenger_additions: 24,
+      },
+    })
+    let unavailableObserved = unavailable
+    for (const item of unavailable.plan_items.filter((candidate) => candidate.state === 'ready')) {
+      unavailableObserved = recordInquiryExecution(unavailableObserved, {
+        item_id: item.item_id,
+        disposition: 'served',
+        evidence_refs: [`acceptance:${stableFingerprint({ item_id: item.item_id })}`],
+        pagination: { semantics: 'none', exhausted: true, next: null },
+      })
+    }
+    unavailableAbstained = finalizeInquiryContract({
+      ...unavailableObserved,
+      iteration: unavailableObserved.max_iterations,
+    }).status !== 'COMPLETE'
+  } catch (error) {
+    unavailableAbstained = error instanceof Error && error.message.startsWith('INQUIRY_REQUIRED_FLOOR_MISSING:')
+  }
 
   const cases = [missingFloorRejected, cappedBlocked, unavailableAbstained]
   return {
@@ -154,43 +195,69 @@ export function evaluateBeyondAcaryaAcceptance(
   cases: readonly BeyondAcaryaAcceptanceCase[],
 ) {
   if (cases.length === 0) throw new Error('BEYOND_ACARYA_ACCEPTANCE_CORPUS_EMPTY')
-  const compiled = cases.map((item) => ({ item, contract: compileCase(snapshot, item) }))
-  const caseResults = compiled.map(({ item, contract }) => {
+  const compiled = cases.map((item) => {
+    try {
+      return { item, contract: compileCase(snapshot, item), compile_error: null }
+    } catch (error) {
+      return {
+        item,
+        contract: null,
+        compile_error: error instanceof Error ? error.message : 'INQUIRY_COMPILE_FAILED',
+      }
+    }
+  })
+  const caseResults = compiled.map(({ item, contract, compile_error }) => {
+    if (contract === null) {
+      return {
+        case_id: item.case_id,
+        ...(compile_error === null ? {} : { compile_error }),
+        selected_scu_ids: [] as string[],
+        missing_expected_scu_ids: [...item.expected_required_scu_ids],
+        expected_route_scu_ids: [...item.expected_route_scu_ids],
+        covered_route_scu_ids: [] as string[],
+        missing_required_route_scu_ids: [...item.expected_route_scu_ids],
+        missing_edge_keys: [...item.expected_edge_keys],
+        missing_novel_scu_ids: [...item.expected_novel_scu_ids],
+        long_inquiry: null,
+      }
+    }
     const selected = new Set(selectedScuIds(contract))
     const traversedEdges = new Set(contract.graph_traversal?.steps.map(edgeKey) ?? [])
     const missingExpected = item.expected_required_scu_ids.filter((scuId) => !selected.has(scuId))
-    const requiredScuIds = unique(contract.obligations
-      .filter((obligation) => obligation.materiality === 'required')
-      .flatMap((obligation) => obligation.scu_ids))
-    const coveredRoutes = requiredScuIds.filter((scuId) => contract.plan_items.some((planItem) =>
+    const coveredRoutes = item.expected_route_scu_ids.filter((scuId) => contract.plan_items.some((planItem) =>
       planItem.scu_id === scuId && planItem.binding_id !== null && planItem.state === 'ready'))
     const coveredEdges = item.expected_edge_keys.filter((expected) => traversedEdges.has(expected))
     const missingNovel = item.expected_novel_scu_ids.filter((scuId) => !selected.has(scuId))
     return {
       case_id: item.case_id,
+      ...(compile_error === null ? {} : { compile_error }),
       selected_scu_ids: [...selected].sort(),
       missing_expected_scu_ids: missingExpected,
-      required_scu_ids: requiredScuIds,
+      expected_route_scu_ids: [...item.expected_route_scu_ids],
       covered_route_scu_ids: coveredRoutes,
-      missing_required_route_scu_ids: requiredScuIds.filter((scuId) => !coveredRoutes.includes(scuId)),
+      missing_required_route_scu_ids: item.expected_route_scu_ids.filter((scuId) => !coveredRoutes.includes(scuId)),
       missing_edge_keys: item.expected_edge_keys.filter((expected) => !coveredEdges.includes(expected)),
       missing_novel_scu_ids: missingNovel,
-      long_inquiry: closeAcrossBatches(contract),
+      long_inquiry: item.exercise_long_inquiry
+        ? closeThroughVerifiedContinuations(snapshot, contract)
+        : null,
     }
   })
 
   const expectedConcepts = cases.reduce((total, item) => total + item.expected_required_scu_ids.length, 0)
   const omittedConcepts = caseResults.reduce((total, item) => total + item.missing_expected_scu_ids.length, 0)
-  const requiredRouteDenominator = caseResults.reduce((total, item) => total + item.required_scu_ids.length, 0)
+  const requiredRouteDenominator = cases.reduce((total, item) => total + item.expected_route_scu_ids.length, 0)
   const coveredRoutes = caseResults.reduce((total, item) => total + item.covered_route_scu_ids.length, 0)
   const expectedEdges = cases.reduce((total, item) => total + item.expected_edge_keys.length, 0)
   const missingEdges = caseResults.reduce((total, item) => total + item.missing_edge_keys.length, 0)
   const expectedNovel = cases.reduce((total, item) => total + item.expected_novel_scu_ids.length, 0)
   const missingNovel = caseResults.reduce((total, item) => total + item.missing_novel_scu_ids.length, 0)
-  const completedLongInquiries = caseResults.filter((item) => item.long_inquiry.status === 'COMPLETE'
-    && item.long_inquiry.iterations >= 2
+  const longInquiryCaseIds = new Set(cases.filter((item) => item.exercise_long_inquiry).map((item) => item.case_id))
+  const longInquiryCases = caseResults.filter((item) => longInquiryCaseIds.has(item.case_id))
+  const completedLongInquiries = longInquiryCases.filter((item) => item.long_inquiry?.status === 'COMPLETE'
+    && item.long_inquiry.pagination_continuations >= 1
     && item.long_inquiry.evidence_retained)
-  const blockedLongInquiries = caseResults.filter((item) => !completedLongInquiries.includes(item))
+  const blockedLongInquiries = longInquiryCases.filter((item) => !completedLongInquiries.includes(item))
   const abstention = assessAbstention(snapshot, cases[0]!)
 
   const metrics = {
@@ -219,12 +286,14 @@ export function evaluateBeyondAcaryaAcceptance(
       rate: expectedEdges === 0 ? 0 : (expectedEdges - missingEdges) / expectedEdges,
     },
     long_inquiry_closure: {
-      passed: completedLongInquiries.length === cases.length,
+      passed: completedLongInquiries.length === longInquiryCases.length && longInquiryCases.length > 0,
       completed_cases: completedLongInquiries.length,
-      total_cases: cases.length,
+      total_cases: longInquiryCases.length,
       blocked_case_ids: blockedLongInquiries.map((item) => item.case_id),
-      minimum_iterations_observed: Math.min(...caseResults.map((item) => item.long_inquiry.iterations)),
-      retained_earlier_evidence: caseResults.every((item) => item.long_inquiry.evidence_retained),
+      minimum_iterations_observed: Math.min(...longInquiryCases.map((item) => item.long_inquiry?.iterations ?? 0)),
+      pagination_continuations: longInquiryCases.reduce((total, item) =>
+        total + (item.long_inquiry?.pagination_continuations ?? 0), 0),
+      retained_earlier_evidence: longInquiryCases.every((item) => item.long_inquiry?.evidence_retained),
     },
     abstention_quality: abstention,
   }
