@@ -40,6 +40,20 @@ class FakeCursor:
         s = ' '.join(sql.split())
         t = self._conn.tables
 
+        if 'pg_advisory_xact_lock' in s:
+            self._conn.advisory_locks.append(tuple(params))
+            self._rows = [{'locked': None}]
+            return
+
+        if s.startswith('SELECT EXISTS (SELECT 1 FROM') and 'AS has_rows' in s:
+            table = re.match(r'SELECT EXISTS \(SELECT 1 FROM (\w+)', s).group(1)
+            rows = [r for r in t.get(table, [])
+                    if str(r.get('chart_id')) == str(params[0])]
+            if table == 'kala_insights' and 'lel_derived = FALSE' in s:
+                rows = [r for r in rows if r.get('lel_derived') is False]
+            self._rows = [{'has_rows': bool(rows)}]
+            return
+
         if s.startswith('DELETE FROM'):
             table = re.match(r'DELETE FROM (\w+)', s).group(1)
             self._conn.deletes.append(table)
@@ -311,6 +325,7 @@ class FakeConn:
         self.executed: list[str] = []
         self.inserts: dict[str, list[tuple]] = {}
         self.deletes: list[str] = []
+        self.advisory_locks: list[tuple] = []
 
     # `cursor_factory` / `row_factory` are accepted and ignored: this fake always
     # yields dict rows, which is what every real call site asks for anyway.

@@ -35,6 +35,19 @@ def _patch_g1_stages(monkeypatch):
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage0_kinematics', None)
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage1_symbolization', None)
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage3_clocks', None)
+    # The excluded stage rows are controlled inputs to this isolated writer
+    # build. W0 preservation is exercised against the full owned-table set in
+    # test_planning_safety.py.
+    fixture_input_tables = {
+        'kala_field_kinematics', 'kala_field_primitives',
+        'kala_field_promise_nodes', 'kala_field_promise_edges',
+        'kala_field_routes', 'kala_field_clocks', 'kala_field_boundaries',
+    }
+    monkeypatch.setattr(
+        W, '_OWNED_TABLES',
+        tuple(item for item in W._OWNED_TABLES
+              if item[0] not in fixture_input_tables),
+    )
     yield
 
 

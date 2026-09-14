@@ -212,15 +212,15 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3: _RESUME_VERSION == 9
+# Test 3: _RESUME_VERSION == 10
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestResumeVersionIs9:
-    """v9 invalidates pre-DHARA-v1.2 checkpoints and retains the v8 P0 gate."""
+class TestResumeVersionIs10:
+    """v10 adds the W0 preservation preflight atop DHARA v1.2 identity."""
 
-    def test_resume_version_is_9(self):
-        assert W._RESUME_VERSION == 9, (
-            f'_RESUME_VERSION must be 9 (DP-SD-017 DHARA v1.2 semantics), '
+    def test_resume_version_is_10(self):
+        assert W._RESUME_VERSION == 10, (
+            f'_RESUME_VERSION must be 10 (DP-SD-017 W0 preservation), '
             f'got {W._RESUME_VERSION!r}'
         )
 

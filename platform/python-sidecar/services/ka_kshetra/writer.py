@@ -15,12 +15,16 @@ Nothing in this file changes the orchestrator. If a future stage appears to need
 a contract change, STOP and raise with the native (§N.2 — the freeze is
 deliberate).
 
-── IDEMPOTENCY (§N.3 + the ka_gochara_sweep D-5 RED-C lesson) ──────────────
-Per-chart delete-then-insert scoped to (chart_id × natural key), performed
-EXACTLY ONCE by the first execution-owned `prepare:replace` substep on a
-fresh/replanned build. Planning, dry-run and matching-resume validation are
-read-only. Cleanup is NEVER performed by a computational substep. The lesson is
-written in blood in
+── W0 PRESERVATION + IDEMPOTENCY (§N.3) ────────────────────────────────
+This schema has no immutable candidate/publication generation boundary. During
+DP-SD-017 W0, `prepare:replace` therefore takes a transaction-scoped chart lock
+and FAILS CLOSED before DELETE when any writer-owned output already exists. A
+populated chart remains held until W7 supplies immutable candidate/publication;
+this writer does not invent a backup and does not claim atomic replacement.
+Only an output-empty chart may enter the existing per-chart delete-then-insert
+path. Planning, dry-run and matching-resume validation remain read-only, and
+cleanup is NEVER performed by a computational substep. The lesson is written in
+blood in
 `ka_gochara_sweep`'s docstring: substep dispatch order is not something a writer
 may assume, and a per-substep delete can fire AFTER sibling substeps have
 committed rows in the SAME build, silently wiping them.
@@ -174,7 +178,13 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #:       replan so they cannot bypass the new preparation boundary.
 #: v9 — DP-SD-017 DHARA v1.2: clock-knot left/right endpoint semantics are now
 #:       content-bound; v8 checkpoints cannot resume into the corrected field.
-_RESUME_VERSION = 9
+#: v10 — DP-SD-017 W0 preservation: populated slices fail before replacement;
+#:       v9 checkpoints must re-enter the preservation preflight.
+_RESUME_VERSION = 10
+
+
+class KshetraReplacementHeld(RuntimeError):
+    """A populated W0 slice cannot be replaced without immutable generations."""
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -336,8 +346,9 @@ class KaKshetraWriter(WriterBase):
         if not self._event_classes:
             logger.info(
                 'ka_kshetra: no bodha_pratijna event classes for chart %s — honest '
-                'empty computation. The prepare-only plan will clear stale writer-owned '
-                'outputs and progress under the orchestrator savepoint.', self._chart_id,
+                'empty computation. The prepare-only plan will preflight the existing '
+                'writer-owned slice under the orchestrator savepoint; any populated '
+                'slice remains unchanged and held until W7.', self._chart_id,
             )
             steps = [SubStep(key='prepare:replace',
                              label='replace prior Kshetra generation')]
@@ -507,12 +518,18 @@ class KaKshetraWriter(WriterBase):
         return self._run_plugin_substep(ctx, step)
 
     def _run_prepare_replace(self, conn, step: SubStep) -> WriterResult:
-        """Replace the complete writer-owned chart slice under one savepoint.
+        """Preflight the writer-owned chart slice under one savepoint.
 
         `plan_substeps` has already resolved and validated the build pins before
         this method can be dispatched. The orchestrator wraps this call in the
         same savepoint, heartbeat and commit boundary as every computational
         substep. Dry-run deliberately writes neither data nor a progress receipt.
+
+        DP-SD-017 W0 has no immutable candidate/publication schema. Replacement
+        of ANY populated writer-owned slice is therefore held until W7. The
+        transaction-scoped advisory lock makes the presence check and permitted
+        empty-slice preparation one serialized decision. No backup or atomic
+        replacement is implied by this temporary safety boundary.
         """
         if step.key != 'prepare:replace':
             raise RuntimeError(f'ka_kshetra: unsupported preparation key {step.key!r}')
@@ -523,13 +540,63 @@ class KaKshetraWriter(WriterBase):
                 notes='dry-run: replacement preparation not executed',
             )
 
+        populated_table = self._populated_owned_table(conn, self._chart_id)
+        if populated_table is not None:
+            raise KshetraReplacementHeld(
+                'ka_kshetra replacement held: writer-owned output already exists '
+                f'in {populated_table} for chart {self._chart_id}. DP-SD-017 W0 '
+                'has no immutable generation schema; replacement remains held '
+                'until W7 immutable candidate/publication.'
+            )
+
+        # A chart with no discovered event classes and no existing output has
+        # nothing to replace or build. Keep the prepare step executable so the
+        # orchestrator observes the honest empty, but do no DML and mint no
+        # misleading completion receipt.
+        if not self._event_classes:
+            return WriterResult(
+                asset_id=ASSET_ID,
+                rows_inserted=0,
+                notes='honest_empty:no_event_classes; replacement not required',
+            )
+
         self._delete_prior_rows(conn, self._chart_id)
         self._record_substep(conn, step.key, 0)
         return WriterResult(
             asset_id=ASSET_ID,
             rows_inserted=0,
-            notes='prior Kshetra generation replaced',
+            notes='empty writer-owned slice prepared; no prior output replaced',
         )
+
+    @staticmethod
+    def _populated_owned_table(conn, chart_id) -> Optional[str]:
+        """Lock and return the first populated writer-owned table, if any.
+
+        `kala_insights` is shared: only `lel_derived = FALSE` rows are owned by
+        this writer and can block its replacement. Every lookup is loud-failing;
+        an unavailable table or malformed result is a failed preflight, never an
+        inferred empty slice.
+        """
+        with conn.cursor() as cur:
+            cur.execute(
+                'SELECT pg_advisory_xact_lock(hashtext(%s), hashtext(%s)) AS locked',
+                (ASSET_ID, str(chart_id)),
+            )
+            for table, predicate in _OWNED_TABLES:
+                cur.execute(
+                    f'SELECT EXISTS (SELECT 1 FROM {table} WHERE chart_id = %s'
+                    + (f' AND {predicate}' if predicate else '')
+                    + ' LIMIT 1) AS has_rows',
+                    (chart_id,),
+                )
+                rows = S4._rows(cur)
+                if len(rows) != 1 or 'has_rows' not in rows[0]:
+                    raise RuntimeError(
+                        f'ka_kshetra replacement preflight returned no verdict for {table}'
+                    )
+                if bool(rows[0]['has_rows']):
+                    return table
+        return None
 
     def _run_plugin_substep(self, ctx, step: SubStep) -> WriterResult:
         """Route a substep contributed by another lane back to that lane.
