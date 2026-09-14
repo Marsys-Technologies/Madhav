@@ -6,8 +6,8 @@ status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0037
-last_updated: 2026-09-15T01:21:00+05:30
+last_event: PA-E0038
+last_updated: 2026-09-15T01:24:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State

@@ -29,7 +29,7 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
       status: 'APPROVED_PRE_RELEASE_HEAD',
       verdict: 'APPROVE',
       high_or_medium_findings: 0,
-      final_head_review: 'COMPLETE',
+      final_head_review: 'REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT',
     })
     expect(terminal.terminal_review.approved_pre_release_head).toMatch(/^[a-f0-9]{40}$/)
     const approval = w6p2Events.find((event: { event_id: string }) =>
