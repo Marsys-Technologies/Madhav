@@ -54,48 +54,8 @@
       "pass_id": 1
     },
     {
-      "type": "activity.upsert",
-      "seq": 5,
-      "t": "<ms>",
-      "key": "retrieve:msr_sql",
-      "label_key": "Reading the whole chart",
-      "pass_id": 1,
-      "status": "running"
-    },
-    {
-      "type": "activity.upsert",
-      "seq": 6,
-      "t": "<ms>",
-      "key": "retrieve:chart_facts_query",
-      "label_key": "Retrieved — chart data",
-      "pass_id": 1,
-      "status": "running"
-    },
-    {
-      "type": "activity.upsert",
-      "seq": 7,
-      "t": "<ms>",
-      "key": "retrieve:msr_sql",
-      "label_key": "Reading the whole chart",
-      "pass_id": 1,
-      "status": "done",
-      "count": 3,
-      "ms": "<ms>"
-    },
-    {
-      "type": "activity.upsert",
-      "seq": 8,
-      "t": "<ms>",
-      "key": "retrieve:chart_facts_query",
-      "label_key": "Retrieved — chart data",
-      "pass_id": 1,
-      "status": "done",
-      "count": 2,
-      "ms": "<ms>"
-    },
-    {
       "type": "phase",
-      "seq": 9,
+      "seq": 5,
       "t": "<ms>",
       "phase": "retrieve",
       "status": "end",
@@ -104,7 +64,7 @@
     },
     {
       "type": "phase",
-      "seq": 10,
+      "seq": 6,
       "t": "<ms>",
       "phase": "synthesize",
       "status": "start",
@@ -112,7 +72,7 @@
     },
     {
       "type": "block.open",
-      "seq": 11,
+      "seq": 7,
       "t": "<ms>",
       "block_id": "blk-1-1",
       "pass_id": 1,
@@ -120,21 +80,21 @@
     },
     {
       "type": "block.delta",
-      "seq": 12,
+      "seq": 8,
       "t": "<ms>",
       "block_id": "blk-1-1",
       "delta": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth."
     },
     {
       "type": "block.commit",
-      "seq": 13,
+      "seq": 9,
       "t": "<ms>",
       "block_id": "blk-1-1",
       "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth."
     },
     {
       "type": "phase",
-      "seq": 14,
+      "seq": 10,
       "t": "<ms>",
       "phase": "synthesize",
       "status": "end",
@@ -143,7 +103,7 @@
     },
     {
       "type": "grade",
-      "seq": 15,
+      "seq": 11,
       "t": "<ms>",
       "subject": "citation_gate",
       "grade": "PASS",
@@ -151,14 +111,14 @@
     },
     {
       "type": "phase",
-      "seq": 16,
+      "seq": 12,
       "t": "<ms>",
       "phase": "finalize",
       "status": "start"
     },
     {
       "type": "turn.commit",
-      "seq": 17,
+      "seq": 13,
       "t": "<ms>",
       "turn_id": "00000000-0000-4000-8000-000000000001",
       "conversation_id": "00000000-0000-4000-8000-000000000002",
@@ -167,15 +127,23 @@
       "assistant_chars": 127
     },
     {
+      "type": "grade",
+      "seq": 14,
+      "t": "<ms>",
+      "subject": "inquiry_contract",
+      "grade": "INCOMPLETE",
+      "detail": "2/2 required obligations dispositioned; 0 material frontier items open; receipt sha256:c72d1373ced13d69d461b2e9ddb402b139e1af4cbb31ce04c1b5dec7d418e5d9"
+    },
+    {
       "type": "phase",
-      "seq": 18,
+      "seq": 15,
       "t": "<ms>",
       "phase": "finalize",
       "status": "end"
     },
     {
       "type": "turn.close",
-      "seq": 19,
+      "seq": 16,
       "t": "<ms>",
       "turn_id": "00000000-0000-4000-8000-000000000001",
       "status": "ok",
@@ -266,70 +234,14 @@
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
+      "type": "phase",
       "seq": 5
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
+      "type": "phase",
       "seq": 5
-    },
-    {
-      "fn": "executeWithCache",
-      "tool": "msr_sql"
-    },
-    {
-      "fn": "appendBufferedEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 6
-    },
-    {
-      "fn": "captureEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 6
-    },
-    {
-      "fn": "executeWithCache",
-      "tool": "chart_facts_query"
-    },
-    {
-      "fn": "appendBufferedEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 7
-    },
-    {
-      "fn": "captureEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 7
-    },
-    {
-      "fn": "appendBufferedEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 8
-    },
-    {
-      "fn": "captureEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "activity.upsert",
-      "seq": 8
-    },
-    {
-      "fn": "appendBufferedEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "phase",
-      "seq": 9
-    },
-    {
-      "fn": "captureEvent",
-      "turnId": "00000000-0000-4000-8000-000000000001",
-      "type": "phase",
-      "seq": 9
     },
     {
       "fn": "buildConsultSystemContent",
@@ -360,13 +272,13 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 10
+      "seq": 6
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 10
+      "seq": 6
     },
     {
       "fn": "runAgenticLoop",
@@ -376,54 +288,54 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.open",
-      "seq": 11
+      "seq": 7
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.open",
-      "seq": 11
+      "seq": 7
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.delta",
-      "seq": 12
+      "seq": 8
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.delta",
-      "seq": 12
+      "seq": 8
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.commit",
-      "seq": 13
+      "seq": 9
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "block.commit",
-      "seq": 13
+      "seq": 9
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 14
+      "seq": 10
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 14
+      "seq": 10
     },
     {
       "fn": "validateCitationsForStream",
       "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth.",
-      "contextJsonLength": 713,
+      "contextJsonLength": 99,
       "queryClass": "holistic",
       "override": false
     },
@@ -431,25 +343,25 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "grade",
-      "seq": 15
+      "seq": 11
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "grade",
-      "seq": 15
+      "seq": 11
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 16
+      "seq": 12
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 16
+      "seq": 12
     },
     {
       "fn": "createPendingStreamWriter",
@@ -466,8 +378,8 @@
       "fn": "writeContextAssemblyLog",
       "entry": {
         "query_id": "00000000-0000-4000-8000-000000000001",
-        "l1_tokens": 13,
-        "l2_5_signal_tokens": 12,
+        "l1_tokens": 0,
+        "l2_5_signal_tokens": 0,
         "l2_5_pattern_tokens": 0,
         "l4_tokens": 0,
         "vector_tokens": 0,
@@ -546,48 +458,6 @@
       "parts": [
         {
           "seq": 0,
-          "kind": "tool_call",
-          "body": {
-            "call_id": "tb-msr_sql",
-            "tool_name": "Reading the whole chart",
-            "args": {}
-          },
-          "model_visible": false
-        },
-        {
-          "seq": 1,
-          "kind": "tool_result",
-          "body": {
-            "call_id": "tb-msr_sql",
-            "status": "done",
-            "count": 3,
-            "ms": "<ms>"
-          },
-          "model_visible": false
-        },
-        {
-          "seq": 2,
-          "kind": "tool_call",
-          "body": {
-            "call_id": "tb-chart_facts_query",
-            "tool_name": "Retrieved — chart data",
-            "args": {}
-          },
-          "model_visible": false
-        },
-        {
-          "seq": 3,
-          "kind": "tool_result",
-          "body": {
-            "call_id": "tb-chart_facts_query",
-            "status": "done",
-            "count": 2,
-            "ms": "<ms>"
-          },
-          "model_visible": false
-        },
-        {
-          "seq": 4,
           "kind": "text",
           "body": {
             "text": "Saturn occupies the tenth from the Ascendant with directional strength, and the current period lord aspects it from the fourth.",
@@ -601,13 +471,13 @@
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "turn.commit",
-      "seq": 17
+      "seq": 13
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "turn.commit",
-      "seq": 17
+      "seq": 13
     },
     {
       "fn": "generateConversationTitle"
@@ -623,26 +493,38 @@
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 14
+    },
+    {
+      "fn": "captureEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
+      "type": "grade",
+      "seq": 14
+    },
+    {
+      "fn": "appendBufferedEvent",
+      "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 18
+      "seq": 15
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "phase",
-      "seq": 18
+      "seq": 15
     },
     {
       "fn": "appendBufferedEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "turn.close",
-      "seq": 19
+      "seq": 16
     },
     {
       "fn": "captureEvent",
       "turnId": "00000000-0000-4000-8000-000000000001",
       "type": "turn.close",
-      "seq": 19
+      "seq": 16
     },
     {
       "fn": "endTurnCapture",
