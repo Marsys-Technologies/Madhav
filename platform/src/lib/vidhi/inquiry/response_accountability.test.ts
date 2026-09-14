@@ -442,7 +442,7 @@ describe('Wave 4 response accountability', () => {
     expect(findings[0]!.obligation_id).toBeNull()
   })
 
-  it('deduplicates retried semantic evidence across volatile ToolBundle metadata', () => {
+  it('deduplicates retried semantic evidence across volatile metadata and object key order', () => {
     const initial = compileInquiryContract({
       snapshot,
       chart_id: 'chart-fixture',
@@ -455,7 +455,8 @@ describe('Wave 4 response accountability', () => {
         && candidateBinding.pagination_contract?.result_collection_path === 'content.rows'
     })!
     const binding = bindingForInquiryItem(snapshot, initial, item.item_id)!
-    const semanticResult = [{ content: JSON.stringify({ rows: [{ value: 'the same semantic result' }] }) }]
+    const semanticResult = [{ content: JSON.stringify({ rows: [{ a: 1, b: 2 }] }) }]
+    const reorderedSemanticResult = [{ content: JSON.stringify({ rows: [{ b: 2, a: 1 }] }) }]
     const first = {
       tool_bundle_id: '11111111-1111-4111-8111-111111111111',
       tool_name: binding.capability_uri,
@@ -463,7 +464,13 @@ describe('Wave 4 response accountability', () => {
       result_hash: stableFingerprint(semanticResult),
       results: semanticResult,
     }
-    const retry = { ...first, tool_bundle_id: '22222222-2222-4222-8222-222222222222', latency_ms: 41 }
+    const retry = {
+      ...first,
+      tool_bundle_id: '22222222-2222-4222-8222-222222222222',
+      latency_ms: 41,
+      results: reorderedSemanticResult,
+      result_hash: stableFingerprint(reorderedSemanticResult),
+    }
     const contract = applyInquiryObservations(initial, [{
       item_id: item.item_id,
       disposition: 'served',
@@ -476,8 +483,9 @@ describe('Wave 4 response accountability', () => {
     expect(findings[0]!.evidence_refs).toEqual(expect.arrayContaining([
       `retrieval:${stableFingerprint(first)}`,
       `retrieval:${stableFingerprint(retry)}`,
-      `result:${stableFingerprint('{"value":"the same semantic result"}')}`,
+      `result:${stableFingerprint('{"a":1,"b":2}')}`,
     ]))
+    expect(findings[0]!.normalized_content).toBe('{"a":1,"b":2}')
   })
 
   it('detects one omitted finding inside an otherwise mapped multi-finding evidence set', () => {

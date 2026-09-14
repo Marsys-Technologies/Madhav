@@ -1,4 +1,4 @@
-import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
+import { canonicalize, stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import type { CapabilityKnowledgeSnapshot } from '../../retrieval/registry/knowledge/types'
 import type {
   InquiryContract,
@@ -27,12 +27,16 @@ function factIdentity(kind: InquiryRegisteredFact['kind'], contract: InquiryCont
  * deterministic-floor and omission-challenger obligations therefore cannot be
  * dropped merely because the response author never mentioned them.
  */
-function normalizedFindingContent(value: unknown): string {
-  if (typeof value === 'object' && value !== null && 'content' in value
+function normalizedFindingContent(
+  value: unknown,
+  mode: ReturnType<typeof extractInquirySemanticFindings>['mode'],
+): string {
+  if (mode === 'opaque_adapter_items'
+    && typeof value === 'object' && value !== null && 'content' in value
     && typeof (value as { content?: unknown }).content === 'string') {
     return (value as { content: string }).content.trim()
   }
-  return JSON.stringify(value) ?? String(value)
+  return canonicalize(value) ?? String(value)
 }
 
 export function buildInquiryFactRegister(
@@ -137,7 +141,7 @@ export function buildInquiryFactRegister(
       : undefined
     const sourceCoordinate = binding?.binding_id
       ?? (typeof toolName === 'string' ? `opaque-tool:${toolName}` : 'opaque-unbound')
-    extraction.rows.map(normalizedFindingContent).forEach((content) => {
+    extraction.rows.map((row) => normalizedFindingContent(row, extraction.mode)).forEach((content) => {
       const rowHash = stableFingerprint(content)
       const semanticCoordinate = `${sourceCoordinate}:${extraction.result_collection_path ?? 'opaque'}:${rowHash}`
       const accumulated = findingsBySemanticCoordinate.get(semanticCoordinate) ?? {
