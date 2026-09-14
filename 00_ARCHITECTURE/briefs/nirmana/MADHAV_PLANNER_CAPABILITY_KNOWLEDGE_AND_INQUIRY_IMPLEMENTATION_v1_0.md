@@ -138,7 +138,7 @@ Seven producer-output links above pin exact migration-authored output-digest com
 
 ## 7. Estate census
 
-`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `79c2b657103aec2fc19866d267726e39e215017c5ba752859b75bb63dc1ef640`.
+`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `2d3b6e1d1523f92c876608fb30bf30585b95b7a3b6210e985d0b2ff5758bc93d`.
 
 | Denominator | Current source-tree result |
 |---|---:|
@@ -331,7 +331,7 @@ Before any “complete data estate” claim:
 ### Current branch verification boundary (2026-09-14)
 
 The scoped candidate checks are green under the CI-pinned Node 20 runtime and a
-clean `npm ci`: the exact added platform CI selection passes 87/87; the exact MCP
+clean `npm ci`: the exact added platform CI selection passes 88/88; the exact MCP
 lifecycle CI selection passes 27/27; both package typechecks pass; the migration
 number guard passes; the capability snapshot, estate census, MCP envelope and MCP
 registry-shim drift checks pass; and full platform lint exits zero with no errors
@@ -341,8 +341,8 @@ cases, 90 independent completion-review tests, and 86 independent security-revie
 tests. Independent completion, security, and migration reviews reported no open
 HIGH or MEDIUM blocker in the changed surface.
 
-The CI-faithful full platform unit run is also green: 1,093 files passed and 71
-were skipped; 11,614 tests passed, 662 were skipped and 2 are todo. Reinstalling
+The CI-faithful full platform unit run is also green: 1,094 files passed and 71
+were skipped; 11,616 tests passed, 662 were skipped and 2 are todo. Reinstalling
 `platform-mcp` from its committed lockfile also removed the apparent SDK/Zod
 typecheck failure, and the two stale generated MCP contracts were regenerated.
 The full MCP suite remains outside CI by an explicit workflow decision because
@@ -358,7 +358,21 @@ portal/media/storage state now uses hydration-safe external stores, lifecycle
 transitions are modeled declaratively or scheduled through cancellable external
 subscriptions, and the affected source guards were updated. Full lint now reports
 0 errors and 590 warnings; TypeScript passes; the full platform unit suite remains
-green at 1,093 files and 11,614 tests passed.
+green at 1,094 files and 11,616 tests passed.
+
+A continuation audit found and closed one false-completion defect before the
+candidate was handed back for review. When a required paginated result reached
+the final allowed iteration with another page still indicated, execution correctly
+marked its material frontier `capped`, but finalization counted only `open` frontier
+items and could return `COMPLETE`. Inquiry compiler `1.1.1` now treats every required
+`capped` frontier as unresolved and `BLOCKED`, the reader receipt reports open and
+capped required frontier together, and regression tests cover both closure and the
+wire-facing grade. The same pass made latest-build overlay selection deterministic
+when completed builds share an `ended_at` value (`id DESC` tie-break); its source
+fingerprint change is reflected in the regenerated census hash above. Focused
+continuation tests pass 18/18, generated golden streams pass 56/56 after intentional
+receipt refresh, the exact platform CI selection passes 88/88, and the complete
+platform suite remains green at the counts above.
 
 ## 17. Candidate disposition
 

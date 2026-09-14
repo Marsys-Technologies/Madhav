@@ -34,6 +34,7 @@ describe('chart capability overlay loader', () => {
     const overlay = await loadChartCapabilityOverlay(snapshot, 'chart-1')
     expect(overlay.availability[0]).toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L1/test'] })
     expect(overlay.build_id).toBe('build-1')
+    expect(mocks.query.mock.calls[0]?.[0]).toContain('ORDER BY ended_at DESC NULLS LAST, id DESC')
   })
 
   it('fails closed on a mismatched output specification or unavailable provenance', async () => {

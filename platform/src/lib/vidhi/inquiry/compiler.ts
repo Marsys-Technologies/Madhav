@@ -16,7 +16,7 @@ import {
 } from './types'
 import type { InquiryPaginationReceipt } from './pagination'
 
-export const INQUIRY_COMPILER_VERSION = '1.1.0'
+export const INQUIRY_COMPILER_VERSION = '1.1.1'
 
 const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
   wealth_deepdive: [
@@ -440,11 +440,14 @@ export function finalizeInquiryContract(contract: InquiryContract): InquiryContr
   const pending = contract.obligations.filter((obligation) => obligation.materiality === 'required' && obligation.disposition === 'pending')
   const materialGaps = contract.obligations.filter((obligation) => obligation.materiality === 'required' && ['dark', 'failed'].includes(obligation.disposition))
   const openFrontier = contract.material_frontier.filter((item) => item.materiality === 'required' && item.disposition === 'open')
+  const cappedFrontier = contract.material_frontier.filter((item) => item.materiality === 'required' && item.disposition === 'capped')
   const reasons = [...validation.errors]
   if (pending.length) reasons.push(`${pending.length} required obligations pending`)
   if (materialGaps.length) reasons.push(`${materialGaps.length} required obligations failed or are dark`)
   if (openFrontier.length) reasons.push(`${openFrontier.length} material frontier items open`)
-  const exhausted = contract.iteration >= contract.max_iterations && (pending.length > 0 || materialGaps.length > 0 || openFrontier.length > 0)
+  if (cappedFrontier.length) reasons.push(`${cappedFrontier.length} material frontier items capped before exhaustion proof`)
+  const exhausted = cappedFrontier.length > 0
+    || (contract.iteration >= contract.max_iterations && (pending.length > 0 || materialGaps.length > 0 || openFrontier.length > 0))
   if (exhausted) reasons.push('iteration cap reached before material frontier closure')
   return {
     ...contract,

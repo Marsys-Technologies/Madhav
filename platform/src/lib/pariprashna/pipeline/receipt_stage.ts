@@ -78,10 +78,12 @@ export function emitCompletenessReceipt(args: {
     const closureReceipt = buildInquiryClosureReceipt(args.inquiryContract)
     const required = args.inquiryContract.obligations.filter((item) => item.materiality === 'required')
     const dispositioned = required.filter((item) => item.disposition !== 'pending').length
+    const unresolvedMaterialFrontier = args.inquiryContract.material_frontier.filter((item) =>
+      item.materiality === 'required' && (item.disposition === 'open' || item.disposition === 'capped'))
     em.grade({
       subject: 'inquiry_contract',
       grade: args.inquiryContract.status,
-      detail: `${dispositioned}/${required.length} required obligations dispositioned; ${args.inquiryContract.material_frontier.filter((item) => item.disposition === 'open').length} material frontier items open; receipt ${closureReceipt.receipt_hash}`,
+      detail: `${dispositioned}/${required.length} required obligations dispositioned; ${unresolvedMaterialFrontier.length} required frontier items unresolved; receipt ${closureReceipt.receipt_hash}`,
     })
   }
 }

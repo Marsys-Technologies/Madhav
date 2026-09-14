@@ -5,7 +5,7 @@
     "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
   ],
-  "content_sha256": "79c2b657103aec2fc19866d267726e39e215017c5ba752859b75bb63dc1ef640",
+  "content_sha256": "2d3b6e1d1523f92c876608fb30bf30585b95b7a3b6210e985d0b2ff5758bc93d",
   "denominators": {
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -1401,7 +1401,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "0e5bcb7e3372e7d6f74dea5b6fa4cc75761776255cdd8a74f9c402f158d43321"
+            "sha256": "6d7b2c09f366167b2b528284570e32c2da9370a8bfb90329cb991ba2a6377b80"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -2117,7 +2117,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/registry/**/*.ts (excluding tests)",
-        "sha256": "dbd1aaac63970d8a87ed3d7eb136d3f4bb70bbc92b9f9ab4254379e38f842ae8"
+        "sha256": "05eb702b2f41a55dec5deb9dce49d73cd29cd7d1ffbdb9823dc36e9f2e19c34e"
       },
       {
         "id": "writer_digest_inventory",

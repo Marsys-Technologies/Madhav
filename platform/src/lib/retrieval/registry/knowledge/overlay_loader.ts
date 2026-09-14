@@ -99,7 +99,7 @@ export async function loadChartCapabilityOverlay(
            SELECT id::text AS build_id, state AS status
              FROM build_runs
             WHERE chart_id=$2::uuid AND state='completed'
-            ORDER BY ended_at DESC NULLS LAST
+            ORDER BY ended_at DESC NULLS LAST, id DESC
             LIMIT 1
          )
          SELECT latest_build.build_id AS active_build_id,

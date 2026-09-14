@@ -164,6 +164,38 @@ describe('versioned inquiry compiler', () => {
     expect(final.status_reasons).toContain('iteration cap reached before material frontier closure')
   })
 
+  it('never treats a required capped pagination frontier as COMPLETE', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Complete wealth outlook',
+      scope_tuple: wealthScope,
+      max_iterations: 1,
+    })
+    const paged = initial.plan_items.find((item) => item.scu_id === 'scu.yoga.firing_and_cancellation')!
+    const otherObservations = initial.plan_items
+      .filter((item) => item.item_id !== paged.item_id)
+      .map((item) => ({ item_id: item.item_id, disposition: 'served' as const, evidence_refs: [`receipt:${item.item_id}`] }))
+    const observed = applyInquiryObservations(initial, otherObservations)
+    const capped = recordInquiryExecution(observed, {
+      item_id: paged.item_id,
+      disposition: 'served',
+      evidence_refs: ['receipt:page-1'],
+      pagination: { semantics: 'offset', exhausted: false, next: 50 },
+      request_position_path: 'offset',
+    })
+
+    expect(capped.material_frontier).toContainEqual(expect.objectContaining({
+      scu_id: paged.scu_id,
+      materiality: 'required',
+      disposition: 'capped',
+    }))
+    const final = finalizeInquiryContract(capped)
+    expect(final.status).toBe('BLOCKED')
+    expect(final.status_reasons).toContain('1 material frontier items capped before exhaustion proof')
+    expect(final.status_reasons).toContain('iteration cap reached before material frontier closure')
+  })
+
   it('recomputes immutable authorization and emits a normalized closure receipt', () => {
     const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
     expect(inquiryAuthorizationHashes(initial)).toEqual({
