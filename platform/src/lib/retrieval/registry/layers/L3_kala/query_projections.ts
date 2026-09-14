@@ -40,8 +40,39 @@ interface ProjectionBuildRow {
   asset_ended_at: string | null
 }
 
-async function loadProjectionBuildQualification(chartId: string) {
-  const unavailableGeneration = {
+export interface BhavishyaDataQualification {
+  state: 'qualified' | 'unqualified'
+  generation: {
+    state: 'unavailable'
+    generation_id: null
+    reason: string
+  }
+  build_observation: {
+    state: 'completed_observed' | 'incomplete_observed' | 'absent' | 'unavailable'
+    build_id: string | null
+    build_state?: string
+    asset_state?: string
+    build_ended_at?: string | null
+    asset_ended_at?: string | null
+    reason?: string
+    error?: string
+    physically_bound_to_rows: false
+  }
+  acceptance: {
+    state: 'unavailable'
+    accepted_current: null
+    reason: string
+  }
+}
+
+/**
+ * Shared kala_bhavishya qualification receipt for both direct projections and the
+ * temporal-activation fallback. A build-run row is an observation only: because
+ * physical kala_bhavishya rows carry neither generation nor build_id, even a completed
+ * run cannot be bound to the served rows or upgraded to accepted-current evidence.
+ */
+export async function loadBhavishyaDataQualification(chartId: string): Promise<BhavishyaDataQualification> {
+  const unavailableGeneration: BhavishyaDataQualification['generation'] = {
     state: 'unavailable',
     generation_id: null,
     reason: 'kala_bhavishya rows have no generation or build_id column.',
@@ -76,7 +107,7 @@ async function loadProjectionBuildQualification(chartId: string) {
         asset_ended_at: row.asset_ended_at,
         physically_bound_to_rows: false,
       } : {
-        state: 'unavailable',
+        state: 'absent',
         build_id: null,
         reason: 'No ka_bhavishya_lekha build-run observation exists for this chart.',
         physically_bound_to_rows: false,
@@ -250,11 +281,11 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
       const [result, familyResult, data_qualification] = await Promise.all([
         query(sql, [...params, limit]),
         query<ProjectionFamilyRow>(familySql, [...params, limit]),
-        loadProjectionBuildQualification(chart_id),
+        loadBhavishyaDataQualification(chart_id),
       ])
 
       let source_row_count: number | null = null
-      let source_state: 'served' | 'unbuilt' | 'searched_empty' | 'classification_unavailable' = 'served'
+      let source_state: 'served' | 'source_empty' | 'searched_empty' | 'classification_unavailable' = 'served'
       let source_classification_error: string | null = null
       if (result.rows.length === 0) {
         try {
@@ -263,7 +294,9 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
             [chart_id],
           )
           source_row_count = Number(source.rows[0]?.total ?? 0)
-          source_state = source_row_count === 0 ? 'unbuilt' : 'searched_empty'
+          // Zero rows are evidence of an empty physical source, not proof that no valid
+          // build completed. Build history is reported separately and is not row-bound.
+          source_state = source_row_count === 0 ? 'source_empty' : 'searched_empty'
         } catch (err) {
           source_state = 'classification_unavailable'
           source_classification_error = String(err)

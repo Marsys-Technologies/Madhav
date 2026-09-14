@@ -16,12 +16,17 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import {
+  loadBhavishyaDataQualification,
+  type BhavishyaDataQualification,
+} from './query_projections'
 
 type ForwardWindowState =
   | 'not_needed'
   | 'served'
+  | 'served_unqualified'
   | 'searched_empty'
-  | 'unbuilt'
+  | 'source_empty'
   | 'incompatible_filters'
   | 'db_failure'
 
@@ -33,6 +38,7 @@ interface ForwardWindowStatus {
   incompatible_filters: string[]
   source_row_count: number | null
   error: string | null
+  data_qualification: BhavishyaDataQualification | null
 }
 
 export const queryTemporalActivationCapability: CapabilityDescriptor = {
@@ -344,6 +350,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         incompatible_filters: [],
         source_row_count: null,
         error: null,
+        data_qualification: null,
       }
       if (activations.rows.length === 0) {
         const disc = await query<{ total: number; dated: number }>(
@@ -391,6 +398,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
             incompatible_filters: incompatibleFilters,
           }
         } else {
+          const dataQualification = await loadBhavishyaDataQualification(chart_id)
           const fwConds = ['chart_id = $1']
           const fwParams: unknown[] = [chart_id]
           let fp = 2
@@ -439,12 +447,13 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
             if (forward_windows.length > 0) {
               forward_window_status = {
                 ...forward_window_status,
-                state: 'served',
+                state: dataQualification.state === 'qualified' ? 'served' : 'served_unqualified',
                 effective_filters: effectiveFilters,
+                data_qualification: dataQualification,
               }
             } else {
-              // An empty filtered search is not the same as an unbuilt source. One bounded
-              // aggregate classifies the state; no projection rows are dumped or inferred.
+              // An empty filtered search is not the same as an empty physical source. One
+              // bounded aggregate classifies those states; neither proves the asset unbuilt.
               const source = await query<{ total: number }>(
                 `SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1`,
                 [chart_id],
@@ -452,9 +461,10 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
               const sourceRowCount = Number(source.rows[0]?.total ?? 0)
               forward_window_status = {
                 ...forward_window_status,
-                state: sourceRowCount === 0 ? 'unbuilt' : 'searched_empty',
+                state: sourceRowCount === 0 ? 'source_empty' : 'searched_empty',
                 effective_filters: effectiveFilters,
                 source_row_count: sourceRowCount,
+                data_qualification: dataQualification,
               }
             }
           } catch (err) {
@@ -466,6 +476,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
               state: 'db_failure',
               effective_filters: effectiveFilters,
               error: String(err),
+              data_qualification: dataQualification,
             }
           }
         }

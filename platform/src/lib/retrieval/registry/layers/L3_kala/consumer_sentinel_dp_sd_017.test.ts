@@ -26,6 +26,7 @@ function temporalMock(options: {
   fallbackRows?: Array<Record<string, unknown>>
   fallbackError?: Error
   fallbackSourceCount?: number
+  buildRows?: Array<Record<string, unknown>>
 }) {
   queryMock.mockImplementation((sqlValue: unknown) => {
     const sql = String(sqlValue)
@@ -34,6 +35,9 @@ function temporalMock(options: {
     }
     if (/COUNT\(\*\)::int AS total, COUNT\(activation_start\)::int AS dated/.test(sql)) {
       return Promise.resolve({ rows: [{ total: 12, dated: 12 }] })
+    }
+    if (/FROM build_run_assets bra/.test(sql)) {
+      return Promise.resolve({ rows: options.buildRows ?? [] })
     }
     if (/SELECT id, signal_id, domain, probability_tier/.test(sql)) {
       if (options.fallbackError) return Promise.reject(options.fallbackError)
@@ -102,12 +106,51 @@ describe('L3-U05 — temporal fallback filter honesty', () => {
     expect(fallbackCall?.[1]).toContain('career')
 
     const status = response.content['forward_window_status'] as Record<string, unknown>
-    expect(status['state']).toBe('served')
+    expect(status['state']).toBe('served_unqualified')
     expect(status['incompatible_filters']).toEqual([])
     expect((status['requested_filters'] as Record<string, unknown>)['signal_ids']).toEqual([SIGNAL_ID])
     expect((status['effective_filters'] as Record<string, unknown>)['signal_ids']).toEqual([SIGNAL_ID])
     expect((status['effective_filters'] as Record<string, unknown>)['domain']).toBe('career')
     expect((status['effective_filters'] as Record<string, unknown>)['ayanamsha_id']).toBeNull()
+    expect(status['data_qualification']).toMatchObject({
+      state: 'unqualified',
+      build_observation: { state: 'absent', build_id: null, physically_bound_to_rows: false },
+      acceptance: { state: 'unavailable', accepted_current: null },
+    })
+  })
+
+  it.each([
+    [[], 'absent'],
+    [[{
+      build_id: '33333333-cccc-4ccc-cccc-cccccccccccc',
+      build_state: 'running',
+      asset_state: 'building',
+      build_ended_at: null,
+      asset_ended_at: null,
+    }], 'incomplete_observed'],
+    [[{
+      build_id: '44444444-dddd-4ddd-dddd-dddddddddddd',
+      build_state: 'completed',
+      asset_state: 'complete',
+      build_ended_at: '2026-09-15T00:00:00Z',
+      asset_ended_at: '2026-09-15T00:00:00Z',
+    }], 'completed_observed'],
+  ])('serves fallback rows as unqualified with a %s build observation', async (buildRows, expectedBuildState) => {
+    temporalMock({ fallbackRows: [{ id: 'projection-1' }], buildRows })
+
+    const response = await queryTemporalActivationCapability.handler({
+      chart_id: CHART_ID,
+      date_from: '2028-01-01',
+      date_to: '2028-12-31',
+    }, undefined) as HandlerResult
+
+    const status = response.content['forward_window_status'] as Record<string, unknown>
+    expect(status['state']).toBe('served_unqualified')
+    expect(status['data_qualification']).toMatchObject({
+      state: 'unqualified',
+      build_observation: { state: expectedBuildState, physically_bound_to_rows: false },
+      acceptance: { state: 'unavailable', accepted_current: null },
+    })
   })
 
   it.each([
@@ -147,7 +190,7 @@ describe('L3-U05 — temporal fallback filter honesty', () => {
   })
 
   it.each([
-    [0, 'unbuilt'],
+    [0, 'source_empty'],
     [9, 'searched_empty'],
   ])('classifies an empty fallback with source count %i as %s', async (sourceCount, expectedState) => {
     temporalMock({ fallbackRows: [], fallbackSourceCount: sourceCount })
@@ -161,6 +204,31 @@ describe('L3-U05 — temporal fallback filter honesty', () => {
     const status = response.content['forward_window_status'] as Record<string, unknown>
     expect(status['state']).toBe(expectedState)
     expect(status['source_row_count']).toBe(sourceCount)
+  })
+
+  it('keeps a legitimately zero-row completed build source_empty rather than inferring unbuilt', async () => {
+    temporalMock({
+      fallbackRows: [],
+      fallbackSourceCount: 0,
+      buildRows: [{
+        build_id: '55555555-eeee-4eee-eeee-eeeeeeeeeeee',
+        build_state: 'completed',
+        asset_state: 'complete',
+        build_ended_at: '2026-09-15T00:00:00Z',
+        asset_ended_at: '2026-09-15T00:00:00Z',
+      }],
+    })
+
+    const response = await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined) as HandlerResult
+    const status = response.content['forward_window_status'] as Record<string, unknown>
+    expect(status).toMatchObject({
+      state: 'source_empty',
+      source_row_count: 0,
+      data_qualification: {
+        state: 'unqualified',
+        build_observation: { state: 'completed_observed', physically_bound_to_rows: false },
+      },
+    })
   })
 })
 
@@ -195,7 +263,7 @@ describe('L3-U05 — projection source and qualification honesty', () => {
   })
 
   it.each([
-    [0, 'unbuilt'],
+    [0, 'source_empty'],
     [7, 'searched_empty'],
   ])('distinguishes empty source count %i as %s', async (sourceCount, expectedState) => {
     projectionMock({ projectionRows: [], familyRows: [], sourceCount })
@@ -208,6 +276,29 @@ describe('L3-U05 — projection source and qualification honesty', () => {
     expect(response.content['source_status']).toMatchObject({
       state: expectedState,
       source_row_count: sourceCount,
+    })
+  })
+
+  it('reports source_empty when a valid completed build legitimately produced zero rows', async () => {
+    projectionMock({
+      projectionRows: [],
+      familyRows: [],
+      sourceCount: 0,
+      buildRows: [{
+        build_id: '66666666-ffff-4fff-ffff-ffffffffffff',
+        build_state: 'completed',
+        asset_state: 'complete',
+        build_ended_at: '2026-09-15T00:00:00Z',
+        asset_ended_at: '2026-09-15T00:00:00Z',
+      }],
+    })
+
+    const response = await queryProjectionsCapability.handler({ chart_id: CHART_ID }, undefined) as HandlerResult
+    expect(response.content['source_status']).toMatchObject({ state: 'source_empty', source_row_count: 0 })
+    expect(response.content['data_qualification']).toMatchObject({
+      state: 'unqualified',
+      build_observation: { state: 'completed_observed', physically_bound_to_rows: false },
+      acceptance: { state: 'unavailable', accepted_current: null },
     })
   })
 
