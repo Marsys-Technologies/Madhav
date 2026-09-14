@@ -5913,12 +5913,12 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–2 COMPLETE (2026-09-14).** FC0 is frozen at
+> 🟡 **PŪRṆA ANVEṢAṆA SOURCE CAMPAIGN — WAVES 0–3 COMPLETE (2026-09-14).** FC0 is frozen at
 > `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 2 closes 182 editorial
-> SCUs, 250 typed concepts, 53 source-backed edges and 128 producer semantic bindings with zero
-> unexplained stubs, gaps, orphans or unbound concepts. Next frontier: W3-P1/W3-P2 inquiry compiler,
-> ontology traversal, omission challenger and bounded frontier closure. This campaign cannot claim
+> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. Wave 3 closes normalized
+> intent, deterministic floors, source-backed graph traversal, an independent omission challenger,
+> immutable planning budgets and fail-closed material frontier receipts at source scope. Next
+> frontier: W4-P1 iterative evidence and response accountability. This campaign cannot claim
 > merge, deployment, current production rows, empirical acceptance or health.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9342,20 +9342,31 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: MADHAV-PURNA-ANVESANA-W2-20260914
+  last_session_id: MADHAV-PURNA-ANVESANA-W3-20260914
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Wave 2 editorial SCUs and typed graph independently approved at exact source head 402319736; full unit, type, lint and codegen gates pass within the inherited warning ceiling. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Wave 3 normalized inquiry compiler, reviewed graph traversal and omission/frontier closure independently approved at exact technical head b19be1b7a after four fail-closed review findings were repaired; full unit, type, lint, golden and codegen gates pass. No merge, deployment, production or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Execute W3-P1/W3-P2 from the exact delivered Wave 2 head: normalize inquiry intent, traverse the reviewed ontology and graph with deterministic floors, then add an independent omission challenger, bounded widening and fail-closed frontier receipts. Preserve R1-R12 and the source/local/disposable claim ceiling."
+  next_product_strategy_objective: "Execute W4-P1 from the exact delivered Wave 3 close: implement the iterative evidence loop and response accountability with complete fact registration, mandatory fact delivery, continuation closure and normalized response-coverage receipts. Preserve R1-R12 and the source/local/disposable claim ceiling."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the close of **MADHAV-PURNA-ANVESANA-W3-20260914**, compiler 2.0 canonicalizes inquiry scope,
+applies mandatory domain floors, traverses only reviewed source-backed graph edges, and runs an
+independent omission challenger under immutable search, graph and challenger budgets. Required
+work excluded by a cap remains a material frontier and cannot finalize as complete. Independent
+review initially found four fail-closed defects across obligation materiality, frontier merging,
+budget accounting and authorization hashes; all four have direct regressions and both reviewers
+approved exact technical head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9`. The exact-head unit
+gate passed 11,664 tests in 1,098 files; TypeScript, codegen freshness, 56 golden streams and lint
+(zero errors, 590 inherited warnings) also pass. PR #2601 is stacked on #2600. This does not merge
+or deploy either PR, touch shared/production state, or establish runtime health or empirical value.
 
 At the close of **MADHAV-PURNA-ANVESANA-W2-20260914**, all 182 planner-addressable Semantic
 Capability Units are editorial, including 177 reviewed descriptor units and five authored units;

@@ -40592,3 +40592,36 @@ scope_amendment:
     retained_fail_closed_detector: "platform/src/lib/vidhi/inquiry/wave3_acceptance.test.ts"
   claim_ceiling: "synthetic source/local integration-fixture compatibility only; no production or empirical acceptance claim"
 ```
+
+### Wave 3 review corrections and outcome
+
+The first complete candidate at `05939c0c04f7701ff660218a4e811975ea09529c` was not accepted.
+Independent review reproduced three fail-closed defects: a supporting AI facet could suppress a
+required graph obligation; first-wins frontier de-duplication could suppress a material challenger
+finding; and the configured graph-node cap was rewritten after AI facet selection. The repaired
+candidate then exposed a fourth defect: compiler-time search/adjacency cap frontiers were omitted
+from immutable authorization recomputation.
+
+All four defects now have direct acceptance regressions. Required materiality dominates supporting
+duplicates, frontier merges preserve all reasons and source references, semantic search is globally
+bounded across base and AI facets, graph expansion is separately and immutably accounted, and all
+compiler-time frontier classes remain inside the authorization hash projection. Both independent
+reviewers approved exact technical head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9` with no remaining
+HIGH or MEDIUM finding.
+
+W3-P1 and W3-P2 are source/local complete. Inquiry scope aliases converge before hashes and floor
+selection; recognized missing floors fail closed; traversal follows only source-backed reviewed
+edges; the omission challenger is independent of planner proposals; and cap exhaustion produces a
+required frontier rather than a completion claim. The exact-head gates passed 1,098 unit files with
+71 skipped and 11,664 tests with 662 skipped and two todo; TypeScript, capability-knowledge codegen
+freshness, 56/56 route golden streams and full lint at zero errors / 590 inherited warnings also
+pass. The focused stack is PR #2601 on PR #2600. No merge, deployment, shared/production mutation,
+migration application, credential/infrastructure action, doctrine ratification, retirement or
+production/empirical acceptance claim occurred.
+
+### Next session objective
+
+Open W4-P1 from the exact governed Wave 3 close head. Implement the iterative evidence loop and
+response accountability: complete fact registration, mandatory fact delivery, continuation closure
+and a normalized response-coverage receipt, while preserving R1-R12 and the source/local/disposable
+ceiling.

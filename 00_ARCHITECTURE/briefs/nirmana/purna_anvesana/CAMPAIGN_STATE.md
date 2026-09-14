@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.4.0
+version: 0.5.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0019
-last_updated: 2026-09-14T21:09:04+05:30
+last_event: PA-E0022
+last_updated: 2026-09-14T21:50:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 2 complete; Wave 3 inquiry compiler and omission-challenger packets are next.
-- Branch: `codex/purna-anvesana-wave2`, stacked on governed Wave 1 head `0c4a6e341`;
-  technical evidence head `402319736611441812d15f9d4954a908d21ca25f`.
+- Wave: 0 through Wave 3 complete; Wave 4 response-accountability packet is next.
+- Branch: `codex/purna-anvesana-wave3`, stacked on governed Wave 2 close `99817ef49`;
+  independently approved technical evidence head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W2-20260914`, remote claim `19f5105c1`; release is due
-  after the stacked Wave 2 PR is durably published.
+- PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
+- Lease: `MADHAV-PURNA-ANVESANA-W3-20260914`; release is due after this close is published.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -57,10 +57,10 @@ hashes.
 | Runtime descriptors / planner-addressable | 185 / 182 | Three calibration-only descriptors excluded from planning. |
 | Runtime route dispositions | 185 total: 71 exposed / 114 not exposed | 70 exact URI and nine parallel same-name routes; zero ambiguous or unresolved. |
 | Served full MCP authority | 129 unique names | Exact authored authority and registration set equality; three lifecycle handlers are profile-gated. |
-| SCUs | 182 | Five editorial, 177 descriptor-derived stubs. |
+| SCUs | 182 | All 182 editorial; zero descriptor-derived stubs. |
 | SCU bindings | 185 | 182 executable, three explicitly unavailable calibration descriptors; semantic quality remains Wave 2 scope. |
 | Semantic graph | 53 edges; 26 incident / 156 isolated nodes | `ORPHAN_DESCRIPTOR=0` does not measure graph connectivity. |
-| Inline concepts | 219 | No typed concept universe; unbound-concept count is currently unmeasurable. |
+| Typed concepts | 250 | Zero unbound concepts; all bindings are source/local evidence. |
 
 Current-source-active static-any-spec gaps after migration 1034 source:
 
@@ -112,6 +112,30 @@ obligation directly. A disposable recapture changed only one line in each affect
 focused tests and the full 12,304-test unit gate then passed. This is source/local compatibility
 evidence, not merge, deployment, runtime health or empirical acceptance proof.
 
+## Wave 3 outcome
+
+Inquiry compiler 2.0 canonicalizes scope aliases before hashes and floor selection, applies
+explicit domain/intent floors, follows only reviewed source-backed graph edges, and rejects a
+recognized floor missing from the pinned snapshot. The independent omission challenger produces
+source-linked findings outside planner authority. Search, adjacency, traversal and challenger
+growth are separately bounded and receipted; required work that cannot be admitted remains an
+open material frontier and cannot finalize as complete.
+
+Independent review found three materiality/authorization defects in the first candidate: a
+supporting AI facet could mask a required graph dependency, a supporting graph frontier could mask
+a required challenger finding, and newly capped compiler frontiers were omitted from immutable
+authorization recomputation. The repaired exact head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9`
+uses strongest-materiality merging, preserves all frontier reasons/source references, keeps
+declared caps immutable, and binds every compiler-time frontier into the lifecycle hashes. Both
+reviewers approved the repaired head with no remaining HIGH or MEDIUM finding.
+
+The final exact-head platform gate passed 1,098 files with 71 skipped and 11,664 tests with 662
+skipped and two todo. TypeScript, capability-knowledge codegen freshness, 56/56 route golden
+streams and full lint (zero errors, 590 inherited warnings) also pass. PR #2601 is the focused
+stacked delivery. These are source/local results only; no branch was merged or deployed and no
+shared/production system, migration, credential, infrastructure, doctrine or empirical evaluation
+was changed or claimed.
+
 ## Reproduction
 
 From the repository root:
@@ -144,9 +168,10 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W1-P2 routes/provenance/pagination/dark states | COMPLETE | W0-P3 | initial refutations corrected; exact-route review approved |
 | W2-P1 editorial SCUs | COMPLETE | W1-P1, W1-P2 | semantic reviewer approved exact head |
 | W2-P2 typed semantic graph | COMPLETE | W2-P1 | graph reviewer approved exact head |
-| W3-P1 normalized intent and ontology traversal | NEXT | W2-P2 | required at packet close |
-| W3-P2 omission challenger and frontier closure | QUEUED | W3-P1 | required at packet close |
-| W4–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
+| W3-P1 normalized intent and ontology traversal | COMPLETE | W2-P2 | planner reviewer approved repaired exact head |
+| W3-P2 omission challenger and frontier closure | COMPLETE | W3-P1 | omission reviewer approved repaired exact head |
+| W4-P1 iterative evidence and response accountability | NEXT | W3-P2 | required at packet close |
+| W5–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
 ## Delivery decomposition
 
