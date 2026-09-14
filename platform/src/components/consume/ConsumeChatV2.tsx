@@ -1450,9 +1450,7 @@ function V2StreamResumeTracker({ chartId, conversationId }: { chartId: string; c
           // runtime.getState().messages returns ThreadMessage objects whose text
           // lives in .content, not .parts. Guard with ?? [] to avoid crashes.
           const text = (lastMsg.parts ?? lastMsg.content ?? [])
-            .filter((part): part is typeof part & { type: 'text'; text: string } =>
-              part.type === 'text' && typeof part.text === 'string')
-            .map(part => part.text)
+            .flatMap((candidate) => candidate.type === 'text' ? [candidate['text']] : [])
             .join('')
           const entry: PendingStreamEntry = {
             queryId,
