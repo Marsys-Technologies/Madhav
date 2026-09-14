@@ -44,7 +44,7 @@ describe('inquiry completeness receipt', () => {
     }))
     const grade = vi.fn()
 
-    emitCompletenessReceipt({
+    const doorParity = emitCompletenessReceipt({
       em: { grade } as unknown as PariprashnaEmitter,
       completenessReceipt: null,
       inquiryContract: contract,
@@ -65,5 +65,10 @@ describe('inquiry completeness receipt', () => {
       contract.obligations.length + contract.material_frontier.length,
     )
     expect(accountability.response_coverage_receipt.continuation.frontier_ids).not.toEqual([])
+    expect(doorParity).toMatchObject({
+      parity_version: 'inquiry-door-parity-v1',
+      semantic_contract_hash: contract.semantic_contract_hash,
+      status: 'BLOCKED',
+    })
   })
 })

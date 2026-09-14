@@ -369,7 +369,7 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
     const lines = await readNdjson(res)
     const body = lines[lines.length - 1]
     const dispatched = body.results as Array<{ tool_name: string }>
-    const inquiry = body.inquiry_contract as { chart_availability_version: string; chart_build_id: string; obligations: Array<{ disposition: string }> }
+    const inquiry = body.inquiry_contract as { semantic_contract_hash: string; chart_availability_version: string; chart_build_id: string; obligations: Array<{ disposition: string }> }
 
     expect(dispatched.map((item) => item.tool_name)).toEqual(['authorized_test'])
     expect(mockGetToolByName).toHaveBeenCalledTimes(1)
@@ -383,6 +383,11 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
         receipt_version: 'inquiry-response-coverage-v1',
         status: 'INCOMPLETE_RESUMABLE',
       },
+    })
+    expect(body.inquiry_door_parity).toMatchObject({
+      parity_version: 'inquiry-door-parity-v1',
+      semantic_contract_hash: inquiry.semantic_contract_hash,
+      chart_availability_version: 'sha256:overlay',
     })
   })
 

@@ -281,6 +281,11 @@ describe('raw MCP inquiry route', () => {
     expect(await response.json()).toMatchObject({
       ok: true,
       closure: { status: 'BLOCKED', status_reasons: ['required_obligation_failed'] },
+      inquiry_door_parity: {
+        parity_version: 'inquiry-door-parity-v1',
+        semantic_contract_hash: 'sha256:contract',
+        status: 'BLOCKED',
+      },
     })
     expect(mocks.commitFinalization).toHaveBeenCalledWith(expect.objectContaining({ contract: blocked }))
   })

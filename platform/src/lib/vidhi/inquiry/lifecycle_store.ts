@@ -36,14 +36,10 @@ export async function createInquiryLifecycle(args: {
     await client.query('SELECT set_config($1, $2, true), set_config($3, $4, true)', [
       'app.principal_id', args.principal_uid, 'app.chart_context', args.contract.chart_id,
     ])
-    await client.query('SELECT prepare_planner_inquiry_creation($1, $2)', [args.principal_uid, args.contract.chart_id])
     const result = await client.query<InquiryLifecycleRow>(
-    `INSERT INTO planner_inquiry_lifecycles
-       (inquiry_id, principal_uid, chart_id, semantic_contract_hash, execution_plan_hash, capability_content_hash,
-        capability_compatibility_version, chart_overlay_version, chart_build_id, authorization_jsonb, contract_jsonb,
-        status, revision, current_jti_hash, expires_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$10::jsonb,$11,0,$12,$13)
-     RETURNING *`,
+    `SELECT * FROM create_planner_inquiry_lifecycle(
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$10::jsonb,$11,$12,$13
+     )`,
     [args.inquiry_id, args.principal_uid, args.contract.chart_id, args.contract.semantic_contract_hash,
       args.contract.execution_plan_hash, args.contract.capability_content_hash, args.contract.capability_compatibility_version,
       args.contract.chart_availability_version, args.contract.chart_build_id, JSON.stringify(args.contract), args.contract.status,

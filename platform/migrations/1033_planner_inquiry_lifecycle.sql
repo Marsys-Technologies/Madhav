@@ -64,7 +64,8 @@ COMMENT ON COLUMN planner_inquiry_lifecycles.chart_build_id IS
 
 -- Existing table grants are point-in-time, so new lifecycle tables require
 -- explicit least-privilege grants. Evidence rows are immutable to the web role.
-GRANT SELECT, INSERT ON planner_inquiry_lifecycles TO role_web_serve;
+REVOKE INSERT ON planner_inquiry_lifecycles FROM role_web_serve;
+GRANT SELECT ON planner_inquiry_lifecycles TO role_web_serve;
 GRANT UPDATE (contract_jsonb, status, revision, current_jti_hash, updated_at)
   ON planner_inquiry_lifecycles TO role_web_serve;
 GRANT SELECT, INSERT ON planner_inquiry_evidence_receipts TO role_web_serve;
@@ -97,31 +98,46 @@ CREATE TRIGGER planner_inquiry_immutable_guard_trigger
 BEFORE UPDATE ON planner_inquiry_lifecycles
 FOR EACH ROW EXECUTE FUNCTION planner_inquiry_immutable_guard();
 
-CREATE OR REPLACE FUNCTION prepare_planner_inquiry_creation(p_principal_uid text, p_chart_id uuid)
-RETURNS void
+CREATE OR REPLACE FUNCTION create_planner_inquiry_lifecycle(
+  p_inquiry_id uuid,
+  p_principal_uid text,
+  p_chart_id uuid,
+  p_semantic_contract_hash text,
+  p_execution_plan_hash text,
+  p_capability_content_hash text,
+  p_capability_compatibility_version text,
+  p_chart_overlay_version text,
+  p_chart_build_id text,
+  p_authorization_jsonb jsonb,
+  p_contract_jsonb jsonb,
+  p_status text,
+  p_current_jti_hash text,
+  p_expires_at timestamptz
+)
+RETURNS SETOF planner_inquiry_lifecycles
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
   recent_count integer;
   active_count integer;
 BEGIN
   IF p_principal_uid IS DISTINCT FROM current_setting('app.principal_id', true)
-     OR p_chart_id IS DISTINCT FROM app_chart_context() THEN
+     OR p_chart_id IS DISTINCT FROM public.app_chart_context() THEN
     RAISE EXCEPTION 'planner inquiry creation context mismatch' USING ERRCODE = '42501';
   END IF;
 
   -- This transaction-scoped lock makes the quota check and subsequent INSERT
   -- atomic for one principal across every chart and serving instance.
-  PERFORM pg_advisory_xact_lock(hashtextextended(p_principal_uid, 0));
+  PERFORM pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_principal_uid, 0));
 
-  DELETE FROM planner_inquiry_lifecycles
+  DELETE FROM public.planner_inquiry_lifecycles
    WHERE principal_uid=p_principal_uid AND chart_id=p_chart_id
      AND retention_expires_at <= now();
 
   SELECT count(*) INTO recent_count
-    FROM planner_inquiry_lifecycles
+    FROM public.planner_inquiry_lifecycles
    WHERE principal_uid=p_principal_uid
      AND created_at > now() - interval '1 hour';
   IF recent_count >= 32 THEN
@@ -129,17 +145,35 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO active_count
-    FROM planner_inquiry_lifecycles
+    FROM public.planner_inquiry_lifecycles
    WHERE principal_uid=p_principal_uid AND chart_id=p_chart_id
      AND status='INCOMPLETE' AND expires_at > now();
   IF active_count >= 8 THEN
     RAISE EXCEPTION 'INQUIRY_ACTIVE_LIMIT_REACHED' USING ERRCODE = 'P0001';
   END IF;
+
+  RETURN QUERY
+  INSERT INTO public.planner_inquiry_lifecycles
+    (inquiry_id, principal_uid, chart_id, semantic_contract_hash, execution_plan_hash,
+     capability_content_hash, capability_compatibility_version, chart_overlay_version,
+     chart_build_id, authorization_jsonb, contract_jsonb, status, revision,
+     current_jti_hash, expires_at)
+  VALUES
+    (p_inquiry_id, p_principal_uid, p_chart_id, p_semantic_contract_hash,
+     p_execution_plan_hash, p_capability_content_hash,
+     p_capability_compatibility_version, p_chart_overlay_version, p_chart_build_id,
+     p_authorization_jsonb, p_contract_jsonb, p_status, 0, p_current_jti_hash,
+     p_expires_at)
+  RETURNING *;
 END;
 $$;
 
-REVOKE ALL ON FUNCTION prepare_planner_inquiry_creation(text, uuid) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION prepare_planner_inquiry_creation(text, uuid) TO role_web_serve;
+REVOKE ALL ON FUNCTION create_planner_inquiry_lifecycle(
+  uuid, text, uuid, text, text, text, text, text, text, jsonb, jsonb, text, text, timestamptz
+) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION create_planner_inquiry_lifecycle(
+  uuid, text, uuid, text, text, text, text, text, text, jsonb, jsonb, text, text, timestamptz
+) TO role_web_serve;
 
 -- The already-scheduled pending-stream reaper calls this bounded-retention
 -- sweep. Expiry is immutable, so exposing only this no-argument deletion to
@@ -194,8 +228,8 @@ COMMIT;
 -- DOWN (manual, destructive; retain/export evidence before use):
 -- User/chart archival or early deletion must first export retained evidence.
 -- Normal retention purges delete the lifecycle and cascade only its child receipts.
+-- DROP FUNCTION IF EXISTS purge_expired_planner_inquiries_global();
+-- DROP FUNCTION IF EXISTS create_planner_inquiry_lifecycle(uuid, text, uuid, text, text, text, text, text, text, jsonb, jsonb, text, text, timestamptz);
 -- DROP TABLE IF EXISTS planner_inquiry_evidence_receipts;
 -- DROP TABLE IF EXISTS planner_inquiry_lifecycles;
--- DROP FUNCTION IF EXISTS purge_expired_planner_inquiries_global();
--- DROP FUNCTION IF EXISTS prepare_planner_inquiry_creation(text, uuid);
 -- DROP FUNCTION IF EXISTS planner_inquiry_immutable_guard();

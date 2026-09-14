@@ -21,6 +21,7 @@ const migrationSql = readFileSync(
 
 const principalA = 'purna-w5-principal-a'
 const principalB = 'purna-w5-principal-b'
+const quotaPrincipal = 'purna-w5-quota-principal'
 const chartA = '00000000-0000-4000-8000-000000000501'
 const chartB = '00000000-0000-4000-8000-000000000502'
 const inquiryA = '00000000-0000-4000-8000-000000000511'
@@ -87,6 +88,15 @@ const insertLifecycle = `
   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,now() + interval '1 hour')
 `
 
+function createLifecycle(client: PoolClient, inquiryId: string, principal: string, chartId: string) {
+  return client.query(
+    `SELECT * FROM create_planner_inquiry_lifecycle(
+       $1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,'INCOMPLETE',$12,now() + interval '1 hour'
+     )`,
+    lifecycleValues(inquiryId, principal, chartId),
+  )
+}
+
 function documentedDownSql(sql: string): string {
   const section = sql.split('-- DOWN (manual, destructive; retain/export evidence before use):')[1]
   const statements = section?.split('\n').flatMap((line) => {
@@ -152,7 +162,7 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       RETURNS uuid LANGUAGE sql STABLE AS $$
         SELECT NULLIF(current_setting('app.chart_context', true), '')::uuid
       $$;
-      INSERT INTO profiles(id) VALUES ('${principalA}'), ('${principalB}') ON CONFLICT DO NOTHING;
+      INSERT INTO profiles(id) VALUES ('${principalA}'), ('${principalB}'), ('${quotaPrincipal}') ON CONFLICT DO NOTHING;
       INSERT INTO charts(id) VALUES ('${chartA}'), ('${chartB}') ON CONFLICT DO NOTHING;
     `)
   })
@@ -189,7 +199,6 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     expect(privileges.rows).toEqual([
       { table_name: 'planner_inquiry_evidence_receipts', privilege_type: 'INSERT' },
       { table_name: 'planner_inquiry_evidence_receipts', privilege_type: 'SELECT' },
-      { table_name: 'planner_inquiry_lifecycles', privilege_type: 'INSERT' },
       { table_name: 'planner_inquiry_lifecycles', privilege_type: 'SELECT' },
     ])
     const updateColumns = await pool.query<{ column_name: string }>(`
@@ -211,8 +220,7 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
 
   it('isolates lifecycle and receipt rows by both authenticated subject and chart', async () => {
     await inWebContext(pool, principalA, chartA, async (client) => {
-      await client.query('SELECT prepare_planner_inquiry_creation($1, $2)', [principalA, chartA])
-      await client.query(insertLifecycle, lifecycleValues(inquiryA, principalA, chartA))
+      await createLifecycle(client, inquiryA, principalA, chartA)
       await client.query(
         `INSERT INTO planner_inquiry_evidence_receipts
           (inquiry_id, revision, obligation_ids, plan_item_id, scu_id, binding_id,
@@ -223,8 +231,7 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       )
     })
     await inWebContext(pool, principalB, chartB, async (client) => {
-      await client.query('SELECT prepare_planner_inquiry_creation($1, $2)', [principalB, chartB])
-      await client.query(insertLifecycle, lifecycleValues(inquiryB, principalB, chartB))
+      await createLifecycle(client, inquiryB, principalB, chartB)
     })
 
     for (const [principal, chartId, expected] of [
@@ -247,6 +254,46 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
         chartA,
       )),
     )).rejects.toMatchObject({ code: '42501' })
+  })
+
+  it('makes quota, creation timestamps and 30-day retention impossible to bypass', async () => {
+    await expect(inWebContext(pool, quotaPrincipal, chartA, (client) =>
+      client.query(
+        `INSERT INTO planner_inquiry_lifecycles
+          (inquiry_id, principal_uid, chart_id, semantic_contract_hash, execution_plan_hash,
+           capability_content_hash, capability_compatibility_version, chart_overlay_version,
+           chart_build_id, authorization_jsonb, contract_jsonb, current_jti_hash, expires_at,
+           created_at, retention_expires_at)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11::jsonb,$12,
+                 now() + interval '1 hour', now() - interval '100 years',
+                 now() + interval '100 years')`,
+        lifecycleValues('00000000-0000-4000-8000-000000000590', quotaPrincipal, chartA),
+      ),
+    )).rejects.toMatchObject({ code: '42501' })
+
+    await inWebContext(pool, quotaPrincipal, chartA, async (client) => {
+      for (let index = 0; index < 8; index += 1) {
+        await createLifecycle(
+          client,
+          `00000000-0000-4000-8000-${String(600 + index).padStart(12, '0')}`,
+          quotaPrincipal,
+          chartA,
+        )
+      }
+    })
+    await expect(inWebContext(pool, quotaPrincipal, chartA, (client) =>
+      createLifecycle(client, '00000000-0000-4000-8000-000000000608', quotaPrincipal, chartA),
+    )).rejects.toThrow('INQUIRY_ACTIVE_LIMIT_REACHED')
+
+    const bounds = await pool.query<{ count: string; timestamps_pinned: boolean; retention_pinned: boolean }>(`
+      SELECT count(*)::text AS count,
+             bool_and(created_at > now() - interval '5 minutes') AS timestamps_pinned,
+             bool_and(retention_expires_at BETWEEN now() + interval '29 days'
+                                           AND now() + interval '31 days') AS retention_pinned
+      FROM planner_inquiry_lifecycles
+      WHERE principal_uid=$1 AND chart_id=$2
+    `, [quotaPrincipal, chartA])
+    expect(bounds.rows[0]).toEqual({ count: '8', timestamps_pinned: true, retention_pinned: true })
   })
 
   it('keeps evidence receipts append-only for the serving role', async () => {
@@ -392,7 +439,7 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
         ] AS tables,
         ARRAY[
           to_regprocedure('public.purge_expired_planner_inquiries_global()')::text,
-          to_regprocedure('public.prepare_planner_inquiry_creation(text,uuid)')::text,
+          to_regprocedure('public.create_planner_inquiry_lifecycle(uuid,text,uuid,text,text,text,text,text,text,jsonb,jsonb,text,text,timestamp with time zone)')::text,
           to_regprocedure('public.planner_inquiry_immutable_guard()')::text
         ] AS functions
     `)

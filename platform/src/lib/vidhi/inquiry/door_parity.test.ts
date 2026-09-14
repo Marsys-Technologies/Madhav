@@ -3,6 +3,7 @@ import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
 import type { ChartCapabilityEvidence } from '../../retrieval/registry/knowledge/overlay'
+import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { bindingForInquiryItem } from './managed_bridge'
 import {
   compileInquiryContract,
@@ -19,7 +20,18 @@ const scope = {
   horizon: 'multi_year', intervention: false, entitlement: 'native',
 } as const
 
-const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-14T00:00:00.000Z')
+const compiledSnapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-14T00:00:00.000Z')
+const sharedScus = compiledSnapshot.scus.map((scu) => ({
+  ...scu,
+  bindings: scu.bindings.map((binding) => binding.executable && binding.kind === 'registry_capability'
+    ? { ...binding, execution_channels: ['platform_internal', 'mcp_full'] as const }
+    : binding),
+}))
+const snapshot = {
+  ...compiledSnapshot,
+  scus: sharedScus,
+  content_hash: stableFingerprint({ fixture: 'wave5-three-door-shared', scus: sharedScus }),
+}
 const evidence: ChartCapabilityEvidence[] = snapshot.scus.flatMap((scu) => {
   const sharedBindings = scu.bindings.filter((binding) => binding.executable
     && binding.execution_channels?.includes('platform_internal')
@@ -88,7 +100,7 @@ function executeFixture(contract: InquiryContract, door: string): InquiryContrac
   current = recordInquiryExecution(current, {
     item_id: paginationItem!.item_id,
     disposition: 'served',
-    evidence_refs: [`${door}:page-1`],
+    evidence_refs: [`${door}:${stableFingerprint({ page: 1, item_id: paginationItem!.item_id })}`],
     pagination: { semantics: binding.pagination, exhausted: false, next: 50 },
     request_position_path: positionPath,
   })
@@ -97,7 +109,7 @@ function executeFixture(contract: InquiryContract, door: string): InquiryContrac
   current = recordInquiryExecution(current, {
     item_id: paginationItem!.item_id,
     disposition: 'served',
-    evidence_refs: [`${door}:page-2`],
+    evidence_refs: [`${door}:${stableFingerprint({ page: 2, item_id: paginationItem!.item_id })}`],
     pagination: { semantics: binding.pagination, exhausted: true, next: null },
     request_position_path: positionPath,
   })
@@ -107,7 +119,7 @@ function executeFixture(contract: InquiryContract, door: string): InquiryContrac
     current = recordInquiryExecution(current, {
       item_id: item.item_id,
       disposition: 'served',
-      evidence_refs: [`${door}:${item.item_id}`],
+      evidence_refs: [`${door}:${stableFingerprint({ item_id: item.item_id })}`],
       pagination: { semantics: itemBinding?.pagination ?? 'none', exhausted: true, next: null },
       request_position_path: itemBinding?.pagination_contract?.request_position_path,
     })
@@ -138,5 +150,36 @@ describe('Wave 5 three-door semantic parity', () => {
     expect(blocked[0].status).toBe('BLOCKED')
     expect(blocked[1]).toEqual(blocked[0])
     expect(blocked[2]).toEqual(blocked[0])
+  })
+
+  it('fails parity when canonical evidence payload identities differ', () => {
+    const complete = executeFixture(compileDoors().portal, 'portal')
+    const changed: InquiryContract = {
+      ...complete,
+      obligations: complete.obligations.map((obligation, index) => index === 0
+        ? { ...obligation, evidence_refs: [`raw:${stableFingerprint({ changed: true })}`] }
+        : obligation),
+    }
+    expect(buildInquiryDoorParityProjection(changed).parity_hash)
+      .not.toBe(buildInquiryDoorParityProjection(complete).parity_hash)
+  })
+
+  it('normalizes equivalent dispatch spellings without merging distinct failure classes', () => {
+    const initial = compileDoors().portal
+    const failed = (gap_reason: string): InquiryContract => finalizeInquiryContract(recordInquiryExecution(initial, {
+      item_id: initial.plan_items.find((item) => item.state === 'ready')!.item_id,
+      disposition: 'failed', evidence_refs: [], gap_reason,
+      pagination: { semantics: 'none', exhausted: true, next: null },
+    }))
+    const dispatchA = buildInquiryDoorParityProjection(failed('dispatch_error'))
+    const dispatchB = buildInquiryDoorParityProjection(failed('TOOL_DISPATCH_FAILED'))
+    const resultLimit = buildInquiryDoorParityProjection(failed('RESULT_LIMIT_EXCEEDED'))
+    const registry = buildInquiryDoorParityProjection(failed('registry_unresolvable'))
+    const toolEnvelope = buildInquiryDoorParityProjection(failed('tool_failure_envelope'))
+
+    expect(dispatchA).toEqual(dispatchB)
+    expect(resultLimit.parity_hash).not.toBe(dispatchA.parity_hash)
+    expect(registry.parity_hash).not.toBe(dispatchA.parity_hash)
+    expect(toolEnvelope.parity_hash).not.toBe(dispatchA.parity_hash)
   })
 })
