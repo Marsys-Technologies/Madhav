@@ -21,8 +21,8 @@ PURITY: no DB, no IO, no RNG. Same constraint as hazard.py and integrator.py.
 The same code path must serve (a) the real build and (b) the R=256 null replicates.
 
 Authority: DHARA_DESIGN_v1_0.md §2 (algorithm), §1 (mathematical basis).
-Spec version: v1.1 (F-02 suppression check corrected to != 1.0; F-09 delta-update
-runtime assertion added).
+Spec version: v1.2 (F-02 suppression check corrected to != 1.0; F-09 delta-update
+runtime assertion added; clock-knot left/right limits preserved).
 """
 from __future__ import annotations
 
@@ -164,9 +164,11 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
       1. Assemble K = sort(K_c UNION K_e) — the exact global knot set.
       2. Initialize running lord stacks at K[0] via lord_stacks_at(K[0]).
       3. Sweep K[0..n-2]:
-         a. At each right endpoint t_{i+1}, if it is a clock knot, delta-update
-            the lord stacks.
-         b. Evaluate terms_at(t_{i+1}) using the updated stacks.
+         a. At each right endpoint t_{i+1}, if it is a clock knot, evaluate the
+            old period's left limit for the interval being stored, then
+            delta-update the lord stacks.
+         b. Evaluate the exact knot after the update for reuse as the next
+            interval's right-continuous left endpoint.
          c. Determine suppression activity: terms.suppression_term != 1.0
             (F-02 corrected — suppression_term = exp(suppression_log); neutral
             value is 1.0, not 0.0).
@@ -210,10 +212,14 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
         t_i = float(K[i])
         t_ip1 = float(K[i + 1])
 
-        # Step (a): if t_{i+1} is a clock knot, update lord stacks BEFORE
-        # evaluating terms there. half-open [t_start, t_end) convention means
-        # t_{i+1} belongs to the NEW period (same as lord_stacks_at(t_{i+1})).
+        # Step (a): a clock knot has two semantically distinct values. The
+        # preceding interval ends at the OLD period's left limit, while the
+        # exact knot belongs to the NEW period under half-open containment.
+        # Evaluate the left limit before advancing the running stacks, then
+        # retain the exact-knot value for the next interval. Non-clock endpoints
+        # remain a single evaluation and are reused unchanged.
         if t_ip1 in K_c_set:
+            terms_interval_end = evaluator.terms_at(math.nextafter(t_ip1, t_i))
             _delta_update_lord_stacks(running_stacks, t_ip1, evaluator._ladder_bsearch)
             clock_knot_counter += 1
 
@@ -226,11 +232,19 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
                     f"delta_stacks={running_stacks!r} != fresh={fresh!r}"
                 )
 
-        # Step (b): evaluate terms at the right endpoint using updated stacks.
-        terms_right = evaluator.terms_at(t_ip1)
+            # There is no following interval at the terminal horizon, so avoid
+            # an otherwise unused extra hazard evaluation there.
+            terms_next = (
+                evaluator.terms_at(t_ip1)
+                if i + 1 < n - 1
+                else terms_interval_end
+            )
+        else:
+            terms_interval_end = evaluator.terms_at(t_ip1)
+            terms_next = terms_interval_end
 
         a = terms_left.ln_lambda   # ln lambda(t_i^+)
-        b = terms_right.ln_lambda  # ln lambda(t_{i+1}^+)
+        b = terms_interval_end.ln_lambda  # ln lambda(t_{i+1}^-)
 
         width = t_ip1 - t_i
         if width < 1e-12:
@@ -242,7 +256,7 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
         # suppression_term = exp(suppression_log); neutral (no suppression) = 1.0.
         suppression_active = (
             terms_left.suppression_term != 1.0
-            or terms_right.suppression_term != 1.0
+            or terms_interval_end.suppression_term != 1.0
         )
 
         if not suppression_active:
@@ -309,9 +323,10 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
                     refinement_residual=None,
                 ))
 
-        # Advance: left terms for the next iteration = right terms of this one.
-        # No re-evaluation needed at t_{i+1}.
-        terms_left = terms_right
+        # Advance with the exact-knot, right-continuous value. At non-clock
+        # knots this is the same object as terms_interval_end, so no redundant
+        # evaluation is introduced.
+        terms_left = terms_next
 
     # Re-index so Segment.index == position in list (invariant the integrator
     # module and its callers expect).
