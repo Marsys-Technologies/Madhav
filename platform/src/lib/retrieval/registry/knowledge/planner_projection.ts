@@ -49,7 +49,10 @@ export function buildPlannerCapabilityKnowledgeProjection(
   scope: InquiryScopeTuple,
   limit = 32,
 ): PlannerCapabilityKnowledgeProjection {
-  const search = searchSemanticCapabilities(snapshot, `${query} ${scope.intent} ${scope.domains.join(' ')}`, Math.max(1, Math.min(limit, 48)))
+  // Reserve bounded capacity for source-backed adjacent SCUs; otherwise a full
+  // text-search result set makes the graph-expansion loop unreachable.
+  const seedLimit = Math.max(1, Math.min(Math.ceil(limit * 0.75), 36))
+  const search = searchSemanticCapabilities(snapshot, `${query} ${scope.intent} ${scope.domains.join(' ')}`, seedLimit)
   const selected = new Map(search.map((hit) => [hit.scu_id, snapshot.scus.find((scu) => scu.scu_id === hit.scu_id)]))
   for (const scu of [...selected.values()]) {
     if (!scu) continue
