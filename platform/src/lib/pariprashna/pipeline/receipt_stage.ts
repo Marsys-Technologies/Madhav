@@ -83,6 +83,7 @@ export function emitCompletenessReceipt(args: {
   }
   if (args.inquiryContract) {
     const closureReceipt = buildInquiryClosureReceipt(args.inquiryContract)
+    const doorParity = buildInquiryDoorParityProjection(args.inquiryContract)
     const required = args.inquiryContract.obligations.filter((item) => item.materiality === 'required')
     const dispositioned = required.filter((item) => item.disposition !== 'pending').length
     const unresolvedMaterialFrontier = args.inquiryContract.material_frontier.filter((item) =>
@@ -100,7 +101,12 @@ export function emitCompletenessReceipt(args: {
       grade: responseReceipt.status,
       detail: JSON.stringify(accountability),
     })
-    return buildInquiryDoorParityProjection(args.inquiryContract)
+    em.grade({
+      subject: 'inquiry_door_parity',
+      grade: doorParity.status,
+      detail: JSON.stringify(doorParity),
+    })
+    return doorParity
   }
   return null
 }

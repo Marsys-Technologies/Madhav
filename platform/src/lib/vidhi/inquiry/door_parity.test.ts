@@ -1,70 +1,24 @@
 import { describe, expect, it } from 'vitest'
-import { getCatalog } from '../../retrieval/registry/catalog'
-import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
-import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
-import type { ChartCapabilityEvidence } from '../../retrieval/registry/knowledge/overlay'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { bindingForInquiryItem } from './managed_bridge'
 import {
-  compileInquiryContract,
   failInquiryForOverlayDrift,
   finalizeInquiryContract,
   recordInquiryExecution,
 } from './compiler'
 import { buildInquiryDoorParityProjection } from './door_parity'
 import type { InquiryContract } from './types'
-
-const chartId = '482012f1-710e-4a25-994a-93821f5871aa'
-const scope = {
-  intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive',
-  horizon: 'multi_year', intervention: false, entitlement: 'native',
-} as const
-
-const compiledSnapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-14T00:00:00.000Z')
-const sharedScus = compiledSnapshot.scus.map((scu) => ({
-  ...scu,
-  bindings: scu.bindings.map((binding) => binding.executable && binding.kind === 'registry_capability'
-    ? { ...binding, execution_channels: ['platform_internal', 'mcp_full'] as const }
-    : binding),
-}))
-const snapshot = {
-  ...compiledSnapshot,
-  scus: sharedScus,
-  content_hash: stableFingerprint({ fixture: 'wave5-three-door-shared', scus: sharedScus }),
-}
-const evidence: ChartCapabilityEvidence[] = snapshot.scus.flatMap((scu) => {
-  const sharedBindings = scu.bindings.filter((binding) => binding.executable
-    && binding.execution_channels?.includes('platform_internal')
-    && binding.execution_channels.includes('mcp_full'))
-  return sharedBindings.length ? [{
-    scu_id: scu.scu_id,
-    build_status: 'completed',
-    build_id: 'build-parity',
-    freshness: 'fixture-current',
-    available_binding_ids: sharedBindings.map((binding) => binding.binding_id),
-  }] : []
-})
-const overlay = compileChartCapabilityOverlay({
-  snapshot,
-  chart_id: chartId,
-  build_id: 'build-parity',
-  code_revision: 'wave5-local-fixture',
-  evidence,
-  generated_at: '2026-09-14T00:00:00.000Z',
-})
+import {
+  compileW5DoorParityContract,
+  W5_DOOR_PARITY_CHANNEL_COUNTS,
+  W5_DOOR_PARITY_SNAPSHOT as snapshot,
+} from './__fixtures__/door_parity'
 
 function compileDoors(): Record<'portal' | 'managed_mcp' | 'raw_mcp', InquiryContract> {
-  const common = {
-    snapshot,
-    overlay,
-    chart_id: chartId,
-    question: 'Give me a deep wealth outlook with mechanisms, yoga and timing.',
-    scope_tuple: scope,
-  }
   return {
-    portal: compileInquiryContract({ ...common, execution_channel: 'platform_internal' }),
-    managed_mcp: compileInquiryContract({ ...common, execution_channel: 'platform_internal' }),
-    raw_mcp: compileInquiryContract({ ...common, execution_channel: 'mcp_full' }),
+    portal: compileW5DoorParityContract('platform_internal'),
+    managed_mcp: compileW5DoorParityContract('platform_internal'),
+    raw_mcp: compileW5DoorParityContract('mcp_full'),
   }
 }
 
@@ -128,6 +82,11 @@ function executeFixture(contract: InquiryContract, door: string): InquiryContrac
 }
 
 describe('Wave 5 three-door semantic parity', () => {
+  it('detects the representative current-catalog channel gap instead of relabeling it parity', () => {
+    expect(W5_DOOR_PARITY_CHANNEL_COUNTS.shared).toBeGreaterThan(0)
+    expect(W5_DOOR_PARITY_CHANNEL_COUNTS.shared).toBeLessThan(W5_DOOR_PARITY_CHANNEL_COUNTS.platform)
+  })
+
   it('proves three_door_equivalence for one pinned snapshot and shared availability overlay', () => {
     const doors = compileDoors()
     expect(doors.portal.semantic_contract_hash).toBe(doors.managed_mcp.semantic_contract_hash)
@@ -181,5 +140,21 @@ describe('Wave 5 three-door semantic parity', () => {
     expect(resultLimit.parity_hash).not.toBe(dispatchA.parity_hash)
     expect(registry.parity_hash).not.toBe(dispatchA.parity_hash)
     expect(toolEnvelope.parity_hash).not.toBe(dispatchA.parity_hash)
+  })
+
+  it('keeps distinct unresolved binding argument sets non-equivalent', () => {
+    const initial = compileDoors().portal
+    const failed = (gap_reason: string): InquiryContract => finalizeInquiryContract(recordInquiryExecution(initial, {
+      item_id: initial.plan_items.find((item) => item.state === 'ready')!.item_id,
+      disposition: 'failed', evidence_refs: [], gap_reason,
+      pagination: { semantics: 'none', exhausted: true, next: null },
+    }))
+    const questionMissing = buildInquiryDoorParityProjection(failed(
+      'Required binding arguments are unresolved: question.',
+    ))
+    const queryMissing = buildInquiryDoorParityProjection(failed(
+      'Required binding arguments are unresolved: query.',
+    ))
+    expect(questionMissing.parity_hash).not.toBe(queryMissing.parity_hash)
   })
 })

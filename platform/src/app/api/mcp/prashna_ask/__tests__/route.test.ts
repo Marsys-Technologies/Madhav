@@ -25,6 +25,10 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
+const { knowledgeState } = vi.hoisted(() => ({
+  knowledgeState: { snapshot: null as unknown, overlay: null as unknown },
+}))
+
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => {
   const testScu = {
@@ -46,8 +50,8 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => {
     census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 3, editorial_scus: 3, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 2, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 0, reviewed_output_claims: 0, exclusions: [] },
   }
   return {
-    assertPinnedCapabilityKnowledgeCurrent: () => snapshot,
-    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
+    assertPinnedCapabilityKnowledgeCurrent: () => knowledgeState.snapshot ?? snapshot,
+    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
   }
 })
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
@@ -131,6 +135,16 @@ import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
 import { POST } from '../route'
+import {
+  expectedW5DoorParityProjection,
+  W5_DOOR_PARITY_CHART_ID,
+  W5_DOOR_PARITY_OVERLAY,
+  W5_DOOR_PARITY_QUESTION,
+  W5_DOOR_PARITY_SCOPE,
+  W5_DOOR_PARITY_SNAPSHOT,
+  w5DoorParityPlan,
+  w5DoorParityToolResult,
+} from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 // Synthetic test chart — used by the new V3-E-024 tests below only (never the
@@ -185,6 +199,8 @@ function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  knowledgeState.snapshot = null
+  knowledgeState.overlay = null
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
   mockGetToolByName.mockImplementation((name: string) => ({
@@ -349,6 +365,28 @@ describe('POST /api/mcp/prashna_ask — planning-stage latency disclosure (S6-V3
 })
 
 describe('POST /api/mcp/prashna_ask — happy path', () => {
+  it('matches the reviewed shared-fixture projection through the actual managed route', async () => {
+    knowledgeState.snapshot = W5_DOOR_PARITY_SNAPSHOT
+    knowledgeState.overlay = W5_DOOR_PARITY_OVERLAY
+    mockCallPipelinePlanner.mockResolvedValue({ outcome: 'plan', plan: w5DoorParityPlan() })
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: 'wave5-fixture-v1',
+      retrieve: vi.fn().mockImplementation((_queryPlan: unknown, args: Record<string, unknown>) =>
+        Promise.resolve(w5DoorParityToolResult(name, args))),
+    }))
+
+    const res = await POST(makeReq({
+      chart_id: W5_DOOR_PARITY_CHART_ID,
+      question: W5_DOOR_PARITY_QUESTION,
+      scope_tuple: W5_DOOR_PARITY_SCOPE,
+    }))
+    const lines = await readNdjson(res)
+    const body = lines.at(-1)!
+    expect(body).toMatchObject({ outcome: 'plan' })
+    expect(body.inquiry_door_parity).toEqual(expectedW5DoorParityProjection('platform_internal'))
+  })
+
   it('dispatches only ready Inquiry Contract actions and retains overlay-bound semantic empty evidence', async () => {
     const inquiryScope = {
       intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',

@@ -28,8 +28,11 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   assertPinnedCapabilityKnowledgeCurrent: mocks.snapshot,
   loadChartCapabilityOverlay: mocks.overlay,
 }))
-vi.mock('@/lib/retrieval/registry/knowledge/stable', () => ({ stableFingerprint: (value: unknown) => `sha256:${JSON.stringify(value).length}` }))
-vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({ getToolByName: () => ({ retrieve: mocks.retrieve }) }))
+vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
+  getToolByName: (name: string) => ({
+    retrieve: (query: unknown, args: Record<string, unknown>) => mocks.retrieve(name, query, args),
+  }),
+}))
 vi.mock('@/lib/vidhi/inquiry', async (importOriginal) => {
   const original = await importOriginal<typeof import('@/lib/vidhi/inquiry')>()
   return {
@@ -42,7 +45,9 @@ vi.mock('@/lib/vidhi/inquiry', async (importOriginal) => {
     hashJti: (jti: string) => `sha256:${jti}`,
     deriveInquiryPaginationReceipt: mocks.pagination,
     classifyInquiryResult: mocks.classify,
-    inquiryAuthorizationHashes: () => ({ semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', contract_id: 'sha256:combined' }),
+    inquiryAuthorizationHashes: (value: InquiryContract) => value.question === 'Assess wealth through the reviewed cross-door evidence surface.'
+      ? original.inquiryAuthorizationHashes(value)
+      : { semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', contract_id: 'sha256:combined' },
   }
 })
 vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
@@ -55,6 +60,21 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
+import { finalizeInquiryContract } from '@/lib/vidhi/inquiry/compiler'
+import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
+import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
+import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import {
+  compileW5DoorParityContract,
+  expectedW5DoorParityProjection,
+  W5_DOOR_PARITY_CHART_ID,
+  W5_DOOR_PARITY_OVERLAY,
+  W5_DOOR_PARITY_QUESTION,
+  W5_DOOR_PARITY_SCOPE,
+  W5_DOOR_PARITY_SNAPSHOT,
+  w5DoorParityPlan,
+  w5DoorParityToolResult,
+} from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 const chartId = '482012f1-710e-4a25-994a-93821f5871aa'
 const scope = { intent: 'domain_assessment', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'far', intervention: 'none', entitlement: 'native' }
@@ -81,7 +101,7 @@ function request(body: object, headers: Record<string, string> = {}): Request {
 }
 
 function stateHash(value: InquiryContract): string {
-  return `sha256:${JSON.stringify(value).length}`
+  return stableFingerprint(value)
 }
 
 function primeStoredLifecycle(overrides: Record<string, unknown> = {}): InquiryContract {
@@ -121,6 +141,94 @@ beforeEach(() => {
 })
 
 describe('raw MCP inquiry route', () => {
+  it('matches the reviewed shared-fixture projection through start, execute and finalize', async () => {
+    type Stored = ReturnType<typeof primeStoredLifecycle> extends InquiryContract ? {
+      inquiry_id: string; principal_uid: string; chart_id: string;
+      semantic_contract_hash: string; execution_plan_hash: string;
+      capability_content_hash: string; capability_compatibility_version: string;
+      chart_overlay_version: string | null; chart_build_id: string | null;
+      authorization_jsonb: InquiryContract; contract_jsonb: InquiryContract;
+      status: InquiryContract['status']; revision: number; current_jti_hash: string; expires_at: string;
+    } : never
+    let stored: Stored | null = null
+    let tokenCounter = 0
+    const claimsByToken = new Map<string, Record<string, unknown>>()
+
+    mocks.snapshot.mockReturnValue(W5_DOOR_PARITY_SNAPSHOT)
+    mocks.overlay.mockResolvedValue(W5_DOOR_PARITY_OVERLAY)
+    mocks.compile.mockImplementation(() => compileW5DoorParityContract('mcp_full'))
+    mocks.finalize.mockImplementation((value: InquiryContract) => finalizeInquiryContract(value))
+    mocks.classify.mockImplementation(classifyInquiryResult)
+    mocks.pagination.mockImplementation(deriveInquiryPaginationReceipt)
+    mocks.retrieve.mockImplementation((name: string, _query: unknown, args: Record<string, unknown>) =>
+      Promise.resolve(w5DoorParityToolResult(name, args)))
+    mocks.issue.mockImplementation((claims: Record<string, unknown>) => {
+      tokenCounter += 1
+      const token = `fixture-token-${tokenCounter}`
+      const issuedClaims = { ...claims, jti: `fixture-jti-${tokenCounter}`, exp: 2_000_000_000 }
+      claimsByToken.set(token, issuedClaims)
+      return { token, claims: issuedClaims }
+    })
+    mocks.verify.mockImplementation((token: string) => claimsByToken.get(token))
+    mocks.create.mockImplementation((args: {
+      inquiry_id: string; principal_uid: string; contract: InquiryContract;
+      jti_hash: string; expires_at: string;
+    }) => {
+      stored = {
+        inquiry_id: args.inquiry_id, principal_uid: args.principal_uid, chart_id: args.contract.chart_id,
+        semantic_contract_hash: args.contract.semantic_contract_hash,
+        execution_plan_hash: args.contract.execution_plan_hash,
+        capability_content_hash: args.contract.capability_content_hash,
+        capability_compatibility_version: args.contract.capability_compatibility_version,
+        chart_overlay_version: args.contract.chart_availability_version,
+        chart_build_id: args.contract.chart_build_id,
+        authorization_jsonb: args.contract, contract_jsonb: args.contract,
+        status: args.contract.status, revision: 0, current_jti_hash: args.jti_hash,
+        expires_at: args.expires_at,
+      }
+      return Promise.resolve(stored)
+    })
+    mocks.get.mockImplementation(() => Promise.resolve(stored))
+    mocks.reserve.mockImplementation((args: { reservation_hash: string }) => {
+      if (!stored) throw new Error('missing fixture lifecycle')
+      stored.current_jti_hash = args.reservation_hash
+      return Promise.resolve()
+    })
+    mocks.commitObservation.mockImplementation((args: {
+      next_jti_hash: string; contract: InquiryContract;
+    }) => {
+      if (!stored) throw new Error('missing fixture lifecycle')
+      stored = { ...stored, contract_jsonb: args.contract, status: args.contract.status,
+        revision: stored.revision + 1, current_jti_hash: args.next_jti_hash }
+      return Promise.resolve(`fixture-receipt-${stored.revision}`)
+    })
+    mocks.commitFinalization.mockImplementation((args: { contract: InquiryContract }) => {
+      if (!stored) throw new Error('missing fixture lifecycle')
+      stored = { ...stored, contract_jsonb: args.contract, status: args.contract.status,
+        revision: stored.revision + 1, current_jti_hash: 'terminal' }
+      return Promise.resolve()
+    })
+
+    const start = await POST(request({
+      action: 'start', chart_id: W5_DOOR_PARITY_CHART_ID,
+      question: W5_DOOR_PARITY_QUESTION, scope_tuple: W5_DOOR_PARITY_SCOPE,
+      ai_proposal: managedPlanToAiInquiryProposal(w5DoorParityPlan()),
+    }))
+    let body = await start.json() as { lifecycle_token: string; next_action_ids: string[]; inquiry_door_parity?: unknown }
+    while (body.next_action_ids.length > 0) {
+      const executed = await POST(request({
+        action: 'execute', lifecycle_token: body.lifecycle_token, action_id: body.next_action_ids[0],
+      }))
+      const executedBody = await executed.json()
+      expect(executed.status).toBe(200)
+      body = executedBody
+    }
+    const finalized = await POST(request({ action: 'finalize', lifecycle_token: body.lifecycle_token }))
+    expect(finalized.status).toBe(200)
+    expect((await finalized.json()).inquiry_door_parity)
+      .toEqual(expectedW5DoorParityProjection('mcp_full'))
+  })
+
   it('requires both principal headers', async () => {
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }, { 'x-mcp-key-id': '' }))
     expect(response.status).toBe(401)

@@ -10,9 +10,10 @@ function semanticGapClasses(
   gapReason: string | null,
 ): string[] {
   if (disposition !== 'dark' && disposition !== 'failed') return []
-  const reasons = gapReason?.split(';').map(normalizeGapReason).filter(Boolean) ?? []
+  const reasons = gapReason?.split(';').map((reason) => reason.trim()).filter(Boolean) ?? []
   if (reasons.length === 0) return [`${disposition.toUpperCase()}_REASON_MISSING`]
-  return [...new Set(reasons.map((reason) => {
+  return [...new Set(reasons.map((rawReason) => {
+    const reason = normalizeGapReason(rawReason)
     if (reason.includes('OVERLAY_CHANGED')) return 'OVERLAY_CHANGED'
     if (reason === 'DISPATCH_ERROR' || reason === 'TOOL_DISPATCH_FAILED') return 'DISPATCH_FAILED'
     if (reason === 'TOOL_FAILURE_ENVELOPE') return 'TOOL_FAILURE_ENVELOPE'
@@ -24,7 +25,8 @@ function semanticGapClasses(
       return 'CHANNEL_BINDING_UNAVAILABLE'
     }
     if (reason.startsWith('REQUIRED_BINDING_ARGUMENTS_ARE_UNRESOLVED')) {
-      return `BINDING_ARGS_UNRESOLVED:${stableFingerprint(reason.replace(/^[^:]+:?/, ''))}`
+      const missingArgs = reason.slice('REQUIRED_BINDING_ARGUMENTS_ARE_UNRESOLVED'.length).replace(/^_/, '')
+      return `BINDING_ARGS_UNRESOLVED:${stableFingerprint(missingArgs)}`
     }
     if (reason === 'THE_CHART_BUILD_OVERLAY_DOES_NOT_PROVE_THIS_BINDING_AVAILABLE') {
       return 'OVERLAY_EVIDENCE_MISSING'
