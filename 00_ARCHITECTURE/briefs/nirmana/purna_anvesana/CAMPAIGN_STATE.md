@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.6.0
+version: 0.7.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0023
-last_updated: 2026-09-14T21:57:00+05:30
+last_event: PA-E0026
+last_updated: 2026-09-14T23:43:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,11 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 3 complete; Wave 4 response-accountability packet is active.
+- Wave: 0 through Wave 4 complete; Wave 5 disposable lifecycle and three-door parity packets are next.
 - Branch: `codex/purna-anvesana-wave4`, stacked on governed Wave 3 close `f6b4d1733`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W4-20260914`; active on remote coordination commit `3a050c573`.
+- PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
+- Lease: `MADHAV-PURNA-ANVESANA-W4-20260914`; release is due after this close is published.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -135,6 +136,31 @@ stacked delivery. These are source/local results only; no branch was merged or d
 shared/production system, migration, credential, infrastructure, doctrine or empirical evaluation
 was changed or claimed.
 
+## Wave 4 outcome
+
+Response accountability is now derived from the immutable Inquiry Contract, canonical evidence
+payloads and exact reader-visible response spans. It independently recomputes the fact denominator,
+refuses prose self-attestation, distinguishes singleton and conjoint interpretation, and keeps
+missing required facts, supporting continuations, pagination, capped frontiers, blocked actions,
+forged hashes/registers/contracts and knowledge-snapshot drift incomplete or blocked. Portal and
+raw MCP route assembly both supply the pinned knowledge snapshot.
+
+Independent review found successive correctness defects in the initial candidates: claims were not
+bound to actual response content; production callers did not construct interpretation mappings;
+adapter envelopes hid semantic rows; singleton findings could not complete; one physical row could
+be double-counted across obligations or volatile retry envelopes; and structured object key order
+could split one semantic finding. The approved exact technical head
+`c7d9b021a86007bfc80a90cc2e0ba5921609ed93` binds reviewed collection paths, treats unreviewed
+adapter items as opaque, canonicalizes structured findings, and gives each physical semantic row
+one identity with all obligation and evidence associations. The reviewer reports no remaining HIGH
+or MEDIUM finding.
+
+The exact-head platform gate passed 1,099 files with 71 skipped and 11,687 tests with 662 skipped
+and two todo. TypeScript, 56/56 route golden streams and full lint (zero errors, 590 inherited
+warnings) also pass. PR #2602 is the focused stacked delivery. These are source/local results only;
+no branch was merged or deployed and no shared/production system, migration, credential,
+infrastructure, doctrine or empirical evaluation was changed or claimed.
+
 ## Reproduction
 
 From the repository root:
@@ -169,8 +195,10 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W2-P2 typed semantic graph | COMPLETE | W2-P1 | graph reviewer approved exact head |
 | W3-P1 normalized intent and ontology traversal | COMPLETE | W2-P2 | planner reviewer approved repaired exact head |
 | W3-P2 omission challenger and frontier closure | COMPLETE | W3-P1 | omission reviewer approved repaired exact head |
-| W4-P1 iterative evidence and response accountability | IN PROGRESS | W3-P2 | required at packet close |
-| W5–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
+| W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
+| W5-P1 disposable migration/lifecycle/security proof | NEXT | W4-P1 | migration guard and security review required |
+| W5-P2 three-door parity/failure proof | QUEUED | W5-P1 | independent parity review required |
+| W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
 ## Delivery decomposition
 
