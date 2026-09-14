@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -499,6 +500,7 @@ def count_divergent_signals(conn: Any, chart_id: str) -> dict:
 
 
 @register("bo_pramana_mapa")
+@l2_producer("bo_pramana_mapa")
 class BoPramanaMapa(WriterBase):
     """bo_pramana_mapa: global synthesis quality scorecard + MV refresh."""
     asset_id = "bo_pramana_mapa"

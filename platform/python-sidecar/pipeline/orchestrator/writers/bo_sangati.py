@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from itertools import combinations
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 logger = logging.getLogger(__name__)
@@ -400,6 +401,7 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
 
 
 @register("bo_sangati")
+@l2_producer("bo_sangati")
 class BoSangatiWriter(WriterBase):
     """bo_sangati: Cross-Domain Linkage Matrix + Convergence density."""
     asset_id = "bo_sangati"

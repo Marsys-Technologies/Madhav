@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -187,6 +188,7 @@ def _batch_insert(conn, rows: list[dict]) -> int:
 
 
 @register("bo_samskara")
+@l2_producer("bo_samskara")
 class BoSamskaraWriter(WriterBase):
     """bo_samskara: deterministic signal embeddings (1:1 with MSR signals)."""
     asset_id = "bo_samskara"

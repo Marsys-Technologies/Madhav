@@ -30,6 +30,7 @@ from typing import Any
 import numpy as np
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -770,6 +771,7 @@ def _batch_insert(conn: Any, rows: list[dict], sql: str, batch_size: int = 50) -
 
 
 @register("bo_anveshana")
+@l2_producer("bo_anveshana")
 class BoAnveshanaWriter(WriterBase):
     """bo_anveshana: discovery engine — latent insights, outliers, brokers."""
     asset_id = "bo_anveshana"

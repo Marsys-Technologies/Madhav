@@ -163,6 +163,7 @@ from datetime import datetime, timezone
 from brahmagyan.chart_reader_v4 import ChartReaderV4
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from .bo_pratijna_v4_engine import ClassScore, PratijnaV4Engine
 
 logger = logging.getLogger(__name__)
@@ -419,6 +420,7 @@ def _row_for_score(
 
 
 @register("bo_pratijna")
+@l2_producer("bo_pratijna")
 class BoPratijnaWriter(WriterBase):
     """bo_pratijna -- Promise Register (L2 Bodha), PRATIJÑĀ v4.1.0 (R22 adoption)."""
 

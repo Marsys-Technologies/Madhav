@@ -54,6 +54,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -873,6 +874,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> t
 
 
 @register("bo_cgm_motifs")
+@l2_producer("bo_cgm_motifs")
 class BoCgmMotifsWriter(WriterBase):
     """bo_cgm_motifs: CGM motif + sub-graph + topology layer over the CGM graph."""
     asset_id = "bo_cgm_motifs"

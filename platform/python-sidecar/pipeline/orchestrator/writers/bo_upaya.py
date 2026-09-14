@@ -33,6 +33,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -2153,6 +2154,7 @@ def _build_remedy_leverage_windows(
 
 
 @register("bo_upaya")
+@l2_producer("bo_upaya")
 class BoUpayaWriter(WriterBase):
     """bo_upaya: Remediation Map — resonances + prescriptions grounded to G27 corpus."""
     asset_id = "bo_upaya"
@@ -2160,20 +2162,17 @@ class BoUpayaWriter(WriterBase):
     def run(self, ctx: ContextSpec) -> WriterResult:
         from bodha_writers._idempotency import (
             replace_prior_rm_resonances, replace_prior_rm_prescriptions,
-            replace_prior_rm_dasha_windowed,
         )
 
         chart_id = ctx.config["chart_id"]
         build_id = ctx.build_id
         conn     = ctx.db_conn
-        now_dt   = datetime.now(timezone.utc)
-        now      = now_dt.isoformat()
+        now      = datetime.now(timezone.utc).isoformat()
         total_res = 0
         total_presc = 0
         total_summary = 0
         total_bundles = 0
         total_patterns = 0
-        total_windowed = 0
 
         # WP-2.2 / LCA-5 idempotency for the sibling rollup tables (chart-scoped
         # delete-then-insert per §N.3).
@@ -2181,13 +2180,6 @@ class BoUpayaWriter(WriterBase):
             cur.execute("DELETE FROM bodha_rm_chart_summary WHERE chart_id = %s", [chart_id])
             cur.execute("DELETE FROM bodha_rm_dosha_remedy_bundles WHERE chart_id = %s", [chart_id])
             cur.execute("DELETE FROM bodha_rm_pattern_remedies WHERE chart_id = %s", [chart_id])
-
-        # B-4 (BRIEF_D4B §1): registry weights + sadhana history are chart-scoped,
-        # not per-ayanamsha — fetch once, reuse across the CANONICAL_AYAS loop.
-        leverage_weights = _fetch_leverage_weights(conn)
-        sadhana_events = _fetch_sadhana_milestones(conn, chart_id)
-        logger.info("[bo_upaya B-4] %d pre-embargo (< %s) LEL sadhana milestones for chart=%s",
-                    len(sadhana_events), _SADHANA_EMBARGO_DATE, chart_id)
 
         for aya in CANONICAL_AYAS:
             if ctx.dry_run:
@@ -2198,9 +2190,9 @@ class BoUpayaWriter(WriterBase):
                 chart_id, aya, build_id, conn, now
             )
 
-            # B-4's windowed rows FK-reference bodha_rm_remedy_prescriptions —
-            # delete them BEFORE the prescriptions they reference are replaced.
-            replace_prior_rm_dasha_windowed(conn, chart_id, aya)
+            # DP-SD-015: do not delete or append the legacy daśā-window table.
+            # Existing history remains readable; new L2 generations have no
+            # resolved timing/activation authority.
             replace_prior_rm_prescriptions(conn, chart_id, aya, SNAPSHOT_TYPE)
             replace_prior_rm_resonances(conn, chart_id, aya, SNAPSHOT_TYPE)
 
@@ -2209,19 +2201,6 @@ class BoUpayaWriter(WriterBase):
                         aya, len(resonances), len(prescriptions))
             total_res   += _batch_insert(conn, clean_res, _RESONANCE_INSERT)
             total_presc += _batch_insert(conn, prescriptions, _PRESCRIPTION_INSERT)
-
-            # ── B-4: remedy-leverage join (needs the just-built prescriptions'
-            # in-memory prescription_id values, same pattern as the RM rollups
-            # below) ──────────────────────────────────────────────────────────
-            windows = _build_remedy_leverage_windows(
-                chart_id, aya, build_id, conn, now_dt, prescriptions,
-                sadhana_events, leverage_weights, now,
-            )
-            if windows:
-                with conn.cursor() as cur:
-                    for w in windows:
-                        cur.execute(_WINDOWED_INSERT, w)
-                total_windowed += len(windows)
 
             # ── RM sibling rollups (deterministic aggregation of the above) ──────
             if prescriptions:
@@ -2249,11 +2228,10 @@ class BoUpayaWriter(WriterBase):
         return WriterResult(
             asset_id=self.asset_id,
             rows_inserted=(total_res + total_presc + total_summary + total_bundles
-                           + total_patterns + total_windowed),
+                           + total_patterns),
             notes=(f"resonances={total_res} prescriptions={total_presc} "
                    f"rm_chart_summary={total_summary} dosha_bundles={total_bundles} "
                    f"pattern_remedies={total_patterns} "
-                   f"dasha_windowed_prescriptions={total_windowed} "
-                   f"(B-4 remedy-leverage join: wealth leverage_index x sadhana history "
-                   f"[{len(sadhana_events)} pre-embargo milestones] x fresh dasha runway)"),
+                   "dasha_windowed_prescriptions=0 "
+                   "(UNAVAILABLE_AT_L2; legacy rows preserved, no timing claim)"),
         )

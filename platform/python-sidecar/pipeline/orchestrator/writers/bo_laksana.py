@@ -52,6 +52,7 @@ from typing import Any
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS
 from brahmagyan.graha_vocabulary import norm_graha, to_title
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.formulas import (
     salience_formula_v2,
     SalienceInputsV2,
@@ -3353,6 +3354,7 @@ def _set_salience_pctl_in_class(rows: list[dict]) -> None:
 # ── WriterBase subclass ───────────────────────────────────────────────────────
 
 @register("bo_laksana")
+@l2_producer("bo_laksana")
 class BoLaksanaWriter(WriterBase):
     """
     bo_laksana v2.1: MSR Signal Store — category-agnostic projection of ALL L1 chart_facts.
@@ -3913,6 +3915,7 @@ def _populate_synthesis_rollups(conn: Any, chart_id: str, ayanamsha: str) -> tup
 
 
 @register("bo_laksana_rerank")
+@l2_producer("bo_laksana_rerank")
 class BoLaksanaRerankWriter(WriterBase):
     """Post-CGM structural re-rank pass (CR-84) + PARK-#4 valence pickup.
     UPDATE-only; never deletes or re-inserts bodha_msr_signals rows."""

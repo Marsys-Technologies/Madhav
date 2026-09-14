@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.nakshatra_semantic_emitter import (
     GRAHAS,
     build_signal_row,
@@ -107,6 +108,7 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
 
 
 @register("bo_nakshatra_semantic")
+@l2_producer("bo_nakshatra_semantic")
 class BoNakshatraSemanticWriter(WriterBase):
     """bo_nakshatra_semantic: nakshatra-semantic MSR signal layer."""
     asset_id = "bo_nakshatra_semantic"

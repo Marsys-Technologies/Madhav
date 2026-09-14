@@ -59,6 +59,7 @@ from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -582,6 +583,7 @@ SUBJECT_DISPLAY = {
 
 
 @register("bo_yantra_mechanism")
+@l2_producer("bo_yantra_mechanism")
 class BoYantraMechanismWriter(WriterBase):
     """bo_yantra_mechanism: Mechanism object — named, valenced CGM subgraphs."""
     asset_id = "bo_yantra_mechanism"

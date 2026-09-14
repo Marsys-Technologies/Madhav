@@ -34,6 +34,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.grounding_matcher import classify_yoga_dosha_firing, classify_msr_signal
 
 logger = logging.getLogger(__name__)
@@ -105,6 +106,7 @@ def _match_to_row(match, chart_id: str, ayanamsha_id: str, build_id: str, now: s
 # receipt spine accommodates this via SUPPORTING_WRITERS in
 # scripts/generate/nirmana_analysis_layer_pins.py.
 @register("bo_grounding")
+@l2_producer("bo_grounding")
 class BoGroundingWriter(WriterBase):
     """bo_grounding: D-GROUNDING tier-assignment matches for the v1 target scope."""
     asset_id = "bo_grounding"

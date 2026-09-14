@@ -29,6 +29,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.sudarshana_emitter import (
     GRAHAS,
     SIGNAL_TYPE_CLASS,
@@ -164,6 +165,7 @@ def _fetch_sign_facts(conn: Any, chart_id: str, aya: str) -> dict[str, dict]:
 
 
 @register("bo_sudarshana")
+@l2_producer("bo_sudarshana")
 class BoSudarshanaWriter(WriterBase):
     """bo_sudarshana: Sudarśana Chakra tri-frame MSR signal layer."""
     asset_id = "bo_sudarshana"

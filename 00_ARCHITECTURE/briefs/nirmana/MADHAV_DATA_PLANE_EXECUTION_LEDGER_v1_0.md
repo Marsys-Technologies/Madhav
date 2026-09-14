@@ -24,6 +24,7 @@ l0_implementation_commits:
   - b8e342049
   - f648d5add
 l1_stage: PRODUCER_READY
+l2_stage: ACTIVE
 role: >
   Append-only execution control for one reusable documentation/execution task. It consumes only
   separately approved strategic briefs, returns evidence, and never converts task activity into
@@ -39,6 +40,7 @@ changelog:
   - "1.0 update 2026-09-14: Records fourth L1 challenge FAIL and corrective commit b2c4f1d7f with canonical dasha replay/digests, exact condition dasha context and exact-instant same-ayanamsha concurrence; final re-challenge pending."
   - "1.0 update 2026-09-14: Records interim final-challenge correction a9c44c298, keeping source build in the condition observation envelope rather than nested semantic period values; final re-challenge pending."
   - "1.0 update 2026-09-14: Records final independent PASS on exact tip a9c44c298 with zero HIGH/MED/LOW findings and terminal L1 PRODUCER_READY; L2 remains waiting."
+  - "1.0 update 2026-09-14: Consumes DP-SD-015 and the approved L2 brief; records validated unrestricted session open, exact 23/22 denominator reconciliation, semantic DAG/backcast and frozen WP0 mutation manifest; L3 remains waiting."
 ---
 
 # Madhav data-plane execution ledger
@@ -70,7 +72,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | FOUNDATION | COMPLETE | This native-issued work order | Six foundation artifacts, deterministic validation, bounded local commit and parent handoff |
 | L0 Brahmagyan | PRODUCER_READY | DP-SD-009/010/011 + approved L0 brief/addenda + continued goal | Validation and acceptance records; independent challenge PASS; stop with L1 waiting |
 | L1 Gaṇita | PRODUCER_READY | DP-SD-013 + approved L1 brief + new bounded goal | Seven L1 artifacts, 19/19 runtime validator, local commits, migration proof and independent challenge PASS |
-| L2 Bodha | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L2 brief + new goal | Layer brief exit record |
+| L2 Bodha | ACTIVE | DP-SD-015 + approved L2 brief + new bounded goal | Seven L2 artifacts, 23/23 runtime validation, first slice and independent challenge |
 | L3 Kāla | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L3 brief + new goal | Layer brief exit record |
 | L4 Phala | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L4 brief + new goal | Layer brief exit record |
 | L5 Mīmāṃsā | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L5 brief + new goal | Layer brief exit record |
@@ -92,6 +94,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | DP-SD-010 | APPROVED scope amendment | Select one canonical process-wide re-entrant Swiss-state boundary; preserve numerical and output semantics. |
 | DP-SD-011 | APPROVED residual-only addendum | Serialize the two live GA-strength transitive spans, re-challenge L0 and close only if zero unresolved remains. |
 | DP-SD-013 | APPROVED L1 strategy and execution brief | Execute exactly 19 L1 writers and adjacent producer capital to `PRODUCER_READY`; do not begin L2 or integration. |
+| DP-SD-015 | APPROVED L2 strategy and execution brief | Execute exactly 23 current L2 writers while preserving the historical 22 denominator; remove L3 runtime/timing output and stop at `PRODUCER_READY`. |
 
 ## 5. Evidence and blockers
 
@@ -109,6 +112,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L0 acceptance/handoff | `MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md` | `PRODUCER_READY_ACCEPTED`; later delivery/value/evaluation states remain unreached. |
 | L1 implementation | `7cabc0cfd1eae83f0a1054132d3c850c6b760153`, `3cb1a84ae`, `bcda11997`, `0fc45813e`, `b2c4f1d7f`, `a9c44c298` | Typed contracts and stable identities; all-19 runtime boundary; multi-partition append-only typed history with immutable completed replay/latest selection; fail-closed inputs; exact sensitive day/night; accepted-L0 dependency and D9 sensitivity proof; explicit field semantics/ancestry; typed/digested yoga quarantine; bounded set-wise dasha history; canonical replay/digests; exact condition and concurrency context; observation-only build separation; regenerated writer digests. |
 | L1 evidence artifacts | Seven `MADHAV_DATA_PLANE_L1_*_v1_0.md` records | Complete 19-writer disposition, contracts, slice, compatibility, validation/review and acceptance state. |
+| L2 WP0 evidence | `MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact 23/22 reconciliation, two-pass semantic DAG, consumer backcast, adjacent authority and frozen mutation manifest. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -123,6 +127,12 @@ implementation tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053` with zero HIGH,
 MED or LOW findings. This is computational producer readiness only: integration,
 deployment, production population/health, consumer value and empirical evaluation remain
 unreached. L2 remains waiting for its separately approved brief and new bounded goal.
+
+Open blocker for L2: none at WP0. DP-SD-015 is consumed. Source inspection
+confirmed two owned temporal boundary violations (`bo_karanajala` and
+`bo_upaya`) and froze their correction inside the exact mutation manifest.
+Producer implementation, validation and independent challenge remain pending;
+L3 remains waiting.
 
 ## 6. Append-only status log
 
@@ -155,6 +165,8 @@ unreached. L2 remains waiting for its separately approved brief and new bounded 
 | 2026-09-14 (time not recorded) | L1 Gaṇita | FOURTH_CORRECTIONS_COMMITTED | Corrective commit `b2c4f1d7f`; 67 focused and 926 bounded GA/L1 tests pass; validator/provenance/migration reapply pass; 536,000-row canonical capture 15.09s, replay 8.72s, cross-build identical digest and selector 7.24s; final independent re-challenge requested. |
 | 2026-09-14 (time not recorded) | L1 Gaṇita | OBSERVATION_BUILD_LEAK_CORRECTED | Interim re-challenge finding corrected at `a9c44c298`; condition period semantics retain stable source row/ayanāṃśa while build remains in the observation context; 147 focused and 927 bounded tests pass; terminal verdict requested. |
 | 2026-09-14 (time not recorded) | L1 Gaṇita | PRODUCER_READY | Final independent review of exact tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053` PASS with zero HIGH/MED/LOW findings; seven L1 evidence artifacts terminalized; L2 remains waiting. |
+| 2026-09-14 20:56 | L2 Bodha | OPENED | DP-SD-015/approved brief consumed; unrestricted Full Access and approval `never` verified; new bounded goal active; session-open schema validation exit 0. |
+| 2026-09-14 21:05 | L2 Bodha | WP0_COMPLETE | Exact 23 registered writers across 22 files reconciled against historical formal 22; accepted pins, DAG, outputs/keys, adjacent authority, consumer loss and two temporal inversions recorded; mutation manifest frozen. |
 
 ## 7. Return-to-strategy handoff contract
 
@@ -170,3 +182,9 @@ At L1 close, return DP-SD-013 plus content/approval pins, execution base, implem
 and terminal evidence commits, all 19 dispositions, first-slice generation/digest, focused/
 broad/live/review truth, compatibility residuals and all later-state non-claims. Stop at
 `PRODUCER_READY`; L2 remains waiting for a separate approved brief and new goal.
+
+At L2 close, return DP-SD-015 plus content/approval pins, exact accepted L0/L1
+blobs, local implementation/evidence commits, 23/23 dispositions while retaining
+the historical 22/22 receipt, first-slice digest, focused/broad/live/review truth,
+compatibility residuals and later-state non-claims. Stop at `PRODUCER_READY`;
+L3 remains waiting for a separate approved brief and new goal.

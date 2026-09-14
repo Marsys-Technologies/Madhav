@@ -34,21 +34,15 @@ from datetime import datetime, timezone
 from brahmagyan import valence_doctrine as _vd
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from pipeline.orchestrator.writers.bo_bimba import (
     _SUBJECT_TO_GRAHA as _GRAHA_SUBJECT_MAP,
     yoga_node_subject as _yoga_node_subject,
     _YOGA_NODE_CLASSES,
 )
-# WP-2.3-temporal: reuse the merged WP-2.1 deterministic dasha→date resolver to
-# populate active_dasha_periods_jsonb on graha-resting CGM edges. We CONSUME this
-# helper (birth-forward, ayanamsha-consistent); we never hand-roll date math and
-# never modify the helper (§N.5 — L1 chart_dashas is the date authority).
-from services.ka_temporal import (
-    load_dasha_timeline,
-    resolve_activation_windows,
-    resolve_birth_date,
-    normalize_graha,
-)
+# DP-SD-015: L2 may reference exact L1 clock identities but must not invoke a
+# later-layer resolver or persist resolved activation windows. Legacy schema
+# columns remain readable and are written as NULL for new L2 generations.
 
 logger = logging.getLogger(__name__)
 
@@ -689,46 +683,14 @@ def _build_dispositor_edges(
     return edges
 
 
-# ── Temporal overlay (WP-2.3-temporal) ───────────────────────────────────────
-# Each graha-resting CGM edge (lordship / occupancy / bhava_aspect / yoga_member)
-# is temporally "switched on" during the Vimśottarī daśā/antardaśā periods in
-# which its graha is the ruling daśā lord. We source those periods from L1
-# `chart_dashas` via the merged WP-2.1 resolver (birth-forward, ayanamsha-
-# consistent) — NO hand-rolled date math, NO fabricated windows (B.10 / §N.5).
-
-
 def _dasha_periods_for_graha(graha, timeline, birth_date) -> list:
-    """Vimśottarī MD/AD periods (JSON-ready dicts) during which `graha` is the
-    ruling daśā lord, birth-forward, sourced from L1 chart_dashas via the WP-2.1
-    resolver. Classical basis: every graha rules exactly one 120-yr-cycle
-    mahādaśā (and one antardaśā within each mahādaśā); this overlay marks when
-    the edge's structural relationship is temporally live.
-
-    Reuses `resolve_activation_windows` for ALL date handling (matching,
-    birth-forward clipping, ISO formatting) — identical to ka_kalasutra's
-    consumption. Keeps ONLY real chart_dashas-sourced periods and drops the
-    resolver's `lord_only_no_timeline` provenance stub, so a graha with no
-    eligible birth-forward period yields an honest [] (never fabricated).
-    """
-    canon = normalize_graha(graha)
-    if not canon:
-        return []
-    windows = resolve_activation_windows(
-        {"constituent_lords": [canon]}, timeline, birth_date=birth_date,
-    )
-    return [
-        p for p in windows.active_dasha_periods
-        if isinstance(p, dict) and p.get("source") == "chart_dashas"
-    ]
+    """Legacy compatibility shim: temporal interpretation is unavailable at L2."""
+    return []
 
 
 def _build_dasha_periods_by_graha(timeline, birth_date) -> dict:
-    """Precompute {graha: active_dasha_periods_list} once per (chart × ayanamsha)
-    so each edge builder is a cheap dict lookup. Empty timeline → all []."""
-    return {
-        g: _dasha_periods_for_graha(g, timeline, birth_date)
-        for g in KNOWN_GRAHAS
-    }
+    """Legacy compatibility shim; new L2 edges carry NULL activation fields."""
+    return {g: None for g in KNOWN_GRAHAS}
 
 
 # ── graha ↔ bhava structural edges (WP-2.3 / LCA-9a-1) ───────────────────────
@@ -776,11 +738,8 @@ def _graha_bhava_edge(
         "relationship_class":              edge_type,
         "semantic_path_class":             "graha_bhava",
         "active_duration_class":           "natal_permanent",
-        # WP-2.3-temporal: the graha's ruling Vimśottarī daśā/antardaśā periods
-        # (birth-forward, from L1 chart_dashas via the WP-2.1 resolver). Honest
-        # [] when the graha has no eligible birth-forward period — never NULL,
-        # never fabricated.
-        "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
+        # Legacy compatibility column. L2 has no activation authority.
+        "active_dasha_periods_jsonb":      None,
         "underlying_msr_signal_ids_array": [],
         "constituent_fact_ids_array":      fact_ids,
         "cross_system_consensus_count":    len(_traditions),
@@ -1019,7 +978,7 @@ def _membership_edge(
         # WP-2.3-temporal: for a graha member, the member graha's ruling daśā
         # periods (birth-forward, L1-sourced). For a bhava member no graha rests
         # on the edge → honest [] (the resolver is only for graha daśā lords).
-        "active_dasha_periods_jsonb":      json.dumps(dasha_periods or []),
+        "active_dasha_periods_jsonb":      None,
         "underlying_msr_signal_ids_array": [],
         "constituent_fact_ids_array":      fact_ids,
         "cross_system_consensus_count":    len(_traditions),
@@ -1748,6 +1707,7 @@ def _build_arudha_special_lagna_nodes_and_edges(
 
 
 @register("bo_karanajala")
+@l2_producer("bo_karanajala")
 class BoKaranajalaWriter(WriterBase):
     """bo_karanajala: CGM edges + contradiction pairs."""
     asset_id = "bo_karanajala"
@@ -1763,12 +1723,6 @@ class BoKaranajalaWriter(WriterBase):
         now       = datetime.now(timezone.utc).isoformat()
         total_e   = 0
         total_c   = 0
-
-        # WP-2.3-temporal: native birth date (life-indexing) for the daśā-period
-        # overlay. Resolved once per chart; the per-ayanamsha timeline is loaded
-        # inside the loop so each edge resolves against periods in its OWN
-        # ayanamsha (chart_dashas pools 5 systems).
-        birth_date = resolve_birth_date(conn, chart_id, ctx.config.get("birth_params"))
 
         for aya in CANONICAL_AYAS:
             signals     = _fetch_signals(conn, chart_id, aya)
@@ -1817,16 +1771,9 @@ class BoKaranajalaWriter(WriterBase):
             )
             edges.extend(dispositor_edges)
 
-            # ── WP-2.3-temporal: per-graha ruling daśā periods for THIS ayanamsha
-            # (birth-forward, from L1 chart_dashas via the WP-2.1 resolver). Loaded
-            # once per (chart × ayanamsha); precomputed per graha so each edge
-            # builder is a dict lookup. Empty timeline degrades to all-[] honestly.
-            dasha_timeline = load_dasha_timeline(
-                conn, chart_id, ayanamsha_id=aya, birth_date=birth_date
-            )
-            dasha_periods_by_graha = _build_dasha_periods_by_graha(
-                dasha_timeline, birth_date
-            )
+            # DP-SD-015: preserve the legacy argument shape while emitting no
+            # resolved activation windows from L2.
+            dasha_periods_by_graha = {g: None for g in KNOWN_GRAHAS}
 
             bhava_edges = _build_bhava_edges(
                 chart_id, aya, build_id,

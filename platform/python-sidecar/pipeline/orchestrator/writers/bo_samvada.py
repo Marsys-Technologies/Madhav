@@ -46,6 +46,7 @@ import logging
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +136,7 @@ GROUP BY m.chart_id, m.ayanamsha_id
 
 
 @register("bo_samvada")
+@l2_producer("bo_samvada")
 class BoSamvadaWriter(WriterBase):
     """
     bo_samvada: creates vw_chart_digest view (UCD read surface).

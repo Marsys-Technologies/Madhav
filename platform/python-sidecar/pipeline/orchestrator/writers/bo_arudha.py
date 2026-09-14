@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.arudha_emitter import (
     build_signal_rows,
     _fetch_arudha_facts,
@@ -132,6 +133,7 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
 
 
 @register("bo_arudha")
+@l2_producer("bo_arudha")
 class BoArudhaWriter(WriterBase):
     """bo_arudha: Jaimini Arudha MSR signal layer."""
     asset_id = "bo_arudha"

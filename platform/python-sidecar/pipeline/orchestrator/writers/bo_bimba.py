@@ -23,6 +23,7 @@ import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
@@ -613,6 +614,7 @@ def _batch_insert(conn, nodes: list[dict]) -> int:
 
 
 @register("bo_bimba")
+@l2_producer("bo_bimba")
 class BoBimbaWriter(WriterBase):
     """bo_bimba: CGM node layer — one row per unique entity per ayanamsha."""
     asset_id = "bo_bimba"

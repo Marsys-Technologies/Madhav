@@ -37,6 +37,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -396,6 +397,7 @@ def _fetch_cells_full(conn: Any, chart_id: str, aya: str) -> list[dict]:
 
 
 @register("bo_cdlm_summary")
+@l2_producer("bo_cdlm_summary")
 class BoCdlmSummaryWriter(WriterBase):
     """bo_cdlm_summary: aggregates CDLM cell data into per-chart summary."""
     asset_id = "bo_cdlm_summary"

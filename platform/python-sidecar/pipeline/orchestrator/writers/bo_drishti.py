@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -282,6 +283,7 @@ def _batch_insert(conn: Any, rows: list[dict]) -> int:
 
 
 @register("bo_drishti")
+@l2_producer("bo_drishti")
 class BoDrishtiWriter(WriterBase):
     """bo_drishti: question-lens (answer-focused retrieval without pre-answering)."""
     asset_id = "bo_drishti"

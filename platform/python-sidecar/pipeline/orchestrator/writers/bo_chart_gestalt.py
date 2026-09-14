@@ -37,6 +37,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -656,6 +657,7 @@ def _patch_fragility(conn: Any, chart_id: str, build_id: str, fragility_result: 
 
 
 @register("bo_chart_gestalt")
+@l2_producer("bo_chart_gestalt")
 class BoChartGestaltWriter(WriterBase):
     """bo_chart_gestalt: per-chart gestalt pointer synthesis (O5 — highest interpretive value)."""
     asset_id = "bo_chart_gestalt"
