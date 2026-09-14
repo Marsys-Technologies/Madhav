@@ -51,6 +51,18 @@ Workload: deterministic 30-day Saturn search over five aspects, Swiss ephemeris,
 one process/thread, with bypassed, cold-cache and warm-cache paths plus the
 maintained multi-call fanout. Seven tests passed on each repeat.
 
+The measured host resolved no file-backed ephemeris path:
+`SWE_EPHE_PATH` and `SWISSEPH_EPHE_PATH` were unset and neither
+`/app/ephe/sepl_18.se1` nor `/tmp/se1/sepl_18.se1` existed. Pyswisseph
+2.10.03 at
+`/opt/homebrew/lib/python3.14/site-packages/swisseph.cpython-314-darwin.so`
+received flags 65,792 (`FLG_SIDEREAL | FLG_SPEED`) and returned flags 65,860,
+including `FLG_MOSEPH` and not `FLG_SWIEPH`: these runs used the built-in
+Moshier fallback, not Swiss `.se1` files. The mode was Lahiri; Rahu used
+`TRUE_NODE` and Ketu was derived as Rahu + 180 degrees. Therefore there is no
+ephemeris file set or file digest for this baseline. The committed harness emits
+this effective context so a future file-backed run cannot be compared silently.
+
 | run | uncached ms | cold cached ms | warm cached ms | fanout ms | process real s | max RSS bytes |
 |---:|---:|---:|---:|---:|---:|---:|
 | 1 | 4.65 | 2.49 | 1.88 | 40.89 | 0.25 | 48,971,776 |
@@ -128,7 +140,11 @@ The structured harness uses the same small-build pins: one fixture chart,
 one Python thread and fresh writer/fake state per run. Its five measured build
 wall times were 0.316173, 0.315060, 0.311651, 0.310525 and 0.315712 s: median
 0.315060 s, range 0.310525-0.316173 s. CPU median was 0.313901 s. Planning-only
-wall median was 0.000086 s; the first repeat was 0.000700 s.
+wall median was 0.000086 s. The five CPU samples were 0.314605, 0.313901,
+0.311499, 0.310422 and 0.314798 s (range 0.310422-0.314798). The five planning
+samples were 0.000700, 0.000086, 0.000097, 0.000082 and 0.000080 s (range
+0.000080-0.000700). The harness now also emits median/minimum/maximum summaries
+for all three timing fields on every run.
 
 Each repeat recorded 66 SELECT intents, nine DELETE intents and 83 INSERT
 intents in the strict fake. It produced 61 output rows and 263,206 canonical

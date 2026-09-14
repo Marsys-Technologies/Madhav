@@ -9,7 +9,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import statistics
 import sys
 import threading
 import time
@@ -57,6 +59,64 @@ def _statement_counts(statements: list[str]) -> dict[str, int]:
         else:
             counts["other"] += 1
     return counts
+
+
+def _transit_ephemeris_context() -> dict[str, Any]:
+    """Record which Swiss backend actually serves the transit benchmark host."""
+    import swisseph as swe
+
+    from pipeline import transit_search as transit
+
+    resolved = transit._resolved_ephemeris_path()
+    candidates = (
+        os.environ.get("SWE_EPHE_PATH"),
+        os.environ.get("SWISSEPH_EPHE_PATH"),
+        "/app/ephe",
+        "/tmp/se1",
+    )
+    candidate_files = []
+    for candidate in candidates:
+        if candidate:
+            file_path = Path(candidate) / "sepl_18.se1"
+            candidate_files.append({"path": str(file_path), "exists": file_path.is_file()})
+
+    input_flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
+    _, returned_flags = swe.calc_ut(
+        swe.julday(2024, 1, 1), swe.SATURN, input_flags
+    )
+    if returned_flags & swe.FLG_MOSEPH:
+        backend = "Moshier fallback"
+    elif returned_flags & swe.FLG_SWIEPH:
+        backend = "Swiss .se1 files"
+    elif returned_flags & swe.FLG_JPLEPH:
+        backend = "JPL ephemeris"
+    else:
+        backend = "unclassified"
+
+    return {
+        "pyswisseph_version": getattr(swe, "version", None),
+        "module_file": getattr(swe, "__file__", None),
+        "resolved_ephemeris_path": resolved,
+        "candidate_files": candidate_files,
+        "input_flags": input_flags,
+        "input_flag_names": ["FLG_SIDEREAL", "FLG_SPEED"],
+        "effective_return_flags": returned_flags,
+        "backend": backend,
+        "sidereal_mode": "SIDM_LAHIRI",
+        "node_mode": "TRUE_NODE; Ketu derived as Rahu + 180 degrees",
+    }
+
+
+def _numeric_summaries(runs: list[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    summaries = {}
+    for field in ("wall_seconds", "cpu_seconds", "planning_wall_seconds"):
+        values = [float(run[field]) for run in runs]
+        summaries[field] = {
+            "median": round(statistics.median(values), 6),
+            "min": round(min(values), 6),
+            "max": round(max(values), 6),
+        }
+    return summaries
 
 
 def _one_run(run: int) -> dict[str, Any]:
@@ -137,9 +197,11 @@ def main() -> int:
     if args.repeats < 1:
         parser.error("--repeats must be at least 1")
 
+    runs = [_one_run(run) for run in range(1, args.repeats + 1)]
     payload = {
         "contract": "MADHAV_DATA_PLANE_L3_W0_KSHETRA_BASELINE_v1",
         "scope": "source-local strict in-memory fake; no PostgreSQL or storage I/O",
+        "transit_ephemeris_context": _transit_ephemeris_context(),
         "workload": {
             "chart_id": F.CHART_ID,
             "horizon_days": 400.0,
@@ -156,7 +218,8 @@ def main() -> int:
             "network time",
             "qualified live first-result latency",
         ],
-        "runs": [_one_run(run) for run in range(1, args.repeats + 1)],
+        "runs": runs,
+        "numeric_summaries": _numeric_summaries(runs),
     }
     print(json.dumps(payload, separators=(",", ":"), sort_keys=True))
     return 0
