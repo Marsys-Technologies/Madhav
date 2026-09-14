@@ -30,6 +30,7 @@ changelog:
   - "1.0 update 2026-09-15: Adds the native-requested three-reviewer Astra/max L3 second-pass proposal, with complete active-asset map, data-family/DAG gates, cost redesign and bounded connected-DB evidence. Planning review is complete; no L3 execution approval, goal change or dispatch."
   - "1.0 update 2026-09-15: Native approves the L3 campaign and kickoff under DP-SD-017, using the permanent execution task, three coordinated workstreams, one bounded L3 goal and automatic internal-packet progression within explicit scope. Protected release, physical data and consumer-value gates are included; specific holds and L4/L5 boundaries remain. Immutable pin and dispatch are recorded separately."
   - "1.0 update 2026-09-15: Pins the independently reviewed DP-SD-017 strategy, execution brief and evidence record to immutable content commit 793972c754b106688097dbc54536c1a9c270a793; dispatch to the permanent execution task is the next action."
+  - "1.0 update 2026-09-15: Records successful L3 kickoff dispatch to Execution — Data Plane with content pin 793972c754b106688097dbc54536c1a9c270a793 and approval pin 04a9ab33effa23e5e9b4e89772330ae264498a9b. At 02:50 IST the execution task is active with its kickoff turn in progress; goal and heartbeat activation remain execution-owned and unverified here. Dispatch is not implementation or acceptance."
 ---
 
 # Madhav data-plane strategic ledger
@@ -202,12 +203,12 @@ the repeatedly studied charts.
 | DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
 | DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | COMPLETE — `PRODUCER_READY` accepted by DP-SD-014; integration/deployment/value/evaluation remain unreached | L1 strategy/brief pins `7e101ffc3`/`e846baf3c`; reviewed tip `a9c44c298`; terminal evidence `18503e9c2` |
 | DP-P4 | L2 Bodha definition: 23 writers including support, adjacent answer authorities, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | COMPLETE — `PRODUCER_READY` accepted by DP-SD-016; integration/deployment/value/evaluation remain unreached | L2 content/approval pins `86374d65f` / `7c7d198a1`; reviewed tip `8aeff12d4`; terminal evidence `e5307fade`; slice digest `9a5f2f53892c72a8671bae373dd25e75a29982a3635884b99c1233fd8168a013` |
-| DP-P5 | L3 Kāla: 22 active writers/probes + protected retired sweep; actual asset/data DAG, expensive-build redesign, scoped consumer use and physical acceptance | APPROVED AND PINNED under DP-SD-017 at `793972c75`; dispatch next; no completion or live acceptance yet | [L3 strategy](MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md); [execution brief](MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md); [review evidence](MADHAV_DATA_PLANE_L3_ASTRA_REVIEW_RECORD_v1_0.md); accepted L2 terminal `e5307fade` |
+| DP-P5 | L3 Kāla: 22 active writers/probes + protected retired sweep; actual asset/data DAG, expensive-build redesign, scoped consumer use and physical acceptance | DISPATCHED under DP-SD-017 with content/approval pins `793972c75` / `04a9ab33e`; kickoff turn observed in progress at 2026-09-15 02:50 IST; no completion or live acceptance yet | [L3 strategy](MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md); [execution brief](MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md); [review evidence](MADHAV_DATA_PLANE_L3_ASTRA_REVIEW_RECORD_v1_0.md); accepted L2 terminal `e5307fade` |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
-| DP-P10 | Self-contained execution briefs for approved bounded slices/campaigns; one permanent execution task reused sequentially | L0-L2 producer terminals accepted; L3 brief approved under DP-SD-017; L4/L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde`; L3 brief linked above |
+| DP-P10 | Self-contained execution briefs for approved bounded slices/campaigns; one permanent execution task reused sequentially | L0-L2 producer terminals accepted; pinned L3 brief approved and dispatched under DP-SD-017; L4/L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde`; L3 brief linked above |
 
 The first proposed vertical slice remains:
 
@@ -236,11 +237,13 @@ remain separate statuses.
 | Control | Exact binding |
 |---|---|
 | Approved strategy/brief/review content | `793972c754b106688097dbc54536c1a9c270a793` on `codex/madhav-data-plane-strategy`; only the four documented strategy files changed |
+| Immutable approval record | `04a9ab33effa23e5e9b4e89772330ae264498a9b`; pins DP-SD-017 to the exact content commit above |
 | Native authority | 2026-09-15 request to implement the L3 campaign and send context/kickoff; one execution task with three coordinated workstreams |
 | Independent handoff review | Scoped approval by `l3_data_dag_astra`; two bounded clarifications applied before content commit; prior three Astra/max planning reviews preserved |
 | Execution destination | `Execution — Data Plane`, task `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`, branch `codex/madhav-data-plane-execution`, worktree `/Users/Dev/.codex/worktrees/c9bd/Madhav` |
 | Verified entry state | Idle task and clean worktree at accepted L2 terminal `e5307fadef42cca557a1c0ca3c1831b1296e22b4`; goal-tool state must be reconciled in the execution task |
 | New goal | Exact `goal_objective` from the pinned L3 execution brief; no token budget; not the old L2 objective or a producer-only terminal |
 | First execution packet | `L3-W0-FOUNDATION-SAFETY-01`; no initial full-chart rebuild |
-| Dispatch state | NOT_DISPATCHED at approval pin; actual dispatch is recorded separately after tool confirmation |
+| Dispatch state | DISPATCHED: task-message tool returned success for destination `01a0998a-8240-7631-97ce-36c6d4734fde`; kickoff contains exact content/approval pins, goal objective, scope and W0 instructions. At 2026-09-15 02:50 IST a fresh task snapshot reports `active` with turn `01a0a1c8-678b-73e3-a8c2-b1141c27524d` `inProgress`. No implementation, acceptance or completion inferred. |
+| Goal and unattended recovery | Kickoff directs execution to reconcile the old goal, create the exact L3 goal, and activate/reconcile a task heartbeat with tested durable recovery. These are delegated requirements, not confirmed activation or continuity claims in this strategic handoff. |
 | Final limits | Specific holds persist; L4/L5 wait; acceptance requires evidence for each delivery state; no empirical-outcome claim |
