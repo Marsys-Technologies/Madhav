@@ -617,6 +617,7 @@ export async function buildCapabilityEstateCensus(options: {
   const generatorPath = join(repoRoot, 'platform', 'scripts', 'generate_capability_estate_census.ts')
   const serviceProbePath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_probe_contracts.json')
   const serviceEffectPath = join(repoRoot, 'platform', 'python-sidecar', 'scripts', 'nirmana_service_effect_contracts.json')
+  const disposableEvidencePath = join(repoRoot, 'platform', 'docs', 'evidence', 'purna_anvesana_wave1_disposable.json')
   const fullRouteAuthorityPath = join(repoRoot, 'platform-mcp', 'src', 'lib', 'mcp_full_route_authority.ts')
   const reviewedFullToolNames = readReviewedFullProfileToolNames(fullRouteAuthorityPath)
   const serviceProbes = JSON.parse(readFileSync(serviceProbePath, 'utf8')) as Record<string, JsonValue>
@@ -718,8 +719,8 @@ export async function buildCapabilityEstateCensus(options: {
             : [],
           tests: ['platform/python-sidecar/tests/test_purna_anvesana_service_effect_contracts.py'],
           known_gaps: asset.asset_id === 'mi_abhilekha'
-            ? ['product_review_required_for_non_confirming_answer_semantics', 'disposable_fixture_execution_not_yet_run', 'deployed_current_state_not_read']
-            : ['disposable_fixture_execution_not_yet_run', 'deployed_current_state_not_read'],
+            ? ['product_review_required_for_non_confirming_answer_semantics', 'deployed_current_state_not_read']
+            : ['deployed_current_state_not_read'],
         }
       }
       const currentSpec = currentSourceSpecByAsset.get(asset.asset_id)
@@ -739,7 +740,9 @@ export async function buildCapabilityEstateCensus(options: {
               ? [`asset_registry_count_sql:${asset.asset_id}`]
               : [],
           tests: ['platform/python-sidecar/pipeline/orchestrator/tests/test_output_digest.py'],
-          known_gaps: ['disposable_schema_and_key_validation_not_yet_run', 'deployed_current_state_not_read'],
+          known_gaps: currentSpec.migration_path.endsWith('1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql')
+            ? ['disposable_schema_and_key_validation_passed_not_deployed', 'deployed_current_state_not_read']
+            : ['disposable_schema_and_key_validation_not_replayed_this_wave', 'deployed_current_state_not_read'],
         }
       }
       const blockers: Record<string, string> = {
@@ -827,6 +830,7 @@ export async function buildCapabilityEstateCensus(options: {
     { id: 'analysis_layer_pins', path: relative(repoRoot, pinsPath), sha256: hashFile(pinsPath) },
     { id: 'service_probe_contracts', path: relative(repoRoot, serviceProbePath), sha256: hashFile(serviceProbePath) },
     { id: 'service_effect_contracts', path: relative(repoRoot, serviceEffectPath), sha256: hashFile(serviceEffectPath) },
+    { id: 'wave1_disposable_evidence', path: relative(repoRoot, disposableEvidencePath), sha256: hashFile(disposableEvidencePath) },
     { id: 'reviewed_full_profile_route_authority', path: relative(repoRoot, fullRouteAuthorityPath), sha256: hashFile(fullRouteAuthorityPath) },
     { id: 'canonical_public_faces', path: relative(repoRoot, canonicalFacesPath), sha256: hashFile(canonicalFacesPath) },
     { id: 'census_generator', path: relative(repoRoot, generatorPath), sha256: hashFile(generatorPath) },
@@ -850,6 +854,7 @@ export async function buildCapabilityEstateCensus(options: {
     bridgeExtractorPath,
     serviceProbePath,
     serviceEffectPath,
+    disposableEvidencePath,
     fullRouteAuthorityPath,
     ...descriptorSourceFiles,
     ...registrarFiles,

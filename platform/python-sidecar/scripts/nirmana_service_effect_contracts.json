@@ -23,6 +23,7 @@
         "partial_success_forbidden": true
       },
       "implementation_ref": "platform/python-sidecar/pipeline/orchestrator/writers/mi_seva.py",
+      "disposable_fixture_evidence": "platform/docs/evidence/purna_anvesana_wave1_disposable.json",
       "known_limits": [
         "This verifies build-time service readiness only; it does not prove serve-time overlay behavior or deployment."
       ]
@@ -60,6 +61,7 @@
       },
       "execution_boundary": "disposable_fixture_only_until_product_review",
       "implementation_ref": "platform/python-sidecar/pipeline/orchestrator/writers/mi_abhilekha.py",
+      "disposable_fixture_evidence": "platform/docs/evidence/purna_anvesana_wave1_disposable.json",
       "known_limits": [
         "The source currently maps every non-confirming answer to denied; this behavior is recorded, not ratified, and requires explicit product review before durable serving acceptance.",
         "This effect contract must never be probed against real user outcomes."

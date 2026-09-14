@@ -39,6 +39,7 @@ def test_mi_seva_readiness_contract_matches_source() -> None:
     assert all(f'"{relation}"' in source for relation in contract["required_public_relations"])
     assert "raise RuntimeError(" in source
     assert "rows_inserted=0" in source
+    assert (ROOT.parent / contract["disposable_fixture_evidence"]).is_file()
 
 
 def test_mi_abhilekha_effect_contract_matches_source_and_stays_unratified() -> None:
@@ -51,6 +52,7 @@ def test_mi_abhilekha_effect_contract_matches_source_and_stays_unratified() -> N
     assert contract["selection"]["prediction_match"] == ["chart_id", "prediction_id"]
     assert contract["selection"]["prediction_prior_lifecycle_status"] == "pending"
     assert contract["observed_classification"]["denied_otherwise"] is True
+    assert (ROOT.parent / contract["disposable_fixture_evidence"]).is_file()
 
     for fragment in (
         "j.answered_at IS NOT NULL",
