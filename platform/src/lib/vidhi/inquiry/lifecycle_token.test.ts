@@ -18,7 +18,10 @@ describe('inquiry lifecycle token', () => {
 
   it('rejects tampering and a different principal', () => {
     const issued = issueInquiryLifecycleToken(base, key)
-    expect(() => verifyInquiryLifecycleToken(`${issued.token.slice(0, -1)}x`, key, 'user-1')).toThrow('INQUIRY_TOKEN_INVALID_SIGNATURE')
+    const [header, payload, signature] = issued.token.split('.')
+    const replacement = payload[0] === 'A' ? 'B' : 'A'
+    const tampered = `${header}.${replacement}${payload.slice(1)}.${signature}`
+    expect(() => verifyInquiryLifecycleToken(tampered, key, 'user-1')).toThrow('INQUIRY_TOKEN_INVALID_SIGNATURE')
     expect(() => verifyInquiryLifecycleToken(issued.token, key, 'user-2')).toThrow('INQUIRY_TOKEN_WRONG_SUBJECT')
   })
 

@@ -3,8 +3,8 @@ import { resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import type { CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge/types'
 import type { AiInquiryProposal, InquiryContract } from './types'
 
-function words(value: string): string[] {
-  return value.toLowerCase().match(/[a-z0-9]+/g) ?? []
+function words(value: unknown): string[] {
+  return typeof value === 'string' ? value.toLowerCase().match(/[a-z0-9]+/g) ?? [] : []
 }
 
 /** Convert the managed planning model's decomposition into non-authoritative AI hints. */
