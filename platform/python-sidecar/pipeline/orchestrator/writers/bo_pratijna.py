@@ -443,6 +443,14 @@ class BoPratijnaWriter(WriterBase):
         conn = ctx.db_conn
         now = datetime.now(timezone.utc).isoformat()
 
+        if ctx.dry_run:
+            logger.info("[bo_pratijna dry_run] chart=%s", chart_id)
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="dry_run; no mutation",
+            )
+
         # Idempotency: delete prior rows for this chart (§N.3).
         # Disable per-statement timeout for the heavy DELETE on large charts.
         # SET LOCAL scopes to the orchestrator txn (writer never commits).

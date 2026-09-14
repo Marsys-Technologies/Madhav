@@ -145,24 +145,27 @@ def _fetch_existing_embeddings(conn, chart_id: str, aya: str) -> dict[str, dict]
     unchanged summary guarantees the reused vector is the value Vertex would return
     for the same input again — this is the perf-pre-D3 embedding-reuse optimization."""
     rows = conn.execute(
-        """SELECT DISTINCT ON (s.row_identity)
+        """WITH compatible_head AS MATERIALIZED (
+             SELECT h.current_generation_id
+             FROM public.l2_data_plane_generation_heads h
+             WHERE h.chart_id = %s::uuid AND h.asset_id = 'bo_samskara'
+               AND public.l2_data_plane_generation_is_compatible(
+                     h.chart_id, h.asset_id, h.current_generation_id
+                   )
+           )
+           SELECT DISTINCT ON (s.row_identity)
                   s.source_row_jsonb->>'signal_id' AS signal_id,
                   s.source_row_jsonb->>'embedding_input_summary' AS embedding_input_summary,
                   s.source_row_jsonb->>'embedding_vec' AS embedding_vec,
                   s.source_row_jsonb->>'embedding_model' AS embedding_model,
                   s.source_row_jsonb->>'embedding_model_version' AS embedding_model_version
            FROM public.l2_data_plane_row_snapshots s
-           JOIN public.l2_data_plane_generation_heads h
-             ON h.chart_id = s.chart_id AND h.asset_id = s.asset_id
-            AND h.current_generation_id = s.generation_id
+           JOIN compatible_head h ON h.current_generation_id = s.generation_id
            WHERE s.chart_id = %s::uuid AND s.asset_id = 'bo_samskara'
              AND s.source_table = 'bodha_signal_embeddings'
              AND s.source_row_jsonb->>'ayanamsha_id' = %s
-             AND public.l2_data_plane_generation_is_compatible(
-                   s.chart_id, s.asset_id, s.generation_id
-                 )
            ORDER BY s.row_identity, s.captured_at DESC, s.snapshot_id DESC""",
-        [chart_id, aya],
+        [chart_id, chart_id, aya],
     ).fetchall()
     keys = ["signal_id", "embedding_input_summary", "embedding_vec",
             "embedding_model", "embedding_model_version"]

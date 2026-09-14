@@ -18,7 +18,10 @@ execution the runtime requires non-empty chart/build identity, rejects an
 explicit L0/L1 pin that differs from the accepted releases, resolves the exact
 selected transitive L1/L2 generation vector and semantic digests, derives one
 generation context plus exact per-partition calculation contexts, and rejects
-mixed or stale inputs. The caller owns transaction, savepoint, commit and close.
+mixed or stale inputs. Stored dependency keys must equal the current recursive
+registry topology as well as the selected head identities/digests, so topology
+addition or removal invalidates an old generation. The caller owns transaction,
+savepoint, commit and close. Dry-run entry paths perform no SQL mutation.
 
 Stable `configuration`, `proposition`, `relationship`, `contradiction` and
 `mechanism` identities are SHA-256 content identities over semantic payloads.

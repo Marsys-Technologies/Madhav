@@ -161,15 +161,15 @@ SELECT count(*) FROM bodha_msr_signals
 _LEL_TERM_B_SQL = """
 SELECT count(*) FROM bodha_msr_signals
  WHERE chart_id = %s
-   AND source_l1_asset IS NOT NULL
-   AND source_l1_asset NOT LIKE 'ga_%%'
+   AND (source_l1_asset IS NULL OR source_l1_asset NOT LIKE 'ga_%%')
 """
 
-# Term C: an LEL-shaped payload key present in the deterministic configuration.
+# Term C: an LEL-shaped payload key at any depth in deterministic configuration.
 _LEL_TERM_C_SQL = """
 SELECT count(*) FROM bodha_msr_signals
  WHERE chart_id = %s
-   AND jsonb_exists_any(configuration_jsonb, %s)
+   AND configuration_jsonb::text ~*
+       '"(milestone_event_ids|life_event_ids|lel_event_ids|event_id|event_date|outcome_observed)"[[:space:]]*:'
 """
 
 
@@ -193,7 +193,7 @@ def detect_lel_leak(conn: Any, chart_id: str) -> dict:
             conn, _LEL_TERM_B_SQL, [chart_id]
         )
         terms["lel_payload_keys_in_configuration"] = _count_one(
-            conn, _LEL_TERM_C_SQL, [chart_id, _LEL_PAYLOAD_KEYS]
+            conn, _LEL_TERM_C_SQL, [chart_id]
         )
     except Exception as exc:  # unevaluable ⇒ unknown, NOT a pass
         logger.warning("[bo_pramana_mapa] lel_zero_leak detector unevaluable: %s", exc)
@@ -561,7 +561,14 @@ SELECT count(*) FROM (
   JOIN data_plane_l2_producer_generations g
     ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
    AND g.generation_id = h.current_generation_id
-  WHERE h.chart_id = %s AND (g.state <> 'complete' OR g.semantic_output_digest IS NULL)
+  WHERE h.chart_id = %s
+    AND (
+      g.state <> 'complete'
+      OR g.semantic_output_digest IS NULL
+      OR NOT public.l2_data_plane_generation_is_compatible(
+        h.chart_id, h.asset_id, h.current_generation_id
+      )
+    )
 ) violations
 """
 

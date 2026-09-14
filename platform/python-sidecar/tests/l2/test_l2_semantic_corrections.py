@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import json
 import inspect
+import os
+from pathlib import Path
 from types import SimpleNamespace
 
 from bodha_writers.formulas import ResonanceInputs, resonance_score_v1
 from pipeline.orchestrator.writers import bo_pramana_mapa
-from pipeline.orchestrator.writers import bo_pratijna, bo_samskara, bo_samvada
+from pipeline.orchestrator.writers import bo_pratijna, bo_samskara, bo_samvada, bo_upaya
 from pipeline.orchestrator.writers.bo_sangati import _build_cdlm_cells
 
 
@@ -105,9 +107,89 @@ def test_quality_detectors_have_reachable_false_branches(monkeypatch):
 def test_lel_detector_is_self_contained_and_serving_refresh_is_passive():
     assert "life_events" not in bo_pramana_mapa._LEL_TERM_B_SQL
     assert "source_l1_asset" in bo_pramana_mapa._LEL_TERM_B_SQL
+    assert "source_l1_asset IS NULL" in bo_pramana_mapa._LEL_TERM_B_SQL
+    assert "jsonb_exists_any" not in bo_pramana_mapa._LEL_TERM_C_SQL
+    assert "configuration_jsonb::text" in bo_pramana_mapa._LEL_TERM_C_SQL
     run_source = inspect.getsource(bo_pramana_mapa.BoPramanaMapa.run)
     assert "_refresh_mv(" not in run_source
     assert "mv_cdlm_dasha_window_lookup" not in run_source
+
+
+def test_quality_context_detector_rejects_stale_selected_heads():
+    assert "l2_data_plane_generation_is_compatible" in bo_pramana_mapa._CONTEXT_GENERATION_SQL
+
+
+def test_quality_context_detector_database_negative_for_topology_staleness():
+    database_url = os.environ.get("L2_CONTRACT_DATABASE_URL")
+    if not database_url:
+        import pytest
+        pytest.skip("L2_CONTRACT_DATABASE_URL not supplied for disposable PostgreSQL proof")
+    import psycopg
+
+    chart_id = "20000000-0000-0000-0000-000000000001"
+    vector = json.dumps([{
+        "layer": "L1", "asset_id": "ga_detector_a",
+        "generation_id": "l1-a", "semantic_output_digest": "a" * 64,
+    }])
+    with psycopg.connect(database_url) as conn:
+        conn.execute(
+            """INSERT INTO public.asset_registry(asset_id, depends_on)
+               VALUES ('ga_detector_a', ARRAY[]::text[]),
+                      ('ga_detector_b', ARRAY[]::text[]),
+                      ('bo_detector_probe', ARRAY['ga_detector_a']::text[])
+               ON CONFLICT (asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on"""
+        )
+        conn.execute(
+            """INSERT INTO public.l1_data_plane_generations
+                 (chart_id, asset_id, generation_id, status,
+                  semantic_output_digest, base_context_jsonb)
+               VALUES (%s, 'ga_detector_a', 'l1-a', 'complete', %s, '{}'::jsonb)""",
+            (chart_id, "a" * 64),
+        )
+        conn.execute(
+            """INSERT INTO public.l1_data_plane_generation_heads
+                 (chart_id, asset_id, current_generation_id)
+               VALUES (%s, 'ga_detector_a', 'l1-a')""",
+            (chart_id,),
+        )
+        conn.execute(
+            """INSERT INTO public.data_plane_l2_producer_generations
+                 (chart_id, asset_id, generation_id, initial_build_id,
+                  contract_version, accepted_l0_release, accepted_l1_terminal,
+                  calculation_context_id, calculation_context_jsonb,
+                  dependency_vector_jsonb, producer_role, source_digest,
+                  expected_partitions, completed_partitions, state,
+                  semantic_output_digest, completed_at)
+               VALUES (%s, 'bo_detector_probe', 'l2-a', 'build-a',
+                       'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0', %s, %s,
+                       'ctx-a', '{}'::jsonb, %s::jsonb, 'quality', %s,
+                       1, 1, 'complete', %s, clock_timestamp())""",
+            (
+                chart_id,
+                "f6fed12c794224329f6b3b436f8b1b814499d06d",
+                "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+                vector, "c" * 64, "b" * 64,
+            ),
+        )
+        conn.execute(
+            """INSERT INTO public.l2_data_plane_generation_heads
+                 (chart_id, asset_id, current_generation_id)
+               VALUES (%s, 'bo_detector_probe', 'l2-a')""",
+            (chart_id,),
+        )
+        assert bo_pramana_mapa._count_one(
+            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id, chart_id],
+        ) == 0
+
+        conn.execute(
+            """UPDATE public.asset_registry
+               SET depends_on=ARRAY['ga_detector_a','ga_detector_b']::text[]
+               WHERE asset_id='bo_detector_probe'"""
+        )
+        assert bo_pramana_mapa._count_one(
+            conn, bo_pramana_mapa._CONTEXT_GENERATION_SQL, [chart_id, chart_id],
+        ) == 1
+        conn.rollback()
 
 
 def test_samvada_preserves_serving_view_without_ddl():
@@ -127,10 +209,59 @@ def test_samvada_preserves_serving_view_without_ddl():
     assert conn.calls == []
 
 
+def test_samvada_passive_receipt_cannot_promote_legacy_view_rows(monkeypatch):
+    from pipeline.orchestrator import asset_runner as ar
+    from tests.test_d16_state_write_defect import (
+        FakeConn, FakeCursor, _final_rows_written, _final_state, _patch_common,
+    )
+
+    events = []
+    _patch_common(monkeypatch, bo_samvada.BoSamvadaWriter, events)
+    legacy_count_sql = "SELECT count(*) FROM vw_chart_digest WHERE chart_id = $1"
+    cur = FakeCursor(rows_present=5, count_sql=legacy_count_sql, target_floor=0)
+    ar._run_data_writer(
+        FakeConn(), cur, "run-passive", "chart-passive", "bo_samvada",
+    )
+    assert _final_state(cur) == "lit"
+    assert _final_rows_written(cur) == 0
+    assert not any("vw_chart_digest" in sql for sql, _params in cur.executed)
+
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "migrations/1034_data_plane_l2_producer_generations.sql"
+    ).read_text()
+    assert "count_sql = 'SELECT 0 AS count'" in migration
+    assert "asset_output_digest_specs" in migration
+    assert "retired_at = COALESCE" in migration
+
+
+class _NoMutationConn:
+    def execute(self, *_args, **_kwargs):
+        raise AssertionError("dry run attempted SQL mutation")
+
+    def cursor(self):
+        raise AssertionError("dry run attempted cursor mutation")
+
+
+def test_pratijna_and_upaya_dry_run_before_every_mutation():
+    ctx = SimpleNamespace(
+        dry_run=True,
+        db_conn=_NoMutationConn(),
+        config={"chart_id": "00000000-0000-0000-0000-000000000001"},
+        build_id="dry-run",
+    )
+    pratijna = bo_pratijna.BoPratijnaWriter().run(ctx)
+    upaya = bo_upaya.BoUpayaWriter().run(ctx)
+    assert pratijna.rows_inserted == 0
+    assert upaya.rows_inserted == 0
+
+
 def test_samskara_reuse_is_immutable_and_partial_batches_fail_closed():
     reuse_source = inspect.getsource(bo_samskara._fetch_existing_embeddings)
     assert "l2_data_plane_row_snapshots" in reuse_source
     assert "l2_data_plane_generation_is_compatible" in reuse_source
+    assert "AS MATERIALIZED" in reuse_source
+    assert reuse_source.count("l2_data_plane_generation_is_compatible") == 1
     run_source = inspect.getsource(bo_samskara.BoSamskaraWriter.run_substep)
     assert "refusing a partial generation" in run_source
 

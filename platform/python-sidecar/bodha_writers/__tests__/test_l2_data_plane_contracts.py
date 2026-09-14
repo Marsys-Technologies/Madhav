@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -153,7 +154,9 @@ def test_selected_l2_generation_rejects_stale_transitive_head():
         }],
     }]
     with pytest.raises(ContractError, match="stale transitive"):
-        _validate_compatible_l2_set(l1_rows, l2_rows)
+        _validate_compatible_l2_set(
+            l1_rows, l2_rows, {"bo_laksana": {("L1", "ga_positions")}},
+        )
 
 
 def test_selected_l2_generation_accepts_one_compatible_set():
@@ -169,7 +172,167 @@ def test_selected_l2_generation_accepts_one_compatible_set():
             "generation_id": "l1-current", "semantic_output_digest": "a" * 64,
         }],
     }]
-    _validate_compatible_l2_set(l1_rows, l2_rows)
+    _validate_compatible_l2_set(
+        l1_rows, l2_rows, {"bo_laksana": {("L1", "ga_positions")}},
+    )
+
+
+@pytest.mark.parametrize(
+    "expected",
+    [
+        {("L1", "ga_positions"), ("L1", "ga_condition")},
+        set(),
+    ],
+)
+def test_selected_l2_generation_rejects_dependency_topology_drift(expected):
+    l1_rows = [{
+        "asset_id": "ga_positions", "generation_id": "l1-current",
+        "output_digest": "a" * 64,
+    }]
+    l2_rows = [{
+        "asset_id": "bo_laksana", "generation_id": "l2-current",
+        "output_digest": "b" * 64,
+        "dependency_vector": [{
+            "layer": "L1", "asset_id": "ga_positions",
+            "generation_id": "l1-current", "semantic_output_digest": "a" * 64,
+        }],
+    }]
+    with pytest.raises(ContractError, match="stale dependency topology"):
+        _validate_compatible_l2_set(
+            l1_rows, l2_rows, {"bo_laksana": expected},
+        )
+
+
+def test_migration_checks_current_dependency_topology_and_locks_msr_scope():
+    migration = (
+        Path(__file__).resolve().parents[3]
+        / "migrations/1034_data_plane_l2_producer_generations.sql"
+    ).read_text()
+    assert "l2_data_plane_dependency_topology_matches" in migration
+    assert "L2 generation dependency topology is stale or incomplete" in migration
+    guard = migration.split(
+        "CREATE OR REPLACE FUNCTION public.assert_l2_msr_delete_safe", 1,
+    )[1].split("CREATE OR REPLACE FUNCTION public.bind_l2_exact_inputs", 1)[0]
+    assert "FOR UPDATE" in guard
+
+
+def test_msr_guard_serializes_cascade_and_set_null_fk_inserts():
+    database_url = os.environ.get("L2_CONTRACT_DATABASE_URL")
+    if not database_url:
+        pytest.skip("L2_CONTRACT_DATABASE_URL not supplied for disposable PostgreSQL proof")
+    psycopg = pytest.importorskip("psycopg")
+    sql = pytest.importorskip("psycopg.sql")
+    chart_id = "10000000-0000-0000-0000-000000000001"
+    signal_ids = {
+        "l2_guard_probe_cascade": "10000000-0000-0000-0000-000000000002",
+        "l2_guard_probe_set_null": "10000000-0000-0000-0000-000000000003",
+    }
+
+    with psycopg.connect(database_url, autocommit=True) as admin:
+        for table in signal_ids:
+            admin.execute(sql.SQL("DROP TABLE IF EXISTS public.{}") .format(sql.Identifier(table)))
+        admin.execute("DROP TABLE IF EXISTS public.bodha_msr_signals")
+        admin.execute(
+            """CREATE TABLE public.bodha_msr_signals (
+                 signal_id uuid PRIMARY KEY, chart_id uuid NOT NULL,
+                 ayanamsha_id text NOT NULL, signal_type_id text NOT NULL,
+                 signal_type_class text NOT NULL
+               )"""
+        )
+        admin.execute(
+            """CREATE TABLE public.l2_guard_probe_cascade (
+                 id integer PRIMARY KEY, signal_id uuid NOT NULL REFERENCES
+                 public.bodha_msr_signals(signal_id) ON DELETE CASCADE
+               )"""
+        )
+        admin.execute(
+            """CREATE TABLE public.l2_guard_probe_set_null (
+                 id integer PRIMARY KEY, signal_id uuid REFERENCES
+                 public.bodha_msr_signals(signal_id) ON DELETE SET NULL
+               )"""
+        )
+        for signal_id in signal_ids.values():
+            admin.execute(
+                "INSERT INTO public.bodha_msr_signals VALUES (%s, %s, 'lahiri', 'type', 'class')",
+                (signal_id, chart_id),
+            )
+
+    try:
+        for table, signal_id in signal_ids.items():
+            with psycopg.connect(database_url) as locker, psycopg.connect(database_url) as inserter:
+                locker.execute(
+                    "SELECT public.assert_l2_msr_delete_safe(%s::uuid, NULL, NULL, NULL)",
+                    (chart_id,),
+                )
+                inserter.execute("SET LOCAL statement_timeout = '250ms'")
+                with pytest.raises(psycopg.errors.QueryCanceled):
+                    inserter.execute(
+                        sql.SQL("INSERT INTO public.{} (id, signal_id) VALUES (1, %s)")
+                        .format(sql.Identifier(table)),
+                        (signal_id,),
+                    )
+                inserter.rollback()
+                locker.rollback()
+
+                inserter.execute(
+                    sql.SQL("INSERT INTO public.{} (id, signal_id) VALUES (1, %s)")
+                    .format(sql.Identifier(table)),
+                    (signal_id,),
+                )
+                inserter.commit()
+                with pytest.raises(psycopg.errors.RaiseException, match="cross-layer dependent"):
+                    locker.execute(
+                        "SELECT public.assert_l2_msr_delete_safe(%s::uuid, NULL, NULL, NULL)",
+                        (chart_id,),
+                    )
+                locker.rollback()
+                inserter.execute(sql.SQL("DELETE FROM public.{}") .format(sql.Identifier(table)))
+                inserter.commit()
+    finally:
+        with psycopg.connect(database_url, autocommit=True) as admin:
+            for table in signal_ids:
+                admin.execute(sql.SQL("DROP TABLE IF EXISTS public.{}") .format(sql.Identifier(table)))
+            admin.execute("DROP TABLE IF EXISTS public.bodha_msr_signals")
+
+
+def test_database_topology_match_detects_dependency_addition_and_removal():
+    database_url = os.environ.get("L2_CONTRACT_DATABASE_URL")
+    if not database_url:
+        pytest.skip("L2_CONTRACT_DATABASE_URL not supplied for disposable PostgreSQL proof")
+    psycopg = pytest.importorskip("psycopg")
+    vector = json.dumps([{
+        "layer": "L1", "asset_id": "ga_topology_a",
+        "generation_id": "g-a", "semantic_output_digest": "a" * 64,
+    }])
+    with psycopg.connect(database_url) as conn:
+        conn.execute(
+            """INSERT INTO public.asset_registry(asset_id, depends_on)
+               VALUES ('ga_topology_a', ARRAY[]::text[]),
+                      ('ga_topology_b', ARRAY[]::text[]),
+                      ('bo_topology_probe', ARRAY['ga_topology_a']::text[])
+               ON CONFLICT (asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on"""
+        )
+        assert conn.execute(
+            "SELECT public.l2_data_plane_dependency_topology_matches(%s, %s::jsonb)",
+            ("bo_topology_probe", vector),
+        ).fetchone()[0] is True
+
+        conn.execute(
+            "UPDATE public.asset_registry SET depends_on=ARRAY['ga_topology_a','ga_topology_b']::text[] WHERE asset_id='bo_topology_probe'"
+        )
+        assert conn.execute(
+            "SELECT public.l2_data_plane_dependency_topology_matches(%s, %s::jsonb)",
+            ("bo_topology_probe", vector),
+        ).fetchone()[0] is False
+
+        conn.execute(
+            "UPDATE public.asset_registry SET depends_on=ARRAY[]::text[] WHERE asset_id='bo_topology_probe'"
+        )
+        assert conn.execute(
+            "SELECT public.l2_data_plane_dependency_topology_matches(%s, %s::jsonb)",
+            ("bo_topology_probe", vector),
+        ).fetchone()[0] is False
+        conn.rollback()
 
 
 def test_heavy_writer_records_each_substep_partition_in_callers_transaction(monkeypatch):

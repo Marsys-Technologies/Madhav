@@ -37,9 +37,13 @@ Existing L2 rows and migrations remain readable. The new code neither deletes
 nor appends `bodha_rm_dasha_windowed_prescriptions`; legacy rows are preserved.
 Karanajala writes legacy activation columns as null and imports no Kāla service.
 Samvada is a passive compatibility participant: its legacy serving view remains
-preserved and the producer run performs no shared DDL. Pramāṇa Mapa consumes
+preserved and the producer run performs no shared DDL. Migration 1034 declares
+its passive zero-row receipt with `target_floor=0`, replaces the legacy view
+count with a constant-zero count and retires the view-based output-digest spec,
+so pre-existing/query-time rows cannot earn current producer output. Pramāṇa Mapa consumes
 only declared L1/L2 structural inputs; it no longer reads `life_events` or
-refreshes shared materialized views.
+refreshes shared materialized views. Its detectors reject stale selected heads,
+absent/non-Gaṇita source provenance and nested LEL-shaped payload keys.
 Rollback is application-code rollback plus explicit selection of a retained
 completed generation. No delivered evidence is rewritten.
 
@@ -54,15 +58,19 @@ Writers that use external embedding or multi-arm construction fail the
 partition on partial execution rather than completing a partial generation.
 Before MSR replacement, a catalog-driven foreign-key guard rejects dependent
 rows outside the two owned L2 dependent tables, including cross-layer
-`CASCADE`/`SET NULL` relationships.
+`CASCADE`/`SET NULL` relationships. It first locks the exact parent-row scope
+`FOR UPDATE`, which serializes concurrent FK insertion through the later delete.
+Pratijñā and Upāya dry-run entry paths return before any SQL mutation.
 
 Disposable PostgreSQL proved apply/reapply; stable replay across build change;
 divergent and omitted-row replay rejection; snapshot deletion rejection;
 recursive non-finite rejection; exact L1/L2 reads in the presence of deliberately
 contaminated active rows; two exact partition contexts completing one shared
-generation; generic cross-layer MSR-delete rejection; stale-descendant hiding
-after an upstream-head change; two retained generations; selector output; and
-rollback/head restoration. The isolated cluster is temporary test evidence and
+generation; generic cross-layer MSR-delete rejection; two-connection `CASCADE`
+and `SET NULL` FK-insert serialization; dependency-topology addition/removal;
+stale-descendant hiding and stale-head detector failure after an upstream-head
+change; two retained generations; selector output; and rollback/head restoration.
+The isolated cluster is temporary test evidence and
 must be stopped before terminal handoff.
 
 ## Cache/replay rules
@@ -70,7 +78,9 @@ must be stopped before terminal handoff.
 Cache keys require contract version, exact accepted releases, chart/subject,
 calculation context and stable structural identity. The simultaneous selected
 set is checked transitively: every chosen L2 generation's stored dependency
-vector must agree with the selected L1/L2 heads. A wrong or stale dependency
+vector must agree with the selected L1/L2 heads, and its exact dependency key
+set must equal the current recursive registry topology. Addition or removal of a
+dependency therefore makes the old generation stale. A wrong or stale dependency
 fails before use. Deterministic slice replay is byte/content stable; volatile
 timestamps/builds live only in the observation envelope. Live migration and
 production rollback were not run in this goal.

@@ -168,6 +168,7 @@ def _fetchall(cur: Any) -> list[dict[str, Any]]:
 def _validate_compatible_l2_set(
     l1_rows: Sequence[Mapping[str, Any]],
     l2_rows: Sequence[Mapping[str, Any]],
+    expected_dependency_keys: Mapping[str, set[tuple[str, str]]],
 ) -> None:
     """Require every selected L2 generation's stored transitive vector to
     agree with the one simultaneous set of selected heads."""
@@ -182,6 +183,21 @@ def _validate_compatible_l2_set(
         if not isinstance(vector, list) or not vector:
             raise ContractError(
                 f"selected L2 dependency {row['asset_id']} has no stored dependency vector"
+            )
+        observed_keys = [
+            (str(dependency.get("layer")), str(dependency.get("asset_id")))
+            for dependency in vector
+            if isinstance(dependency, Mapping)
+        ]
+        expected_keys = expected_dependency_keys.get(str(row["asset_id"]))
+        if (
+            expected_keys is None
+            or len(observed_keys) != len(vector)
+            or len(observed_keys) != len(set(observed_keys))
+            or set(observed_keys) != expected_keys
+        ):
+            raise ContractError(
+                f"selected L2 dependency {row['asset_id']} has stale dependency topology"
             )
         for dependency in vector:
             key = (str(dependency.get("layer")), str(dependency.get("asset_id")))
@@ -250,6 +266,7 @@ def _resolve_upstream_context(
             raise ContractError(f"missing completed selected L1 dependencies: {missing}")
 
         l2_rows: list[dict[str, Any]] = []
+        expected_l2_dependency_keys: dict[str, set[tuple[str, str]]] = {}
         if bo_assets:
             cur.execute(
                 """
@@ -273,7 +290,33 @@ def _resolve_upstream_context(
                 missing = sorted(set(bo_assets) - observed_bo)
                 raise ContractError(f"missing completed selected L2 dependencies: {missing}")
 
-    _validate_compatible_l2_set(l1_rows, l2_rows)
+            cur.execute(
+                """
+                WITH RECURSIVE dependency_tree(root_asset_id, asset_id) AS (
+                  SELECT r.asset_id, unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+                  FROM public.asset_registry r
+                  WHERE r.asset_id = ANY(%s::text[])
+                  UNION
+                  SELECT d.root_asset_id,
+                         unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+                  FROM public.asset_registry r
+                  JOIN dependency_tree d ON d.asset_id = r.asset_id
+                )
+                SELECT root_asset_id, asset_id
+                FROM dependency_tree
+                WHERE asset_id LIKE 'ga_%%' OR asset_id LIKE 'bo_%%'
+                ORDER BY root_asset_id, asset_id
+                """,
+                (bo_assets,),
+            )
+            for topology_row in _fetchall(cur):
+                dependency_asset = str(topology_row["asset_id"])
+                layer = "L1" if dependency_asset.startswith("ga_") else "L2"
+                expected_l2_dependency_keys.setdefault(
+                    str(topology_row["root_asset_id"]), set(),
+                ).add((layer, dependency_asset))
+
+    _validate_compatible_l2_set(l1_rows, l2_rows, expected_l2_dependency_keys)
 
     context_fields = (
         "subject_id", "chart_id", "instant_iso", "latitude_deg", "longitude_deg",

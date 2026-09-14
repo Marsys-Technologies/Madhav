@@ -2,7 +2,7 @@
 artifact: MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
 status: CORRECTION_IMPLEMENTED_REVIEW_PENDING
-observed_at: 2026-09-14T23:23:00+05:30
+observed_at: 2026-09-15T00:05:00+05:30
 strategy_decision: DP-SD-015
 execution_base: 18503e9c2dbb140f5d17b4bc34a5f6d087f97c38
 strategy_content_commit: 86374d65f3dc742085783e352a9999e2edb48715
@@ -51,19 +51,19 @@ not retained data-plane history.
 | 7 | `bo_yantra_mechanism` / `bo_yantra_mechanism.py` | `bodha_mechanisms`; `(chart,aya,class,fingerprint)` (1010) | nodes, edges, motifs, L1 facts | mechanism candidate | P/I/E/Q; verification must be executable or null |
 | 8 | `bo_sangati` / `bo_sangati.py` | CDLM `(chart,aya,snapshot,row_domain,col_domain)`, convergence `(chart,aya,snapshot,domain)`, triangulation `(chart,aya,question,tradition)` (997) | signals and contradictions | multidomain linkage | P/I/E/Q; preserve both signed sides and shared roots |
 | 9 | `bo_cdlm_summary` / `bo_cdlm_summary.py` | summary `(chart,aya)` plus rollup/cluster siblings (987; sibling order defect retained as known baseline) | CDLM cells | navigation summary | P/I/Q; hydration required |
-| 10 | `bo_pratijna` / `bo_pratijna.py` | `bodha_pratijna`; `(chart,aya,event_class)` (944) | signals, v4 engine, triangulation | occurrence/condition ledger | P/I/E/Q; persist separate axes with units and polarity |
+| 10 | `bo_pratijna` / `bo_pratijna.py` | `bodha_pratijna`; `(chart,aya,event_class)` (944) | signals, v4 engine, triangulation | occurrence/condition ledger | P/I/E/Q; persist separate axes with units/polarity; dry run is mutation-free |
 | 11 | `bo_arudha` / `bo_arudha.py` | MSR `signal_type_class=arudha` (927) | exact Arudha and graha L1 facts | reference-frame proposition | P/I/Q |
 | 12 | `bo_special_lagna` / `bo_special_lagna.py` | MSR `signal_type_class=special_lagna` (909) | special-lagna L1 facts | specialized proposition | P/I/Q |
 | 13 | `bo_sudarshana` / `bo_sudarshana.py` | MSR `signal_type_class=sudarshana_agreement` (880) | Lagna/Moon/Sun/graha sign facts | correlated-frame proposition | P/I/Q; explicitly static, non-temporal |
 | 14 | `bo_vargottama_dhana` / `bo_vargottama_dhana.py` | MSR `signal_type_class IN (vargottama_amplification,dhana_axis)` (910) | varga and position facts | specialized proposition | P/I/E/Q; shared-root grouping |
 | 15 | `bo_nakshatra_semantic` / `bo_nakshatra_semantic.py` | MSR `signal_type_class=nakshatra_semantic` (908) | nakshatra/L1 structural facts | symbolic structural proposition | P/I/Q |
-| 16 | `bo_upaya` / `bo_upaya.py` | six remedy tables and keys declared by 1013 | signals, CDLM, motifs, admitted remedy corpus; currently chart daśā/life events | practice eligibility | P/I/Q/H; stop resolved timing/window output |
-| 17 | `bo_samskara` / `bo_samskara.py` | `bodha_signal_embeddings(signal_id)` (979) | immutable compatible MSR self-head snapshot text/content | navigation index | P/I/Q; similarity is not evidence; partial embedding fails |
+| 16 | `bo_upaya` / `bo_upaya.py` | six remedy tables and keys declared by 1013 | exact signals, CDLM, motifs and admitted remedy corpus; no chart daśā/life-event input | practice eligibility | P/I/Q/H; stop resolved timing/window output; dry run is mutation-free |
+| 17 | `bo_samskara` / `bo_samskara.py` | `bodha_signal_embeddings(signal_id)` (979) | one materialized immutable compatible MSR self-head snapshot | navigation index | P/I/Q; similarity is not evidence; partial embedding fails |
 | 18 | `bo_anveshana` / `bo_anveshana.py` | `bodha_discoveries`, `bodha_anomalies`; chart/aya detector identities | signals, graph, convergence, embeddings | discovery candidate | P/I/E/Q; detector reason and evidence required |
 | 19 | `bo_drishti` / `bo_drishti.py` | `bodha_question_lenses(chart,aya,question_type)` (942) | signals and edges | inquiry obligation/navigation | P/I/E/Q; no pre-answer |
 | 20 | `bo_chart_gestalt` / `bo_chart_gestalt.py` | `bodha_chart_gestalt(chart,aya)` (985) | signals, CDLM, nodes, paths, discoveries | whole-chart pointer | P/I/Q; summary cannot adjudicate |
-| 21 | `bo_samvada` / `bo_samvada.py` | passive compatibility participant; legacy `vw_chart_digest` preserved, no producer-owned durable table | no producer mutation; legacy view dependencies remain serving-owned | legacy navigation compatibility | P/Q/H; no DDL and query time is not build freshness |
-| 22 | `bo_pramana_mapa` / `bo_pramana_mapa.py` | `synthesis_quality_scorecard(chart)` (949) | exact declared L1/L2 structural inputs and reachable integrity checks; no private events | scoped quality detector | P/I/E/Q; no temporal MV refresh or constant-green authority |
+| 21 | `bo_samvada` / `bo_samvada.py` | passive compatibility participant; legacy `vw_chart_digest` preserved, no producer-owned durable table | explicit generation-owned zero-row receipt; no serving-view count/digest credit | legacy navigation compatibility | P/Q/H; `target_floor=0`, constant-zero count, legacy digest retired |
+| 22 | `bo_pramana_mapa` / `bo_pramana_mapa.py` | `synthesis_quality_scorecard(chart)` (949) | exact declared L1/L2 structural inputs and reachable integrity checks; no private events | scoped quality detector | P/I/E/Q; stale topology/head and nested/null provenance fail closed |
 | 23 | `bo_grounding` / `bo_grounding.py` | `bodha_grounding_matches(chart,aya,target_kind,target_id)` (947) | yoga firings, signals, exact Sūtrāvalī rules | source/rule matcher | P/I/E/Q; support identity outside historical 22 |
 
 All 23 identities occur in `platform/src/generated/nirmana-writer-digests.json`.
@@ -102,11 +102,14 @@ current local review candidate:
    schedulable-window construction from `run`; resonance is invariant to the
    compatibility input and the legacy window table/history remains readable.
 
-The second challenge also closed adjacent boundary hazards: generic catalog
-inspection now blocks MSR replacement when any unowned cross-layer foreign-key
-dependent row exists; Samvada performs no shared-view DDL; and Pramāṇa Mapa
+The second and third challenges also closed adjacent boundary hazards: generic
+catalog inspection now locks the exact MSR parent scope and blocks replacement
+when any unowned cross-layer foreign-key dependent row exists; Samvada performs
+no shared-view DDL and cannot earn output from legacy view rows; and Pramāṇa Mapa
 neither consumes private `life_events` nor refreshes temporal/shared materialized
-views. These are producer-boundary corrections, not serving integration.
+views. Dependency compatibility compares the exact current recursive topology,
+and Pratijñā/Upāya dry runs return before mutation. These are producer-boundary
+corrections, not serving integration.
 
 Other activation/date columns found in L2 are null compatibility hooks or
 derived read fields and may remain only as `UNAVAILABLE_AT_L2`/legacy. Ordinary
@@ -125,7 +128,7 @@ can correct first-domain, top-K, unsigned, summary-only and temporal loss.
 | Surface | Role / callers | Authority and disposition |
 |---|---|---|
 | `bodha_writers/formulas.py` | shared scoring/formula kernel | preserve; calculations are not source qualification |
-| `bodha_writers/_idempotency.py` | writer-scoped replacement helpers | preserve current ownership/transactions; reject unowned cross-layer FK dependents before MSR replacement |
+| `bodha_writers/_idempotency.py` | writer-scoped replacement helpers | preserve ownership/transactions; lock exact MSR parents and reject unowned cross-layer FK dependents before replacement |
 | `bodha_writers/*_emitter.py` | satellite MSR row builders | integrate through the common L2 contract; temporal hooks stay null |
 | `bodha_writers/bhavat_bhavam_registry.py` and amplifier | Bhāvat engineering machinery called by Laksana | `UNQUALIFIED_SOURCE`; positive doctrinal arm `NOT_REACHABLE` |
 | `bodha_writers/grounding_matcher.py` | rule/source matching for `bo_grounding` | preserve and require exact qualification/target granularity |

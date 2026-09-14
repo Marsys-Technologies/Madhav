@@ -1916,6 +1916,17 @@ class BoUpayaWriter(WriterBase):
         total_bundles = 0
         total_patterns = 0
 
+        if ctx.dry_run:
+            logger.info("[bo_upaya dry_run] chart=%s", chart_id)
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "dry_run; no mutation; dasha_windowed_prescriptions=0 "
+                    "(UNAVAILABLE_AT_L2)"
+                ),
+            )
+
         # WP-2.2 / LCA-5 idempotency for the sibling rollup tables (chart-scoped
         # delete-then-insert per §N.3).
         with conn.cursor() as cur:
@@ -1924,10 +1935,6 @@ class BoUpayaWriter(WriterBase):
             cur.execute("DELETE FROM public.bodha_rm_pattern_remedies WHERE chart_id = %s", [chart_id])
 
         for aya in CANONICAL_AYAS:
-            if ctx.dry_run:
-                logger.info("[bo_upaya dry_run] %s", aya)
-                continue
-
             resonances, prescriptions = _build_resonances_and_prescriptions(
                 chart_id, aya, build_id, conn, now
             )
@@ -1962,7 +1969,7 @@ class BoUpayaWriter(WriterBase):
                 total_bundles += len(bundles)
                 total_patterns += len(patterns)
 
-        if not ctx.dry_run and total_presc == 0:
+        if total_presc == 0:
             raise RuntimeError(
                 f"[bo_upaya] G3: chart_id={chart_id} — 0 remedy prescriptions written; "
                 "brahma_remedy_corpus may be empty (L0 Brahmagyan corpus must be seeded)"

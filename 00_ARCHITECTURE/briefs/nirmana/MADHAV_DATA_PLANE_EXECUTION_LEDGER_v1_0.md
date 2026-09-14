@@ -43,6 +43,7 @@ changelog:
   - "1.0 update 2026-09-14: Consumes DP-SD-015 and the approved L2 brief; records validated unrestricted session open, exact 23/22 denominator reconciliation, semantic DAG/backcast and frozen WP0 mutation manifest; L3 remains waiting."
   - "1.0 update 2026-09-14: Records first L2 implementation commit 066fce7a5 and independent challenge FAIL with no CRITICAL; exact-context, stable-identity, immutable generation/replay/rollback, temporal, Bhavat, cancellation/root, slice, quality and evidence corrections are locally validated and pending exact re-challenge."
   - "1.0 update 2026-09-14: Records second L2 challenge FAIL at b7a49f742 with 8 HIGH and 2 MED findings; cross-layer MSR deletion, passive serving projection, transitive stale-generation closure, exact replay row sets, private/temporal quality inputs, loud partial failure, complete slice semantics, persisted axis units/polarity, database non-finite capture and immutable self-reuse corrections are locally validated and pending exact re-challenge."
+  - "1.0 update 2026-09-15: Records third L2 challenge FAIL at f828864a7 with 6 HIGH and 2 MED findings; explicit passive Samvada receipt, mutation-free dry runs, serialized MSR deletion, exact dependency-topology compatibility, fail-closed Pramana detectors and set-level Samskara compatibility are locally validated and pending exact re-challenge."
 ---
 
 # Madhav data-plane execution ledger
@@ -117,7 +118,8 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L2 WP0 evidence | `MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact 23/22 reconciliation, two-pass semantic DAG, consumer backcast, adjacent authority and frozen mutation manifest. |
 | L2 first implementation / challenge | `066fce7a5611981aeb57f0b7129fa1c5d46495b6` / independent FAIL | Established the 23-writer boundary and exposed nine material correction families; no CRITICAL. |
 | L2 first correction / second challenge | `b7a49f74289f1714118003c7bea78527d665ffa8` / independent FAIL | Closed the first nine families; second challenge found 8 HIGH and 2 MED residuals, no CRITICAL. |
-| L2 second correction candidate | local validated tree, exact commit pending | Adds catalog-guarded MSR replacement, passive Samvada/Pramāṇa serving behavior, transitive stale-generation compatibility, exact replay row sets, loud partial failure, complete slice semantics, persisted Pratijñā axes, recursive database non-finite rejection and immutable Samskara reuse. |
+| L2 second correction / third challenge | `f828864a7e0fecdfc2ebaf36532966d37ad2fcbb` / independent FAIL | Closed the second ten families; third challenge found 6 HIGH and 2 MED residuals, no CRITICAL. |
+| L2 third correction candidate | local validated tree, exact commit pending | Adds explicit passive Samvada completion, mutation-free Pratijñā/Upāya dry runs, serialized MSR deletion, exact topology compatibility, fail-closed Pramāṇa stale/LEL detection and set-level Samskara reuse. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -140,7 +142,11 @@ and evidence gaps. The second challenge at `b7a49f742` found 8 HIGH and 2 MED
 residuals across deletion safety, serving ownership, stale/replay closure,
 private inputs, partial failure, slice semantics, Pratijñā field semantics,
 database numeric safety and Samskara reuse. Those findings are corrected and
-locally validated; an exact correction commit and read-only re-challenge remain.
+locally validated. The third challenge at `f828864a7` found 6 HIGH and 2 MED
+residuals across passive completion, two dry-run paths, delete concurrency,
+topology drift, quality false-green behavior and compatibility-query cost. Those
+findings are corrected and locally validated; an exact correction commit and
+read-only re-challenge remain.
 L3 remains waiting.
 
 ## 6. Append-only status log
@@ -181,6 +187,8 @@ L3 remains waiting.
 | 2026-09-14 22:18 | L2 Bodha | FIRST_CORRECTIONS_COMMITTED | First correction committed at `b7a49f742`; focused 178 and contained 135 tests pass; complete L2 attempt yields 472 passed/14 skipped with only absent-DB integration cases not run; validator 23/23/0; provenance check and disposable PostgreSQL exact-input/multi-partition/replay/rollback proofs pass. |
 | 2026-09-14 (time not recorded) | L2 Bodha | SECOND_CHALLENGE_FAILED | Independent review of exact `b7a49f742` found 8 HIGH and 2 MED residuals: cross-layer MSR deletion, Samvada DDL, stale compatibility, omitted-row replay, Pramāṇa private/temporal inputs, partial Laksana/Samskara completion, incomplete slice epistemic/magnitude/root semantics, unpersisted Pratijñā axes, database non-finite capture and mutable Samskara self-reuse; no CRITICAL. |
 | 2026-09-14 23:23 | L2 Bodha | SECOND_CORRECTIONS_VALIDATED | Focused 48, contained 140 and non-integration L2 450/13 pass; complete L2 attempt yields 476 passed/14 skipped with only absent-DB 2 failures/36 errors `NOT_RUN`; validator 23/23/0 and provenance check pass; disposable PostgreSQL proves apply/reapply, exact run-row replay, omitted-row rejection, generic cross-layer delete rejection, nested non-finite rejection and stale-descendant hiding. Exact correction commit and re-challenge next. |
+| 2026-09-15 (time not recorded) | L2 Bodha | THIRD_CHALLENGE_FAILED | Independent review of exact `f828864a7` found 6 HIGH and 2 MED residuals: Samvada legacy-row completion, Pratijñā/Upāya destructive dry runs, MSR delete TOCTOU, dependency-topology drift, stale/null/nested quality false-greens and per-snapshot Samskara compatibility evaluation; no CRITICAL. |
+| 2026-09-15 00:05 | L2 Bodha | THIRD_CORRECTIONS_VALIDATED | Disposable-enabled focused 57, contained 145 and non-integration L2 454/13 pass; complete attempt yields 479 passed/15 skipped plus only absent-DB 2 failures/36 errors `NOT_RUN`; validator/provenance/reapply pass; two-connection `CASCADE`/`SET NULL`, topology add/remove and stale-detector negatives pass. Exact correction commit and re-challenge next. |
 
 ## 7. Return-to-strategy handoff contract
 

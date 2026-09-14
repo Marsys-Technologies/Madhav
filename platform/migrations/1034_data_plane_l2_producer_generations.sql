@@ -255,6 +255,26 @@ INSERT INTO public.l2_data_plane_asset_outputs (asset_id, source_table) VALUES
   ('bo_grounding', 'bodha_grounding_matches')
 ON CONFLICT DO NOTHING;
 
+-- bo_samvada is retained as a passive registry identity. Its legacy view is a
+-- shared serving projection, not output produced by this per-chart run. Make
+-- zero rows the explicit valid receipt, prevent the runner's no-op probe from
+-- promoting legacy view rows, and retire the serving-view digest specification.
+DO $$
+BEGIN
+  IF to_regclass('public.asset_registry') IS NOT NULL THEN
+    UPDATE public.asset_registry
+    SET target_floor = 0,
+        count_sql = 'SELECT 0 AS count'
+    WHERE asset_id = 'bo_samvada';
+  END IF;
+  IF to_regclass('public.asset_output_digest_specs') IS NOT NULL THEN
+    UPDATE public.asset_output_digest_specs
+    SET retired_at = COALESCE(retired_at, clock_timestamp())
+    WHERE asset_id = 'bo_samvada' AND retired_at IS NULL;
+  END IF;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.l2_data_plane_reject_immutable_change()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
@@ -419,6 +439,38 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.l2_data_plane_dependency_topology_matches(
+  p_asset_id text,
+  p_dependency_vector jsonb
+) RETURNS boolean LANGUAGE sql STABLE AS $$
+  WITH RECURSIVE expected(asset_id) AS (
+    SELECT unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+    FROM public.asset_registry r WHERE r.asset_id = p_asset_id
+    UNION
+    SELECT unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+    FROM public.asset_registry r
+    JOIN expected e ON e.asset_id = r.asset_id
+  ), expected_keys AS (
+    SELECT CASE WHEN asset_id LIKE 'ga\_%%' ESCAPE '\' THEN 'L1' ELSE 'L2' END AS layer,
+           asset_id
+    FROM expected
+    WHERE asset_id <> p_asset_id
+      AND (asset_id LIKE 'ga\_%%' ESCAPE '\' OR asset_id LIKE 'bo\_%%' ESCAPE '\')
+  ), provided_keys AS (
+    SELECT value->>'layer' AS layer, value->>'asset_id' AS asset_id
+    FROM jsonb_array_elements(p_dependency_vector)
+  )
+  SELECT jsonb_typeof(p_dependency_vector) = 'array'
+     AND jsonb_array_length(p_dependency_vector) = (SELECT count(*) FROM expected_keys)
+     AND NOT EXISTS (
+       (SELECT layer, asset_id FROM expected_keys
+        EXCEPT SELECT layer, asset_id FROM provided_keys)
+       UNION ALL
+       (SELECT layer, asset_id FROM provided_keys
+        EXCEPT SELECT layer, asset_id FROM expected_keys)
+     )
+$$;
+
 CREATE OR REPLACE FUNCTION public.l2_data_plane_generation_is_compatible(
   p_chart_id uuid,
   p_asset_id text,
@@ -434,6 +486,9 @@ BEGIN
   WHERE chart_id = p_chart_id AND asset_id = p_asset_id
     AND generation_id = p_generation_id AND state = 'complete';
   IF NOT FOUND THEN RETURN false; END IF;
+  IF NOT public.l2_data_plane_dependency_topology_matches(p_asset_id, v_vector) THEN
+    RETURN false;
+  END IF;
 
   FOR v_dep IN SELECT value FROM jsonb_array_elements(v_vector) LOOP
     v_digest := NULL;
@@ -479,6 +534,18 @@ DECLARE
   v_fk record;
   v_exists boolean;
 BEGIN
+  -- Parent FOR UPDATE conflicts with the KEY SHARE lock acquired by a foreign-
+  -- key insert. Holding the exact replacement scope through the later DELETE
+  -- closes the check/delete race for CASCADE, SET NULL and future FK actions.
+  PERFORM 1
+  FROM public.bodha_msr_signals s
+  WHERE s.chart_id = p_chart_id
+    AND (p_ayanamsha_ids IS NULL OR s.ayanamsha_id = ANY(p_ayanamsha_ids))
+    AND (p_signal_type_ids IS NULL OR s.signal_type_id = ANY(p_signal_type_ids))
+    AND (p_signal_type_classes IS NULL OR s.signal_type_class = ANY(p_signal_type_classes))
+  ORDER BY s.signal_id
+  FOR UPDATE;
+
   FOR v_fk IN
     SELECT n.nspname AS schema_name, c.relname AS table_name,
            a.attname AS column_name, cardinality(k.conkey) AS key_count,
@@ -659,6 +726,11 @@ BEGIN
        WHERE d->>'layer' = 'L1'
      ) THEN
     RAISE EXCEPTION 'L2 generation requires a non-empty L1 dependency vector';
+  END IF;
+  IF NOT public.l2_data_plane_dependency_topology_matches(
+    p_asset_id, p_dependency_vector
+  ) THEN
+    RAISE EXCEPTION 'L2 generation dependency topology is stale or incomplete';
   END IF;
 
   FOR v_dep IN
