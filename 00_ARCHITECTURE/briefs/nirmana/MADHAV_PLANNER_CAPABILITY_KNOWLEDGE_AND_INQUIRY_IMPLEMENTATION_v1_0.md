@@ -290,7 +290,7 @@ No test in this branch is described as live production proof. Database behavior 
 | ID | Residual | Consequence / next proof |
 |---|---|---|
 | R1 | 177/182 SCUs are conservative descriptor-derived stubs. | Editorially decompose by high-value slice; do not claim semantic estate completion. |
-| R2 | 95/128 active assets lack any statically evidenced reviewed output spec. | Author/review output contracts or explicitly exclude/darken each output; regenerate census. |
+| R2 | FC0 reported 95/128 active assets without a statically evidenced reviewed output spec. Wave 0 found that the census scanned only `platform/supabase/migrations`; the same static-any-spec rule across both governed migration trees yields 111/128 covered and 17 current-source-active gaps. Deployed current rows remain unresolved. | Correct the generator/provenance and preserve the 17-gap source denominator; in W1, author/review output contracts or explicitly exclude/darken each output and resolve current rows by ordered replay or an authorized read-only query. |
 | R3 | One of eight representative producer claims (`ka_kalasutra`) remains route-only. | Join it to an exact reviewed current component hash or retain it as an explicit dark/route-only boundary. |
 | R4 | Public registrar scanner resolves only 59 unambiguous descriptors and has known false negatives. | Replace source-text inference with structured registrar declarations; explicitly adjudicate three ambiguities. |
 | R5 | Only yoga firing currently has source-reviewed, receipt-grade pagination metadata. | Add total/next/exhaustion and total ordering to material routes, then golden-test first/middle/last pages. |
