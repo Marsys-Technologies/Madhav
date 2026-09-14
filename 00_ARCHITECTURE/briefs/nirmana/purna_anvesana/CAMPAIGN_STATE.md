@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.3.0
+version: 0.4.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0015
-last_updated: 2026-09-14T19:27:36+05:30
+last_event: PA-E0019
+last_updated: 2026-09-14T21:09:04+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 and Wave 1 complete; Wave 2 editorial SCU and typed-graph packets are next.
-- Branch: `codex/purna-anvesana-wave1`, stacked on governed Wave 0 head `00397839e33`;
-  technical evidence head `8599c6a51ec484a3aea81c7a60d834401c61a2a1`.
+- Wave: 0 through Wave 2 complete; Wave 3 inquiry compiler and omission-challenger packets are next.
+- Branch: `codex/purna-anvesana-wave2`, stacked on governed Wave 1 head `0c4a6e341`;
+  technical evidence head `402319736611441812d15f9d4954a908d21ca25f`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W1-20260914`, remote claim `a883df959`; release is due
-  after the stacked Wave 1 PR is durably published.
+- Lease: `MADHAV-PURNA-ANVESANA-W2-20260914`, remote claim `19f5105c1`; release is due
+  after the stacked Wave 2 PR is durably published.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -91,6 +91,27 @@ These are source/local/disposable results. The deployed-current producer state w
 older relational contracts were not replayed in this wave; service probes are not release smoke;
 and the `mi_abhilekha` effect remains deliberately unratified product behavior.
 
+## Wave 2 outcome
+
+All 182 planner-addressable Semantic Capability Units are now editorial: 177 reviewed descriptor
+units and five authored declarations, with zero descriptor-derived stubs. Every unit carries
+meaningful full descriptions and reviewed domains, concepts, intents, horizons and outputs. The
+128 current-source-active producers have exact, unique semantic bindings backed by the Wave 1
+contract registry; contract and semantic drift rotate independent fingerprints and fail closed.
+
+The typed universe contains 250 concepts with zero unbound concepts. The 53 source-backed edges
+are exactly 15 authored relations plus 38 drill-child contracts. All 156 isolated SCUs carry an
+explicit reviewed disposition, leaving zero unresolved isolated nodes, producer SCUs or semantic
+gaps. The bounded planner projection preserves at least one source-backed adjacency whenever one
+is available. Both independent reviewers approved the semantic and graph packets, including the
+narrow golden-receipt amendment at exact head `402319736611441812d15f9d4954a908d21ca25f`.
+
+The editorial estate legitimately changes two deterministic career-branch streams from two
+required omission obligations to one because `scu.catalog.judgment_query` now satisfies the bhava
+obligation directly. A disposable recapture changed only one line in each affected baseline; the
+focused tests and the full 12,304-test unit gate then passed. This is source/local compatibility
+evidence, not merge, deployment, runtime health or empirical acceptance proof.
+
 ## Reproduction
 
 From the repository root:
@@ -121,9 +142,11 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W0-P3 delivery DAG | COMPLETE | W0-P1, W0-P2 | Git/PR decomposition audit complete |
 | W1-P1 producer output contracts | COMPLETE | W0-P3 | initial refutation corrected; denominator and migration reviews approved |
 | W1-P2 routes/provenance/pagination/dark states | COMPLETE | W0-P3 | initial refutations corrected; exact-route review approved |
-| W2-P1 editorial SCUs | NEXT | W1-P1, W1-P2 | required at packet close |
-| W2-P2 typed semantic graph | QUEUED | W2-P1 | required at packet close |
-| W3–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
+| W2-P1 editorial SCUs | COMPLETE | W1-P1, W1-P2 | semantic reviewer approved exact head |
+| W2-P2 typed semantic graph | COMPLETE | W2-P1 | graph reviewer approved exact head |
+| W3-P1 normalized intent and ontology traversal | NEXT | W2-P2 | required at packet close |
+| W3-P2 omission challenger and frontier closure | QUEUED | W3-P1 | required at packet close |
+| W4–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
 ## Delivery decomposition
 
