@@ -23,6 +23,7 @@ l0_implementation_commits:
   - e0cfad5c1
   - b8e342049
   - f648d5add
+l1_stage: PRODUCER_READY
 role: >
   Append-only execution control for one reusable documentation/execution task. It consumes only
   separately approved strategic briefs, returns evidence, and never converts task activity into
@@ -31,6 +32,13 @@ changelog:
   - "1.0: Opened the bounded FOUNDATION stage; recorded authority, prohibitions, stage machine, evidence and handoff contract."
   - "1.0 update 2026-09-13: Records bounded L0 implementation, challenge, preserved evidence and the exact producer-ready architecture/scope blocker returned to Strategy."
   - "1.0 update 2026-09-13: Consumes DP-SD-010/011, records process-wide Swiss-state closure, independent challenge PASS and terminal L0 PRODUCER_READY; L1 remains waiting."
+  - "1.0 update 2026-09-14: Consumes DP-SD-013 and the approved L1 brief; records bounded L1 implementation commit 7cabc0cfd, local validation, 19/19 disposition and pending independent challenge; L2 remains waiting."
+  - "1.0 update 2026-09-14: Records first L1 challenge FAIL and corrective commit 3cb1a84ae with all-19 runtime adoption, append-only generation/replay/rollback, fail-closed numerical inputs and Prana scope correction; final challenge pending."
+  - "1.0 update 2026-09-14: Records second L1 challenge FAIL and corrective commit bcda11997 with multi-partition generation, immutable/latest typed history, broad non-finite rejection, exact sensitive day/night, accepted-L0 dependency resolution and production D9 sensitivity; final re-challenge pending."
+  - "1.0 update 2026-09-14: Records third L1 challenge FAIL and corrective commit 0fc45813e with independent receipt accounting, explicit field semantics and ancestry, typed/digested yoga quarantine, bounded set-wise dasha history and full-cardinality PostgreSQL proof; final re-challenge pending."
+  - "1.0 update 2026-09-14: Records fourth L1 challenge FAIL and corrective commit b2c4f1d7f with canonical dasha replay/digests, exact condition dasha context and exact-instant same-ayanamsha concurrence; final re-challenge pending."
+  - "1.0 update 2026-09-14: Records interim final-challenge correction a9c44c298, keeping source build in the condition observation envelope rather than nested semantic period values; final re-challenge pending."
+  - "1.0 update 2026-09-14: Records final independent PASS on exact tip a9c44c298 with zero HIGH/MED/LOW findings and terminal L1 PRODUCER_READY; L2 remains waiting."
 ---
 
 # Madhav data-plane execution ledger
@@ -61,7 +69,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 |---|---|---|---|
 | FOUNDATION | COMPLETE | This native-issued work order | Six foundation artifacts, deterministic validation, bounded local commit and parent handoff |
 | L0 Brahmagyan | PRODUCER_READY | DP-SD-009/010/011 + approved L0 brief/addenda + continued goal | Validation and acceptance records; independent challenge PASS; stop with L1 waiting |
-| L1 Gaṇita | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L1 brief + new goal | Layer brief exit record |
+| L1 Gaṇita | PRODUCER_READY | DP-SD-013 + approved L1 brief + new bounded goal | Seven L1 artifacts, 19/19 runtime validator, local commits, migration proof and independent challenge PASS |
 | L2 Bodha | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L2 brief + new goal | Layer brief exit record |
 | L3 Kāla | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L3 brief + new goal | Layer brief exit record |
 | L4 Phala | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L4 brief + new goal | Layer brief exit record |
@@ -83,6 +91,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | DP-SD-009 and approved L0 execution brief | ADOPTED planning basis / APPROVED execution packet | L0 execution may reach only `PRODUCER_READY`; immutable `may_touch`, evidence and stop gates apply. |
 | DP-SD-010 | APPROVED scope amendment | Select one canonical process-wide re-entrant Swiss-state boundary; preserve numerical and output semantics. |
 | DP-SD-011 | APPROVED residual-only addendum | Serialize the two live GA-strength transitive spans, re-challenge L0 and close only if zero unresolved remains. |
+| DP-SD-013 | APPROVED L1 strategy and execution brief | Execute exactly 19 L1 writers and adjacent producer capital to `PRODUCER_READY`; do not begin L2 or integration. |
 
 ## 5. Evidence and blockers
 
@@ -98,6 +107,8 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | Swiss-state completion | `e0cfad5c1`, `b8e342049`, `f648d5add` | One canonical boundary, hardened transitive detector, mode/path-aware cache and final GA-strength span closure; `UNRESOLVED = 0`. |
 | L0 validation | `MADHAV_DATA_PLANE_L0_VALIDATION_AND_REVIEW_RECORD_v1_0.md` and `MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md` | Focused/addendum proof passes; broad inherited failures and live-DB `NOT_RUN` remain explicit; independent challenge PASS. |
 | L0 acceptance/handoff | `MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md` | `PRODUCER_READY_ACCEPTED`; later delivery/value/evaluation states remain unreached. |
+| L1 implementation | `7cabc0cfd1eae83f0a1054132d3c850c6b760153`, `3cb1a84ae`, `bcda11997`, `0fc45813e`, `b2c4f1d7f`, `a9c44c298` | Typed contracts and stable identities; all-19 runtime boundary; multi-partition append-only typed history with immutable completed replay/latest selection; fail-closed inputs; exact sensitive day/night; accepted-L0 dependency and D9 sensitivity proof; explicit field semantics/ancestry; typed/digested yoga quarantine; bounded set-wise dasha history; canonical replay/digests; exact condition and concurrency context; observation-only build separation; regenerated writer digests. |
+| L1 evidence artifacts | Seven `MADHAV_DATA_PLANE_L1_*_v1_0.md` records | Complete 19-writer disposition, contracts, slice, compatibility, validation/review and acceptance state. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -106,6 +117,12 @@ process-state boundary; the final independent challenge found zero unsafe or
 unresolved owner and no HIGH/MED/CRITICAL finding. This is computational
 producer readiness only: integration, deployment, production population/health,
 consumer value and empirical evaluation remain unreached.
+
+Open blocker for L1: none. The final independent read-only challenge passed exact
+implementation tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053` with zero HIGH,
+MED or LOW findings. This is computational producer readiness only: integration,
+deployment, production population/health, consumer value and empirical evaluation remain
+unreached. L2 remains waiting for its separately approved brief and new bounded goal.
 
 ## 6. Append-only status log
 
@@ -126,6 +143,18 @@ consumer value and empirical evaluation remain unreached.
 | 2026-09-13 22:46 | L0 Brahmagyan | DP-SD-010_IMPLEMENTED | Whole-process shared serialization and exact source detector committed at `e0cfad5c1`; detector hardening committed at `b8e342049`; zero then-known unresolved owner. |
 | 2026-09-13 23:03 | L0 Brahmagyan | DP-SD-011_APPROVED | Strategy authorized only the independently found GA-strength residual, retaining every later-stage prohibition. |
 | 2026-09-13 23:15 | L0 Brahmagyan | PRODUCER_READY | GA-strength residual closed at `f648d5add`; focused/addendum proofs pass; broad suite retains only two reproduced Muhūrta isolation failures; independent challenge PASS with zero unresolved and zero HIGH/MED/CRITICAL. L1 remains waiting. |
+| 2026-09-14 13:57 | L1 Gaṇita | OPENED | DP-SD-013/approved brief consumed; unrestricted Full Access profile and approval `never` verified; exact goal and 19-writer mutation manifest opened. |
+| 2026-09-14 14:19 | L1 Gaṇita | IMPLEMENTATION_COMMITTED | Local commit `7cabc0cfd`; 19/19 validator PASS; broad suite 1,255 passed/1 skipped/7 subtests; live DB `NOT_RUN`; independent challenge next. |
+| 2026-09-14 17:20 | L1 Gaṇita | FIRST_CHALLENGE_FAILED | Independent review found runtime adoption, history/replay, context identity, non-finite, fallback, slice-closure and Prāṇa representation blockers; no CRITICAL. |
+| 2026-09-14 17:20 | L1 Gaṇita | CORRECTIONS_COMMITTED | Corrective commit `3cb1a84ae`; 19/19 runtime boundary and migration 1033; broad 1,022 passed/1 skipped/7 subtests; disposable PostgreSQL replay/rollback/negative proofs pass; final challenge requested. |
+| 2026-09-14 18:44 | L1 Gaṇita | SECOND_CHALLENGE_FAILED | Independent review of `3cb1a84ae` found eight owned HIGH gaps: multi-partition reopen, sensitive day/night producer mismatch, completed-generation mutation, stale current-row selection, incomplete non-finite coverage, generic runtime projection, unresolved L0 dependency strings and non-formula D9 sensitivity. |
+| 2026-09-14 19:18 | L1 Gaṇita | SECOND_CORRECTIONS_COMMITTED | Corrective commit `bcda11997`; exact challenger suite 144 passed, expanded 55-file GA/L1 suite 1,550 passed plus 7 subtests, 19/19 validator/provenance checks pass, and fresh PostgreSQL apply/reapply/multi-partition/latest/typed/freeze/non-finite proofs pass; independent re-challenge requested. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | THIRD_CHALLENGE_FAILED | Independent review of `bcda11997` found three owned HIGH gaps: coupled dasha post-pass receipt accounting, asset-level condition/yoga epistemics and ancestry, and catastrophic per-column row-trigger fan-out across about 536,000 dasha rows. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | THIRD_CORRECTIONS_COMMITTED | Corrective commit `0fc45813e`; 65 focused and 924 bounded GA/L1 tests pass; 19/19 validator/provenance checks pass; disposable PostgreSQL proves explicit condition/yoga meaning, negative controls and 536,000 typed dasha history rows with exact select/replay in 9.83 seconds; final independent re-challenge requested. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | FOURTH_CHALLENGE_FAILED | Independent review of `0fc45813e` found three owned HIGH gaps: volatile dasha replay/digest inputs, cross-context condition dasha ancestry, and cross-ayanāṃśa/date-truncated concurrency. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | FOURTH_CORRECTIONS_COMMITTED | Corrective commit `b2c4f1d7f`; 67 focused and 926 bounded GA/L1 tests pass; validator/provenance/migration reapply pass; 536,000-row canonical capture 15.09s, replay 8.72s, cross-build identical digest and selector 7.24s; final independent re-challenge requested. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | OBSERVATION_BUILD_LEAK_CORRECTED | Interim re-challenge finding corrected at `a9c44c298`; condition period semantics retain stable source row/ayanāṃśa while build remains in the observation context; 147 focused and 927 bounded tests pass; terminal verdict requested. |
+| 2026-09-14 (time not recorded) | L1 Gaṇita | PRODUCER_READY | Final independent review of exact tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053` PASS with zero HIGH/MED/LOW findings; seven L1 evidence artifacts terminalized; L2 remains waiting. |
 
 ## 7. Return-to-strategy handoff contract
 
@@ -136,3 +165,8 @@ record commits, exact inventory and unresolved count, focused/addendum/broad and
 independent-review evidence, inherited failures, live-DB `NOT_RUN`, and explicit
 later-state non-claims. L0 then stops at `PRODUCER_READY`; L1 has not started and
 remains waiting for its own approved brief and new goal.
+
+At L1 close, return DP-SD-013 plus content/approval pins, execution base, implementation
+and terminal evidence commits, all 19 dispositions, first-slice generation/digest, focused/
+broad/live/review truth, compatibility residuals and all later-state non-claims. Stop at
+`PRODUCER_READY`; L2 remains waiting for a separate approved brief and new goal.
