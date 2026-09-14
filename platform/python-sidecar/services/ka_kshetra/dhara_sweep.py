@@ -20,9 +20,9 @@ The key mathematical finding (DHARA_DESIGN_v1_0.md §1.3):
 PURITY: no DB, no IO, no RNG. Same constraint as hazard.py and integrator.py.
 The same code path must serve (a) the real build and (b) the R=256 null replicates.
 
-Authority: DHARA_DESIGN_v1_0.md §2 (algorithm), §1 (mathematical basis).
-Spec version: v1.2 (F-02 suppression check corrected to != 1.0; F-09 delta-update
-runtime assertion added; clock-knot left/right limits preserved).
+Historical basis: DHARA_DESIGN_v1_0.md v1.1 §1-§2.  DP-SD-017's current
+numerical correction contract supersedes that artifact's F-12 right-limit rule;
+see MADHAV_DATA_PLANE_L3_DHARA_NUMERICAL_CONTRACT_v1_0.md.
 """
 from __future__ import annotations
 
@@ -45,6 +45,11 @@ logger = logging.getLogger(__name__)
 #: assertion. Every 100th clock knot = ~400 extra lord_stacks_at() calls per
 #: class at 40K knots, negligible vs. the build cost.
 _F09_ASSERTION_STRIDE: int = 100
+
+#: Machine-readable identity for the stored-field endpoint semantics.  This
+#: enters both the field snapshot config pin and the writer resume fingerprint,
+#: so a semantic change cannot silently reuse an older field identity.
+DHARA_SWEEP_SEMANTIC_VERSION: str = '1.2'
 
 
 # ── Section 2.1 — global knot set assembly ────────────────────────────────────
@@ -334,6 +339,7 @@ def dhara_build_segments(evaluator: "FieldEvaluator") -> list[Segment]:
 
 
 __all__ = [
+    'DHARA_SWEEP_SEMANTIC_VERSION',
     'assemble_knot_set',
     'compute_knot_sources',
     'dhara_build_segments',

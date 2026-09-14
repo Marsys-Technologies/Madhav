@@ -116,6 +116,31 @@ def test_matching_resume_is_zero_dml_and_does_not_prepare_twice() -> None:
     assert conn.deletes == deletes_after_prepare
 
 
+def test_dhara_semantic_version_changes_snapshot_and_resume_identity(monkeypatch) -> None:
+    """The v1.1 -> v1.2 endpoint repair must invalidate both identities."""
+    with monkeypatch.context() as patch_v11:
+        patch_v11.setattr(W, '_dhara_sweep_semantic_version', lambda: '1.1')
+        writer_v11, _, _ = _plan(FakeConn(F.build_tables()))
+        snapshot_v11 = writer_v11._snapshot_id
+        fingerprint_v11 = writer_v11._fingerprint()
+        assert writer_v11._pins.config_pin['dhara_sweep_semantic_version'] == '1.1'
+
+    with monkeypatch.context() as patch_v12:
+        patch_v12.setattr(W, '_dhara_sweep_semantic_version', lambda: '1.2')
+        writer_v12, _, _ = _plan(FakeConn(F.build_tables()))
+        snapshot_v12 = writer_v12._snapshot_id
+        fingerprint_v12 = writer_v12._fingerprint()
+        assert writer_v12._pins.config_pin['dhara_sweep_semantic_version'] == '1.2'
+        # Hold the snapshot constant to prove the semantic version is also a
+        # direct resume-fingerprint input rather than moving only transitively.
+        writer_v12._snapshot_id = snapshot_v11
+        fingerprint_v12_same_snapshot = writer_v12._fingerprint()
+
+    assert snapshot_v11 != snapshot_v12
+    assert fingerprint_v11 != fingerprint_v12
+    assert fingerprint_v11 != fingerprint_v12_same_snapshot
+
+
 def test_stale_resume_defers_replacement_until_prepare_execution() -> None:
     tables = F.build_tables()
     tables['kala_field'].append({
