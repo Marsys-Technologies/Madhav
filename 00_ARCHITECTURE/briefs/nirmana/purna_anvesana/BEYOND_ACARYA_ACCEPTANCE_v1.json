@@ -1,0 +1,63 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "W6-P1",
+  "acceptance_version": "beyond-acarya-source-acceptance-v1",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "capability_content_hash": "sha256:c4a57a8c97ff646d40a315440c3f2bcd98b74bca53cea166064dd31f7839d58c",
+  "report_hash": "sha256:325ef2306090b3e326d6fc4effbf4382f96bf81d3484e0840c0b6c068cb5cc06",
+  "evidence_kind": "synthetic_source_local",
+  "verdict": "NOT_ACCEPTED_SOURCE_LOCAL",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 4,
+      "expected_novel_capabilities": 12,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 23,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": false,
+      "covered": 28,
+      "expected": 32,
+      "rate": 0.875
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 5,
+      "expected": 5,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": false,
+      "completed_cases": 0,
+      "total_cases": 4,
+      "minimum_iterations_observed": 3,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3
+    }
+  },
+  "material_findings": [
+    {
+      "finding_id": "W6-A1-UNRESOLVED-TRANSIT-ARGS",
+      "severity": "MEDIUM",
+      "observation": "All four corpus cases select the source-reviewed required edge to scu.catalog.query_planet_transit, but its required planet, start_date and end_date arguments cannot be derived by the current compiler contract.",
+      "effect": "The route-coverage denominator is 28/32 and every synthetic long inquiry remains INCOMPLETE rather than fabricating closure.",
+      "disposition": "QUARANTINE_FOR_SEPARATE_PLANNER_ARGUMENT_DERIVATION_AUTHORITY"
+    }
+  ],
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN"
+}
