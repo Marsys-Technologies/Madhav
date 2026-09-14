@@ -73,16 +73,35 @@ def build_resource_mechanism_slice(fixture: Mapping[str, Any]) -> dict[str, Any]
         polarity = int(path["polarity"])
         if polarity not in (-1, 1):
             raise ValueError("path polarity must be signed")
-        independent_groups.add(str(path["shared_root_group"]))
-        paths.append({**deepcopy(path), "polarity": polarity})
+        root_group = str(roots[root_id].get("shared_root_group") or root_id)
+        supplied_group = path.get("shared_root_group")
+        if supplied_group is not None and str(supplied_group) != root_group:
+            raise ValueError("path shared-root label disagrees with root ancestry")
+        independent_groups.add(root_group)
+        paths.append({
+            **deepcopy(path),
+            "polarity": polarity,
+            "shared_root_group": root_group,
+        })
     paths.sort(key=lambda x: (x["relation"], x["actor"], x["target"], x["root_id"]))
 
     occurrence = deepcopy(selected["occurrence_ledger"])
     condition = deepcopy(selected["condition_ledger"])
+    if occurrence.get("unit") != "probability_like_structural_score":
+        raise ValueError("occurrence ledger has the wrong unit")
+    if occurrence.get("polarity") != "higher_is_more_formed":
+        raise ValueError("occurrence ledger has the wrong polarity")
+    if condition.get("unit") != "affliction_0_10":
+        raise ValueError("condition ledger has the wrong unit")
+    if condition.get("polarity") != "higher_is_more_afflicted":
+        raise ValueError("condition ledger has the wrong polarity")
     if not 0.0 <= float(occurrence["value"]) <= 1.0:
         raise ValueError("occurrence must use [0,1]")
     if not 0.0 <= float(condition["affliction_value"]) <= 10.0:
         raise ValueError("condition affliction must use [0,10]")
+    for component in condition.get("components", []):
+        if int(component.get("polarity", 0)) not in (-1, 1):
+            raise ValueError("condition component polarity must be exactly -1 or +1")
     cancellation = deepcopy(selected["cancellation"])
     target = next((p for p in paths if p["path_id"] == cancellation["target_path_id"]), None)
     if target is None or target["polarity"] != cancellation["target_original_polarity"]:

@@ -27,13 +27,12 @@ from __future__ import annotations
 import json
 import logging
 import math
-import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from itertools import combinations
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ CANONICAL_AYAS   = [
 _KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias for clarity; not re-exported
 
 _CDLM_INSERT = """
-INSERT INTO bodha_cdlm_cells (
+INSERT INTO public.bodha_cdlm_cells (
   cell_id, chart_id, ayanamsha_id, build_id,
   snapshot_type, dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord,
   dynamic_window_start_iso, dynamic_window_end_iso, tradition_view_id,
@@ -84,7 +83,7 @@ INSERT INTO bodha_cdlm_cells (
   %(positive_contribution)s, %(negative_contribution)s, %(net_linkage_strength)s, %(computed_linkage_strength)s,
   %(linkage_formula_version)s,
   %(contradicting_signal_pairs_count)s, NULL, %(cross_domain_contradiction_flag)s,
-  NULL, %(shared_signal_ids_array)s, %(shared_signals_by_tradition_jsonb)s::jsonb,
+  %(shared_factor_keys_jsonb)s::jsonb, %(shared_signal_ids_array)s, %(shared_signals_by_tradition_jsonb)s::jsonb,
   NULL, NULL,
   NULL, %(top_k_rank_in_snapshot)s,
   FALSE, NULL,
@@ -99,7 +98,7 @@ INSERT INTO bodha_cdlm_cells (
 """
 
 _CONVERGENCE_INSERT = """
-INSERT INTO bodha_convergence (
+INSERT INTO public.bodha_convergence (
   convergence_id, chart_id, ayanamsha_id, build_id, domain, snapshot_type,
   dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord,
   convergence_count, convergence_score, convergence_formula_version,
@@ -120,7 +119,7 @@ _BATCH_SIZE = 50
 
 # BA-P3B EXT ──────────────────────────────────────────────────────────────────
 _TRIANGULATION_INSERT = """
-INSERT INTO bodha_triangulation (
+INSERT INTO public.bodha_triangulation (
     triangulation_id, chart_id, ayanamsha_id, build_id,
     question_class, tradition,
     verdict_inputs, concordance_score, signal_ids,
@@ -167,7 +166,10 @@ def _build_triangulation_rows(
             concordance = round(sum(top5_sal) / len(top5_sal), 6) if top5_sal else 0.0
             sig_ids   = [str(s.get("signal_id") or "") for s in trad_sigs]
             rows.append({
-                "triangulation_id": str(uuid.uuid4()),
+                "triangulation_id": stable_semantic_uuid("triangulation", {
+                    "chart_id": chart_id, "ayanamsha_id": aya,
+                    "question_class": domain, "tradition": trad,
+                }),
                 "chart_id":         chart_id,
                 "ayanamsha_id":     aya,
                 "build_id":         build_id,
@@ -198,10 +200,43 @@ def _fetch_signals(conn, chart_id: str, aya: str) -> list[dict]:
     return _fetch_dict(conn, """
         SELECT signal_id::text, signal_type_class, signal_tradition, domains_affected_array,
                computed_salience, verification_pass_status, salience_formula_version,
-               signal_type_id
+               signal_type_id, constituent_facts_array, shared_factor_keys_jsonb,
+               contradicts_signals_array, valence, classical_sources_jsonb
         FROM bodha_msr_signals
         WHERE chart_id = %s AND ayanamsha_id = %s
     """, [chart_id, aya])
+
+
+def _signal_root_groups(signal: dict) -> set[str]:
+    """Return canonical evidence-root ancestry, never the signal surrogate ID."""
+    declared = signal.get("shared_factor_keys_jsonb")
+    if isinstance(declared, str):
+        try:
+            declared = json.loads(declared)
+        except (TypeError, ValueError):
+            declared = None
+    roots: set[str] = set()
+    if isinstance(declared, dict):
+        candidates = (
+            declared.get("root_ids") or declared.get("shared_root_groups")
+            or declared.get("roots") or []
+        )
+        if isinstance(candidates, dict):
+            candidates = candidates.keys()
+        roots.update(str(item) for item in candidates if item)
+    elif isinstance(declared, list):
+        roots.update(str(item) for item in declared if item)
+    if not roots:
+        roots.update(str(item) for item in (signal.get("constituent_facts_array") or []) if item)
+    return roots
+
+
+def _is_qualified_contradiction(signal: dict) -> bool:
+    """Contradiction requires an explicit signed relation, not a class label."""
+    explicit_targets = signal.get("contradicts_signals_array") or []
+    return bool(explicit_targets) and str(signal.get("valence") or "").lower() in {
+        "malefic", "mixed", "antagonistic",
+    }
 
 
 def _fetch_contradiction_domains(conn, chart_id: str, aya: str) -> set[str]:
@@ -260,14 +295,22 @@ def _build_cdlm_cells(
             t = str(s.get("signal_tradition") or "parashari")
             tradition_breakdown[t] += 1
 
-        # Linkage formula (positive/negative derived internally from in_contradiction flag)
+        shared_root_groups = sorted({
+            root for signal in shared_sigs for root in _signal_root_groups(signal)
+        })
+        qualified_contradictions = [
+            signal for signal in shared_sigs if _is_qualified_contradiction(signal)
+        ]
+
+        # Linkage formula: negative contribution is admitted only by an
+        # explicit signed contradiction edge. A dosha class alone is not one.
         high_conv_count = sum(1 for s in shared_sigs if float(s.get("computed_salience") or 0.0) >= 0.6)
         lf_inputs = LinkageInputs(
             shared_signals=[{"salience": float(s.get("computed_salience") or 0.0),
-                             "in_contradiction": s.get("signal_type_class") == "dosha"}
+                             "in_contradiction": _is_qualified_contradiction(s)}
                             for s in shared_sigs],
             high_convergence_count=high_conv_count,
-            shared_factor_count=len(shared_ids),
+            shared_factor_count=len(shared_root_groups),
         )
         lf_result = linkage_formula_v1(lf_inputs)
         computed_strength = float(lf_result["computed_linkage_strength"])
@@ -275,10 +318,14 @@ def _build_cdlm_cells(
         negative = float(lf_result["negative_contribution"])
         net      = float(lf_result["net_linkage_strength"])
 
-        contradiction_flag = (domain_a in contradiction_domains and domain_b in contradiction_domains)
+        contradiction_flag = bool(qualified_contradictions)
 
         cell = {
-            "cell_id": str(uuid.uuid4()),
+            "cell_id": stable_semantic_uuid("cdlm_cell", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "snapshot_type": SNAPSHOT_TYPE,
+                "domain_row": domain_a, "domain_col": domain_b,
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -286,7 +333,7 @@ def _build_cdlm_cells(
             "domain_row": domain_a,
             "domain_col": domain_b,
             "shared_signal_count": len(shared_ids),
-            "shared_factor_count": len(shared_ids),
+            "shared_factor_count": len(shared_root_groups),
             "unique_signals_row_domain": len(sigs_a),
             "unique_signals_col_domain": len(sigs_b),
             "shared_signal_salience_sum": round(sal_sum, 6),
@@ -303,8 +350,12 @@ def _build_cdlm_cells(
                 "inverse"
             ),
             "linkage_formula_version": lf_result["linkage_formula_version"],
-            "contradicting_signal_pairs_count": 1 if contradiction_flag else 0,
+            "contradicting_signal_pairs_count": len(qualified_contradictions),
             "cross_domain_contradiction_flag": contradiction_flag,
+            "shared_factor_keys_jsonb": json.dumps({
+                "shared_root_groups": shared_root_groups,
+                "derivation": "constituent_fact_or_declared_root_ancestry",
+            }, sort_keys=True),
             "shared_signal_ids_array": sorted(shared_ids),
             "shared_signals_by_tradition_jsonb": json.dumps(dict(tradition_breakdown)),
             "top_k_rank_in_snapshot": None,  # set after ranking
@@ -366,7 +417,10 @@ def _build_convergence_rows(
         conv_score = float(c_result["convergence_score"])
 
         rows.append({
-            "convergence_id": str(uuid.uuid4()),
+            "convergence_id": stable_semantic_uuid("convergence", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "snapshot_type": SNAPSHOT_TYPE, "domain": domain,
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -447,7 +501,7 @@ class BoSangatiWriter(WriterBase):
             # BA-P3B EXT: write bodha_triangulation rows (multi-tradition concordance)
             triang = _build_triangulation_rows(chart_id, aya, build_id, signals, now)
             conn.execute(
-                "DELETE FROM bodha_triangulation WHERE chart_id=%s AND ayanamsha_id=%s",
+                "DELETE FROM public.bodha_triangulation WHERE chart_id=%s AND ayanamsha_id=%s",
                 [chart_id, aya],
             )
             for row in triang:

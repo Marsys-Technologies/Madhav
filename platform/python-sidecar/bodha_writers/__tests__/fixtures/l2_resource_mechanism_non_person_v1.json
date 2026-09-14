@@ -6,7 +6,7 @@
   "accepted_l0_release": "f6fed12c794224329f6b3b436f8b1b814499d06d",
   "accepted_l1_terminal": "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
   "accepted_l1_slice_digest": "25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279",
-  "expected_output_digest": "027c1752f753e0d27eab1b815c0ff10c2fa0ef8013e31d00e343fa9d41560d99",
+  "expected_output_digest": "100460f91f3df4f9e8c42bc79ded68ff1e6071339410035079493bdea20c32e4",
   "expected_context": {
     "chart_id": "synthetic:l2-resource-mechanism-01",
     "calculation_context_id": "synthetic:l1-context-01",
@@ -38,8 +38,8 @@
       {"domain": "income", "role": "receipts"}
     ],
     "evidence_roots": [
-      {"root_id": "l1:fact:jup-role", "epistemic_class": "rule_derived"},
-      {"root_id": "l1:fact:house-2", "epistemic_class": "deterministic_derivation"}
+    {"root_id": "l1:fact:jup-role", "shared_root_group": "root:jup-role", "epistemic_class": "rule_derived"},
+    {"root_id": "l1:fact:house-2", "shared_root_group": "root:house-2", "epistemic_class": "deterministic_derivation"}
     ],
     "paths": [
       {"path_id": "path:support-a", "actor": "JUP", "relation": "supports", "target": "HOUSE_2", "polarity": 1, "basis": "engineering_control", "root_id": "l1:fact:jup-role", "shared_root_group": "root:jup-role", "directness": "direct"},

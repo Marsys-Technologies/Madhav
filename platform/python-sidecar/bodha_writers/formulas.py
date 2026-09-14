@@ -269,7 +269,9 @@ class ResonanceInputs:
     cancellation_burden: float = 0.0       # 0..1; cancelled benefic effects
     dispositor_chain_weakness: float = 0.0 # 0..1
     vargottama_absence_score: float = 0.0  # 0..1; 1 = not vargottama at all
-    dasha_proximity_activation_score: float = 0.0  # 0..1
+    # Compatibility input only. L2 has no authority to resolve an observation
+    # time against daśā windows, so resonance_score_v1 deliberately ignores it.
+    dasha_proximity_activation_score: float | None = None
 
     # From MSR, CDLM, CGM
     msr_signals_in_conflict: float = 0.0  # normalized sum of saliences in conflict
@@ -292,7 +294,6 @@ def resonance_score_v1(g: ResonanceInputs) -> dict[str, float]:
         + g.cancellation_burden * 0.10
         + g.dispositor_chain_weakness * 0.05
         + g.vargottama_absence_score * 0.05
-        + g.dasha_proximity_activation_score * 0.05
     )
 
     contradiction_factor = min(g.msr_signals_in_conflict, 1.0)

@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: WP0_COMPLETE_IMPLEMENTATION_PENDING
-observed_at: 2026-09-14T20:56:18+05:30
+status: CORRECTION_IMPLEMENTED_REVIEW_PENDING
+observed_at: 2026-09-14T22:18:00+05:30
 strategy_decision: DP-SD-015
 execution_base: 18503e9c2dbb140f5d17b4bc34a5f6d087f97c38
 strategy_content_commit: 86374d65f3dc742085783e352a9999e2edb48715
@@ -91,14 +91,15 @@ must validate this semantic closure, not merely the registry arrays.
 
 ## 4. Cross-layer and consumer backcast
 
-Two live L2 boundary inversions require source correction:
+Two live L2 boundary inversions were found at WP0 and are corrected in the
+current local review candidate:
 
-1. `bo_karanajala.py` imports `services.ka_temporal` and resolves
-   `active_dasha_periods_jsonb`. New L2 generations must emit no resolved window;
-   legacy columns/history remain readable and explicitly non-authoritative.
-2. `bo_upaya.py` reads `chart_dashas` and life-event milestones to write
-   `bodha_rm_dasha_windowed_prescriptions`. This is also resolved temporal
-   meaning and must stop in new L2 generations. The table/history remains.
+1. `bo_karanajala.py` no longer imports `services.ka_temporal`; new rows leave
+   `active_dasha_periods_jsonb` null. Legacy columns/history remain readable and
+   explicitly non-authoritative.
+2. `bo_upaya.py` no longer invokes daśā proximity, life-event milestones or
+   schedulable-window construction from `run`; resonance is invariant to the
+   compatibility input and the legacy window table/history remains readable.
 
 Other activation/date columns found in L2 are null compatibility hooks or
 derived read fields and may remain only as `UNAVAILABLE_AT_L2`/legacy. Ordinary
@@ -134,7 +135,7 @@ can correct first-domain, top-K, unsigned, summary-only and temporal loss.
 |---|---|
 | present | 23 registered source identities and physical schemas are present |
 | populated | historical checked-in/live notes exist; current live population `NOT_RUN` |
-| qualified | partial legacy qualification; new L2 contract pending implementation |
+| qualified | local contract/corrections implemented; independent terminal review pending |
 | consumed | source-level reads and read-only consumer code observed |
 | effect traced | producer-local semantic hazards measured; managed effects unproved |
 | served | `UNPROVED` in this goal |
@@ -149,13 +150,27 @@ classes.
 Core/runtime: all 22 registered writer source files
 `platform/python-sidecar/pipeline/orchestrator/writers/bo_{anveshana,arudha,bimba,cdlm_summary,cgm_motifs,cgm_paths,chart_gestalt,drishti,grounding,karanajala,laksana,nakshatra_semantic,pramana_mapa,pratijna,samskara,samvada,sangati,special_lagna,sudarshana,upaya,vargottama_dhana,yantra_mechanism}.py`;
 new `platform/python-sidecar/bodha_writers/data_plane_contracts.py` and
-`data_plane_resource_mechanism_slice.py`.
+`data_plane_resource_mechanism_slice.py`; challenge-correction expansion also
+admits `platform/python-sidecar/bodha_writers/formulas.py` and
+`bhavat_bhavam_amplifier.py` because the independent exact-commit review found
+live L3 daśā weighting and a positive unqualified Bhāvat emission path in those
+adjacent kernels. The same-session correction also admits
+`platform/python-sidecar/bodha_writers/_idempotency.py`: exact historical L2
+dependency shadows require every writer-owned mutation to target `public`
+explicitly, while unqualified reads resolve only against the selected immutable
+generation snapshots. This is generation-binding support inside the already
+declared adjacent-authority row, not a change to delete ownership or transaction
+authority.
 
 Validation/fixtures: new
 `platform/python-sidecar/bodha_writers/__tests__/fixtures/l2_resource_mechanism_non_person_v1.json`,
 `platform/python-sidecar/bodha_writers/__tests__/test_l2_data_plane_contracts.py`,
 `platform/python-sidecar/tests/l2/test_l2_writer_adoption.py`, and
-`platform/python-sidecar/scripts/validate_data_plane_l2_contract.py`.
+`platform/python-sidecar/scripts/validate_data_plane_l2_contract.py`; additional
+tests under the already-approved `bodha_writers/__tests__`, writer-test, and
+`tests/l2` classes may be added or corrected only to exercise the reviewer-found
+context, replay, stable-identity, temporal, cancellation, shared-root, slice,
+and quality-detector failure paths.
 
 Schema/digest: new
 `platform/migrations/1034_data_plane_l2_producer_generations.sql` and existing

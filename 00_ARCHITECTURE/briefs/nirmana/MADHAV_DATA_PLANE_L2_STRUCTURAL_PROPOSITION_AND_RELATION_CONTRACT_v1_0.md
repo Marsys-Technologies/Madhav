@@ -13,17 +13,19 @@ accepted_l1_terminal: 18503e9c2dbb140f5d17b4bc34a5f6d087f97c38
 ## Contract
 
 Every registered L2 producer adopts
-`MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/1.0` without changing WriterBase. Before
+`MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0` without changing WriterBase. Before
 execution the runtime requires non-empty chart/build identity, rejects an
-explicit L0/L1 pin that differs from the accepted releases, derives one exact
-calculation-context identity, and rejects a mixed generation within the same
-producer context. The caller owns transaction, savepoint, commit and close.
+explicit L0/L1 pin that differs from the accepted releases, resolves the exact
+selected transitive L1/L2 generation vector and semantic digests, derives one
+generation context plus exact per-partition calculation contexts, and rejects
+mixed or stale inputs. The caller owns transaction, savepoint, commit and close.
 
 Stable `configuration`, `proposition`, `relationship`, `contradiction` and
 `mechanism` identities are SHA-256 content identities over semantic payloads.
 Build IDs and observation/query timestamps are forbidden identity material;
 non-finite numbers fail closed. The surrounding producer observation carries
-contract, accepted releases, calculation context, build and source digest.
+contract, accepted releases, generation/partition context, build and the
+dependency-aware transitive writer-source digest.
 
 ## Required proposition shape
 

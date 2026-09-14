@@ -56,7 +56,7 @@ CANONICAL_AYAS   = [
 ]
 
 _EDGE_INSERT = """
-INSERT INTO bodha_cgm_edges (
+INSERT INTO public.bodha_cgm_edges (
   edge_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   edge_type, from_node_id, to_node_id, direction, computed_strength, weight_formula_version,
   edge_properties_jsonb, relationship_class, semantic_path_class,
@@ -76,7 +76,7 @@ INSERT INTO bodha_cgm_edges (
   %(edge_properties_jsonb)s::jsonb, %(relationship_class)s, %(semantic_path_class)s,
   %(active_duration_class)s, %(active_dasha_periods_jsonb)s::jsonb,
   %(underlying_msr_signal_ids_array)s, %(constituent_fact_ids_array)s, %(cross_system_consensus_count)s,
-  %(cancelled_flag)s, NULL, NULL,
+  %(cancelled_flag)s, %(cancelled_by_jsonb)s::jsonb, NULL,
   %(present_in_traditions_array)s, NULL, NULL,
   %(graph_compute_library)s, %(graph_compute_library_version)s,
   %(is_cross_subsystem)s, %(subsystem_from)s, %(subsystem_to)s,
@@ -90,7 +90,7 @@ DO NOTHING
 """
 
 _CONTRADICTION_INSERT = """
-INSERT INTO bodha_contradictions (
+INSERT INTO public.bodha_contradictions (
   contradiction_id, chart_id, ayanamsha_id, build_id,
   signal_a_id, signal_b_id, tension_basis_jsonb, tension_class,
   domains_affected_array, combined_salience, resolution_hint_jsonb,
@@ -518,13 +518,13 @@ def _build_argala_edges(
             continue
 
         # For virodha cancellation: collect planets at virodha positions from A
-        virodha_occupied: set[int] = set()
+        virodha_occupants: dict[int, list[str]] = defaultdict(list)
         for graha_x in grahas:
             if graha_x == graha_a:
                 continue
             h = _house_of_b_from_a(sign_a, graha_signs[graha_x])
             if h in VIRODHA_POSITIONS:
-                virodha_occupied.add(h)
+                virodha_occupants[h].append(graha_x)
 
         for graha_b in grahas:
             if graha_b == graha_a:
@@ -547,10 +547,35 @@ def _build_argala_edges(
             #   2nd argala cancelled by 12th, 4th by 3rd, 11th by 10th
             ARGALA_TO_VIRODHA = {2: 12, 4: 3, 11: 10}
             cancelled = False
+            cancelling_grahas: list[str] = []
             if is_malefic:
                 virodha_h = ARGALA_TO_VIRODHA.get(house_b_from_a)
-                # O(1) lookup into the prebuilt virodha_occupied set
-                cancelled = virodha_h in virodha_occupied if virodha_h else False
+                cancelling_grahas = sorted(virodha_occupants.get(virodha_h or 0, []))
+                cancelled = bool(cancelling_grahas)
+
+            cancellation_payload = None
+            if cancelled:
+                cancellation_payload = {
+                    "cancelling_actors": cancelling_grahas,
+                    "cancelling_roots": [
+                        {
+                            "actor": actor,
+                            "node_id": node_map.get(("graha", actor)),
+                            "virodha_position_from_target": ARGALA_TO_VIRODHA[house_b_from_a],
+                        }
+                        for actor in cancelling_grahas
+                    ],
+                    "target": {
+                        "actor": graha_b,
+                        "target": graha_a,
+                        "relationship_class": relationship_class,
+                        "argala_position": house_b_from_a,
+                    },
+                    "original_polarity": -1 if is_malefic else 1,
+                    "resulting_role": (
+                        "attenuated_opposition" if is_malefic else "attenuated_support"
+                    ),
+                }
 
             _strength, _vichara_ids = _edge_strength_v1(0.5, graha_a, None, lookups)
             _traditions = ["parashari"]
@@ -582,6 +607,10 @@ def _build_argala_edges(
                 "underlying_msr_signal_ids_array": [],
                 "cross_system_consensus_count": len(_traditions),
                 "cancelled_flag": cancelled,
+                "cancelled_by_jsonb": (
+                    json.dumps(cancellation_payload, sort_keys=True)
+                    if cancellation_payload is not None else None
+                ),
                 "present_in_traditions_array": _traditions,
                 "graph_compute_library": GRAPH_LIB,
                 "graph_compute_library_version": GRAPH_LIB_VER,
@@ -1492,6 +1521,7 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
             # default to empty so their %(constituent_fact_ids_array)s param binds.
             row.setdefault("constituent_fact_ids_array", [])
             row.setdefault("constituent_ga_vichara_ids_array", [])
+            row.setdefault("cancelled_by_jsonb", None)
             conn.execute(sql, row)
         inserted += len(rows[i:i + _BATCH_SIZE])
     return inserted
@@ -1507,7 +1537,7 @@ def _batch_insert(conn, rows: list[dict], sql: str) -> int:
 # §N.5-clean (every node cites its resolving L1 fact_id).
 
 _NODE_UPSERT = """
-INSERT INTO bodha_cgm_nodes (
+INSERT INTO public.bodha_cgm_nodes (
   node_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   node_type, node_subject, node_label_human,
   position_in_chart_jsonb, strength_score, dignity_state,
@@ -1845,7 +1875,7 @@ class BoKaranajalaWriter(WriterBase):
                     with conn.cursor() as _cent_cur:
                         for node_id, m in non_null.items():
                             _cent_cur.execute(
-                                """UPDATE bodha_cgm_nodes
+                                """UPDATE public.bodha_cgm_nodes
                                    SET pagerank_score = COALESCE(%(pagerank_score)s, pagerank_score),
                                        eigenvector_centrality = COALESCE(%(eigenvector_centrality)s, eigenvector_centrality),
                                        betweenness_centrality = COALESCE(%(betweenness_centrality)s, betweenness_centrality),

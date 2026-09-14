@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import logging
 import re
-import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
@@ -66,7 +65,7 @@ _SUBJECT_TO_GRAHA: dict[str, str] = {
 _KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias; not re-exported
 
 _NODE_INSERT = """
-INSERT INTO bodha_cgm_nodes (
+INSERT INTO public.bodha_cgm_nodes (
   node_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   node_type, node_subject, node_label_human,
   position_in_chart_jsonb, strength_score, dignity_state,

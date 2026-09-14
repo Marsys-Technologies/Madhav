@@ -18,12 +18,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ CANONICAL_AYAS   = [
 ]
 
 _INSERT = """
-INSERT INTO bodha_signal_embeddings (
+INSERT INTO public.bodha_signal_embeddings (
   embedding_id, signal_id, chart_id, ayanamsha_id, build_id,
   embedding_vec, embedding_model, embedding_model_version,
   embedding_input_summary, computed_at
@@ -241,7 +240,11 @@ class BoSamskaraWriter(WriterBase):
                     and prior["embedding_model"] == EMBEDDING_MODEL
                     and prior["embedding_model_version"] == EMBEDDING_VER):
                 rows.append({
-                    "embedding_id":             str(uuid.uuid4()),
+                    "embedding_id":             stable_semantic_uuid("signal_embedding", {
+                        "signal_id": str(sig["signal_id"]),
+                        "embedding_model": EMBEDDING_MODEL,
+                        "embedding_model_version": EMBEDDING_VER,
+                    }),
                     "signal_id":                str(sig["signal_id"]),
                     "chart_id":                 chart_id,
                     "ayanamsha_id":             aya,
@@ -282,7 +285,11 @@ class BoSamskaraWriter(WriterBase):
                 continue
             for (sig, summary), vec in zip(batch, vecs):
                 rows.append({
-                    "embedding_id":             str(uuid.uuid4()),
+                    "embedding_id":             stable_semantic_uuid("signal_embedding", {
+                        "signal_id": str(sig["signal_id"]),
+                        "embedding_model": EMBEDDING_MODEL,
+                        "embedding_model_version": EMBEDDING_VER,
+                    }),
                     "signal_id":                str(sig["signal_id"]),
                     "chart_id":                 chart_id,
                     "ayanamsha_id":             aya,

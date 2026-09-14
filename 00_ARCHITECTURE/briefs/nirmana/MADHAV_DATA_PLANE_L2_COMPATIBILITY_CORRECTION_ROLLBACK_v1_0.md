@@ -1,7 +1,7 @@
 ---
 artifact: MADHAV_DATA_PLANE_L2_COMPATIBILITY_CORRECTION_ROLLBACK
 version: "1.0"
-status: IMPLEMENTED_LOCAL_VALIDATION_IN_PROGRESS
+status: CORRECTION_VALIDATED_REVIEW_PENDING
 authority: DP-SD-015
 migration: platform/migrations/1034_data_plane_l2_producer_generations.sql
 ---
@@ -12,36 +12,43 @@ migration: platform/migrations/1034_data_plane_l2_producer_generations.sql
 
 All 23 writers adopt one runtime decorator while preserving existing WriterBase,
 registry identities, output schemas and writer-owned natural-key replacement.
-One observation generation is derived from contract version, accepted L0/L1,
-chart, build and calculation context. Light writers record one partition;
-substep writers record their exact substep key. Each receipt carries source
-digest, role, counts and mandatory `UNAVAILABLE_AT_L2` temporal status in the
-caller's transaction.
+One generation is content-addressed from contract version, accepted L0/L1,
+chart, transitive writer-source digest, generation context and exact selected
+dependency vector; build identity is observation-only. Light writers record one
+partition. Multi-substep writers share that generation while recording an exact
+calculation context for each substep key. Each partition completes only in the
+caller's transaction and carries mandatory `UNAVAILABLE_AT_L2` temporal status.
 
-Migration 1034 adds only an append-only receipt table. Reapply is idempotent.
-Completed `(generation,asset,partition)` receipts are immutable; invalidation
-requires timestamp and reason and retains the old receipt. A current head is the
-latest completed compatible context, never merely the latest row. Source,
-contract, accepted-release or calculation-context change creates a new receipt
-set; display/rank/order changes do not alter structural IDs.
+Migration 1034 adds append-only generation, partition-context, partition-run,
+row-snapshot and head-selection structures. Reapply is idempotent. Completed
+generations, partition contexts, partitions, runs and snapshots reject update
+or delete. There is no mutable `invalidated` state: correction creates a new
+content-addressed generation and may name its completed predecessor. A current
+head selects a completed generation, and explicit rollback only repoints that
+head to another retained completed generation.
 
 ## Correction and rollback
 
 Existing L2 rows and migrations remain readable. The new code neither deletes
 nor appends `bodha_rm_dasha_windowed_prescriptions`; legacy rows are preserved.
 Karanajala writes legacy activation columns as null and imports no Kāla service.
-Rollback is application-code rollback plus selection of the last compatible
-completed receipt/generation. Invalidation never rewrites delivered evidence.
+Rollback is application-code rollback plus explicit selection of a retained
+completed generation. No delivered evidence is rewritten.
 
-The receipt envelope retains producer-generation provenance and head selection;
-current legacy output tables continue their accepted replace-in-place semantics.
-No claim is made that pre-migration output rows were retroactively versioned.
+The envelope captures immutable full output rows and semantic digests. At writer
+open, every trigger-covered L1 input and every declared L2 output relation is
+shadowed transaction-locally from the exact selected snapshots, including empty
+generations; writer-owned mutations are explicitly directed to `public`. This
+prevents legacy active rows from silently contaminating replay or a downstream
+build after head rollback. Pre-migration output rows are not retroactively
+versioned.
 
-Disposable PostgreSQL proved create/reapply, two independent substep partitions,
-completed-row mutation rejection, reasoned invalidation, retention of both prior
-receipts, mandatory non-temporal status and selection of the remaining completed
-partition as rollback head. The isolated test clusters were stopped; their temp
-directories were retained rather than destructively removed.
+Disposable PostgreSQL proved apply/reapply; stable replay across build change;
+divergent replay rejection; snapshot deletion rejection; exact L1/L2 reads in
+the presence of deliberately contaminated active rows; two exact partition
+contexts completing one shared generation; two retained generations; selector
+output; and rollback/head restoration. The isolated cluster was stopped and its
+temporary directory retained rather than destructively removed.
 
 ## Cache/replay rules
 

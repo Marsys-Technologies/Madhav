@@ -157,13 +157,12 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from brahmagyan.chart_reader_v4 import ChartReaderV4
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from .bo_pratijna_v4_engine import ClassScore, PratijnaV4Engine
 
 logger = logging.getLogger(__name__)
@@ -214,7 +213,7 @@ def status_from_occurrence_label(occurrence_label: str) -> str:
 
 
 _PRATIJNA_INSERT = """
-INSERT INTO bodha_pratijna (
+INSERT INTO public.bodha_pratijna (
     pratijna_id, chart_id, ayanamsha_id, build_id,
     event_class_id, status, grade,
     occurrence_grade, condition_grade,
@@ -358,7 +357,10 @@ def _row_for_score(
     """
     if score.status == "no_evidence":
         return {
-            "pratijna_id": str(uuid.uuid4()),
+            "pratijna_id": stable_semantic_uuid("pratijna", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "event_class_id": event_class_id,
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -400,7 +402,10 @@ def _row_for_score(
         "provenance": score.provenance,
     }
     return {
-        "pratijna_id": str(uuid.uuid4()),
+        "pratijna_id": stable_semantic_uuid("pratijna", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "event_class_id": event_class_id,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -434,7 +439,7 @@ class BoPratijnaWriter(WriterBase):
         # Disable per-statement timeout for the heavy DELETE on large charts.
         # SET LOCAL scopes to the orchestrator txn (writer never commits).
         conn.execute("SET LOCAL statement_timeout = 0")
-        conn.execute("DELETE FROM bodha_pratijna WHERE chart_id=%s", [chart_id])
+        conn.execute("DELETE FROM public.bodha_pratijna WHERE chart_id=%s", [chart_id])
 
         rows_inserted = 0
         no_evidence_count = 0

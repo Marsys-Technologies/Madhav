@@ -262,7 +262,7 @@ class BoSudarshanaWriter(WriterBase):
 
 
 _INSERT_SQL = """
-INSERT INTO bodha_msr_signals (
+INSERT INTO public.bodha_msr_signals (
   signal_id, chart_id, ayanamsha_id, build_id,
   signal_type_id, signal_type_class, signal_tradition,
   fact_kind, source_l1_asset, source_subsystem,

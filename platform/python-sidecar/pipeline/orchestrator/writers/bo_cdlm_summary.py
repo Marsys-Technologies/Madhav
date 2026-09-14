@@ -31,13 +31,12 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ CANONICAL_AYAS = [
 ]
 
 _SUMMARY_INSERT = """
-INSERT INTO bodha_cdlm_chart_summary (
+INSERT INTO public.bodha_cdlm_chart_summary (
   summary_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id,
   chart_typology_class,
@@ -86,7 +85,7 @@ INSERT INTO bodha_cdlm_chart_summary (
 
 
 _ROLLUP_INSERT = """
-INSERT INTO bodha_cdlm_domain_rollups (
+INSERT INTO public.bodha_cdlm_domain_rollups (
   rollup_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id,
   domain, total_inbound_linkage, total_outbound_linkage, diagonal_density,
@@ -104,7 +103,7 @@ INSERT INTO bodha_cdlm_domain_rollups (
 """
 
 _CLUSTER_INSERT = """
-INSERT INTO bodha_cdlm_pattern_clusters (
+INSERT INTO public.bodha_cdlm_pattern_clusters (
   pattern_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   dynamic_system_id, dynamic_maha_lord, dynamic_antar_lord, tradition_view_id,
   pattern_marker_type, involved_domains_array, cluster_strength_total,
@@ -228,7 +227,10 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     }
 
     row = {
-        "summary_id": str(uuid.uuid4()),
+        "summary_id": stable_semantic_uuid("cdlm_chart_summary", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "snapshot_type": SNAPSHOT_TYPE,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -305,7 +307,10 @@ def _build_rollups(chart_id: str, aya: str, build_id: str,
         n_cells = max(agg["cells"], 1)
         top3 = sorted(agg["partners"].items(), key=lambda x: x[1], reverse=True)[:3]
         rows.append({
-            "rollup_id": str(uuid.uuid4()),
+            "rollup_id": stable_semantic_uuid("cdlm_domain_rollup", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "snapshot_type": SNAPSHOT_TYPE, "domain": domain,
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -361,7 +366,12 @@ def _build_clusters(chart_id: str, aya: str, build_id: str,
             "mixed"
         )
         rows.append({
-            "pattern_id": str(uuid.uuid4()),
+            "pattern_id": stable_semantic_uuid("cdlm_pattern_cluster", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "snapshot_type": SNAPSHOT_TYPE,
+                "pattern_marker_type": f"{marker}_linkage_cluster",
+                "domains": sorted(agg["domains"]),
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -420,9 +430,9 @@ class BoCdlmSummaryWriter(WriterBase):
             # SET LOCAL scopes to the orchestrator txn (writer never commits).
             # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_cdlm_chart_summary WHERE chart_id = %s", [chart_id])
-            cur.execute("DELETE FROM bodha_cdlm_domain_rollups WHERE chart_id = %s", [chart_id])
-            cur.execute("DELETE FROM bodha_cdlm_pattern_clusters WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cdlm_chart_summary WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cdlm_domain_rollups WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cdlm_pattern_clusters WHERE chart_id = %s", [chart_id])
 
         total = 0
         total_rollups = 0

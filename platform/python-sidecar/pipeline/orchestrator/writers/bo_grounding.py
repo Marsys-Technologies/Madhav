@@ -29,12 +29,11 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from bodha_writers.grounding_matcher import classify_yoga_dosha_firing, classify_msr_signal
 
 logger = logging.getLogger(__name__)
@@ -82,7 +81,12 @@ def _fetch_msr_signals(conn: Any, chart_id: str, aya: str) -> list[dict[str, Any
 
 def _match_to_row(match, chart_id: str, ayanamsha_id: str, build_id: str, now: str) -> dict[str, Any]:
     return {
-        "match_id": str(uuid.uuid4()),
+        "match_id": stable_semantic_uuid("grounding_match", {
+            "chart_id": chart_id, "ayanamsha_id": ayanamsha_id,
+            "target_kind": match.target_kind, "target_id": match.target_id,
+            "matched_rule_id": match.matched_rule_id,
+            "grounding_tier": match.grounding_tier,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": ayanamsha_id,
         "build_id": build_id,
@@ -169,7 +173,7 @@ class BoGroundingWriter(WriterBase):
 
 
 _INSERT_SQL = """
-INSERT INTO bodha_grounding_matches (
+INSERT INTO public.bodha_grounding_matches (
   match_id, chart_id, ayanamsha_id, build_id,
   target_kind, target_id,
   grounding_tier, citation_granularity, grounding_evidence_jsonb,

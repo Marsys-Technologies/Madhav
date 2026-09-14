@@ -32,12 +32,11 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +58,7 @@ CANONICAL_AYAS = [
 ]
 
 _GESTALT_INSERT = """
-INSERT INTO bodha_chart_gestalt (
+INSERT INTO public.bodha_chart_gestalt (
   gestalt_id, chart_id, ayanamsha_id, build_id,
   gestalt_formula_version,
   defining_threads_jsonb,
@@ -514,7 +513,10 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     }
 
     row = {
-        "gestalt_id": str(uuid.uuid4()),
+        "gestalt_id": stable_semantic_uuid("chart_gestalt", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "gestalt_formula_version": GESTALT_FORMULA_V,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -650,7 +652,7 @@ def _patch_fragility(conn: Any, chart_id: str, build_id: str, fragility_result: 
             epistemic["fragility_error"] = fragility_result["error"]
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE bodha_chart_gestalt SET headline_epistemic_jsonb = %s::jsonb "
+                "UPDATE public.bodha_chart_gestalt SET headline_epistemic_jsonb = %s::jsonb "
                 "WHERE gestalt_id = %s",
                 [json.dumps(epistemic), r["gestalt_id"]],
             )
@@ -680,7 +682,7 @@ class BoChartGestaltWriter(WriterBase):
             # SET LOCAL scopes to the orchestrator txn (writer never commits).
             # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_chart_gestalt WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_chart_gestalt WHERE chart_id = %s", [chart_id])
 
         total = 0
         for aya in CANONICAL_AYAS:

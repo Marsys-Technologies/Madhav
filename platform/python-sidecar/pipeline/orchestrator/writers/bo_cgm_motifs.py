@@ -49,12 +49,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -85,7 +84,7 @@ def _is_dispositor_edge(e: dict) -> bool:
 
 
 _MOTIF_INSERT = """
-INSERT INTO bodha_cgm_motifs (
+INSERT INTO public.bodha_cgm_motifs (
   motif_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   motif_name, motif_class,
   involved_node_ids_array, involved_edge_ids_array,
@@ -106,7 +105,7 @@ ON CONFLICT DO NOTHING
 """
 
 _SUBGRAPH_INSERT = """
-INSERT INTO bodha_cgm_sub_graphs (
+INSERT INTO public.bodha_cgm_sub_graphs (
   subgraph_id, chart_id, ayanamsha_id, build_id,
   subgraph_type, subgraph_label,
   node_ids_array, edge_ids_array,
@@ -124,7 +123,7 @@ INSERT INTO bodha_cgm_sub_graphs (
 """
 
 _TOPOLOGY_INSERT = """
-INSERT INTO bodha_cgm_chart_topology_summary (
+INSERT INTO public.bodha_cgm_chart_topology_summary (
   summary_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   total_nodes, total_edges,
   top_5_hub_nodes_jsonb, top_5_central_nodes_jsonb,
@@ -668,7 +667,11 @@ def _compute_sub_graphs(
         centroid = min(comp, key=lambda x: (-len(adj[x] & comp_set), x))
         labels = sorted(_label(node_by_id[c]) for c in comp)
         rows.append({
-            "subgraph_id": str(uuid.uuid4()),
+            "subgraph_id": stable_semantic_uuid("cgm_subgraph", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "subgraph_type": "connected_component",
+                "node_ids": sorted(comp), "edge_ids": sorted(set(edge_ids)),
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -743,7 +746,10 @@ def _compute_topology(
     fingerprint = hashlib.sha256(fp_payload.encode()).hexdigest()[:16]
 
     return {
-        "summary_id": str(uuid.uuid4()),
+        "summary_id": stable_semantic_uuid("cgm_topology_summary", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "snapshot_type": SNAPSHOT_TYPE,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -828,7 +834,12 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> t
     with conn.cursor() as cur:
         for m in all_motifs:
             row = {
-                "motif_id": str(uuid.uuid4()),
+                "motif_id": stable_semantic_uuid("cgm_motif", {
+                    "chart_id": chart_id, "ayanamsha_id": aya,
+                    "snapshot_type": SNAPSHOT_TYPE,
+                    "motif_class": m["motif_class"],
+                    "fingerprint_hash": _fingerprint(m["node_ids"], m["motif_class"]),
+                }),
                 "chart_id": chart_id,
                 "ayanamsha_id": aya,
                 "build_id": build_id,
@@ -899,10 +910,10 @@ class BoCgmMotifsWriter(WriterBase):
         # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_cgm_motifs WHERE chart_id = %s", [chart_id])
-            cur.execute("DELETE FROM bodha_cgm_sub_graphs WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cgm_motifs WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cgm_sub_graphs WHERE chart_id = %s", [chart_id])
             cur.execute(
-                "DELETE FROM bodha_cgm_chart_topology_summary WHERE chart_id = %s",
+                "DELETE FROM public.bodha_cgm_chart_topology_summary WHERE chart_id = %s",
                 [chart_id],
             )
 

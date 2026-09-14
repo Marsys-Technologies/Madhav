@@ -53,13 +53,12 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from brahmagyan import valence_doctrine as _vd
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
@@ -76,7 +75,7 @@ CANONICAL_AYAS = [
 MOTIF_MIN_STRENGTH_FOR_MECHANISM = 0.0  # every real motif is promoted (B.10 — no silent drop)
 
 _MECHANISM_INSERT = """
-INSERT INTO bodha_mechanisms (
+INSERT INTO public.bodha_mechanisms (
   mechanism_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   mechanism_name, mechanism_class, valence,
   member_node_ids_array, member_edge_ids_array, domains_affected_array,
@@ -169,7 +168,13 @@ def _make_mechanism(
                 vichara_ids.append(vid)
     member_nodes = [nodes_by_id[n] for n in member_node_ids if n in nodes_by_id]
     return {
-        "mechanism_id": str(uuid.uuid4()),
+        "mechanism_id": stable_semantic_uuid("mechanism", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "mechanism_class": mechanism_class,
+            "mechanism_name": mechanism_name,
+            "member_node_ids": sorted(str(item) for item in member_node_ids),
+            "member_edge_ids": sorted(str(e["edge_id"]) for e in member_edges),
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -600,7 +605,7 @@ class BoYantraMechanismWriter(WriterBase):
 
         with conn.cursor() as cur:
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_mechanisms WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_mechanisms WHERE chart_id = %s", [chart_id])
 
         total = 0
         for aya in CANONICAL_AYAS:

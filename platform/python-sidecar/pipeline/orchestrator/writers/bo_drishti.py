@@ -15,12 +15,11 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
-from bodha_writers.data_plane_contracts import l2_producer
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +53,7 @@ QUESTION_TYPE_CONFIG: dict[str, dict] = {
 }
 
 _INSERT = """
-INSERT INTO bodha_question_lenses (
+INSERT INTO public.bodha_question_lenses (
   lens_id, chart_id, ayanamsha_id, build_id, question_type,
   template_element_ids_jsonb, wildcard_element_ids_jsonb, all_relevant_ranked_jsonb,
   lens_template_version, lens_formula_version, points_only_assertion,
@@ -252,7 +251,11 @@ def _build_lens(
     }
 
     return {
-        "lens_id": str(uuid.uuid4()),
+        "lens_id": stable_semantic_uuid("question_lens", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "question_type": question_type,
+            "lens_template_version": LENS_TEMPLATE_VERSION,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -305,7 +308,7 @@ class BoDrishtiWriter(WriterBase):
             # SET LOCAL scopes to the orchestrator txn (writer never commits).
             # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_question_lenses WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_question_lenses WHERE chart_id = %s", [chart_id])
 
         for aya in CANONICAL_AYAS:
             aya_rows: list[dict] = []

@@ -54,3 +54,26 @@ def test_upaya_runtime_preserves_legacy_windows_without_new_emission():
     }
     assert "_build_remedy_leverage_windows" not in calls
     assert "replace_prior_rm_dasha_windowed" not in calls
+
+
+def test_l2_sources_have_no_random_semantic_id_or_live_bhavat_positive_arm():
+    for path in WRITER_DIR.glob("bo_*.py"):
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            assert not (
+                isinstance(func, ast.Attribute)
+                and isinstance(func.value, ast.Name)
+                and func.value.id == "uuid"
+                and func.attr == "uuid4"
+            ), f"random semantic ID remains in {path.name}:{node.lineno}"
+
+    laksana = ast.parse((WRITER_DIR / "bo_laksana.py").read_text())
+    calls = {
+        getattr(node.func, "id", None)
+        for node in ast.walk(laksana)
+        if isinstance(node, ast.Call)
+    }
+    assert "compute_bhavat_bhavam_amplifiers" not in calls

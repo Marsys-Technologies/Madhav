@@ -41,6 +41,7 @@ changelog:
   - "1.0 update 2026-09-14: Records interim final-challenge correction a9c44c298, keeping source build in the condition observation envelope rather than nested semantic period values; final re-challenge pending."
   - "1.0 update 2026-09-14: Records final independent PASS on exact tip a9c44c298 with zero HIGH/MED/LOW findings and terminal L1 PRODUCER_READY; L2 remains waiting."
   - "1.0 update 2026-09-14: Consumes DP-SD-015 and the approved L2 brief; records validated unrestricted session open, exact 23/22 denominator reconciliation, semantic DAG/backcast and frozen WP0 mutation manifest; L3 remains waiting."
+  - "1.0 update 2026-09-14: Records first L2 implementation commit 066fce7a5 and independent challenge FAIL with no CRITICAL; exact-context, stable-identity, immutable generation/replay/rollback, temporal, Bhavat, cancellation/root, slice, quality and evidence corrections are locally validated and pending exact re-challenge."
 ---
 
 # Madhav data-plane execution ledger
@@ -113,6 +114,8 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L1 implementation | `7cabc0cfd1eae83f0a1054132d3c850c6b760153`, `3cb1a84ae`, `bcda11997`, `0fc45813e`, `b2c4f1d7f`, `a9c44c298` | Typed contracts and stable identities; all-19 runtime boundary; multi-partition append-only typed history with immutable completed replay/latest selection; fail-closed inputs; exact sensitive day/night; accepted-L0 dependency and D9 sensitivity proof; explicit field semantics/ancestry; typed/digested yoga quarantine; bounded set-wise dasha history; canonical replay/digests; exact condition and concurrency context; observation-only build separation; regenerated writer digests. |
 | L1 evidence artifacts | Seven `MADHAV_DATA_PLANE_L1_*_v1_0.md` records | Complete 19-writer disposition, contracts, slice, compatibility, validation/review and acceptance state. |
 | L2 WP0 evidence | `MADHAV_DATA_PLANE_L2_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact 23/22 reconciliation, two-pass semantic DAG, consumer backcast, adjacent authority and frozen mutation manifest. |
+| L2 first implementation / challenge | `066fce7a5611981aeb57f0b7129fa1c5d46495b6` / independent FAIL | Established the 23-writer boundary and exposed nine material correction families; no CRITICAL. |
+| L2 correction candidate | local validated tree, exact commit pending | Contract v2, stable semantic identities, transitive source/dependency provenance, immutable row history, exact L1/L2 snapshot binding, multi-partition context, non-temporal output, signed cancellation/root logic, reachable quality detectors and corrected first slice. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -128,11 +131,11 @@ MED or LOW findings. This is computational producer readiness only: integration,
 deployment, production population/health, consumer value and empirical evaluation remain
 unreached. L2 remains waiting for its separately approved brief and new bounded goal.
 
-Open blocker for L2: none at WP0. DP-SD-015 is consumed. Source inspection
-confirmed two owned temporal boundary violations (`bo_karanajala` and
-`bo_upaya`) and froze their correction inside the exact mutation manifest.
-Producer implementation, validation and independent challenge remain pending;
-L3 remains waiting.
+Open blocker for L2: terminal independent PASS is pending. DP-SD-015 is
+consumed. The first implementation was challenged at `066fce7a5` and failed on
+owned context, identity, generation, temporal, relation/root, detector, slice
+and evidence gaps. Those findings are corrected and locally validated; an exact
+correction commit and read-only re-challenge remain. L3 remains waiting.
 
 ## 6. Append-only status log
 
@@ -167,6 +170,9 @@ L3 remains waiting.
 | 2026-09-14 (time not recorded) | L1 Gaṇita | PRODUCER_READY | Final independent review of exact tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053` PASS with zero HIGH/MED/LOW findings; seven L1 evidence artifacts terminalized; L2 remains waiting. |
 | 2026-09-14 20:56 | L2 Bodha | OPENED | DP-SD-015/approved brief consumed; unrestricted Full Access and approval `never` verified; new bounded goal active; session-open schema validation exit 0. |
 | 2026-09-14 21:05 | L2 Bodha | WP0_COMPLETE | Exact 23 registered writers across 22 files reconciled against historical formal 22; accepted pins, DAG, outputs/keys, adjacent authority, consumer loss and two temporal inversions recorded; mutation manifest frozen. |
+| 2026-09-14 (time not recorded) | L2 Bodha | IMPLEMENTATION_COMMITTED | First local implementation committed at `066fce7a5`; 23/23 boundary and initial evidence prepared; no push/PR/merge/deploy. |
+| 2026-09-14 (time not recorded) | L2 Bodha | FIRST_CHALLENGE_FAILED | Independent review found nine owned HIGH correction families plus test/documentation gaps; no CRITICAL. |
+| 2026-09-14 22:18 | L2 Bodha | CORRECTIONS_VALIDATED | Focused 178 and contained 135 tests pass; complete L2 attempt yields 472 passed/14 skipped with only absent-DB integration cases not run; validator 23/23/0; provenance check and disposable PostgreSQL exact-input/multi-partition/replay/rollback proofs pass. Exact correction commit and re-challenge next. |
 
 ## 7. Return-to-strategy handoff contract
 
