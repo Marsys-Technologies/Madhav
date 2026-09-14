@@ -406,10 +406,34 @@ def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_view
     assert "l1_data_plane_jsonb_has_nonfinite(v_row)" in migration
     assert "CREATE TABLE IF NOT EXISTS public.l1_data_plane_fact_snapshots" in migration
     assert "CREATE TABLE IF NOT EXISTS public.l1_data_plane_configuration_snapshots" in migration
+    assert "l1_data_plane_material_fact_specs" in migration
+    assert "('ga_condition_composite','speed_degrees_per_day','astronomical'" in migration
+    assert "('ga_condition_composite','condition_score','rule_derived'" in migration
+    assert "FOR v_key, v_value IN SELECT key, value FROM jsonb_each(v_semantic)" not in migration
+    assert "capture_l1_data_plane_dasha_partition" in migration
+    assert "CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_dashas" not in migration
+    assert "dasha partition % reported % rows but active build scope has %" in migration
+    assert "'role', 'constituent_graha'" in migration
+    assert "'role', 'constituent_house'" in migration
+    assert "'catalog:yoga:'" in migration
+    assert "'observed_only'" in migration
     current_rows = migration.split(
         "CREATE OR REPLACE VIEW public.l1_data_plane_current_rows AS", 1
     )[1].split("CREATE OR REPLACE VIEW public.l1_data_plane_current_facts", 1)[0]
     assert "DISTINCT ON (s.chart_id, s.asset_id, s.source_table, s.row_identity)" in current_rows
+
+
+def test_partition_receipt_count_is_not_coupled_to_captured_revision_count():
+    from pathlib import Path
+
+    migration = Path("platform/migrations/1033_data_plane_l1_producer_history.sql").read_text()
+    completion = migration.split(
+        "CREATE OR REPLACE FUNCTION public.complete_l1_data_plane_partition(", 1
+    )[1].split("CREATE OR REPLACE FUNCTION public.select_l1_data_plane_generation", 1)[0]
+    assert "partition % replay changed row count from % to %" in completion
+    assert "reported % rows but captured % logical rows" not in completion
+    assert "FROM public.l1_data_plane_row_snapshots" in completion
+    assert "semantic_output_digest" in completion
 
 
 def test_runtime_boundary_does_not_complete_a_failed_writer(monkeypatch):

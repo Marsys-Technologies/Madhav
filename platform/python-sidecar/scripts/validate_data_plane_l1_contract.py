@@ -144,9 +144,11 @@ def validate() -> dict[str, object]:
         "select_l1_data_plane_generation",
         "rollback_l1_data_plane_generation",
         "l1_data_plane_current_rows",
+        "l1_data_plane_current_dashas",
         "l1_data_plane_current_facts",
         "l1_data_plane_current_configurations",
         "l1_data_plane_fact_snapshots",
+        "l1_data_plane_dasha_snapshots",
         "l1_data_plane_configuration_snapshots",
         "l1_data_plane_jsonb_has_nonfinite",
         "l1_data_plane_reject_immutable_change",
@@ -157,8 +159,10 @@ def validate() -> dict[str, object]:
         r"CREATE TRIGGER l1_data_plane_capture AFTER INSERT(?: OR UPDATE)?",
         migration_source,
     )
-    if len(capture_triggers) != 12:
-        findings.append("producer history migration does not cover all 12 L1 output tables")
+    if len(capture_triggers) != 11 or "capture_l1_data_plane_dasha_partition" not in migration_source:
+        findings.append(
+            "producer history migration does not cover 11 row-trigger tables plus set-based chart_dashas"
+        )
 
     result = {
         "schema_version": "1.0",

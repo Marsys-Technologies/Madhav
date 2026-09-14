@@ -31,10 +31,12 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import uuid
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any, Generator
 
 from panchang_engine.swiss_state import serialized_swiss_state, swiss_state_scope
@@ -3003,7 +3005,12 @@ def _copy_row_values(row: dict) -> tuple:
         "concurrent_system_lords_jsonb": row.get("concurrent_system_lords_jsonb"),
         "karakas_active_during_period": row.get("karakas_active_during_period"),
     }
-    return tuple(normalized.get(col) for col in _COPY_COLUMNS)
+    values = tuple(normalized.get(col) for col in _COPY_COLUMNS)
+    for column, value in zip(_COPY_COLUMNS, values):
+        if isinstance(value, (int, float, Decimal)) and not isinstance(value, bool):
+            if not math.isfinite(float(value)):
+                raise ValueError(f"non-finite dasha value for {column}")
+    return values
 
 
 def _upsert_rows(conn: Any, rows: list[dict], system_id: str, ayanamsha_id: str, *, commit: bool = True) -> int:

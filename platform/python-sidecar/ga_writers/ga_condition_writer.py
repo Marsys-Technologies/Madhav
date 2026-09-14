@@ -884,7 +884,7 @@ def _load_dasha_periods(
             # lord_graha, start_iso) WHERE level_n=1 (migration 415) — a direct
             # ~27-row seek, not the ~20K-row heap scan that used to time out.
             cur.execute("""
-                SELECT system_id, level_n, lord_graha, start_iso, end_iso
+                SELECT dasha_row_id, system_id, level_n, lord_graha, start_iso, end_iso
                 FROM chart_dashas
                 WHERE chart_id   = %s
                   AND lord_graha = %s
@@ -901,6 +901,26 @@ def _load_dasha_periods(
                 # No condition score available to classify — cannot say peak or weak.
                 return None, None
 
+            def _period_payload(row: tuple, reason: str) -> dict:
+                # The production query always returns the six-column shape.
+                # Accept the historical five-column DB-free test double while
+                # keeping exact source identity mandatory on real rows.
+                if len(row) == 6:
+                    row_id, system_id, _level, lord, start, end = row
+                else:
+                    row_id = None
+                    system_id, _level, lord, start, end = row
+                payload = {
+                    "dasha_label": f"{lord} Mahadasha",
+                    "system_id": system_id,
+                    "start_date": start.isoformat() if hasattr(start, "isoformat") else str(start),
+                    "end_date": end.isoformat() if hasattr(end, "isoformat") else str(end),
+                    "reason": reason,
+                }
+                if row_id is not None:
+                    payload["source_dasha_row_id"] = str(row_id)
+                return payload
+
             if condition_score >= _PEAK_CONDITION_THRESHOLD:
                 reason = (
                     f"{graha} mahadasha period — dasha lord in classically strong "
@@ -908,16 +928,7 @@ def _load_dasha_periods(
                     + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
                     + ")"
                 )
-                periods = [
-                    {
-                        "dasha_label": f"{row[2]} Mahadasha",
-                        "system_id":   row[0],
-                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
-                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
-                        "reason":      reason,
-                    }
-                    for row in rows
-                ]
+                periods = [_period_payload(row, reason) for row in rows]
                 return periods, None
 
             if condition_score <= _WEAK_CONDITION_THRESHOLD:
@@ -927,16 +938,7 @@ def _load_dasha_periods(
                     + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
                     + ")"
                 )
-                periods = [
-                    {
-                        "dasha_label": f"{row[2]} Mahadasha",
-                        "system_id":   row[0],
-                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
-                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
-                        "reason":      reason,
-                    }
-                    for row in rows
-                ]
+                periods = [_period_payload(row, reason) for row in rows]
                 return None, periods
 
             # Neutral band — condition is neither classically strong nor weak.

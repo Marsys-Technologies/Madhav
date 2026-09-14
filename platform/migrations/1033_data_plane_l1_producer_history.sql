@@ -151,6 +151,28 @@ CREATE INDEX IF NOT EXISTS l1_data_plane_fact_latest_idx
   (chart_id, asset_id, generation_id, source_table, row_identity, fact_key,
    captured_at DESC, fact_snapshot_id DESC);
 
+-- High-volume daśā history stays typed and append-only without serializing each
+-- 42-column row through a PL/pgSQL row trigger.  A composite retains the exact
+-- active-table schema and supports set-based partition copies and revisions.
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_dasha_snapshots (
+    dasha_snapshot_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chart_id          UUID NOT NULL,
+    asset_id          TEXT NOT NULL DEFAULT 'ga_dashas'
+                           CHECK (asset_id = 'ga_dashas'),
+    generation_id     TEXT NOT NULL,
+    partition_key     TEXT NOT NULL,
+    source_row        public.chart_dashas NOT NULL,
+    captured_at       TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    FOREIGN KEY (chart_id, asset_id, generation_id)
+      REFERENCES public.l1_data_plane_generations(chart_id, asset_id, generation_id)
+      ON DELETE RESTRICT
+);
+
+CREATE INDEX IF NOT EXISTS l1_data_plane_dasha_latest_idx
+  ON public.l1_data_plane_dasha_snapshots
+  (chart_id, asset_id, generation_id, ((source_row).dasha_row_id),
+   captured_at DESC, dasha_snapshot_id DESC);
+
 CREATE TABLE IF NOT EXISTS public.l1_data_plane_configuration_snapshots (
     configuration_snapshot_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     row_snapshot_id             UUID NOT NULL UNIQUE REFERENCES public.l1_data_plane_row_snapshots(snapshot_id) ON DELETE RESTRICT,
@@ -219,6 +241,12 @@ CREATE TRIGGER l1_data_plane_facts_immutable
 BEFORE UPDATE OR DELETE ON public.l1_data_plane_fact_snapshots
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
 
+DROP TRIGGER IF EXISTS l1_data_plane_dashas_immutable
+  ON public.l1_data_plane_dasha_snapshots;
+CREATE TRIGGER l1_data_plane_dashas_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_dasha_snapshots
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
 DROP TRIGGER IF EXISTS l1_data_plane_configurations_immutable
   ON public.l1_data_plane_configuration_snapshots;
 CREATE TRIGGER l1_data_plane_configurations_immutable
@@ -277,6 +305,60 @@ AS $$
     WHEN p_fact_key ~ '^is_|_active$|_flag$' THEN 'boolean'
     ELSE NULL
   END
+$$;
+
+-- Only fields whose semantics are explicitly specified are projected as atomic
+-- facts.  In particular, interval, relation and clock rows remain bounded typed
+-- row envelopes instead of being expanded into dozens of synchronous child
+-- inserts.  The condition composite is small (45 rows/chart) and is the one
+-- denormalized surface whose components must remain independently consumable.
+CREATE OR REPLACE FUNCTION public.l1_data_plane_material_fact_specs(
+    p_source_table TEXT
+) RETURNS TABLE (
+    source_table TEXT,
+    fact_key TEXT,
+    epistemic_class TEXT,
+    unit TEXT,
+    verification_class TEXT,
+    source_fact_keys TEXT[],
+    subject_scope TEXT,
+    producer_assets TEXT[],
+    reference_relations TEXT[]
+)
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT * FROM (VALUES
+    ('ga_condition_composite','dignity_d1','rule_derived',NULL,'dignity_rule_v1',ARRAY['sign','degree_in_sign']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY['bg_dignity_reference']::TEXT[]),
+    ('ga_condition_composite','dignity_score_d1','rule_derived','score_0_1','dignity_rule_v1',ARRAY['sign','degree_in_sign']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY['bg_dignity_reference']::TEXT[]),
+    ('ga_condition_composite','varga_dignity_spread','deterministic_derivation',NULL,'varga_source_rows',ARRAY[]::TEXT[],'self',ARRAY['ga_vargas']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','varga_dignity_composite','deterministic_derivation','score_0_1','condition_formula_v1',ARRAY[]::TEXT[],'self',ARRAY['ga_vargas']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','avastha_baladi','rule_derived',NULL,'avastha_rule_v1',ARRAY['degree_in_sign']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','avastha_jagradadi','rule_derived',NULL,'avastha_rule_v1',ARRAY['sign','degree_in_sign']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','avastha_deeptaadi','rule_derived',NULL,'avastha_rule_v1',ARRAY['sign','degree_in_sign','speed_dps','retrograde_flag','longitude_sidereal','longitude']::TEXT[],'self_sun',ARRAY['ga_positions']::TEXT[],ARRAY['bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','avastha_lajjitaadi','rule_derived',NULL,'source_state_only',ARRAY[]::TEXT[],'self',ARRAY['ga_condition']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','avastha_sayanadi','rule_derived',NULL,'source_state_only',ARRAY[]::TEXT[],'self',ARRAY['ga_condition']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','motion_state','deterministic_derivation',NULL,'motion_classifier_v1',ARRAY['speed_dps']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','speed_degrees_per_day','astronomical','degree_per_day','source_position_fact',ARRAY['speed_dps']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','is_retrograde','astronomical',NULL,'source_position_fact',ARRAY['retrograde_flag','speed_dps']::TEXT[],'self',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','combustion_arc_from_sun','deterministic_derivation','degree','combustion_formula_v1',ARRAY['longitude_sidereal','longitude']::TEXT[],'self_sun',ARRAY['ga_positions']::TEXT[],ARRAY['bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','is_combust','rule_derived',NULL,'combustion_rule_v1',ARRAY['longitude_sidereal','longitude','retrograde_flag']::TEXT[],'self_sun',ARRAY['ga_positions']::TEXT[],ARRAY['bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','is_deeply_combust','rule_derived',NULL,'combustion_rule_v1',ARRAY['longitude_sidereal','longitude','retrograde_flag']::TEXT[],'self_sun',ARRAY['ga_positions']::TEXT[],ARRAY['bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','naisargika_relation','rule_derived',NULL,'friendship_rule_v1',ARRAY['sign']::TEXT[],'all',ARRAY['ga_positions']::TEXT[],ARRAY['bg_graha_naisargika_friendship']::TEXT[]),
+    ('ga_condition_composite','tatkalika_relation','rule_derived',NULL,'friendship_rule_v1',ARRAY['house_d1','house','sign']::TEXT[],'all',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','panchadha_relation','rule_derived',NULL,'friendship_rule_v1',ARRAY['house_d1','house','sign']::TEXT[],'all',ARRAY['ga_positions']::TEXT[],ARRAY['bg_graha_naisargika_friendship']::TEXT[]),
+    ('ga_condition_composite','graha_yuddha_with','rule_derived',NULL,'graha_yuddha_rule_v1',ARRAY['sign','longitude_sidereal','longitude']::TEXT[],'all',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','graha_yuddha_result','rule_derived',NULL,'graha_yuddha_rule_v1',ARRAY['sign','longitude_sidereal','longitude']::TEXT[],'all',ARRAY['ga_positions']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','condition_score','rule_derived','score_0_1','condition_formula_v1',ARRAY['sign','degree_in_sign','speed_dps','retrograde_flag','longitude_sidereal','longitude']::TEXT[],'self_sun',ARRAY['ga_positions','ga_vargas']::TEXT[],ARRAY['bg_dignity_reference','bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','condition_formula_version','deterministic_derivation',NULL,'source_declared_version',ARRAY[]::TEXT[],'self',ARRAY['ga_condition']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','condition_score_breakdown','rule_derived',NULL,'condition_formula_v1',ARRAY['sign','degree_in_sign','speed_dps','retrograde_flag','longitude_sidereal','longitude']::TEXT[],'self_sun',ARRAY['ga_positions','ga_vargas']::TEXT[],ARRAY['bg_dignity_reference','bg_combustion_orbs']::TEXT[]),
+    ('ga_condition_composite','peak_dasha_periods','rule_derived',NULL,'condition_dasha_classifier_v1',ARRAY[]::TEXT[],'self',ARRAY['ga_dashas','ga_condition']::TEXT[],ARRAY[]::TEXT[]),
+    ('ga_condition_composite','weak_dasha_periods','rule_derived',NULL,'condition_dasha_classifier_v1',ARRAY[]::TEXT[],'self',ARRAY['ga_dashas','ga_condition']::TEXT[],ARRAY[]::TEXT[])
+  ) AS spec(
+    source_table, fact_key, epistemic_class, unit, verification_class,
+    source_fact_keys, subject_scope, producer_assets, reference_relations
+  )
+  WHERE spec.source_table = p_source_table
 $$;
 
 CREATE OR REPLACE FUNCTION public.open_l1_data_plane_generation(
@@ -439,6 +521,7 @@ DECLARE
   v_dependencies JSONB;
   v_missingness TEXT;
   v_epistemic TEXT;
+  v_yoga_rule JSONB;
 BEGIN
   -- Compatibility: direct legacy SQL/CLI paths remain usable but do not claim
   -- a governed runtime generation unless the adapter opened one explicitly.
@@ -597,8 +680,9 @@ BEGIN
   ) RETURNING snapshot_id INTO v_snapshot_id;
 
   -- Schema-aware typed projection. chart_facts already declares one atomic
-  -- fact; denormalized producer tables are decomposed into one typed fact per
-  -- material column so null, numerical zero, unit and reason cannot collapse.
+  -- fact.  Only an explicit material-field specification may decompose another
+  -- table; this prevents high-volume interval rows from multiplying writes and
+  -- prevents an asset-level epistemic label from being copied onto every field.
   IF TG_TABLE_NAME = 'chart_facts' THEN
     v_fact_missingness := v_missingness;
     v_fact_reason := CASE WHEN v_fact_missingness IN ('present', 'zero') THEN NULL
@@ -637,63 +721,121 @@ BEGIN
       COALESCE(v_row->>'verification_pass_status', v_row->>'verification_method', 'unverified'),
       v_value_num, v_value_text, v_value_jsonb
     );
-  ELSE
-    FOR v_key, v_value IN SELECT key, value FROM jsonb_each(v_semantic) LOOP
-      CONTINUE WHEN v_key IN (
-        'chart_id','ayanamsha_id','fact_id','dasha_row_id','parent_row_id',
-        'varsha_id','source_calculation','engine_version','formula_provenance_text'
-      ) OR v_key = ANY(TG_ARGV);
-      v_value_type := jsonb_typeof(v_value);
-      v_value_num := NULL; v_value_text := NULL; v_value_bool := NULL;
-      v_value_jsonb := NULL; v_fact_reason := NULL;
-      IF v_value_type = 'null' OR v_value_type IS NULL THEN
-        v_fact_missingness := 'unavailable';
-        v_fact_reason := 'source column is NULL in this generation';
-      ELSIF v_value_type = 'number' THEN
-        v_value_num := (v_value #>> '{}')::numeric;
-        v_fact_missingness := CASE WHEN v_value_num = 0 THEN 'zero' ELSE 'present' END;
-      ELSIF v_value_type = 'boolean' THEN
-        v_value_bool := (v_value #>> '{}')::boolean;
-        v_fact_missingness := 'present';
-      ELSIF v_value_type = 'string' THEN
-        v_value_text := v_value #>> '{}';
-        v_fact_missingness := 'present';
-      ELSE
-        v_value_jsonb := v_value;
-        v_fact_missingness := 'present';
-      END IF;
-      v_fact_identity := encode(digest(
-        v_context_id || '|' || TG_TABLE_NAME || '|' || v_identity || '|' || v_key,
+  ELSIF TG_TABLE_NAME = 'ga_condition_composite' THEN
+    -- One set-based statement projects the bounded, explicit condition field
+    -- registry.  Dependencies name the actual chart_facts rows used by the
+    -- writer, the exact producer surfaces and any reference relation.  Varga
+    -- and dasha rows use stable natural/row identities because those source
+    -- tables do not expose chart_facts-style fact IDs.
+    INSERT INTO public.l1_data_plane_fact_snapshots (
+      row_snapshot_id, chart_id, asset_id, generation_id, partition_key,
+      source_table, row_identity, context_id, fact_identity, fact_category,
+      fact_subject, fact_key, grain_jsonb, source_dependencies_jsonb,
+      unit, epistemic_class, missingness_state, missingness_reason,
+      verification_class, value_num, value_text, value_bool, value_jsonb
+    )
+    SELECT
+      v_snapshot_id, v_chart_text::uuid, v_asset, v_generation, v_partition,
+      TG_TABLE_NAME, v_identity, v_context_id,
+      encode(digest(
+        v_context_id || '|' || TG_TABLE_NAME || '|' || v_identity || '|' || spec.fact_key,
         'sha256'
-      ), 'hex');
-      INSERT INTO public.l1_data_plane_fact_snapshots (
-        row_snapshot_id, chart_id, asset_id, generation_id, partition_key,
-        source_table, row_identity, context_id, fact_identity, fact_category,
-        fact_subject, fact_key, grain_jsonb, source_dependencies_jsonb,
-        unit, epistemic_class, missingness_state,
-        missingness_reason, verification_class,
-        value_num, value_text, value_bool, value_jsonb
-      ) VALUES (
-        v_snapshot_id, v_chart_text::uuid, v_asset, v_generation, v_partition,
-        TG_TABLE_NAME, v_identity, v_context_id, v_fact_identity, v_asset,
-        v_identity, v_key,
-        jsonb_build_object(
-          'source_table', TG_TABLE_NAME, 'natural_key', v_identity_parts,
-          'field', v_key
-        ),
-        v_dependencies,
-        public.l1_data_plane_fact_unit(TG_TABLE_NAME, v_key, v_row),
-        v_epistemic, v_fact_missingness, v_fact_reason,
-        COALESCE(v_row->>'verification_pass_status', v_row->>'verification_method', 'runtime_snapshot'),
-        v_value_num, v_value_text, v_value_bool, v_value_jsonb
-      );
-    END LOOP;
+      ), 'hex'),
+      'ga_condition_component', COALESCE(v_row->>'graha', v_identity), spec.fact_key,
+      jsonb_build_object(
+        'source_table', TG_TABLE_NAME, 'natural_key', v_identity_parts,
+        'field', spec.fact_key, 'grain', 'chart-ayanamsha-graha-component'
+      ),
+      jsonb_build_object(
+        'producer_assets', to_jsonb(spec.producer_assets),
+        'constituent_fact_ids', COALESCE((
+          SELECT jsonb_agg(DISTINCT cf.fact_id ORDER BY cf.fact_id)
+          FROM public.chart_facts cf
+          WHERE cf.chart_id = v_chart_text::uuid
+            AND cf.ayanamsha_id = v_row->>'ayanamsha_id'
+            AND cf.fact_key = ANY(spec.source_fact_keys)
+            AND (
+              spec.subject_scope = 'all'
+              OR cf.fact_subject = CASE lower(v_row->>'graha')
+                WHEN 'sun' THEN 'SUN' WHEN 'moon' THEN 'MOON'
+                WHEN 'mars' THEN 'MAR' WHEN 'mercury' THEN 'MER'
+                WHEN 'jupiter' THEN 'JUP' WHEN 'venus' THEN 'VEN'
+                WHEN 'saturn' THEN 'SAT' WHEN 'rahu' THEN 'RAH_MEAN'
+                WHEN 'ketu' THEN 'KET_MEAN' ELSE upper(v_row->>'graha') END
+              OR (spec.subject_scope = 'self_sun' AND cf.fact_subject = 'SUN')
+            )
+        ), '[]'::jsonb),
+        'source_row_identities', CASE
+          WHEN 'ga_vargas' = ANY(spec.producer_assets) THEN COALESCE((
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'source_table', 'chart_divisionals',
+                'natural_key', jsonb_build_array(
+                  'chart_id=' || cd.chart_id::text,
+                  'graha=' || cd.graha,
+                  'ayanamsha_id=' || cd.ayanamsha_id,
+                  'varga=' || cd.varga,
+                  'fact_category=' || cd.fact_category,
+                  'fact_key=' || cd.fact_key
+                )
+              ) ORDER BY cd.varga, cd.fact_category, cd.fact_key
+            )
+            FROM public.chart_divisionals cd
+            WHERE cd.chart_id = v_chart_text::uuid
+              AND cd.ayanamsha_id = v_row->>'ayanamsha_id'
+              AND lower(cd.graha) = lower(v_row->>'graha')
+              AND cd.fact_category IN ('varga_position', 'varga_dignity')
+              AND cd.fact_key IN ('sign', 'dignity', 'overall_dignity_score')
+          ), '[]'::jsonb)
+          WHEN spec.fact_key IN ('peak_dasha_periods', 'weak_dasha_periods') THEN
+            COALESCE((
+              SELECT jsonb_agg(jsonb_build_object(
+                'source_table', 'chart_dashas',
+                'row_identity', item->>'source_dasha_row_id'
+              ) ORDER BY item->>'source_dasha_row_id')
+              FROM jsonb_array_elements(CASE
+                WHEN jsonb_typeof(v_semantic->spec.fact_key) = 'array'
+                THEN v_semantic->spec.fact_key ELSE '[]'::jsonb END) item
+              WHERE item ? 'source_dasha_row_id'
+            ), '[]'::jsonb)
+          ELSE '[]'::jsonb
+        END,
+        'reference_relations', to_jsonb(spec.reference_relations)
+      ),
+      spec.unit, spec.epistemic_class,
+      CASE
+        WHEN jsonb_typeof(v_semantic->spec.fact_key) IS NULL
+          OR jsonb_typeof(v_semantic->spec.fact_key) = 'null' THEN 'unavailable'
+        WHEN jsonb_typeof(v_semantic->spec.fact_key) = 'number'
+          AND (v_semantic->>spec.fact_key)::numeric = 0 THEN 'zero'
+        ELSE 'present'
+      END,
+      CASE
+        WHEN jsonb_typeof(v_semantic->spec.fact_key) IS NULL
+          OR jsonb_typeof(v_semantic->spec.fact_key) = 'null'
+        THEN 'source column is NULL in this generation'
+        ELSE NULL
+      END,
+      spec.verification_class,
+      CASE WHEN jsonb_typeof(v_semantic->spec.fact_key) = 'number'
+        THEN (v_semantic->>spec.fact_key)::numeric ELSE NULL END,
+      CASE WHEN jsonb_typeof(v_semantic->spec.fact_key) = 'string'
+        THEN v_semantic->>spec.fact_key ELSE NULL END,
+      CASE WHEN jsonb_typeof(v_semantic->spec.fact_key) = 'boolean'
+        THEN (v_semantic->>spec.fact_key)::boolean ELSE NULL END,
+      CASE WHEN jsonb_typeof(v_semantic->spec.fact_key) IN ('array', 'object')
+        THEN v_semantic->spec.fact_key ELSE NULL END
+    FROM public.l1_data_plane_material_fact_specs(TG_TABLE_NAME) spec;
   END IF;
 
   -- Yoga rows are configuration observations, not merely opaque JSON.  The
   -- active schema has no admitted L0 rule-qualification field, so preserve the
   -- observed firing separately while keeping the doctrinal arm unreachable.
   IF TG_TABLE_NAME = 'ga_yoga_firings' THEN
+    SELECT formation_rule_jsonb INTO v_yoga_rule
+    FROM public.brahma_yoga_catalog
+    WHERE canonical_id = v_row->>'yoga_canonical_id';
+
     INSERT INTO public.l1_data_plane_configuration_snapshots (
       row_snapshot_id, chart_id, asset_id, generation_id, partition_key,
       context_id, configuration_id, configuration_version, source_rule_id,
@@ -704,34 +846,178 @@ BEGIN
     ) VALUES (
       v_snapshot_id, v_chart_text::uuid, v_asset, v_generation, v_partition,
       v_context_id, v_row->>'yoga_canonical_id',
-      COALESCE(v_row->>'strength_formula_version', 'unversioned'),
-      v_row->>'yoga_canonical_id',
-      COALESCE(v_row->>'strength_formula_version', 'unversioned'),
+      'observed-yoga-configuration-v1',
+      CASE WHEN v_yoga_rule IS NULL THEN 'UNAVAILABLE'
+        ELSE 'catalog:yoga:' || (v_row->>'yoga_canonical_id') END,
+      CASE WHEN v_yoga_rule IS NULL THEN 'UNAVAILABLE'
+        ELSE 'sha256:' || encode(digest(v_yoga_rule::text, 'sha256'), 'hex') END,
       'UNQUALIFIED_SOURCE',
       CASE WHEN COALESCE((v_row->>'fired')::boolean, false)
         THEN CASE WHEN COALESCE((v_row->>'is_partial')::boolean, false) THEN 'partial' ELSE 'formed' END
         ELSE 'not_formed' END,
       'unqualified_source',
-      jsonb_build_object(
-        'planets', COALESCE(NULLIF(v_row->'constituent_planets', 'null'::jsonb), '[]'::jsonb),
-        'houses', COALESCE(NULLIF(v_row->'constituent_houses', 'null'::jsonb), '[]'::jsonb)
+      COALESCE((
+        SELECT jsonb_agg(participant ORDER BY role_order, ordinal)
+        FROM (
+          SELECT 1 AS role_order, p.ordinal,
+            jsonb_build_object(
+              'role', 'constituent_graha', 'subject', p.value #>> '{}'
+            ) AS participant
+          FROM jsonb_array_elements(CASE
+            WHEN jsonb_typeof(v_row->'constituent_planets') = 'array'
+            THEN v_row->'constituent_planets' ELSE '[]'::jsonb END)
+            WITH ORDINALITY AS p(value, ordinal)
+          UNION ALL
+          SELECT 2 AS role_order, h.ordinal,
+            jsonb_build_object(
+              'role', 'constituent_house',
+              'subject', 'HOUSE_' || (h.value #>> '{}')
+            ) AS participant
+          FROM jsonb_array_elements(CASE
+            WHEN jsonb_typeof(v_row->'constituent_houses') = 'array'
+            THEN v_row->'constituent_houses' ELSE '[]'::jsonb END)
+            WITH ORDINALITY AS h(value, ordinal)
+        ) typed_participants
+      ), '[]'::jsonb),
+      CASE WHEN COALESCE((v_row->>'fired')::boolean, false) THEN
+        jsonb_build_array(
+          jsonb_build_object(
+            'clause_id', 'observed_catalog_formation_rule',
+            'rule', v_yoga_rule,
+            'result', 'observed_satisfied_not_admitted'
+          ),
+          jsonb_build_object(
+            'clause_id', 'constituent_fact_ancestry',
+            'result', CASE
+              WHEN jsonb_typeof(v_row->'constituent_fact_ids') = 'array'
+               AND jsonb_array_length(v_row->'constituent_fact_ids') > 0
+              THEN 'present' ELSE 'absent' END
+          )
+        )
+      ELSE '[]'::jsonb END,
+      jsonb_build_array(
+        jsonb_build_object(
+          'clause_id', 'admitted_l0_rule_qualification',
+          'result', 'missing'
+        ),
+        jsonb_build_object(
+          'clause_id', 'exact_catalog_rule',
+          'result', CASE WHEN v_yoga_rule IS NULL THEN 'missing' ELSE 'observed_only' END
+        )
       ),
-      CASE
-        WHEN jsonb_typeof(v_row->'constituent_fact_ids') = 'array'
-         AND jsonb_array_length(v_row->'constituent_fact_ids') > 0
-        THEN jsonb_build_array('constituent_fact_ids_present')
-        ELSE '[]'::jsonb
-      END,
-      jsonb_build_array('admitted_l0_rule_qualification_missing'),
       CASE WHEN v_row->>'bhanga_rule_fired' IS NULL THEN '[]'::jsonb
-        ELSE jsonb_build_array(v_row->>'bhanga_rule_fired') END,
+        ELSE jsonb_build_array(jsonb_build_object(
+          'role', 'observed_exception_rule',
+          'rule_id', v_row->>'bhanga_rule_fired'
+        )) END,
       CASE WHEN COALESCE((v_row->>'bhanga_active')::boolean, false)
-        THEN jsonb_build_array('bhanga_active') ELSE '[]'::jsonb END,
+        THEN jsonb_build_array(jsonb_build_object(
+          'role', 'observed_cancellation', 'state', 'bhanga_active'
+        )) ELSE '[]'::jsonb END,
       COALESCE(NULLIF(v_row->'constituent_fact_ids', 'null'::jsonb), '[]'::jsonb),
-      'active yoga schema carries no admitted L0 rule version and qualification witness'
+      CASE WHEN v_yoga_rule IS NULL THEN
+        'catalog rule and admitted L0 qualification witness are unavailable; doctrinal arm is unreachable'
+      ELSE
+        'catalog rule is preserved by content digest but has no admitted L0 qualification witness; doctrinal arm is unreachable'
+      END
     );
   END IF;
   RETURN NEW;
+END;
+$$;
+
+-- Daśā is the deliberate high-volume exception to row-trigger capture.  Its
+-- writer uses COPY for roughly 536k rows across 35 independently committed
+-- system/ayanamsha partitions.  Capture each completed partition in one
+-- set-based statement, and capture only changed rows in the final post-pass.
+-- This preserves the same immutable generation envelope without defeating COPY
+-- with one PL/pgSQL trigger invocation per source row.
+CREATE OR REPLACE FUNCTION public.capture_l1_data_plane_dasha_partition(
+    p_chart_id UUID,
+    p_generation_id TEXT,
+    p_partition_key TEXT,
+    p_rows_inserted INTEGER
+) RETURNS VOID
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_status TEXT;
+  v_system_id TEXT;
+  v_ayanamsha_id TEXT;
+  v_active_rows INTEGER;
+BEGIN
+  SELECT status INTO v_status
+  FROM public.l1_data_plane_generations
+  WHERE chart_id = p_chart_id AND asset_id = 'ga_dashas'
+    AND generation_id = p_generation_id;
+  IF v_status IS NULL THEN
+    RAISE EXCEPTION 'L1 dasha generation was not opened before partition capture';
+  END IF;
+
+  IF p_partition_key <> '__concurrency_post_pass__' THEN
+    v_system_id := split_part(p_partition_key, ':', 1);
+    v_ayanamsha_id := split_part(p_partition_key, ':', 2);
+    IF v_system_id = '' OR v_ayanamsha_id = '' THEN
+      RAISE EXCEPTION 'invalid dasha partition key %', p_partition_key;
+    END IF;
+    SELECT count(*) INTO v_active_rows
+    FROM public.chart_dashas d
+    WHERE d.chart_id = p_chart_id
+      AND d.build_id::text = p_generation_id
+      AND d.system_id = v_system_id
+      AND d.ayanamsha_id = v_ayanamsha_id;
+    IF v_active_rows <> p_rows_inserted THEN
+      RAISE EXCEPTION 'dasha partition % reported % rows but active build scope has %',
+        p_partition_key, p_rows_inserted, v_active_rows;
+    END IF;
+  END IF;
+
+  -- A completed generation may be replayed only when every current source row
+  -- has an already-captured identical latest revision.
+  IF v_status = 'complete' THEN
+    IF EXISTS (
+      SELECT 1 FROM public.chart_dashas d
+      LEFT JOIN LATERAL (
+        SELECT s.source_row
+        FROM public.l1_data_plane_dasha_snapshots s
+        WHERE s.chart_id = p_chart_id AND s.asset_id = 'ga_dashas'
+          AND s.generation_id = p_generation_id
+          AND (s.source_row).dasha_row_id = d.dasha_row_id
+        ORDER BY s.captured_at DESC, s.dasha_snapshot_id DESC
+        LIMIT 1
+      ) previous ON true
+      WHERE d.chart_id = p_chart_id AND d.build_id::text = p_generation_id
+        AND (p_partition_key = '__concurrency_post_pass__' OR (
+          d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id
+        ))
+        AND (previous.source_row IS NULL OR previous.source_row IS DISTINCT FROM d)
+    ) THEN
+      RAISE EXCEPTION 'complete generation % replay changed or added dasha output',
+        p_generation_id;
+    END IF;
+    RETURN;
+  END IF;
+
+  INSERT INTO public.l1_data_plane_dasha_snapshots (
+    chart_id, asset_id, generation_id, partition_key, source_row
+  )
+  SELECT
+    p_chart_id, 'ga_dashas', p_generation_id, p_partition_key, d
+  FROM public.chart_dashas d
+  LEFT JOIN LATERAL (
+    SELECT s.source_row
+    FROM public.l1_data_plane_dasha_snapshots s
+    WHERE s.chart_id = p_chart_id AND s.asset_id = 'ga_dashas'
+      AND s.generation_id = p_generation_id
+      AND (s.source_row).dasha_row_id = d.dasha_row_id
+    ORDER BY s.captured_at DESC, s.dasha_snapshot_id DESC
+    LIMIT 1
+  ) previous ON true
+  WHERE d.chart_id = p_chart_id AND d.build_id::text = p_generation_id
+    AND (p_partition_key = '__concurrency_post_pass__' OR (
+      d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id
+    ))
+    AND (previous.source_row IS NULL OR previous.source_row IS DISTINCT FROM d);
 END;
 $$;
 
@@ -746,7 +1032,6 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   v_existing_rows INTEGER;
-  v_captured_rows INTEGER;
   v_completed INTEGER;
   v_expected INTEGER;
   v_digest TEXT;
@@ -754,16 +1039,10 @@ BEGIN
   IF p_rows_inserted < 0 THEN
     RAISE EXCEPTION 'rows_inserted cannot be negative';
   END IF;
-  SELECT count(*) INTO v_captured_rows
-  FROM (
-    SELECT DISTINCT source_table, row_identity
-    FROM public.l1_data_plane_row_snapshots
-    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
-      AND generation_id = p_generation_id AND partition_key = p_partition_key
-  ) captured;
-  IF v_captured_rows <> p_rows_inserted THEN
-    RAISE EXCEPTION 'partition % reported % rows but captured % logical rows',
-      p_partition_key, p_rows_inserted, v_captured_rows;
+  IF p_asset_id = 'ga_dashas' THEN
+    PERFORM public.capture_l1_data_plane_dasha_partition(
+      p_chart_id, p_generation_id, p_partition_key, p_rows_inserted
+    );
   END IF;
   INSERT INTO public.l1_data_plane_generation_partitions (
     chart_id, asset_id, generation_id, partition_key, rows_inserted
@@ -799,21 +1078,57 @@ BEGIN
     RETURN;
   END IF;
 
-  SELECT encode(digest(COALESCE(
-    jsonb_agg(
-      jsonb_build_array(source_table, row_identity, semantic_digest)
-      ORDER BY source_table, row_identity
-    ), '[]'::jsonb
-  )::text, 'sha256'), 'hex')
-  INTO v_digest
-  FROM (
-    SELECT DISTINCT ON (source_table, row_identity)
-      source_table, row_identity, semantic_digest
-    FROM public.l1_data_plane_row_snapshots
-    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
-      AND generation_id = p_generation_id
-    ORDER BY source_table, row_identity, captured_at DESC, snapshot_id DESC
-  ) latest;
+  IF p_asset_id = 'ga_dashas' THEN
+    -- Hash fixed-size per-row MD5 components into the generation SHA-256.  This
+    -- avoids building a 536k-element JSON aggregate while retaining a stable,
+    -- order-independent digest over every exact typed dasha snapshot plus the
+    -- two ordinary chart_facts scope sentinels.
+    SELECT encode(digest(
+      COALESCE((
+        SELECT string_agg(
+          md5(latest.source_row::text), ''
+          ORDER BY (latest.source_row).dasha_row_id
+        )
+        FROM (
+          SELECT DISTINCT ON ((s.source_row).dasha_row_id) s.source_row
+          FROM public.l1_data_plane_dasha_snapshots s
+          WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
+            AND s.generation_id = p_generation_id
+          ORDER BY (s.source_row).dasha_row_id,
+                   s.captured_at DESC, s.dasha_snapshot_id DESC
+        ) latest
+      ), '') || '|' || COALESCE((
+        SELECT string_agg(latest.semantic_digest, ''
+                          ORDER BY latest.source_table, latest.row_identity)
+        FROM (
+          SELECT DISTINCT ON (s.source_table, s.row_identity)
+            s.source_table, s.row_identity, s.semantic_digest
+          FROM public.l1_data_plane_row_snapshots s
+          WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
+            AND s.generation_id = p_generation_id
+          ORDER BY s.source_table, s.row_identity,
+                   s.captured_at DESC, s.snapshot_id DESC
+        ) latest
+      ), ''),
+      'sha256'
+    ), 'hex') INTO v_digest;
+  ELSE
+    SELECT encode(digest(COALESCE(
+      jsonb_agg(
+        jsonb_build_array(source_table, row_identity, semantic_digest)
+        ORDER BY source_table, row_identity
+      ), '[]'::jsonb
+    )::text, 'sha256'), 'hex')
+    INTO v_digest
+    FROM (
+      SELECT DISTINCT ON (source_table, row_identity)
+        source_table, row_identity, semantic_digest
+      FROM public.l1_data_plane_row_snapshots
+      WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+        AND generation_id = p_generation_id
+      ORDER BY source_table, row_identity, captured_at DESC, snapshot_id DESC
+    ) latest;
+  END IF;
 
   UPDATE public.l1_data_plane_generations
   SET completed_partitions = v_completed,
@@ -858,18 +1173,79 @@ CREATE OR REPLACE FUNCTION public.select_l1_data_plane_generation(
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT DISTINCT ON (s.source_table, s.row_identity)
-         s.source_table, s.row_identity, s.context_id,
-         s.calculation_context_jsonb, s.grain_jsonb,
-         s.source_dependencies_jsonb, s.epistemic_class,
-         s.missingness_state, s.verification_class, s.unit,
-         s.semantic_payload_jsonb, s.semantic_digest
-  FROM public.l1_data_plane_row_snapshots s
-  JOIN public.l1_data_plane_generations g
-    USING (chart_id, asset_id, generation_id)
-  WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
-    AND s.generation_id = p_generation_id AND g.status = 'complete'
-  ORDER BY s.source_table, s.row_identity, s.captured_at DESC, s.snapshot_id DESC
+  SELECT DISTINCT ON (result.source_table, result.row_identity)
+    result.source_table, result.row_identity, result.context_id,
+    result.calculation_context_jsonb, result.grain_jsonb,
+    result.source_dependencies_jsonb, result.epistemic_class,
+    result.missingness_state, result.verification_class, result.unit,
+    result.semantic_payload_jsonb, result.semantic_digest
+  FROM (
+    SELECT s.source_table, s.row_identity, s.context_id,
+           s.calculation_context_jsonb, s.grain_jsonb,
+           s.source_dependencies_jsonb, s.epistemic_class,
+           s.missingness_state, s.verification_class, s.unit,
+           s.semantic_payload_jsonb, s.semantic_digest,
+           s.captured_at, s.snapshot_id AS ordering_id
+    FROM public.l1_data_plane_row_snapshots s
+    JOIN public.l1_data_plane_generations g
+      USING (chart_id, asset_id, generation_id)
+    WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
+      AND s.generation_id = p_generation_id AND g.status = 'complete'
+
+    UNION ALL
+
+    SELECT
+      'chart_dashas'::TEXT,
+      'dasha_row_id=' || (s.source_row).dasha_row_id::text,
+      'l1ctx:' || substr(encode(digest(
+        (((g.base_context_jsonb || jsonb_build_object(
+          'ayanamsha_id', (s.source_row).ayanamsha_id,
+          'method_id', (s.source_row).system_id,
+          'varga', 'D1', 'varga_formula', 'not_applicable',
+          'varga_domain', 'row_declared_or_not_applicable',
+          'karaka_school', 'not_applicable'
+        )) - 'build_id') - 'generation_id')::text,
+        'sha256'
+      ), 'hex'), 1, 24),
+      g.base_context_jsonb || jsonb_build_object(
+        'ayanamsha_id', (s.source_row).ayanamsha_id,
+        'method_id', (s.source_row).system_id,
+        'varga', 'D1', 'varga_formula', 'not_applicable',
+        'varga_domain', 'row_declared_or_not_applicable',
+        'karaka_school', 'not_applicable'
+      ),
+      jsonb_build_object(
+        'source_table', 'chart_dashas',
+        'natural_key', jsonb_build_array(
+          'dasha_row_id=' || (s.source_row).dasha_row_id::text
+        )
+      ),
+      jsonb_build_object(
+        'producer_assets', to_jsonb(COALESCE(r.depends_on, ARRAY[]::TEXT[])),
+        'constituent_fact_ids', '[]'::jsonb
+      ),
+      'deterministic_derivation'::TEXT,
+      'present'::TEXT,
+      COALESCE(to_jsonb(s.source_row)->>'verification_pass_status',
+               to_jsonb(s.source_row)->>'verification_method', 'runtime_snapshot'),
+      NULL::TEXT,
+      to_jsonb(s.source_row) - 'build_id' - 'computed_at',
+      encode(digest(
+        (to_jsonb(s.source_row) - 'build_id' - 'computed_at')::text,
+        'sha256'
+      ), 'hex'),
+      s.captured_at,
+      s.dasha_snapshot_id
+    FROM public.l1_data_plane_dasha_snapshots s
+    JOIN public.l1_data_plane_generations g
+      ON g.chart_id = s.chart_id AND g.asset_id = s.asset_id
+     AND g.generation_id = s.generation_id AND g.status = 'complete'
+    LEFT JOIN public.asset_registry r ON r.asset_id = 'ga_dashas'
+    WHERE p_asset_id = 'ga_dashas'
+      AND s.chart_id = p_chart_id AND s.generation_id = p_generation_id
+  ) result
+  ORDER BY result.source_table, result.row_identity,
+           result.captured_at DESC, result.ordering_id DESC
 $$;
 
 CREATE OR REPLACE FUNCTION public.rollback_l1_data_plane_generation(
@@ -914,6 +1290,18 @@ JOIN public.l1_data_plane_row_snapshots s
 ORDER BY s.chart_id, s.asset_id, s.source_table, s.row_identity,
          s.captured_at DESC, s.snapshot_id DESC;
 
+CREATE OR REPLACE VIEW public.l1_data_plane_current_dashas AS
+SELECT DISTINCT ON (
+  s.chart_id, s.asset_id, (s.source_row).dasha_row_id
+) s.*
+FROM public.l1_data_plane_generation_heads h
+JOIN public.l1_data_plane_dasha_snapshots s
+  ON s.chart_id = h.chart_id
+ AND s.asset_id = h.asset_id
+ AND s.generation_id = h.current_generation_id
+ORDER BY s.chart_id, s.asset_id, (s.source_row).dasha_row_id,
+         s.captured_at DESC, s.dasha_snapshot_id DESC;
+
 CREATE OR REPLACE VIEW public.l1_data_plane_current_facts AS
 SELECT DISTINCT ON (
   f.chart_id, f.asset_id, f.source_table, f.row_identity, f.fact_key
@@ -945,8 +1333,8 @@ CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.chart_facts
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row('fact_id');
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_dashas;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_dashas
-FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row('dasha_row_id');
+-- Intentionally no row trigger: complete_l1_data_plane_partition performs one
+-- set-based capture per dasha partition so COPY retains its bulk behavior.
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_divisionals;
 CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.chart_divisionals

@@ -24,9 +24,10 @@ from ga_writers.ga_condition_writer import (  # noqa: E402
 
 
 class _FakeCursor:
-    def __init__(self, calls, fail_on_select):
+    def __init__(self, calls, fail_on_select, rows):
         self._calls = calls
         self._fail_on_select = fail_on_select
+        self._rows = rows
 
     def __enter__(self):
         return self
@@ -41,16 +42,17 @@ class _FakeCursor:
             raise RuntimeError("canceling statement due to statement timeout")
 
     def fetchall(self):
-        return []
+        return self._rows
 
 
 class _FakeConn:
-    def __init__(self, fail_on_select=False):
+    def __init__(self, fail_on_select=False, rows=None):
         self.calls: list[str] = []
         self._fail_on_select = fail_on_select
+        self._rows = rows or []
 
     def cursor(self, row_factory=None):
-        return _FakeCursor(self.calls, self._fail_on_select)
+        return _FakeCursor(self.calls, self._fail_on_select, self._rows)
 
 
 def test_dasha_lookup_rolls_back_savepoint_on_timeout():
@@ -73,6 +75,18 @@ def test_dasha_lookup_releases_savepoint_on_success():
     assert "SAVEPOINT sp_ga_cond_dasha" in joined
     assert "RELEASE SAVEPOINT sp_ga_cond_dasha" in joined
     assert "ROLLBACK TO SAVEPOINT sp_ga_cond_dasha" not in joined
+
+
+def test_dasha_lookup_preserves_exact_source_row_identity():
+    conn = _FakeConn(rows=[(
+        "11111111-1111-4111-8111-111111111111",
+        "vimshottari", 1, "Sun", "2000-01-01", "2006-01-01",
+    )])
+    peak, weak = _load_dasha_periods(
+        conn, "chart-1", "Sun", condition_score=0.9, dignity_d1="exalted"
+    )
+    assert weak is None
+    assert peak[0]["source_dasha_row_id"] == "11111111-1111-4111-8111-111111111111"
 
 
 def test_varga_spread_rolls_back_savepoint_on_timeout():

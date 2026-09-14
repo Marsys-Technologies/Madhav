@@ -41,8 +41,8 @@ _WRITER_PATH = (
 # the shared L0 module. Line numbers are 1-indexed and pinned so a genuine new code-path
 # regression elsewhere in the file cannot hide behind this allowlist growing silently --
 # adding a line here requires deliberately widening it.
-_ALLOWED_PROSE_LINES = frozenset({990, 991, 995, 3419})
-_ALLOWED_LOOKUP_LINES = frozenset({70})
+_ALLOWED_PROSE_LINES = frozenset({992, 993, 997})
+_ALLOWED_LOOKUP_LINES = frozenset({72})
 
 _BARE_LITERAL_RE = re.compile(
     r'"(two_pass_verified|classical_match|scope_cap_sentinel)"'

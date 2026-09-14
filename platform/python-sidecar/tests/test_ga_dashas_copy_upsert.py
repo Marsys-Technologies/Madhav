@@ -119,6 +119,16 @@ def test_upsert_rows_writes_via_copy_in_column_order():
     assert not conn.committed  # commit=False → caller/orchestrator owns commit
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_upsert_rows_rejects_non_finite_numeric_output(value):
+    conn = _FakeConn()
+    rows = _sample_rows(1)
+    rows[0]["duration_days"] = value
+
+    with pytest.raises(ValueError, match="non-finite dasha value for duration_days"):
+        mod._upsert_rows(conn, rows, "vimshottari", "lahiri", commit=False)
+
+
 def test_upsert_rows_deletes_prior_scope_before_copy():
     conn = _FakeConn()
     rows = _sample_rows(2)
