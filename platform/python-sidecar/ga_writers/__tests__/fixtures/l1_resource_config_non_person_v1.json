@@ -52,6 +52,17 @@
       "source_dependencies": ["l0:karaka_school:jaimini_eight_karaka"]
     },
     {
+      "category": "graha_position",
+      "subject": "SUN",
+      "key": "sun_longitude_sidereal",
+      "grain": "chart-context-graha",
+      "unit": "degree",
+      "epistemic_class": "astronomical",
+      "verification_class": "engineering_fixture",
+      "value_num": 100.0,
+      "source_dependencies": ["l0:graha:SUN", "l0:ayanamsha:lahiri_chitrapaksha"]
+    },
+    {
       "category": "condition_component",
       "subject": "JUP",
       "key": "combustion_orb_delta",
@@ -61,7 +72,7 @@
       "verification_class": "engineering_fixture",
       "missingness": "zero",
       "value_num": 0,
-      "source_dependencies": ["fact:graha_position:JUP", "fact:graha_position:SUN"]
+      "source_dependencies": ["fixture_fact:longitude_sidereal", "fixture_fact:sun_longitude_sidereal"]
     },
     {
       "category": "condition_component",
@@ -151,21 +162,22 @@
     {
       "fact_key": "longitude_sidereal",
       "perturbation_id": "crosses-varga-boundary",
-      "baseline_input": 29.999,
-      "perturbed_input": 30.001,
-      "boundary_deg": 30.0
+      "baseline_input": 119.999,
+      "perturbed_input": 120.001,
+      "boundary_deg": 120.0,
+      "segment_width_deg": 30.0
     },
     {
       "fact_key": "longitude_sidereal",
       "perturbation_id": "stays-within-varga-segment",
-      "baseline_input": 15.0,
-      "perturbed_input": 15.001,
-      "boundary_deg": 30.0
+      "baseline_input": 119.999,
+      "perturbed_input": 119.998,
+      "boundary_deg": 120.0,
+      "segment_width_deg": 30.0
     }
   ],
   "clock": {
     "system_id": "fixture_exact_interval",
-    "interval_id": "fixture-clock-root-01",
     "duration_seconds": 86400,
     "uncertainty_seconds": 1.0
   }

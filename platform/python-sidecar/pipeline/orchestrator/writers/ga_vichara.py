@@ -18,6 +18,7 @@ DAG: depends_on = ['ga_structural', 'ga_strength', 'ga_dashas', 'ga_yoga']
 (also declared authoritatively in asset_registry.depends_on, migration 435).
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -32,6 +33,7 @@ CANONICAL_AYANAMSHAS: list[str] = [
 
 
 @register("ga_vichara")
+@l1_producer_contract
 class GaVicharaWriter(WriterBase):
     """
     Per-chart "judged structure" writer. One sub-step per ayanamsha; derives

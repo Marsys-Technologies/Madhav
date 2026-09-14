@@ -5,11 +5,13 @@ Up to 9 grahas × 5 ayanamshas = 45 rows per chart (Ketu skipped if no direction
 Delegates to ga_writers.ga_vastu_writer.build_ga_vastu_substep().
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_vastu')
+@l1_producer_contract
 class GaVastuWriter(WriterBase):
     asset_id = 'ga_vastu'
     has_substeps = True

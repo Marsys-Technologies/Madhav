@@ -85,9 +85,13 @@ def _jsonable(value: Any) -> Any:
 
 
 def canonical_json(value: Any) -> str:
-    return json.dumps(
-        _jsonable(value), ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
+    try:
+        return json.dumps(
+            _jsonable(value), ensure_ascii=False, sort_keys=True,
+            separators=(",", ":"), allow_nan=False,
+        )
+    except (TypeError, ValueError) as exc:
+        raise ContractError(f"value is not canonical JSON: {exc}") from exc
 
 
 def content_sha256(value: Any) -> str:
@@ -234,6 +238,12 @@ class FactEnvelope:
         populated = sum(value is not None for value in values)
         if self.missingness is MissingnessState.PRESENT and populated != 1:
             raise ContractError("present facts carry exactly one typed value")
+        if self.value_num is not None and (
+            isinstance(self.value_num, bool) or not math.isfinite(float(self.value_num))
+        ):
+            raise ContractError("numeric facts require a finite non-boolean value")
+        if self.value_json is not None:
+            canonical_json(self.value_json)
         if self.missingness is MissingnessState.ZERO:
             if self.value_num != 0 or self.value_text is not None or self.value_json is not None:
                 raise ContractError("zero is an explicit numeric zero, not missingness")
@@ -251,6 +261,7 @@ class FactEnvelope:
             self.key,
             self.context.chart_id,
             self.context.ayanamsha_id,
+            self.context.context_id,
             *self.variant_identity,
         )
 
@@ -362,6 +373,12 @@ class ClockInterval:
             raise ContractError("non-root clock intervals require a parent identity")
         if not math.isfinite(self.uncertainty_seconds) or self.uncertainty_seconds < 0:
             raise ContractError("clock uncertainty must be finite and non-negative")
+        expected_id = stable_uuid(
+            "clock_interval", self.context.context_id, self.system_id,
+            self.parent_interval_id, self.level, self.start_iso, self.end_iso,
+        )
+        if self.interval_id != expected_id:
+            raise ContractError("clock interval_id must be derived from semantic context and bounds")
 
 
 @dataclass(frozen=True)
@@ -371,6 +388,8 @@ class SensitivityResult:
     perturbation_id: str
     baseline_input: float
     perturbed_input: float
+    baseline_output: int | float | str
+    perturbed_output: int | float | str
     boundary_distance: float
     classification: str
     reason: str
@@ -378,6 +397,9 @@ class SensitivityResult:
     def __post_init__(self) -> None:
         if self.classification not in {"changed", "unchanged", "unsupported"}:
             raise ContractError("sensitivity classification must be changed, unchanged or unsupported")
+        observed = "changed" if self.baseline_output != self.perturbed_output else "unchanged"
+        if self.classification != "unsupported" and self.classification != observed:
+            raise ContractError("sensitivity classification must match recomputed outputs")
 
 
 def assert_join_compatible(left: CalculationContext, right: CalculationContext) -> None:

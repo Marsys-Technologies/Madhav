@@ -9,6 +9,7 @@ FROZEN contract (§N.2): @register WriterBase subclass; runs on ctx.db_conn and 
 commits/closes it; does NOT write asset_throughput.
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -19,6 +20,7 @@ _AYANAMSHAS = [
 
 
 @register('ga_sensitive_degree')
+@l1_producer_contract
 class GaSensitiveDegreeWriter(WriterBase):
     asset_id = 'ga_sensitive_degree'
     has_substeps = True

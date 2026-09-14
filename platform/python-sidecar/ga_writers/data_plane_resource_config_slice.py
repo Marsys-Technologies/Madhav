@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import timedelta
 import json
 from pathlib import Path
@@ -27,6 +27,7 @@ from .data_plane_contracts import (
     canonical_json,
     content_sha256,
     parse_aware_instant,
+    stable_uuid,
 )
 
 
@@ -41,6 +42,8 @@ def load_fixture(path: str | Path = _DEFAULT_FIXTURE) -> dict[str, Any]:
         raise ContractError("the L1 slice accepts deterministic non-person fixtures only")
     if not str(fixture.get("chart_id", "")).startswith("synthetic:"):
         raise ContractError("the L1 slice cannot consume a stored/personal chart identity")
+    if not str(fixture.get("subject_id", "")).startswith("synthetic-subject:"):
+        raise ContractError("the L1 slice cannot consume a personal subject identity")
     return fixture
 
 
@@ -91,18 +94,24 @@ def _sensitivity(context: CalculationContext, fact: FactEnvelope, spec: Mapping[
     baseline = float(spec["baseline_input"])
     perturbed = float(spec["perturbed_input"])
     boundary = float(spec["boundary_deg"])
-    baseline_side = baseline >= boundary
-    perturbed_side = perturbed >= boundary
-    classification = "changed" if baseline_side != perturbed_side else "unchanged"
+    if fact.value_num is None or float(fact.value_num) != baseline:
+        raise ContractError("sensitivity baseline must equal the referenced fact value")
+    segment_width = float(spec["segment_width_deg"])
+    baseline_output = int(baseline // segment_width)
+    perturbed_output = int(perturbed // segment_width)
+    classification = "changed" if baseline_output != perturbed_output else "unchanged"
     return SensitivityResult(
         context_id=context.context_id,
         fact_id=fact.fact_id,
         perturbation_id=str(spec["perturbation_id"]),
         baseline_input=baseline,
         perturbed_input=perturbed,
+        baseline_output=baseline_output,
+        perturbed_output=perturbed_output,
         boundary_distance=min(abs(baseline - boundary), abs(perturbed - boundary)),
         classification=classification,
-        reason=f"boundary={boundary}; baseline_side={baseline_side}; perturbed_side={perturbed_side}",
+        reason=(f"boundary={boundary}; segment_width={segment_width}; "
+                f"baseline_output={baseline_output}; perturbed_output={perturbed_output}"),
     )
 
 
@@ -111,11 +120,34 @@ def build_slice(fixture: Mapping[str, Any]) -> dict[str, Any]:
         raise ContractError("the L1 slice accepts deterministic non-person fixtures only")
     if not str(fixture.get("chart_id", "")).startswith("synthetic:"):
         raise ContractError("the L1 slice cannot consume a stored/personal chart identity")
+    if not str(fixture.get("subject_id", "")).startswith("synthetic-subject:"):
+        raise ContractError("the L1 slice cannot consume a personal subject identity")
     context = _context(fixture)
     facts = [_fact(context, spec) for spec in fixture["facts"]]
     facts_by_key = {fact.key: fact for fact in facts}
     if len(facts_by_key) != len(facts):
         raise ContractError("fixture fact keys must be unique")
+    emitted_ids = {fact.fact_id for fact in facts}
+    resolved_facts: list[FactEnvelope] = []
+    for fact in facts:
+        resolved_dependencies: list[str] = []
+        for dependency in fact.source_dependencies:
+            if dependency.startswith("fixture_fact:"):
+                dependency_key = dependency.removeprefix("fixture_fact:")
+                if dependency_key not in facts_by_key:
+                    raise ContractError(f"unresolved fixture dependency: {dependency_key}")
+                resolved_dependencies.append(facts_by_key[dependency_key].fact_id)
+            else:
+                resolved_dependencies.append(dependency)
+        resolved_facts.append(replace(fact, source_dependencies=tuple(resolved_dependencies)))
+    facts = resolved_facts
+    facts_by_key = {fact.key: fact for fact in facts}
+    for fact in facts:
+        for dependency in fact.source_dependencies:
+            if dependency not in emitted_ids and not dependency.startswith(("l0:", "external:")):
+                raise ContractError(
+                    f"dependency is neither emitted nor qualified external identity: {dependency}"
+                )
 
     occurrence_spec = fixture["configuration"]
     constituent_ids = tuple(facts_by_key[key].fact_id for key in occurrence_spec["constituent_fact_keys"])
@@ -142,14 +174,19 @@ def build_slice(fixture: Mapping[str, Any]) -> dict[str, Any]:
 
     clock_start = parse_aware_instant(context.instant_iso)
     clock_end = clock_start + timedelta(seconds=int(fixture["clock"]["duration_seconds"]))
+    clock_end_iso = clock_end.isoformat()
+    clock_id = stable_uuid(
+        "clock_interval", context.context_id, str(fixture["clock"]["system_id"]),
+        None, 1, clock_start.isoformat(), clock_end_iso,
+    )
     clock = ClockInterval(
         context=context,
         system_id=str(fixture["clock"]["system_id"]),
-        interval_id=str(fixture["clock"]["interval_id"]),
+        interval_id=clock_id,
         parent_interval_id=None,
         level=1,
         start_iso=clock_start.isoformat(),
-        end_iso=clock_end.isoformat(),
+        end_iso=clock_end_iso,
         applicability=MissingnessState.PRESENT,
         coverage="synthetic_fixture_only",
         uncertainty_seconds=float(fixture["clock"]["uncertainty_seconds"]),

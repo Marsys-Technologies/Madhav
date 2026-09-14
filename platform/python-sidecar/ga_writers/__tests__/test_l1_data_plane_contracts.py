@@ -24,6 +24,8 @@ from ga_writers.data_plane_resource_config_slice import (
     build_slice,
     load_fixture,
 )
+from ga_writers.data_plane_runtime import CONTRACTED_L1_ASSETS
+from pipeline.orchestrator.writers import ContextSpec, discover_all, list_writers
 
 
 def _context(**overrides):
@@ -72,6 +74,22 @@ def test_context_identity_is_stable_across_build_generation_but_join_is_not():
 def test_material_context_changes_rotate_context_identity(field, value):
     base = _context()
     assert replace(base, **{field: value}).context_id != base.context_id
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("instant_iso", "2000-01-01T12:00:01+00:00"), ("node_type", "true"),
+     ("varga", "D9"), ("varga_formula", "parasara_variant_v2"),
+     ("engine_version", "synthetic/2.0")],
+)
+def test_material_context_changes_rotate_fact_identity(field, value):
+    base = FactEnvelope(
+        context=_context(varga="D1"), category="position", subject="SUN", key="longitude",
+        grain="chart-context-graha", unit="degree", epistemic_class=EpistemicClass.ASTRONOMICAL,
+        verification_class="fixture", value_num=1.0,
+    )
+    changed = replace(base, context=replace(base.context, **{field: value}))
+    assert changed.fact_id != base.fact_id
 
 
 def test_context_requires_aware_instant_and_explicit_node_variant():
@@ -149,6 +167,22 @@ def test_real_zero_is_distinct_from_unavailable():
         replace(zero, value_num=None)
 
 
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_non_finite_numeric_values_cannot_be_present(value):
+    with pytest.raises(ContractError, match="finite"):
+        FactEnvelope(
+            context=_context(), category="position", subject="SUN", key="longitude",
+            grain="chart-context-graha", unit="degree",
+            epistemic_class=EpistemicClass.ASTRONOMICAL,
+            verification_class="fixture", value_num=value,
+        )
+
+
+def test_non_finite_nested_json_is_rejected():
+    with pytest.raises(ContractError, match="canonical JSON"):
+        canonical_json({"value": [float("nan")]})
+
+
 def test_unqualified_source_cannot_become_positive_doctrinal_occurrence():
     kwargs = {
         "context": _context(),
@@ -220,6 +254,7 @@ def test_default_slice_is_deterministic_non_person_and_preserves_all_states():
     first = build_default_slice()
     second = build_default_slice()
     assert canonical_json(first) == canonical_json(second)
+    assert first["content_sha256"] == "4765ba933fc9c40d375484bfd4d13c2a3c5c8021c2154408a47d55f612972074"
     assert first["fixture_class"] == "deterministic_non_person"
     assert first["context"]["chart_id"].startswith("synthetic:")
     assert first["configuration"]["positive_doctrinal_arm"] == "NOT_REACHABLE"
@@ -243,3 +278,136 @@ def test_slice_rejects_personal_or_stored_chart_identity():
     fixture["chart_id"] = "482012f1-710e-4a25-994a-93821f5871aa"
     with pytest.raises(ContractError, match="stored/personal"):
         build_slice(fixture)
+
+
+def test_slice_rejects_personal_subject_identity():
+    fixture = load_fixture()
+    fixture["subject_id"] = "person:actual-user-123"
+    with pytest.raises(ContractError, match="personal subject"):
+        build_slice(fixture)
+
+
+def test_slice_dependencies_close_and_sensitivity_recomputes_output():
+    payload = build_default_slice()
+    emitted = {fact["fact_id"] for fact in payload["facts"]}
+    for fact in payload["facts"]:
+        for dependency in fact["source_dependencies"]:
+            assert dependency in emitted or dependency.startswith(("l0:", "external:"))
+    changed, unchanged = payload["sensitivity"]
+    assert changed["baseline_output"] != changed["perturbed_output"]
+    assert unchanged["baseline_output"] == unchanged["perturbed_output"]
+
+
+def test_all_nineteen_runtime_writers_have_the_contract_boundary():
+    discover_all()
+    ga_writers = {
+        asset_id: writer
+        for asset_id, writer in list_writers().items()
+        if asset_id.startswith("ga_")
+    }
+    assert set(ga_writers) == CONTRACTED_L1_ASSETS
+    assert len(ga_writers) == 19
+    for asset_id, writer in ga_writers.items():
+        assert writer.__l1_data_plane_contract__ is True, asset_id
+        assert writer.l1_data_plane_contract_version == "l1.data-plane.contract.1.0"
+
+
+class _RuntimeCursor:
+    def __init__(self, statements):
+        self.statements = statements
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def execute(self, sql, params=None):
+        self.statements.append((" ".join(sql.split()), params))
+        return self
+
+
+class _RuntimeConn:
+    _l1_contract_test_double = True
+
+    def __init__(self):
+        self.statements = []
+
+    def cursor(self, *args, **kwargs):
+        return _RuntimeCursor(self.statements)
+
+
+def test_runtime_boundary_opens_then_completes_a_generation(monkeypatch):
+    from ga_writers import ga_positions_writer
+
+    discover_all()
+    monkeypatch.setattr(
+        ga_positions_writer,
+        "build_ga_positions",
+        lambda **kwargs: {"total_chart_facts_rows": 9},
+    )
+    conn = _RuntimeConn()
+    ctx = ContextSpec(
+        asset_id="ga_positions",
+        build_id="11111111-1111-4111-8111-111111111111",
+        db_conn=conn,
+        config={"chart_id": "22222222-2222-4222-8222-222222222222"},
+    )
+    result = list_writers()["ga_positions"]().run(ctx)
+    sql = [statement for statement, _ in conn.statements]
+    assert result.rows_inserted == 9
+    assert "set_config('madhav.l1_asset_id'" in sql[0]
+    assert "open_l1_data_plane_generation" in sql[1]
+    assert "complete_l1_data_plane_partition" in sql[2]
+    assert conn.statements[2][1][-1] == 9
+
+
+def test_runtime_boundary_does_not_complete_a_failed_writer(monkeypatch):
+    from ga_writers import ga_positions_writer
+
+    discover_all()
+
+    def fail(**kwargs):
+        raise RuntimeError("numerical failure")
+
+    monkeypatch.setattr(ga_positions_writer, "build_ga_positions", fail)
+    conn = _RuntimeConn()
+    ctx = ContextSpec(
+        asset_id="ga_positions",
+        build_id="11111111-1111-4111-8111-111111111111",
+        db_conn=conn,
+        config={"chart_id": "22222222-2222-4222-8222-222222222222"},
+    )
+    with pytest.raises(RuntimeError, match="numerical failure"):
+        list_writers()["ga_positions"]().run(ctx)
+    assert not any(
+        "complete_l1_data_plane_partition" in statement
+        for statement, _ in conn.statements
+    )
+
+
+def test_structural_boundary_rejects_missing_or_defaulted_geometry():
+    from ga_writers.ga_structural_writer import _validate_chart_output_complete
+
+    with pytest.raises(RuntimeError, match="ascendant"):
+        _validate_chart_output_complete({"grahas": []})
+    with pytest.raises(RuntimeError, match="required grahas missing"):
+        _validate_chart_output_complete({
+            "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 0.0},
+            "grahas": [],
+        })
+
+
+def test_sensitive_helpers_reject_missing_lagna_and_vara():
+    from ga_writers.ga_sensitive_writer import (
+        _build_gulika_mandi_sensitive_rows,
+        _build_saham_rows,
+    )
+
+    with pytest.raises(ValueError, match="LAGNA"):
+        _build_saham_rows({}, "chart", "lahiri", "build", "engine", True)
+    with pytest.raises(ValueError, match="vara_id"):
+        _build_gulika_mandi_sensitive_rows(
+            {}, {"LAGNA": 10.0, "SAT": 20.0},
+            "chart", "lahiri", "build", "engine", {},
+        )

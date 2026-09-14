@@ -9,6 +9,7 @@ MEDICAL DISCLAIMER: All rows carry indication_tier='jyotish_indication' and
 not_diagnosis=TRUE — Jyotish indicators only, NOT medical diagnoses.
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -22,6 +23,7 @@ _AYANAMSHAS = [
 
 
 @register('ga_medical')
+@l1_producer_contract
 class GaMedicalWriter(WriterBase):
     asset_id = 'ga_medical'
     has_substeps = True

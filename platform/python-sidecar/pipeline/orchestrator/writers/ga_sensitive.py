@@ -6,11 +6,13 @@ orchestrator commits and updates last_built_at. This keeps the asset under both
 watchdog reapers and makes a connection drop non-fatal (prior ayanamshas survive).
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_sensitive')
+@l1_producer_contract
 class GaSensitiveWriter(WriterBase):
     asset_id = 'ga_sensitive'
     has_substeps = True

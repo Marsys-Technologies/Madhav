@@ -74,12 +74,19 @@ class _FakeConn:
 
 
 def _rows_with(moon_sign: str, moon_nakshatra: str):
-    """A minimal chart_facts row set: Moon sign + nakshatra + longitude, nothing else."""
-    return [
-        ("MOON", "sign", moon_sign, None),
-        ("MOON", "nakshatra", moon_nakshatra, None),
-        ("MOON", "longitude_sidereal", None, 328.5),
-    ]
+    """Complete nine-graha anchors while varying only the forensic Moon fields."""
+    subjects = (
+        "SUN", "MOON", "MAR", "MER", "JUP", "VEN", "SAT", "RAH_MEAN", "KET_MEAN",
+    )
+    signs = (
+        "aries", moon_sign, "gemini", "cancer", "leo", "virgo", "libra", "scorpio", "taurus",
+    )
+    rows = []
+    for index, (subject, sign) in enumerate(zip(subjects, signs, strict=True)):
+        rows.append((subject, "sign", sign, None))
+        rows.append((subject, "longitude_sidereal", None, float(index * 30 + 1)))
+    rows.append(("MOON", "nakshatra", moon_nakshatra, None))
+    return rows
 
 
 def _run(chart_id: str, rows) -> None:

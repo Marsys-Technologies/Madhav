@@ -3342,61 +3342,21 @@ SYSTEMS = [
 
 def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any = None) -> int:
     """
-    Write the 2 scope-cap sentinel rows (Prana Dasha 5th-level; KP sub-period
-    levels beyond sub_sub) that document "intentionally not computed" so
-    absence != bug (see the two blocks this replaces, below).
+    Persist both explicit out-of-scope markers without violating the clock
+    domain they describe.
 
-    SD-DASHA-1 fix (SAMĀPTI v2.0 §9.5): these sentinels were previously only
-    written from build_ga_dashas() — the CLI/full-build path — and NEVER from
-    the orchestrator adapter (pipeline/orchestrator/writers/ga_dashas.py),
-    which drives every real "click Build" chart via run_substep() calling
-    build_system()/_run_concurrency_post_pass_db() directly, never
-    build_ga_dashas() itself. Confirmed live: chart_dashas has ZERO
-    system_id='scope_cap' rows for any of the 3 charts in production
-    (482012f1, 1c826d5a, cb73cd3d) — all orchestrator-built. Extracting this
-    into a shared, conn-aware function (same owns_conn pattern as
-    _run_concurrency_post_pass_db just below) lets both paths call the same
-    code, so the two build paths can no longer silently diverge again.
+    ``chart_dashas.level_n`` deliberately supports only 1..4.  Prāṇa is the
+    excluded fifth level, so representing its absence as a level-5 interval
+    was self-contradictory and could never satisfy ``cd_level_n_max4``.  Its
+    marker is therefore an atomic ``chart_facts`` capability fact with an
+    explicit ``method_inapplicable`` payload.  The KP marker remains a legal
+    level-4 ``chart_dashas`` row because it caps the separate ``kp_sublevel``
+    dimension beyond ``sub_sub``.
 
-    Connection ownership: conn injected (orchestrator post-pass substep) ->
-    runs on the caller-owned ctx.db_conn without committing (FROZEN
-    orchestrator contract, §N.2: writer never commits); conn None -> opens
-    and commits its own (legacy CLI path, build_ga_dashas()).
-
-    Idempotent: _upsert_rows -> replace_prior_chart_dashas scopes the delete
-    to (chart_id, system_id='scope_cap', ayanamsha_id='INVARIANT'), so a
-    rebuild under a new build_id replaces instead of accreting.
-
-    F-A10 fix (migration 652): 'scope_cap_sentinel' was not in
-    chart_dashas_verification_pass_status_check, so BOTH sentinels violated it
-    on every write -- the KP row silently in addition to the already-documented
-    Prana failure. Migration 652 admits the new value. The KP row's own
-    level_n=4 already satisfies cd_level_n_max4, so it now writes; the Prana
-    row's level_n=5 still does not (SD-DASHA-1 remains OPEN -- deliberately,
-    per the docstring on _write_one_sentinel below).
-
-    KNOWN, DELIBERATE RESIDUAL: brahmagyan/verification_vocab.py's
-    RESTRICTED_TABLE_VOCAB (the Python-side mirror of chart_dashas' and
-    chart_divisionals' shared CHECK vocabulary) still does not include
-    'scope_cap_sentinel' for chart_dashas after migration 652 -- the two
-    tables' constraints have now genuinely diverged, and correcting the
-    mirror requires splitting that shared L0 (brahmagyan) constant into a
-    per-table shape. Regenerating the writer-digest inventory to reflect
-    such a change shifts bg_kp_sublord_division's digest too (it imports
-    from this module's neighborhood) -- nirmana_analysis_layer_pins.py's own
-    safety check refuses to regenerate ANY layer's pin once it detects L0's
-    frozen inputs have drifted, citing "would invalidate 29 already-frozen L0
-    capsules". Not forced through unilaterally; this is nothing that blocks
-    the DB-level fix here (nothing in this module calls assert_legal() for
-    chart_dashas today), only the Python mirror's completeness. Left for a
-    deliberate, coordinated follow-up (see the campaign issue tracker) rather
-    than risking those capsules on an L1 session's own judgment call.
-
-    Returns count of rows written. Honestly always 1 as of this fix (KP
-    succeeds, Prana is structurally excluded by cd_level_n_max4 until
-    SD-DASHA-1's semantic question is resolved) -- never silently 0 or a
-    hopeful 2; partial/zero writes are still logged as warnings, non-fatal,
-    matching the pre-existing semantics.
+    Both writes are exact-key replace operations.  An injected connection is
+    caller-owned and is never committed; the legacy CLI path commits once.
+    Failure is intentionally fatal so an incomplete scope declaration cannot
+    be reported as a successful producer generation.
     """
     from contextlib import nullcontext
 
@@ -3416,7 +3376,7 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
         "karaka_role_at_period": None,
         # M-22 fix: this row is a deliberate "not computed — beyond scope"
         # marker (see citation_human), not a real computation — stamping it
-        # "two_pass_verified" claimed a verified value where none exists.
+        # The ordinary verified tier claimed a value where none exists.
         # Uses the same self-descriptive string as verification_method so
         # the row is unambiguous; falls through
         # VERIFICATION_RESCALE.get(status, documented_approximation) to the
@@ -3447,16 +3407,6 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
         "kp_sub_sub_lord": None,
     }
 
-    scope_cap_row = {
-        **common_fields,
-        "dasha_row_id": stable_uuid(
-            "dasha_scope_cap", chart_id, "PRANA_DASHA", 5,
-        ),
-        "level_n": 5,
-        "lord_graha": "PRANA_DASHA",
-        "citation_human": "Prana Dasha (5th-level sub-period) not computed — beyond L1 Ganita scope",
-        "kp_sublevel": None,
-    }
     kp_cap_row = {
         **common_fields,
         "dasha_row_id": stable_uuid(
@@ -3472,71 +3422,57 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
     }
 
     owns_conn = conn is None
-    written = 0
-
-    def _write_one_sentinel(sc_conn: Any, row: dict, savepoint: str, label: str) -> int:
-        """Write ONE sentinel inside its OWN savepoint, so its failure is
-        genuinely non-fatal to the caller's transaction.
-
-        The savepoint is the whole point of this helper. `_upsert_rows` can
-        fail — and for the Prana row it ALWAYS fails, because `level_n = 5`
-        violates `chart_dashas`'s `cd_level_n_max4` CHECK (migration 211,
-        `level_n BETWEEN 1 AND 4`). In PostgreSQL a failed statement aborts the
-        ENTIRE transaction, not just itself; every later statement then raises
-        InFailedSqlTransaction until someone rolls back. Catching the Python
-        exception does NOT un-abort the transaction.
-
-        Before this savepoint existed, the two `except` blocks below logged
-        "(non-fatal)" and returned having silently destroyed the caller's
-        transaction. On the CLI path (`owns_conn=True`) that was invisible —
-        the connection is discarded immediately after. On the ORCHESTRATOR path
-        the connection is the caller-owned `ctx.db_conn` (FROZEN contract
-        §N.2), so the abort escaped into the orchestrator, which could then no
-        longer RELEASE its own savepoint, record the error, or commit. Net
-        effect: `ga_dashas` could never reach 'lit' on ANY chart, and all 13
-        downstream assets BLOCKED. Observed live 2026-08-06 on 482012f1,
-        1c826d5a and cb73cd3d.
-
-        NOT FIXED HERE, DELIBERATELY: the Prana sentinel still does not write.
-        `level_n = 5` still contradicts `cd_level_n_max4`, so production still
-        holds ZERO rows at `system_id='scope_cap'` for that row. This change
-        only stops that failure from destroying the run — it makes the existing
-        "(non-fatal)" claim true, nothing more. SD-DASHA-1 remains OPEN: making
-        the Prana row land is a SEMANTIC question (how to represent "5th level,
-        out of scope" inside a 1-4 domain) reserved for the native. Widening the
-        constraint would be wrong — a level_n=5 row contradicts the very cap it
-        exists to document.
-        """
-        with sc_conn.cursor() as _sp_cur:
-            _sp_cur.execute(f"SAVEPOINT {savepoint}")
-        try:
-            # commit=False ALWAYS, on both paths: a COMMIT inside the savepoint
-            # would end the transaction and discard the savepoint, making the
-            # RELEASE/ROLLBACK below fail with "no such savepoint". The owned
-            # (CLI) path instead commits ONCE after both sentinels are done,
-            # below — same durable outcome, and now atomic across the pair.
-            n = _upsert_rows(sc_conn, [row], "scope_cap", "INVARIANT", commit=False)
-            with sc_conn.cursor() as _sp_cur:
-                _sp_cur.execute(f"RELEASE SAVEPOINT {savepoint}")
-            logger.info("[ga_dashas] %s scope-cap sentinel written", label)
-            return n
-        except Exception as exc:
-            # Undo the aborted statement AND clear the transaction's error
-            # state, so the caller's connection comes back usable.
-            with sc_conn.cursor() as _sp_cur:
-                _sp_cur.execute(f"ROLLBACK TO SAVEPOINT {savepoint}")
-                _sp_cur.execute(f"RELEASE SAVEPOINT {savepoint}")
-            logger.warning(
-                "[ga_dashas] %s scope-cap sentinel write failed (non-fatal, "
-                "transaction preserved): %s", label, exc,
-            )
-            return 0
 
     with (_conn() if owns_conn else nullcontext(conn)) as sc_conn:
-        written += _write_one_sentinel(sc_conn, scope_cap_row, "ga_dashas_scope_cap_prana",
-                                       "Prana Dasha")
-        written += _write_one_sentinel(sc_conn, kp_cap_row, "ga_dashas_scope_cap_kp",
-                                       "KP beyond-sub_sub")
+        prana_fact_id = stable_uuid(
+            "dasha_scope_cap_fact", chart_id, "PRANA_DASHA", "level_5_not_computed",
+        )
+        with sc_conn.cursor() as cur:
+            cur.execute(
+                """
+                DELETE FROM chart_facts
+                WHERE chart_id = %s
+                  AND ayanamsha_id = 'INVARIANT'
+                  AND fact_category = 'dasha_scope_cap'
+                  AND fact_subject = 'PRANA_DASHA'
+                  AND fact_key = 'level_5_not_computed'
+                """,
+                (chart_id,),
+            )
+            cur.execute(
+                """
+                INSERT INTO chart_facts (
+                    fact_id, chart_id, ayanamsha_id, build_id,
+                    fact_category, fact_subject, fact_key, fact_value_jsonb,
+                    unit, citation_ref, citation_human, source_calculation,
+                    verification_pass_status, engine_version, computed_at
+                ) VALUES (
+                    %s, %s, 'INVARIANT', %s,
+                    'dasha_scope_cap', 'PRANA_DASHA', 'level_5_not_computed', %s::jsonb,
+                    'scope_declaration', 'L1_GANITA_SCOPE_CAP', %s,
+                    'ga_dashas.scope_cap/v1', %s, 'pyjhora_adapter/0.1.0', %s
+                )
+                """,
+                (
+                    prana_fact_id,
+                    chart_id,
+                    build_id,
+                    json.dumps({
+                        "state": "method_inapplicable",
+                        "requested_level": 5,
+                        "supported_max_level": 4,
+                        "reason": "Prana Dasha is beyond the admitted L1 hierarchy",
+                    }, sort_keys=True, separators=(",", ":")),
+                    "Prana Dasha fifth-level sub-period is explicitly not computed; "
+                    "the admitted L1 interval hierarchy ends at level 4.",
+                    SCOPE_CAP_SENTINEL,
+                    common_fields["computed_at"],
+                ),
+            )
+
+        written = 1 + _upsert_rows(
+            sc_conn, [kp_cap_row], "scope_cap", "INVARIANT", commit=False,
+        )
         if owns_conn:
             sc_conn.commit()
 

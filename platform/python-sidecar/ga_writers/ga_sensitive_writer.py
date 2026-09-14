@@ -866,7 +866,9 @@ def _build_mrityu_rows(
     moon = all_longs.get("MOON", 0.0)
     mars = all_longs.get("MAR", 0.0)
     sat = all_longs.get("SAT", 0.0)
-    lagna = all_longs.get("LAGNA", 0.0)
+    lagna = all_longs.get("LAGNA")
+    if lagna is None:
+        raise ValueError("ga_sensitive: LAGNA longitude missing; Saham output unavailable")
 
     bphs_val = (8.0 * moon) % 360.0
     saravali_val = (moon + mars + sat) % 360.0
@@ -1145,25 +1147,30 @@ def _build_saham_rows(
     Two-pass: compute twice with same formula; verify exact match.
     """
     rows = []
-    lagna = all_longs.get("LAGNA", 0.0)
+    lagna_raw = all_longs.get("LAGNA")
+    if lagna_raw is None:
+        raise ValueError("ga_sensitive: LAGNA longitude missing; Saham output unavailable")
+    lagna = float(lagna_raw)
 
     # Build longitude lookup for formula application
     planet_longs = {
-        "Sun": all_longs.get("SUN", 0.0),
-        "Moon": all_longs.get("MOON", 0.0),
-        "Mar": all_longs.get("MAR", 0.0),
-        "Mer": all_longs.get("MER", 0.0),
-        "Jup": all_longs.get("JUP", 0.0),
-        "Ven": all_longs.get("VEN", 0.0),
-        "Sat": all_longs.get("SAT", 0.0),
-        "Asc": all_longs.get("LAGNA", 0.0),
+        "Sun": all_longs.get("SUN"),
+        "Moon": all_longs.get("MOON"),
+        "Mar": all_longs.get("MAR"),
+        "Mer": all_longs.get("MER"),
+        "Jup": all_longs.get("JUP"),
+        "Ven": all_longs.get("VEN"),
+        "Sat": all_longs.get("SAT"),
+        "Asc": all_longs.get("LAGNA"),
     }
 
     def _planet_long(name: str) -> float:
         for k, v in planet_longs.items():
             if k.lower() == name.lower():
-                return v
-        return 0.0
+                if v is None:
+                    raise ValueError(f"ga_sensitive: {name} longitude missing; Saham output unavailable")
+                return float(v)
+        raise ValueError(f"ga_sensitive: unknown Saham participant {name!r}")
 
     for saham_name, formula_data in _SAHAM_FORMULAS.items():
         formula_key = "day" if is_day_birth else "night"
@@ -2319,14 +2326,16 @@ def _build_gulika_mandi_sensitive_rows(
     rows: list[dict] = []
     lagna_long_raw = all_longs.get("LAGNA")
     if lagna_long_raw is None:
-        logging.warning("_build_gulika_mandi_sensitive_rows: LAGNA absent from all_longs; skipping")
-        return []
+        raise ValueError("ga_sensitive: LAGNA longitude missing; Gulika/Mandi unavailable")
     lagna_long = lagna_long_raw
     sat_long_raw = all_longs.get("SAT")
     vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_gulika_mandi_sensitive_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
-        vara = 0
+        raise ValueError(
+            "ga_sensitive: panchanga vara_id missing; refusing Sunday/Gulika fallback"
+        )
+    if vara not in GULIKA_DAY_SEGMENT:
+        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
 
     # Try native PyJHora upagrahas first.
     # M-11 fix: correct key is "sensitive_points" (compute_chart never wrote
@@ -2342,14 +2351,14 @@ def _build_gulika_mandi_sensitive_rows(
 
     # Classical fallback
     if gulika_long is None:
-        seg = GULIKA_DAY_SEGMENT.get(vara, 5)
+        seg = GULIKA_DAY_SEGMENT[vara]
         gulika_long = ((seg - 0.5) / 8.0 * 360.0 + lagna_long) % 360.0
     if mandi_long is None:
-        seg = MANDI_DAY_SEGMENT.get(vara, 5)
+        seg = MANDI_DAY_SEGMENT[vara]
         mandi_long = ((seg - 0.5) / 8.0 * 360.0 + lagna_long) % 360.0
 
-    gulika_seg = GULIKA_DAY_SEGMENT.get(vara, 5)
-    mandi_seg = MANDI_DAY_SEGMENT.get(vara, 5)
+    gulika_seg = GULIKA_DAY_SEGMENT[vara]
+    mandi_seg = MANDI_DAY_SEGMENT[vara]
 
     rows.extend(_long_rows(
         "sensitive_point_gulika_mandi", "GULIKA", gulika_long,
@@ -2377,18 +2386,19 @@ def _build_sun_derived_upagrahas_rows(
     rows: list[dict] = []
     sun_long_raw = all_longs.get("SUN")
     if sun_long_raw is None:
-        logging.warning("_build_sun_derived_upagrahas_rows: SUN absent from all_longs; skipping")
-        return []
+        raise ValueError("ga_sensitive: SUN longitude missing; Sun-derived upagrahas unavailable")
     sun_long = sun_long_raw
     lagna_long_raw = all_longs.get("LAGNA")
     if lagna_long_raw is None:
-        logging.warning("_build_sun_derived_upagrahas_rows: LAGNA absent from all_longs; skipping")
-        return []
+        raise ValueError("ga_sensitive: LAGNA longitude missing; Sun-derived upagrahas unavailable")
     lagna_long = lagna_long_raw
     vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_sun_derived_upagrahas_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
-        vara = 0
+        raise ValueError(
+            "ga_sensitive: panchanga vara_id missing; refusing Sunday/upagraha fallback"
+        )
+    if vara not in DAGDHA_RASHI_BY_VARA:
+        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
 
     kala_sun = (sun_long + 180.0) % 360.0
     mrityu_sun = (sun_long + vara * 30.0) % 360.0
@@ -2552,14 +2562,16 @@ def _build_yogi_system_completion_rows(
     sun_long_raw = all_longs.get("SUN")
     moon_long_raw = all_longs.get("MOON")
     if sun_long_raw is None or moon_long_raw is None:
-        logging.warning("_build_yogi_system_completion_rows: SUN or MOON absent from all_longs; skipping")
-        return []
+        raise ValueError("ga_sensitive: SUN or MOON longitude missing; Yogi system unavailable")
     sun_long = sun_long_raw
     moon_long = moon_long_raw
     vara = panchanga.get("vara_id")
     if vara is None:
-        logging.warning("_build_yogi_system_completion_rows: panchanga missing 'vara_id'; defaulting to 0 (Sunday) — may be wrong for non-native charts")
-        vara = 0
+        raise ValueError(
+            "ga_sensitive: panchanga vara_id missing; refusing Sunday/yogi fallback"
+        )
+    if vara not in DAGDHA_RASHI_BY_VARA:
+        raise ValueError(f"ga_sensitive: invalid panchanga vara_id={vara!r}")
 
     yogi_long = (sun_long + moon_long + 93.3333333) % 360.0
     nak_name, nak_lord, pada = _long_to_nakshatra_pada(yogi_long)
@@ -2641,24 +2653,36 @@ def _build_all_sensitive_rows_for_ayanamsha(
     for g in grahas:
         key = planet_name_map.get(g.get("name", ""))
         if key:
-            lon = float(g.get("longitude_deg", g.get("lon", 0.0)))
+            raw_lon = g.get("longitude_deg", g.get("lon"))
+            if raw_lon is None:
+                raise ValueError(f"ga_sensitive: {g.get('name')!r} longitude missing")
+            lon = float(raw_lon)
+            if not math.isfinite(lon) or not 0 <= lon < 360:
+                raise ValueError(f"ga_sensitive: {g.get('name')!r} longitude outside [0, 360)")
             all_longs[key] = lon
 
+    missing_longs = sorted(set(planet_name_map.values()) - set(all_longs))
+    if missing_longs:
+        raise ValueError(f"ga_sensitive: required graha longitudes missing: {missing_longs!r}")
+
     # Lagna from ascendant
-    asc_lon = float(ascendant.get("longitude_deg", ascendant.get("lon", 0.0)))
+    asc_lon_raw = ascendant.get("longitude_deg", ascendant.get("lon"))
+    if asc_lon_raw is None:
+        raise ValueError("ga_sensitive: ascendant longitude missing")
+    asc_lon = float(asc_lon_raw)
+    if not math.isfinite(asc_lon) or not 0 <= asc_lon < 360:
+        raise ValueError("ga_sensitive: ascendant longitude outside [0, 360)")
     all_longs["LAGNA"] = asc_lon
 
     # Panchanga block (vara=0..6 Sunday-based, etc.)
     panchanga = chart_data.get("panchanga", {})
     if not panchanga:
-        # PyJHora did not populate panchanga — build a minimal stub from birth_params.
-        # Do NOT hardcode vara=0 (Sunday) here; derive from the birth date's weekday.
-        logging.warning(
-            "[ga_sensitive] chart_id=%s ayanamsha=%s: panchanga absent from chart_data; "
-            "deriving vara from birth_params datetime_iso weekday",
-            chart_id, ayanamsha_key,
+        raise ValueError(
+            f"ga_sensitive: panchanga absent for chart_id={chart_id} ayanamsha={ayanamsha_key}"
         )
-        panchanga = {}
+    vara = panchanga.get("vara_id")
+    if vara not in DAGDHA_RASHI_BY_VARA:
+        raise ValueError(f"ga_sensitive: invalid or missing panchanga vara_id={vara!r}")
 
     # ── Determine day/night birth ──────────────────────────────────────────────
     # Primary source: panchanga["is_daytime"] populated by PyJHora (sunrise-aware).
@@ -2669,53 +2693,26 @@ def _build_all_sensitive_rows_for_ayanamsha(
     # If neither source is available, log a warning and default to day birth with
     # a clear provenance note — callers may override once sunrise_jd is available.
     panchanga_is_daytime = panchanga.get("is_daytime")
-    if panchanga_is_daytime is not None:
-        is_day_birth = bool(panchanga_is_daytime)
-    else:
-        datetime_iso = birth_params.get("datetime_iso", "")
-        birth_hour: int | None = None
-        if datetime_iso:
-            try:
-                from datetime import datetime as _dt
-                birth_hour = _dt.fromisoformat(datetime_iso).hour
-            except Exception:
-                birth_hour = None
-        if birth_hour is not None:
-            is_day_birth = 6 <= birth_hour < 18
-            logging.info(
-                "[ga_sensitive] chart_id=%s: is_day_birth derived from birth hour %d → %s",
-                chart_id, birth_hour, is_day_birth,
-            )
-        else:
-            is_day_birth = True  # safest classical default; provenance logged below
-            logging.warning(
-                "[ga_sensitive] chart_id=%s ayanamsha=%s: could not derive is_day_birth "
-                "from panchanga or birth_params — defaulting to True (day birth). "
-                "Pass sunrise_jd+birth_jd for an authoritative result.",
-                chart_id, ayanamsha_key,
-            )
+    if panchanga_is_daytime is None:
+        raise ValueError(
+            "ga_sensitive: panchanga is_daytime missing; refusing approximate day/night Saham"
+        )
+    is_day_birth = bool(panchanga_is_daytime)
 
     # ── Derive day lord from birth date weekday ────────────────────────────────
     # _WEEKDAY_LORDS[weekday()] uses Python's Monday=0 convention.
     # This is purely calendrical (no ephemeris required) and correct for all charts.
     datetime_iso = birth_params.get("datetime_iso", "")
     day_lord: str | None = None
-    if datetime_iso:
-        try:
-            from datetime import datetime as _dt
-            day_lord = _WEEKDAY_LORDS[_dt.fromisoformat(datetime_iso).weekday()]
-        except Exception as _e:
-            logging.warning(
-                "[ga_sensitive] chart_id=%s: could not derive day_lord from "
-                "datetime_iso=%r: %s — RP_DAY_LORD will be skipped",
-                chart_id, datetime_iso, _e,
-            )
-    else:
-        logging.warning(
-            "[ga_sensitive] chart_id=%s: birth_params missing 'datetime_iso' — "
-            "day_lord cannot be derived; RP_DAY_LORD will be skipped",
-            chart_id,
-        )
+    if not datetime_iso:
+        raise ValueError("ga_sensitive: birth_params datetime_iso missing")
+    try:
+        from datetime import datetime as _dt
+        day_lord = _WEEKDAY_LORDS[_dt.fromisoformat(datetime_iso).weekday()]
+    except Exception as exc:
+        raise ValueError(
+            f"ga_sensitive: invalid birth datetime_iso={datetime_iso!r}"
+        ) from exc
 
     rows: list[dict[str, Any]] = []
 

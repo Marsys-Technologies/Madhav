@@ -16,6 +16,7 @@ if str(SIDECAR_ROOT) not in sys.path:
     sys.path.insert(0, str(SIDECAR_ROOT))
 
 from ga_writers.data_plane_resource_config_slice import build_default_slice  # noqa: E402
+from ga_writers.data_plane_runtime import CONTRACTED_L1_ASSETS  # noqa: E402
 
 
 EXPECTED_WRITERS = (
@@ -25,6 +26,8 @@ EXPECTED_WRITERS = (
     "ga_sade_sati", "ga_transit_anchors", "ga_tajaka", "ga_ayurdaya",
     "ga_medical", "ga_vastu", "ga_prashna",
 )
+
+EXPECTED_SLICE_DIGEST = "4765ba933fc9c40d375484bfd4d13c2a3c5c8021c2154408a47d55f612972074"
 
 STABLE_FACT_WRITERS = (
     "ga_positions_writer.py", "ga_vargas_writer.py", "ga_panchanga_writer.py",
@@ -66,6 +69,8 @@ def validate() -> dict[str, object]:
         source = path.read_text(encoding="utf-8")
         if not re.search(rf"@register\(['\"]{re.escape(writer)}['\"]\)", source):
             findings.append(f"{writer}: missing exact @register")
+        if "@l1_producer_contract" not in source:
+            findings.append(f"{writer}: runtime L1 producer boundary absent")
         match = re.search(r"source_paths\s*=\s*\[([^\]]+)\]", source)
         paths = tuple(re.findall(r"['\"]([^'\"]+)['\"]", match.group(1))) if match else ()
         if not paths:
@@ -90,11 +95,18 @@ def validate() -> dict[str, object]:
     dashas_source = (ga_dir / "ga_dashas_writer.py").read_text(encoding="utf-8")
     if "stabilize_hierarchical_uuids(" not in dashas_source:
         findings.append("ga_dashas_writer.py: stable hierarchy post-pass absent")
+    if re.search(r"['\"]level_n['\"]\s*:\s*5", dashas_source):
+        findings.append("ga_dashas_writer.py: invalid level-5 interval sentinel remains")
     tajaka_source = (ga_dir / "ga_tajaka_writer.py").read_text(encoding="utf-8")
     if '"varsha_id": str(uuid.uuid4())' in tajaka_source:
         findings.append("ga_tajaka_writer.py: random varsha identity remains")
 
     slice_payload = build_default_slice()
+    if slice_payload["content_sha256"] != EXPECTED_SLICE_DIGEST:
+        findings.append(
+            "first-slice golden digest mismatch: "
+            f"{slice_payload['content_sha256']} != {EXPECTED_SLICE_DIGEST}"
+        )
     states = set(slice_payload["missingness_states_proved"])
     expected_states = {
         "present", "zero", "unavailable", "floored", "inapplicable",
@@ -108,6 +120,27 @@ def validate() -> dict[str, object]:
         findings.append("Bhāvat operator was applied in L1")
     if not str(slice_payload["context"]["chart_id"]).startswith("synthetic:"):
         findings.append("first slice is not a non-person synthetic fixture")
+
+    if set(EXPECTED_WRITERS) != CONTRACTED_L1_ASSETS:
+        findings.append("runtime contract denominator differs from the fixed 19 writers")
+    migration = REPO_ROOT / "platform" / "migrations" / "1033_data_plane_l1_producer_history.sql"
+    migration_source = migration.read_text(encoding="utf-8") if migration.exists() else ""
+    for required in (
+        "open_l1_data_plane_generation",
+        "complete_l1_data_plane_partition",
+        "select_l1_data_plane_generation",
+        "rollback_l1_data_plane_generation",
+        "l1_data_plane_current_rows",
+        "l1_data_plane_reject_immutable_change",
+    ):
+        if required not in migration_source:
+            findings.append(f"producer history migration missing {required}")
+    capture_triggers = re.findall(
+        r"CREATE TRIGGER l1_data_plane_capture AFTER INSERT(?: OR UPDATE)?",
+        migration_source,
+    )
+    if len(capture_triggers) != 12:
+        findings.append("producer history migration does not cover all 12 L1 output tables")
 
     result = {
         "schema_version": "1.0",
