@@ -75,7 +75,7 @@ beforeEach(() => {
 
 describe('queryPanchanga — FORENSIC spot-check (native 1984-02-05)', () => {
   beforeEach(() => {
-    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as any)
+    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as never)
   })
 
   it('returns tithi=Shukla Tritiya', async () => {
@@ -115,7 +115,7 @@ describe('queryPanchanga — FORENSIC spot-check (native 1984-02-05)', () => {
 
 describe('queryPanchanga — row-to-type mapping', () => {
   beforeEach(() => {
-    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as any)
+    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as never)
   })
 
   it('maps all provenance fields correctly', async () => {
@@ -147,7 +147,7 @@ describe('queryPanchanga — row-to-type mapping', () => {
   it('correctly handles null tithi_elapsed_pct', async () => {
     mockQuery.mockResolvedValue({
       rows: [{ ...FORENSIC_ROW, tithi_elapsed_pct: null }],
-    } as any)
+    } as never)
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.tithi.elapsed_pct).toBeUndefined()
   })
@@ -155,7 +155,7 @@ describe('queryPanchanga — row-to-type mapping', () => {
   it('correctly handles null moon_longitude_deg', async () => {
     mockQuery.mockResolvedValue({
       rows: [{ ...FORENSIC_ROW, moon_longitude_deg: null }],
-    } as any)
+    } as never)
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.nakshatra.longitude_deg).toBeNull()
   })
@@ -163,7 +163,7 @@ describe('queryPanchanga — row-to-type mapping', () => {
   it('correctly handles null sunrise fields', async () => {
     mockQuery.mockResolvedValue({
       rows: [{ ...FORENSIC_ROW, sunrise_ist: null, sunrise_utc: null }],
-    } as any)
+    } as never)
     const result = await queryPanchanga('native-1984-chart-uuid')
     expect(result.sunrise_ist).toBeNull()
     expect(result.sunrise_utc).toBeNull()
@@ -174,7 +174,7 @@ describe('queryPanchanga — row-to-type mapping', () => {
 
 describe('queryPanchanga — DB query mechanics', () => {
   it('calls query() with the correct chart_id parameter', async () => {
-    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as any)
+    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as never)
     await queryPanchanga('my-chart-uuid')
     expect(mockQuery).toHaveBeenCalledOnce()
     const [sql, params] = mockQuery.mock.calls[0] as [string, string[]]
@@ -184,7 +184,7 @@ describe('queryPanchanga — DB query mechanics', () => {
   })
 
   it('orders by computed_at DESC and takes LIMIT 1', async () => {
-    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as any)
+    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as never)
     await queryPanchanga('any-chart-uuid')
     const [sql] = mockQuery.mock.calls[0] as [string, string[]]
     expect(sql).toContain('ORDER BY computed_at DESC')
@@ -196,21 +196,21 @@ describe('queryPanchanga — DB query mechanics', () => {
 
 describe('queryPanchanga — PanchangaNotFoundError', () => {
   it('throws PanchangaNotFoundError when no rows returned', async () => {
-    mockQuery.mockResolvedValue({ rows: [] } as any)
+    mockQuery.mockResolvedValue({ rows: [] } as never)
     await expect(queryPanchanga('nonexistent-chart')).rejects.toThrow(
       PanchangaNotFoundError,
     )
   })
 
   it('error message contains the chart_id', async () => {
-    mockQuery.mockResolvedValue({ rows: [] } as any)
+    mockQuery.mockResolvedValue({ rows: [] } as never)
     await expect(queryPanchanga('my-missing-chart')).rejects.toThrow(
       'my-missing-chart',
     )
   })
 
   it('error name is PanchangaNotFoundError', async () => {
-    mockQuery.mockResolvedValue({ rows: [] } as any)
+    mockQuery.mockResolvedValue({ rows: [] } as never)
     let err: Error | null = null
     try {
       await queryPanchanga('x')
@@ -231,13 +231,13 @@ describe('queryPanchanga — PanchangaNotFoundError', () => {
 
 describe('queryPanchangaOrNull', () => {
   it('returns null when chart not found', async () => {
-    mockQuery.mockResolvedValue({ rows: [] } as any)
+    mockQuery.mockResolvedValue({ rows: [] } as never)
     const result = await queryPanchangaOrNull('nonexistent')
     expect(result).toBeNull()
   })
 
   it('returns BirthPanchanga when chart exists', async () => {
-    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as any)
+    mockQuery.mockResolvedValue({ rows: [FORENSIC_ROW] } as never)
     const result = await queryPanchangaOrNull('native-1984-chart-uuid')
     expect(result).not.toBeNull()
     expect(result!.tithi.name).toBe('Shukla Tritiya')

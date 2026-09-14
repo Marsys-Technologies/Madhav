@@ -93,7 +93,7 @@ describe('tool-error-recovery — middle iteration ERROR string loops continue',
       version: '1.0',
       retrieve: vi.fn().mockRejectedValue(new Error('DB connection refused: timeout after 30s')),
     }
-    vi.mocked(getTool).mockReturnValue(failingTool as any)
+    vi.mocked(getTool).mockReturnValue(failingTool as never)
 
     const chatCallArgs: ChatRequest[] = []
     const adapter: CapabilityAdapter = {
@@ -240,7 +240,7 @@ describe('tool-error-recovery — middle iteration ERROR string loops continue',
       version: '1.0',
       retrieve: vi.fn().mockRejectedValue(new Error('persistent tool failure — never recovers')),
     }
-    vi.mocked(getTool).mockReturnValue(alwaysFailingTool as any)
+    vi.mocked(getTool).mockReturnValue(alwaysFailingTool as never)
 
     const sequences = Array.from({ length: MAX_ITERATIONS + 2 }, () => [...singleIterEvents])
     let callIndex = 0

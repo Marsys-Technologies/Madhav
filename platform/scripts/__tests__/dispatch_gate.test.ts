@@ -127,20 +127,31 @@ describe('evaluateDispatchGate — the workflow_dispatch CI-gate bypass', () => 
 // detector behind it. These assertions fail if the gate is unwired or the bypass is reintroduced.
 
 describe('deploy.yml wiring', () => {
+  interface DeployWorkflow {
+    on?: { workflow_dispatch: { inputs: Record<string, { default?: unknown; options?: unknown[] }> } }
+    true?: { workflow_dispatch: { inputs: Record<string, { default?: unknown; options?: unknown[] }> } }
+    jobs: Record<string, {
+      needs?: string[]
+      if?: string
+      steps?: Array<{ run?: string }>
+      outputs?: Record<string, unknown>
+    }>
+  }
   const yml = YAML.load(
     fs.readFileSync(path.resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
-  ) as any
+  ) as DeployWorkflow
 
   const DEPLOY_JOBS = ['deploy-web', 'deploy-sidecar', 'deploy-mcp', 'deploy-pipeline-job']
 
   it('workflow_dispatch still exists — emergency manual deploy was not removed', () => {
     // YAML parses the bare key `on:` as boolean true; accept either spelling.
-    const on = yml.on ?? yml[true]
+    const on = yml.on ?? yml.true
     expect(on).toHaveProperty('workflow_dispatch')
   })
 
   it('workflow_dispatch declares the ci_gate / emergency_reason / force_all_services inputs', () => {
-    const on = yml.on ?? yml[true]
+    const on = yml.on ?? yml.true
+    if (!on) throw new Error('deploy workflow is missing its event configuration')
     const inputs = on.workflow_dispatch.inputs
     expect(Object.keys(inputs).sort()).toEqual(
       ['ci_gate', 'emergency_reason', 'force_all_services'].sort()
@@ -151,14 +162,14 @@ describe('deploy.yml wiring', () => {
   })
 
   it('the changes job runs the dispatch gate', () => {
-    const steps = yml.jobs.changes.steps as Array<{ run?: string }>
+    const steps = yml.jobs.changes?.steps ?? []
     const gateStep = steps.find(s => (s.run ?? '').includes('ci/dispatch_gate.ts'))
     expect(gateStep).toBeDefined()
   })
 
   it('every deploy job depends on the changes job, so the gate actually binds to it', () => {
     for (const job of DEPLOY_JOBS) {
-      expect(yml.jobs[job].needs, `${job} must need [changes]`).toContain('changes')
+      expect(yml.jobs[job]?.needs, `${job} must need [changes]`).toContain('changes')
     }
   })
 
@@ -168,7 +179,7 @@ describe('deploy.yml wiring', () => {
     // paths changed. It is now `needs.changes.outputs.force_all == 'true' || ...`, an explicit,
     // opt-in input rather than an automatic consequence of dispatching.
     for (const job of ['deploy-sidecar', 'deploy-mcp', 'deploy-pipeline-job']) {
-      const cond = String(yml.jobs[job].if)
+      const cond = String(yml.jobs[job]?.if)
       expect(cond, `${job}`).toContain("needs.changes.outputs.force_all == 'true'")
       expect(
         cond.includes("github.event_name == 'workflow_dispatch' || needs.changes.outputs"),
@@ -178,7 +189,7 @@ describe('deploy.yml wiring', () => {
   })
 
   it('the changes job still exposes the per-service path outputs plus force_all', () => {
-    expect(Object.keys(yml.jobs.changes.outputs).sort()).toEqual(
+    expect(Object.keys(yml.jobs.changes?.outputs ?? {}).sort()).toEqual(
       ['force_all', 'mcp', 'pipeline', 'sidecar'].sort()
     )
   })
