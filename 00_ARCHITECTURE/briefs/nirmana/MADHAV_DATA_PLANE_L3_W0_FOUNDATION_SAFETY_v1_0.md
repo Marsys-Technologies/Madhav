@@ -8,7 +8,7 @@ strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 packet: L3-W0-FOUNDATION-SAFETY-01
-implementation_tip: 1f9cedbb0
+implementation_tip: 3f109869d
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 production_builds: 0
@@ -24,16 +24,17 @@ This is the final-review candidate for the first DP-SD-017 packet. W0 establishe
 a safe, measurable source/local foundation. It does not establish physical L0-L2
 generation availability, L3 data acceptance, protected integration, deployment,
 consumer value or empirical performance. No production build, rebuild, database
-mutation, migration application, campaign event, deployment, push, PR or merge
-was performed in W0.
+mutation, migration application, campaign event, deployment, execution/source
+branch push, PR or merge was performed in W0. The separately disclosed
+coordination-lease push is governance state, not an execution/source delivery.
 
 | Required W0 output | Evidence at candidate tip | Candidate disposition |
 |---|---|---|
 | authority, source, environment, campaign, ownership and holds | validated session-open; exact pins; protected/deployed/live recheck; verified lease | COMPLETE |
-| exact denominator and first safe frontier | 22 active plus protected retired sweep; field/DAG/owner map | COMPLETE |
-| Kshetra planning/recovery safety | execution-owned preparation, zero-DML planning and real savepoint crash/resume proof | INDEPENDENTLY ACCEPTED |
+| exact denominator and first safe frontier | 22 active plus protected retired sweep; 39-partition/699-field register; DAG/owner map | COMPLETE CANDIDATE |
+| Kshetra planning/recovery safety | fail-before-DML populated-slice preservation, zero-DML planning and real savepoint crash/resume proof | INDEPENDENTLY ACCEPTED |
 | Bhavishya empty/history safety | prevalidated replacement, stable protected identity/content and partition serialization | INDEPENDENTLY ACCEPTED |
-| measured baseline and independent reference | Kshetra/transit measurements, DHARA decimal oracle, source-qualified Vedha case | INDEPENDENTLY ACCEPTED |
+| measured baseline and independent reference | reproducible five-run Kshetra/transit record, DHARA decimal oracle, source-qualified Vedha case | COMPLETE CANDIDATE |
 | generation/publication/recovery design | section 6 | COMPLETE AS DESIGN; physical schema/data remain held |
 | consumer sentinels | L3-U05 requested/effective filter and fallback-state tests | INDEPENDENTLY ACCEPTED |
 | exact next packets | section 8 | FROZEN |
@@ -97,6 +98,18 @@ Shared output/control ownership is fenced as follows:
   registry and substep-progress rows are shared control surfaces. Each packet
   therefore names one writer and one transaction/publication owner.
 
+The complete per-field evidence is
+`MADHAV_DATA_PLANE_L3_W0_FIELD_CONTRACT_REGISTER_v1_0.md`: exactly 22 active
+identities, 39 relation/service producer partitions and 699 unique explicit
+field rows. Each row carries producer path/function, type/shape, unit, grain,
+natural/partition-key role, null/empty/failure semantics, qualification,
+transformation/persistence, receiver and an exact existing/future falsifying
+test. Four service-only identities are explicit zero-domain-DML contracts; 14
+digest-bearing assets and 26 accepted digest components are reconciled. Kshetra
+is 15 relations, 13 Q1 digest-qualified plus two QX exclusions; Q2/Q4/QX and
+dynamic JSON remain closed future-wave gates, not accepted fields. The retired
+sweep is separately fenced and contributes no active producer row.
+
 Before any later replacement, the exact transitive `CASCADE`/`SET NULL` graph
 and non-FK referrers in the current state record must be rechecked. In particular,
 L2 MSR deletion reaches five core L3 tables; convergence and Bhavishya deletion
@@ -106,17 +119,20 @@ reach L4 references. This is a preservation fence, not authority to edit L4.
 
 ### 4.1 Kshetra P0
 
-Commits `d0e5ac9a5` and `2246ff4ac` move chart-wide replacement into the first
-durable `prepare:replace` substep; stage planners and dry-run are read-only;
-successful empty discovery still produces the preparation plan; discovery
-failure is loud. The real substep driver/savepoint test proves failed plugin
-output and its progress receipt roll back together while prior committed work
-survives and resume skips only committed keys.
+Commit `3f109869d` corrects the earlier `d0e5ac9a5`/`2246ff4ac` behavior. A
+transaction-scoped chart/asset advisory lock precedes inspection of all 15 owned
+tables; `kala_insights` is limited to `lel_derived=false`. Any populated owned
+slice, including a stale snapshot or empty-discovery predecessor, raises
+`KshetraReplacementHeld` before writer DML. Genuinely empty/no-event-class
+preparation is a zero-DML no-op and creates no misleading progress receipt.
+Resume identity is v10. The real substep driver/savepoint tests still prove a
+failed plugin output and receipt roll back together.
 
-Root validation: `443 passed, 8 skipped, 2 xfailed` in the maintained Kshetra
-suite. Independent re-review returned ACCEPT with no HIGH, MED or LOW finding;
-its focused result was 27 passed and 53 deselected. No production rehearsal is
-inferred.
+Root maintained validation: `461 passed, 8 skipped, 2 xfailed`. Independent
+exact-tip re-review returned ACCEPT after 27 focused and 133 expanded passes
+with one skip. Populated-chart replacement remains held until W7 immutable
+candidate/publication; this is preservation by refusal, not backup/restore or
+atomic replacement. No production rehearsal is inferred.
 
 ### 4.2 Bhavishya P0
 
@@ -152,23 +168,23 @@ focused run. These are source-local sentinels, not integrated or served value.
 
 ## 5. Measured baseline and reference contracts
 
-The measurement host was Darwin 25.5.0 arm64, Apple M5 Pro, 64 GiB RAM, Python
-3.14.6, NumPy 2.5.1 and pyswisseph 20230604.
+The complete reproducible record is
+`MADHAV_DATA_PLANE_L3_W0_BENCHMARK_BASELINE_v1_0.md`. It records exact commands,
+five raw matched repeats and ranges for the 45-test null kernel, 27-test
+preparation/recovery suite, 23-test publication/hash subset and seven-test
+transit benchmark. It pins workload, cache, process/thread, resolved ephemeris
+backend and flags and distinguishes SQL intent/serialization bytes from database
+SQL/I/O/WAL/storage, which were not measured.
 
-Small Kshetra discovery workloads measured: stage-0/integrator 47 pass plus one
-skip in 0.56 s; writer 61 pass plus one skip in 15.08 s; streaming loaders seven
-pass in 0.20 s; publication/hash subset 27 pass with 56 deselected in 37.02 s.
-The final maintained Kshetra run at the corrected P0 tip passed 443 with eight
-skips and two expected failures in 88.17 s. These are local test workloads, not
-production duration or optimization evidence.
-
-The deterministic 30-day/five-aspect Saturn transit benchmark passed all seven
-tests. Cache-bypassed wall time was 3.90 ms; cold cached was 2.14 ms with 124
-hits/31 misses (1.82x); warm cached was 1.72 ms with 279 hits/31 misses (2.27x).
-The multi-call fanout was 38.07 ms with 2,539 hits/177 misses (93.5%). Whole-test
-process measurement was 0.21 s real, 0.16 s user, 0.03 s system and 49,119,232
-bytes maximum RSS. Output is bit-identical across bypassed/cold/warm paths; no
-general speedup promise is made.
+The structured Kshetra harness produced 61 rows and 263,206 canonical JSON bytes
+per small fixture build across 22 substeps; five repeats shared output SHA-256
+`5c6b5993e07aa23546df89973a52ed3add3d4386f10bb0574ba3b3cc56b8c7cb`
+and field hash `kfh_8fa468f994b8381135b667e4e97f6dce`. Median build wall
+was 0.315060 s. Publication subset median process wall was 6.99 s; preparation
+was 0.47 s; null was 0.31 s. Transit medians were 4.56 ms bypassed, 2.42 ms cold,
+1.92 ms warm and 44.51 ms fanout. The host used Moshier fallback because no
+configured `.se1` file resolved; this is pinned, not generalized. Qualified live
+first-result latency remains unmeasured.
 
 The DHARA packet consists of independent Decimal-60/4,096-Simpson reference
 `9210b8489`, production-path clock-step detector `542a934bb`, left-limit fix
@@ -185,7 +201,9 @@ closing the earlier two MED and one LOW findings without a live-build claim.
 
 The existing source-qualified ordinary reference is the BPHS Ch.29 Sun third-
 from-Moon favourable transit and paired ninth-house Vedha case, with overlapping
-and disjoint interval controls. Its two pure suites passed 42 tests. The cited
+and disjoint interval controls. The exact command
+`pytest -q tests/l3/test_ka_vedha_gochara.py tests/l3/test_ka_vedha_gochara_writer.py`
+passed 41 tests. The cited
 Phaladeepika Lattā cases remain separately scoped; the PG353 battle-only scale is
 not generalized into ordinary transit probability or adversity. Sarvatobhadra's
 current algorithmic approximation remains unqualified and cannot close a
@@ -221,7 +239,8 @@ maximum RSS. Unknown integration marks and unrelated deprecations remain warning
    semantic version. Resume accepts only matching fingerprints and completed
    receipts. Replacement preserves prior snapshots and all non-owned insight
    rows; no complete head is selectable before all accepted classes/stages and
-   substrate IDs are present.
+   substrate IDs are present. Until that W7 infrastructure exists, any populated
+   chart replacement fails before DML and preserves the prior servable slice.
 6. Bhavishya's rebuildable projection cannot own or rewrite delivered/observed/
    Phala-anchored claim content. Until the W6 stable-generation schema exists,
    P0 deliberately fails closed on protected changes or stale protected rows.

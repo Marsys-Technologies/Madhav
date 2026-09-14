@@ -10,7 +10,7 @@ accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 active_packet: L3-W0-FOUNDATION-SAFETY-01
-implementation_tip: 1f9cedbb06d2a29692c8740da23d3aa86ccdf790
+implementation_tip: 3f109869dc2fc31842111a61ebf39ef9b1345fb2
 coordination_lease: MADHAV-DATA-PLANE-L3-W0-20260915
 heartbeat_id: l3-k-la-execution-recovery
 next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
@@ -149,6 +149,15 @@ Kshetra owns `kala_insights.lel_derived=false` while `mi_bhara` owns true rows;
 the opt-in Taranga service can write the same natural keys as the writer; registry
 and substep-progress rows are shared control surfaces.
 
+The field/partition contract register expands this asset view to 39 producer
+relation/service partitions and 699 unique explicit fields across all 22 active
+identities. Every row names its producer, type/shape, unit, grain, key/partition
+role, null/empty/failure semantics, qualification, transformation/persistence,
+receiver and falsifying test. It reconciles 14 digest-bearing assets/26 accepted
+components, marks Kshetra's 13 included and two QX relations separately, models
+four service-only payloads with zero domain DML, and fences the retired sweep.
+Q2/Q4/QX and open JSON shapes remain closed gates.
+
 ### 4.2 Replacement blast radius
 
 Deleting/replacing `bodha_msr_signals` cascades to `kala_activation`,
@@ -168,13 +177,16 @@ resume must be proved explicitly.
 
 ### 4.3 W0 P0 corrections and bounded baselines
 
-Kshetra planning/recovery is corrected at `2246ff4ac`: destructive preparation
-is one execution-owned `prepare:replace` substep; planning and dry-run are
-read-only; empty discovery still prepares replacement; discovery errors fail
-loudly; and the real substep driver/savepoint test proves output and receipt
-rollback together. Root maintained validation passed 443 with 8 skips and 2
-expected failures; independent review returned ACCEPT with no HIGH/MED/LOW.
-Immutable generation/publication remains a later packet.
+Kshetra planning/recovery is corrected at `3f109869d`: a transaction-scoped
+chart/asset lock and all-15-table preflight precede writer DML; only
+`kala_insights.lel_derived=false` is owned. Any populated slice, including stale
+snapshot or empty-discovery state, fails before DML and remains unchanged.
+Genuinely empty/no-event-class preparation performs no DML or progress receipt;
+resume identity is v10. The real substep driver/savepoint test still proves
+failed output/receipt rollback. Root maintained validation passed 461 with 8
+skips and 2 expected failures; independent review passed 27 focused and 133
+expanded tests plus one skip and returned ACCEPT. Populated replacement is held
+until W7 immutable publication; no backup/atomic-replacement claim is made.
 
 Bhavishya is corrected at `a3e518864`: a chart transaction lock covers the full
 read/plan/write span; the entire candidate and referrer set is validated before
@@ -191,14 +203,14 @@ value; v1.2 enters field snapshot and resume identity. Independent review passed
 44 focused tests. The broad corrected L3 suite passed 1,471, skipped 41
 environment-gated cases and retained 2 expected failures.
 
-Measured small Kshetra baselines from the isolated discovery lane: stage0/
-integrator 47 pass + 1 skip in 0.56 s; writer 61 pass + 1 skip in 15.08 s;
-streaming loaders 7 pass in 0.20 s; publication/hash subset 27 pass / 56
-deselected in 37.02 s. The corrected maintained Kshetra run passed 443/8 skip/2
-expected failures in 88.17 s. The transit cache fixture passed 7 tests: 3.90 ms
-uncached, 2.14 ms cold cached and 1.72 ms warm cached, with a 93.5% multi-call
-hit rate. These are local test workloads, not production runtime or a general
-optimization claim.
+The reproducible baseline record contains exact commands and five raw matched
+runs. Small-fixture medians: preparation 0.47 s process wall; publication/hash
+6.99 s; null 0.31 s; structured build 0.315060 s with 61 rows, 263,206 canonical
+bytes and stable output/content hashes. Transit medians: 4.56 ms bypassed,
+2.42 ms cold, 1.92 ms warm and 44.51 ms fanout; the host used explicitly pinned
+Moshier fallback. Database SQL/I/O/WAL/storage and qualified live first-result
+latency remain unmeasured. These are local test workloads, not production
+runtime or a general optimization claim.
 
 ### 4.4 W0 generation/publication design
 
@@ -251,7 +263,7 @@ this file, the execution ledger and the exact next eligible action above.
 
 | State | Evidence |
 |---|---|
-| source producer readiness | accepted L0-L2 contracts; W0 L3 safety candidate independently accepted by subpacket and pending final packet review |
+| source producer readiness | accepted L0-L2 contracts; W0 L3 safety subpackets accepted, field/baseline candidate corrected, final packet review pending |
 | physical upstream data | `HELD`; required generation-head relations absent |
 | L3 physical data | legacy capital exists, but current t3 acceptance is absent and six canonical outputs are empty |
 | consumer integration | `NOT_RUN` |

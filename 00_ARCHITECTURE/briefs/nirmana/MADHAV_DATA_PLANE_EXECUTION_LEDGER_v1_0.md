@@ -49,6 +49,7 @@ changelog:
   - "1.0 update 2026-09-15: Records final independent PASS on exact L2 implementation tip 8aeff12d4 with zero CRITICAL/HIGH/MED/LOW findings and terminal L2 PRODUCER_READY; L3 remains waiting."
   - "1.0 update 2026-09-15: Consumes DP-SD-017 and immutable L3 pins; opens L3-W0-FOUNDATION-SAFETY-01 with validated session-open, verified coordination lease, active recovery heartbeat, exact 22+retired denominator, deployed/live physical-state recheck, three bounded discovery lanes and no rebuild."
   - "1.0 update 2026-09-15: Freezes the L3 W0 acceptance candidate after independently accepted Kshetra planning/recovery, Bhavishya preservation, DHARA numerical identity and U05 sentinel packets; broad L3 validation passes and final packet-level review is pending."
+  - "1.0 update 2026-09-15: Records first packet-level REQUEST CHANGES, then integrates Kshetra fail-before-DML populated-slice preservation, the 22-identity/39-partition/699-field contract register and reproducible five-run benchmark evidence; final re-challenge remains pending."
 ---
 
 # Madhav data-plane execution ledger
@@ -129,7 +130,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L2 implementation | `066fce7a5`, `b7a49f742`, `f828864a7`, `173f9aab5`, `8aeff12d4` | All 23 runtime identities; exact-context compatible generation/replay/rollback; signed/multidomain slice; temporal/private/serving boundaries; four correction rounds; final independent PASS. |
 | L2 acceptance/handoff | `MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md` | `PRODUCER_READY_ACCEPTED`; integration, deployment, population/health, consumer value and empirical evaluation remain unreached. |
 | L3 W0 state | `MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact DP-SD-017 pins, 22 active + protected retired denominator, source/deployment/campaign/DB recheck, no-build frontier, migration collision, ownership and heartbeat truth. |
-| L3 W0 acceptance candidate | `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md` at implementation tip `1f9cedbb0` | Independently accepted P0/sentinel/reference subpackets, measured baseline, immutable generation/publication/recovery design, protected-history and exact-next-packet contract; final packet review pending. |
+| L3 W0 acceptance candidate | `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md` at implementation tip `3f109869d` | Kshetra/Bhavishya/U05/DHARA subpackets independently accepted; complete field register and reproducible baseline corrected after packet review; final re-challenge pending. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -162,8 +163,11 @@ database-tested. Final independent review passed exact implementation tip
 MED or LOW findings. L2 stops at computational `PRODUCER_READY`; L3 remains
 waiting and every later-state non-claim remains in force.
 
-Open blocker for L3 W0: no subpacket HIGH/MED remains. The complete W0 evidence
-candidate is pending one independent packet-level review. Physical W1 remains
+Open blocker for L3 W0: the first packet-level review found two HIGH, one MED
+and two LOW issues. Kshetra preservation is corrected and independently accepted;
+the complete field register and benchmark evidence are corrected and under
+independent review. The revised complete W0 candidate then requires packet-level
+re-challenge. Physical W1 remains
 held because accepted L1/L2 generation-head schema is absent from the connected
 environment and migration numbers 1033/1034 collide with the open planner/Purna
 stack. No production L3 build is eligible until a reviewed precursor integration
@@ -214,6 +218,8 @@ and accepted upstream physical vector exist.
 | 2026-09-15 00:09 | L2 Bodha | PRODUCER_READY | Final independent review of exact implementation tip `8aeff12d4b32174bab1a1352768fc077828c38bd` PASS with zero CRITICAL/HIGH/MED/LOW; seven L2 evidence artifacts terminalized; no push/PR/merge/deploy/live/private/campaign/L3 mutation. L3 remains waiting. |
 | 2026-09-15 03:03 | L3 Kāla | W0_OPENED | DP-SD-017 and immutable pins consumed; session-open exit 0; coordination lease verified; persistent goal and 15-minute heartbeat active; exact 22+retired denominator and current source/deploy/campaign/DB state rechecked; three read-only discovery lanes started; no build, migration, data mutation or deployment. |
 | 2026-09-15 04:04 | L3 Kāla | W0_ACCEPTANCE_CANDIDATE | Kshetra planning/recovery and Bhavishya history P0 packets independently accepted; U05 fallback sentinels accepted; DHARA left-limit correction is content-bound and independently accepted; broad L3 1,471 passed/41 skipped/2 expected failures; immutable generation/publication/recovery design and exact release/W1/W2 packets frozen. Final packet-level review next; no production build/mutation/migration/deploy. |
+| 2026-09-15 04:16 | L3 Kāla | W0_PACKET_REVIEW_CHANGES_REQUESTED | Independent packet review found incomplete per-field coverage, unsafe populated Kshetra replacement, unreproducible benchmark evidence, one Vedha count error and push wording drift; migration protocol correction was adequate. |
+| 2026-09-15 04:47 | L3 Kāla | W0_PACKET_CORRECTIONS_INTEGRATED | Kshetra `3f109869d` independently accepted after 27 focused/133 expanded passes; 22-identity/39-partition/699-field register integrated; exact five-run null/preparation/publication/transit baseline and structured row/byte/hash harness recorded. Field/baseline independent review and complete packet re-challenge remain; no production build/mutation/migration/deploy/source push. |
 
 ## 7. Return-to-strategy handoff contract
 
