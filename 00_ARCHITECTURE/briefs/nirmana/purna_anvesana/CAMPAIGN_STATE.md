@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.5.0
+version: 0.6.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0022
-last_updated: 2026-09-14T21:50:00+05:30
+last_event: PA-E0023
+last_updated: 2026-09-14T21:57:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,11 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 3 complete; Wave 4 response-accountability packet is next.
-- Branch: `codex/purna-anvesana-wave3`, stacked on governed Wave 2 close `99817ef49`;
-  independently approved technical evidence head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9`.
+- Wave: 0 through Wave 3 complete; Wave 4 response-accountability packet is active.
+- Branch: `codex/purna-anvesana-wave4`, stacked on governed Wave 3 close `f6b4d1733`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W3-20260914`; release is due after this close is published.
+- Lease: `MADHAV-PURNA-ANVESANA-W4-20260914`; active on remote coordination commit `3a050c573`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -170,7 +169,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W2-P2 typed semantic graph | COMPLETE | W2-P1 | graph reviewer approved exact head |
 | W3-P1 normalized intent and ontology traversal | COMPLETE | W2-P2 | planner reviewer approved repaired exact head |
 | W3-P2 omission challenger and frontier closure | COMPLETE | W3-P1 | omission reviewer approved repaired exact head |
-| W4-P1 iterative evidence and response accountability | NEXT | W3-P2 | required at packet close |
+| W4-P1 iterative evidence and response accountability | IN PROGRESS | W3-P2 | required at packet close |
 | W5–W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
 
 ## Delivery decomposition
