@@ -1,8 +1,11 @@
 """Emit reproducible, source-local L3 W0 Kshetra baseline measurements.
 
 The harness deliberately uses the strict in-memory connection from the maintained
-writer tests.  It performs no network, filesystem or database I/O and must never
-be represented as production or PostgreSQL performance evidence.
+writer tests. It performs no network, filesystem write or database I/O; its
+backend context performs bounded file-existence metadata checks and, only when a
+file-backed path resolves, reads the selected ephemeris file to identify it by
+digest. It must never be represented as production or PostgreSQL performance
+evidence.
 """
 from __future__ import annotations
 
@@ -65,6 +68,7 @@ def _transit_ephemeris_context() -> dict[str, Any]:
     """Record which Swiss backend actually serves the transit benchmark host."""
     import swisseph as swe
 
+    from panchang_engine.swiss_state import swiss_state_scope
     from pipeline import transit_search as transit
 
     resolved = transit._resolved_ephemeris_path()
@@ -78,12 +82,23 @@ def _transit_ephemeris_context() -> dict[str, Any]:
     for candidate in candidates:
         if candidate:
             file_path = Path(candidate) / "sepl_18.se1"
-            candidate_files.append({"path": str(file_path), "exists": file_path.is_file()})
+            exists = file_path.is_file()
+            record = {"path": str(file_path), "exists": exists}
+            if exists and str(file_path.parent) == resolved:
+                with file_path.open("rb") as ephemeris_file:
+                    record["sha256"] = hashlib.file_digest(
+                        ephemeris_file, "sha256"
+                    ).hexdigest()
+                record["bytes"] = file_path.stat().st_size
+            candidate_files.append(record)
 
     input_flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
-    _, returned_flags = swe.calc_ut(
-        swe.julday(2024, 1, 1), swe.SATURN, input_flags
-    )
+    with swiss_state_scope():
+        swe.set_ephe_path(resolved)
+        swe.set_sid_mode(swe.SIDM_LAHIRI)
+        _, returned_flags = swe.calc_ut(
+            swe.julday(2024, 1, 1), swe.SATURN, input_flags
+        )
     if returned_flags & swe.FLG_MOSEPH:
         backend = "Moshier fallback"
     elif returned_flags & swe.FLG_SWIEPH:

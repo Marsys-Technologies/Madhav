@@ -200,8 +200,8 @@ DHARA's clock-knot endpoint defect is corrected through `1f9cedbb0` and the
 `MADHAV_DATA_PLANE_L3_DHARA_NUMERICAL_CONTRACT_v1_0.md` contract. The preceding
 interval uses the left limit and the next interval the exact right-continuous
 value; v1.2 enters field snapshot and resume identity. Independent review passed
-44 focused tests. The broad corrected L3 suite passed 1,471, skipped 41
-environment-gated cases and retained 2 expected failures.
+44 focused tests. The final integrated broad L3 suite passed 1,488, skipped 41
+environment-gated cases and retained 2 expected failures in 91.00 s.
 
 The reproducible baseline record contains exact commands and five raw matched
 runs. Small-fixture medians: preparation 0.47 s process wall; publication/hash

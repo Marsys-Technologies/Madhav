@@ -209,9 +209,9 @@ not generalized into ordinary transit probability or adversity. Sarvatobhadra's
 current algorithmic approximation remains unqualified and cannot close a
 source-qualified positive gate.
 
-The final corrected broad L3 source suite passed 1,471 tests, skipped 41
-environment-gated tests and retained two expected failures in 91.74 s; process
-measurement was 92.06 s real, 89.64 s user, 1.80 s system and 619,577,344 bytes
+The final integrated broad L3 source suite passed 1,488 tests, skipped 41
+environment-gated tests and retained two expected failures in 91.00 s; process
+measurement was 91.41 s real, 88.65 s user, 1.72 s system and 624,607,232 bytes
 maximum RSS. Unknown integration marks and unrelated deprecations remain warnings.
 
 ## 6. Immutable generation, publication and recovery design

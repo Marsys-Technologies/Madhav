@@ -22,6 +22,9 @@ NumPy 2.5.1 and pyswisseph 20230604. Each pytest repeat is a fresh single
 Python process. The structured publication harness creates a fresh writer and
 strict in-memory connection per repeat in one process; it requests no worker
 threads. `/usr/bin/time -lp` supplies process elapsed/CPU/RSS observations.
+The harness performs no filesystem writes or benchmark-data reads. Its transit
+context performs bounded path-existence probes and, only if a file-backed path
+resolves, reads the selected ephemeris file to record its size and SHA-256.
 
 Database SQL execution time, database I/O, WAL bytes, durable storage bytes,
 network time and qualified live first-result latency are **not applicable** to
