@@ -173,6 +173,54 @@ CREATE INDEX IF NOT EXISTS l1_data_plane_dasha_latest_idx
   (chart_id, asset_id, generation_id, ((source_row).dasha_row_id),
    captured_at DESC, dasha_snapshot_id DESC);
 
+-- Canonical semantic form for replay, generation digests and selection.  Row
+-- and parent UUIDs are stable semantic hierarchy identities and remain in the
+-- payload.  Build identity and observation time are transport metadata.  The
+-- four material TIMESTAMPTZ values are represented as UTC epoch numerics so
+-- session TimeZone cannot change equality or hashes.
+CREATE OR REPLACE FUNCTION public.l1_data_plane_dasha_semantic_payload(
+    p_row public.chart_dashas
+) RETURNS JSONB
+LANGUAGE sql
+IMMUTABLE
+STRICT
+AS $$
+  SELECT jsonb_set(
+    jsonb_set(
+      jsonb_set(
+        jsonb_set(
+          to_jsonb(p_row) - 'build_id' - 'computed_at',
+          '{start_iso}', to_jsonb(EXTRACT(EPOCH FROM
+            NULLIF(to_jsonb(p_row)->>'start_iso', '')::timestamptz)), false
+        ),
+        '{end_iso}', to_jsonb(EXTRACT(EPOCH FROM
+          NULLIF(to_jsonb(p_row)->>'end_iso', '')::timestamptz)), false
+      ),
+      '{next_dasha_start_iso}',
+      COALESCE(to_jsonb(EXTRACT(EPOCH FROM
+        NULLIF(to_jsonb(p_row)->>'next_dasha_start_iso', '')::timestamptz)), 'null'::jsonb),
+      false
+    ),
+    '{anchored_solar_return_iso}',
+    COALESCE(to_jsonb(EXTRACT(EPOCH FROM
+      NULLIF(to_jsonb(p_row)->>'anchored_solar_return_iso', '')::timestamptz)), 'null'::jsonb),
+    false
+  )
+$$;
+
+-- Persist only the canonical hash beside the exact typed composite. This keeps
+-- replay and generation completion set-based without restoring the rejected
+-- per-row JSON/fact amplification path. The generated column also guarantees
+-- that stored comparison material cannot drift from the canonical function.
+ALTER TABLE public.l1_data_plane_dasha_snapshots
+  ADD COLUMN IF NOT EXISTS semantic_digest TEXT
+  GENERATED ALWAYS AS (
+    encode(digest(
+      public.l1_data_plane_dasha_semantic_payload(source_row)::text,
+      'sha256'
+    ), 'hex')
+  ) STORED;
+
 CREATE TABLE IF NOT EXISTS public.l1_data_plane_configuration_snapshots (
     configuration_snapshot_id  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     row_snapshot_id             UUID NOT NULL UNIQUE REFERENCES public.l1_data_plane_row_snapshots(snapshot_id) ON DELETE RESTRICT,
@@ -972,25 +1020,45 @@ BEGIN
     END IF;
   END IF;
 
-  -- A completed generation may be replayed only when every current source row
-  -- has an already-captured identical latest revision.
+  -- A completed generation may be replayed only when the current semantic
+  -- identity set equals the already-captured latest semantic identity set.
+  -- Stable row/parent UUIDs remain material; build/time transport fields do not.
   IF v_status = 'complete' THEN
     IF EXISTS (
-      SELECT 1 FROM public.chart_dashas d
-      LEFT JOIN LATERAL (
-        SELECT s.source_row
-        FROM public.l1_data_plane_dasha_snapshots s
-        WHERE s.chart_id = p_chart_id AND s.asset_id = 'ga_dashas'
-          AND s.generation_id = p_generation_id
-          AND (s.source_row).dasha_row_id = d.dasha_row_id
-        ORDER BY s.captured_at DESC, s.dasha_snapshot_id DESC
-        LIMIT 1
-      ) previous ON true
-      WHERE d.chart_id = p_chart_id AND d.build_id::text = p_generation_id
-        AND (p_partition_key = '__concurrency_post_pass__' OR (
-          d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id
-        ))
-        AND (previous.source_row IS NULL OR previous.source_row IS DISTINCT FROM d)
+      WITH current_semantics AS (
+        SELECT d.dasha_row_id,
+               encode(digest(
+                 public.l1_data_plane_dasha_semantic_payload(d)::text,
+                 'sha256'
+               ), 'hex') AS semantic_digest
+        FROM public.chart_dashas d
+        WHERE d.chart_id = p_chart_id AND d.build_id::text = p_generation_id
+          AND (p_partition_key = '__concurrency_post_pass__' OR (
+            d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id
+          ))
+      ), previous_semantics AS (
+        SELECT (latest.source_row).dasha_row_id AS dasha_row_id,
+               latest.semantic_digest
+        FROM (
+          SELECT DISTINCT ON ((s.source_row).dasha_row_id)
+            s.source_row, s.semantic_digest
+          FROM public.l1_data_plane_dasha_snapshots s
+          WHERE s.chart_id = p_chart_id AND s.asset_id = 'ga_dashas'
+            AND s.generation_id = p_generation_id
+            AND (p_partition_key = '__concurrency_post_pass__' OR (
+              (s.source_row).system_id = v_system_id
+              AND (s.source_row).ayanamsha_id = v_ayanamsha_id
+            ))
+          ORDER BY (s.source_row).dasha_row_id,
+                   s.captured_at DESC, s.dasha_snapshot_id DESC
+        ) latest
+      )
+      SELECT 1
+      FROM current_semantics current_row
+      FULL OUTER JOIN previous_semantics previous_row USING (dasha_row_id)
+      WHERE current_row.dasha_row_id IS NULL
+         OR previous_row.dasha_row_id IS NULL
+         OR current_row.semantic_digest IS DISTINCT FROM previous_row.semantic_digest
     ) THEN
       RAISE EXCEPTION 'complete generation % replay changed or added dasha output',
         p_generation_id;
@@ -1005,7 +1073,7 @@ BEGIN
     p_chart_id, 'ga_dashas', p_generation_id, p_partition_key, d
   FROM public.chart_dashas d
   LEFT JOIN LATERAL (
-    SELECT s.source_row
+    SELECT s.source_row, s.semantic_digest
     FROM public.l1_data_plane_dasha_snapshots s
     WHERE s.chart_id = p_chart_id AND s.asset_id = 'ga_dashas'
       AND s.generation_id = p_generation_id
@@ -1017,7 +1085,11 @@ BEGIN
     AND (p_partition_key = '__concurrency_post_pass__' OR (
       d.system_id = v_system_id AND d.ayanamsha_id = v_ayanamsha_id
     ))
-    AND (previous.source_row IS NULL OR previous.source_row IS DISTINCT FROM d);
+    AND (previous.source_row IS NULL OR previous.semantic_digest IS DISTINCT FROM
+      encode(digest(
+        public.l1_data_plane_dasha_semantic_payload(d)::text,
+        'sha256'
+      ), 'hex'));
 END;
 $$;
 
@@ -1079,18 +1151,20 @@ BEGIN
   END IF;
 
   IF p_asset_id = 'ga_dashas' THEN
-    -- Hash fixed-size per-row MD5 components into the generation SHA-256.  This
+    -- Hash fixed-size per-row canonical SHA-256 components into the generation SHA-256. This
     -- avoids building a 536k-element JSON aggregate while retaining a stable,
-    -- order-independent digest over every exact typed dasha snapshot plus the
-    -- two ordinary chart_facts scope sentinels.
+    -- stable-ID-ordered digest over every canonical typed dasha payload plus
+    -- the two ordinary chart_facts scope sentinels. Build identity and
+    -- wall-clock observation time are transport metadata, not output.
     SELECT encode(digest(
       COALESCE((
         SELECT string_agg(
-          md5(latest.source_row::text), ''
+          latest.semantic_digest, ''
           ORDER BY (latest.source_row).dasha_row_id
         )
         FROM (
-          SELECT DISTINCT ON ((s.source_row).dasha_row_id) s.source_row
+          SELECT DISTINCT ON ((s.source_row).dasha_row_id)
+            s.source_row, s.semantic_digest
           FROM public.l1_data_plane_dasha_snapshots s
           WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
             AND s.generation_id = p_generation_id
@@ -1229,11 +1303,8 @@ AS $$
       COALESCE(to_jsonb(s.source_row)->>'verification_pass_status',
                to_jsonb(s.source_row)->>'verification_method', 'runtime_snapshot'),
       NULL::TEXT,
-      to_jsonb(s.source_row) - 'build_id' - 'computed_at',
-      encode(digest(
-        (to_jsonb(s.source_row) - 'build_id' - 'computed_at')::text,
-        'sha256'
-      ), 'hex'),
+      public.l1_data_plane_dasha_semantic_payload(s.source_row),
+      s.semantic_digest,
       s.captured_at,
       s.dasha_snapshot_id
     FROM public.l1_data_plane_dasha_snapshots s

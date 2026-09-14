@@ -413,6 +413,11 @@ def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_view
     assert "capture_l1_data_plane_dasha_partition" in migration
     assert "CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_dashas" not in migration
     assert "dasha partition % reported % rows but active build scope has %" in migration
+    assert "l1_data_plane_dasha_semantic_payload" in migration
+    assert "ADD COLUMN IF NOT EXISTS semantic_digest TEXT" in migration
+    assert "FULL OUTER JOIN previous_semantics" in migration
+    assert "to_jsonb(p_row) - 'build_id' - 'computed_at'" in migration
+    assert "NULLIF(to_jsonb(p_row)->>'start_iso', '')::timestamptz" in migration
     assert "'role', 'constituent_graha'" in migration
     assert "'role', 'constituent_house'" in migration
     assert "'catalog:yoga:'" in migration

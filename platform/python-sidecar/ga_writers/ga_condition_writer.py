@@ -858,6 +858,8 @@ def _load_dasha_periods(
     conn: Any,
     chart_id: str,
     graha: str,
+    ayanamsha_id: str,
+    build_id: str,
     condition_score: Optional[float] = None,
     dignity_d1: Optional[str] = None,
 ) -> tuple[Optional[list], Optional[list]]:
@@ -884,14 +886,17 @@ def _load_dasha_periods(
             # lord_graha, start_iso) WHERE level_n=1 (migration 415) — a direct
             # ~27-row seek, not the ~20K-row heap scan that used to time out.
             cur.execute("""
-                SELECT dasha_row_id, system_id, level_n, lord_graha, start_iso, end_iso
+                SELECT dasha_row_id, system_id, ayanamsha_id, build_id,
+                       level_n, lord_graha, start_iso, end_iso
                 FROM chart_dashas
                 WHERE chart_id   = %s
+                  AND ayanamsha_id = %s
+                  AND build_id    = %s
                   AND lord_graha = %s
                   AND level_n    = 1
                 ORDER BY start_iso
                 LIMIT 3
-            """, (chart_id, graha))
+            """, (chart_id, ayanamsha_id, build_id, graha))
             rows = cur.fetchall()
             cur.execute(f"RELEASE SAVEPOINT {sp}")
             if not rows:
@@ -902,23 +907,20 @@ def _load_dasha_periods(
                 return None, None
 
             def _period_payload(row: tuple, reason: str) -> dict:
-                # The production query always returns the six-column shape.
-                # Accept the historical five-column DB-free test double while
-                # keeping exact source identity mandatory on real rows.
-                if len(row) == 6:
-                    row_id, system_id, _level, lord, start, end = row
-                else:
-                    row_id = None
-                    system_id, _level, lord, start, end = row
+                (
+                    row_id, system_id, source_ayanamsha_id, source_build_id,
+                    _level, lord, start, end,
+                ) = row
                 payload = {
                     "dasha_label": f"{lord} Mahadasha",
                     "system_id": system_id,
+                    "source_ayanamsha_id": source_ayanamsha_id,
+                    "source_build_id": str(source_build_id),
                     "start_date": start.isoformat() if hasattr(start, "isoformat") else str(start),
                     "end_date": end.isoformat() if hasattr(end, "isoformat") else str(end),
                     "reason": reason,
                 }
-                if row_id is not None:
-                    payload["source_dasha_row_id"] = str(row_id)
+                payload["source_dasha_row_id"] = str(row_id)
                 return payload
 
             if condition_score >= _PEAK_CONDITION_THRESHOLD:
@@ -1561,7 +1563,7 @@ def build_ga_condition_substep(
 
         # ── Dasha trajectory ──────────────────────────────────────────────────
         peak_periods, weak_periods = _load_dasha_periods(
-            conn, chart_id, graha,
+            conn, chart_id, graha, ayanamsha_id, str(build_id),
             condition_score=condition_score_val,
             dignity_d1=dignity_d1,
         )

@@ -3596,43 +3596,44 @@ def _run_concurrency_post_pass_db(chart_id: str, build_id: str, *, conn: Any = N
     from contextlib import nullcontext
     owns_conn = conn is None
     with (_conn() if owns_conn else nullcontext(conn)) as conn:
-        # Get all L1 rows for this chart+build, grouped by system
+        # Get all L1 rows for this chart+build, grouped by exact ayanamsha and
+        # system. Precise instants, not DATE projections, govern overlap.
         cursor = conn.execute(
             """
-            SELECT dasha_row_id, system_id, lord_graha, start_date, end_date
+            SELECT dasha_row_id, ayanamsha_id, system_id, lord_graha,
+                   start_iso, end_iso
             FROM chart_dashas
             WHERE chart_id = %s AND build_id = %s
               AND level_n = 1
               AND kp_sublevel IS NULL
-            ORDER BY system_id, start_date
+            ORDER BY ayanamsha_id, system_id, start_iso
             """,
             [chart_id, build_id],
         )
         all_l1 = cursor.fetchall()
 
-        # Build per-system lookup
-        by_system: dict[str, list] = {}
+        # Build per-(ayanamsha, system) lookup. Cross-ayanamsha concurrence is
+        # not a meaningful relation and must never enter an exact L1 context.
+        by_scope: dict[tuple[str, str], list] = {}
         for row in all_l1:
-            sid = row["system_id"]
-            if sid not in by_system:
-                by_system[sid] = []
-            by_system[sid].append(row)
+            key = (row["ayanamsha_id"], row["system_id"])
+            by_scope.setdefault(key, []).append(row)
 
         # For each row, find concurrent lords
         for row in all_l1:
             row_id = row["dasha_row_id"]
+            ayanamsha_id = row["ayanamsha_id"]
             sys_id = row["system_id"]
             lord = row["lord_graha"]
-            start_d = row["start_date"]
-            end_d = row["end_date"]
+            start_iso = row["start_iso"]
             concurrent = {}
-            for other_sys, other_rows in by_system.items():
-                if other_sys == sys_id:
+            for (other_aya, other_sys), other_rows in by_scope.items():
+                if other_aya != ayanamsha_id or other_sys == sys_id:
                     continue
                 for other_row in other_rows:
-                    o_start = other_row["start_date"]
-                    o_end = other_row["end_date"]
-                    if o_start <= start_d < o_end:
+                    o_start = other_row["start_iso"]
+                    o_end = other_row["end_iso"]
+                    if o_start <= start_iso < o_end:
                         concurrent[other_sys] = other_row["lord_graha"]
                         break
 

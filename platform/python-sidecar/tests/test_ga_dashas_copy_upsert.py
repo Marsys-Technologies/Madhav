@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sys
 import pathlib
+from datetime import datetime, timezone
 
 import pytest
 
@@ -180,3 +181,64 @@ def test_build_system_raises_on_partial_persist(monkeypatch):
                 "tz_offset_hours": 5.5,
             },
         )
+
+
+class _PostPassResult:
+    def __init__(self, rows):
+        self._rows = rows
+
+    def fetchall(self):
+        return self._rows
+
+
+class _PostPassConn:
+    def __init__(self, rows):
+        self.rows = rows
+        self.updates: dict[str, tuple[str, int]] = {}
+
+    def execute(self, sql, params=None):
+        if "SELECT dasha_row_id" in sql:
+            return _PostPassResult(self.rows)
+        if "UPDATE chart_dashas SET" in sql:
+            self.updates[params[2]] = (params[0], params[1])
+            return _PostPassResult([])
+        raise AssertionError(f"unexpected SQL: {sql}")
+
+
+def test_concurrency_post_pass_is_exact_ayanamsha_and_instant_scoped():
+    utc = timezone.utc
+    rows = [
+        {
+            "dasha_row_id": "target", "ayanamsha_id": "aya-a", "system_id": "sys-a",
+            "lord_graha": "Jupiter",
+            "start_iso": datetime(2020, 1, 1, 12, tzinfo=utc),
+            "end_iso": datetime(2020, 1, 2, 12, tzinfo=utc),
+        },
+        {
+            # Same ayanamsha and calendar date, but begins one precise hour later.
+            "dasha_row_id": "future-same-aya", "ayanamsha_id": "aya-a", "system_id": "sys-b",
+            "lord_graha": "Jupiter",
+            "start_iso": datetime(2020, 1, 1, 13, tzinfo=utc),
+            "end_iso": datetime(2020, 1, 2, 13, tzinfo=utc),
+        },
+        {
+            # Overlaps the target instant but belongs to another ayanamsha.
+            "dasha_row_id": "cross-aya", "ayanamsha_id": "aya-b", "system_id": "sys-b",
+            "lord_graha": "Jupiter",
+            "start_iso": datetime(2019, 1, 1, tzinfo=utc),
+            "end_iso": datetime(2021, 1, 1, tzinfo=utc),
+        },
+        {
+            "dasha_row_id": "same-aya-overlap", "ayanamsha_id": "aya-a", "system_id": "sys-c",
+            "lord_graha": "Mars",
+            "start_iso": datetime(2019, 1, 1, tzinfo=utc),
+            "end_iso": datetime(2021, 1, 1, tzinfo=utc),
+        },
+    ]
+    conn = _PostPassConn(rows)
+
+    mod._run_concurrency_post_pass_db("chart-x", "build-x", conn=conn)
+
+    concurrent_json, convergence = conn.updates["target"]
+    assert concurrent_json == '{"sys-c": "Mars"}'
+    assert convergence == 1
