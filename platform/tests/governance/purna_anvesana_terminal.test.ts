@@ -22,8 +22,39 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
       expect(packet.event_ids.length).toBeGreaterThan(0)
       expect(packet.event_ids.every((eventId) => eventIds.has(eventId))).toBe(true)
     }
+    const w6p2 = terminal.packet_evidence.find((packet: { packet_id: string }) => packet.packet_id === 'W6-P2')
+    const w6p2Events = events.filter((event: { event_id: string }) => w6p2.event_ids.includes(event.event_id))
+    const approval = w6p2Events.find((event: { type: string, actor: string, packet_id: string }) =>
+      event.type === 'PACKET_REVIEW_APPROVED'
+      && event.actor === 'w6_terminal_review'
+      && event.packet_id === 'W6-P2')
+    const completion = w6p2Events.find((event: { type: string, packet_id: string, sequence: number }) =>
+      ['SOURCE_SCOPE_COMPLETED', 'WAVE_COMPLETED'].includes(event.type)
+      && event.packet_id === 'W6-P2'
+      && event.sequence > (approval?.sequence ?? Number.MAX_SAFE_INTEGER))
+    expect(approval).toBeDefined()
+    expect(completion).toBeDefined()
+
+    const acceptanceApproval = events.find((event: { event_id: string }) =>
+      event.event_id === terminal.acceptance_disposition.approval_event_id)
+    expect(acceptance.verdict).toBe('NOT_ACCEPTED_SOURCE_LOCAL')
+    expect(acceptanceApproval).toMatchObject({
+      event_id: 'PA-E0033',
+      type: 'PACKET_REVIEW_APPROVED',
+      packet_id: 'W6-P1',
+      payload: {
+        head: terminal.acceptance_disposition.approved_head,
+        verdict: acceptance.verdict,
+        report_hash: acceptance.report_hash,
+        route_coverage: {
+          passed: acceptance.metrics.route_coverage.passed,
+          covered: acceptance.metrics.route_coverage.covered,
+          expected: acceptance.metrics.route_coverage.expected,
+        },
+      },
+    })
     expect(terminal.acceptance_disposition).toMatchObject({
-      verdict: 'NOT_ACCEPTED_SOURCE_LOCAL',
+      verdict: acceptance.verdict,
       report_hash: acceptance.report_hash,
     })
   })
@@ -57,7 +88,9 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
       expect(disposition.event_ids.length).toBeGreaterThan(0)
       expect(disposition.event_ids.every((eventId) => eventIds.has(eventId))).toBe(true)
       expect(disposition.terminal_residual_ids.every((residualId) => residualIds.has(residualId))).toBe(true)
-      if (disposition.status.startsWith('OPEN_')) {
+      if (disposition.status.startsWith('CLOSED_')) {
+        expect(disposition.terminal_residual_ids).toHaveLength(0)
+      } else {
         expect(disposition.terminal_residual_ids.length).toBeGreaterThan(0)
       }
     }
@@ -88,5 +121,15 @@ describe('Purna Anvesana W6-P2 terminal contract', () => {
     })
     expect(terminal.lease_release.remote_coordination_commit).toMatch(/^[a-f0-9]{40}$/)
     expect(terminal.delivery.wave6_pull_request).toEqual(expect.any(Number))
+    const release = events.find((event: { type: string, packet_id: string }) =>
+      event.type === 'LEASE_RELEASED' && event.packet_id === 'W6-P2')
+    expect(release).toMatchObject({
+      payload: {
+        lease_id: terminal.lease_release.lease_id,
+        status: terminal.lease_release.status,
+        remote_coordination_commit: terminal.lease_release.remote_coordination_commit,
+        remote_ref: 'refs/heads/campaign-coordination',
+      },
+    })
   })
 })
