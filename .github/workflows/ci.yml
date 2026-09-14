@@ -1447,6 +1447,11 @@ jobs:
         working-directory: platform
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The capability knowledge and estate census generators derive provenance
+          # from the latest commit touching their source sets. A depth-1 checkout
+          # cannot resolve that commit when HEAD only refreshes generated artifacts.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
