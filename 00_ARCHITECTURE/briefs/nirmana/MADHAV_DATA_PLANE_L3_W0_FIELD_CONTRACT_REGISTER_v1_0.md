@@ -1,8 +1,8 @@
 # MADHAV DATA PLANE L3 — W0 FIELD / PARTITION CONTRACT REGISTER v1.0
 
-**Status:** W0 read-only inventory evidence; not an implementation or acceptance certificate  
-**Base pin:** `fd61ed335`  
-**Scope:** exactly the 22 active L3 identities named by the current-state disposition; persisted domain/control outputs and typed service response payloads  
+**Status:** W0 read-only inventory evidence; not an implementation or acceptance certificate
+**Base pin:** `fd61ed335`
+**Scope:** exactly the 22 active L3 identities named by the current-state disposition; persisted domain/control outputs and typed service response payloads
 **Excluded identity:** retired `ka_gochara_sweep` (protected generation-1 corpus only; never an active producer)
 
 ## Reading rules
