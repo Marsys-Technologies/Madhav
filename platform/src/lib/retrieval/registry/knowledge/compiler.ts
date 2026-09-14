@@ -217,7 +217,7 @@ function normalizeDeclaration(
     editorial_sources: authored
       ? [{ source_ref: sourceRef, source_fields: ['semantic_capabilities', 'description', 'primary_binding_uri'] }]
       : [
-          { source_ref: sourceRef, source_fields: ['family_id', 'domains', 'concepts', 'intents', 'outputs', 'horizons', 'evidence_use', 'member_name'] },
+          { source_ref: sourceRef, source_fields: ['family_id', 'domains', 'concepts', 'intents', 'outputs', 'horizons', 'kind', 'evidence_use', 'member_name'] },
           {
             source_ref: `CapabilityDescriptor:${source.uri}`,
             source_fields: ['name', 'description', 'display', 'archetype', 'traversal_level', 'tool_role', 'scope', 'input_schema', 'required_inputs', 'output_schema', 'emits_references', 'projection_tags', 'drill_children', 'data_source', 'density_contract', 'mutation'],
@@ -516,6 +516,15 @@ export function inspectCapabilityKnowledge(
 ): KnowledgeIntegrityReport {
   const findings: KnowledgeIntegrityFinding[] = []
   const expectedSnapshot = compileCapabilityKnowledge(catalog, snapshot.generated_at)
+  if (snapshot.schema_version !== expectedSnapshot.schema_version) {
+    findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'schema_version', detail: 'Snapshot schema version does not match the current compiler contract.' })
+  }
+  if (snapshot.content_hash !== expectedSnapshot.content_hash) {
+    findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'content_hash', detail: 'Snapshot content hash does not match the current compiled semantic content.' })
+  }
+  if (canonicalize(snapshot.census) !== canonicalize(expectedSnapshot.census)) {
+    findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'census', detail: 'Snapshot census does not match the current compiled denominators.' })
+  }
   if (snapshot.source_catalog_fingerprint !== expectedSnapshot.source_catalog_fingerprint) {
     findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'source_catalog_fingerprint', detail: 'Snapshot catalog provenance does not match the current descriptor catalog.' })
   }
@@ -554,7 +563,7 @@ export function inspectCapabilityKnowledge(
     const descriptorRef = `CapabilityDescriptor:${sourceUri}`
     const expectedEditorialFields = scu.editorial_method === 'authored_declaration'
       ? ['semantic_capabilities', 'description', 'primary_binding_uri']
-      : ['family_id', 'domains', 'concepts', 'intents', 'outputs', 'horizons', 'evidence_use', 'member_name']
+      : ['family_id', 'domains', 'concepts', 'intents', 'outputs', 'horizons', 'kind', 'evidence_use', 'member_name']
     const hasExpectedEditorialSource = Boolean(expectedEditorialRef && scu.editorial_sources.some((source) => source.source_ref === expectedEditorialRef
       && expectedEditorialFields.every((field) => source.source_fields.includes(field))))
     const hasExpectedDescriptorSource = scu.editorial_method === 'authored_declaration'

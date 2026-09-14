@@ -400,6 +400,15 @@ describe('planner capability knowledge', () => {
     expect(inspectCapabilityKnowledge(catalog, staleReview).findings).toContainEqual(expect.objectContaining({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'semantic_review_fingerprint' }))
   })
 
+  it('fails change-sync integrity when schema, content hash, or census is forged', () => {
+    const staleSchema = { ...snapshot, schema_version: '1.0.0' } as unknown as CapabilityKnowledgeSnapshot
+    const staleHash = { ...snapshot, content_hash: 'sha256:forged' } as CapabilityKnowledgeSnapshot
+    const staleCensus = { ...snapshot, census: { ...snapshot.census, editorial_scus: 0, producer_semantic_bindings: 0 } } as CapabilityKnowledgeSnapshot
+    expect(inspectCapabilityKnowledge(catalog, staleSchema).findings).toContainEqual(expect.objectContaining({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'schema_version' }))
+    expect(inspectCapabilityKnowledge(catalog, staleHash).findings).toContainEqual(expect.objectContaining({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'content_hash' }))
+    expect(inspectCapabilityKnowledge(catalog, staleCensus).findings).toContainEqual(expect.objectContaining({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'census' }))
+  })
+
   it('rotates producer provenance when a referenced W1 contract row changes', () => {
     const changedProducerCensus = {
       ...estateCensus,
