@@ -16,7 +16,8 @@ What is verified:
      stage0 → stage2 → stage3 → stage1   (dependency-correct)
   4. S1-F1 fix: _route_gain_and_sign_for_lord in stage3 references
      kala_field_routes, not the non-existent kala_field_promise_routes
-  5. §N.3 discipline: DELETE appears in plan_substeps, not in run_substep
+  5. DP-SD-017 planning safety: stage planners and runners contain no cleanup;
+     the writer owns one leading prepare:replace execution substep
 """
 from __future__ import annotations
 
@@ -225,12 +226,11 @@ class TestS1F1Fix:
 
 
 # ---------------------------------------------------------------------------
-# 5. §N.3 — delete once in plan_substeps, never in run_substep
+# 5. DP-SD-017 — stage planning and computation contain no cleanup
 # ---------------------------------------------------------------------------
 
-class TestDeleteOnce:
-    """§N.3: the per-chart delete must appear in plan_substeps (via REPLACE_PRIOR_SQL
-    or explicit DELETE FROM), never repeated in run_substep."""
+class TestPreparationBoundary:
+    """All destructive replacement is centralized in writer.prepare:replace."""
 
     @staticmethod
     def _plan_has_delete(filename: str) -> bool:
@@ -249,10 +249,10 @@ class TestDeleteOnce:
         ('stage2_promise.py', 'stage2'),
         ('stage3_clocks.py', 'stage3'),
     ])
-    def test_plan_substeps_has_delete(self, filename: str, stage_label: str) -> None:
-        assert self._plan_has_delete(filename), (
-            f"{filename}: plan_substeps must run §N.3 delete "
-            "(REPLACE_PRIOR_SQL or DELETE FROM)"
+    def test_plan_substeps_has_no_delete(self, filename: str, stage_label: str) -> None:
+        assert not self._plan_has_delete(filename), (
+            f"{filename}: plan_substeps must be read-only; replacement belongs "
+            "to writer.prepare:replace"
         )
 
     @pytest.mark.parametrize('filename,stage_label', [
@@ -264,5 +264,12 @@ class TestDeleteOnce:
     def test_run_substep_no_delete(self, filename: str, stage_label: str) -> None:
         assert not self._run_has_delete(filename), (
             f"{filename}: run_substep must NOT issue DELETE FROM "
-            "(§N.3: delete runs ONCE in plan_substeps only)"
+            "(§N.3: delete runs ONCE in writer.prepare:replace only)"
         )
+
+    def test_writer_declares_prepare_first_and_owns_delete(self) -> None:
+        writer_src = _src('writer.py')
+        plan_src = _fn_body(writer_src, 'plan_substeps')
+        prepare_src = _fn_body(writer_src, '_run_prepare_replace')
+        assert "key='prepare:replace'" in plan_src
+        assert '_delete_prior_rows' in prepare_src

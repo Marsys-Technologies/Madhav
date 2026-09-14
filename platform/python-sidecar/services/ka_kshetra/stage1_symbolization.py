@@ -365,8 +365,6 @@ def latta_coverage() -> CoverageGap:
 
 # ── DB I/O ────────────────────────────────────────────────────────────────────
 
-REPLACE_PRIOR_SQL = "DELETE FROM kala_field_primitives WHERE chart_id = %s"
-
 UPSERT_SQL = """
 INSERT INTO kala_field_primitives (
     chart_id, primitive_kind, subject, object_ref, t_start, t_end, envelope,
@@ -439,8 +437,9 @@ def write_primitive_rows(conn, rows: Sequence[PrimitiveRow]) -> int:
     """Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
     latency (L1f fix — same class as L1d stage3_clocks fix, SAMPURTI campaign).
 
-    §N.3: the once-per-chart DELETE runs once in plan_substeps before any substep;
-    the ON CONFLICT clause handles idempotent re-runs within the same substep."""
+    §N.3: the once-per-chart DELETE runs in the writer's execution-owned
+    `prepare:replace` substep; the ON CONFLICT clause handles idempotent re-runs
+    within the same substep."""
     if not rows:
         return 0
     import json
@@ -469,8 +468,8 @@ def write_primitive_rows(conn, rows: Sequence[PrimitiveRow]) -> int:
 # stage0 and stage3 — the plugin order in writer._optional_stage_plugins
 # guarantees this (stage0 → stage2 → stage3 → stage1).
 #
-# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
-# BEFORE the substep executes.
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in the writer's
+# execution-owned `prepare:replace` substep. Planning is read-only.
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _reconstruct_episodes_from_db(conn, chart_id: str) -> list:
@@ -578,14 +577,10 @@ def plan_substeps(ctx) -> list:
     """Wire stage 1 (primitives + envelopes) into the ka_kshetra substep plan.
 
     Single substep — all primitive kinds are built in one pass from the
-    already-committed stage0 kinematics and stage3 boundaries. §N.3 delete
-    runs ONCE here (not per substep), before the substep executes.
+    already-committed stage0 kinematics and stage3 boundaries. This planner is
+    read-only; §N.3 replacement belongs to the writer's `prepare:replace` step.
     """
     from pipeline.orchestrator.writers import SubStep
-    conn = ctx.db_conn
-    chart_id = ctx.config['chart_id']
-    # §N.3: delete prior rows ONCE before the substep executes.
-    conn.execute(REPLACE_PRIOR_SQL, [chart_id])
     return [SubStep(key='stage1:run', label='primitives + envelopes')]
 
 
@@ -608,6 +603,11 @@ def run_substep(ctx, step) -> object:
 
     conn = ctx.db_conn
     chart_id = ctx.config['chart_id']
+    if getattr(ctx, 'dry_run', False) is True:
+        return WriterResult(
+            asset_id='ka_kshetra', rows_inserted=0,
+            notes='dry-run: stage1 symbolization not executed',
+        )
 
     primitives: list[PrimitiveRow] = []
 

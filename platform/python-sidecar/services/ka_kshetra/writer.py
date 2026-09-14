@@ -17,8 +17,10 @@ deliberate).
 
 ── IDEMPOTENCY (§N.3 + the ka_gochara_sweep D-5 RED-C lesson) ──────────────
 Per-chart delete-then-insert scoped to (chart_id × natural key), performed
-EXACTLY ONCE in `plan_substeps`, on the fresh/replanned branch, BEFORE any
-substep runs. NEVER per-substep. The lesson is written in blood in
+EXACTLY ONCE by the first execution-owned `prepare:replace` substep on a
+fresh/replanned build. Planning, dry-run and matching-resume validation are
+read-only. Cleanup is NEVER performed by a computational substep. The lesson is
+written in blood in
 `ka_gochara_sweep`'s docstring: substep dispatch order is not something a writer
 may assume, and a per-substep delete can fire AFTER sibling substeps have
 committed rows in the SAME build, silently wiping them.
@@ -161,7 +163,10 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: v7 — F1+F2+F5 (SM-R-11): zero-evaluator-call null via C/E decomposition;
 #:       stage5dhara:{ec} split into stage5dhara:{ec}:1 (null) + stage5dhara:{ec}:2 (windows);
 #:       interior decade knots d·H/10 added to assemble_knot_set.
-_RESUME_VERSION = 7
+#: v8 — DP-SD-017 KSH-P0: destructive preparation moved out of planning and
+#:       into the first durable `prepare:replace` substep. Old checkpoints must
+#:       replan so they cannot bypass the new preparation boundary.
+_RESUME_VERSION = 8
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -322,14 +327,13 @@ class KaKshetraWriter(WriterBase):
 
         # §2's pipeline order, top to bottom. Stages 0–3 lead: stage 4 consumes
         # their tables, so a plugin lane's substeps belong BEFORE stage4, not
-        # after it as they previously sat. (No lane currently contributes any —
-        # none of the stage0–3 modules exposes `plan_substeps` — so this
-        # corrects the order before it can matter rather than after.)
-        steps: list[SubStep] = list(self._optional_stage_plugins(ctx))
+        # after it as they previously sat. Each plugin planner is read-only;
+        # replacement is the leading writer-owned execution substep below.
+        work_steps: list[SubStep] = list(self._optional_stage_plugins(ctx))
         for ec in self._event_classes:
             for d in range(DECADES):
-                steps.append(SubStep(key=f'stage4:{ec}:{d}',
-                                     label=f'field {ec} decade {d}'))
+                work_steps.append(SubStep(key=f'stage4:{ec}:{d}',
+                                          label=f'field {ec} decade {d}'))
         _ev5 = _engine_version()
         n_blocks = math.ceil(S5.DEFAULT_REPLICATES / S5.DEFAULT_BLOCK_SIZE)
         for ec in self._event_classes:
@@ -338,32 +342,39 @@ class KaKshetraWriter(WriterBase):
                 # reaper window. Chunk:1 writes kala_field_null; chunk:2 loads
                 # that committed null and writes kala_field_windows. Resume-safe:
                 # chunk:2 reads from DB, not in-memory state from chunk:1.
-                steps.append(SubStep(key=f'stage5dhara:{ec}:1',
-                                     label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
-                steps.append(SubStep(key=f'stage5dhara:{ec}:2',
-                                     label=f'dhara windows {ec} — load null → kala_field_windows'))
+                work_steps.append(SubStep(key=f'stage5dhara:{ec}:1',
+                                          label=f'dhara null {ec} — {DN.DEFAULT_REPLICATES} replicates → kala_field_null'))
+                work_steps.append(SubStep(key=f'stage5dhara:{ec}:2',
+                                          label=f'dhara windows {ec} — load null → kala_field_windows'))
             else:
                 for b in range(1, n_blocks + 1):
-                    steps.append(SubStep(key=f'stage5:{ec}:{b}',
-                                         label=f'null {ec} replicate block {b}/{n_blocks}'))
-                steps.append(SubStep(key=f'stage5finalize:{ec}',
-                                     label=f'windows + robustness {ec}'))
+                    work_steps.append(SubStep(key=f'stage5:{ec}:{b}',
+                                              label=f'null {ec} replicate block {b}/{n_blocks}'))
+                work_steps.append(SubStep(key=f'stage5finalize:{ec}',
+                                          label=f'windows + robustness {ec}'))
         # Stages 6 → 6.5 → 8, in pipeline order and strictly after every
         # stage5finalize: salience reads committed windows, insights read
         # committed salience, and the timeline spec reads both.
-        steps.append(SubStep(key='stage6', label='salience vector + submodular selection'))
-        steps.append(SubStep(key='stage65', label='insight synthesis (7 non-LEL types)'))
+        work_steps.append(SubStep(key='stage6', label='salience vector + submodular selection'))
+        work_steps.append(SubStep(key='stage65', label='insight synthesis (7 non-LEL types)'))
         for view in TIMELINE_VIEWS:
-            steps.append(SubStep(key=f'stage8:{view}', label=f'timeline spec ({view})'))
-        steps.append(SubStep(key='snapshot', label='field snapshot + content hash'))
+            work_steps.append(SubStep(key=f'stage8:{view}', label=f'timeline spec ({view})'))
+        work_steps.append(SubStep(key='snapshot', label='field snapshot + content hash'))
+
+        # DP-SD-017 KSH-P0: replacement is executable work, not planning. This
+        # puts cleanup under the orchestrator's ordinary per-substep savepoint,
+        # heartbeat and commit boundary. A matching resume has this key in its
+        # progress ledger and filters it out below; a stale/missing ledger sees
+        # it first and cannot reach computation before preparation succeeds.
+        steps = [SubStep(key='prepare:replace', label='replace prior Kshetra generation')]
+        steps.extend(work_steps)
 
         if self._dry_run:
             return steps
 
         completed = self._load_completed_substeps(conn, self._chart_id, self._fingerprint())
         if completed is None:
-            self._delete_prior_rows(conn, self._chart_id)
-            logger.info('ka_kshetra: fresh/replan build for chart %s — %d substeps '
+            logger.info('ka_kshetra: fresh/replan build for chart %s — %d execution substeps '
                         '(%d event classes)', self._chart_id, len(steps),
                         len(self._event_classes))
             return steps
@@ -442,6 +453,8 @@ class KaKshetraWriter(WriterBase):
     def run_substep(self, ctx, step: SubStep) -> WriterResult:
         conn = ctx.db_conn
         kind = step.key.split(':', 1)[0]
+        if kind == 'prepare':
+            return self._run_prepare_replace(conn, step)
         if kind == 'stage4':
             _, ec, decade = step.key.split(':')
             return self._run_stage4(conn, ec, int(decade), step)
@@ -468,6 +481,31 @@ class KaKshetraWriter(WriterBase):
             return self._run_snapshot(conn, step)
         return self._run_plugin_substep(ctx, step)
 
+    def _run_prepare_replace(self, conn, step: SubStep) -> WriterResult:
+        """Replace the complete writer-owned chart slice under one savepoint.
+
+        `plan_substeps` has already resolved and validated the build pins before
+        this method can be dispatched. The orchestrator wraps this call in the
+        same savepoint, heartbeat and commit boundary as every computational
+        substep. Dry-run deliberately writes neither data nor a progress receipt.
+        """
+        if step.key != 'prepare:replace':
+            raise RuntimeError(f'ka_kshetra: unsupported preparation key {step.key!r}')
+        if self._dry_run:
+            return WriterResult(
+                asset_id=ASSET_ID,
+                rows_inserted=0,
+                notes='dry-run: replacement preparation not executed',
+            )
+
+        self._delete_prior_rows(conn, self._chart_id)
+        self._record_substep(conn, step.key, 0)
+        return WriterResult(
+            asset_id=ASSET_ID,
+            rows_inserted=0,
+            notes='prior Kshetra generation replaced',
+        )
+
     def _run_plugin_substep(self, ctx, step: SubStep) -> WriterResult:
         """Route a substep contributed by another lane back to that lane.
 
@@ -480,10 +518,18 @@ class KaKshetraWriter(WriterBase):
             runner = getattr(module, 'run_substep', None)
             handles = getattr(module, 'handles_substep', None)
             if runner and (handles is None or handles(step)):
-                return runner(ctx, step)
+                result = runner(ctx, step)
+                # Plugin stages share this writer's progress namespace. Recording
+                # only after their runner returns keeps the receipt in the same
+                # orchestrator savepoint as the stage output; a crash rolls both
+                # back, while a committed stage is skipped on matching resume.
+                if not self._dry_run:
+                    rows = int(result.rows_inserted or 0) + int(result.rows_updated or 0)
+                    self._record_substep(ctx.db_conn, step.key, rows)
+                return result
         raise RuntimeError(
             f'ka_kshetra: no handler for substep {step.key!r}. This writer owns '
-            'stage4/stage5/stage5finalize/stage6/stage65/stage8/snapshot; every '
+            'prepare/stage4/stage5/stage5finalize/stage6/stage65/stage8/snapshot; every '
             'other stage is routed to the lane module that planned it.'
         )
 
@@ -2279,7 +2325,7 @@ class KaKshetraWriter(WriterBase):
             return []
 
     def _delete_prior_rows(self, conn, chart_id) -> None:
-        """§N.3 idempotency, ONCE, in plan_substeps. See the module docstring.
+        """§N.3 idempotency, ONCE, in `prepare:replace`.
 
         Each entry carries its own extra predicate so the delete is scoped to the
         rows THIS writer owns. `kala_insights` is the case that matters: the
@@ -2331,7 +2377,10 @@ class KaKshetraWriter(WriterBase):
 
 
 #: (table, extra DELETE predicate) this writer owns and therefore clears on a
-#: fresh/replanned build (§N.3). Deliberately does NOT include any legacy table:
+#: fresh/replanned build (§N.3). The order is child/referrer before logical
+#: parent even where the current schema stores FK-shaped identifiers without a
+#: database FK; this keeps preparation safe if those constraints are hardened.
+#: Deliberately does NOT include any legacy table:
 #: W2 writes ZERO rows to `kala_gochara_windows` and reads it read-only as a
 #: cross-check corpus (§1 rail 2, strangler-fig). Adding one here would be the
 #: wave's headline regression.
@@ -2355,6 +2404,24 @@ _OWNED_TABLES: tuple[tuple[str, Optional[str]], ...] = (
     'kala_field', None
 ), (
     'kala_field_snapshots', None
+), (
+    # Stage 1 stores kinematics_ids and consumes stage-3 boundaries.
+    'kala_field_primitives', None
+), (
+    # Stage 3 consumes stage-2 routes; boundaries are downstream of clocks.
+    'kala_field_boundaries', None
+), (
+    'kala_field_clocks', None
+), (
+    # Routes carry FK-shaped path_edge_ids; clear routes before graph edges/nodes.
+    'kala_field_routes', None
+), (
+    'kala_field_promise_edges', None
+), (
+    'kala_field_promise_nodes', None
+), (
+    # Stage 0 is the logical parent of stage-1 primitive kinematics_ids.
+    'kala_field_kinematics', None
 ),
 
 #: The stage 0–8 tables the §7.4 CONTENT hash covers.

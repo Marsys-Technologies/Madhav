@@ -833,17 +833,13 @@ def applicable_systems(
 
 
 def write_clock_rows(chart_id: str, applicabilities: list[ClockApplicability], conn: Any) -> int:
-    """Idempotent per-chart write to `kala_field_clocks`: delete-then-insert
-    scoped to (chart_id x system_id) — §N.3 / the ga_writers/_idempotency.py
-    pattern. Deletion is scoped to exactly the system_ids being (re)written,
-    so a partial re-run never wipes a sibling system's row."""
+    """Natural-key upsert into the already prepared `kala_field_clocks` slice.
+
+    Chart-wide replacement is owned exclusively by `prepare:replace`; retaining
+    an upsert here makes a savepoint retry safe without deleting sibling rows.
+    """
     if not applicabilities:
         return 0
-    system_ids = [a.system_id for a in applicabilities]
-    conn.execute(
-        "DELETE FROM kala_field_clocks WHERE chart_id = %s AND system_id = ANY(%s)",
-        [chart_id, system_ids],
-    )
     for a in applicabilities:
         conn.execute(
             """
@@ -852,6 +848,16 @@ def write_clock_rows(chart_id: str, applicabilities: list[ClockApplicability], c
                  competence_class, seniority_rank, quality, quality_basis,
                  is_predictive, source_table)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'chart_dashas')
+            ON CONFLICT (chart_id, system_id) DO UPDATE SET
+                applicability_state = EXCLUDED.applicability_state,
+                exclusion_reason = EXCLUDED.exclusion_reason,
+                competence_class = EXCLUDED.competence_class,
+                seniority_rank = EXCLUDED.seniority_rank,
+                quality = EXCLUDED.quality,
+                quality_basis = EXCLUDED.quality_basis,
+                is_predictive = EXCLUDED.is_predictive,
+                source_table = EXCLUDED.source_table,
+                computed_at = NOW()
             """,
             [
                 chart_id, a.system_id, a.applicability_state, a.exclusion_reason,
@@ -1088,17 +1094,12 @@ def compute_boundaries_for_system(
 
 
 def write_boundary_rows(chart_id: str, system_id: str, rows: list[BoundaryRow], conn: Any) -> int:
-    """Idempotent per-chart write to `kala_field_boundaries`: delete-then-
-    insert scoped to (chart_id x system_id) — §N.3.
+    """Natural-key upsert into the prepared `kala_field_boundaries` slice.
 
     Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
     latency on large systems (chara_karaka: ~262K rows → 22 min with single
     inserts; batch reduces this to seconds — L1d fix, SAMPURTI campaign).
     """
-    conn.execute(
-        "DELETE FROM kala_field_boundaries WHERE chart_id = %s AND system_id = %s",
-        [chart_id, system_id],
-    )
     if not rows:
         return 0
     sql = """
@@ -1108,6 +1109,19 @@ def write_boundary_rows(chart_id: str, system_id: str, rows: list[BoundaryRow], 
              precision_state, dominant_uncertainty_source, sigma_t_source,
              source_table, source_pk)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'chart_dashas', %s)
+        ON CONFLICT (chart_id, system_id, level, t_boundary) DO UPDATE SET
+            lord = EXCLUDED.lord,
+            parent_lords = EXCLUDED.parent_lords,
+            period_days = EXCLUDED.period_days,
+            sigma_t_days = EXCLUDED.sigma_t_days,
+            interval_lo = EXCLUDED.interval_lo,
+            interval_hi = EXCLUDED.interval_hi,
+            precision_state = EXCLUDED.precision_state,
+            dominant_uncertainty_source = EXCLUDED.dominant_uncertainty_source,
+            sigma_t_source = EXCLUDED.sigma_t_source,
+            source_table = EXCLUDED.source_table,
+            source_pk = EXCLUDED.source_pk,
+            computed_at = NOW()
     """
     params = [
         [
@@ -1249,10 +1263,9 @@ def clock_activation(chart_id: str, system_id: str, event_class: str, t: float, 
 # Stage 3 must run AFTER stage2 (needs kala_field_routes for
 # _route_gain_and_sign_for_lord) and BEFORE stage1 and stage4.
 #
-# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
-# BEFORE the substep executes. write_clock_rows and write_boundary_rows each
-# do their own scoped per-(chart, system_id) deletes — the coarser table-level
-# deletes here clear any rows from a prior build of a now-absent system_id.
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in the writer's
+# execution-owned `prepare:replace` substep. Planning and stage computation do
+# no cleanup; natural-key upserts retain retry safety inside the prepared build.
 # ═════════════════════════════════════════════════════════════════════════════
 
 def plan_substeps(ctx) -> list:
@@ -1261,15 +1274,10 @@ def plan_substeps(ctx) -> list:
     Single substep — all dasha systems are evaluated in one pass for
     determinism (the KP redundancy detector compares systems against each other;
     evaluating them in separate substeps would introduce dispatch-order
-    dependency into that cross-system comparison). §N.3 delete runs ONCE here,
-    before the substep executes.
+    dependency into that cross-system comparison). This planner is read-only;
+    §N.3 replacement belongs to the writer's `prepare:replace` step.
     """
     from pipeline.orchestrator.writers import SubStep
-    conn = ctx.db_conn
-    chart_id = ctx.config['chart_id']
-    # §N.3: delete prior rows ONCE for both owned tables.
-    conn.execute("DELETE FROM kala_field_clocks WHERE chart_id = %s", [chart_id])
-    conn.execute("DELETE FROM kala_field_boundaries WHERE chart_id = %s", [chart_id])
     return [SubStep(key='stage3:run', label='dasha clocks + boundaries')]
 
 
@@ -1292,6 +1300,11 @@ def run_substep(ctx, step) -> object:
 
     conn = ctx.db_conn
     chart_id = ctx.config['chart_id']
+    if getattr(ctx, 'dry_run', False) is True:
+        return WriterResult(
+            asset_id='ka_kshetra', rows_inserted=0,
+            notes='dry-run: stage3 clocks and boundaries not executed',
+        )
     birth_params = ctx.config.get('birth_params') or {}
     ayanamsha_id = DEFAULT_AYANAMSHA_ID
 
