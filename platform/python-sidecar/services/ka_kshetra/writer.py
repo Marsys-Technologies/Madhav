@@ -125,6 +125,12 @@ def _engine_version() -> str:
     return ENGINE_VERSION
 
 
+def _dhara_sweep_semantic_version() -> str:
+    """Return the stored-field endpoint-semantics version for identity pins."""
+    from services.ka_kshetra.dhara_sweep import DHARA_SWEEP_SEMANTIC_VERSION
+    return DHARA_SWEEP_SEMANTIC_VERSION
+
+
 def _dn_module():
     """Return the dhara_null module (lazy import, O(1) after first call)."""
     from services.ka_kshetra import dhara_null as _dn
@@ -166,7 +172,9 @@ SEGMENT_INDEX_DECADE_STRIDE = 1_000_000
 #: v8 — DP-SD-017 KSH-P0: destructive preparation moved out of planning and
 #:       into the first durable `prepare:replace` substep. Old checkpoints must
 #:       replan so they cannot bypass the new preparation boundary.
-_RESUME_VERSION = 8
+#: v9 — DP-SD-017 DHARA v1.2: clock-knot left/right endpoint semantics are now
+#:       content-bound; v8 checkpoints cannot resume into the corrected field.
+_RESUME_VERSION = 9
 
 #: §6.2's row budget K. The design's own worked example ("the budget spends
 #: itself across 15 *different* things") is the source of the number; it is a
@@ -290,6 +298,12 @@ class KaKshetraWriter(WriterBase):
         # different weights versions in one snapshot — a non-deterministic field
         # hash and a silently mixed model.
         self._weights_version, self._weights = S4.resolve_weights_pin(conn)
+        self._segment_engine = _engine_version()
+        self._dhara_sweep_version = (
+            _dhara_sweep_semantic_version()
+            if self._segment_engine == 'analytic'
+            else None
+        )
 
         self._pins = S4.FieldPins(
             chart_id=str(self._chart_id),
@@ -305,12 +319,14 @@ class KaKshetraWriter(WriterBase):
                 'max_refinement_depth': integrator.DEFAULT_MAX_DEPTH,
                 'null_replicates': (
                     _dn_module().DEFAULT_REPLICATES
-                    if _engine_version() == 'analytic'
+                    if self._segment_engine == 'analytic'
                     else S5.DEFAULT_REPLICATES
                 ),
                 'null_quantile': S5.Q_QUANTILE,
                 'duration_buckets': list(S5.DURATION_BUCKETS),
                 'precision_regime': 'day_grade',
+                'segment_engine': self._segment_engine,
+                'dhara_sweep_semantic_version': self._dhara_sweep_version,
                 **self._gochara_corpus_pin(conn, self._chart_id),  # A1 pin
             },
         )
@@ -2355,8 +2371,10 @@ class KaKshetraWriter(WriterBase):
 
     def _fingerprint(self) -> str:
         import hashlib
+        sweep_semantics = self._dhara_sweep_version or 'not_applicable'
         parts = [f'v={_RESUME_VERSION}', f'chart={self._chart_id}',
                  f'snapshot={self._snapshot_id}',
+                 f'dhara_sweep_semantics={sweep_semantics}',
                  f'classes={",".join(sorted(self._event_classes))}']
         return hashlib.sha256('|'.join(parts).encode('utf-8')).hexdigest()
 

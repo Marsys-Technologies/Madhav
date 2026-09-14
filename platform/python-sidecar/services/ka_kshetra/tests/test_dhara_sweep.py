@@ -369,6 +369,40 @@ def test_clock_step_uses_left_limit_for_preceding_interval_and_right_value_at_kn
     assert integrate(segments, 0.0, 1.0) == pytest.approx(2.5, abs=1e-12)
 
 
+def test_clock_step_terminal_horizon_call_sequence_and_left_limit():
+    """Internal knots need t- and t; the terminal horizon needs only t-."""
+    periods = [
+        _make_ladder_period('vimshottari', 'MD', 'Sun', 0.0, 0.5),
+        _make_ladder_period('vimshottari', 'MD', 'Moon', 0.5, 1.0),
+    ]
+
+    def terms_step(t: float):
+        value = 1.0 if t < 0.5 else 4.0
+        return _make_terms(math.log(value), suppression_term=1.0)
+
+    ev = _make_evaluator(
+        horizon_days=1.0,
+        ladder_periods={'vimshottari': periods},
+        envelope_breakpoints=[],
+        terms_at_fn=terms_step,
+        ln_lambda_fn=lambda t: terms_step(t).ln_lambda,
+        lord_stacks_at_fn=lambda _t: {},
+    )
+
+    segments = dhara_build_segments(ev)
+    calls = [float(call.args[0]) for call in ev.terms_at.call_args_list]
+    knots = assemble_knot_set(ev)
+
+    internal_left = math.nextafter(0.5, 0.4)
+    terminal_left = math.nextafter(1.0, 0.9)
+    internal_left_index = calls.index(internal_left)
+    assert calls[internal_left_index + 1] == 0.5
+    assert calls[-1] == terminal_left
+    assert 1.0 not in calls
+    assert len(calls) == len(knots) + 1  # one extra t- for one internal clock knot
+    assert lambda_at(segments, 1.0) == pytest.approx(4.0, abs=1e-12)
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Test 6: contiguity and index invariant
 # ─────────────────────────────────────────────────────────────────────────────

@@ -212,20 +212,23 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3: _RESUME_VERSION == 8
+# Test 3: _RESUME_VERSION == 9
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestResumeVersionIs8:
-    """v8 invalidates v7 checkpoints so they cannot bypass prepare:replace."""
+class TestResumeVersionIs9:
+    """v9 invalidates pre-DHARA-v1.2 checkpoints and retains the v8 P0 gate."""
 
-    def test_resume_version_is_8(self):
-        assert W._RESUME_VERSION == 8, (
-            f'_RESUME_VERSION must be 8 (DP-SD-017 KSH-P0 preparation boundary), '
+    def test_resume_version_is_9(self):
+        assert W._RESUME_VERSION == 9, (
+            f'_RESUME_VERSION must be 9 (DP-SD-017 DHARA v1.2 semantics), '
             f'got {W._RESUME_VERSION!r}'
         )
 
     def test_resume_version_is_int(self):
         assert isinstance(W._RESUME_VERSION, int)
+
+    def test_dhara_sweep_semantic_version_is_1_2(self):
+        assert W._dhara_sweep_semantic_version() == '1.2'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
