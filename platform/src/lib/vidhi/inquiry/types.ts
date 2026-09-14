@@ -211,7 +211,7 @@ export interface InquiryClosureReceipt {
 
 export interface InquiryRegisteredFact {
   readonly fact_id: string
-  readonly kind: 'obligation' | 'frontier'
+  readonly kind: 'obligation' | 'frontier' | 'finding'
   readonly obligation_id: string | null
   readonly frontier_id: string | null
   readonly materiality: 'required' | 'supporting'
@@ -222,6 +222,8 @@ export interface InquiryRegisteredFact {
     readonly disposition: ObligationDisposition | MaterialFrontierItem['disposition']
   }
   readonly evidence_refs: readonly string[]
+  /** Reader-visible normalized content for an actual evidence finding. */
+  readonly normalized_content: string | null
 }
 
 export interface InquiryFactRegister {
@@ -236,8 +238,9 @@ export interface InquiryFactRegister {
 
 export interface InquiryResponseDeliveryPart {
   readonly part_id: string
-  readonly kind: 'prose' | 'structured_findings' | 'permitted_exclusion'
+  readonly kind: 'prose' | 'structured_findings' | 'conjoint_interpretation' | 'permitted_exclusion'
   readonly content_hash: string
+  readonly content: string | null
   readonly fact_ids: readonly string[]
   /** Hashes of the canonical retrieval payloads that substantiate these claims. */
   readonly evidence_payload_hashes: readonly string[]

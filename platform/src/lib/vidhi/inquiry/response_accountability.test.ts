@@ -30,7 +30,13 @@ function completeFixture(): { contract: InquiryContract; evidencePayloads: reado
     question: 'Give me a complete wealth outlook',
     scope_tuple: wealthScope,
   })
-  const evidencePayloads = initial.plan_items.map((item) => ({ item_id: item.item_id, rows: [`finding:${item.item_id}`] }))
+  const evidencePayloads = initial.plan_items.map((item) => ({
+    item_id: item.item_id,
+    results: [
+      { content: `finding:${item.item_id}:primary` },
+      { content: `finding:${item.item_id}:counter` },
+    ],
+  }))
   const byItem = new Map(initial.plan_items.map((item, index) => [item.item_id, evidencePayloads[index]!]))
   const contract = finalizeInquiryContract(applyInquiryObservations(initial, initial.plan_items.map((item) => ({
     item_id: item.item_id,
@@ -44,22 +50,39 @@ function part(register: ReturnType<typeof buildInquiryFactRegister>, factIds: re
   const selected = new Set(factIds)
   const evidencePayloadHashes = [...new Set(register.facts
     .filter((fact) => selected.has(fact.fact_id))
-    .flatMap((fact) => fact.evidence_refs.map((ref) => ref.match(/sha256:[a-f0-9]{64}$/)?.[0]).filter(Boolean) as string[]))]
+    .flatMap((fact) => fact.evidence_refs
+      .filter((ref) => ref.startsWith('retrieval:'))
+      .map((ref) => ref.match(/sha256:[a-f0-9]{64}$/)?.[0]).filter(Boolean) as string[]))]
     .sort()
   return {
     part_id: `structured-findings:${suffix}`,
     kind: 'structured_findings',
     content_hash: inquiryResponsePartContentHash(register, factIds, 'structured_findings', null, evidencePayloadHashes),
+    content: null,
     fact_ids: factIds,
     evidence_payload_hashes: evidencePayloadHashes,
     exclusion_reason: null,
   }
 }
 
+function completeAccountability(contract: InquiryContract, evidencePayloads: readonly unknown[]) {
+  const register = buildInquiryFactRegister(contract, evidencePayloads)
+  const findings = register.facts.filter((fact) => fact.kind === 'finding')
+  const interpretation = findings.map((fact) => fact.normalized_content).join('\n')
+  return buildStructuredResponseAccountability(contract, {
+    response_text: interpretation,
+    evidence_payloads: evidencePayloads,
+    conjoint_interpretations: [{
+      text: interpretation,
+      fact_ids: findings.map((fact) => fact.fact_id),
+    }],
+  })
+}
+
 describe('Wave 4 response accountability', () => {
   it('registers every obligation and required frontier identity exactly once', () => {
-    const { contract } = completeFixture()
-    const register = buildInquiryFactRegister(contract)
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
 
     expect(register.register_version).toBe('inquiry-fact-register-v1')
     expect(register.facts.filter((fact) => fact.kind === 'obligation')).toHaveLength(contract.obligations.length)
@@ -73,7 +96,7 @@ describe('Wave 4 response accountability', () => {
 
   it('fails mandatory delivery when one relevant fact is absent from all response parts', () => {
     const { contract, evidencePayloads } = completeFixture()
-    const register = buildInquiryFactRegister(contract)
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
     const omitted = register.required_fact_ids[0]!
     const delivered = register.facts.map((fact) => fact.fact_id).filter((factId) => factId !== omitted)
     const receipt = buildResponseCoverageReceipt({ contract, fact_register: register, delivery_parts: [part(register, delivered)], evidence_payloads: evidencePayloads })
@@ -86,7 +109,7 @@ describe('Wave 4 response accountability', () => {
 
   it('does not allow a required fact to disappear behind a permitted-exclusion claim', () => {
     const { contract, evidencePayloads } = completeFixture()
-    const register = buildInquiryFactRegister(contract)
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
     const omitted = register.required_fact_ids[0]!
     const receipt = buildResponseCoverageReceipt({
       contract,
@@ -95,6 +118,7 @@ describe('Wave 4 response accountability', () => {
         ...part(register, [omitted], 'excluded'),
         kind: 'permitted_exclusion',
         exclusion_reason: 'compressed for length',
+        content: null,
         evidence_payload_hashes: [],
         content_hash: inquiryResponsePartContentHash(register, [omitted], 'permitted_exclusion', 'compressed for length', []),
       }],
@@ -178,11 +202,8 @@ describe('Wave 4 response accountability', () => {
       pagination: { semantics: 'offset', exhausted: true, next: null },
       request_position_path: 'offset',
     }))
-    const envelope = buildStructuredResponseAccountability(exhausted, {
-      response_text: 'Complete synthesis.',
-      evidence_payloads: [...otherPayloads, pageOne, pageTwo],
-    })
-    const pagedFact = envelope.fact_register.facts.find((fact) => fact.obligation_id
+    const envelope = completeAccountability(exhausted, [...otherPayloads, pageOne, pageTwo])
+    const pagedFact = envelope.fact_register.facts.find((fact) => fact.kind === 'obligation' && fact.obligation_id
       && exhausted.plan_items.find((item) => item.item_id === paged.item_id)?.obligation_ids.includes(fact.obligation_id))!
 
     expect(pagedFact.evidence_refs).toEqual(expect.arrayContaining([
@@ -196,11 +217,8 @@ describe('Wave 4 response accountability', () => {
 
   it('emits a normalized complete receipt only when the structured findings deliver every fact', () => {
     const { contract, evidencePayloads } = completeFixture()
-    const first = buildStructuredResponseAccountability(contract, { response_text: 'Complete grounded synthesis.', evidence_payloads: evidencePayloads })
-    const second = buildStructuredResponseAccountability(contract, {
-      response_text: 'Complete grounded synthesis.',
-      evidence_payloads: [...evidencePayloads].reverse(),
-    })
+    const first = completeAccountability(contract, evidencePayloads)
+    const second = completeAccountability(contract, [...evidencePayloads].reverse())
 
     expect(first.response_coverage_receipt.status).toBe('COMPLETE')
     expect(first.response_coverage_receipt.coverage.all_delivered).toBe(first.response_coverage_receipt.coverage.all_total)
@@ -221,7 +239,7 @@ describe('Wave 4 response accountability', () => {
 
   it('rejects unknown fact identities instead of counting them as coverage', () => {
     const { contract, evidencePayloads } = completeFixture()
-    const register = buildInquiryFactRegister(contract)
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
     const receipt = buildResponseCoverageReceipt({
       contract,
       fact_register: register,
@@ -235,7 +253,7 @@ describe('Wave 4 response accountability', () => {
 
   it('recomputes the contract-derived denominator and rejects a forged partial register', () => {
     const { contract, evidencePayloads } = completeFixture()
-    const register = buildInquiryFactRegister(contract)
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
     const forged = {
       ...register,
       facts: register.facts.slice(1),
@@ -299,6 +317,36 @@ describe('Wave 4 response accountability', () => {
 
     expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
     expect(envelope.response_coverage_receipt.missing_fact_ids.length).toBeGreaterThan(0)
+  })
+
+  it('does not map material findings to unrelated but correctly hashed prose', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: 'Hello.',
+      evidence_payloads: evidencePayloads,
+    })
+
+    expect(envelope.fact_register.facts.some((fact) => fact.kind === 'finding')).toBe(true)
+    expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
+    expect(envelope.response_coverage_receipt.coverage.interpretation_mapped).toBe(0)
+    expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids.length).toBeGreaterThan(0)
+  })
+
+  it('detects one omitted finding inside an otherwise mapped multi-finding evidence set', () => {
+    const { contract, evidencePayloads } = completeFixture()
+    const register = buildInquiryFactRegister(contract, evidencePayloads)
+    const findings = register.facts.filter((fact) => fact.kind === 'finding')
+    const omitted = findings.find((fact) => fact.normalized_content?.endsWith(':counter'))!
+    const included = findings.filter((fact) => fact.fact_id !== omitted.fact_id)
+    const interpretation = included.map((fact) => fact.normalized_content).join('\n')
+    const envelope = buildStructuredResponseAccountability(contract, {
+      response_text: interpretation,
+      evidence_payloads: evidencePayloads,
+      conjoint_interpretations: [{ text: interpretation, fact_ids: included.map((fact) => fact.fact_id) }],
+    })
+
+    expect(envelope.response_coverage_receipt.status).toBe('INCOMPLETE_RESUMABLE')
+    expect(envelope.response_coverage_receipt.interpretation_unmapped_fact_ids).toContain(omitted.fact_id)
   })
 
   it('keeps supporting pending work and its open frontier resumable even if the legacy finalizer says complete', () => {

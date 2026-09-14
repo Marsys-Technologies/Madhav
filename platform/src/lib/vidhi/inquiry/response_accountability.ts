@@ -24,7 +24,26 @@ function factIdentity(kind: InquiryRegisteredFact['kind'], contract: InquiryCont
  * deterministic-floor and omission-challenger obligations therefore cannot be
  * dropped merely because the response author never mentioned them.
  */
-export function buildInquiryFactRegister(contract: InquiryContract): InquiryFactRegister {
+function normalizedFindingContent(value: unknown): string {
+  if (typeof value === 'object' && value !== null && 'content' in value
+    && typeof (value as { content?: unknown }).content === 'string') {
+    return (value as { content: string }).content.trim()
+  }
+  return JSON.stringify(value) ?? String(value)
+}
+
+function evidenceRows(payload: unknown): readonly unknown[] {
+  if (typeof payload === 'object' && payload !== null && 'results' in payload
+    && Array.isArray((payload as { results?: unknown }).results)) {
+    return (payload as { results: unknown[] }).results
+  }
+  return [payload]
+}
+
+export function buildInquiryFactRegister(
+  contract: InquiryContract,
+  evidencePayloads: readonly unknown[] = [],
+): InquiryFactRegister {
   const validationErrors: string[] = []
   const obligationIds = new Set<string>()
   const facts: InquiryRegisteredFact[] = []
@@ -52,6 +71,7 @@ export function buildInquiryFactRegister(contract: InquiryContract): InquiryFact
         disposition: obligation.disposition,
       },
       evidence_refs: uniqueSorted(obligation.evidence_refs),
+      normalized_content: null,
     })
   }
 
@@ -72,7 +92,41 @@ export function buildInquiryFactRegister(contract: InquiryContract): InquiryFact
         disposition: frontier.disposition,
       },
       evidence_refs: frontier.source_ref ? [frontier.source_ref] : [],
+      normalized_content: null,
     })
+  }
+
+  const payloadByHash = new Map(evidencePayloads.map((payload) => [stableFingerprint(payload), payload]))
+  for (const obligation of contract.obligations) {
+    for (const evidenceRef of uniqueSorted(obligation.evidence_refs)) {
+      const payloadHash = evidenceHashFromRef(evidenceRef)
+      const payload = payloadHash ? payloadByHash.get(payloadHash) : undefined
+      if (!payloadHash || payload === undefined) continue
+      const rows = evidenceRows(payload)
+      const normalizedRows = rows.length > 0
+        ? rows.map(normalizedFindingContent)
+        : obligation.disposition === 'empty'
+          ? [`No results returned for ${obligation.label}.`]
+          : []
+      normalizedRows.forEach((content, index) => {
+        const rowHash = stableFingerprint(content)
+        facts.push({
+          fact_id: factIdentity('finding', contract, `${obligation.obligation_id}:${payloadHash}:${index}:${rowHash}`),
+          kind: 'finding',
+          obligation_id: obligation.obligation_id,
+          frontier_id: null,
+          materiality: obligation.materiality,
+          meaning: {
+            label: `Evidence finding ${index + 1} for ${obligation.label}`,
+            rationale: `Canonical evidence payload ${payloadHash}.`,
+            scu_ids: uniqueSorted(obligation.scu_ids),
+            disposition: obligation.disposition,
+          },
+          evidence_refs: [evidenceRef, `result:${rowHash}`],
+          normalized_content: content,
+        })
+      })
+    }
   }
 
   const normalizedFacts = [...facts].sort((a, b) => a.fact_id.localeCompare(b.fact_id))
@@ -96,12 +150,14 @@ export function inquiryResponsePartContentHash(
   kind: InquiryResponseDeliveryPart['kind'],
   exclusionReason: string | null = null,
   evidencePayloadHashes: readonly string[] = [],
+  content: string | null = null,
 ): string {
   const factsById = new Map(register.facts.map((fact) => [fact.fact_id, fact]))
   return stableFingerprint({
     kind,
     facts: uniqueSorted(factIds).map((factId) => factsById.get(factId) ?? { fact_id: factId, unresolved: true }),
     evidence_payload_hashes: uniqueSorted(evidencePayloadHashes),
+    content,
     exclusion_reason: exclusionReason,
   })
 }
@@ -127,7 +183,7 @@ export function buildResponseCoverageReceipt(args: {
   response_text?: string | null
 }): InquiryResponseCoverageReceipt {
   const { contract } = args
-  const expectedRegister = buildInquiryFactRegister(contract)
+  const expectedRegister = buildInquiryFactRegister(contract, args.evidence_payloads)
   const suppliedRegister = args.fact_register
   const register = expectedRegister
   const factsById = new Map(register.facts.map((fact) => [fact.fact_id, fact]))
@@ -172,6 +228,7 @@ export function buildResponseCoverageReceipt(args: {
       part.kind,
       part.exclusion_reason,
       part.evidence_payload_hashes,
+      part.content,
     )
     if (part.kind !== 'prose' && part.content_hash !== expectedPartHash) {
       invalid.push(`delivery part ${part.part_id} content does not match its fact claims`)
@@ -187,6 +244,18 @@ export function buildResponseCoverageReceipt(args: {
       }
       if (part.evidence_payload_hashes.length > 0) {
         invalid.push(`prose delivery part ${part.part_id} cannot directly carry retrieval payloads`)
+      }
+      if (part.fact_ids.length > 0 || part.content !== null) {
+        invalid.push(`prose delivery part ${part.part_id} cannot self-attest fact or interpretation coverage`)
+      }
+    }
+    if (part.kind === 'conjoint_interpretation') {
+      if (!part.content?.trim() || !canonicalResponseText.includes(part.content)
+        || part.content_hash !== expectedPartHash) {
+        invalid.push(`conjoint interpretation ${part.part_id} is not an exact canonical response span`)
+      }
+      if (part.fact_ids.length < 2) {
+        invalid.push(`conjoint interpretation ${part.part_id} must map at least two findings`)
       }
     }
     for (const factId of uniqueSorted(part.fact_ids)) {
@@ -206,6 +275,13 @@ export function buildResponseCoverageReceipt(args: {
         }
         excluded.add(factId)
       } else if (part.kind === 'prose') {
+        continue
+      } else if (part.kind === 'conjoint_interpretation') {
+        if (fact.kind !== 'finding' || !fact.normalized_content
+          || !part.content?.includes(fact.normalized_content)) {
+          invalid.push(`conjoint interpretation ${part.part_id} does not contain mapped finding ${factId}`)
+          continue
+        }
         interpretationMapped.add(factId)
       } else {
         const expectedEvidenceHashes = fact.evidence_refs
@@ -234,8 +310,11 @@ export function buildResponseCoverageReceipt(args: {
   const requiredFactIds = register.required_fact_ids
   const missingFactIds = allFactIds.filter((factId) => !delivered.has(factId) && !excluded.has(factId))
   const missingRequiredFactIds = requiredFactIds.filter((factId) => !delivered.has(factId))
-  const interpretationUnmappedFactIds = allFactIds.filter((factId) =>
-    delivered.has(factId) && !excluded.has(factId) && !interpretationMapped.has(factId))
+  const interpretationUnmappedFactIds = register.facts
+    .filter((fact) => fact.kind === 'finding'
+      && delivered.has(fact.fact_id) && !excluded.has(fact.fact_id)
+      && !interpretationMapped.has(fact.fact_id))
+    .map((fact) => fact.fact_id)
   const unresolvedObligationIds = contract.obligations
     .filter((obligation) => !['served', 'empty', 'not_applicable'].includes(obligation.disposition))
     .map((obligation) => obligation.obligation_id)
@@ -315,24 +394,29 @@ export function buildResponseCoverageReceipt(args: {
  */
 export function buildStructuredResponseAccountability(
   contract: InquiryContract,
-  options: { response_text?: string | null; evidence_payloads?: readonly unknown[] } = {},
+  options: {
+    response_text?: string | null
+    evidence_payloads?: readonly unknown[]
+    conjoint_interpretations?: readonly { text: string; fact_ids: readonly string[] }[]
+  } = {},
 ): InquiryResponseAccountability {
-  const factRegister = buildInquiryFactRegister(contract)
+  const factRegister = buildInquiryFactRegister(contract, options.evidence_payloads)
   const evidencePayloads = options.evidence_payloads ?? []
   const actualEvidenceHashes = uniqueSorted(evidencePayloads.map((payload) => stableFingerprint(payload)))
   const deliveredFactIds = factRegister.facts
     .filter((fact) => {
       if (fact.kind === 'frontier') return true
+      if (fact.kind === 'finding') return true
       if (fact.meaning.disposition === 'not_applicable') return true
       if (fact.meaning.disposition !== 'served' && fact.meaning.disposition !== 'empty') return false
-      const hashes = fact.evidence_refs.map(evidenceHashFromRef)
+      const hashes = fact.evidence_refs.filter((ref) => ref.startsWith('retrieval:')).map(evidenceHashFromRef)
       return hashes.length === fact.evidence_refs.length
         && hashes.every((hash) => hash !== null && actualEvidenceHashes.includes(hash))
     })
     .map((fact) => fact.fact_id)
   const deliveredEvidenceHashes = uniqueSorted(factRegister.facts
     .filter((fact) => deliveredFactIds.includes(fact.fact_id))
-    .flatMap((fact) => fact.evidence_refs.map(evidenceHashFromRef))
+    .flatMap((fact) => fact.evidence_refs.filter((ref) => ref.startsWith('retrieval:')).map(evidenceHashFromRef))
     .filter((hash): hash is string => hash !== null))
   const deliveryPart: InquiryResponseDeliveryPart = {
     part_id: `structured-findings:${factRegister.register_hash}`,
@@ -343,9 +427,11 @@ export function buildStructuredResponseAccountability(
       'structured_findings',
       null,
       deliveredEvidenceHashes,
+      null,
     ),
     fact_ids: deliveredFactIds,
     evidence_payload_hashes: deliveredEvidenceHashes,
+    content: null,
     exclusion_reason: null,
   }
   const responseText = options.response_text ?? ''
@@ -354,12 +440,22 @@ export function buildStructuredResponseAccountability(
         part_id: `prose:${stableFingerprint(responseText)}`,
         kind: 'prose',
         content_hash: stableFingerprint(responseText),
-        fact_ids: deliveredFactIds,
+        content: null,
+        fact_ids: [],
         evidence_payload_hashes: [],
         exclusion_reason: null,
       }
     : null
-  const deliveryParts = prosePart ? [deliveryPart, prosePart] : [deliveryPart]
+  const conjointParts: InquiryResponseDeliveryPart[] = (options.conjoint_interpretations ?? []).map((item, index) => ({
+    part_id: `conjoint-interpretation:${index + 1}:${stableFingerprint(item.text)}`,
+    kind: 'conjoint_interpretation',
+    content_hash: inquiryResponsePartContentHash(factRegister, item.fact_ids, 'conjoint_interpretation', null, [], item.text),
+    content: item.text,
+    fact_ids: uniqueSorted(item.fact_ids),
+    evidence_payload_hashes: [],
+    exclusion_reason: null,
+  }))
+  const deliveryParts = prosePart ? [deliveryPart, prosePart, ...conjointParts] : [deliveryPart, ...conjointParts]
   return {
     accountability_version: 'inquiry-response-accountability-v1',
     fact_register: factRegister,
