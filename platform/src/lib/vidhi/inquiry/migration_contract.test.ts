@@ -20,7 +20,8 @@ describe('migration 1033 planner inquiry lifecycle', () => {
   })
 
   it('grants only lifecycle mutation and immutable evidence insertion needed by the web role', () => {
-    expect(sql).toContain('GRANT SELECT, INSERT ON planner_inquiry_lifecycles TO role_web_serve')
+    expect(sql).toContain('REVOKE INSERT ON planner_inquiry_lifecycles FROM role_web_serve')
+    expect(sql).toContain('GRANT SELECT ON planner_inquiry_lifecycles TO role_web_serve')
     expect(sql).toMatch(/GRANT UPDATE \(contract_jsonb, status, revision, current_jti_hash, updated_at\)/)
     expect(sql).toContain('GRANT SELECT, INSERT ON planner_inquiry_evidence_receipts TO role_web_serve')
     expect(sql).not.toMatch(/GRANT[^;]*UPDATE ON planner_inquiry_evidence_receipts/)
@@ -42,15 +43,15 @@ describe('migration 1033 planner inquiry lifecycle', () => {
   })
 
   it('scopes retention purge and active limits to the authenticated principal and chart', () => {
-    expect(sql).toContain('prepare_planner_inquiry_creation(p_principal_uid text, p_chart_id uuid)')
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION create_planner_inquiry_lifecycle(')
     expect(sql).toMatch(/p_principal_uid IS DISTINCT FROM current_setting\('app\.principal_id', true\)/)
-    expect(sql).toContain('p_chart_id IS DISTINCT FROM app_chart_context()')
+    expect(sql).toContain('p_chart_id IS DISTINCT FROM public.app_chart_context()')
     expect(sql).toMatch(/principal_uid=p_principal_uid AND chart_id=p_chart_id/)
     expect(sql).toContain("created_at > now() - interval '1 hour'")
     expect(sql).toContain('recent_count >= 32')
     expect(sql).toContain('active_count >= 8')
     expect(sql).toContain('purge_expired_planner_inquiries_global()')
-    expect(sql).toContain('DROP FUNCTION IF EXISTS prepare_planner_inquiry_creation(text, uuid)')
+    expect(sql).toContain('DROP FUNCTION IF EXISTS create_planner_inquiry_lifecycle(uuid, text, uuid')
     expect(sql).toContain('DROP FUNCTION IF EXISTS planner_inquiry_immutable_guard()')
   })
 })

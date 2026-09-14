@@ -31,6 +31,7 @@ import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import {
   buildInquiryClosureReceipt,
+  buildInquiryDoorParityProjection,
   buildStructuredResponseAccountability,
   type InquiryContract,
   type InquiryResponseAccountability,
@@ -70,7 +71,7 @@ export function emitCompletenessReceipt(args: {
   completenessReceipt: WebCompletenessReceipt | null
   inquiryContract?: InquiryContract | null
   responseAccountability?: InquiryResponseAccountability | null
-}): void {
+}): ReturnType<typeof buildInquiryDoorParityProjection> | null {
   const { em, completenessReceipt } = args
   if (completenessReceipt) {
     const { served, floor_item_total } = completenessReceipt.coverage
@@ -82,6 +83,7 @@ export function emitCompletenessReceipt(args: {
   }
   if (args.inquiryContract) {
     const closureReceipt = buildInquiryClosureReceipt(args.inquiryContract)
+    const doorParity = buildInquiryDoorParityProjection(args.inquiryContract)
     const required = args.inquiryContract.obligations.filter((item) => item.materiality === 'required')
     const dispositioned = required.filter((item) => item.disposition !== 'pending').length
     const unresolvedMaterialFrontier = args.inquiryContract.material_frontier.filter((item) =>
@@ -99,5 +101,12 @@ export function emitCompletenessReceipt(args: {
       grade: responseReceipt.status,
       detail: JSON.stringify(accountability),
     })
+    em.grade({
+      subject: 'inquiry_door_parity',
+      grade: doorParity.status,
+      detail: JSON.stringify(doorParity),
+    })
+    return doorParity
   }
+  return null
 }

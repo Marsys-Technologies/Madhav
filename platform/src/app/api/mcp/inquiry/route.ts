@@ -14,6 +14,7 @@ import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
 import { ScopeTupleSchema } from '@/lib/vidhi/scope_classifier'
 import {
   buildInquiryClosureReceipt,
+  buildInquiryDoorParityProjection,
   classifyInquiryResult,
   compileInquiryContract,
   deriveInquiryPaginationReceipt,
@@ -238,7 +239,12 @@ export async function POST(request: Request) {
     if (claims.allowed_transition !== 'finalize') return response({ ok: false, error: 'INQUIRY_FINALIZE_NOT_AUTHORIZED' }, 409)
     const final = finalizeInquiryContract(row.contract_jsonb)
     await commitInquiryFinalization({ row, expected_jti_hash: hashJti(claims.jti), contract: final })
-    return response({ ok: true, inquiry_id: row.inquiry_id, closure: buildInquiryClosureReceipt(final) })
+    return response({
+      ok: true,
+      inquiry_id: row.inquiry_id,
+      closure: buildInquiryClosureReceipt(final),
+      inquiry_door_parity: buildInquiryDoorParityProjection(final),
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message === 'INQUIRY_TOKEN_REPLAYED_OR_STALE') return response({ ok: false, error: message }, 409)

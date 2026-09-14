@@ -1,13 +1,13 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.7.0
+version: 0.9.0
 status: LIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0026
-last_updated: 2026-09-14T23:43:00+05:30
+last_event: PA-E0030
+last_updated: 2026-09-15T00:37:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,12 +19,12 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: 0 through Wave 4 complete; Wave 5 disposable lifecycle and three-door parity packets are next.
-- Branch: `codex/purna-anvesana-wave4`, stacked on governed Wave 3 close `f6b4d1733`.
+- Wave: 0 through Wave 5 complete; Wave 6 acceptance and source-scope close are next.
+- Branch: `codex/purna-anvesana-wave5`, stacked on governed Wave 4 close `841942b3b`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W4-20260914`; release is due after this close is published.
+- Lease: `MADHAV-PURNA-ANVESANA-W5-20260914`; release is due after the Wave 5 close is published.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -161,6 +161,37 @@ warnings) also pass. PR #2602 is the focused stacked delivery. These are source/
 no branch was merged or deployed and no shared/production system, migration, credential,
 infrastructure, doctrine or empirical evaluation was changed or claimed.
 
+## Wave 5 outcome
+
+Migration 1033 now provides a durable inquiry lifecycle contract whose creation path is an atomic,
+principal-and-chart-bound `SECURITY DEFINER` function with a restricted search path. Direct table
+inserts are revoked. Disposable PostgreSQL 16 proof covers migration up/down, RLS isolation,
+append-only receipts, compare-and-swap and replay, immutable authorization and overlay fields,
+eight-active-inquiry quota enforcement, timestamp control and 30-day retention. No shared or
+production database received the migration.
+
+Portal, managed `prashna_ask` and raw inquiry start/execute/finalize now execute one genuinely
+shared fixture and produce the same canonical evidence projection, including pagination. Portal
+emits a machine-readable `inquiry_door_parity` grade. Failure normalization preserves distinct
+authorization, dispatch, missing-argument and overlay-drift identities. The reviewed denominator is
+explicit: 184 platform-executable bindings exist, but only six currently declare the full shared
+channel required by this bounded parity proof. The remaining channel-coverage gap is not hidden or
+counted as full-estate parity.
+
+Independent migration/security and parity reviewers approved exact clean technical head
+`9bd525bf0cd46ea076da9a26928075a4af4c845c` with no HIGH or MEDIUM finding. The combined focused
+gate passed 18 files / 214 tests; TypeScript, 56/56 route golden streams, disposable database tests
+and lint at zero errors / 590 inherited warnings pass. The full unit run passed 1,100 files and
+11,704 tests, with one census determinism file timing out at its five-second runner limit; its
+isolated rerun passed two tests in 4.69 seconds. This is reported as a qualified local gate, not a
+fully green full-suite run.
+
+The lifecycle reservation is intentionally at-most-once: a process crash after reservation and
+before dispatch remains unavailable until expiry rather than being silently replayed. Restart
+recovery, the full-catalog channel gap, a dedicated signing key, deployed cross-door traces and
+production/empirical acceptance remain explicit Wave 6 quarantine inputs. No merge, deployment,
+shared/production mutation, credentials/infrastructure action or production-value claim occurred.
+
 ## Reproduction
 
 From the repository root:
@@ -196,9 +227,10 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W3-P1 normalized intent and ontology traversal | COMPLETE | W2-P2 | planner reviewer approved repaired exact head |
 | W3-P2 omission challenger and frontier closure | COMPLETE | W3-P1 | omission reviewer approved repaired exact head |
 | W4-P1 iterative evidence and response accountability | COMPLETE | W3-P2 | response-accountability reviewer approved exact repaired head |
-| W5-P1 disposable migration/lifecycle/security proof | NEXT | W4-P1 | migration guard and security review required |
-| W5-P2 three-door parity/failure proof | QUEUED | W5-P1 | independent parity review required |
-| W6 | QUEUED | exact DAG in campaign definition | one independent reviewer per packet |
+| W5-P1 disposable migration/lifecycle/security proof | COMPLETE | W4-P1 | migration/security reviewer approved exact clean head |
+| W5-P2 three-door parity/failure proof | COMPLETE | W5-P1 | parity reviewer approved bounded shared-surface proof |
+| W6-P1 versioned Beyond-Acarya acceptance | NEXT | W5-P2 | independent acceptance review required |
+| W6-P2 source-scope close and quarantine | QUEUED | W6-P1 | independent terminal review required |
 
 ## Delivery decomposition
 

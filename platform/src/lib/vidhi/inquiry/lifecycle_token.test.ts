@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
 import { hashJti, issueInquiryLifecycleToken, verifyInquiryLifecycleToken } from './lifecycle_token'
 
@@ -6,6 +7,20 @@ const base = {
   sub: 'user-1', inquiry_id: 'inquiry-1', chart_id: 'chart-1',
   contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan', contract_state_hash: 'sha256:state', catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', overlay_version: null, chart_build_id: null,
   revision: 0, allowed_transition: 'execute' as const, next_action_ids: ['item-001'],
+}
+
+function signRawPayload(payload: string): string {
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT', kid: 'inquiry-v1' })).toString('base64url')
+  const encoded = Buffer.from(payload).toString('base64url')
+  const signature = createHmac('sha256', key).update(`${header}.${encoded}`).digest('base64url')
+  return `${header}.${encoded}.${signature}`
+}
+
+function signClaims(overrides: Record<string, unknown>): string {
+  return signRawPayload(JSON.stringify({
+    iss: 'madhav-platform', aud: 'madhav-inquiry', ...base,
+    iat: 1_800_000_000, exp: 2_000_000_000, jti: 'jti-1', ...overrides,
+  }))
 }
 
 describe('inquiry lifecycle token', () => {
@@ -33,5 +48,22 @@ describe('inquiry lifecycle token', () => {
     expect(() => verifyInquiryLifecycleToken(issued.token, key, 'user-1')).toThrow('INQUIRY_TOKEN_EXPIRED')
     expect(() => issueInquiryLifecycleToken(base, 'weak')).toThrow('INQUIRY_SIGNING_KEY_INVALID')
     vi.useRealTimers()
+  })
+
+  it('normalizes signed invalid JSON to the public malformed-token error', () => {
+    expect(() => verifyInquiryLifecycleToken(signRawPayload('{'), key, 'user-1'))
+      .toThrow('INQUIRY_TOKEN_MALFORMED')
+  })
+
+  it('rejects signed claims with malformed temporal or replay identity fields', () => {
+    for (const overrides of [
+      { exp: 'never' },
+      { iat: 'now' },
+      { jti: '' },
+      { next_action_ids: ['not-an-action'] },
+    ]) {
+      expect(() => verifyInquiryLifecycleToken(signClaims(overrides), key, 'user-1'))
+        .toThrow('INQUIRY_TOKEN_MALFORMED')
+    }
   })
 })

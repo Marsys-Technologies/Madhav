@@ -190,7 +190,10 @@ export async function runEvidenceStage(args: {
         const raw = await getSharedQosDispatchQueue().submit({
           principalId: userUid,
           priorityClass: 'interactive',
-          run: () => executeWithCache(tool, queryPlan, cache, item.args),
+          // A continuation has distinct server-authorized cursor arguments.
+          // Execute it directly so request/shared cache normalization can never
+          // replay page one under a later page's authorization envelope.
+          run: () => tool.retrieve(queryPlan, item.args),
         })
         const ms = Date.now() - started
         validToolResults.push(raw)

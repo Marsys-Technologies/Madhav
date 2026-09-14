@@ -91,7 +91,7 @@ import { enforceTurnLimits } from '@/lib/limits'
 import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
-import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -969,6 +969,7 @@ export async function POST(request: Request) {
         },
         inquiry_contract: inquiryContract,
         inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
+        inquiry_door_parity: inquiryContract ? buildInquiryDoorParityProjection(inquiryContract) : null,
         response_accountability: responseAccountability,
         // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
         persistence: MCP_TURN_PERSISTENCE_NONE,
