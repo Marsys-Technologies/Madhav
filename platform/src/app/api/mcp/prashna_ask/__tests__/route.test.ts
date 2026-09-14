@@ -27,18 +27,23 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => {
+  const testScu = {
+    scu_id: 'scu.test.wealth', version: 1, label: 'Wealth evidence', description: 'wealth evidence rows', kind: 'datum',
+    domains: ['wealth'], concepts: ['wealth'], intents: ['domain_assessment'], horizons: ['natal'], scope: 'chart',
+    inputs: ['chart_id'], outputs: ['rows'], primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [],
+    freshness_policy: 'current build', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
+    bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', relation: 'primary', capability_uri: 'marsys://tool/L1/test', input_contract: { chart_id: 'string:required' }, output_contract: { rows: 'array' }, pagination: 'bounded_complete', pagination_verified: false, result_collection_verified: true, pagination_contract: { result_collection_path: 'content.rows', deterministic_order: ['id'] }, executable: true, execution_channels: ['platform_internal'] }],
+    source_descriptor_uris: ['marsys://tool/L1/test'],
+  }
   const snapshot = {
     schema_version: '1.0.0', compatibility_version: 'planner-scu-v1', generated_at: '2026-09-13T00:00:00.000Z',
     content_hash: 'sha256:test', source_catalog_fingerprint: 'sha256:test', edges: [],
-    scus: [{
-      scu_id: 'scu.test.wealth', version: 1, label: 'Wealth evidence', description: 'wealth evidence rows', kind: 'datum',
-      domains: ['wealth'], concepts: ['wealth'], intents: ['domain_assessment'], horizons: ['natal'], scope: 'chart',
-      inputs: ['chart_id'], outputs: ['rows'], primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [],
-      freshness_policy: 'current build', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
-      bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', relation: 'primary', capability_uri: 'marsys://tool/L1/test', input_contract: { chart_id: 'string:required' }, output_contract: { rows: 'array' }, pagination: 'bounded_complete', pagination_verified: false, result_collection_verified: true, pagination_contract: { result_collection_path: 'content.rows', deterministic_order: ['id'] }, executable: true, execution_channels: ['platform_internal'] }],
-      source_descriptor_uris: ['marsys://tool/L1/test'],
-    }],
-    census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 0, reviewed_output_claims: 0, exclusions: [] },
+    scus: [
+      testScu,
+      { ...testScu, scu_id: 'scu.finance.prosperity_assessment', label: 'Prosperity assessment floor', bindings: [], primary_binding_uri: null, source_descriptor_uris: [] },
+      { ...testScu, scu_id: 'scu.catalog.assess_career', label: 'Career assessment floor', domains: ['career'], concepts: ['career'], bindings: [], primary_binding_uri: null, source_descriptor_uris: [] },
+    ],
+    census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 3, editorial_scus: 3, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 2, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 0, reviewed_output_claims: 0, exclusions: [] },
   }
   return {
     assertPinnedCapabilityKnowledgeCurrent: () => snapshot,

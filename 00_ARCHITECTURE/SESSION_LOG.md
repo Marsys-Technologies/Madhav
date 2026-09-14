@@ -40571,3 +40571,24 @@ session_open:
 ### Opening validation
 
 `schema_validator.py --handshake` returned zero violations and exit 0 before Wave 3 source mutation.
+
+### Scope amendment W3-A1 — raw MCP inquiry integration fixture
+
+The full platform unit gate exposed two raw MCP route tests whose deliberately minimal capability
+snapshot contains only `scu.test.wealth`. Wave 3 makes recognized domain floors mandatory and
+fails closed when their SCUs are absent, so those fixtures now stop before exercising the route
+behavior they own. This is a test-fixture compatibility change only: the production route and
+runtime contracts are not changed, and the mandatory-floor failure behavior remains asserted in
+the Wave 3 acceptance suite.
+
+```yaml
+scope_amendment:
+  add_to_may_touch:
+    - platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts
+  reason: "Add the two mandatory floor identities used by the existing wealth and career route tests to their synthetic capability snapshot."
+  authority: "MADHAV-PURNA-ANVESANA-W3-20260914 remote source/local Wave 3 lease"
+  evidence:
+    pre_amendment_full_unit_gate: "2 failed, 11657 passed; both failures were INQUIRY_REQUIRED_FLOOR_MISSING from the synthetic one-SCU snapshot"
+    retained_fail_closed_detector: "platform/src/lib/vidhi/inquiry/wave3_acceptance.test.ts"
+  claim_ceiling: "synthetic source/local integration-fixture compatibility only; no production or empirical acceptance claim"
+```
