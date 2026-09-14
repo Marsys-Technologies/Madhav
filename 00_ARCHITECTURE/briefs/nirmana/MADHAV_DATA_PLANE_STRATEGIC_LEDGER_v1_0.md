@@ -25,6 +25,7 @@ changelog:
   - "1.0 update 2026-09-14: Accepts the independently challenged L1 PRODUCER_READY packet at execution commit 18503e9c2; opens L2 for strategy only under DP-SD-014."
   - "1.0 update 2026-09-14: Approves the independently challenged complete L2 Bodha producer-ready strategy and execution brief under DP-SD-015; immutable approval pin and dispatch remain separate next actions, and L3 stays waiting."
   - "1.0 update 2026-09-14: Pins DP-SD-015 approval to immutable L2 strategy/brief content commit 86374d65f3dc742085783e352a9999e2edb48715; dispatch is the next action."
+  - "1.0 update 2026-09-14: Dispatches the pinned DP-SD-015 L2 brief to the permanent Execution — Data Plane task on codex/madhav-data-plane-execution; L3 remains waiting."
 ---
 
 # Madhav data-plane strategic ledger
@@ -194,13 +195,13 @@ the repeatedly studied charts.
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
 | DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
 | DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | COMPLETE — `PRODUCER_READY` accepted by DP-SD-014; integration/deployment/value/evaluation remain unreached | L1 strategy/brief pins `7e101ffc3`/`e846baf3c`; reviewed tip `a9c44c298`; terminal evidence `18503e9c2` |
-| DP-P4 | L2 Bodha definition: 23 writers including support, adjacent answer authorities, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | APPROVED AND IMMUTABLY PINNED by DP-SD-015; dispatch is next | Accepted L0 `f6fed12c7`; accepted L1 terminal `18503e9c2`; L2 content pin `86374d65f` |
+| DP-P4 | L2 Bodha definition: 23 writers including support, adjacent answer authorities, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | EXECUTION DISPATCHED under DP-SD-015; producer-ready evidence pending | Accepted L0 `f6fed12c7`; accepted L1 terminal `18503e9c2`; L2 content/approval pins `86374d65f` / `7c7d198a1`; execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
-| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 and L1 terminals accepted; L2 brief approved and pinned with dispatch pending; L3-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde`; L2 content `86374d65f` |
+| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 and L1 terminals accepted; L2 dispatched; L3-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde`; L2 content/approval pins `86374d65f` / `7c7d198a1` |
 
 The first proposed vertical slice remains:
 
