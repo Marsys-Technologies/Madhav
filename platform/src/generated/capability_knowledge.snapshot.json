@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "compatibility_version": "planner-scu-v1",
-  "generated_at": "2026-09-14T13:29:29.000Z",
-  "content_hash": "sha256:c9c8520f5a63007587f4c8565298046ce82bec6b0f4210960e6fd028d2cca158",
+  "generated_at": "2026-09-14T13:46:54.000Z",
+  "content_hash": "sha256:95f251a1a88413eef26bce6531a401c7fe41c459cc3ca92a5efaf502ccbbec0f",
   "source_catalog_fingerprint": "sha256:82d70ce366f65577513e5f6ba0bcbdff764e518efd20b26dea689d534136ad75",
   "scus": [
     {
@@ -5571,9 +5571,11 @@
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
-        "formula_or_writer_version"
+        "formula_or_writer_version",
+        "computed_at",
+        "engine_version"
       ],
-      "freshness_policy": "Must resolve against the active compatible chart build.",
+      "freshness_policy": "Must resolve stored evidence against the active compatible chart build and carry computation time plus engine version for computed evidence.",
       "entitlement": "native",
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
