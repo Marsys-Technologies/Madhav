@@ -51,7 +51,7 @@ export interface SemanticCapabilityBinding {
   readonly output_contract: Readonly<Record<string, string>>
   readonly pagination: PaginationSemantics
   /** True only when response paths and exhaustion semantics were source-reviewed. */
-  readonly pagination_verified?: boolean
+  readonly pagination_verified?: boolean | null
   /** True when the semantic result collection path was reviewed, independently of exhaustion semantics. */
   readonly result_collection_verified?: boolean
   readonly pagination_contract?: PaginationContract

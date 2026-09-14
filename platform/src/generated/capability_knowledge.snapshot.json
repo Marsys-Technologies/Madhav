@@ -2,7 +2,7 @@
   "schema_version": "1.0.0",
   "compatibility_version": "planner-scu-v1",
   "generated_at": "2026-09-13T18:41:39.000Z",
-  "content_hash": "sha256:396e49d92c113f28d6747230c6297846deeffc6e709eb277dfca3f0ef8d465db",
+  "content_hash": "sha256:5a2c37b7fefa30cd18769baa2138933eadf628187564dc38b41cff99cf65dd11",
   "source_catalog_fingerprint": "sha256:82d70ce366f65577513e5f6ba0bcbdff764e518efd20b26dea689d534136ad75",
   "scus": [
     {
@@ -56,7 +56,7 @@
       "primary_binding_uri": "marsys://tool/L2/query_mechanisms",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": false,
+        "pagination_verified": null,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -128,7 +128,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal",
@@ -246,7 +246,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -348,7 +348,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -450,7 +450,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -535,7 +535,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -618,7 +618,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -697,7 +697,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -769,7 +769,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -843,7 +843,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -927,7 +927,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1009,7 +1009,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1095,7 +1095,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1158,7 +1158,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1225,7 +1225,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1321,7 +1321,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1398,7 +1398,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1472,7 +1472,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1550,7 +1550,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1623,7 +1623,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1689,7 +1689,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -1754,7 +1754,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -1829,7 +1829,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1909,7 +1909,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -1985,7 +1985,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2063,7 +2063,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2150,7 +2150,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2226,7 +2226,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2300,7 +2300,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2378,7 +2378,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2453,7 +2453,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2527,7 +2527,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2597,7 +2597,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2695,7 +2695,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2771,7 +2771,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "cursor",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2849,7 +2849,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2925,7 +2925,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -2985,7 +2985,7 @@
       "primary_binding_uri": "marsys://tool/L1/get_divisionals",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": false,
+        "pagination_verified": null,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -3019,7 +3019,7 @@
             "divisional_facts": "array"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "mcp_full"
@@ -3069,7 +3069,7 @@
             "divisional_facts": "array"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "mcp_full"
@@ -3093,7 +3093,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3176,7 +3176,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3246,7 +3246,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3324,7 +3324,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3396,7 +3396,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3472,7 +3472,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3550,7 +3550,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3628,7 +3628,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3710,7 +3710,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3786,7 +3786,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3864,7 +3864,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -3940,7 +3940,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4018,7 +4018,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4100,7 +4100,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4178,7 +4178,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4264,7 +4264,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4338,7 +4338,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4414,7 +4414,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4492,7 +4492,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4572,7 +4572,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4654,7 +4654,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4732,7 +4732,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4803,7 +4803,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -4917,7 +4917,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -4993,7 +4993,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5059,7 +5059,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5133,7 +5133,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "cursor",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5207,7 +5207,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5281,7 +5281,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5352,7 +5352,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5435,7 +5435,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5501,7 +5501,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": false,
           "execution_channels": [
             "platform_internal"
@@ -5605,7 +5605,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5679,7 +5679,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5761,7 +5761,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5839,7 +5839,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5911,7 +5911,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -5983,7 +5983,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6061,7 +6061,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6136,7 +6136,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6206,7 +6206,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6282,7 +6282,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6361,7 +6361,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6437,7 +6437,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6515,7 +6515,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6590,7 +6590,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6662,7 +6662,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6746,7 +6746,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6818,7 +6818,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6886,7 +6886,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -6960,7 +6960,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7038,7 +7038,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7119,7 +7119,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7203,7 +7203,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7273,7 +7273,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7354,7 +7354,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7444,7 +7444,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7516,7 +7516,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7592,7 +7592,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7662,7 +7662,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7732,7 +7732,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7800,7 +7800,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7872,7 +7872,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -7950,7 +7950,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8030,7 +8030,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8104,7 +8104,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8178,7 +8178,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8256,7 +8256,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8341,7 +8341,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8417,7 +8417,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8495,7 +8495,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8573,7 +8573,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8643,7 +8643,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8711,7 +8711,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8787,7 +8787,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8865,7 +8865,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -8935,7 +8935,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9013,7 +9013,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9089,7 +9089,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9159,7 +9159,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9237,7 +9237,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9311,7 +9311,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9385,7 +9385,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9455,7 +9455,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9531,7 +9531,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9601,7 +9601,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9671,7 +9671,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9739,7 +9739,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9807,7 +9807,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9877,7 +9877,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -9955,7 +9955,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10046,7 +10046,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10123,7 +10123,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10197,7 +10197,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10269,7 +10269,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10348,7 +10348,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10424,7 +10424,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10510,7 +10510,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10580,7 +10580,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10654,7 +10654,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10738,7 +10738,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10814,7 +10814,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10888,7 +10888,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -10962,7 +10962,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11040,7 +11040,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11116,7 +11116,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11190,7 +11190,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11270,7 +11270,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11346,7 +11346,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11416,7 +11416,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11486,7 +11486,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11562,7 +11562,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11656,7 +11656,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11732,7 +11732,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11804,7 +11804,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11901,7 +11901,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -11979,7 +11979,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12057,7 +12057,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12131,7 +12131,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12203,7 +12203,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12285,7 +12285,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12363,7 +12363,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12433,7 +12433,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12501,7 +12501,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12571,7 +12571,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12641,7 +12641,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12717,7 +12717,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12816,7 +12816,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12886,7 +12886,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -12956,7 +12956,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13036,7 +13036,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13104,7 +13104,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13180,7 +13180,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13250,7 +13250,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13318,7 +13318,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13386,7 +13386,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13454,7 +13454,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13533,7 +13533,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13607,7 +13607,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13684,7 +13684,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13756,7 +13756,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13858,7 +13858,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "none",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -13958,7 +13958,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal"
@@ -14024,7 +14024,7 @@
       "primary_binding_uri": "marsys://tool/L-DOMAIN/assess_wealth",
       "primary_binding_details": {
         "pagination": "bounded_unverified",
-        "pagination_verified": false,
+        "pagination_verified": null,
         "execution_channels": [
           "platform_internal",
           "mcp_full"
@@ -14047,7 +14047,7 @@
             "facets": "object"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -14133,7 +14133,7 @@
             "facets": "object"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -14171,7 +14171,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal",
@@ -14237,7 +14237,7 @@
       "primary_binding_uri": "marsys://tool/L3/query_temporal_activation",
       "primary_binding_details": {
         "pagination": "bounded_unverified",
-        "pagination_verified": false,
+        "pagination_verified": null,
         "pagination_contract": {
           "request_limit_path": "top_k",
           "effective_maximum": 500,
@@ -14322,7 +14322,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal",
@@ -14439,7 +14439,7 @@
             "signal_refs": "array"
           },
           "pagination": "bounded_complete",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal",
@@ -14487,7 +14487,7 @@
             "signal_refs": "array"
           },
           "pagination": "bounded_complete",
-          "pagination_verified": false,
+          "pagination_verified": null,
           "executable": true,
           "execution_channels": [
             "platform_internal",

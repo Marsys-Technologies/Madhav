@@ -5,7 +5,7 @@
     "Reviewed output-digest coverage counts assets named by static INSERT statements. Procedural retire/replace migrations and deployed database state are not replayed, so the unique current spec row per asset is not mechanically resolved here.",
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity."
   ],
-  "content_sha256": "16db84648eb88c1d57769ea3d65e461cde202d9eeaa018b7db4851f84297426c",
+  "content_sha256": "7f3525135db374d5e187f7768b5885951b1f01e088fa86e1e7bf202fdd3b57b4",
   "denominators": {
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -1389,11 +1389,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "ea44b25b0a12294cd663c3d1caee6792bb00876757681c81b326428d4cc8e5a4"
+            "sha256": "52586fe67a1a64c6cec1821fd384e40489369e78a3c01b5b3d58e4c4e854feeb"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "20a7ce62f3fb3cdb1e44ea8721ab018aa376caa98bdec0338c951ddcf5f8fc66"
+            "sha256": "fd366e18a16fb6c9fc70d5655ace24a0be0781418019f04a63d4b0703c252f92"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -1425,7 +1425,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "bbd0964bc4ea56275ef0fadb4802193eb0c32fe62504e65ae94fe820c96e6fb7"
+            "sha256": "0e7569d7fdc7ae42852b3e76030eeed2b102b80f0b9f81a02b6d2ac568ce8a52"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -2069,7 +2069,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts",
-            "sha256": "d7f2a18bc1056141ff26ef33ee90765c201cca4937efdf9e9c25da21442522b9"
+            "sha256": "c07a1fe9b83c98034d5e6c80397face2d2ec5445b51a9f08ca903a60e63ac615"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts",
@@ -2117,7 +2117,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/registry/**/*.ts (excluding tests)",
-        "sha256": "136b0e31f6551aef3d101d041125bb617756a4b4dc0c8b2b85fe5d86ad7b3f67"
+        "sha256": "dbd1aaac63970d8a87ed3d7eb136d3f4bb70bbc92b9f9ab4254379e38f842ae8"
       },
       {
         "id": "writer_digest_inventory",

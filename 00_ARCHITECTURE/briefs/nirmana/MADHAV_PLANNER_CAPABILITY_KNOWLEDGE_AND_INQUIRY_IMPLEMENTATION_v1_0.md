@@ -114,7 +114,7 @@ The generator emits `platform/src/generated/capability_knowledge.snapshot.json`.
 | Producer-output claims | 8 |
 | Claims joined to a reviewed output-spec hash | 7 |
 
-Snapshot content hash at the time of this brief: `sha256:396e49d92c113f28d6747230c6297846deeffc6e709eb277dfca3f0ef8d465db`.
+Snapshot content hash at the time of this brief: `sha256:5a2c37b7fefa30cd18769baa2138933eadf628187564dc38b41cff99cf65dd11`.
 
 The runtime imports and deep-freezes this generated JSON artifact. It also recompiles the current registry to detect byte-affecting drift; the live catalog is not silently substituted for the pinned snapshot.
 
@@ -138,7 +138,7 @@ Seven producer-output links above pin exact migration-authored output-digest com
 
 ## 7. Estate census
 
-`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `16db84648eb88c1d57769ea3d65e461cde202d9eeaa018b7db4851f84297426c`.
+`platform/scripts/generate_capability_estate_census.ts` creates a separate deterministic accounting artifact. It does not infer SCU coverage. Current branch census hash: `7f3525135db374d5e187f7768b5885951b1f01e088fa86e1e7bf202fdd3b57b4`.
 
 | Denominator | Current source-tree result |
 |---|---:|

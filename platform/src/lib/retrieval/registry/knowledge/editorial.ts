@@ -25,7 +25,7 @@ export const MECHANISM_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L2/query_mechanisms',
     primary_binding_details: {
       pagination: 'offset',
-      pagination_verified: false,
+      pagination_verified: null,
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 50,
         result_collection_path: 'content.rows', total_path: 'content.total_matching',
@@ -68,7 +68,7 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L3/query_temporal_activation',
     primary_binding_details: {
       pagination: 'bounded_unverified',
-      pagination_verified: false,
+      pagination_verified: null,
       pagination_contract: {
         request_limit_path: 'top_k', effective_maximum: 500,
         result_collection_path: 'content.activations',
@@ -109,7 +109,7 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     primary_binding_uri: 'marsys://tool/L1/get_divisionals',
     primary_binding_details: {
       pagination: 'offset',
-      pagination_verified: false,
+      pagination_verified: null,
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 2000,
         result_collection_path: 'content.rows',
@@ -122,7 +122,7 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       binding_id: 'mcp:ganita_chart_facts_get:divisional_chart', kind: 'mcp_native', relation: 'provides',
       capability_uri: 'mcp://tool/ganita_chart_facts_get', public_tool_name: 'ganita_chart_facts_get',
       input_contract: { chart_id: 'string:required', divisional_chart: 'string:required', offset: 'number:optional', limit: 'number:optional' },
-      output_contract: { divisional_facts: 'array' }, pagination: 'offset', pagination_verified: false,
+      output_contract: { divisional_facts: 'array' }, pagination: 'offset', pagination_verified: null,
       executable: true, execution_channels: ['mcp_full'],
       route_evidence: 'platform-mcp/src/tools/register_p1_aliases.ts:1528',
     }],
@@ -173,7 +173,7 @@ export const YOGA_SCUS: readonly SemanticCapabilityDeclaration[] = [
       input_contract: { chart_id: 'required', dasha_period: 'optional' },
       output_contract: { activated_yogas: 'array', signal_refs: 'array' },
       pagination: 'bounded_complete',
-      pagination_verified: false,
+      pagination_verified: null,
       executable: true,
       execution_channels: ['platform_internal', 'mcp_full'],
       public_tool_name: 'kala_yoga_activation_get',
@@ -208,7 +208,7 @@ export const FINANCE_SCUS: readonly SemanticCapabilityDeclaration[] = [
     outputs: ['convergences', 'tensions', 'signal_refs', 'judgment_flags'],
     primary_binding_uri: 'marsys://tool/L-DOMAIN/assess_wealth',
     primary_binding_details: {
-      pagination: 'bounded_unverified', pagination_verified: false,
+      pagination: 'bounded_unverified', pagination_verified: null,
       execution_channels: ['platform_internal', 'mcp_full'], public_tool_name: 'assess_wealth',
       route_evidence: 'platform-mcp/src/tools/registry_bridge.ts:3504',
     },
@@ -220,7 +220,7 @@ export const FINANCE_SCUS: readonly SemanticCapabilityDeclaration[] = [
       input_contract: { chart_id: 'required', valence: 'optional' },
       output_contract: { mechanisms: 'array', facets: 'object' },
       pagination: 'offset',
-      pagination_verified: false,
+      pagination_verified: null,
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 50,
         result_collection_path: 'content.rows', total_path: 'content.total_matching',

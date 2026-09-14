@@ -236,6 +236,7 @@ async function fetchVargaDignity(
     `SELECT fact_id, fact_subject, fact_value_text, fact_value_jsonb
      FROM chart_facts
      WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'graha_dignity_per_varga'
+       AND fact_key = 'dignity_state'
        AND fact_value_jsonb->>'varga' = ANY($3)`,
     [chart_id, ayanamsha_id, vargas],
   )
@@ -310,8 +311,9 @@ async function fetchInduLagna(chart_id: string, ayanamsha_id: string): Promise<I
     const res = await query<Record<string, unknown>>(
       `SELECT fact_id, fact_key, fact_value_text, fact_value_num
        FROM chart_facts
-       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'special_lagna' AND fact_subject = 'INDU_LAGNA'`,
-      [chart_id, ayanamsha_id],
+       WHERE chart_id = $1 AND ayanamsha_id = $2 AND fact_category = 'special_lagna' AND fact_subject = 'INDU_LAGNA'
+         AND fact_key = ANY($3)`,
+      [chart_id, ayanamsha_id, ['sign', 'sign_lord', 'house_d1', 'nakshatra']],
     )
     if (res.rows.length === 0) return null
     const byKey: Record<string, unknown> = {}
