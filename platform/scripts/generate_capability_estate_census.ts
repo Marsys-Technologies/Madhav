@@ -32,7 +32,7 @@ import {
 } from './manifest/extract_registrar_capability_bridge'
 import { resolveType } from './manifest/projection_builders'
 
-const GENERATOR_VERSION = 'capability-estate-census/v1'
+const GENERATOR_VERSION = 'capability-estate-census/v1.1'
 const DEFAULT_REPO_ROOT = resolve(__dirname, '..', '..')
 const DEFAULT_OUTPUT_PATH = join(DEFAULT_REPO_ROOT, 'platform', 'src', 'generated', 'capability_estate_census.json')
 const ASSET_ID_PATTERN = /'(?:bg|ga|bo|ka|ph|mi|lel)_[a-z0-9_]+'/g
@@ -243,10 +243,14 @@ function descriptorFingerprint(catalog: readonly CapabilityDescriptor[]): string
 }
 
 function outputDigestMigrationFiles(repoRoot: string): string[] {
-  const dir = join(repoRoot, 'platform', 'supabase', 'migrations')
-  return readdirSync(dir)
-    .filter((name) => name.endsWith('.sql'))
-    .map((name) => join(dir, name))
+  const dirs = [
+    join(repoRoot, 'platform', 'migrations'),
+    join(repoRoot, 'platform', 'supabase', 'migrations'),
+  ]
+  return dirs
+    .flatMap((dir) => readdirSync(dir)
+      .filter((name) => name.endsWith('.sql'))
+      .map((name) => join(dir, name)))
     .filter((path) => readFileSync(path, 'utf8').includes('asset_output_digest_specs'))
     .sort((a, b) => a.localeCompare(b))
 }
@@ -376,7 +380,12 @@ export async function buildCapabilityEstateCensus(options: {
     { id: 'registrar_bridge_extractor', path: relative(repoRoot, bridgeExtractorPath), sha256: hashFile(bridgeExtractorPath) },
     sourceSet(repoRoot, 'runtime_registry_source_set', 'platform/src/lib/retrieval/registry/**/*.ts (excluding tests)', registryFiles),
     sourceSet(repoRoot, 'public_registrar_source_set', 'platform-mcp/src/tools/**/*.ts (excluding tests)', registrarFiles),
-    sourceSet(repoRoot, 'output_digest_migration_source_set', 'platform/supabase/migrations/* containing asset_output_digest_specs', digestMigrationFiles),
+    sourceSet(
+      repoRoot,
+      'output_digest_migration_source_set',
+      'platform/{migrations,supabase/migrations}/*.sql containing asset_output_digest_specs',
+      digestMigrationFiles,
+    ),
   ].sort((a, b) => a.id.localeCompare(b.id))
   const sourcePaths = sortedUnique([
     catalogSourcePath,
