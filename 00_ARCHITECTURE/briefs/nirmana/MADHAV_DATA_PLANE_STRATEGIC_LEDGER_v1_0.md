@@ -20,6 +20,7 @@ changelog:
   - "1.0 update 2026-09-13: Records DP-SD-011, the exact ga_strength PyJHora transitive-span addendum returned by the deeper DP-SD-010 audit."
   - "1.0 update 2026-09-13: Accepts the independently challenged L0 PRODUCER_READY packet at execution commit f6fed12c7 and opens L1 for strategy only."
   - "1.0 update 2026-09-14: Approves the complete 19-writer L1 Gaṇita producer-ready strategy and execution brief under DP-SD-013; L2 remains waiting."
+  - "1.0 update 2026-09-14: Pins DP-SD-013 approval to immutable L1 strategy/brief content commit 7e101ffc31e28ca902265def6de733a5286705e5; dispatch is the next action."
 ---
 
 # Madhav data-plane strategic ledger
@@ -121,7 +122,7 @@ separately admitted next-generation artifact. Product backcasting is not runtime
 | DP-SD-010 | Close the L0 Swiss Ephemeris process-global state blocker by extending one shared re-entrant serialization boundary to every live setter and dependent calculation in the approved exact scope; do not adopt process-isolated execution. | ADOPTED BLOCKER RESOLUTION on 2026-09-13; no output-semantic, deployment or L1-L5 authority expansion. |
 | DP-SD-011 | Extend DP-SD-010 only to the two live PyJHora state-selection/dependent-calculation spans in `ga_strength_writer.py` and their exact tests/evidence. | ADOPTED SCOPE ADDENDUM on 2026-09-13; no strength semantics or broader directory authority. |
 | DP-SD-012 | Accept the L0 Brahmagyan terminal packet at `f6fed12c794224329f6b3b436f8b1b814499d06d` as `PRODUCER_READY`, with all later delivery states explicitly unreached. | ACCEPTED on 2026-09-13 after independent challenge; authorizes L1 strategy preparation only, not L1 execution. |
-| DP-SD-013 | Approve the complete L1 Gaṇita producer-ready strategy and paired immutable execution brief against accepted L0 revision `f6fed12c7`: reconcile all 19 current writers plus adjacent numerical service/projection capital; implement exact context/fact/configuration/condition/relation/clock/sensitivity/generation contracts and `L1-SLICE-RESOURCE-CONFIG-01`; preserve the L0 `UNQUALIFIED_SOURCE` Bhāvat boundary, frozen producer architecture and all later-state gates. | APPROVAL PIN PENDING on 2026-09-14; becomes executable only after the content commit is immutably named in the paired brief. |
+| DP-SD-013 | Approve the complete L1 Gaṇita producer-ready strategy and paired immutable execution brief against accepted L0 revision `f6fed12c7`: reconcile all 19 current writers plus adjacent numerical service/projection capital; implement exact context/fact/configuration/condition/relation/clock/sensitivity/generation contracts and `L1-SLICE-RESOURCE-CONFIG-01`; preserve the L0 `UNQUALIFIED_SOURCE` Bhāvat boundary, frozen producer architecture and all later-state gates. | APPROVED on 2026-09-14 at immutable content commit `7e101ffc31e28ca902265def6de733a5286705e5`; authorizes only the permanent execution task on `codex/madhav-data-plane-execution` to execute the pinned L1 brief and stop at `PRODUCER_READY`. |
 
 The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
@@ -186,14 +187,14 @@ the repeatedly studied charts.
 | DP-P0 | Plane baseline: ratified inheritance, target proposal, inventory, evidence limits and adoption delta | COMPLETE — baseline established and planning basis adopted by DP-SD-009 | This ledger; foundation commit `d838af455` |
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
 | DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
-| DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | CONTENT COMPLETE; immutable approval pin and dispatch pending | `MADHAV_DATA_PLANE_L1_GANITA_STRATEGY_v1_0.md`; `MADHAV_DATA_PLANE_L1_GANITA_EXECUTION_BRIEF_v1_0.md`; execution base `f6fed12c7` |
+| DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | APPROVED FOR EXECUTION by DP-SD-013; dispatch pending | `MADHAV_DATA_PLANE_L1_GANITA_STRATEGY_v1_0.md`; `MADHAV_DATA_PLANE_L1_GANITA_EXECUTION_BRIEF_v1_0.md`; execution base `f6fed12c7`; content pin `7e101ffc3` |
 | DP-P4 | L2 Bodha definition: 23 writers including support, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | PENDING L1 contract | None |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
-| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 terminal accepted; L1 brief content complete, approval pin/dispatch pending; L2-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
+| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 terminal accepted; L1 brief approved and pinned, dispatch pending; L2-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
 
 The first proposed vertical slice remains:
 

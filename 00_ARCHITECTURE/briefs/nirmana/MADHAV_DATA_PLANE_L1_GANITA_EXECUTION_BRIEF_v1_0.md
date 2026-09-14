@@ -6,7 +6,7 @@ approved_on: 2026-09-14
 strategy_decision: DP-SD-013
 strategic_parent_task: "Strategy — Data Plane / 01a0996e-6ca0-7642-ac31-f968fee214b3"
 execution_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
-approval_record: "DP-SD-013 at strategy content commit PENDING_CONTENT_COMMIT"
+approval_record: "DP-SD-013 at strategy content commit 7e101ffc31e28ca902265def6de733a5286705e5"
 product_authority: "MADHAV_PRODUCT_DEFINITION v3.0 / CCD-010"
 strategy_version: "MADHAV_DATA_PLANE_VALUE_ARCHITECTURE v2.0 amended by DP-SD-009, accepted L0 DP-SD-012 and MADHAV_DATA_PLANE_L1_GANITA_STRATEGY v1.0 / DP-SD-013"
 layer: "L1 Gaṇita"
