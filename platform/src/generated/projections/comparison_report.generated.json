@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-15T14:58:49.569Z",
+  "generated_at": "2026-09-15T15:24:35.840Z",
   "catalog_total": 186,
   "catalog_by_type": {
     "tool": 180,
@@ -116,7 +116,7 @@
     "generated_count": 178,
     "excluded_non_tool_count": 6,
     "registry_bridge_block_count": 26,
-    "registry_bridge_source": "/Users/Dev/.codex/worktrees/purna-anvesana-wave7/platform-mcp/src/tools/registry_bridge.ts",
+    "registry_bridge_source": "platform-mcp/src/tools/registry_bridge.ts",
     "name_overlap": [
       "assess_career",
       "assess_health",

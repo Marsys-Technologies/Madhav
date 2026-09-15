@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-15T07:09:13.000Z",
-  "content_hash": "sha256:f4470e783fff8e9e96ccb42afdc27da1d92b349423b823061e7b13a15f943d55",
-  "source_catalog_fingerprint": "sha256:5c1704b16e28e9b69b5c530ef7ea1bad134cf988bbaeed9e1db42226deca65a9",
+  "generated_at": "2026-09-15T15:22:13.000Z",
+  "content_hash": "sha256:6560b2e531fe0f66a1b1e4edcf5cc6958b53c256a648845d8eef7f30b74f5a4e",
+  "source_catalog_fingerprint": "sha256:523545193ee68cb5fc1cc99dd99a1e5130474683e0a05a701d99c8f410a628a9",
   "semantic_review_fingerprint": "sha256:db85af3dee748f127af82bb5a1d0e1aaeec23bbdc77f8a0c329f457096be8b6e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -20442,7 +20442,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": true,
+          "pagination_verified": null,
           "result_collection_verified": true,
           "pagination_contract": {
             "result_collection_path": "components",
@@ -20484,7 +20484,7 @@
             "structured_content": "declared"
           },
           "pagination": "none",
-          "pagination_verified": true,
+          "pagination_verified": null,
           "result_collection_verified": true,
           "pagination_contract": {
             "result_collection_path": "components",
@@ -35723,7 +35723,7 @@
     "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
-    "reviewed_pagination_bindings": 2,
+    "reviewed_pagination_bindings": 1,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
     "exhaustible_reviewed_descriptors": 1,
