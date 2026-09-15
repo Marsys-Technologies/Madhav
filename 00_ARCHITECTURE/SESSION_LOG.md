@@ -41416,3 +41416,193 @@ Exact-head evidence will be produced by reviewed workflow dispatch or a focused 
 without modifying any W0–W6 branch. Remote coordination lease `MADHAV-PURNA-ANVESANA-W7-20260915`
 is verified at `9cd76037021b502cc35330074e3b9bc229b02e2a` and explicitly coexists with Data Plane L3 while
 excluding its files and migrations 1035/1036.
+
+
+### Execution outcome
+
+Recovery Wave 7 completed every source/local/disposable action authorized by CCD-011. The unchanged
+Beyond-Acarya corpus passes 34/34; the six-layer semantic audit is independently approved after two
+material family-mapping defects were corrected; all local, disposable, type, codegen, lint, parity and
+focused MCP gates pass. The inherited empty-bootstrap defect is diagnosed and held for a separate
+charter. The remote lease was released and verified at
+`a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. PR #2605 remains an unmerged review surface. The
+terminal metadata commit must receive exact-head CI and independent terminal reviews before the
+external source-local verdict is relied upon; merge, deployment, shared/production changes and
+empirical evaluation remain outside this session's authority.
+
+### Session close
+
+```yaml
+session_close:
+  session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  closed_at: 2026-09-15T21:20:00+05:30
+  tool: Codex
+  files_touched:
+    - {path: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/SESSION_LOG.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v2.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EMPIRICAL_ANSWER_QUALITY_PROTOCOL_v1.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, mutation_type: modified, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/INQUIRY_SIGNING_KEY_ROTATION_RUNBOOK_v1_0.md, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_COMPLETION_AUTHORITY_PACKET_v1.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_LOCAL_DISPOSABLE_EVIDENCE_v1.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_SIX_LAYER_SEMANTIC_AUDIT_v1.json, mutation_type: created, within_declared_scope: true}
+    - {path: 00_ARCHITECTURE/briefs/retrieval_impl/R1_PROJECTION_COMPILER_REPORT.md, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/__tests__/resilience_chaos.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/generated/mcp_surface_profiles.generated.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/__tests__/prashna_ask_bridge.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/managed_job_runtime_contract.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/managed_prashna_jobs.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/managed_prashna_jobs.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform-mcp/src/lib/prashna_ask_bridge.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/server.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/tools/register_prashna_ask.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/tools/register_prashna_ask.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/tools/register_prashna_status.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform-mcp/src/tools/register_prashna_status.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/.env.example, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/migrations/1037_planner_inquiry_action_reservations.sql, mutation_type: created, within_declared_scope: true}
+    - {path: platform/scripts/__tests__/generate_capability_estate_census.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/scripts/governance/earned_signal_allowlist.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/scripts/manifest/generate_projections.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/__tests__/lib/pipeline/pipeline_planner_outcome.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/chat/__tests__/cr118_chart_id_plan_regression.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/chat/__tests__/synthesis_guidance_consult.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/chat/consult/route.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/inquiry/__tests__/route.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/inquiry/route.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_ask/__tests__/route.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_ask/route.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_jobs/route.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/app/api/mcp/prashna_jobs/route.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/generated/capability_estate_census.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/capability_knowledge.snapshot.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/chat_tool_defs.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/comparison_report.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/docs_resource_catalog.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/family_tool_defs.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/machine_census.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/mcp_surface_profiles.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/mcp_tool_registrations.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/tool_search_index.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/generated/projections/web_tool_bridge.generated.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/hooks/useTraceStream.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/consent/__tests__/scope_and_dispute.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/consent/scope.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/__tests__/door_parity.integration.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/evidence_stage.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pariprashna/pipeline/plan_stage.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/__tests__/cost_caps.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/__tests__/prashna_ask_synthesis.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/__tests__/prashna_ask_synthesis_e004_disclosure.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/cost_caps.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/pipeline_planner.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/pipeline/prashna_ask_synthesis.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/qos/__tests__/dispatch_queue.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/qos/dispatch_queue.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/descriptor_defaults.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/descriptor_defaults.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/compiler.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/editorial_review.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/knowledge.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/overlay_loader.db.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/overlay_loader.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/planner_projection.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/knowledge/w7_semantic_audit.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/__tests__/query_current_transit_snapshot.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L5_mimamsa/__tests__/prediction_lifecycle_sweep.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/layers/L5_mimamsa/prediction_lifecycle_sweep.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/tool_name_bridge.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/registry/types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/retrieval/shared_types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/trace/types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/beyond_acarya_acceptance.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/beyond_acarya_acceptance.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/compiler.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/compiler.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_store.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_token.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/lifecycle_token.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/managed_bridge.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/managed_job_migration_contract.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/managed_job_store.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/migration_1033.db.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/migration_1038.db.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/pagination.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/pagination.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/response_accountability.test.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/src/lib/vidhi/inquiry/types.ts, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/supabase/migrations/1038_planner_managed_prashna_jobs.sql, mutation_type: created, within_declared_scope: true}
+    - {path: platform/tests/governance/purna_anvesana_recovery.test.ts, mutation_type: created, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-completeness-receipt.json, mutation_type: modified, within_declared_scope: true}
+    - {path: platform/tests/pariprashna/route_ports/baseline/branch-deep-dive.json, mutation_type: modified, within_declared_scope: true}
+  registry_updates_made:
+    capability_manifest:
+      - canonical_id: MADHAV_PURNA_ANVESANA_WAVE7_RECOVERY
+        change: no_registry_update_required
+        rationale: "Wave-local recovery artifacts remain governed by the already registered planner implementation and campaign control surfaces; generated runtime projections are codegen outputs, not new canonical governance artifacts."
+  red_team_pass:
+    due: true
+    performed: true
+    verdict: PASS_AFTER_CORRECTIONS
+    artifact_path: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_SIX_LAYER_SEMANTIC_AUDIT_v1.json
+  drift_detector_run: {script: platform/scripts/governance/drift_detector.py, exit_code: 3, report_path: /tmp/purna_w7_drift_final.md, divergences_found: 79}
+  schema_validator_run: {script: platform/scripts/governance/schema_validator.py, exit_code: 3, report_path: /tmp/purna_w7_schema_final.md, violations_found: 42}
+  handshake_validator_run: {script: platform/scripts/governance/schema_validator.py, tool_profile: madhav-safe, exit_code: 0, report_path: /tmp/purna_w7_handshake.md, violations_found: 0}
+  current_state_updated: true
+  session_log_appended: true
+  cross_tool_sync:
+    ccd_entries_appended: []
+    work_order_outcome_recorded: true
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
+    lease_release_recorded: true
+    lease_release_verified_on_remote: true
+    release_commit: a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f
+    next_session_can_resume_from:
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_COMPLETION_AUTHORITY_PACKET_v1.json
+  disagreement_register_entries_opened: []
+  disagreement_register_entries_resolved: []
+  native_overrides:
+    - {override_id: OVR.W7.1, issued_at: 2026-09-15T00:00:00+05:30, description: "Native requested autonomous resumption and completion of the entire authorized scope.", scope_effect: "Resumed all safe CCD-011 source/local/disposable work; did not broaden into explicitly prohibited external actions."}
+  halts_encountered:
+    - "The first exact-head CI run at e4e20ce3b failed census timing, stale generated projection, earned-signal and governance gates; each Wave 7 regression was repaired without rewriting inherited baselines."
+    - "Independent terminal reviews refuted stale codegen, direct-transit derivation, signing KID monotonicity, out-of-authority workflow mutation and incomplete external verification commands; all were corrected or reverted within scope."
+    - "Independent semantic review refuted generic mappings for query_signal_families and query_prospective_ledger; dedicated families and dependent receipts were regenerated and approved at b4e9b7454."
+    - "The inherited empty-database bootstrap remains blocked by seed-baseline suppression and lexical migration ordering; it is diagnosed under PA-R01/PA-R10 and requires a separate charter rather than scope expansion."
+  native_directive_per_step_verification:
+    - directive_id: ND.2
+      step: MADHAV-PURNA-ANVESANA-W7-20260915
+      obligation_addressed: true
+      evidence: "No MP revision or health-crisis/mental-health serving change occurred."
+  known_residuals:
+    - finding_id: external_authority_packet
+      severity: MEDIUM
+      booking_reference: "W7_COMPLETION_AUTHORITY_PACKET_v1.json contains the minimized, ordered authority gates for deployed reads, shared migration/key/infrastructure work, deployed traces, protected delivery, empirical review and separate bootstrap remediation."
+    - finding_id: exact_final_head_checks
+      severity: LOW
+      booking_reference: "After the terminal metadata commit, exact-head CI and independent terminal reviews must complete externally with no later source mutation."
+    - finding_id: inherited_governance_baseline
+      severity: MEDIUM
+      booking_reference: "79 drift findings and 42 schema violations are inherited and separately scoped."
+  close_criteria_met: true
+  unblocks: ["Exact-final-head CI and independent terminal reviews for PR #2605; separately authorized external completion packet thereafter."]
+  handoff_notes: "Do not mutate the immutable final Wave 7 source head after exact-head review. Do not infer merge, deployment, shared migration, production state, user acceptance or empirical value from source-local evidence. Any further action starts from W7_COMPLETION_AUTHORITY_PACKET_v1.json under separate authority."
+```
+
+### Next session objective
+
+Treat the immutable Wave 7 head as source-local evidence only. Proceed with any deployed-current read,
+shared migration, signing/infrastructure change, deployed cross-door trace, protected merge/deploy,
+asset retirement, governance-bootstrap remediation or blinded expert evaluation only after the exact
+action is separately authorized through `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.

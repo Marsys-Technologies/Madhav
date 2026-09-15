@@ -2,9 +2,9 @@
   "schema_version": "madhav-purna-anvesana/local-disposable-evidence/v1",
   "campaign_id": "madhav-purna-anvesana",
   "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
-  "recorded_at": "2026-09-15T20:39:00+05:30",
+  "recorded_at": "2026-09-15T21:17:00+05:30",
   "immutable_base": "b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
-  "evidence_head_floor": "0f0fc077157454e28d446b77a20c4e9dc4cc9771",
+  "evidence_head_floor": "99578b1773b10970f7d664e48defd9f10f8cfd80",
   "final_head_binding": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
   "scope": "SOURCE_LOCAL_DISPOSABLE_ONLY",
   "terminal_ceiling": "SOURCE_LOCAL_ACCEPTED",
@@ -74,7 +74,7 @@
     {
       "id": "W7-T09-INTEGRATED-PLATFORM-GATE",
       "command": "cd platform && npm run lint && npx tsc --noEmit && npm test",
-      "result": "PASS_1107_FILES_11772_TESTS_74_FILES_SKIPPED_685_TESTS_SKIPPED_2_TODO",
+      "result": "PASS_1108_FILES_11775_TESTS_74_FILES_SKIPPED_685_TESTS_SKIPPED_2_TODO",
       "evidence": "The complete platform suite passes after refreshing deterministic capability knowledge, census, projections and the two intentionally changed route-port baselines; lint reports zero errors and 589 warnings and TypeScript passes.",
       "qualification": "source-local test evidence only; browser, deployment and empirical gates not exercised"
     },
@@ -155,7 +155,7 @@
       "residual_id": "PA-R09",
       "local_status": "SOURCE_DELIVERY_CANDIDATE",
       "evidence_refs": ["RECOVERY_DEFINITION_v1.json", "git:codex/purna-anvesana-wave7", "github:pull/2605", "W7-T09-INTEGRATED-PLATFORM-GATE", "W7-T10-PLATFORM-MCP-QUALIFIED-GATE"],
-      "local_result": "The focused recovery stack is pushed and PR #2605 is open. Exact-final-head CI and independent review remain required after the terminal metadata commit.",
+      "local_result": "The focused recovery stack and PR #2605 are prepared. The remote lease is released at a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f; exact-final-head CI and independent review remain required after the terminal metadata commit.",
       "external_remainder": "Independent protected-owner approval, merge and deployment remain outside CCD-011.",
       "external_result": "NOT_RUN"
     },

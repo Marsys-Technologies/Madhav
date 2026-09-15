@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.14.0
+version: 0.15.0
 status: SOURCE_LOCAL_CANDIDATE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0052
-last_updated: 2026-09-15T20:39:00+05:30
+last_event: PA-E0059
+last_updated: 2026-09-15T21:18:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -30,9 +30,9 @@ layer state, queue or authority.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
 - PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
 - PR #2604: open, stacked on PR #2603; it is a review surface, not merge or deployment proof.
-- PR #2605: open, stacked on PR #2604; exact-final-head CI and independent review remain required.
-- Lease: `MADHAV-PURNA-ANVESANA-W7-20260915`; active and verified at remote coordination commit
-  `9cd76037021b502cc35330074e3b9bc229b02e2a`.
+- PR #2605: open, stacked on PR #2604; exact-final-head CI and independent terminal review remain required.
+- Lease: `MADHAV-PURNA-ANVESANA-W7-20260915`; released and remotely verified at coordination commit
+  `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f` after the technical packets and local/disposable gates completed.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -74,7 +74,7 @@ hashes.
 | SCUs | 182 | All 182 editorial; zero descriptor-derived stubs. |
 | SCU bindings | 185 | 182 executable, three explicitly unavailable calibration descriptors; semantic quality remains Wave 2 scope. |
 | Semantic graph | 53 edges; 26 incident / 156 isolated nodes | `ORPHAN_DESCRIPTOR=0` does not measure graph connectivity. |
-| Typed concepts | 250 | Zero unbound concepts; all bindings are source/local evidence. |
+| Typed concepts | 257 | Zero unbound concepts; all bindings are source/local evidence. |
 
 Current-source-active static-any-spec gaps after migration 1034 source:
 
@@ -113,7 +113,7 @@ meaningful full descriptions and reviewed domains, concepts, intents, horizons a
 128 current-source-active producers have exact, unique semantic bindings backed by the Wave 1
 contract registry; contract and semantic drift rotate independent fingerprints and fail closed.
 
-The typed universe contains 250 concepts with zero unbound concepts. The 53 source-backed edges
+The typed universe contains 250 concepts at the Wave 2 checkpoint with zero unbound concepts. The 53 source-backed edges
 are exactly 15 authored relations plus 38 drill-child contracts. All 156 isolated SCUs carry an
 explicit reviewed disposition, leaving zero unresolved isolated nodes, producer SCUs or semantic
 gaps. The bounded planner projection preserves at least one source-backed adjacency whenever one
@@ -260,10 +260,12 @@ reviewed semantics, restart-safe reservations, a rotating signing-ring contract 
 principal/credential/chart-bound managed jobs with bounded leases, attempts and retention.
 
 Disposable PostgreSQL 17 evidence passes 28 migration and overlay tests. The reviewed three-door
-fixture passes 4 files / 73 tests and the Wave 7 managed-MCP surface passes 58 tests. The exact
-technical candidate passes the complete platform unit gate: 1,107 files and 11,772 tests, with 74
+fixture passes 4 files / 73 tests and the Wave 7 managed-MCP surface passes 58 tests. The refreshed
+technical candidate passes the complete platform unit gate: 1,108 files and 11,775 tests, with 74
 files and 685 tests skipped and two todo; TypeScript passes and lint reports zero errors / 589
-warnings. Platform-MCP TypeScript and codegen also pass. Its repository-wide test command retains
+warnings. Platform-MCP TypeScript and codegen also pass. The six-layer audit now contains 257 typed
+concepts; independent review approved its repaired calibration-registry and prospective-ledger
+semantics at exact reviewed head `b4e9b7454ff09db42f97a06c7b4a1c38653fe662`. Its repository-wide test command retains
 an inherited non-green baseline: missing legacy `.js` modules and an external routing fixture plus
 obsolete unrelated expectations. Those failures are recorded rather than rewritten into a green
 claim; none is in the Wave 7 focused managed-MCP change surface.
@@ -273,8 +275,9 @@ foundational baselines, then global lexical ordering reaches migration 1000 befo
 Wave 7 does not broaden into migration-runner governance repair and does not infer deployed-current
 counts. `W7_COMPLETION_AUTHORITY_PACKET_v1.json` retains deployed reads, shared migrations, key
 rotation, deployed cross-door traces, protected merge/deploy, retirement and blinded expert empirical
-evaluation as separately authorized work. PR #2605 is a review surface only. The immutable final
-source head still requires exact-head CI and external independent review; no merge, deployment,
+evaluation as separately authorized work. The remote Wave 7 lease is released at
+`a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. PR #2605 is a review surface only. The immutable final
+source head still requires exact-head CI and external independent terminal review; no merge, deployment,
 shared/production mutation or empirical acceptance is claimed.
 
 ## Reproduction
@@ -317,12 +320,12 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W6-P1 versioned Beyond-Acarya acceptance | COMPLETE_WITH_NEGATIVE_ACCEPTANCE_EVIDENCE | W5-P2 | first review refuted three anti-gaming defects; repaired exact head independently approved |
 | W6-P2 source-scope close and quarantine | COMPLETE | W6-P1 | pre-release head independently approved; remote lease released; immutable final-head external review required |
 | W7-P0 recovery authority and blocker diagnosis | COMPLETE | W6-P2 | inherited bootstrap defect separated without broadening scope |
-| W7-P1 unchanged Beyond-Acarya acceptance | COMPLETE | W7-P0 | 34/34 source-local candidate; final exact-head review pending |
-| W7-P2 semantic planner authority | COMPLETE | W7-P1 | reviewed constraints and weighted dispatch pass locally |
+| W7-P1 unchanged Beyond-Acarya acceptance | COMPLETE | W7-P0 | unchanged 34/34 source-local corpus passes; final exact-head review pending |
+| W7-P2 semantic planner authority | COMPLETE | W7-P1 | initial review refuted two generic families; repaired audit independently approved at `b4e9b7454` |
 | W7-P3 pagination, parity and overlays | COMPLETE | W7-P2 | local/disposable gates pass; deployed trace remains external |
 | W7-P4 lifecycle, signing and durable jobs | COMPLETE | W7-P3 | source/disposable gates pass; shared migration/key work remains external |
 | W7-P5 completion and empirical protocol packets | COMPLETE | W7-P4 | all 13 residuals dispositioned; external actions remain unauthorized |
-| W7-P6 protected source candidate | CANDIDATE | W7-P5 | PR #2605 open; exact-final-head CI and independent review pending |
+| W7-P6 protected source candidate | CANDIDATE_AWAITING_EXACT_HEAD_EXTERNAL_CHECKS | W7-P5 | lease released; terminal metadata next, then exact-final-head CI and independent reviews |
 
 ## Delivery decomposition
 

@@ -64,7 +64,7 @@
       "writer": "root",
       "reviewer": "independent_governance_reviewer",
       "tests": ["session_open_validator", "immutable_base", "remote_lease", "pr_stack_state", "ci_trigger_root_cause"],
-      "status": "IN_PROGRESS"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P1",
@@ -73,7 +73,7 @@
       "writer": "root",
       "reviewer": "independent_compiler_authorization_reviewer",
       "tests": ["argument_derivation", "clarification_fail_closed", "authorization_hash_binding", "unchanged_34_route_denominator"],
-      "status": "QUEUED"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P2",
@@ -82,7 +82,7 @@
       "writer": "root",
       "reviewer": "independent_semantic_reviewer",
       "tests": ["all_six_layers", "stratified_manual_audit", "source_link_truth", "specificity_and_non_stub_quality", "graph_and_concept_integrity"],
-      "status": "QUEUED"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P3",
@@ -91,7 +91,7 @@
       "writer": "root",
       "reviewer": "independent_route_compatibility_reviewer",
       "tests": ["full_intended_channel_denominator", "pagination_first_middle_last_exhaustion", "semantic_graph_consumer_migration", "overlay_schema_local_replay"],
-      "status": "QUEUED"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P4",
@@ -100,7 +100,7 @@
       "writer": "root",
       "reviewer": "independent_lifecycle_security_migration_reviewer",
       "tests": ["crash_after_reservation", "cross_instance_resume", "principal_bound_durable_jobs", "migration_1033_apply_reapply_rollback", "signing_key_configuration_fail_closed"],
-      "status": "QUEUED"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P5",
@@ -109,7 +109,7 @@
       "writer": "root",
       "reviewer": "independent_release_acceptance_reviewer",
       "tests": ["exact_commands_and_expected_receipts", "no_external_action_performed", "external_only_remainder_minimized"],
-      "status": "QUEUED"
+      "status": "COMPLETE"
     },
     {
       "id": "W7-P6",
@@ -118,7 +118,7 @@
       "writer": "root",
       "reviewer": "independent_terminal_reviewers",
       "tests": ["unchanged_beyond_acarya_34_of_34", "full_unit", "typescript", "lint", "codegen", "golden_routes", "governance", "exact_head_ci"],
-      "status": "QUEUED"
+      "status": "CANDIDATE_AWAITING_EXACT_HEAD_EXTERNAL_CHECKS"
     }
   ],
   "delivery": {
