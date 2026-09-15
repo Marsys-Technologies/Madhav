@@ -107,11 +107,18 @@ describe('collectMigrationFiles', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('returns files sorted lexically by name across dirs', () => {
+  it('returns numbered files in numeric order across dirs', () => {
     writeSql(dir, '002_b.sql', 'SELECT 2')
     writeSql(dir, '001_a.sql', 'SELECT 1')
+    writeSql(dir, '1000_late.sql', 'SELECT 1000')
+    writeSql(dir, '598_prerequisite.sql', 'SELECT 598')
     const files = collectMigrationFiles([dir])
-    expect(files.map(f => f.name)).toEqual(['001_a.sql', '002_b.sql'])
+    expect(files.map(f => f.name)).toEqual([
+      '001_a.sql',
+      '002_b.sql',
+      '598_prerequisite.sql',
+      '1000_late.sql',
+    ])
   })
 
   it('merges and sorts across multiple dirs', () => {
@@ -138,6 +145,20 @@ describe('collectMigrationFiles', () => {
 
     expect(prerequisiteIndex).toBeGreaterThanOrEqual(0)
     expect(targetIndex).toBe(prerequisiteIndex + 1)
+  })
+
+  it('orders the shared output-digest prerequisite before four-digit consumers', () => {
+    const migrationNames = collectMigrationFiles([
+      path.resolve(process.cwd(), 'migrations'),
+      path.resolve(process.cwd(), 'supabase/migrations'),
+    ]).map(file => file.name)
+    const prerequisiteIndex = migrationNames.indexOf('598_nirmana_output_digest_specs.sql')
+    const consumerIndex = migrationNames.indexOf(
+      '1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql'
+    )
+
+    expect(prerequisiteIndex).toBeGreaterThanOrEqual(0)
+    expect(consumerIndex).toBeGreaterThan(prerequisiteIndex)
   })
 
   it('skips non-existent dirs', () => {

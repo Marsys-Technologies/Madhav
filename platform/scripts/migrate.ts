@@ -2,7 +2,7 @@
  * Idempotent migration runner.
  * - Reads platform/migrations/*.sql and platform/supabase/migrations/*.sql
  * - Tracks applied migrations in _migrations_applied (id, filename, applied_at, sha256)
- * - For each unapplied migration in lexical order:
+ * - For each unapplied migration in numeric-prefix order (lexical tie-break):
  *     BEGIN; <SQL>; INSERT INTO _migrations_applied; COMMIT;
  *   On any error: ROLLBACK and exit non-zero
  * - For each ALREADY-applied migration: recompute its sha256 and compare against the value
@@ -88,8 +88,8 @@ const NIRMANA_SKY_CALENDAR_REPLAY_TARGET =
  * `630_nirmana_l0_wave1_correctness_contract.sql` owns a typed provenance
  * relation whose foreign key targets `classical_text_chunks`.  The active
  * creator for that table is the unnumbered historical-continuity migration
- * `ws2_l0_texts.sql`.  Global lexical ordering puts every numbered migration
- * before that creator, so a fresh replay would otherwise reach 630 too early.
+ * `ws2_l0_texts.sql`. Numeric ordering puts every numbered migration before
+ * that creator, so a fresh replay would otherwise reach 630 too early.
  *
  * Keep this exception closed for the same reason as the 597/594 repair above:
  * it is a single, named replay prerequisite, not a general dependency system.
@@ -435,10 +435,22 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
       .sort()
     files.push(...entries.map(name => ({ name, dir })))
   }
-  files.sort((a, b) => a.name.localeCompare(b.name))
+  files.sort((a, b) => {
+    const aPrefix = a.name.match(/^(\d+)/)?.[1]
+    const bPrefix = b.name.match(/^(\d+)/)?.[1]
+    if (aPrefix !== undefined && bPrefix !== undefined) {
+      const numericDifference = Number(aPrefix) - Number(bPrefix)
+      if (numericDifference !== 0) return numericDifference
+    } else if (aPrefix !== undefined) {
+      return -1
+    } else if (bPrefix !== undefined) {
+      return 1
+    }
+    return a.name.localeCompare(b.name)
+  })
 
-  // Preserve ordinary lexical order, except for the two closed replay repairs
-  // above. A previously applied prerequisite remains in this list and is still
+  // Preserve ordinary numeric-prefix order, except for the closed replay repairs
+  // above and below. A previously applied prerequisite remains in this list and is still
   // skipped by the normal `_migrations_applied` check in runMigrations().
   const prerequisiteIndex = files.findIndex(
     file => file.name === NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE
@@ -463,6 +475,7 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
     const [prerequisite] = files.splice(waveOneTextsPrerequisiteIndex, 1)
     files.splice(waveOneTargetIndex, 0, prerequisite)
   }
+
   return files
 }
 
@@ -733,6 +746,7 @@ export async function runMigrations(
       ran.push(file.name)
     } catch (err) {
       await client.query('ROLLBACK')
+      console.error(`[migration-failure] ${file.name}`)
       throw err
     }
 

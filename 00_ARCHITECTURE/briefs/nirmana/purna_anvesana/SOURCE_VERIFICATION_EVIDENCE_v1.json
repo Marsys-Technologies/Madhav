@@ -1,0 +1,79 @@
+{
+  "schema_version": "madhav-purna-anvesana/source-verification-evidence/v1",
+  "recorded_at": "2026-09-16T00:19:00+05:30",
+  "candidate_parent": "facccfe4b518b997357c08ff7798b703459326df",
+  "platform": {
+    "typescript": "PASS",
+    "lint": {
+      "result": "PASS",
+      "errors": 0,
+      "warnings": 589
+    },
+    "full_vitest": {
+      "result": "PASS",
+      "test_files_passed": 1108,
+      "test_files_skipped": 74,
+      "tests_passed": 11781,
+      "tests_skipped": 685,
+      "tests_todo": 2
+    },
+    "purna_focused": {
+      "result": "PASS",
+      "test_files_passed": 13,
+      "tests_passed": 193
+    },
+    "migration_runner_and_number_guard": {
+      "result": "PASS",
+      "test_files_passed": 2,
+      "tests_passed": 68
+    },
+    "registry_and_inquiry_protected_set": {
+      "result": "PASS",
+      "test_files_passed": 8,
+      "tests_passed": 152
+    },
+    "codegen_checks": "PASS",
+    "vidhi_registry_parity": "PASS_14_OF_14_FLOORS",
+    "tap6_method_audit": "PASS_WITH_9_EXISTING_TRACKED_M22_QUARANTINE_HITS"
+  },
+  "platform_mcp": {
+    "typescript": "PASS",
+    "codegen_check": "PASS",
+    "purna_focused": {
+      "result": "PASS",
+      "test_files_passed": 6,
+      "tests_passed": 58
+    },
+    "protected_inquiry_allowlist": {
+      "result": "PASS",
+      "test_files_passed": 4,
+      "tests_passed": 34
+    },
+    "unrestricted_legacy_suite": {
+      "result": "QUALIFIED_RED_NOT_A_PROTECTED_REQUIRED_CHECK",
+      "test_files_passed": 186,
+      "test_files_failed": 25,
+      "test_files_skipped": 1,
+      "tests_passed": 2147,
+      "tests_failed": 80,
+      "tests_skipped": 20,
+      "failure_classes": [
+        "legacy .js import paths that do not resolve in the source-only Vitest configuration",
+        "legacy authorization-mock expectations now receiving fail-closed AUTHZ_DENIED",
+        "unrelated historical response-shape assertions",
+        "one environment-dependent missing routing-suite fixture",
+        "one unrelated timeout"
+      ],
+      "release_treatment": "preserved as negative evidence; no failure was waived as green, and the exact protected MCP inquiry/runtime checks passed"
+    }
+  },
+  "production_compatibility": {
+    "migration_replay": "PASS_APPLY_AND_IDEMPOTENT_REPLAY",
+    "evidence": "PRODUCTION_COMPATIBLE_MIGRATION_EVIDENCE_v1.json"
+  },
+  "qualifications": [
+    "These are local and disposable source gates, not protected CI, merge, deployment or production acceptance.",
+    "The unrestricted platform-mcp suite is not green and is not represented as green.",
+    "Exact-head protected checks and independent review remain mandatory after the aggregate commit."
+  ]
+}

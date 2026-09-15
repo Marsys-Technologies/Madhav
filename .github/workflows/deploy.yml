@@ -604,6 +604,7 @@ jobs:
             --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
             --no-traffic
             --min-instances=1
+            --timeout=360s
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
@@ -641,6 +642,9 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
+            # Dedicated inquiry-lifecycle signing ring. Key material is mounted
+            # from Secret Manager below; only the non-secret KID is configured here.
+            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at
@@ -660,6 +664,7 @@ jobs:
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
+            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1
 
       - name: Post-deploy smoke
         id: smoke
@@ -941,7 +946,18 @@ jobs:
           # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
           # F3 posture correction: --no-allow-unauthenticated was stale; removed.
           # --no-traffic: pre-smoke staging, same pattern as deploy-web's A-S8 step.
-          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi --no-traffic
+          # The managed Prashna bridge can spend 330s in the engine and leases jobs
+          # for 450s. Cloud Run therefore permits the reviewed 360s request window,
+          # while instance-based CPU keeps the post-response durable worker runnable.
+          flags: >-
+            --allow-unauthenticated
+            --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com
+            --min-instances=1
+            --concurrency=80
+            --memory=512Mi
+            --timeout=360s
+            --no-cpu-throttling
+            --no-traffic
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app

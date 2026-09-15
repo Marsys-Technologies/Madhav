@@ -1,0 +1,39 @@
+{
+  "schema_version": "madhav-purna-anvesana/live-completion-matrix/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "authority": "CCD-012",
+  "status": "ACTIVE",
+  "observed_at": "2026-09-16T00:19:00+05:30",
+  "source_candidate": "facccfe4b518b997357c08ff7798b703459326df",
+  "completion_rule": "Every residual must have an accepted exact-environment receipt; source/local readiness is not live or empirical acceptance.",
+  "residuals": [
+    {"id":"PA-R01","source_status":"CURRENT_ORDER_REPAIRED_AND_PRODUCTION_COMPATIBLE_REPLAY_PASSED","remaining":"exact delivered runner and shared-apply confirmation","next_gate":"G4/G7","status":"OPEN_LIVE_PROOF"},
+    {"id":"PA-R02","source_status":"CLOSED","remaining":"deployed intended-channel confirmation","next_gate":"G5","status":"OPEN_LIVE_PROOF"},
+    {"id":"PA-R03","source_status":"CLOSED_34_OF_34","remaining":"exact delivered revision replay","next_gate":"G2/G7","status":"OPEN_DELIVERY_PROOF"},
+    {"id":"PA-R04","source_status":"CLOSED_DISPOSABLE","remaining":"deployed restart/cross-instance proof","next_gate":"G5","status":"OPEN_LIVE_PROOF"},
+    {"id":"PA-R05","source_status":"CLOSED_DISPOSABLE","remaining":"migration application and deployed durable-job proof","next_gate":"G4/G5","status":"OPEN_LIVE_PROOF"},
+    {"id":"PA-R06","source_status":"READY","remaining":"shared migration, dedicated signing ring and service-role verification","next_gate":"G4","status":"OPEN"},
+    {"id":"PA-R07","source_status":"LOCAL_PARITY_CLOSED","remaining":"real Portal, managed MCP and raw MCP parity","next_gate":"G5/G7","status":"OPEN"},
+    {"id":"PA-R08","source_status":"PROTOCOL_READY","remaining":"eligible corpus, consent/privacy, independent expert review, blinded execution and signed acceptance","next_gate":"G6","status":"NOT_RUN"},
+    {"id":"PA-R09","source_status":"CANDIDATE","remaining":"aggregate PR, exact-head checks/reviews, protected merge and deployed revision","next_gate":"G2/G3/G7","status":"OPEN"},
+    {"id":"PA-R10","source_status":"CLOSED_FOR_PURNA_RELEASE_SCOPE","remaining":"shared migration execution is tracked by PA-R06; inherited full empty-bootstrap conflict is separately parked in INHERITED_EMPTY_BOOTSTRAP_FINDING_v1.json","next_gate":"G4","status":"PASS_PRODUCTION_COMPATIBLE_REPLAY"},
+    {"id":"PA-R11","source_status":"CLOSED_LOCAL","remaining":"deployed first/middle/final/exhaustion proof","next_gate":"G5","status":"OPEN_LIVE_PROOF"},
+    {"id":"PA-R12","source_status":"COMPATIBILITY_MIGRATED","remaining":"deployed downstream census and separately reviewed retirement or retained-adapter disposition","next_gate":"G7/G8","status":"OPEN"},
+    {"id":"PA-R13","source_status":"CLOSED_DISPOSABLE","remaining":"deployed active-build overlay and dark-state receipts","next_gate":"G5/G7","status":"OPEN_LIVE_PROOF"}
+  ],
+  "global_gates": {
+    "session_open": "PASS",
+    "authority_record": "RECORDED_IN_CANDIDATE",
+    "aggregate_candidate": "ASSEMBLED_LOCAL_VERIFICATION_COMPLETE",
+    "independent_review": "PENDING",
+    "required_checks": "LOCAL_PROTECTED_SET_PASS_EXACT_HEAD_CI_PENDING",
+    "shared_migration": "NOT_RUN",
+    "signing_runtime": "NOT_RUN",
+    "deployed_three_door": "NOT_RUN",
+    "empirical_acceptance": "NOT_RUN",
+    "protected_merge": "NOT_RUN",
+    "production_revision": "NOT_RUN",
+    "bounded_observation": "NOT_RUN",
+    "governance_close": "NOT_RUN"
+  }
+}

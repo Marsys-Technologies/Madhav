@@ -236,3 +236,55 @@ coordination lease that produced it.
 - **Coordination:** lease `MADHAV-PURNA-ANVESANA-20260914`, remotely verified at `origin/campaign-coordination@5c82e4813336b6454e3b63b485fefe47e84333b7`; Wave 0 worktree `/Users/Dev/.codex/worktrees/purna-anvesana-wave0`, branch `codex/purna-anvesana-wave0` based exactly on FC0.
 - **Governance reconciliation:** for this campaign only, the native’s explicit source/commit/push/PR authority supersedes GIP §P.4’s generic lease-row-only commit restriction. It does not supersede §P.1–§P.3, any safety/evidence gate, or the ceiling above.
 - **Supersession:** none. Existing Nirmāṇa production-elevation campaign state, database definitions/events, layer state files and historical autonomous authority remain separate and untouched.
+
+## CCD-012 — MADHAV PŪRṆA ANVEṢAṆA live-release and complete-wrap-up authority
+
+- **Date/tool/session:** 2026-09-15; Codex; `MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915`.
+- **Authority:** direct native delegation delivered from the active Madhav product-strategy task to
+  the existing Planner Knowledge and Inquiry task, followed by the native's instruction to set a
+  goal, resume autonomously, and complete the entire supplied scope. The delegation explicitly
+  authorizes protected integration and deployment; necessary reviewed additive/shared migrations;
+  narrowly scoped signing-key and runtime configuration; real Portal, managed MCP and raw MCP
+  validation; empirical evaluation; safe compatibility retirement; and true campaign closure.
+- **Decision:** supersede CCD-011's `SOURCE_LOCAL_ACCEPTED` terminal ceiling for this campaign and
+  execute the governed live wrap-up from current protected `origin/main` plus immutable Wave 7 head
+  `facccfe4b518b997357c08ff7798b703459326df`. Build one aggregate candidate, preserve the original
+  Wave 0–7 history and negative evidence, close PA-R01 through PA-R13 at the strongest applicable
+  gate, and advance only on exact-candidate evidence. A source, PR, CI, staging, timestamp or
+  dashboard result is never substituted for protected delivery, production health, expert review or
+  empirical acceptance.
+- **Delivery authority:** Codex may create, test, review, commit and push the aggregate branch; open
+  or update a focused pull request; admit it through the repository's existing protected merge queue
+  only after every required check and independent review is green; execute the existing governed
+  canary/deployment path; apply only reviewed additive migrations through the established runner;
+  provision or rotate only the dedicated inquiry signing ring without revealing key material; and
+  make only the service configuration changes required by the reviewed inquiry runtime contract.
+- **Safety and serialization:** production or shared mutation requires a fresh operation-specific
+  exclusive coordination lease, a current protected/source/deployed revision check, a recoverable
+  backup or rollback reference where applicable, no-traffic or revision-pinned canary verification,
+  and post-step evidence. The active Data Plane RI-02 lease retains ownership of L0–L3 and migrations
+  1035/1036 until released or expired; this campaign must not overlap its shared migration, key,
+  traffic or rebuild operations. Applied migrations are immutable; any correction is a new
+  collision-free forward migration.
+- **Empirical authority and truth boundary:** the campaign may execute the frozen empirical protocol
+  only with an eligible held-out corpus, valid consent/privacy custody, the required independent
+  domain experts, conflict attestations and blinded receipts already available within approved
+  channels. It may not invent participants, consent, data, scores, approval or signatures, and may
+  not contact or recruit people without a separate instruction. Missing expert or corpus evidence is
+  `NOT_RUN`, never a pass.
+- **Prohibitions:** no administrator/ruleset/required-check bypass; no secret or sensitive-chart
+  disclosure; no destructive shared rebuild; no broad IAM, infrastructure or model-budget expansion;
+  no frozen WriterBase/orchestrator or Data Plane architecture takeover; no unrelated doctrine or
+  campaign mutation; no external contact; and no `FULLY_COMPLETE` claim until every applicable gate
+  has an accepted receipt.
+- **Coordination:** live-wrap-up lease
+  `MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915` was remotely verified at
+  `origin/campaign-coordination@bc6699a1c6e1bcf46bc037d31583157a318b04a8`; initial status is
+  source integration and stocktake only. Shared or production operations require a later fresh,
+  operation-specific exclusive claim.
+- **Execution record:**
+  `briefs/nirmana/purna_anvesana/LIVE_RELEASE_AND_COMPLETE_WRAPUP_PLAN_v1_0.md` and
+  `briefs/nirmana/purna_anvesana/LIVE_COMPLETION_MATRIX_v1.json` are the frozen plan and gap matrix.
+- **Supersession:** CCD-011 is superseded only where its explicit external-action ceiling conflicts
+  with this scoped live-release delegation. Its evidence discipline, source history, security
+  boundaries and all unrelated decisions remain in force.

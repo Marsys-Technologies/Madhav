@@ -1,0 +1,30 @@
+{
+  "schema_version": "madhav-purna-anvesana/inherited-empty-bootstrap-finding/v1",
+  "finding_id": "PA-R10-INHERITED-BASELINE",
+  "recorded_at": "2026-09-16T00:06:00+05:30",
+  "scope": "estate-wide historical migration bootstrap",
+  "status": "PARKED_SEPARATE_CANONICAL_BASELINE_REDESIGN",
+  "release_gate_effect": "does not block applying the reviewed Purna migration set to a production-compatible schema snapshot or the established production ledger",
+  "bounded_rehearsal": {
+    "environment": "disposable PostgreSQL 17 with pgvector; no shared or production mutation",
+    "first_inherited_failure": "production-history seed ledgers mark 001_baseline.sql and post-baseline prerequisites as applied without executing them",
+    "ordering_repair_proved": "numeric-prefix ordering places 598_nirmana_output_digest_specs.sql before 1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql",
+    "deeper_conflict": "158_classical_texts_schema.sql requires classical_texts(text_key), while ws2_l0_texts.sql owns classical_texts(text_id) and classical_text_chunks; 081_l0fr_schema.sql also requires unnumbered text and remedy creators",
+    "stop_reason": "repairing every pre-tracking generation would redefine the repository-wide canonical baseline and migration-ledger semantics, beyond the Purna release and unsafe to smuggle into the production runner"
+  },
+  "preserved_evidence": [
+    "/tmp/purna-empty-r2.log",
+    "/tmp/purna-empty-r3.log",
+    "/tmp/purna-empty-r4.log",
+    "/tmp/purna-empty-r5.log",
+    "/tmp/purna-empty-r6.log",
+    "/tmp/purna-empty-r7.log"
+  ],
+  "required_follow_up": "separately charter a canonical-baseline rebuild with production-schema diff, explicit disposition for every pre-tracking seed entry, and a ledger representation for superseded-not-executed files",
+  "prohibitions": [
+    "do not edit already-applied historical migration SQL",
+    "do not treat seed-ledger presence as empty-database schema proof",
+    "do not weaken migration hash or renumber guards",
+    "do not claim a full empty-database replay from the Purna production-compatible migration proof"
+  ]
+}

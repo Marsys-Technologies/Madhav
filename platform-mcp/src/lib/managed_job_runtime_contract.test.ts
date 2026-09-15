@@ -11,14 +11,17 @@ const authorityPacket = readFileSync(resolve(
 ), 'utf8')
 
 describe('managed Prashna worker deadline hierarchy', () => {
-  it('preserves source-local budgets while fencing deployment settings behind external authority', () => {
+  it('preserves the worker hierarchy in the reviewed Cloud Run runtime contract', () => {
     expect(bridgeSource).toContain('const ENGINE_CALL_TIMEOUT_MS = 330_000')
     expect(storeSource).toContain('lease_seconds: 450')
-    expect(deployWorkflow).not.toContain('--timeout=360s')
-    expect(deployWorkflow).not.toContain('--no-cpu-throttling')
+    expect(deployWorkflow).toContain('--timeout=360s')
+    expect(deployWorkflow).toContain('--no-cpu-throttling')
+    expect(deployWorkflow).toContain('INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1')
+    expect(deployWorkflow).toContain(
+      'INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1',
+    )
     expect(authorityPacket).toContain('amjis-web request timeout 360 seconds')
     expect(authorityPacket).toContain('amjis-mcp request timeout 360 seconds and instance-based CPU')
-    expect(authorityPacket).toContain('NOT_RUN')
   })
 
   it('bounds post-response worker concurrency and lets status polls resubmit recovery', () => {

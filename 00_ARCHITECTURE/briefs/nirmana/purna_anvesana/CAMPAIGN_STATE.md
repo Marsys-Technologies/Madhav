@@ -376,3 +376,55 @@ response or acceptance proof by citing green CI, a PR, a local fixture or this s
 Authority-bound production remainder is quarantined for a future separately authorized operation.
 After exact-head CI and independent review, the terminal state available to this recovery is
 `SOURCE_LOCAL_ACCEPTED`; it is not whole-campaign, deployed or empirical completion.
+
+## Live release and complete wrap-up — active 2026-09-15
+
+The native has now supplied the separate authority that Wave 7 correctly required. CCD-012
+supersedes CCD-011's external-action ceiling only for this governed campaign. The isolated aggregate
+branch `codex/purna-anvesana-live-wrapup` began at protected
+`origin/main@731e311f0b8f5f84db2f152b93951e1d3d50d89a` and was fast-forwarded to immutable Wave 7 source
+candidate `facccfe4b518b997357c08ff7798b703459326df`; the original Wave 0–7 evidence and PR stack remain
+unchanged.
+
+The live-wrap-up plan is frozen in `LIVE_RELEASE_AND_COMPLETE_WRAPUP_PLAN_v1_0.md`; the exact current
+gap projection is `LIVE_COMPLETION_MATRIX_v1.json`. The session-open handshake validates with zero
+violations. Remote coordination lease `MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915` is verified at
+`bc6699a1c6e1bcf46bc037d31583157a318b04a8` for stocktake and source integration. It deliberately does
+not yet claim shared or production mutation because Data Plane RI-02 retains its overlapping operation
+window; a fresh exclusive operation lease is mandatory before migration, signing, traffic or shared
+runtime changes.
+
+Current state is `ACTIVE_LIVE_WRAPUP`. Source-local 34/34 remains prior evidence, not an automatic pass
+for the aggregate or delivered revision. Required checks and independent aggregate reviews are pending;
+shared migration, signing/runtime configuration, deployed three-door/overlay validation, empirical
+acceptance, protected merge, production revision proof, bounded health observation, compatibility
+disposition and governance close are all `NOT_RUN` at this checkpoint.
+
+### G1 migration-order repair — 2026-09-16
+
+- The runner now orders numbered migrations by numeric prefix, so shared prerequisite 598 precedes
+  all 1000+ output-digest consumers; focused runner and migration-number tests pass.
+- A bounded PostgreSQL 17 empty-database rehearsal preserved the inherited failures and exposed a
+  deeper conflict between pre-tracking classical schema generations. This is recorded in
+  `INHERITED_EMPTY_BOOTSTRAP_FINDING_v1.json` and requires a separately chartered canonical-baseline
+  redesign. It is not being hidden inside the Pūrṇa release or used to weaken migration guards.
+- Pūrṇa migrations must still pass on a production-compatible disposable schema and the established
+  shared migration path before PA-R10 can close for this release.
+
+That production-compatible gate now passes: a same-run read-only production schema/ledger snapshot
+was restored into ephemeral PostgreSQL 15, migrations 1033/1034/1037/1038 applied, all three new
+relations and six Pūrṇa digest specs were present, and a second runner pass left the tracker unchanged
+at 857 rows. Evidence: `PRODUCTION_COMPATIBLE_MIGRATION_EVIDENCE_v1.json`. PA-R10 is closed for this
+release scope; actual shared application remains under PA-R06/G4 and has not run.
+
+### G2 local verification checkpoint — 2026-09-16
+
+The complete platform gate is green (11,781 passed, 685 skipped, 2 todo), with TypeScript and lint
+also green. Pūrṇa-focused platform tests pass 193/193; migration runner/number guards pass 68/68;
+the protected registry/inquiry set passes 152/152; platform codegen, Vidhi parity and TAP-6 pass.
+MCP TypeScript/codegen, the focused Pūrṇa set (58/58) and the protected inquiry allowlist (34/34)
+pass. The unrestricted legacy MCP suite remains honestly red (80 failed, 2,147 passed, 20 skipped),
+including unresolved historical import, authorization-mock and unrelated response-shape tests; it is
+not a protected required check and is not represented as green. Exact counts and qualifications are
+in `SOURCE_VERIFICATION_EVIDENCE_v1.json`. Exact-head protected CI and independent review remain
+mandatory before G3 can close.

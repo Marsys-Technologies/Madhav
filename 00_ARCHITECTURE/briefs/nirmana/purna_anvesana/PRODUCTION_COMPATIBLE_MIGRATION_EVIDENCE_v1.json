@@ -1,0 +1,43 @@
+{
+  "schema_version": "madhav-purna-anvesana/production-compatible-migration-evidence/v1",
+  "recorded_at": "2026-09-16T00:12:00+05:30",
+  "authority": "CCD-012",
+  "production_read": {
+    "mode": "read-only transaction through Cloud SQL Auth Proxy",
+    "database_version": "POSTGRES_15",
+    "database_user": "amjis_app",
+    "transaction_read_only": true,
+    "purna_migrations_applied": 0,
+    "purna_relations_present": 0,
+    "active_asset_registry_rows": 128,
+    "current_output_digest_specs": 110,
+    "shared_or_production_mutation": false
+  },
+  "disposable_replay": {
+    "database": "ephemeral pgvector/pgvector:pg15 container",
+    "schema_source": "same-run production public schema dump with owners and privileges omitted",
+    "data_source": "same-run production _migrations_applied, asset_registry and asset_output_digest_specs only",
+    "candidate_runner": "platform/scripts/migrate.ts with numeric-prefix ordering",
+    "first_run_applied": [
+      "1033_planner_inquiry_lifecycle.sql",
+      "1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
+      "1037_planner_inquiry_action_reservations.sql",
+      "1038_planner_managed_prashna_jobs.sql"
+    ],
+    "first_run_tracker_rows": 857,
+    "second_run_tracker_rows": 857,
+    "second_run_new_migrations": 0,
+    "relations_verified": [
+      "planner_inquiry_lifecycles",
+      "planner_inquiry_action_reservations",
+      "planner_managed_prashna_jobs"
+    ],
+    "purna_current_digest_specs_verified": 6,
+    "result": "PASS_APPLY_AND_IDEMPOTENT_REPLAY"
+  },
+  "qualifications": [
+    "This proves the reviewed Purna migration set against a same-run production-compatible schema and ledger clone, not against production itself.",
+    "Known exact historical hash disclosures remained visible and non-fatal; no guard or disclosure was weakened.",
+    "The separate estate-wide genuinely-empty baseline conflict remains parked in INHERITED_EMPTY_BOOTSTRAP_FINDING_v1.json."
+  ]
+}
