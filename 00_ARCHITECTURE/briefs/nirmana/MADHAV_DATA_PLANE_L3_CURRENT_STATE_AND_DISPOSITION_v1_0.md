@@ -382,3 +382,50 @@ secret are absent; the existing build job remains on the general runtime and
 legacy secret, while six identities retain project-wide secret access. Those
 live changes remain ineligible until source acceptance and a new exclusive
 cutover fence.
+
+## 10. Accepted RI-02 provenance and DP-SD-019 continuation
+
+Lane S was subsequently accepted at source tip
+`da498ebd980cac87796eceb889c7f1c42cfb952b` and integrated
+through `d22533825613c3d428bd844a5dfdc2c0c283b088`. The provenance correction
+through exact accepted tip `66a85047b1b7e2415d7cf2678179983f0708d761`
+removes dependence on dereferenceable side refs: historical and inventory
+evidence resolve to reachable byte-identical ancestors, the reviewed Lane S
+surface is checked by an explicit 23-path/blob manifest, and every commit that
+is actually dereferenced must be an ancestor of the candidate. Governance Gates
+now fetch complete history and collect the complete 27-test durability suite.
+Independent exact-tip review reports zero HIGH/MED/LOW findings; a fresh
+single-branch clone in which the four former side objects are absent passes the
+writer inventory, layer pins and all 27 tests. Integrated focused Python
+provenance/idempotency is 59/59, TypeScript receipt/security is 31/31, TypeScript
+compilation passes, and lint has zero new errors.
+
+DP-SD-019 content is pinned at
+`16590cc49f720e4200a8d9b6cad3f52b68e21792`, SHA-256
+`5fa92c6a5df2f5dda0e9d2041ba599b4c733775c1d438c786831fbd24c6ed48c`,
+and is consumed on the permanent branch by
+`d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f`. The existing heartbeat is updated
+in place for full-queue recovery, but its first subsequent scheduled-wake proof
+remains pending.
+
+Fresh source-only coordination is remotely durable at
+`a5b4f91c2ce6eb1c716a2d295892206d8ff3a4ed`. It opens two disjoint packets:
+the shared release prerequisite separates one-time privileged bootstrap from
+the ordinary migration/deployment barrier; the first independent asset packet
+repairs Yojaka's signed multi-domain and complete compatible-promise
+transformation. The current workflow defect is exact: job-level environment
+`data-plane-production-cutover` gates `migrate` before its marked/unmarked
+state checks, so ordinary already-cut-over releases still request one-time
+administrative approval. The required source topology is a routine state probe,
+an environment-gated bootstrap job only for a positively observed unmarked
+state, and a routine migration barrier that proceeds only after an exact
+successful-or-skipped bootstrap result and re-attests both semantic markers.
+Unknown, partial, failed and concurrent states must fail closed; all dependent
+web, MCP and pipeline jobs remain behind the migration barrier.
+
+No production mutation is authorized by this source lease. A fresh exclusive,
+operation-specific cutover lease remains mandatory before any live role,
+credential, IAM, secret, database, migration, build, deployment or data action.
+Physical upstream generation is still held, protected deployment and consumer
+integration are not run, consumer value is not evaluated, and therefore L3
+terminal acceptance remains 0/22 despite accepted source/provenance progress.
