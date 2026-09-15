@@ -9,11 +9,11 @@ Accepts birth_data dict → returns full natal computation via PyJHora:
 
 Stream G deliverable: BRAHMA-G-1 (POST /api/pyhora/compute)
 """
-from __future__ import annotations
-
 import logging
 import os
 from typing import Any
+
+from panchang_engine.swiss_state import serialized_swiss_state
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -55,6 +55,7 @@ class PyHoraResponse(BaseModel):
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 
 @router.post("/compute", response_model=None)
+@serialized_swiss_state
 async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
     """
     Compute full natal chart via PyJHora.
@@ -125,6 +126,7 @@ async def compute_natal(birth_data: BirthData) -> dict[str, Any]:
 
 
 @router.get("/smoke")
+@serialized_swiss_state
 async def smoke_test() -> dict[str, Any]:
     """
     Smoke test: compute native chart (1984-02-05 10:43 IST Bhubaneswar).

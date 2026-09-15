@@ -52,6 +52,74 @@ _CONFIDENCE_NUMERIC = {'high': 1.0, 'moderate': 0.6, 'speculative': 0.2}
 _DISSONANCE_LABELS = {'obstructed', 'obstructed_severe', 'mixed', 'neutral'}
 
 
+def _validate_window(window: "WindowInput") -> None:
+    """Fail closed when a ranking input cannot satisfy the typed S1 contract."""
+    if not isinstance(window.window_id, str) or not window.window_id.strip():
+        raise ValueError("window_id must be a non-empty string")
+    if not isinstance(window.peak_date, date):
+        raise ValueError("peak_date must be a date")
+    if window.mode not in {"A", "B"}:
+        raise ValueError(f"unknown mode: {window.mode!r}")
+    if window.window_start is not None:
+        if not isinstance(window.window_start, date):
+            raise ValueError("window_start must be a date or None")
+        if window.window_start > window.peak_date:
+            raise ValueError("window_start must not be after peak_date")
+    if window.window_end is not None:
+        if not isinstance(window.window_end, date):
+            raise ValueError("window_end must be a date or None")
+        if window.window_end < window.peak_date:
+            raise ValueError("window_end must not be before peak_date")
+
+    if (
+        isinstance(window.convergence_score, bool)
+        or not isinstance(window.convergence_score, (int, float))
+        or not math.isfinite(float(window.convergence_score))
+    ):
+        raise ValueError("convergence_score must be finite")
+    if window.confidence_label not in _CONFIDENCE_NUMERIC:
+        raise ValueError(f"unknown confidence_label: {window.confidence_label!r}")
+    if window.rarity_years is not None:
+        if (
+            isinstance(window.rarity_years, bool)
+            or not isinstance(window.rarity_years, (int, float))
+            or not math.isfinite(float(window.rarity_years))
+        ):
+            raise ValueError("rarity_years must be finite or None")
+        if window.rarity_years < 0:
+            raise ValueError("rarity_years must be non-negative")
+
+    if not isinstance(window.domains, list) or not all(
+        isinstance(domain, str) for domain in window.domains
+    ):
+        raise ValueError("domains must be a list of strings")
+    unknown_domains = sorted(set(window.domains) - set(_KNOWN_DOMAINS))
+    if unknown_domains:
+        raise ValueError("unknown domains: " + ", ".join(unknown_domains))
+    if not isinstance(window.dissonance_domains, list) or not all(
+        isinstance(domain, str) for domain in window.dissonance_domains
+    ):
+        raise ValueError("dissonance_domains must be a list of strings")
+    unknown_dissonance_domains = sorted(
+        set(window.dissonance_domains) - set(_KNOWN_DOMAINS)
+    )
+    if unknown_dissonance_domains:
+        raise ValueError(
+            "unknown dissonance domains: " + ", ".join(unknown_dissonance_domains)
+        )
+    if not isinstance(window.has_dissonance, bool):
+        raise ValueError("has_dissonance must be a boolean")
+
+
+def _validate_window_set(windows: list["WindowInput"]) -> None:
+    seen: set[str] = set()
+    for window in windows:
+        _validate_window(window)
+        if window.window_id in seen:
+            raise ValueError(f"duplicate window_id: {window.window_id}")
+        seen.add(window.window_id)
+
+
 @dataclass
 class WindowInput:
     """
@@ -124,7 +192,7 @@ def _normalise_rarity(rarity_years: Optional[float]) -> float:
     """Map rarity_years → [0,1]; None → 0.5 neutral."""
     if rarity_years is None:
         return 0.5
-    return min(1.0, rarity_years / _RARITY_CAP_YR)
+    return max(0.0, min(1.0, rarity_years / _RARITY_CAP_YR))
 
 
 def _proximity_factor(peak_date: date, reference_date: date) -> float:
@@ -217,6 +285,7 @@ class KaTulanaService:
         list[RankedWindow]  — ordered best-first; includes per-factor breakdown + rationale.
         """
         ref = reference_date or date.today()
+        _validate_window_set(windows)
         scored = []
         for w in windows:
             fb = _composite(w, ref)
@@ -248,6 +317,10 @@ class KaTulanaService:
         dissonance-aware recommendation (proceed / defer / proceed_with_mitigation).
         """
         ref = reference_date or date.today()
+        _validate_window(window_a)
+        _validate_window(window_b)
+        if window_a.window_id == window_b.window_id:
+            raise ValueError(f"duplicate window_id: {window_a.window_id}")
         fb_a = _composite(window_a, ref)
         fb_b = _composite(window_b, ref)
 
@@ -327,6 +400,11 @@ class KaTulanaService:
         Only windows within horizon_days of reference_date are included.
         """
         ref = reference_date or date.today()
+        if isinstance(horizon_days, bool) or not isinstance(horizon_days, int):
+            raise ValueError("horizon_days must be an integer")
+        if horizon_days < 0:
+            raise ValueError("horizon_days must be non-negative")
+        _validate_window_set(windows)
 
         # Filter to horizon
         in_horizon = [

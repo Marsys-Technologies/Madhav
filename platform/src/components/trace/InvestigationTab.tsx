@@ -193,6 +193,13 @@ export function InvestigationTab({
   query_id,
   isVisible,
 }: InvestigationTabProps) {
+  return <InvestigationTabForQuery key={query_id ?? 'no-query'} query_id={query_id} isVisible={isVisible} />
+}
+
+function InvestigationTabForQuery({
+  query_id,
+  isVisible,
+}: InvestigationTabProps) {
   const [expanded, setExpanded] = useState(false)
   const [data, setData] = useState<InvestigationResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -201,41 +208,36 @@ export function InvestigationTab({
   const [activeSub, setActiveSub] = useState<SubTab>('llm_calls')
 
   useEffect(() => {
-    // Reset when the query_id changes.
-    setData(null)
-    setError(null)
-    setHasFetched(false)
-    setExpanded(false)
-  }, [query_id])
-
-  useEffect(() => {
     if (!isVisible || !expanded || !query_id || hasFetched) return
     let cancelled = false
-    setLoading(true)
-    setError(null)
-    fetch(`/api/investigation/${encodeURIComponent(query_id)}`)
-      .then(async (r) => {
-        if (!r.ok) {
-          if (r.status === 404) throw new Error('No records for this query.')
-          throw new Error(`Investigation fetch failed (${r.status})`)
-        }
-        return (await r.json()) as InvestigationResponse
-      })
-      .then((payload) => {
-        if (cancelled) return
-        setData(payload)
-        setHasFetched(true)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : 'Investigation fetch failed.')
-        setHasFetched(true)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const initialFetch = setTimeout(() => {
+      setLoading(true)
+      setError(null)
+      fetch(`/api/investigation/${encodeURIComponent(query_id)}`)
+        .then(async (r) => {
+          if (!r.ok) {
+            if (r.status === 404) throw new Error('No records for this query.')
+            throw new Error(`Investigation fetch failed (${r.status})`)
+          }
+          return (await r.json()) as InvestigationResponse
+        })
+        .then((payload) => {
+          if (cancelled) return
+          setData(payload)
+          setHasFetched(true)
+        })
+        .catch((e: unknown) => {
+          if (cancelled) return
+          setError(e instanceof Error ? e.message : 'Investigation fetch failed.')
+          setHasFetched(true)
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+        })
+    }, 0)
     return () => {
       cancelled = true
+      clearTimeout(initialFetch)
     }
   }, [isVisible, expanded, query_id, hasFetched])
 

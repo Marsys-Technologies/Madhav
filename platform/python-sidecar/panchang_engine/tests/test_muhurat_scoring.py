@@ -260,9 +260,11 @@ class TestFindMuhurat:
         # Each window has a populated breakdown
         for w in windows:
             assert isinstance(w.breakdown, dict), "breakdown must be a dict"
-            assert "tithi_id" in w.breakdown
-            assert "nakshatra_id" in w.breakdown
-            assert "vara_id" in w.breakdown
+            assert set(w.breakdown) == {"tithi", "nakshatra", "vara", "yoga", "planet"}
+            assert all(
+                isinstance(value, float) and 0.0 <= value <= 1.0
+                for value in w.breakdown.values()
+            )
 
     def test_find_muhurat_invalid_event_raises(self):
         """ValueError for unsupported event."""
@@ -306,8 +308,8 @@ class TestFindMuhurat:
         if len(windows) >= 2:
             assert windows[0].score >= windows[1].score, "Not sorted by score"
 
-    def test_each_window_has_populated_breakdown(self):
-        """Each MuhuratWindow.breakdown has all expected keys."""
+    def test_each_window_has_numeric_contribution_breakdown(self):
+        """Each window exposes the compact numeric contract consumed by the UI."""
         from panchang_engine.muhurat import find_muhurat
 
         p = _build_panchang(tithi_id=10, nakshatra_id=4, vara_id=5)
@@ -323,18 +325,14 @@ class TestFindMuhurat:
 
         assert len(windows) == 1
         bd = windows[0].breakdown
-        expected_keys = [
-            "tithi_id", "tithi_name", "tithi_score", "tithi_contrib",
-            "nakshatra_id", "nakshatra_name", "nakshatra_score", "nakshatra_contrib",
-            "vara_id", "vara_name", "vara_score", "vara_contrib",
-            "yoga_score", "yoga_contrib",
-            "planet_score", "planet_contrib",
-            "native_score", "native_contrib",
-            "knockout",
-            "inauspicious_windows",
-        ]
-        for key in expected_keys:
-            assert key in bd, f"Missing key '{key}' in breakdown"
+        assert bd == {
+            "tithi": 0.19,
+            "nakshatra": 0.38,
+            "vara": 0.0475,
+            "yoga": 0.0,
+            "planet": 0.1,
+        }
+        assert "tara_bala" not in bd
 
 
 # ===========================================================================

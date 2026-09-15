@@ -54,11 +54,13 @@ class _Sentinel:
 
     def __init__(self) -> None:
         self.commits = 0
+        self.statements = []
 
     def cursor(self):
         return self
 
     def execute(self, sql, *args, **kwargs):
+        self.statements.append((sql, args, kwargs))
         return self
 
     def commit(self):
@@ -79,17 +81,7 @@ def _ctx(conn):
 # ── A. write_dasha_scope_cap_sentinels() itself ─────────────────────────────────
 
 def test_write_dasha_scope_cap_sentinels_writes_both_rows(monkeypatch):
-    """Both the Prana (level_n=5) and KP-beyond-sub_sub (level_n=4) rows are
-    built under system_id='scope_cap' / ayanamsha_id='INVARIANT', for the
-    chart_id/build_id passed in — not hardcoded to any one chart.
-
-    SCOPE: this asserts ROW CONSTRUCTION under a stub where `_upsert_rows`
-    always succeeds. It is NOT a claim about production. In production the
-    Prana row's level_n=5 violates `chart_dashas`.`cd_level_n_max4` and never
-    lands — `written` is 1, not 2, and `system_id='scope_cap'` has held ZERO
-    rows for every chart since the feature was written. See
-    `test_dasha_sentinel_savepoint_isolation.py` for the real-semantics tests.
-    """
+    """Prāṇa is a capability fact; KP remains a legal level-4 interval row."""
     calls = []
 
     def fake_upsert_rows(conn, rows, system_id, ayanamsha_id, *, commit=True):
@@ -103,9 +95,7 @@ def test_write_dasha_scope_cap_sentinels_writes_both_rows(monkeypatch):
     written = gdw.write_dasha_scope_cap_sentinels('chart-XYZ', 'build-123', conn=sentinel)
 
     assert written == 2
-    assert len(calls) == 2
-    level_ns = sorted(c['rows'][0]['level_n'] for c in calls)
-    assert level_ns == [4, 5]
+    assert len(calls) == 1
     for c in calls:
         assert c['system_id'] == 'scope_cap'
         assert c['ayanamsha_id'] == 'INVARIANT'
@@ -115,6 +105,14 @@ def test_write_dasha_scope_cap_sentinels_writes_both_rows(monkeypatch):
         assert row['system_id'] == 'scope_cap'
         assert row['ayanamsha_id'] == 'INVARIANT'
         assert row['verification_pass_status'] == 'scope_cap_sentinel'
+        assert row['level_n'] == 4
+    insert_sql, insert_args, _ = next(
+        statement for statement in sentinel.statements
+        if "INSERT INTO chart_facts" in statement[0]
+    )
+    assert "dasha_scope_cap" in insert_sql
+    assert "level_5_not_computed" in insert_sql
+    assert '"requested_level":5' in insert_args[0][3]
 
 
 def test_write_dasha_scope_cap_sentinels_injected_conn_does_not_commit(monkeypatch):
@@ -131,7 +129,7 @@ def test_write_dasha_scope_cap_sentinels_injected_conn_does_not_commit(monkeypat
     sentinel = _Sentinel()
     gdw.write_dasha_scope_cap_sentinels('chart-XYZ', 'build-123', conn=sentinel)
 
-    assert commits_seen == [False, False]
+    assert commits_seen == [False]
 
 
 def test_write_dasha_scope_cap_sentinels_owned_conn_commits(monkeypatch):
@@ -159,7 +157,7 @@ def test_write_dasha_scope_cap_sentinels_owned_conn_commits(monkeypatch):
 
     assert written == 2
     # commit=False is now passed on BOTH paths (savepoint-compatible)...
-    assert commits_seen == [False, False]
+    assert commits_seen == [False]
     # ...and the owned connection is committed exactly once, at the end.
     assert owned.commits == 1
 

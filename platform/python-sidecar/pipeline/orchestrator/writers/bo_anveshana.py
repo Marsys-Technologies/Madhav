@@ -23,13 +23,13 @@ from __future__ import annotations
 import json
 import logging
 import math
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 import numpy as np
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ CLASSICAL_RELATIONSHIP_TYPES = {
 }
 
 _DISCOVERY_INSERT = """
-INSERT INTO bodha_discoveries (
+INSERT INTO public.bodha_discoveries (
   discovery_id, chart_id, ayanamsha_id, build_id, discovery_class,
   discovery_subsystem, non_obviousness_score, consequence_score, composite_discovery_rank,
   constituent_refs_jsonb, reasoning_chain_jsonb, why_an_acharya_misses_it,
@@ -76,7 +76,7 @@ ON CONFLICT DO NOTHING
 """
 
 _ANOMALY_INSERT = """
-INSERT INTO bodha_anomalies (
+INSERT INTO public.bodha_anomalies (
   anomaly_id, chart_id, ayanamsha_id, build_id, anomaly_type,
   discovery_subsystem, subject_ref_jsonb, anomaly_metric, anomaly_value,
   chart_baseline_value, sigma_from_baseline, meaningfulness_gate_result,
@@ -394,7 +394,13 @@ def _make_discovery(
     rank_composite = rank * (1.0 + corr_count * 0.2)
 
     return {
-        "discovery_id": str(uuid.uuid4()),
+        "discovery_id": stable_semantic_uuid("discovery", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "discovery_class": discovery_class,
+            "discovery_subsystem": discovery_subsystem,
+            "constituent_refs": sorted(str(ref) for ref in constituent_refs),
+            "hypothesis": hypothesis,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -443,7 +449,11 @@ def _make_anomaly(
     gate_result: str,
 ) -> dict:
     return {
-        "anomaly_id": str(uuid.uuid4()),
+        "anomaly_id": stable_semantic_uuid("anomaly", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "anomaly_type": anomaly_type, "subject_ref": subject_ref,
+            "metric": metric,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -770,6 +780,7 @@ def _batch_insert(conn: Any, rows: list[dict], sql: str, batch_size: int = 50) -
 
 
 @register("bo_anveshana")
+@l2_producer("bo_anveshana")
 class BoAnveshanaWriter(WriterBase):
     """bo_anveshana: discovery engine — latent insights, outliers, brokers."""
     asset_id = "bo_anveshana"
@@ -807,8 +818,8 @@ class BoAnveshanaWriter(WriterBase):
 
         # Idempotency: delete prior rows
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM bodha_discoveries WHERE chart_id = %s", [chart_id])
-            cur.execute("DELETE FROM bodha_anomalies WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_discoveries WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_anomalies WHERE chart_id = %s", [chart_id])
 
         total_disc = 0
         total_anom = 0

@@ -1,0 +1,184 @@
+{
+  "schema_version": "madhav-l0-resource-config-slice/v1",
+  "slice_id": "L0-SLICE-RESOURCE-CONFIG-01",
+  "semantic_release_id": "l0.semantic.2026-09-13.1",
+  "semantic_release_digest": "665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1",
+  "semantic_version": "1.0.0",
+  "interface_version": "1.0",
+  "generation_id": "l0-resource-config-g1",
+  "content_sha256": "d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a",
+  "epistemic_class": null,
+  "epistemic_class_reason": "The preserved reference map lacks an admitted exact source witness and cannot yet enter the QUALIFIED_RULE class.",
+  "target_epistemic_class": "QUALIFIED_RULE",
+  "evidence_maturity": "present",
+  "delivery_state": "PRODUCER_READY_CANDIDATE",
+  "grain": [
+    "semantic_release_id",
+    "method_id",
+    "rule_clause_id",
+    "source_passage_id",
+    "operator_scope_id"
+  ],
+  "scope": {
+    "kind": "global_reference",
+    "forbidden_payload_fields": ["subject_id", "chart_id", "birth_data", "personal_observations"],
+    "owner": "L0 Brahmagyan",
+    "not_owned": ["chart occurrence", "structural interpretation", "timing", "manifestation", "forecast", "evaluation"]
+  },
+  "consumer_question": {
+    "question_id": "L0-Q05",
+    "domain_id": "wealth",
+    "outcome_ids": ["resource_creation", "resource_retention"],
+    "distinction": "prevent false blanket absence and false blanket implementation of Bhavat Bhavam"
+  },
+  "qualification_states": [
+    "READABLE_NOT_EXECUTABLE",
+    "QUALIFIED_EXECUTABLE",
+    "UNQUALIFIED_SOURCE",
+    "UNSUPPORTED_SCOPE",
+    "METHOD_INAPPLICABLE"
+  ],
+  "method": {
+    "method_id": "bhavat_bhavam.odd_house_nonrecursive.v1",
+    "operator_scope_id": "bhavat_bhavam.odd_primary_house.reference_only.v1",
+    "operator": "house_from_house_reference",
+    "logic": "lookup_only",
+    "conjunction_disjunction": "not_applicable_to_reference_lookup",
+    "qualification_state": "UNQUALIFIED_SOURCE",
+    "prerequisites": [
+      "primary house is an integer from 1 through 12",
+      "primary house is odd",
+      "use is a non-recursive reference lookup",
+      "operator is not used to generate a configuration",
+      "derived reference never outranks the primary"
+    ],
+    "exceptions": ["even primary houses have no derivation"],
+    "cancellations": [],
+    "dispute": "The preserved implementation scope has no admitted exact passage, edition/translation and rights pin in this checkout.",
+    "restraints": {
+      "never_generator": true,
+      "no_chaining": true,
+      "never_outranks_primary": true
+    }
+  },
+  "source_witness": {
+    "source_passage_id": "source-passage.unresolved.bhavat-bhavam.odd-house-scope.v1",
+    "work_id": null,
+    "edition_id": null,
+    "translation_id": null,
+    "passage_locator": null,
+    "ancestry_root_id": null,
+    "rights_use_status": "UNRESOLVED",
+    "availability": "NOT_ADMITTED",
+    "evidence_refs": [
+      "platform/python-sidecar/brahmagyan/l0_ontology.py:895-896",
+      "platform/python-sidecar/brahmagyan/l0_reference.py:1033",
+      "platform/src/lib/jyotish/bhavat_bhavam_map.ts:1-21",
+      "00_ARCHITECTURE/CONDUCTOR/ws3/kp_canon_batch_03.yaml:20-74"
+    ],
+    "qualification_reason": "Repository evidence provides concept/glossary/implementation and a differently scoped extracted candidate, but no exact admitted witness for the fixed odd-house non-recursive map."
+  },
+  "rule_clause": {
+    "rule_clause_id": "rule-clause.bhavat-bhavam.odd-house-reference.v1",
+    "qualification_state": "UNQUALIFIED_SOURCE",
+    "source_passage_id": "source-passage.unresolved.bhavat-bhavam.odd-house-scope.v1",
+    "concept_ids": ["bhavat_bhavam", "house", "derived_reference"],
+    "role_ids": ["primary_house", "derived_house"],
+    "domain_ids": ["wealth"],
+    "outcome_ids": ["resource_creation", "resource_retention"],
+    "application_owner": "L2",
+    "application_in_this_slice": false
+  },
+  "map": {
+    "1": [1, 7],
+    "2": [],
+    "3": [2, 8],
+    "4": [],
+    "5": [3, 9],
+    "6": [],
+    "7": [4, 10],
+    "8": [],
+    "9": [5, 11],
+    "10": [],
+    "11": [6, 12],
+    "12": []
+  },
+  "lineage_drill": [
+    "concept:bhavat_bhavam",
+    "method:bhavat_bhavam.odd_house_nonrecursive.v1",
+    "source:source-passage.unresolved.bhavat-bhavam.odd-house-scope.v1",
+    "clause:rule-clause.bhavat-bhavam.odd-house-reference.v1",
+    "state:UNQUALIFIED_SOURCE"
+  ],
+  "downstream_contract": {
+    "L1": {
+      "expects": ["canonical primary-house identity", "method/convention pin", "compatible semantic generation"],
+      "slice_emits_occurrence": false
+    },
+    "L2": {
+      "expects": ["primary and derived roles", "operator scope", "qualification state", "source lineage", "restraints"],
+      "slice_emits_interpretation": false
+    },
+    "DP10_DP12": {
+      "expects": ["discoverable IDs", "known gap", "hydration drill", "omission sentinel schema"],
+      "integration_claimed": false
+    }
+  },
+  "compatibility": {
+    "legacy_baseline": "BHAVAT_BHAVAM_MAP_VERSION=1.0 plus narrower L2 amplifier plus D8 blanket not_joined statement",
+    "changed_outputs": ["structured identity", "witness status", "qualification state", "scope", "generation", "rollback metadata"],
+    "invariant_outputs": ["map values", "source text", "historical rows", "no-generation restraint", "no-chaining restraint", "primary precedence"],
+    "affected_adapters": ["Python L0 resource-config adapter", "TypeScript bhavat_bhavam_map adapter"],
+    "stale_behavior": "Only identity/qualification-aware producer fixtures become stale when the content digest changes.",
+    "rollback_generation_id": "legacy.bhavat-bhavam-map.1.0",
+    "rollback_action": "Select the prior adapter generation; do not rewrite historical readings or rows."
+  },
+  "fixtures": [
+    {
+      "fixture_id": "qualified-positive",
+      "case": "exact admitted witness supports the fixed operator",
+      "expected_state": "NOT_REACHABLE",
+      "reason": "No exact admitted passage/edition/translation/rights pin exists in the checked-in evidence."
+    },
+    {
+      "fixture_id": "readable-candidate-not-executable",
+      "case": "KP extraction is readable but differently scoped and lacks an admitted edition/translation/rights pin",
+      "source_ref": "00_ARCHITECTURE/CONDUCTOR/ws3/kp_canon_batch_03.yaml:20-74",
+      "expected_state": "READABLE_NOT_EXECUTABLE"
+    },
+    {
+      "fixture_id": "missing-witness",
+      "case": "odd primary house 11 under the preserved map",
+      "primary_house": 11,
+      "expected_state": "UNQUALIFIED_SOURCE"
+    },
+    {
+      "fixture_id": "even-house-inapplicable",
+      "case": "even primary house 2",
+      "primary_house": 2,
+      "expected_state": "METHOD_INAPPLICABLE"
+    },
+    {
+      "fixture_id": "recursive-prohibited",
+      "case": "request a second derivation from a derived house",
+      "primary_house": 11,
+      "recursive": true,
+      "expected_state": "UNSUPPORTED_SCOPE"
+    },
+    {
+      "fixture_id": "alias-parity",
+      "case": "Sūrya and Ravi retain one released identity while qualification remains unchanged",
+      "aliases": ["Sūrya", "Ravi"],
+      "expected_identity_id": "sun",
+      "expected_state": "UNQUALIFIED_SOURCE"
+    },
+    {
+      "fixture_id": "changed-generation-rollback",
+      "case": "qualification metadata changes without changing the map",
+      "from_generation_id": "legacy.bhavat-bhavam-map.1.0",
+      "to_generation_id": "l0-resource-config-g1",
+      "expected_map_change": false,
+      "expected_prior_replayable": true
+    }
+  ]
+}

@@ -31,11 +31,11 @@ turning the returned `AmplifierSignal` objects into full MSR row dicts.
 """
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
 from bodha_writers.bhavat_bhavam_registry import derived_houses
+from bodha_writers.data_plane_contracts import stable_semantic_uuid
 
 VERSION_BHAVAT_BHAVAM_AMPLIFIER = "v1.0"
 
@@ -232,7 +232,13 @@ def compute_bhavat_bhavam_amplifiers(
             ))
 
             out.append(AmplifierSignal(
-                signal_id=str(uuid.uuid4()),
+                signal_id=stable_semantic_uuid("bhavat_bhavam_amplifier", {
+                    "ayanamsha_id": primary.ayanamsha_id or occupant.ayanamsha_id,
+                    "primary_identifier": primary.identifier,
+                    "primary_house": primary_house,
+                    "derived_house": d_house,
+                    "occupant_identifier": occupant.identifier,
+                }),
                 ayanamsha_id=primary.ayanamsha_id or occupant.ayanamsha_id,
                 primary_identifier=primary.identifier,
                 primary_house=primary_house,

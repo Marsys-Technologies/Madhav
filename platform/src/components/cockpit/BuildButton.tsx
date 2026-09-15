@@ -17,9 +17,12 @@ export function BuildButton({ chartId }: { chartId: string }) {
   }
 
   useEffect(() => {
-    void poll()
+    const initialPoll = setTimeout(() => void poll(), 0)
     const id = setInterval(() => void poll(), 10_000)
-    return () => clearInterval(id)
+    return () => {
+      clearTimeout(initialPoll)
+      clearInterval(id)
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartId])
 

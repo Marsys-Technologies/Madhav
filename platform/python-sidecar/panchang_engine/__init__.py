@@ -18,8 +18,10 @@ from .types import Panchang, PanchangaInstant, Anga, Timing, PlanetState, Muhura
 from .exceptions import (
     PanchangEngineError, AyanamshaError, OutOfRangeError, ValidationError,
 )
+from .swiss_state import SWISS_STATE_LOCK, serialized_swiss_state, swiss_state_scope
 
 
+@serialized_swiss_state
 def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang":
     """
     High-level: full Panchang for a single day.
@@ -64,7 +66,9 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Set ayanamsha to Lahiri (project default)
+    # Select the built-in/default ephemeris path and Lahiri under one critical
+    # section so a prior request's path cannot leak into this computation.
+    swe.set_ephe_path(None)
     set_ayanamsha("lahiri")
 
     # Sunrise / sunset
@@ -188,6 +192,7 @@ def compute_panchang(date, lat: float, lon: float, tz_offset: int) -> "Panchang"
     )
 
 
+@serialized_swiss_state
 def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "PanchangaInstant":
     """
     Compute panchang state at the exact given datetime (birth moment / event instant).
@@ -242,7 +247,9 @@ def panchanga_instant(instant, lat: float, lon: float, tz_offset: int) -> "Panch
     if not (-180 <= lon <= 180):
         raise ValidationError(f"lon out of range: {lon}")
 
-    # Set ayanamsha to Lahiri (project default)
+    # Select the built-in/default ephemeris path and Lahiri under one critical
+    # section so a prior request's path cannot leak into this computation.
+    swe.set_ephe_path(None)
     set_ayanamsha("lahiri")
 
     # Convert local instant to UTC

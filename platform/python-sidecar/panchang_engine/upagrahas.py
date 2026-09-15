@@ -9,6 +9,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import swisseph as swe
 from .types import PlanetState
+from .swiss_state import serialized_swiss_state
 from .shastra_tables import GULIKA_INDEX, SIGN_NAMES, NAKSHATRA_NAMES
 
 
@@ -17,6 +18,7 @@ def _jd(dt: datetime) -> float:
                       dt.hour + dt.minute / 60.0 + dt.second / 3600.0)
 
 
+@serialized_swiss_state
 def _ayanamsha(jd: float) -> float:
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     return swe.get_ayanamsa_ut(jd)
@@ -90,6 +92,7 @@ def compute_upagrahas_from_sun_lon(sun_lon: float, vara_id: int) -> list:
     ]
 
 
+@serialized_swiss_state
 def compute_upagrahas(sunrise_utc: datetime, sunset_utc: datetime,
                       vara_id: int) -> list:
     """
@@ -144,6 +147,7 @@ def compute_upagrahas(sunrise_utc: datetime, sunset_utc: datetime,
     ]
 
 
+@serialized_swiss_state
 def compute_outer_planets(instant_utc: datetime) -> list:
     """
     Compute Uranus, Neptune, Pluto sidereal positions at the given UTC instant.

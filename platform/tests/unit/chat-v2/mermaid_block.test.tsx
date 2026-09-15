@@ -15,11 +15,11 @@ import React from 'react'
 
 // Mock next/dynamic to return the inner component synchronously in tests.
 vi.mock('next/dynamic', () => ({
-  default: (loader: () => Promise<React.ComponentType<any>>) => {
+  default: (loader: () => Promise<React.ComponentType<Record<string, unknown>>>) => {
     // Resolve the loader immediately and return a wrapper component.
-    let Comp: React.ComponentType<any> | null = null
+    let Comp: React.ComponentType<Record<string, unknown>> | null = null
     loader().then((m) => { Comp = m })
-    return function DynamicWrapper(props: any) {
+    return function DynamicWrapper(props: Record<string, unknown>) {
       if (!Comp) return <div data-testid="v2-mermaid-dynamic-loading">loading…</div>
       return React.createElement(Comp, props)
     }

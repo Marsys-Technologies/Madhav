@@ -53,8 +53,10 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
@@ -292,11 +294,28 @@ def test_circularity_guard_field_hash_invariant_under_lel_mutation():
     except ImportError:
         pytest.skip("psycopg not installed in this environment")
 
-    dsn = "postgresql://amjis_app:50mii04kTKDUUu54CAKdS4Bv2gx1IoWy@127.0.0.1:5433/amjis"
+    dsn = os.environ.get("MI_BHARA_CIRCULARITY_TEST_DATABASE_URL")
+    if not dsn:
+        pytest.skip(
+            "MI_BHARA_CIRCULARITY_TEST_DATABASE_URL is not set for the guarded "
+            "circularity integration test"
+        )
+
+    parsed_dsn = urlparse(dsn)
+    database_name = parsed_dsn.path.lstrip("/")
+    if parsed_dsn.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise RuntimeError(
+            "MI_BHARA_CIRCULARITY_TEST_DATABASE_URL must use a loopback host"
+        )
+    if "test" not in database_name.lower():
+        raise RuntimeError(
+            "MI_BHARA_CIRCULARITY_TEST_DATABASE_URL must name a test database"
+        )
+
     try:
         conn = psycopg.connect(dsn, row_factory=psycopg.rows.dict_row, connect_timeout=5)
     except Exception:
-        pytest.skip("live Cloud SQL proxy (127.0.0.1:5433) not reachable in this environment")
+        pytest.skip("guarded circularity test database is not reachable in this environment")
 
     chart_id = "482012f1-710e-4a25-994a-93821f5871aa"
     conn.autocommit = False

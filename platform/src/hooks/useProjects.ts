@@ -18,7 +18,10 @@ export function useProjects() {
       .finally(() => setLoading(false))
   }, [])
 
-  useEffect(() => { reload() }, [reload])
+  useEffect(() => {
+    const initialFetch = setTimeout(reload, 0)
+    return () => clearTimeout(initialFetch)
+  }, [reload])
 
   const createProject = useCallback(
     async (name: string, systemPromptAddition?: string): Promise<Project | null> => {

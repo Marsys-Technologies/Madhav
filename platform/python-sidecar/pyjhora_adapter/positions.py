@@ -12,6 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
@@ -24,6 +26,7 @@ def _place(lat: float, lon: float, tz: float):
     return drik.Place("subject", lat, lon, tz)
 
 
+@serialized_swiss_state
 def _set_ayanamsha(ayanamsha_id: str, jd_ut: float) -> float:
     mode, _sidm = resolve_mode(ayanamsha_id)
     drik.set_ayanamsa_mode(mode)
@@ -38,6 +41,7 @@ def _nakshatra_for_long(full_long: float) -> tuple[int, int]:
     return nak, pada
 
 
+@serialized_swiss_state
 def compute_positions(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",

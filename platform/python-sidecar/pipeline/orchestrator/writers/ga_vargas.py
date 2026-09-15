@@ -6,11 +6,13 @@ via ayanamsha_subset). The orchestrator drives each ayanamsha as its own SAVEPOI
 + last_built_at heartbeat + commit. See investigation §2.B (analogous to ga_dashas).
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_vargas')
+@l1_producer_contract
 class GaVargasWriter(WriterBase):
     asset_id = 'ga_vargas'
     has_substeps = True

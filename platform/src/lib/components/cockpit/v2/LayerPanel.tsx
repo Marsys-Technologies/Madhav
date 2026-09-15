@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AssetRow } from '@/app/api/cockpit/registry/route'
 import type { AssetStats } from '@/app/api/cockpit/stats/route'
@@ -109,17 +109,9 @@ export function LayerPanel({
   substepOverlay,
   onRunStarted,
 }: Props) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
+  const [userExpanded, setUserExpanded] = useState(defaultExpanded)
+  const expanded = forceExpand || defaultExpanded || userExpanded
   const { isSuperAdmin } = useUserRole()
-
-  useEffect(() => {
-    if (forceExpand) setExpanded(true)
-  }, [forceExpand])
-
-  // Task 5: sync when defaultExpanded prop changes (e.g. build starts and auto-expands)
-  useEffect(() => {
-    if (defaultExpanded) setExpanded(true)
-  }, [defaultExpanded])
 
   const layerNames = LAYER_NAMES[layer] ?? { sa: layer, en: layer }
 
@@ -182,9 +174,9 @@ export function LayerPanel({
           tabIndex={0}
           aria-expanded={expanded}
           aria-label={`${layerNames.sa} layer, ${expanded ? 'expanded' : 'collapsed'}`}
-          onClick={() => setExpanded(!expanded)}
+          onClick={() => setUserExpanded(!expanded)}
           onKeyDown={e => {
-            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(v => !v) }
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUserExpanded(v => !v) }
           }}
           style={{
             flex: 1,

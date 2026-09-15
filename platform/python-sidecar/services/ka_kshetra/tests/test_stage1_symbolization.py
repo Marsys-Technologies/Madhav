@@ -236,11 +236,22 @@ class TestHonestCoverageGaps:
 
 class _FakeConn:
     def __init__(self):
-        self.executed: list[tuple[str, dict]] = []
+        self.executed: list[tuple[str, list]] = []
 
-    def execute(self, sql, params=None):
-        self.executed.append((sql, params))
-        return self
+    def cursor(self):
+        conn = self
+
+        class _Cursor:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def executemany(self, sql, params):
+                conn.executed.extend((sql, row) for row in params)
+
+        return _Cursor()
 
 
 class TestWritePrimitiveRows:

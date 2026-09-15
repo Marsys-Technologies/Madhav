@@ -146,6 +146,19 @@ def test_replace_prior_msr_for_chart_rejects_empty_allowlist():
         mod.replace_prior_msr_for_chart(conn, "cid", "lahiri", [])
 
 
+@pytest.mark.parametrize("snapshot_type", [None, "natal"])
+def test_replace_prior_cgm_nodes_deletes_only_bo_bimba_node_types(snapshot_type):
+    conn = _FakeConn(rowcount=5)
+
+    assert mod.replace_prior_cgm_nodes(conn, "cid", "lahiri", snapshot_type) == 5
+
+    delete_sql, params = next((sql, args) for sql, args in conn.calls if sql.startswith("DELETE"))
+    assert "node_type = ANY(%s)" in delete_sql
+    assert params[-1] == ["bhava", "domain", "dosha", "graha", "yoga"]
+    assert "arudha" not in params[-1]
+    assert "special_lagna" not in params[-1]
+
+
 class _RealisticFakeConn:
     """Simulates real DELETE semantics (row-level filtering) well enough to
     prove cross-writer isolation, without a live Postgres connection: holds
@@ -161,7 +174,7 @@ class _RealisticFakeConn:
     def execute(self, sql, params=None):
         if "SET LOCAL statement_timeout" in sql:
             return _FakeCursor(0)
-        if sql.startswith("DELETE FROM bodha_signal_embeddings"):
+        if sql.startswith("DELETE FROM public.bodha_signal_embeddings"):
             chart_id, ayanamsha_id, owned = params
             owned_signal_ids = {
                 r["signal_id"] for r in self.signal_rows
@@ -171,7 +184,7 @@ class _RealisticFakeConn:
             before = len(self.embedding_rows)
             self.embedding_rows = [r for r in self.embedding_rows if r["signal_id"] not in owned_signal_ids]
             return _FakeCursor(before - len(self.embedding_rows))
-        if sql.startswith("DELETE FROM bodha_contradictions"):
+        if sql.startswith("DELETE FROM public.bodha_contradictions"):
             chart_id = params[0]
             ayanamsha_id, owned = params[1], params[2]
             owned_signal_ids = {
@@ -185,7 +198,7 @@ class _RealisticFakeConn:
                 if r["signal_a_id"] not in owned_signal_ids and r["signal_b_id"] not in owned_signal_ids
             ]
             return _FakeCursor(before - len(self.contradiction_rows))
-        if sql.startswith("DELETE FROM bodha_msr_signals"):
+        if sql.startswith("DELETE FROM public.bodha_msr_signals"):
             chart_id, ayanamsha_id, owned = params
             before = len(self.signal_rows)
             self.signal_rows = [
@@ -248,9 +261,9 @@ def test_bo_sudarshana_rows_survive_bo_laksana_rebuild_cycle():
 @pytest.mark.parametrize("writer", _INLINE_DELETE_WRITERS)
 def test_inline_delete_writer_has_timeout_guard_before_delete(writer):
     src = (_WRITERS_DIR / f"{writer}.py").read_text()
-    assert "DELETE FROM bodha" in src, f"{writer}: expected an inline DELETE"
+    assert "DELETE FROM public.bodha" in src, f"{writer}: expected an inline DELETE"
     guard_idx = src.find("SET LOCAL statement_timeout = 0")
-    delete_idx = src.find("DELETE FROM bodha")
+    delete_idx = src.find("DELETE FROM public.bodha")
     assert guard_idx != -1, f"{writer}: missing SET LOCAL statement_timeout = 0 guard"
     assert guard_idx < delete_idx, (
         f"{writer}: SET LOCAL statement_timeout guard must precede the first "

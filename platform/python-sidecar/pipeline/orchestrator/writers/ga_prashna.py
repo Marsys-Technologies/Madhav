@@ -13,11 +13,13 @@ FROZEN WriterBase contract:
   - Early-returns WriterResult(rows_inserted=0) if not a prashna chart
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 from pipeline.orchestrator.writers import WriterBase, WriterResult, SubStep, register
 from ga_writers.ga_prashna_writer import CANONICAL_AYANAMSHAS
 
 
 @register("ga_prashna")
+@l1_producer_contract
 class GaPrashnaWriter(WriterBase):
     asset_id = "ga_prashna"
     has_substeps = True

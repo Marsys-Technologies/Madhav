@@ -16,21 +16,22 @@ export function StillWorkingIndicator({
   isStreaming,
   thresholdMs = 25_000,
 }: StillWorkingIndicatorProps) {
+  if (!isStreaming) return null
+  return <ActiveStillWorkingIndicator thresholdMs={thresholdMs} />
+}
+
+function ActiveStillWorkingIndicator({ thresholdMs }: { thresholdMs: number }) {
   const [elapsed, setElapsed] = useState(0)
 
   useEffect(() => {
-    if (!isStreaming) {
-      setElapsed(0)
-      return
-    }
     const start = Date.now()
     const id = setInterval(() => {
       setElapsed(Date.now() - start)
     }, 1_000)
     return () => clearInterval(id)
-  }, [isStreaming])
+  }, [])
 
-  if (!isStreaming || elapsed < thresholdMs) return null
+  if (elapsed < thresholdMs) return null
 
   const seconds = Math.floor(elapsed / 1000)
 

@@ -30,6 +30,8 @@ import os
 from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 # ── Ayanamsha map ──────────────────────────────────────────────────────────────
@@ -97,6 +99,7 @@ def birth_jd(birth_dt_utc: datetime) -> float:
 
 # ── Positions ─────────────────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def compute_positions(jd: float, ayanamsha: str) -> list[dict[str, Any]]:
     """
     Compute sidereal positions for 9 classical grahas using Swiss Ephemeris.

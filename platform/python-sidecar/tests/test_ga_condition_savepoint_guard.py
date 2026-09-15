@@ -24,9 +24,12 @@ from ga_writers.ga_condition_writer import (  # noqa: E402
 
 
 class _FakeCursor:
-    def __init__(self, calls, fail_on_select):
+    def __init__(self, calls, param_calls, fail_on_select, rows, rows_by_params):
         self._calls = calls
+        self._param_calls = param_calls
         self._fail_on_select = fail_on_select
+        self._rows = rows
+        self._rows_by_params = rows_by_params
 
     def __enter__(self):
         return self
@@ -37,26 +40,38 @@ class _FakeCursor:
     def execute(self, sql, params=None):
         s = " ".join(sql.split())
         self._calls.append(s)
+        self._param_calls.append((s, params))
         if self._fail_on_select and s.upper().startswith("SELECT"):
             raise RuntimeError("canceling statement due to statement timeout")
+        if s.upper().startswith("SELECT") and self._rows_by_params is not None:
+            self._rows = self._rows_by_params.get(tuple(params), [])
 
     def fetchall(self):
-        return []
+        return self._rows
 
 
 class _FakeConn:
-    def __init__(self, fail_on_select=False):
+    def __init__(self, fail_on_select=False, rows=None, rows_by_params=None):
         self.calls: list[str] = []
+        self.param_calls: list[tuple[str, object]] = []
         self._fail_on_select = fail_on_select
+        self._rows = rows or []
+        self._rows_by_params = rows_by_params
 
     def cursor(self, row_factory=None):
-        return _FakeCursor(self.calls, self._fail_on_select)
+        return _FakeCursor(
+            self.calls, self.param_calls, self._fail_on_select,
+            self._rows, self._rows_by_params,
+        )
 
 
 def test_dasha_lookup_rolls_back_savepoint_on_timeout():
     conn = _FakeConn(fail_on_select=True)
     # must not raise, must return the safe (None, None) default
-    result = _load_dasha_periods(conn, "chart-1", "Sun", condition_score=0.9)
+    result = _load_dasha_periods(
+        conn, "chart-1", "Sun", "lahiri_chitrapaksha", "build-1",
+        condition_score=0.9,
+    )
     assert result == (None, None)
     joined = " | ".join(conn.calls)
     assert "SAVEPOINT sp_ga_cond_dasha" in joined
@@ -67,12 +82,92 @@ def test_dasha_lookup_rolls_back_savepoint_on_timeout():
 
 def test_dasha_lookup_releases_savepoint_on_success():
     conn = _FakeConn(fail_on_select=False)
-    result = _load_dasha_periods(conn, "chart-1", "Sun", condition_score=0.9)
+    result = _load_dasha_periods(
+        conn, "chart-1", "Sun", "lahiri_chitrapaksha", "build-1",
+        condition_score=0.9,
+    )
     assert result == (None, None)  # no rows from the fake → safe default
     joined = " | ".join(conn.calls)
     assert "SAVEPOINT sp_ga_cond_dasha" in joined
     assert "RELEASE SAVEPOINT sp_ga_cond_dasha" in joined
     assert "ROLLBACK TO SAVEPOINT sp_ga_cond_dasha" not in joined
+
+
+def test_dasha_lookup_preserves_exact_source_row_identity():
+    conn = _FakeConn(rows=[(
+        "11111111-1111-4111-8111-111111111111",
+        "vimshottari", "lahiri_chitrapaksha", "build-1",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )])
+    peak, weak = _load_dasha_periods(
+        conn, "chart-1", "Sun", "lahiri_chitrapaksha", "build-1",
+        condition_score=0.9, dignity_d1="exalted"
+    )
+    assert weak is None
+    assert peak[0]["source_dasha_row_id"] == "11111111-1111-4111-8111-111111111111"
+    assert peak[0]["source_ayanamsha_id"] == "lahiri_chitrapaksha"
+    assert "source_build_id" not in peak[0]
+
+
+def test_dasha_lookup_is_scoped_to_exact_ayanamsha_and_build():
+    aya_a_row = (
+        "11111111-1111-4111-8111-111111111111", "vimshottari", "aya-a", "build-a",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )
+    aya_b_row = (
+        "22222222-2222-4222-8222-222222222222", "vimshottari", "aya-b", "build-b",
+        1, "Sun", "2001-01-01", "2007-01-01",
+    )
+    conn = _FakeConn(rows_by_params={
+        ("chart-1", "aya-a", "build-a", "Sun"): [aya_a_row],
+        ("chart-1", "aya-b", "build-b", "Sun"): [aya_b_row],
+    })
+    peak_a, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-a", "build-a", condition_score=0.9,
+    )
+    peak_b, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-b", "build-b", condition_score=0.9,
+    )
+    assert peak_a[0]["source_dasha_row_id"] != peak_b[0]["source_dasha_row_id"]
+    assert peak_a[0]["source_ayanamsha_id"] == "aya-a"
+    assert "source_build_id" not in peak_b[0]
+    _load_dasha_periods(
+        conn, "chart-1", "Sun", "lahiri_chitrapaksha", "build-1",
+        condition_score=0.9,
+    )
+    select = next(call for call in conn.calls if call.upper().startswith("SELECT"))
+    assert "ayanamsha_id = %s" in select
+    assert "build_id = %s" in select
+    select_params = [
+        params for sql, params in conn.param_calls if sql.upper().startswith("SELECT")
+    ]
+    assert ("chart-1", "aya-a", "build-a", "Sun") in select_params
+    assert ("chart-1", "aya-b", "build-b", "Sun") in select_params
+
+
+def test_dasha_period_semantics_are_cross_build_invariant():
+    stable_row_id = "11111111-1111-4111-8111-111111111111"
+    row_a = (
+        stable_row_id, "vimshottari", "aya-a", "build-a",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )
+    row_b = (
+        stable_row_id, "vimshottari", "aya-a", "build-b",
+        1, "Sun", "2000-01-01", "2006-01-01",
+    )
+    conn = _FakeConn(rows_by_params={
+        ("chart-1", "aya-a", "build-a", "Sun"): [row_a],
+        ("chart-1", "aya-a", "build-b", "Sun"): [row_b],
+    })
+
+    peak_a, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-a", "build-a", condition_score=0.9,
+    )
+    peak_b, _ = _load_dasha_periods(
+        conn, "chart-1", "Sun", "aya-a", "build-b", condition_score=0.9,
+    )
+
+    assert peak_a == peak_b
 
 
 def test_varga_spread_rolls_back_savepoint_on_timeout():

@@ -13,8 +13,8 @@ Coverage:
   8.  North direction maps to Mercury
   9.  East direction maps to Sun
   10. West direction maps to Saturn
-  11. FORENSIC: Sun → East; compute_direction_impact(low_score) → 'weakened'
-  12. FORENSIC: Saturn → West; compute_direction_impact(high_score) → 'strengthened'
+  11. Sun → East; compute_direction_impact(low_score) → 'weakened'
+  12. Saturn → West; compute_direction_impact(high_score) → 'strengthened'
   13. compute_direction_impact(None) → 'neutral'
   14. compute_direction_impact(0.39) → 'weakened' (boundary)
   15. compute_direction_impact(0.40) → 'neutral'  (boundary)
@@ -40,10 +40,12 @@ from brahmagyan.l0_vastu_directions import (
 from ga_writers.ga_vastu_writer import (
     GRAHA_TO_DIRECTION,
     compute_direction_impact,
-    CANONICAL_CHART_ID,
 )
 from pipeline.orchestrator.writers.bg_vastu_directions import BgVastuDirectionsWriter
 from pipeline.orchestrator.writers.ga_vastu import GaVastuWriter
+
+
+TEST_CHART_ID = "test-ga-vastu-chart"
 
 
 # ── 1. Registry — bg_vastu_directions ────────────────────────────────────────
@@ -140,15 +142,10 @@ def test_west_maps_to_saturn():
     )
 
 
-# ── 11. FORENSIC: Sun (debilitated) → East direction → 'weakened' ─────────────
+# ── 11. Sun (debilitated) → East direction → 'weakened' ──────────────────────
 
-def test_forensic_sun_debilitated_east_weakened():
-    """FORENSIC — native chart 482012f1: Sun=Capricorn (debilitated).
-    Sun rules East. Low condition_score (debilitated < 0.4) → East must be 'weakened'.
-    Guard: only runs with the canonical chart id to avoid false positives.
-    """
-    assert CANONICAL_CHART_ID == "482012f1-710e-4a25-994a-93821f5871aa"
-
+def test_sun_debilitated_east_weakened():
+    """Sun rules East and a low condition score yields weakened impact."""
     # Sun direction mapping
     assert GRAHA_TO_DIRECTION["Sun"] == "East", (
         "Sun must map to East direction"
@@ -162,12 +159,10 @@ def test_forensic_sun_debilitated_east_weakened():
     )
 
 
-# ── 12. FORENSIC: Saturn (exalted) → West direction → 'strengthened' ──────────
+# ── 12. Saturn (exalted) → West direction → 'strengthened' ───────────────────
 
-def test_forensic_saturn_exalted_west_strengthened():
-    """FORENSIC — native chart 482012f1: Saturn=Libra (exalted).
-    Saturn rules West. High condition_score (exalted >= 0.7) → West must be 'strengthened'.
-    """
+def test_saturn_exalted_west_strengthened():
+    """Saturn rules West and a high condition score yields strengthened impact."""
     assert GRAHA_TO_DIRECTION["Saturn"] == "West", (
         "Saturn must map to West direction"
     )
@@ -225,7 +220,7 @@ def test_ga_vastu_run_substep_dry_run_returns_zero():
 
     writer = GaVastuWriter()
     ctx = MagicMock(spec=ContextSpec)
-    ctx.config = {"chart_id": CANONICAL_CHART_ID}
+    ctx.config = {"chart_id": TEST_CHART_ID}
     ctx.build_id = "test-dry-build"
     ctx.dry_run = True
     ctx.db_conn = MagicMock()

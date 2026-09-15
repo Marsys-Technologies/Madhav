@@ -483,7 +483,8 @@ def _make_dasha_rows():
     from datetime import datetime, timezone
     return [
         (
-            "vimshottari", 1, "Saturn",
+            "11111111-1111-4111-8111-111111111111",
+            "vimshottari", "lahiri_chitrapaksha", "build-1", 1, "Saturn",
             datetime(2000, 1, 1, tzinfo=timezone.utc),
             datetime(2019, 1, 1, tzinfo=timezone.utc),
         ),
@@ -501,6 +502,7 @@ class TestLoadDashaPeriodsSymmetry:
         conn = _FakeDashaConn(_make_dasha_rows())
         peak, weak = _load_dasha_periods(
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            "lahiri_chitrapaksha", "build-1",
             condition_score=_PEAK_CONDITION_THRESHOLD,
             dignity_d1="exalted",
         )
@@ -522,6 +524,7 @@ class TestLoadDashaPeriodsSymmetry:
         conn = _FakeDashaConn(_make_dasha_rows())
         peak, weak = _load_dasha_periods(
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            "lahiri_chitrapaksha", "build-1",
             condition_score=_WEAK_CONDITION_THRESHOLD,
             dignity_d1="debilitated",
         )
@@ -540,6 +543,7 @@ class TestLoadDashaPeriodsSymmetry:
         conn = _FakeDashaConn(_make_dasha_rows())
         peak, weak = _load_dasha_periods(
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            "lahiri_chitrapaksha", "build-1",
             condition_score=0.5,
             dignity_d1="neutral_sign",
         )
@@ -555,6 +559,7 @@ class TestLoadDashaPeriodsSymmetry:
         conn = _FakeDashaConn(_make_dasha_rows())
         peak, weak = _load_dasha_periods(
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            "lahiri_chitrapaksha", "build-1",
             condition_score=None,
         )
 
@@ -568,6 +573,7 @@ class TestLoadDashaPeriodsSymmetry:
         conn = _FakeDashaConn([])
         peak, weak = _load_dasha_periods(
             conn, "482012f1-710e-4a25-994a-93821f5871aa", "Saturn",
+            "lahiri_chitrapaksha", "build-1",
             condition_score=0.9,
         )
 

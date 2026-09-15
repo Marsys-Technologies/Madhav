@@ -14,6 +14,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from . import _names
 from ._ayanamsha import resolve_mode
 from ._jhora import drik
@@ -23,6 +25,7 @@ def _place(lat: float, lon: float, tz: float):
     return drik.Place("subject", lat, lon, tz)
 
 
+@serialized_swiss_state
 def compute_panchanga(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",

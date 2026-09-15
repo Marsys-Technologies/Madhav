@@ -118,8 +118,8 @@ describe('tool-executor-loop — 3-iteration loop with real executeMCPTool', () 
     }
 
     vi.mocked(getTool).mockImplementation((name: string) => {
-      if (name === 'msr_sql') return msrSqlTool as any
-      if (name === 'lel_query') return lelQueryTool as any
+      if (name === 'msr_sql') return msrSqlTool as never
+      if (name === 'lel_query') return lelQueryTool as never
       return undefined
     })
 

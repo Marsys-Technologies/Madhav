@@ -59,6 +59,8 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 import psycopg.rows
 
 from brahmagyan.dignity_oracle import classify_dignity
@@ -360,7 +362,9 @@ def _varga_id(n: int) -> str:
 
 def _fact_id(varga: str, body: str, category: str, key: str,
              chart_id: str, ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{varga}|{body}|{category}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # A fact is identified by what it is about, not by the rebuild that
+    # observed it.  build_id remains on the row as generation provenance.
+    raw = f"{varga}|{body}|{category}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:20]
 
 
@@ -811,6 +815,7 @@ def _check_near_boundary(degree_in_sign: float, threshold_arcsec: float = 1800.0
 
 # ── Chart computation ─────────────────────────────────────────────────────────
 
+@serialized_swiss_state
 def _compute_varga_positions(jd_ut: float, ayanamsha_id: str,
                               lat: float, lon: float, tz: float) -> dict[str, dict]:
     """

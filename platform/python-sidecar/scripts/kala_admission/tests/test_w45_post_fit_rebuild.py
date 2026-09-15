@@ -20,6 +20,7 @@ All tests are fully DB-free — a lightweight recording fake connection is used.
 from __future__ import annotations
 
 import inspect
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -840,12 +841,28 @@ class TestI2ImportGuard:
         )
 
     def test_module_imports_are_clean(self):
-        """Verify the module's actual sys.modules after import."""
-        for prefix in self.FORBIDDEN_PREFIXES:
-            for mod_name in sys.modules:
-                assert not mod_name.startswith(prefix), (
-                    f"Forbidden module {mod_name!r} found in sys.modules after import (I2)"
-                )
+        """Verify the module's import delta in an isolated interpreter."""
+        scripts_root = Path(__file__).parents[2]
+        sidecar_root = Path(__file__).parents[4]
+        probe = f"""
+import sys
+sys.path.insert(0, {str(scripts_root)!r})
+sys.path.insert(0, {str(sidecar_root)!r})
+before = set(sys.modules)
+import kala_admission.w45_post_fit_rebuild  # noqa: F401
+loaded = set(sys.modules) - before
+forbidden = {self.FORBIDDEN_PREFIXES!r}
+violations = sorted(name for name in loaded if name.startswith(forbidden))
+if violations:
+    raise SystemExit(f"forbidden import delta: {{violations}}")
+"""
+        completed = subprocess.run(
+            [sys.executable, "-c", probe],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert completed.returncode == 0, completed.stderr
 
 
 # ═══════════════════════════════════════════════════════════════════════════

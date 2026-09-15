@@ -128,6 +128,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     SubStep,
@@ -380,6 +382,7 @@ class _Row:
     corpus_status: str
 
 
+@serialized_swiss_state
 def compute_day_factors(day: date) -> list[_Row]:
     """
     Compute all four lattice factor families for one calendar day at the fixed
@@ -684,6 +687,7 @@ def compute_day_factors(day: date) -> list[_Row]:
     return rows
 
 
+@serialized_swiss_state
 def _ascendant_sign_id_at(instant_utc: datetime) -> int:
     """Return the sidereal rising sign at the fixed reference location."""
     from panchang_engine.lagna import compute_lagna
@@ -708,6 +712,7 @@ def _bisect_sign_change(lo: datetime, hi: datetime, sign_lo: int) -> datetime:
     return hi.replace(microsecond=0)
 
 
+@serialized_swiss_state
 def compute_lagna_spans(
     sunrise_utc: datetime,
     next_sunrise_utc: datetime,

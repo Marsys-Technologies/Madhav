@@ -180,8 +180,8 @@ class TestWriteBoundaryRowsBatch:
         n = write_boundary_rows("482012f1", "chara_karaka", rows, mock_conn)
 
         assert n == 5
-        # DELETE must use conn.execute once
-        mock_conn.execute.assert_called_once()
+        # Cleanup belongs to writer.prepare:replace, never this stage runner.
+        mock_conn.execute.assert_not_called()
         # INSERT must use cursor.executemany exactly once with all 5 rows
         assert len(executemany_calls) == 1, (
             "Expected exactly one executemany call (batch), "

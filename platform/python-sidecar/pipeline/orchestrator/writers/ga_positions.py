@@ -8,11 +8,13 @@ orchestrator contract: run on ctx.db_conn, never commit, never write
 asset_throughput. See ORCHESTRATOR_GENERALIZATION_INVESTIGATION_v1_0.md §2.A.
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult
 
 
 @register('ga_positions')
+@l1_producer_contract
 class GaPositionsWriter(WriterBase):
     asset_id = 'ga_positions'
     # git-hash provenance points at the real writer logic, not this adapter.

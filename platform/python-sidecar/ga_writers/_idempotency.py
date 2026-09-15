@@ -37,6 +37,20 @@ def _delete(conn: Any, sql: str, params: list) -> int:
     return getattr(cur, "rowcount", 0) or 0
 
 
+def authorize_chart_fact_delete(
+    conn: Any,
+    chart_id: str,
+    fact_categories: list[str] | None = None,
+    ayanamsha_ids: list[str] | None = None,
+    fact_category_patterns: list[str] | None = None,
+) -> None:
+    """Create the protected-owner receipt required before chart_facts DELETE."""
+    conn.execute(
+        "SELECT public.authorize_l1_chart_facts_delete(%s::uuid,%s::text[],%s::text[],%s::text[])",
+        [chart_id, fact_categories, ayanamsha_ids, fact_category_patterns],
+    )
+
+
 def replace_prior_chart_facts(conn: Any, rows: list[dict]) -> int:
     """Delete prior chart_facts rows for the (chart_id, ayanamsha_id, fact_category)
     scope present in `rows`, so the subsequent INSERT replaces rather than accretes."""
@@ -48,6 +62,7 @@ def replace_prior_chart_facts(conn: Any, rows: list[dict]) -> int:
     ayanamshas = _distinct(rows, "ayanamsha_id")
     deleted = 0
     for cid in _distinct(rows, "chart_id"):
+        authorize_chart_fact_delete(conn, cid, cats, ayanamshas or None)
         sql = "DELETE FROM chart_facts WHERE chart_id = %s AND fact_category = ANY(%s)"
         params: list = [cid, cats]
         if ayanamshas:

@@ -50,7 +50,7 @@ const HEX = '0123456789abcdef'
 function randomHex(bytes: number): string {
   // crypto.getRandomValues exists in both Node 18+ and Edge runtimes.
   const arr = new Uint8Array(bytes)
-  ;(globalThis.crypto ?? require('node:crypto').webcrypto).getRandomValues(arr)
+  globalThis.crypto.getRandomValues(arr)
   let out = ''
   for (const b of arr) {
     out += HEX[(b >> 4) & 0xf] + HEX[b & 0xf]

@@ -261,10 +261,6 @@ class KaTithiPraveshaWriter(WriterBase):
             )
         natal_moon_long, moon_fact_id = natal
 
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
-
         all_rows: list[dict] = []
         divergent = 0
         for pravesha_year in range(1, DEFAULT_MAX_PRAVESHA_YEAR + 1):
@@ -281,6 +277,18 @@ class KaTithiPraveshaWriter(WriterBase):
             row["graha_positions_jsonb"] = json.dumps(row["graha_positions_jsonb"])
             row["ephemeris_audit_jsonb"] = json.dumps(row["ephemeris_audit_jsonb"])
             all_rows.append(row)
+
+        if not all_rows:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no tithi-pravesha candidate rows computed; prior partition preserved",
+            )
+
+        # A computation failure or empty candidate must leave the prior chart
+        # partition untouched; replacement begins only after full preparation.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

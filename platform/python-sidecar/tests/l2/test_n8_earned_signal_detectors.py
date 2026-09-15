@@ -113,8 +113,10 @@ def test_every_detector_reads_a_real_table():
     ]:
         assert "FROM" in sql_const and "%s" in sql_const
 
-    # The LEL detector must actually read LEL data — the whole of F-07.
-    assert "life_events" in bo_pramana_mapa._LEL_TERM_B_SQL
+    # The LEL detector must inspect L2-owned provenance/payload without making
+    # private/later-layer life_events state an input to deterministic Bodha.
+    assert "life_events" not in bo_pramana_mapa._LEL_TERM_B_SQL
+    assert "source_l1_asset" in bo_pramana_mapa._LEL_TERM_B_SQL
     assert "lel_origin" in bo_pramana_mapa._LEL_TERM_A_SQL
     # The reachability gate must carry a second, independent term (the F-19
     # lesson: a gate whose operands cannot disagree is not a gate).

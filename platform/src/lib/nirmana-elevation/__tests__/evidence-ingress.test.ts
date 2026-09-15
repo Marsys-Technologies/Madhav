@@ -68,7 +68,7 @@ describe('Nirmana campaign control writer database credentials', () => {
   it('uses a read-only marker probe, gates first handoff secrets, and keeps migration credentials out of serving revisions', () => {
     const deployWorkflow = readFileSync(resolve(__dirname, '../../../../../.github/workflows/deploy.yml'), 'utf8')
     expect(deployWorkflow).toContain('scripts/nirmana-evidence-ownership-status.ts')
-    expect(deployWorkflow).toContain("if: steps.nirmana-ownership.outputs.state == 'unmarked'")
+    expect(deployWorkflow).toContain("if: steps.bootstrap-state.outputs.nirmana == 'unmarked'")
     const preflight = deployWorkflow.slice(
       deployWorkflow.indexOf('      - name: One-shot Nirmana evidence ownership preflight'),
       deployWorkflow.indexOf('      - name: Attest Nirmana ownership handoff as deployment-only migrator'),

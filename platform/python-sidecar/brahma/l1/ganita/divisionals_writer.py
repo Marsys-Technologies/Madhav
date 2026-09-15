@@ -33,6 +33,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterator
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 # ─── Canonical constants ───────────────────────────────────────────────────────
 
 ASSET_ID = "ganita.divisionals"
@@ -147,6 +149,7 @@ def _import_jhora():
     return _utils, _drik, _charts
 
 
+@serialized_swiss_state
 def compute_vargas_for_native(
     *,
     birth_datetime_iso: str,

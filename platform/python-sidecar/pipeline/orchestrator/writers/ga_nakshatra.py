@@ -11,6 +11,7 @@ bg_kp_sublord_division is AUTHORITY for KP sub-lord boundaries — the KP
 significator emitter READS it (§N.5) and never re-derives the geometry.
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 import hashlib
 import time
 import json
@@ -69,7 +70,8 @@ NAK_LORD_STR_TO_BODY: dict[str, str] = {
 
 def _fact_id(category: str, subject: str, key: str,
              chart_id: str, ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # build_id is observation provenance, never semantic fact identity.
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -389,6 +391,7 @@ def _run_ayanamsha_pass(
 
 
 @register('ga_nakshatra')
+@l1_producer_contract
 class NakshatraWriter(WriterBase):
     asset_id = 'ga_nakshatra'
     has_substeps = True

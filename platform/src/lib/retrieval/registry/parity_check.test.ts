@@ -30,73 +30,103 @@
  * IS gated hard: the bridge module must import cleanly (bridge_error === null) — that is
  * the exact invariant GT-36 was about.
  */
-import { describe, it, expect } from 'vitest'
-import './catalog' // populate the real Consume Chat registry (side-effect import; WP-1.7 convention)
-import { checkParity, buildParityResult, getMcpExportedUris } from './parity_check'
-import type { CapabilityUri } from './types'
+import { describe, it, expect } from "vitest";
+import "./catalog"; // populate the real Consume Chat registry (side-effect import; WP-1.7 convention)
+import {
+  L0_BRAHMAGYAN_ASSETS,
+  checkParity,
+  buildParityResult,
+  getMcpExportedUris,
+} from "./parity_check";
+import type { CapabilityUri } from "./types";
 
-describe('GT-36 — bridge-failure invariant (pure decision function)', () => {
-  it('a failed bridge import is a hard failure even when both URI sets are empty (the degenerate auto-pass bug)', () => {
+describe("GT-36 — bridge-failure invariant (pure decision function)", () => {
+  it("a failed bridge import is a hard failure even when both URI sets are empty (the degenerate auto-pass bug)", () => {
     const result = buildParityResult(
       new Set<CapabilityUri>(),
       new Set<CapabilityUri>(),
-      'bridge import threw: simulated failure'
-    )
-    expect(result.bridge_error).not.toBeNull()
-    expect(result.passed).toBe(false)
-    expect(result.missing_in_mcp).toEqual([])
-    expect(result.extra_in_mcp).toEqual([])
-  })
+      "bridge import threw: simulated failure",
+    );
+    expect(result.bridge_error).not.toBeNull();
+    expect(result.passed).toBe(false);
+    expect(result.missing_in_mcp).toEqual([]);
+    expect(result.extra_in_mcp).toEqual([]);
+  });
 
-  it('a failed bridge import is a hard failure in the normal populated case too (pre-existing correct behavior, unchanged)', () => {
-    const consumeUris = new Set<CapabilityUri>(['marsys://tool/L0/resolve_entity'])
-    const result = buildParityResult(consumeUris, new Set<CapabilityUri>(), 'bridge import threw: simulated failure')
-    expect(result.passed).toBe(false)
-    expect(result.missing_in_mcp).toEqual(['marsys://tool/L0/resolve_entity'])
-  })
+  it("a failed bridge import is a hard failure in the normal populated case too (pre-existing correct behavior, unchanged)", () => {
+    const consumeUris = new Set<CapabilityUri>([
+      "marsys://tool/L0/resolve_entity",
+    ]);
+    const result = buildParityResult(
+      consumeUris,
+      new Set<CapabilityUri>(),
+      "bridge import threw: simulated failure",
+    );
+    expect(result.passed).toBe(false);
+    expect(result.missing_in_mcp).toEqual(["marsys://tool/L0/resolve_entity"]);
+  });
 
-  it('a successful bridge with matching URI sets passes and bridge_error is null', () => {
-    const uris = new Set<CapabilityUri>(['marsys://tool/L0/resolve_entity'])
-    const result = buildParityResult(uris, uris, null)
-    expect(result.bridge_error).toBeNull()
-    expect(result.passed).toBe(true)
-  })
+  it("a successful bridge with matching URI sets passes and bridge_error is null", () => {
+    const uris = new Set<CapabilityUri>(["marsys://tool/L0/resolve_entity"]);
+    const result = buildParityResult(uris, uris, null);
+    expect(result.bridge_error).toBeNull();
+    expect(result.passed).toBe(true);
+  });
 
-  it('a successful bridge with a real URI mismatch still fails (unaffected by the GT-36 fix)', () => {
-    const consumeUris = new Set<CapabilityUri>(['marsys://tool/L0/a', 'marsys://tool/L0/b'])
-    const mcpUris = new Set<CapabilityUri>(['marsys://tool/L0/a'])
-    const result = buildParityResult(consumeUris, mcpUris, null)
-    expect(result.passed).toBe(false)
-    expect(result.bridge_error).toBeNull()
-    expect(result.missing_in_mcp).toEqual(['marsys://tool/L0/b'])
-  })
+  it("a successful bridge with a real URI mismatch still fails (unaffected by the GT-36 fix)", () => {
+    const consumeUris = new Set<CapabilityUri>([
+      "marsys://tool/L0/a",
+      "marsys://tool/L0/b",
+    ]);
+    const mcpUris = new Set<CapabilityUri>(["marsys://tool/L0/a"]);
+    const result = buildParityResult(consumeUris, mcpUris, null);
+    expect(result.passed).toBe(false);
+    expect(result.bridge_error).toBeNull();
+    expect(result.missing_in_mcp).toEqual(["marsys://tool/L0/b"]);
+  });
 
-  it('the true degenerate case (both empty, bridge healthy) still passes — only a FAILED bridge forces failure', () => {
-    const result = buildParityResult(new Set<CapabilityUri>(), new Set<CapabilityUri>(), null)
-    expect(result.bridge_error).toBeNull()
-    expect(result.passed).toBe(true)
-  })
-})
+  it("the true degenerate case (both empty, bridge healthy) still passes — only a FAILED bridge forces failure", () => {
+    const result = buildParityResult(
+      new Set<CapabilityUri>(),
+      new Set<CapabilityUri>(),
+      null,
+    );
+    expect(result.bridge_error).toBeNull();
+    expect(result.passed).toBe(true);
+  });
+});
 
-describe('GT-36 — live CI gate (real registry + real bridge, no mocks)', () => {
-  it('the MCP capability bridge module imports cleanly (bridge_error is null against the real module)', async () => {
-    const { bridgeError, uris } = await getMcpExportedUris()
-    expect(bridgeError).toBeNull()
-    expect(uris.size).toBeGreaterThan(0)
-  })
+describe("L0 producer inventory parity", () => {
+  it("derives the complete 36-writer plus four-non-writer inventory", () => {
+    expect(L0_BRAHMAGYAN_ASSETS).toHaveLength(40);
+    expect(new Set(L0_BRAHMAGYAN_ASSETS).size).toBe(40);
+    expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_ontology");
+    expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_ephemeris_engine");
+    expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_panchanga");
+    expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_gochara_citation_resolution");
+    expect(L0_BRAHMAGYAN_ASSETS).toContain("bg_sarvatobhadra_grid");
+  });
+});
 
-  it('runs the real checkParity() end-to-end and never silently fabricates a pass while the bridge is broken', async () => {
-    const result = await checkParity()
+describe("GT-36 — live CI gate (real registry + real bridge, no mocks)", () => {
+  it("the MCP capability bridge module imports cleanly (bridge_error is null against the real module)", async () => {
+    const { bridgeError, uris } = await getMcpExportedUris();
+    expect(bridgeError).toBeNull();
+    expect(uris.size).toBeGreaterThan(0);
+  });
+
+  it("runs the real checkParity() end-to-end and never silently fabricates a pass while the bridge is broken", async () => {
+    const result = await checkParity();
     // Hard gate: the bridge must load. This is the exact GT-36 invariant.
-    expect(result.bridge_error).toBeNull()
+    expect(result.bridge_error).toBeNull();
     // Reported, not hard-failed: URI-set drift is a separate, pre-existing, larger
     // backlog (see file header) — surfaced here so it stays visible in CI logs.
     if (!result.passed) {
       console.warn(
         `[parity_check gate] URI drift present (separate from GT-36; not hard-gated here) — ` +
           `mcp=${result.mcp_count} consume=${result.consume_count} ` +
-          `missing_in_mcp=${result.missing_in_mcp.length} extra_in_mcp=${result.extra_in_mcp.length}`
-      )
+          `missing_in_mcp=${result.missing_in_mcp.length} extra_in_mcp=${result.extra_in_mcp.length}`,
+      );
     }
-  })
-})
+  });
+});

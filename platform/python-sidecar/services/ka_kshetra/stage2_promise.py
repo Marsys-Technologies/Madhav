@@ -579,13 +579,6 @@ ON CONFLICT (chart_id, event_class, route_rank) DO UPDATE SET
     suppressed_by = EXCLUDED.suppressed_by
 """
 
-REPLACE_PRIOR_SQL = (
-    "DELETE FROM kala_field_routes WHERE chart_id = %s;"
-    "DELETE FROM kala_field_promise_edges WHERE chart_id = %s;"
-    "DELETE FROM kala_field_promise_nodes WHERE chart_id = %s;"
-)
-
-
 def write_promise_graph(conn, chart_id: str, nodes: Sequence[PromiseNode],
                          edges: Sequence[PromiseEdge]) -> dict[tuple[str, str, str], int]:
     """Upserts nodes then edges (nodes first — edges FK-shaped-reference
@@ -631,27 +624,18 @@ def write_routes(conn, chart_id: str, event_class: str, routes: Sequence[Route])
 # noisy-OR P_e values depend on which slices have already been committed, the
 # same dispatch-order-dependent result §8.1 forbids. One substep is correct.
 #
-# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
-# BEFORE the substep executes.
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in the writer's
+# execution-owned `prepare:replace` substep. Planning is read-only.
 # ═════════════════════════════════════════════════════════════════════════════
 
 def plan_substeps(ctx) -> list:
     """Wire stage 2 (promise graph + routes) into the ka_kshetra substep plan.
 
     Single substep for the whole chart — splitting by event_class would produce
-    dispatch-order-dependent P_e values (§8.1 hazard). §N.3 delete runs ONCE
-    here (routes + promise_edges + promise_nodes), in dependency order
-    (routes first so FK-shaped references to nodes/edges are gone before nodes
-    are deleted).
+    dispatch-order-dependent P_e values (§8.1 hazard). This planner is read-only;
+    the writer's `prepare:replace` step owns the routes → edges → nodes cleanup.
     """
     from pipeline.orchestrator.writers import SubStep
-    conn = ctx.db_conn
-    chart_id = ctx.config['chart_id']
-    # §N.3: delete prior rows ONCE, in FK-safe order (routes → edges → nodes).
-    for sql in REPLACE_PRIOR_SQL.split(';'):
-        sql = sql.strip()
-        if sql:
-            conn.execute(sql, [chart_id])
     return [SubStep(key='stage2:run', label='promise graph + routes')]
 
 
@@ -671,6 +655,11 @@ def run_substep(ctx, step) -> object:
 
     conn = ctx.db_conn
     chart_id = ctx.config['chart_id']
+    if getattr(ctx, 'dry_run', False) is True:
+        return WriterResult(
+            asset_id='ka_kshetra', rows_inserted=0,
+            notes='dry-run: stage2 promise graph not executed',
+        )
 
     # Build the promise graph from L2 Bodha tables.
     nodes, edges, seeds_by_class, _ = load_promise_graph(conn, chart_id, CANONICAL_AYANAMSHA)

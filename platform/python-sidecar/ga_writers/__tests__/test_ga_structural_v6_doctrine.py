@@ -40,9 +40,11 @@ def _graha(name: str, sign: str, house: int, longitude: float | None = None) -> 
     return {
         "name": name,
         "sign": sign,
+        "sign_id": sign_idx + 1,
         "house": house,
         "longitude": longitude if longitude is not None else sign_idx * 30.0 + 15.0,
         "retrograde": False,
+        "dignity_status": "neutral",
     }
 
 
@@ -51,7 +53,7 @@ def _graha(name: str, sign: str, house: int, longitude: float | None = None) -> 
 # deliberately chosen to exercise each branch of the new rule logic; the
 # lagna sign (Aries) IS the live chart's forensic anchor.
 ARIES_LAGNA_CHART_OUTPUT = {
-    "ascendant": {"sign": "Aries", "sign_id": 1},
+    "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 0.0},
     "grahas": [
         _graha("Sun", "Capricorn", 10),
         _graha("Moon", "Cancer", 4),        # rules only house 4 (kendra, no trikona)
@@ -105,7 +107,7 @@ def test_temporal_relation_partition_is_total_and_disjoint():
 def test_temporal_relation_same_sign_is_enemy_house_1():
     # House 1 (same sign) is in TEMPORAL_ENEMY_HOUSES per BPHS ch.4 v.19-20.
     chart_output = {
-        "ascendant": {"sign": "Aries", "sign_id": 1},
+        "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 0.0},
         "grahas": [_graha("Sun", "Leo", 5), _graha("Moon", "Leo", 5)],
     }
     assert sut._temporal_relation("Sun", "Moon", chart_output) == "enemy"
@@ -228,7 +230,7 @@ def test_kala_sarpa_named_variant_house_table_covers_all_12_houses():
 def test_kala_sarpa_named_variant_detector_only_fires_for_its_own_house():
     # All 7 classical grahas hemmed strictly between Rahu (house 1) and Ketu (house 7).
     chart_output = {
-        "ascendant": {"sign": "Aries", "sign_id": 1},
+        "ascendant": {"sign": "Aries", "sign_id": 1, "longitude": 0.0},
         "grahas": [
             _graha("Rahu", "Aries", 1),
             _graha("Ketu", "Libra", 7),

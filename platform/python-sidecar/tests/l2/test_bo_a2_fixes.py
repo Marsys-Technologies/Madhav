@@ -433,6 +433,13 @@ class TestO4ArgalaEdges:
         assert sat_to_sun[0]["cancelled_flag"] is True, (
             "Saturn's 2nd-position virodha-argala on Sun must be cancelled by Jupiter at 12th"
         )
+        payload = json.loads(sat_to_sun[0]["cancelled_by_jsonb"])
+        assert payload["cancelling_actors"] == ["Jupiter"]
+        assert payload["cancelling_roots"][0]["node_id"] == NODE_MAP[("graha", "Jupiter")]
+        assert payload["target"]["actor"] == "Saturn"
+        assert payload["target"]["target"] == "Sun"
+        assert payload["original_polarity"] == -1
+        assert payload["resulting_role"] == "attenuated_opposition"
 
     def test_argala_not_emitted_for_non_argala_positions(self):
         """O4: no argala edge when B is in 3rd, 5th, 6th, 7th, 8th, 9th, or 10th from A."""

@@ -8,6 +8,7 @@
  * Phase: 4C-6-S3 (Item 2 — proxy route enabling useMuhuratFinder)
  */
 import { getServerUser } from '@/lib/firebase/server'
+import { requireChartPermission } from '@/lib/auth/requireChartPermission'
 import { res } from '@/lib/errors'
 
 const SIDECAR_KEY = process.env.PYTHON_SIDECAR_API_KEY ?? ''
@@ -24,6 +25,24 @@ export async function POST(request: Request) {
     body = await request.json()
   } catch {
     return res.badRequest('invalid request body')
+  }
+
+  // The sidecar hydrates a natal overlay when chart_id is present.  It trusts
+  // this authenticated proxy to enforce chart entitlement, just like the
+  // sibling /api/panchang route.  Chart-less location searches remain valid.
+  const rawChartId = body && typeof body === 'object'
+    ? (body as { chart_id?: unknown }).chart_id
+    : undefined
+  if (rawChartId !== undefined && rawChartId !== null) {
+    if (typeof rawChartId !== 'string' || rawChartId.trim() === '') {
+      return res.badRequest('chart_id must be a non-empty string')
+    }
+    const denied = await requireChartPermission({
+      uid: user.uid,
+      chartId: rawChartId,
+      access: 'read',
+    })
+    if (denied) return denied
   }
 
   let sidecarResponse: Response

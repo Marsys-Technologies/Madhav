@@ -8,6 +8,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 import swisseph as swe
 from .types import LagnaState
+from .swiss_state import serialized_swiss_state
 
 
 def _datetime_to_jd(dt: datetime) -> float:
@@ -15,6 +16,7 @@ def _datetime_to_jd(dt: datetime) -> float:
                       dt.hour + dt.minute / 60.0 + dt.second / 3600.0)
 
 
+@serialized_swiss_state
 def _get_ayanamsha(jd: float) -> float:
     swe.set_sid_mode(swe.SIDM_LAHIRI)
     return swe.get_ayanamsa_ut(jd)
@@ -39,6 +41,7 @@ def _nak_pada_from_lon(lon: float) -> tuple:
     return nak_idx + 1, NAKSHATRA_NAMES[nak_idx], pada
 
 
+@serialized_swiss_state
 def compute_lagna(instant_local: datetime, lat: float, lon: float,
                   tz_offset_minutes: int,
                   house_system: str = "P") -> LagnaState:

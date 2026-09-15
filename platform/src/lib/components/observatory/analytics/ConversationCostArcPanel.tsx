@@ -150,33 +150,36 @@ export function ConversationCostArcPanel({
       return
     }
     let cancelled = false
-    setListLoading(true)
-    setListError(null)
-    const url = new URL(
-      '/api/admin/observatory/analytics/cost-arc',
-      window.location.origin,
-    )
-    url.searchParams.set('date_start', dateStart)
-    url.searchParams.set('date_end', dateEnd)
-    fetch(url.toString())
-      .then(async r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return (await r.json()) as ListResponse
-      })
-      .then(body => {
-        if (cancelled) return
-        setConversations(body.conversations)
-      })
-      .catch(err => {
-        if (cancelled) return
-        setListError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (cancelled) return
-        setListLoading(false)
-      })
+    const initialFetch = setTimeout(() => {
+      setListLoading(true)
+      setListError(null)
+      const url = new URL(
+        '/api/admin/observatory/analytics/cost-arc',
+        window.location.origin,
+      )
+      url.searchParams.set('date_start', dateStart)
+      url.searchParams.set('date_end', dateEnd)
+      fetch(url.toString())
+        .then(async r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return (await r.json()) as ListResponse
+        })
+        .then(body => {
+          if (cancelled) return
+          setConversations(body.conversations)
+        })
+        .catch(err => {
+          if (cancelled) return
+          setListError(err instanceof Error ? err.message : 'Failed to load')
+        })
+        .finally(() => {
+          if (cancelled) return
+          setListLoading(false)
+        })
+    }, 0)
     return () => {
       cancelled = true
+      clearTimeout(initialFetch)
     }
     // initialConversations is intentionally not in the dep list — it only
     // gates the first render.
@@ -185,42 +188,44 @@ export function ConversationCostArcPanel({
 
   // Fetch the arc whenever the selected conversation changes.
   useEffect(() => {
-    if (!selectedId) {
-      setArc(null)
-      return
-    }
+    if (!selectedId) return
     let cancelled = false
-    setArcLoading(true)
-    setArcError(null)
-    fetch(
-      `/api/admin/observatory/analytics/cost-arc/${encodeURIComponent(
-        selectedId,
-      )}`,
-    )
-      .then(async r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return (await r.json()) as ConversationArcResult
-      })
-      .then(body => {
-        if (cancelled) return
-        setArc(body)
-      })
-      .catch(err => {
-        if (cancelled) return
-        setArcError(err instanceof Error ? err.message : 'Failed to load')
-      })
-      .finally(() => {
-        if (cancelled) return
-        setArcLoading(false)
-      })
+    const initialFetch = setTimeout(() => {
+      setArcLoading(true)
+      setArcError(null)
+      fetch(
+        `/api/admin/observatory/analytics/cost-arc/${encodeURIComponent(
+          selectedId,
+        )}`,
+      )
+        .then(async r => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`)
+          return (await r.json()) as ConversationArcResult
+        })
+        .then(body => {
+          if (cancelled) return
+          setArc(body)
+        })
+        .catch(err => {
+          if (cancelled) return
+          setArcError(err instanceof Error ? err.message : 'Failed to load')
+        })
+        .finally(() => {
+          if (cancelled) return
+          setArcLoading(false)
+        })
+    }, 0)
     return () => {
       cancelled = true
+      clearTimeout(initialFetch)
     }
   }, [selectedId])
 
+  const activeArc = selectedId ? arc : null
+
   const chartRows = useMemo<ChartRow[]>(
-    () => (arc ? turnsToChartRows(arc.turns) : []),
-    [arc],
+    () => (activeArc ? turnsToChartRows(activeArc.turns) : []),
+    [activeArc],
   )
 
   return (
@@ -317,11 +322,11 @@ export function ConversationCostArcPanel({
       >
         <header className="flex items-center justify-between border-b px-3 py-2 text-sm">
           <span className="font-medium">
-            {arc ? arc.conversation_name : 'Cost arc'}
+            {activeArc ? activeArc.conversation_name : 'Cost arc'}
           </span>
-          {arc && (
+          {activeArc && (
             <span className="tabular-nums text-muted-foreground">
-              Total: {formatUsd(arc.total_cost_usd)}
+              Total: {formatUsd(activeArc.total_cost_usd)}
             </span>
           )}
         </header>
@@ -353,7 +358,7 @@ export function ConversationCostArcPanel({
               Failed to load arc: {arcError}
             </div>
           )}
-          {selectedId && !arcLoading && !arcError && arc && (
+          {selectedId && !arcLoading && !arcError && activeArc && (
             <div data-testid="cost-arc-chart" className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartRows}>

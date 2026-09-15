@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import math
 import os
+from types import SimpleNamespace
 
 import pytest
 
@@ -29,6 +30,7 @@ from services.ka_kshetra.stage2_promise import (
     k_shortest_routes,
     noisy_or_promise,
     normalize_conductance,
+    run_substep,
 )
 
 
@@ -71,6 +73,23 @@ class TestNormalizeConductance:
 
     def test_degenerate_scale_maps_to_one(self):
         assert normalize_conductance(5.0, 3.0, 3.0) == 1.0
+
+
+def test_dry_run_substep_is_zero_io() -> None:
+    class NoIoConn:
+        def __getattr__(self, name):
+            raise AssertionError(f'dry-run attempted DB I/O through {name}')
+
+    ctx = SimpleNamespace(
+        db_conn=NoIoConn(),
+        config={'chart_id': 'chart1'},
+        dry_run=True,
+    )
+    step = SimpleNamespace(key='stage2:run')
+
+    result = run_substep(ctx, step)
+
+    assert result.rows_inserted == 0
 
 
 # ── graph construction ─────────────────────────────────────────────────────────

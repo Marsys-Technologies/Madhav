@@ -181,7 +181,8 @@ def compute_marakas(positions: dict[str, dict]) -> dict:
 
 
 def _fact_id(subject, key, chart_id, ayanamsha_id, build_id) -> str:
-    raw = f"{FACT_CATEGORY}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # build_id is observation provenance, never semantic fact identity.
+    raw = f"{FACT_CATEGORY}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 

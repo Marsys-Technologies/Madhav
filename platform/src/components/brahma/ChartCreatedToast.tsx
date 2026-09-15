@@ -20,27 +20,24 @@ export function ChartCreatedToast() {
   const pathname = usePathname()
 
   const chartId = searchParams.get('chart_created')
-  const [visible, setVisible] = useState(false)
-
-  useEffect(() => {
-    if (chartId) setVisible(true)
-  }, [chartId])
+  const [dismissedChartId, setDismissedChartId] = useState<string | null>(null)
+  const visible = chartId !== null && chartId !== dismissedChartId
 
   // Auto-dismiss after 12 seconds
   useEffect(() => {
     if (!visible) return
-    const timer = setTimeout(() => setVisible(false), 12_000)
+    const timer = setTimeout(() => setDismissedChartId(chartId), 12_000)
     return () => clearTimeout(timer)
-  }, [visible])
+  }, [chartId, visible])
 
   const dismiss = useCallback(() => {
-    setVisible(false)
+    setDismissedChartId(chartId)
     // Remove the ?chart_created param from the URL without a page reload
     const params = new URLSearchParams(searchParams.toString())
     params.delete('chart_created')
     const newUrl = params.size > 0 ? `${pathname}?${params.toString()}` : pathname
     router.replace(newUrl, { scroll: false })
-  }, [pathname, router, searchParams])
+  }, [chartId, pathname, router, searchParams])
 
   if (!visible || !chartId) return null
 

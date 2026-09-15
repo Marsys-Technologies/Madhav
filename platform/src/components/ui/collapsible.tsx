@@ -49,7 +49,8 @@ export function CollapsibleRoot({
   id,
 }: CollapsibleRootProps) {
   const [open, setOpen] = useState(defaultOpen)
-  const panelId = id ?? React.useId()
+  const generatedId = React.useId()
+  const panelId = id ?? generatedId
 
   return (
     <CollapsibleContext.Provider value={{ open, toggle: () => setOpen((v) => !v), id: panelId }}>

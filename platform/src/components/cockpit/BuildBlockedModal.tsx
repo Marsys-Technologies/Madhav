@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { BlockerEntry } from '@/lib/build/plan'
+import { useMounted } from '@/hooks/useMounted'
 
 interface BuildBlockedModalProps {
   blockers: BlockerEntry[]
@@ -20,8 +21,7 @@ const STATE_BADGE_STYLE: Record<string, { label: string; background: string; col
 export function BuildBlockedModal({ blockers, onDismiss }: BuildBlockedModalProps) {
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useMounted()
 
   // Close on Escape
   useEffect(() => {

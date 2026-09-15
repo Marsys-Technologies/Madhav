@@ -116,6 +116,19 @@ ON CONFLICT (chart_id, ayanamsha_id, graha, window_start) DO NOTHING
 """
 
 
+def _has_complete_daily_series(
+    rows: list[tuple[date, int]], horizon_start: date, horizon_end: date,
+) -> bool:
+    """Require one and only one ordered row for every inclusive horizon day."""
+    expected_count = (horizon_end - horizon_start).days + 1
+    if len(rows) != expected_count:
+        return False
+    return all(
+        observed_date == horizon_start + timedelta(days=offset)
+        for offset, (observed_date, _value) in enumerate(rows)
+    )
+
+
 def _fetch_janma_nakshatra_idx(conn: Any, chart_id: str) -> tuple[int, str] | None:
     """Returns (0-based nakshatra_idx, fact_id) for the natal Moon, or None if
     the L1 dependency (ga_positions) has not produced this fact — honest
@@ -230,9 +243,22 @@ class KaKotaChakraWriter(WriterBase):
         offset = _compute_ayanamsha_offset(today)
         daily_by_graha = _fetch_daily_nak_idx_by_graha(conn, horizon_start, horizon_end, offset)
 
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
+        incomplete_grahas = [
+            graha for graha in ALL_GRAHAS
+            if not _has_complete_daily_series(
+                daily_by_graha.get(graha) or [], horizon_start, horizon_end,
+            )
+        ]
+        if incomplete_grahas:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "incomplete daily ephemeris coverage for "
+                    + ",".join(incomplete_grahas)
+                    + "; prior partition preserved"
+                ),
+            )
 
         all_rows: list[dict] = []
         grahas_with_data = 0
@@ -273,6 +299,11 @@ class KaKotaChakraWriter(WriterBase):
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
             )
+        # Preserve the prior chart partition unless a complete non-empty
+        # candidate has been prepared.  Candidate acceptance remains a later
+        # physical-generation gate.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import type { BuildAction, BuildScope } from '@/lib/build/plan'
 import { MiniDAG } from './MiniDAG'
 import { DUR, EASE } from './motion'
+import { useMounted } from '@/hooks/useMounted'
 
 interface PlanData {
   plan: string[]
@@ -45,8 +46,7 @@ export function PlanModal({ chartId, scope, scopeTarget, action, label, onClose,
   const [error, setError] = useState<string | null>(null)
   // Portal mount guard (SSR-safe): mounting to <body> lifts the modal out of the
   // cockpit's nested stacking contexts so the constellation SVG can't overpaint it.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
+  const mounted = useMounted()
 
   // Fetch plan on first render
   useEffect(() => {

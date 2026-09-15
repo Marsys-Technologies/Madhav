@@ -150,8 +150,11 @@ class TestV1ParityMarriage:
         # 200 sample JDs spanning the marriage specimen window
         sample_jds = np.linspace(_jd(2013, 6, 1), _jd(2014, 6, 1), 200)
 
-        # v3: batch
-        v3_results = evaluate_lambda_vector(swe, context, sample_jds)
+        # v3 batch API using its explicit preserved-v1 computation path.
+        # The default is the intentionally different bounded v3 formula.
+        v3_results = evaluate_lambda_vector(
+            swe, context, sample_jds, v1_parity_mode=True,
+        )
 
         # v1: per-point
         v1_results = []
@@ -209,13 +212,19 @@ class TestV1ParityAdverseClass:
         targets = [t for t in RM.build_fixture_targets(CHART_ID) if t.event_class == "marriage"]
         dasha_periods = DD.build_fixture_dasha_periods(CHART_ID)
 
-        # v3
+        # v3 batch API using its explicit preserved-v1 computation path.
+        # Default v3 direction is evidence-derived since W1.2 and therefore
+        # must not be compared with the v1 class-prior sign contract here.
         ctx_adverse = _build_parity_context("bereavement", targets, dasha_periods)
         ctx_neutral = _build_parity_context("marriage", targets, dasha_periods)
 
         jd_vector = np.array([_jd(2013, 12, 11)])
-        v3_adverse = evaluate_lambda_vector(swe, ctx_adverse, jd_vector)[0]
-        v3_neutral = evaluate_lambda_vector(swe, ctx_neutral, jd_vector)[0]
+        v3_adverse = evaluate_lambda_vector(
+            swe, ctx_adverse, jd_vector, v1_parity_mode=True,
+        )[0]
+        v3_neutral = evaluate_lambda_vector(
+            swe, ctx_neutral, jd_vector, v1_parity_mode=True,
+        )[0]
 
         # v1
         t_jd = _jd(2013, 12, 11)

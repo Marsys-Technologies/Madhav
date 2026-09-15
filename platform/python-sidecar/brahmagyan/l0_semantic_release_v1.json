@@ -1,0 +1,190 @@
+{
+  "schema_version": "madhav-l0-semantic-release/v1",
+  "semantic_release_id": "l0.semantic.2026-09-13.1",
+  "semantic_version": "1.0.0",
+  "interface_version": "1.0",
+  "generation_id": "l0-semantic-g1",
+  "content_sha256": "665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1",
+  "layer_owner": "L0 Brahmagyan",
+  "release_status": "PRODUCER_READY_CANDIDATE",
+  "admission_status": "LOCAL_EXECUTION_ONLY",
+  "supersedes_release_id": "legacy.local-vocabularies.pre-l0.semantic.2026-09-13.1",
+  "superseded_by_release_id": null,
+  "authority": {
+    "identity_owner": "bg_ontology",
+    "specialized_semantics_owner": "specialized_bg_assets",
+    "adapter_policy": "derived_from_this_release",
+    "bare_node_compatibility": "Rahu and Ketu resolve to their historical mean-node defaults; explicit true-node labels remain distinct"
+  },
+  "normalization": "unicode_nfc_trim_casefold",
+  "ambiguous_aliases": {
+    "lunar node": ["rahu:mean_node", "rahu:true_node", "ketu:mean_node", "ketu:true_node"],
+    "node": ["rahu:mean_node", "rahu:true_node", "ketu:mean_node", "ketu:true_node"]
+  },
+  "entities": [
+    {
+      "entity_id": "sun",
+      "identity_id": "sun",
+      "canonical_subject_code": "SUN",
+      "canonical_label": "Sun",
+      "script_labels": {"sa_latn": "Sūrya"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["SUN", "sun", "Sun", "SU", "surya", "Sūrya", "ravi", "aditya", "Sol", "arka", "bhaskar"]
+    },
+    {
+      "entity_id": "moon",
+      "identity_id": "moon",
+      "canonical_subject_code": "MOON",
+      "canonical_label": "Moon",
+      "script_labels": {"sa_latn": "Chandra"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["MOON", "moon", "Moon", "MON", "MO", "chandra", "Chandra", "soma", "luna", "indu", "chandrama"]
+    },
+    {
+      "entity_id": "mars",
+      "identity_id": "mars",
+      "canonical_subject_code": "MAR",
+      "canonical_label": "Mars",
+      "script_labels": {"sa_latn": "Maṅgala"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["MAR", "MARS", "mars", "Mars", "MA", "mangala", "maṅgala", "kuja", "angaraka", "bhumi", "Mangal"]
+    },
+    {
+      "entity_id": "mercury",
+      "identity_id": "mercury",
+      "canonical_subject_code": "MER",
+      "canonical_label": "Mercury",
+      "script_labels": {"sa_latn": "Budha"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["MER", "MERCURY", "mercury", "Mercury", "ME", "budha", "buddha", "Budh"]
+    },
+    {
+      "entity_id": "jupiter",
+      "identity_id": "jupiter",
+      "canonical_subject_code": "JUP",
+      "canonical_label": "Jupiter",
+      "script_labels": {"sa_latn": "Bṛhaspati"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["JUP", "JUPITER", "jupiter", "Jupiter", "JU", "guru", "brihaspati", "bṛhaspati", "brhaspati", "Brahmanaspati", "devaguru"]
+    },
+    {
+      "entity_id": "venus",
+      "identity_id": "venus",
+      "canonical_subject_code": "VEN",
+      "canonical_label": "Venus",
+      "script_labels": {"sa_latn": "Śukra"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["VEN", "VENUS", "venus", "Venus", "VE", "shukra", "śukra", "sukra", "Bhargava", "usana"]
+    },
+    {
+      "entity_id": "saturn",
+      "identity_id": "saturn",
+      "canonical_subject_code": "SAT",
+      "canonical_label": "Saturn",
+      "script_labels": {"sa_latn": "Śani"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["graha"],
+      "aliases": ["SAT", "SATURN", "saturn", "Saturn", "SA", "shani", "śani", "sani", "shanaischar", "manda", "Shanaischara"]
+    },
+    {
+      "entity_id": "rahu",
+      "identity_id": "rahu:mean_node",
+      "canonical_subject_code": "RAH_MEAN",
+      "canonical_label": "Rahu",
+      "script_labels": {"sa_latn": "Rāhu"},
+      "physical_variant_id": "mean_node",
+      "legacy_default": true,
+      "roles": ["graha", "lunar_node"],
+      "aliases": ["RAH_MEAN", "RAH", "RA", "rahu", "Rahu", "rāhu", "north_node", "mean_north_node", "caput_draconis", "dragon_head", "ascending_node"]
+    },
+    {
+      "entity_id": "rahu",
+      "identity_id": "rahu:true_node",
+      "canonical_subject_code": "RAH_TRUE",
+      "canonical_label": "Rahu (true node)",
+      "script_labels": {"sa_latn": "Rāhu (true node)"},
+      "physical_variant_id": "true_node",
+      "legacy_default": false,
+      "roles": ["graha", "lunar_node"],
+      "aliases": ["RAH_TRUE", "Rahu (true node)", "rahu_true", "true_rahu", "true_north_node"]
+    },
+    {
+      "entity_id": "ketu",
+      "identity_id": "ketu:mean_node",
+      "canonical_subject_code": "KET_MEAN",
+      "canonical_label": "Ketu",
+      "script_labels": {"sa_latn": "Ketu"},
+      "physical_variant_id": "mean_node",
+      "legacy_default": true,
+      "roles": ["graha", "lunar_node"],
+      "aliases": ["KET_MEAN", "KET", "KE", "ketu", "Ketu", "south_node", "mean_south_node", "cauda_draconis", "dragon_tail", "descending_node"]
+    },
+    {
+      "entity_id": "ketu",
+      "identity_id": "ketu:true_node",
+      "canonical_subject_code": "KET_TRUE",
+      "canonical_label": "Ketu (true node)",
+      "script_labels": {"sa_latn": "Ketu (true node)"},
+      "physical_variant_id": "true_node",
+      "legacy_default": false,
+      "roles": ["graha", "lunar_node"],
+      "aliases": ["KET_TRUE", "Ketu (true node)", "ketu_true", "true_ketu", "true_south_node"]
+    },
+    {
+      "entity_id": "ascendant",
+      "identity_id": "ascendant",
+      "canonical_subject_code": "LAGNA",
+      "canonical_label": "Lagna",
+      "script_labels": {"sa_latn": "Lagna"},
+      "physical_variant_id": null,
+      "legacy_default": false,
+      "roles": ["angle", "reference_point"],
+      "aliases": ["LAGNA", "lagna", "ascendant", "rising_sign", "udaya_lagna", "AC"]
+    }
+  ],
+  "catalogues": {
+    "concepts": [
+      {"concept_id": "bhavat_bhavam", "label": "Bhavat Bhavam", "owner": "bg_ontology"},
+      {"concept_id": "house", "label": "House", "owner": "bg_ontology"},
+      {"concept_id": "derived_reference", "label": "Derived house reference", "owner": "bg_ontology"}
+    ],
+    "roles": [
+      {"role_id": "primary_house", "label": "Primary house", "owner": "bg_ontology"},
+      {"role_id": "derived_house", "label": "Derived reference house", "owner": "bg_ontology"}
+    ],
+    "domains": [
+      {"domain_id": "wealth", "label": "Wealth and resources", "owner": "bg_ghatana"}
+    ],
+    "outcomes": [
+      {"outcome_id": "resource_creation", "label": "Resource creation", "owner": "bg_ghatana"},
+      {"outcome_id": "resource_retention", "label": "Resource retention", "owner": "bg_ghatana"}
+    ],
+    "methods": [
+      {"method_id": "bhavat_bhavam.odd_house_nonrecursive.v1", "label": "Odd-house non-recursive Bhavat Bhavam reference", "owner": "L0 Brahmagyan", "qualification_state": "UNQUALIFIED_SOURCE"}
+    ],
+    "operator_scopes": [
+      {"operator_scope_id": "bhavat_bhavam.odd_primary_house.reference_only.v1", "label": "Odd primary-house reference only", "owner": "L0 Brahmagyan", "qualification_state": "UNQUALIFIED_SOURCE"}
+    ]
+  },
+  "compatibility": {
+    "previous_representation": "independent Python and TypeScript alias maps",
+    "compatible_changes": ["Unicode/transliteration alias additions", "explicit true-node support", "release metadata"],
+    "incompatible_without_strict_adapter": ["unknown identifiers", "ambiguous generic node labels"],
+    "rollback_release_id": "legacy.local-vocabularies.pre-l0.semantic.2026-09-13.1",
+    "stale_on_change": ["identity adapters", "identity-keyed producer fixtures"],
+    "not_stale_on_alias_only_change": ["astronomical computations", "historical readings"]
+  }
+}

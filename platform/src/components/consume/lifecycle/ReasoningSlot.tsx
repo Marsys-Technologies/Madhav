@@ -52,14 +52,17 @@ export function ReasoningSlot({
   const [durationSec, setDurationSec] = useState<number | null>(null)
 
   useEffect(() => {
-    if (isReasoning) {
-      startRef.current = Date.now()
-      setDurationSec(null)
-    } else if (isDone && startRef.current !== null) {
-      const elapsed = (Date.now() - startRef.current) / 1000
-      setDurationSec(Math.round(elapsed * 10) / 10)
-      startRef.current = null
-    }
+    const transition = setTimeout(() => {
+      if (isReasoning) {
+        startRef.current = Date.now()
+        setDurationSec(null)
+      } else if (isDone && startRef.current !== null) {
+        const elapsed = (Date.now() - startRef.current) / 1000
+        setDurationSec(Math.round(elapsed * 10) / 10)
+        startRef.current = null
+      }
+    }, 0)
+    return () => clearTimeout(transition)
   }, [isReasoning, isDone])
 
   // Sync expansion: open while streaming, collapsed after completion.
@@ -67,8 +70,11 @@ export function ReasoningSlot({
   const [expanded, setExpanded] = useState(defaultExpanded)
 
   useEffect(() => {
-    if (isDone) setExpanded(false)
-    else if (isReasoning) setExpanded(true)
+    const transition = setTimeout(() => {
+      if (isDone) setExpanded(false)
+      else if (isReasoning) setExpanded(true)
+    }, 0)
+    return () => clearTimeout(transition)
   }, [isDone, isReasoning])
 
   if (!reasoningCapable) return null

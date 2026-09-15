@@ -212,23 +212,23 @@ class TestPlanSubstepsSampledEmitsStage5Blocks:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Test 3: _RESUME_VERSION == 7
+# Test 3: _RESUME_VERSION == 10
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestResumeVersionIs6:
-    """_RESUME_VERSION must be 7 (F1+F2+F5 SM-R-11: substep keys changed to
-    stage5dhara:{ec}:1 + stage5dhara:{ec}:2; fingerprint must change to
-    invalidate any in-flight builds with old single-substep stage5dhara:{ec}
-    keys, triggering a fresh delete-and-replan. v6 = L-NULL #1278; v7 = F1+F2+F5.)"""
+class TestResumeVersionIs10:
+    """v10 adds the W0 preservation preflight atop DHARA v1.2 identity."""
 
-    def test_resume_version_is_6(self):
-        assert W._RESUME_VERSION == 7, (
-            f'_RESUME_VERSION must be 7 (SM-R-11 F1+F2+F5 requirement; '
-            f'v6 was L-NULL PR #1278), got {W._RESUME_VERSION!r}'
+    def test_resume_version_is_10(self):
+        assert W._RESUME_VERSION == 10, (
+            f'_RESUME_VERSION must be 10 (DP-SD-017 W0 preservation), '
+            f'got {W._RESUME_VERSION!r}'
         )
 
     def test_resume_version_is_int(self):
         assert isinstance(W._RESUME_VERSION, int)
+
+    def test_dhara_sweep_semantic_version_is_1_2(self):
+        assert W._dhara_sweep_semantic_version() == '1.2'
 
 
 # ─────────────────────────────────────────────────────────────────────────────

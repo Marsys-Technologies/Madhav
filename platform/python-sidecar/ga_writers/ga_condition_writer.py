@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
@@ -29,6 +28,7 @@ import psycopg.rows
 
 from brahmagyan.graha_vocabulary import to_title
 
+from ga_writers.data_plane_contracts import stable_fact_id
 from ga_writers.ga_positions_writer import CANONICAL_AYANAMSHAS, PLANET_TO_SUBJECT
 from pyjhora_adapter.version import ENGINE_VERSION
 
@@ -858,6 +858,8 @@ def _load_dasha_periods(
     conn: Any,
     chart_id: str,
     graha: str,
+    ayanamsha_id: str,
+    build_id: str,
     condition_score: Optional[float] = None,
     dignity_d1: Optional[str] = None,
 ) -> tuple[Optional[list], Optional[list]]:
@@ -884,15 +886,25 @@ def _load_dasha_periods(
             # lord_graha, start_iso) WHERE level_n=1 (migration 415) — a direct
             # ~27-row seek, not the ~20K-row heap scan that used to time out.
             cur.execute("""
-                SELECT system_id, level_n, lord_graha, start_iso, end_iso
+                SELECT dasha_row_id, system_id, ayanamsha_id, build_id,
+                       level_n, lord_graha, start_iso, end_iso
                 FROM chart_dashas
                 WHERE chart_id   = %s
+                  AND ayanamsha_id = %s
+                  AND build_id    = %s
                   AND lord_graha = %s
                   AND level_n    = 1
                 ORDER BY start_iso
                 LIMIT 3
-            """, (chart_id, graha))
+            """, (chart_id, ayanamsha_id, build_id, graha))
             rows = cur.fetchall()
+            if any(
+                row[2] != ayanamsha_id or str(row[3]) != build_id
+                for row in rows
+            ):
+                raise RuntimeError(
+                    "dasha lookup returned a row outside the requested context"
+                )
             cur.execute(f"RELEASE SAVEPOINT {sp}")
             if not rows:
                 return None, None
@@ -901,6 +913,26 @@ def _load_dasha_periods(
                 # No condition score available to classify — cannot say peak or weak.
                 return None, None
 
+            def _period_payload(row: tuple, reason: str) -> dict:
+                (
+                    row_id, system_id, source_ayanamsha_id, _source_build_id,
+                    _level, lord, start, end,
+                ) = row
+                payload = {
+                    "dasha_label": f"{lord} Mahadasha",
+                    "system_id": system_id,
+                    "source_ayanamsha_id": source_ayanamsha_id,
+                    "start_date": start.isoformat() if hasattr(start, "isoformat") else str(start),
+                    "end_date": end.isoformat() if hasattr(end, "isoformat") else str(end),
+                    "reason": reason,
+                }
+                # source_build_id is deliberately not nested in the semantic
+                # period value. The enclosing condition row/context already
+                # carries the exact observation build, while the stable dasha
+                # row ID + ayanamsha identify the semantic upstream interval.
+                payload["source_dasha_row_id"] = str(row_id)
+                return payload
+
             if condition_score >= _PEAK_CONDITION_THRESHOLD:
                 reason = (
                     f"{graha} mahadasha period — dasha lord in classically strong "
@@ -908,16 +940,7 @@ def _load_dasha_periods(
                     + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
                     + ")"
                 )
-                periods = [
-                    {
-                        "dasha_label": f"{row[2]} Mahadasha",
-                        "system_id":   row[0],
-                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
-                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
-                        "reason":      reason,
-                    }
-                    for row in rows
-                ]
+                periods = [_period_payload(row, reason) for row in rows]
                 return periods, None
 
             if condition_score <= _WEAK_CONDITION_THRESHOLD:
@@ -927,16 +950,7 @@ def _load_dasha_periods(
                     + (f", dignity_d1={dignity_d1}" if dignity_d1 else "")
                     + ")"
                 )
-                periods = [
-                    {
-                        "dasha_label": f"{row[2]} Mahadasha",
-                        "system_id":   row[0],
-                        "start_date":  row[3].isoformat() if hasattr(row[3], "isoformat") else str(row[3]),
-                        "end_date":    row[4].isoformat() if hasattr(row[4], "isoformat") else str(row[4]),
-                        "reason":      reason,
-                    }
-                    for row in rows
-                ]
+                periods = [_period_payload(row, reason) for row in rows]
                 return None, periods
 
             # Neutral band — condition is neither classically strong nor weak.
@@ -1084,7 +1098,11 @@ def _build_per_varga_avastha_rows(
         if degree_in_sign is not None:
             baladi_val = avastha_baladi_from_degree(degree_in_sign)
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_baladi_per_varga",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), varga,
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1110,7 +1128,11 @@ def _build_per_varga_avastha_rows(
                 normalized_dignity, is_combust=False, is_retrograde=False
             )
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_deeptaadi_per_varga",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), varga,
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1133,7 +1155,10 @@ def _build_per_varga_avastha_rows(
     for graha in ALL_GRAHAS:
         for floor_cat, reason in INTRINSICALLY_D1_AVASTHAS:
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    floor_cat, PLANET_TO_SUBJECT.get(graha, graha.upper()),
+                    "D_ALL", chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id,
@@ -1165,6 +1190,8 @@ def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
     ayanamshas = sorted({r["ayanamsha_id"] for r in rows})
     chart_ids  = sorted({r["chart_id"] for r in rows})
     for cid in chart_ids:
+        from ga_writers._idempotency import authorize_chart_fact_delete
+        authorize_chart_fact_delete(conn, cid, cats, ayanamshas)
         conn.execute(
             "DELETE FROM chart_facts WHERE chart_id = %s AND fact_category = ANY(%s) AND ayanamsha_id = ANY(%s)",
             [cid, cats, ayanamshas],
@@ -1316,7 +1343,11 @@ def _build_d1_avastha_rows(
         if deg_in_sign is not None:
             sayanadi_val = _sayanadi_from_degree(float(deg_in_sign))
             rows.append({
-                "fact_id":                 str(uuid.uuid4()),
+                "fact_id":                 stable_fact_id(
+                    "graha_avastha_sayanadi",
+                    PLANET_TO_SUBJECT.get(graha, graha.upper()), "D1",
+                    chart_id, ayanamsha_id,
+                ),
                 "chart_id":                chart_id,
                 "ayanamsha_id":            ayanamsha_id,
                 "build_id":                build_id or "",
@@ -1340,7 +1371,11 @@ def _build_d1_avastha_rows(
             graha, dignity_d1, house, is_combust, position_map
         )
         rows.append({
-            "fact_id":                 str(uuid.uuid4()),
+            "fact_id":                 stable_fact_id(
+                "graha_avastha_lajjitadi",
+                PLANET_TO_SUBJECT.get(graha, graha.upper()), "D1",
+                chart_id, ayanamsha_id,
+            ),
             "chart_id":                chart_id,
             "ayanamsha_id":            ayanamsha_id,
             "build_id":                build_id or "",
@@ -1540,7 +1575,7 @@ def build_ga_condition_substep(
 
         # ── Dasha trajectory ──────────────────────────────────────────────────
         peak_periods, weak_periods = _load_dasha_periods(
-            conn, chart_id, graha,
+            conn, chart_id, graha, ayanamsha_id, str(build_id),
             condition_score=condition_score_val,
             dignity_d1=dignity_d1,
         )

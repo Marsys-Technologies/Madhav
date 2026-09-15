@@ -36,6 +36,8 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable, Optional, Sequence
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from scipy.optimize import brentq
 
 from brahmagyan.graha_vocabulary import norm_graha
@@ -601,6 +603,7 @@ def attach_dwell_weight(rows: Sequence[KinematicsRow], w_dwell: float) -> None:
 # sidereal derivation). Exercised only by the "live" test tier.
 # ═════════════════════════════════════════════════════════════════════════════
 
+@serialized_swiss_state
 def _sidereal_offset_series(jds: Sequence[float], ayanamsha: str) -> list[float]:
     """The ayanamsha offset at each Julian Day, via the SAME pyswisseph call
     sequence as brahmagyan.l0_ephemeris.derive_sidereal (§N.5 — reusing the
@@ -770,8 +773,6 @@ def compute_contacts_for_body(chart_id: str, spline: HermiteSpline, body: str,
     return rows
 
 
-REPLACE_PRIOR_SQL = "DELETE FROM kala_field_kinematics WHERE chart_id = %s"
-
 UPSERT_SQL = """
 INSERT INTO kala_field_kinematics (
     chart_id, event_kind, body, target_kind, target_ref, t_days, event_ts,
@@ -852,8 +853,9 @@ def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
     """Batch-inserts all rows via cursor.executemany() to avoid per-row round-trip
     latency (L1f fix — same class as L1d stage3_clocks fix, SAMPURTI campaign).
 
-    §N.3: the once-per-chart DELETE runs once in plan_substeps before any substep;
-    the ON CONFLICT clause handles idempotent re-runs within the same substep."""
+    §N.3: the once-per-chart DELETE runs in the writer's execution-owned
+    `prepare:replace` substep; the ON CONFLICT clause handles idempotent re-runs
+    within the same substep."""
     if not rows:
         return 0
     params = [
@@ -875,10 +877,10 @@ def write_kinematics_rows(conn, rows: Sequence[KinematicsRow]) -> int:
 # Module-level substep wiring (SAMPURTI G1 — plugs this stage into the
 # ka_kshetra HEAVY writer's _optional_stage_plugins mechanism).
 #
-# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in plan_substeps,
-# BEFORE any substep executes. It never runs per-substep (the lesson written
-# in blood in ka_kshetra's module docstring: a per-substep delete can fire AFTER
-# sibling substeps have committed rows, silently wiping them).
+# §N.3 contract: the once-per-chart DELETE runs exactly ONCE in the writer's
+# execution-owned `prepare:replace` substep. Planning is read-only. It never
+# runs per computational substep (the lesson written in blood in ka_kshetra's
+# module docstring: a later delete can wipe earlier committed sibling rows).
 # ═════════════════════════════════════════════════════════════════════════════
 
 def _birth_date_from_config(config: dict) -> date:
@@ -937,18 +939,14 @@ def _fetch_all_natal_targets(conn, chart_id: str,
 def plan_substeps(ctx) -> list:
     """Wire stage 0 (kinematics) into the ka_kshetra substep plan.
 
-    One substep per planetary body in DAILY_BODIES (9 total). §N.3 delete
-    runs ONCE here (not per substep) — before any substep executes.
+    One substep per planetary body in DAILY_BODIES (9 total). This planner is
+    deliberately read-only; §N.3 replacement belongs to `prepare:replace`.
 
     Returns a list of SubStep objects. The import is deferred to avoid a
     hard dependency on the orchestrator at module import time (this module
     must be independently importable/testable, §N.4).
     """
     from pipeline.orchestrator.writers import SubStep
-    conn = ctx.db_conn
-    chart_id = ctx.config['chart_id']
-    # §N.3: delete prior rows ONCE before any substep can execute.
-    conn.execute(REPLACE_PRIOR_SQL, [chart_id])
     return [
         SubStep(key=f'stage0:{body}', label=f'kinematics {body}')
         for body in DAILY_BODIES
@@ -967,13 +965,18 @@ def run_substep(ctx, step) -> object:
     episodes against every natal target (§N.5: natal longitudes referenced from
     chart_facts, never recomputed), and writes the up-to-5 knot rows per
     episode plus ingress/station/syzygy rows. Writes are row-level idempotent
-    (UPSERT); the coarser per-chart delete ran once in plan_substeps.
+    (UPSERT); the coarser per-chart delete ran in `prepare:replace`.
     """
     from pipeline.orchestrator.writers import WriterResult
     from datetime import timedelta as _td
 
     conn = ctx.db_conn
     chart_id = ctx.config['chart_id']
+    if getattr(ctx, 'dry_run', False) is True:
+        return WriterResult(
+            asset_id='ka_kshetra', rows_inserted=0,
+            notes=f'dry-run: stage0 kinematics {step.key} not executed',
+        )
     body = step.key.split(':', 1)[1]
     birth_date = _birth_date_from_config(ctx.config)
 

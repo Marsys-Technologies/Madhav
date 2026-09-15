@@ -41,6 +41,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from ._ayanamsha import resolve_mode
 from ._jhora import charts, drik, utils
 
@@ -56,11 +58,13 @@ def _place(lat: float, lon: float, tz: float):
     return drik.Place("subject", lat, lon, tz)
 
 
+@serialized_swiss_state
 def _set_ayanamsha(ayanamsha_id: str) -> None:
     mode, _sidm = resolve_mode(ayanamsha_id)
     drik.set_ayanamsa_mode(mode)
 
 
+@serialized_swiss_state
 def compute_shadbala(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -103,6 +107,7 @@ def compute_shadbala(
     return result
 
 
+@serialized_swiss_state
 def compute_uchcha_bala(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -129,6 +134,7 @@ def compute_uchcha_bala(
     return {name: round(float(ub[i]), 4) for i, name in enumerate(CLASSICAL_PLANETS)}
 
 
+@serialized_swiss_state
 def compute_vimsopaka(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -169,6 +175,7 @@ def compute_vimsopaka(
     return result
 
 
+@serialized_swiss_state
 def compute_ashtakavarga_shodhana(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",
@@ -232,6 +239,7 @@ def compute_ashtakavarga_shodhana(
     return {"bindus": bindus, "pinda": pinda}
 
 
+@serialized_swiss_state
 def compute_strength(
     jd_ut: float,
     ayanamsha_id: str = "lahiri",

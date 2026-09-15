@@ -1,7 +1,15 @@
 import pytest
 from pipeline.orchestrator.writers import (
-    register, get_writer, list_writers, WriterBase, ContextSpec, WriterResult,
+    register, get_writer, list_writers, WRITER_REGISTRY,
+    WriterBase, ContextSpec, WriterResult,
 )
+
+
+@pytest.fixture(autouse=True)
+def _remove_synthetic_registrations():
+    yield
+    for asset_id in ("test_infra_asset_1", "test_infra_asset_dup"):
+        WRITER_REGISTRY.pop(asset_id, None)
 
 
 def test_register_and_get():

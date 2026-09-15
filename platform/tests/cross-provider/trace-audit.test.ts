@@ -88,7 +88,7 @@ function makeToolUseStep(overrides: Partial<TraceStep> = {}): TraceStep {
 describe('trace-audit: writeTraceStep() persists required tool_use fields', () => {
   beforeEach(() => {
     vi.mocked(query).mockReset()
-    vi.mocked(query).mockResolvedValue({ rows: [] } as any)
+    vi.mocked(query).mockResolvedValue({ rows: [] } as never)
   })
 
   it('TA-1.1: writeTraceStep() calls db query with correct positional args', async () => {
@@ -187,7 +187,7 @@ describe('trace-audit: writeTraceStep() persists required tool_use fields', () =
 describe('trace-audit: Iteration counter increments across multiple tool calls', () => {
   beforeEach(() => {
     vi.mocked(query).mockReset()
-    vi.mocked(query).mockResolvedValue({ rows: [] } as any)
+    vi.mocked(query).mockResolvedValue({ rows: [] } as never)
   })
 
   it('TA-2.1: step_seq increments across three sequential tool-use steps', async () => {

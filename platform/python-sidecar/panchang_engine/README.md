@@ -302,33 +302,24 @@ knockout multiplier — it is never modified (master plan hard constraint).
 
 ### How to Interpret Breakdown Badges
 
-Each `MuhuratWindow.breakdown` dict contains verbose factor keys:
+Each `MuhuratWindow.breakdown` dict contains numeric weighted contributions.
+The compact numeric-only shape is intentional: the web result list, calendar
+export and Ask-Madhav prompt rank and format every entry as a score contribution.
+Factor identities and raw Panchāṅga values remain available from the source
+Panchāṅga computation rather than being duplicated into this score map.
 
 | Key | Meaning |
 |-----|---------|
-| `tithi_name` | Name of the lunar day (e.g., "Shukla Panchami") |
-| `tithi_score` | Quality score 0.0–1.0 for tithi |
-| `tithi_weight` | Weight applied (from YAML) |
-| `tithi_contrib` | Actual contribution to score (score × weight) |
-| `nakshatra_name` | Moon's asterism name |
-| `nakshatra_contrib` | Nakshatra contribution |
-| `vara_name` | Weekday name (e.g., "Guruvara") |
-| `vara_contrib` | Vara contribution |
-| `yoga_score` | Yoga bonus (1.0 if a strong auspicious yoga is active) |
-| `yoga_contrib` | Yoga contribution |
-| `active_auspicious_yogas` | List of active yoga names (may be empty strings — see known issue) |
-| `planet_score` | Planet factor (1.0 if neither Jupiter nor Venus combust) |
-| `planet_contrib` | Planet contribution |
-| `jupiter_combust` / `venus_combust` | Boolean flags |
-| `native_score` | Tara Bala overlay (0.0 if no NatalChart passed) |
-| `native_contrib` | Native contribution |
-| `native_chart_present` | Boolean — False when chart_id is None |
-| `inauspicious_windows` | List of active inauspicious window labels on this day |
-| `knockout` | Boolean — True if day was zeroed by compound inauspicious window |
+| `tithi` | Tithi quality × configured tithi weight |
+| `nakshatra` | Nakshatra quality × configured nakshatra weight |
+| `vara` | Vara quality × configured vara weight |
+| `yoga` | Strongest auspicious-yoga quality × configured yoga weight |
+| `planet` | Non-combust Jupiter/Venus factor × configured planet weight |
+| `tara_bala` | Optional native Tāra Bala × configured native weight; absent when no natal chart is supplied |
 
-**Known Issue (Issue I.1):** `active_auspicious_yogas` may contain empty strings
-instead of yoga names. The yoga_score and yoga_contrib are correct — only the label
-serialization is affected. Fix deferred to 4C-7.
+All values are floats in `[0.0, 1.0]`. Compound inauspicious knockouts are
+excluded from `find_muhurat()` results because their aggregate score is zero;
+the full Panchāṅga result carries the underlying inauspicious-window details.
 
 ### Latency Expectations
 

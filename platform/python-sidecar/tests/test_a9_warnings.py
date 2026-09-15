@@ -283,11 +283,11 @@ class TestW2SwissephUnavailable:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# W3 — bo_samvada: dead DDL branch gone; live VIEW path intact
+# W3 — bo_samvada: dead DDL branch gone; passive VIEW boundary intact
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestW3SamvadaDeadBranchRemoved:
-    """W3: dead DDL branch (_CREATE_VIEW with GROUP BY bug) is gone; live path works."""
+    """W3: the broken DDL branch is gone and per-chart runs preserve the shared view."""
 
     def _load(self):
         _ensure_writers_stub()
@@ -350,8 +350,8 @@ class TestW3SamvadaDeadBranchRemoved:
         assert "rm.remedy_priority_class" in priority_clause
         assert "rm.weakest_rank_in_chart ASC NULLS LAST, rm.graha ASC" in priority_clause
 
-    def test_run_creates_view_using_clean_ddl(self):
-        """W3: run() calls conn.execute with the correct VIEW DDL."""
+    def test_run_preserves_shared_view_without_global_ddl(self):
+        """W3: a per-chart L2 run cannot mutate the shared serving projection."""
         mod = self._load()
 
         ctx = MagicMock()
@@ -362,15 +362,10 @@ class TestW3SamvadaDeadBranchRemoved:
         writer = mod.BoSamvadaWriter()
         result = writer.run(ctx)
 
-        # At least one execute call must CREATE the view
-        calls_str = " ".join(str(c) for c in conn.execute.call_args_list)
-        assert "CREATE OR REPLACE VIEW vw_chart_digest" in calls_str, (
-            "run() did not issue CREATE OR REPLACE VIEW vw_chart_digest; "
-            f"execute calls were: {calls_str[:400]}"
-        )
-        assert "DROP VIEW" not in calls_str, (
-            "run() must preserve shared view dependents and grants; it issued DROP VIEW"
-        )
+        conn.execute.assert_not_called()
+        assert result.rows_inserted == 0
+        assert result.rows_skipped == 1
+        assert "legacy serving projection preserved" in result.notes
 
     def test_dry_run_does_not_execute_ddl(self):
         """W3: dry_run returns 0 rows without touching the DB."""

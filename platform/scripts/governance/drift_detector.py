@@ -751,7 +751,7 @@ def _query_live_chart_facts_columns() -> Tuple[Optional[Set[str]], Optional[Find
     env = {**os.environ, "PGPASSWORD": pg_password}
     try:
         result = subprocess.run(
-            ["psql", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
+            ["psql", "-w", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
              "-t", "-c", query],
             capture_output=True, text=True, timeout=10, env=env,
         )
@@ -964,7 +964,7 @@ def check_a3_categories_and_mvs(repo_root: pathlib.Path) -> List[Finding]:
     def _run_query(query: str):
         try:
             result = subprocess.run(
-                ["psql", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
+                ["psql", "-w", "-h", pg_host, "-p", pg_port, "-U", pg_user, "-d", pg_db,
                  "-t", "-c", query],
                 capture_output=True, text=True, timeout=10, env=env,
             )

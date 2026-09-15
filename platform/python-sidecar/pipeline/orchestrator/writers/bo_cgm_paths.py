@@ -25,11 +25,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from brahmagyan.verification_vocab import UNVERIFIED_DEFAULT
 
 logger = logging.getLogger(__name__)
@@ -93,7 +93,7 @@ SIGN_RULER: dict[str, str] = {
 }
 
 _PATH_INSERT = """
-INSERT INTO bodha_cgm_paths (
+INSERT INTO public.bodha_cgm_paths (
   path_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   path_type, from_node_id, to_node_id,
   path_node_ids_array, path_edge_ids_array,
@@ -316,7 +316,14 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
     inserted = 0
     with conn.cursor() as cur:
         for chain in chains:
-            path_id = str(uuid.uuid4())
+            path_id = stable_semantic_uuid("cgm_path", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "snapshot_type": SNAPSHOT_TYPE, "path_type": PATH_TYPE,
+                "from_node_id": chain["from_node_id"],
+                "to_node_id": chain["to_node_id"],
+                "node_chain": chain["node_chain"],
+                "edge_chain": chain["edge_chain"],
+            })
             row = {
                 "path_id": path_id,
                 "chart_id": chart_id,
@@ -351,6 +358,7 @@ def _write_aya(conn: Any, chart_id: str, aya: str, build_id: str, now: str) -> i
 
 
 @register("bo_cgm_paths")
+@l2_producer("bo_cgm_paths")
 class BoCgmPathsWriter(WriterBase):
     """bo_cgm_paths: dispositor chain path analysis over the CGM graph."""
     asset_id = "bo_cgm_paths"
@@ -373,7 +381,7 @@ class BoCgmPathsWriter(WriterBase):
             # SET LOCAL scopes to the orchestrator txn (writer never commits).
             # Ref: bo_laksana native-rebuild timeout; ka_* precedent (PR 422).
             cur.execute("SET LOCAL statement_timeout = 0")
-            cur.execute("DELETE FROM bodha_cgm_paths WHERE chart_id = %s", [chart_id])
+            cur.execute("DELETE FROM public.bodha_cgm_paths WHERE chart_id = %s", [chart_id])
 
         total = 0
         for aya in CANONICAL_AYAS:

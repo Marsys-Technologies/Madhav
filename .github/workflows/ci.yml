@@ -1173,6 +1173,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1397,6 +1399,7 @@ jobs:
           # letting a stale analysis authorise a rebuild.
           python ../scripts/generate/nirmana_analysis_layer_pins.py --check
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+            ../scripts/__tests__/test_nirmana_analysis_layer_pins.py \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \

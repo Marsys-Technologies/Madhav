@@ -35,11 +35,6 @@ export function useUserRole(): UserRoleState {
   const [loading, setLoading] = useState(!_cached)
 
   useEffect(() => {
-    if (_cached && Date.now() - _cached.ts < TTL_MS) {
-      setRole(_cached.role)
-      setLoading(false)
-      return
-    }
     let cancelled = false
     getRole().then(r => {
       if (!cancelled) { setRole(r); setLoading(false) }
