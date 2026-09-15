@@ -370,3 +370,15 @@ lease elapsed during this review; mutation was paused and the unchanged scope
 was renewed at coordination pin `754aa9ffe` through 2026-09-16 02:00 IST before
 the next correction. No rejected Lane S commit is integrated or production
 eligible.
+
+Second correction exact tip `26154020c` independently closes the atomic cutover,
+old/new chart and natural-key checks, positive L1 ownership, exact role/catalog,
+migration-identity, empty-head/input-bind and dispatcher rollback families. It
+is still rejected on shared MSR/CGM producer scoping, contextual literal-secret
+detection, custom-role parent resolution, authenticated validation-instance
+binding and authenticated deployment-review evidence. Live read-only checks
+also prove the protected GitHub environment, dedicated builder identity and
+secret are absent; the existing build job remains on the general runtime and
+legacy secret, while six identities retain project-wide secret access. Those
+live changes remain ineligible until source acceptance and a new exclusive
+cutover fence.

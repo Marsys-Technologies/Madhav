@@ -186,3 +186,16 @@ fail-closed dispatcher rollback. Exact SQL identity, empty-head rejection and
 mandatory L2 input binding are closed. A second bounded correction is active
 under renewed fence `754aa9ffe`; no part of the rejected tip is integrated or
 eligible for production.
+
+Second correction tip `26154020cc8002b5f630a8f0b4a51327586d75b1`
+closes the CRITICAL atomicity gap and the old/new chart, natural-key, positive
+L1 ownership, exact role graph, catalog, isolated-restore receipt shape and
+dispatcher rollback findings, but remains rejected. Residual source defects are
+shared-row producer scoping for MSR and CGM, contextual literal-credential
+detection, custom-role parent resolution, authenticated validation-instance
+binding and authenticated GitHub deployment-review binding. Live read-only
+checks separately prove the protected GitHub environment, dedicated builder
+identity and secret do not yet exist, the build job still uses the general
+runtime/legacy secret, and six service accounts retain project-wide secret
+access. These live prerequisites require a later exclusive cutover fence; they
+are not eligible under the current source-design lease.
