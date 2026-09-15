@@ -188,6 +188,60 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
     } finally { client.release() }
   })
 
+  it('enforces exact cross-producer updates on shared MSR and CGM tables', async () => {
+    const schema = 'dp_shared_l2_negative'
+    await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}; GRANT USAGE ON SCHEMA ${schema} TO data_plane_builder`)
+    await admin.query(`CREATE TABLE ${schema}.bodha_cgm_nodes(
+      node_id text PRIMARY KEY, chart_id uuid NOT NULL, node_type text NOT NULL,
+      pagerank_score numeric, foreign_payload text
+    )`)
+    await admin.query(`INSERT INTO ${schema}.bodha_cgm_nodes VALUES
+      ('bimba-node',$1,'graha',0,'owned-by-bimba'),
+      ('karanajala-node',$1,'arudha',0,'owned-by-karanajala')`, [chart])
+    await admin.query(`CREATE TRIGGER protected_guard BEFORE INSERT OR UPDATE OR DELETE
+      ON ${schema}.bodha_cgm_nodes FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_guard_active_mutation()`)
+    await admin.query(`GRANT SELECT,UPDATE,DELETE ON ${schema}.bodha_cgm_nodes TO data_plane_builder`)
+    const client = await builder.connect()
+    try {
+      await client.query('BEGIN')
+      for (const [key, value] of Object.entries({
+        'madhav.l2_asset_id': 'bo_laksana_rerank', 'madhav.l2_chart_id': chart,
+        'madhav.l2_generation_id': 'shared-boundary', 'madhav.l2_partition_key': 'shared-boundary',
+        'madhav.l2_build_id': randomUUID(),
+      })) await client.query('SELECT set_config($1,$2,true)', [key, value])
+
+      await client.query('SAVEPOINT msr_foreign_column')
+      await expect(client.query(`UPDATE public.bodha_msr_signals
+        SET citation_human=citation_human||'-rogue'
+        WHERE chart_id=$1 AND producer_asset_id='bo_laksana'`, [chart]))
+        .rejects.toThrow(/only its six declared MSR enrichment columns/)
+      await client.query('ROLLBACK TO SAVEPOINT msr_foreign_column')
+
+      await client.query(`SELECT set_config('madhav.l2_asset_id','bo_bimba',true)`)
+      await client.query('SAVEPOINT foreign_delete')
+      await expect(client.query(`DELETE FROM ${schema}.bodha_cgm_nodes WHERE node_id='karanajala-node'`))
+        .rejects.toThrow(/cannot mutate CGM nodes produced by bo_karanajala/)
+      await client.query('ROLLBACK TO SAVEPOINT foreign_delete')
+
+      await client.query(`SELECT set_config('madhav.l2_asset_id','bo_karanajala',true)`)
+      await client.query('SAVEPOINT foreign_payload')
+      await expect(client.query(`UPDATE ${schema}.bodha_cgm_nodes
+        SET foreign_payload='rogue' WHERE node_id='bimba-node'`))
+        .rejects.toThrow(/only declared centrality columns/)
+      await client.query('ROLLBACK TO SAVEPOINT foreign_payload')
+
+      await client.query('SAVEPOINT declared_centrality')
+      await expect(client.query(`UPDATE ${schema}.bodha_cgm_nodes
+        SET pagerank_score=1 WHERE node_id='bimba-node'`))
+        .rejects.toThrow(/outside an active admitted generation/)
+      await client.query('ROLLBACK TO SAVEPOINT declared_centrality')
+      await client.query('ROLLBACK')
+    } finally {
+      client.release()
+      await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+    }
+  })
+
   it('blocks owner escalation, DDL, TRUNCATE, trigger disable, history writes and terminal forgery', async () => {
     await expect(builder.query('SET ROLE data_plane_l1_owner')).rejects.toThrow()
     await expect(builder.query('TRUNCATE chart_facts')).rejects.toThrow()

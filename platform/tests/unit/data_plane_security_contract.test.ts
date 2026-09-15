@@ -158,6 +158,17 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(l2).toMatch(/l2_data_plane_msr_delete_receipt[\s\S]*asset_id text NOT NULL/)
     expect(l2).toContain('l2_data_plane_manifest_attestations')
   })
+
+  it('partitions both shared L2 tables and restricts cross-producer enrichment', () => {
+    const sql = readFileSync(resolve(__dirname, '../../supabase/migrations/1036_data_plane_l2_producer_generations.sql'), 'utf8')
+    expect(sql).toContain("'system_convergence_count','cross_system_consensus_count'")
+    expect(sql).toContain("'contradicts_signals_array','graph_node_strength_contribution_jsonb'")
+    expect(sql).toContain("'valence','valence_source'")
+    expect(sql).toContain("WHEN v_row->>'node_type' IN ('bhava','domain','dosha','graha','yoga') THEN 'bo_bimba'")
+    expect(sql).toContain("WHEN v_row->>'node_type' IN ('arudha','special_lagna') THEN 'bo_karanajala'")
+    expect(sql).toContain("'pagerank_score','eigenvector_centrality'")
+    expect(sql).toContain("'betweenness_centrality','harmonic_centrality'")
+  })
   it('normalizes the complete pre-existing table, sequence, and schema ACL surface', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-ownership-preflight.ts'), 'utf8')
     expect(preflight).toContain('CROSS JOIN LATERAL aclexplode')

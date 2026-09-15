@@ -336,16 +336,17 @@ def replace_prior_convergence(conn: Any, chart_id: str, ayanamsha_id: str,
 
 def replace_prior_cgm_nodes(conn: Any, chart_id: str, ayanamsha_id: str,
                              snapshot_type: str | None = None) -> int:
+    owned_node_types = ["bhava", "domain", "dosha", "graha", "yoga"]
     if snapshot_type:
         return _delete(
             conn,
-            "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s",
-            [chart_id, ayanamsha_id, snapshot_type],
+            "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s AND snapshot_type = %s AND node_type = ANY(%s)",
+            [chart_id, ayanamsha_id, snapshot_type, owned_node_types],
         )
     return _delete(
         conn,
-        "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s",
-        [chart_id, ayanamsha_id],
+        "DELETE FROM public.bodha_cgm_nodes WHERE chart_id = %s AND ayanamsha_id = %s AND node_type = ANY(%s)",
+        [chart_id, ayanamsha_id, owned_node_types],
     )
 
 

@@ -1579,6 +1579,7 @@ DECLARE
   v_row jsonb := COALESCE(v_new,v_old);
   v_delete_authorized boolean := false;
   v_key_column text;
+  v_owner_asset text;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'protected L2 % requires direct data_plane_builder authentication', TG_OP;
@@ -1614,9 +1615,52 @@ BEGIN
     ELSIF v_new IS NOT NULL AND v_new->>'producer_asset_id' IS DISTINCT FROM v_old->>'producer_asset_id' THEN
       RAISE EXCEPTION 'L2 UPDATE cannot transfer immutable MSR producer ownership';
     END IF;
-    IF TG_OP<>'INSERT' AND v_old->>'producer_asset_id'<>v_asset
-       AND NOT (TG_OP='UPDATE' AND v_asset='bo_laksana_rerank') THEN
-      RAISE EXCEPTION 'L2 asset % cannot mutate MSR rows produced by %', v_asset, v_old->>'producer_asset_id';
+    IF TG_OP<>'INSERT' AND v_old->>'producer_asset_id'<>v_asset THEN
+      IF TG_OP<>'UPDATE' OR v_asset<>'bo_laksana_rerank' THEN
+        RAISE EXCEPTION 'L2 asset % cannot mutate MSR rows produced by %', v_asset, v_old->>'producer_asset_id';
+      END IF;
+      IF (v_old - ARRAY[
+            'system_convergence_count','cross_system_consensus_count',
+            'contradicts_signals_array','graph_node_strength_contribution_jsonb',
+            'valence','valence_source'
+          ]::text[])
+         IS DISTINCT FROM
+         (v_new - ARRAY[
+            'system_convergence_count','cross_system_consensus_count',
+            'contradicts_signals_array','graph_node_strength_contribution_jsonb',
+            'valence','valence_source'
+          ]::text[]) THEN
+        RAISE EXCEPTION 'bo_laksana_rerank may update only its six declared MSR enrichment columns';
+      END IF;
+    END IF;
+  END IF;
+  IF TG_TABLE_NAME='bodha_cgm_nodes' THEN
+    IF TG_OP='UPDATE' AND v_old->>'node_type' IS DISTINCT FROM v_new->>'node_type' THEN
+      RAISE EXCEPTION 'L2 UPDATE cannot transfer immutable CGM node producer partition';
+    END IF;
+    v_owner_asset := CASE
+      WHEN v_row->>'node_type' IN ('bhava','domain','dosha','graha','yoga') THEN 'bo_bimba'
+      WHEN v_row->>'node_type' IN ('arudha','special_lagna') THEN 'bo_karanajala'
+      ELSE NULL
+    END;
+    IF v_owner_asset IS NULL THEN
+      RAISE EXCEPTION 'CGM node_type % has no declared producer partition', v_row->>'node_type';
+    END IF;
+    IF v_owner_asset<>v_asset THEN
+      IF TG_OP<>'UPDATE' OR v_asset<>'bo_karanajala' OR v_owner_asset<>'bo_bimba' THEN
+        RAISE EXCEPTION 'L2 asset % cannot mutate CGM nodes produced by %', v_asset, v_owner_asset;
+      END IF;
+      IF (v_old - ARRAY[
+            'pagerank_score','eigenvector_centrality',
+            'betweenness_centrality','harmonic_centrality'
+          ]::text[])
+         IS DISTINCT FROM
+         (v_new - ARRAY[
+            'pagerank_score','eigenvector_centrality',
+            'betweenness_centrality','harmonic_centrality'
+          ]::text[]) THEN
+        RAISE EXCEPTION 'bo_karanajala may update only declared centrality columns on bo_bimba CGM nodes';
+      END IF;
     END IF;
   END IF;
   IF TG_OP='DELETE' AND TG_TABLE_NAME IN (
