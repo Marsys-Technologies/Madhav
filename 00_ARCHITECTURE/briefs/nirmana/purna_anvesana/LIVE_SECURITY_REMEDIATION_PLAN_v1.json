@@ -1,0 +1,74 @@
+{
+  "schema_version": "madhav-purna-anvesana/live-security-remediation-plan/v1",
+  "recorded_at": "2026-09-16T00:45:00+05:30",
+  "authority": "CCD-012",
+  "status": "SOURCE_REPAIRED_LIVE_OPERATIONS_PENDING_EXCLUSIVE_LEASE",
+  "reviewed_candidate_parent": "466179c6dc23ce21b904f783e982b1aeae2404ae",
+  "live_read_only_observation": {
+    "amjis_web_runtime_project_wide_secret_accessor": true,
+    "amjis_mcp_runtime_project_wide_secret_accessor": true,
+    "watchdog_secret_plaintext_cloud_run_env_present": true,
+    "watchdog_secret_manager_version_1_present": true,
+    "inquiry_lifecycle_signing_secret_present": false,
+    "inquiry_database_password_secret_present": false,
+    "inquiry_database_login_present": false,
+    "shared_or_production_mutation": false
+  },
+  "source_repairs": [
+    "purge_expired_planner_inquiries_global uses pg_catalog and pg_temp only and qualifies its public table",
+    "Purna lifecycle and managed-job stores use a dedicated fail-closed pool and pin principal and chart transaction GUCs",
+    "web deployment references amjis_inquiry_serve and pinned secret version 1",
+    "MCP runtime explicitly removes the unused MCP_CANARY_KEY mount while the masked runner canary fetch remains",
+    "MCP traffic promotion waits for the exact deployed web SHA and both inquiry routes",
+    "web deployment replaces plaintext WATCHDOG_SECRET with watchdog-secret version 1",
+    "the watchdog provisioner uses a Secret Manager reference for Cloud Run and never passes the credential through update-env-vars"
+  ],
+  "desired_secret_specific_access": {
+    "amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com": [
+      "openai-api-key",
+      "firebase-admin-credentials",
+      "amjis-db-password",
+      "GOOGLE_GENERATIVE_AI_API_KEY",
+      "DEEPSEEK_API_KEY",
+      "NVIDIA_NIM_API_KEY",
+      "PYTHON_SIDECAR_API_KEY",
+      "SUPER_ADMIN_EMAIL",
+      "mcp-internal-token",
+      "mcpt-scheduler-secret",
+      "mcp-canary-key",
+      "nirmana-campaign-control-db-password",
+      "nirmana-evidence-ingress-db-password",
+      "watchdog-secret",
+      "inquiry-lifecycle-signing-key",
+      "amjis-inquiry-db-password"
+    ],
+    "amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com": [
+      "mcp-internal-token",
+      "PYTHON_SIDECAR_API_KEY"
+    ]
+  },
+  "database_identity_contract": {
+    "login": "amjis_inquiry_serve",
+    "membership": "role_web_serve",
+    "must_login": true,
+    "must_not_be_superuser": true,
+    "must_not_create_role": true,
+    "must_not_create_database": true,
+    "must_not_bypass_rls": true,
+    "must_not_hold_other_group_memberships": true,
+    "credential_secret": "amjis-inquiry-db-password version 1",
+    "runtime_consumer": "amjis-web only"
+  },
+  "serialized_live_sequence": [
+    "refresh campaign-coordination and acquire a fresh operation-specific exclusive lease",
+    "capture current service revisions, traffic, database role graph, secret references and rollback identifiers",
+    "add every listed secret-specific runtime binding before removing any project-wide binding",
+    "create the signing and database-password secrets without emitting material and create the constrained database login",
+    "verify exact pending migration filenames and hashes, six active registry rows, absent target relations and role ownership",
+    "admit the immutable reviewed commit through protected integration and allow no-traffic deployment smoke",
+    "verify exact candidate startup, RLS cross-tenant denial, signing, watchdog, MCP canary and dependent-route readiness",
+    "remove project-wide secret accessor from the two runtime identities only after their exact secret-specific inventories pass",
+    "repeat candidate and current-traffic health checks; restore the prior IAM bindings or prior revision on regression"
+  ],
+  "release_rule": "No merge, migration, deployment, traffic movement or project-wide IAM removal occurs from this source lease. G4 remains blocked until the exclusive operation lease exists and every preflight is refreshed."
+}

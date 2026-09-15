@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg'
-import { getServeReadPool, withChartContext } from '@/lib/db/roles'
+import { withInquiryStoreContext } from './store_pool'
 
 export type ManagedPrashnaJobStatus = 'pending' | 'running' | 'complete' | 'failed'
 export type ManagedPrashnaResponseFormat = 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
@@ -41,20 +41,7 @@ async function withPrincipalContext<T>(
   principalUid: string,
   action: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
-  const pool = await getServeReadPool()
-  const client = await pool.connect()
-  try {
-    await client.query('BEGIN')
-    await client.query('SELECT set_config($1, $2, true)', ['app.principal_id', principalUid])
-    const result = await action(client)
-    await client.query('COMMIT')
-    return result
-  } catch (error) {
-    await client.query('ROLLBACK').catch(() => undefined)
-    throw error
-  } finally {
-    client.release()
-  }
+  return withInquiryStoreContext(principalUid, null, action)
 }
 
 export async function createManagedPrashnaJob(args: {
@@ -65,10 +52,7 @@ export async function createManagedPrashnaJob(args: {
   chart_id: string
   request: ManagedPrashnaJobRequest
 }): Promise<ManagedPrashnaJobRow> {
-  return withChartContext(args.chart_id, async (client) => {
-    await client.query('SELECT set_config($1, $2, true), set_config($3, $4, true)', [
-      'app.principal_id', args.principal_uid, 'app.chart_context', args.chart_id,
-    ])
+  return withInquiryStoreContext(args.principal_uid, args.chart_id, async (client) => {
     const result = await client.query<ManagedPrashnaJobRow>(
       `SELECT * FROM create_planner_managed_prashna_job($1,$2,$3,$4,$5,$6::jsonb)`,
       [args.job_id, args.principal_uid, args.principal_key_id, args.principal_auth_kind,
@@ -76,7 +60,7 @@ export async function createManagedPrashnaJob(args: {
     )
     if (!result.rows[0]) throw new Error('MANAGED_JOB_CREATION_FAILED')
     return result.rows[0]
-  }, { principalId: args.principal_uid })
+  })
 }
 
 export async function getManagedPrashnaJob(args: {

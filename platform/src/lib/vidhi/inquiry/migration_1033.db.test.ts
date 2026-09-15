@@ -2,8 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { Pool, type PoolClient } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { configService } from '../../config'
-import { getServeReadPool } from '../../db/roles'
+import { __resetInquiryStorePoolForTests, getInquiryStorePool } from './store_pool'
 import {
   commitInquiryObservation,
   createInquiryLifecycle,
@@ -176,7 +175,7 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
 
   afterAll(async () => {
     if (!pool) return
-    if (servePool) await servePool.end()
+    if (servePool) await __resetInquiryStorePoolForTests()
     if (!downApplied) {
       await pool.query('DROP TABLE IF EXISTS planner_inquiry_action_reservations').catch(() => undefined)
       await pool.query('DROP FUNCTION IF EXISTS planner_inquiry_action_reservation_guard()').catch(() => undefined)
@@ -431,9 +430,8 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     const serveUrl = new URL(databaseUrl!)
     serveUrl.username = 'purna_w5_web'
     serveUrl.password = 'purna_w5_web_test_only'
-    process.env.SERVE_DATABASE_URL = serveUrl.toString()
-    configService.setFlag('PARIPRASHNA_ROLE_SEPARATION', true)
-    servePool = await getServeReadPool()
+    process.env.INQUIRY_STORE_DATABASE_URL = serveUrl.toString()
+    servePool = await getInquiryStorePool()
 
     const contract = lifecycleContract()
     const created = await createInquiryLifecycle({

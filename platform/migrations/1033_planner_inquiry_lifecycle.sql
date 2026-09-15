@@ -182,12 +182,12 @@ CREATE OR REPLACE FUNCTION purge_expired_planner_inquiries_global()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, pg_temp
+SET search_path = pg_catalog, pg_temp
 AS $$
 DECLARE
   deleted_count integer;
 BEGIN
-  DELETE FROM planner_inquiry_lifecycles WHERE retention_expires_at <= now();
+  DELETE FROM public.planner_inquiry_lifecycles WHERE retention_expires_at <= now();
   GET DIAGNOSTICS deleted_count = ROW_COUNT;
   RETURN deleted_count;
 END;

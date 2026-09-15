@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const sql = readFileSync(resolve(__dirname, '../../../../migrations/1033_planner_inquiry_lifecycle.sql'), 'utf8')
+const storePoolSource = readFileSync(resolve(__dirname, 'store_pool.ts'), 'utf8')
 
 describe('migration 1033 planner inquiry lifecycle', () => {
   it('binds durable state to existing principal and chart authorities with bounded receipt retention', () => {
@@ -51,7 +52,24 @@ describe('migration 1033 planner inquiry lifecycle', () => {
     expect(sql).toContain('recent_count >= 32')
     expect(sql).toContain('active_count >= 8')
     expect(sql).toContain('purge_expired_planner_inquiries_global()')
+    const purgeFunction = sql.match(
+      /CREATE OR REPLACE FUNCTION purge_expired_planner_inquiries_global\(\)[\s\S]*?\$\$;/,
+    )?.[0]
+    expect(purgeFunction).toContain('SET search_path = pg_catalog, pg_temp')
+    expect(purgeFunction).toContain('DELETE FROM public.planner_inquiry_lifecycles')
+    expect(purgeFunction).not.toContain('SET search_path = public')
     expect(sql).toContain('DROP FUNCTION IF EXISTS create_planner_inquiry_lifecycle(uuid, text, uuid')
     expect(sql).toContain('DROP FUNCTION IF EXISTS planner_inquiry_immutable_guard()')
+  })
+
+  it('uses a dedicated fail-closed role pool and pins both RLS contexts', () => {
+    expect(storePoolSource).toContain('INQUIRY_STORE_DATABASE_URL')
+    expect(storePoolSource).toContain('DB_INQUIRY_USER')
+    expect(storePoolSource).toContain('DB_INQUIRY_PASSWORD')
+    expect(storePoolSource).toContain('refusing to use the broad application pool')
+    expect(storePoolSource).not.toContain('process.env.DB_USER')
+    expect(storePoolSource).not.toContain('process.env.DB_PASSWORD')
+    expect(storePoolSource).toContain("[PRINCIPAL_ID_GUC, principalUid]")
+    expect(storePoolSource).toContain("[CHART_CONTEXT_GUC, pinnedChart]")
   })
 })

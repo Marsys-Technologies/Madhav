@@ -605,16 +605,17 @@ jobs:
             --no-traffic
             --min-instances=1
             --timeout=360s
+            --remove-env-vars=WATCHDOG_SECRET
+          # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
+          # its secret is provisioned before merge and never falls back to DB_USER.
+          # The signing ring is likewise dedicated and mounted only in web.
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
-            # Campaign definitions, labels, and non-server receipts use this
-            # distinct Cloud-SQL principal.  Its absent secret fails those
-            # writes closed; neither the migrator nor legacy-owner credential
-            # is ever present in the serving revision.
+            DB_INQUIRY_USER=amjis_inquiry_serve
             NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
             # Server-reconstructed evidence (probe_accepted, integrity_verified,
             # asset_frozen, stage_transition_accepted, foundation_lane_accepted)
@@ -642,8 +643,6 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
-            # Dedicated inquiry-lifecycle signing ring. Key material is mounted
-            # from Secret Manager below; only the non-secret KID is configured here.
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
@@ -653,6 +652,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
+            DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:1
             NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
             NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
@@ -662,6 +662,7 @@ jobs:
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             SUPER_ADMIN_EMAIL=SUPER_ADMIN_EMAIL:1
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
+            WATCHDOG_SECRET=watchdog-secret:1
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1
@@ -957,6 +958,7 @@ jobs:
             --memory=512Mi
             --timeout=360s
             --no-cpu-throttling
+            --remove-secrets=MCP_CANARY_KEY
             --no-traffic
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
@@ -1037,14 +1039,13 @@ jobs:
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
-            MCP_CANARY_KEY=mcp-canary-key:latest
 
-      # NOTE on the runner-side fetch below (distinct from the container-side mount
-      # above): server.ts never reads MCP_CANARY_KEY as an env var — Bearer keys are
+      # NOTE on the runner-side fetch below: server.ts never reads MCP_CANARY_KEY
+      # as a container env var — Bearer keys are
       # validated by call-through to amjis-web's /api/mcp/keys/validate (auth.ts), not
-      # against a local secret. The mount above is included for parity/consistency
-      # with the deploy-web secrets block only. What the smoke probes below actually
-      # need is the PLAINTEXT key value inside the GitHub Actions runner process, to
+      # against a local secret. The runtime mount is explicitly removed above. What
+      # the smoke probes below actually need is the PLAINTEXT key value inside the
+      # GitHub Actions runner process, to
       # send as a real Authorization: Bearer header against the candidate revision —
       # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to itself hold
       # secretmanager.secretAccessor on mcp-canary-key, which, as of this PR, it does
@@ -1079,6 +1080,54 @@ jobs:
           MCP_CANARY_KEY: ${{ steps.canary_key.outputs.key }}
         run: |
           bash scripts/operator/mcp_end_to_end_smoke.sh
+
+      # Pūrṇa Anveṣaṇa: this MCP revision registers tools whose durable job and
+      # raw-lifecycle stores are served by the matching amjis-web revision. The
+      # two images still build in parallel, but MCP traffic must not move first.
+      # A revision label alone is insufficient because --no-traffic makes a new
+      # revision ready before it is live; require the 100%-traffic web revision
+      # to carry this exact source SHA, then prove both dependent routes exist
+      # and preserve their unauthenticated fail-closed boundary.
+      - name: Wait for matching web revision and inquiry routes
+        env:
+          WEB_SERVICE_URL: https://amjis-web-938361928218.asia-south1.run.app
+        run: |
+          ready=false
+          for attempt in $(seq 1 80); do
+            service_json=$(gcloud run services describe amjis-web \
+              --region="${GCP_REGION}" --format=json 2>"$RUNNER_TEMP/web-service-readiness.err" || true)
+            traffic_revision=$(jq -r \
+              '[.status.traffic[]? | select((.percent // 0) == 100) | .revisionName][0] // empty' \
+              <<<"$service_json" 2>/dev/null || true)
+            traffic_sha=""
+            if [ -n "$traffic_revision" ]; then
+              traffic_sha=$(gcloud run revisions describe "$traffic_revision" \
+                --region="${GCP_REGION}" --format="value(metadata.labels['commit-sha'])" \
+                2>"$RUNNER_TEMP/web-revision-readiness.err" || true)
+            fi
+            if [ "$traffic_sha" = "$DEPLOY_SHA" ]; then
+              inquiry_status=$(curl --silent --show-error --output "$RUNNER_TEMP/inquiry-readiness.json" \
+                --write-out '%{http_code}' --max-time 15 --request POST \
+                --header 'Content-Type: application/json' --data '{}' \
+                "${WEB_SERVICE_URL}/api/mcp/inquiry" || true)
+              jobs_status=$(curl --silent --show-error --output "$RUNNER_TEMP/prashna-jobs-readiness.json" \
+                --write-out '%{http_code}' --max-time 15 --request POST \
+                --header 'Content-Type: application/json' --data '{}' \
+                "${WEB_SERVICE_URL}/api/mcp/prashna_jobs" || true)
+              if [ "$inquiry_status" = 401 ] && [ "$jobs_status" = 401 ] \
+                && jq -e '.ok == false and .error == "Unauthorized"' "$RUNNER_TEMP/inquiry-readiness.json" >/dev/null \
+                && jq -e '.ok == false and .error == "Unauthorized"' "$RUNNER_TEMP/prashna-jobs-readiness.json" >/dev/null; then
+                ready=true
+                break
+              fi
+            fi
+            echo "Web dependency not ready for ${DEPLOY_SHA} (attempt ${attempt}/80); MCP remains no-traffic."
+            sleep 15
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Matching web revision and inquiry routes were not ready; refusing MCP traffic promotion."
+            exit 1
+          fi
 
       - name: Promote traffic to latest revision
         if: success()

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.18.0
-status: SOURCE_LOCAL_CANDIDATE
+version: 0.19.0
+status: LIVE_WRAPUP_SOURCE_REPAIR
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0069
-last_updated: 2026-09-15T21:52:00+05:30
+last_event: PA-E0077
+last_updated: 2026-09-16T00:55:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,6 +19,19 @@ stream named above are the evidence authority. It is separate from the existing
 layer state, queue or authority.
 
 ## Current position
+
+- Live wrap-up: aggregate PR #2606 at initial head `466179c6d` passed protected CI, then independent
+  review correctly refuted release readiness with one deployment-order and five security findings.
+  The source repair uses an exact-web-revision barrier before MCP promotion, a dedicated fail-closed
+  inquiry database pool, hardened definer search path, removal of the MCP canary runtime mount, and
+  Secret Manager-backed watchdog deployment. Disposable PostgreSQL 15 acceptance passes 10/10 for
+  each of migrations 1033 and 1038; the refreshed source gate passes TypeScript, 115 inquiry tests
+  and 52 MCP tests. A repair commit, exact-head CI and independent re-review remain mandatory.
+- Shared-operation gate: Data Plane still holds the conflicting source-only lease observed at open.
+  No production/shared mutation has occurred. The database login, two new secrets, secret-specific
+  runtime IAM, project-wide IAM removal, migration, merge and deployment stay serialized behind a
+  fresh operation-specific exclusive lease and the preflight in
+  `LIVE_SECURITY_REMEDIATION_PLAN_v1.json`.
 
 - Wave: Recovery Wave 7 has reached a source/local candidate. W6's negative verdict and terminal
   snapshot remain immutable history; Wave 7 supersedes only their blanket quarantine of ordinary

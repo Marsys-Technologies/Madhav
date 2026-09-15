@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg'
-import { withChartContext } from '@/lib/db/roles'
 import type { InquiryContract } from './types'
 import type { InquiryPaginationReceipt } from './pagination'
+import { withInquiryStoreContext } from './store_pool'
 
 export interface InquiryLifecycleRow {
   inquiry_id: string
@@ -44,14 +44,7 @@ export async function createInquiryLifecycle(args: {
   jti_hash: string
   expires_at: string
 }): Promise<InquiryLifecycleRow> {
-  return withChartContext(args.contract.chart_id, async (client) => {
-    // The lifecycle tables enforce principal/chart RLS even when the broader
-    // staged role-separation flag is off. Pin both contexts for the definer
-    // purge explicitly so default deployments neither fail nor gain a
-    // caller-selectable cross-tenant deletion primitive.
-    await client.query('SELECT set_config($1, $2, true), set_config($3, $4, true)', [
-      'app.principal_id', args.principal_uid, 'app.chart_context', args.contract.chart_id,
-    ])
+  return withInquiryStoreContext(args.principal_uid, args.contract.chart_id, async (client) => {
     const result = await client.query<InquiryLifecycleRow>(
     `SELECT * FROM create_planner_inquiry_lifecycle(
        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$10::jsonb,$11,$12,$13
@@ -62,7 +55,7 @@ export async function createInquiryLifecycle(args: {
       args.jti_hash, args.expires_at],
   )
     return result.rows[0]
-  }, { principalId: args.principal_uid })
+  })
 }
 
 /**
@@ -78,7 +71,7 @@ export async function reserveInquiryAction(args: {
   plan_item_id: string
   lease_seconds?: number
 }): Promise<InquiryReservationResult> {
-  return withChartContext(args.row.chart_id, async (client) => {
+  return withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client) => {
     const lifecycle = await client.query<Pick<InquiryLifecycleRow, 'current_jti_hash' | 'status'>>(
       `SELECT current_jti_hash, status
          FROM planner_inquiry_lifecycles
@@ -150,7 +143,7 @@ export async function reserveInquiryAction(args: {
     )
     if (!recovered.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
     return { status: 'acquired', reservation_hash: args.reservation_hash, recovered: true }
-  }, { principalId: args.row.principal_uid })
+  })
 }
 
 /** Persist the at-most-once boundary before invoking the external tool. */
@@ -160,7 +153,7 @@ export async function markInquiryActionDispatched(args: {
   reservation_hash: string
   dispatch_timeout_seconds?: number
 }): Promise<void> {
-  await withChartContext(args.row.chart_id, async (client) => {
+  await withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client) => {
     const dispatchTimeoutSeconds = Math.max(1, Math.min(args.dispatch_timeout_seconds ?? 65, 300))
     const updated = await client.query(
       `UPDATE planner_inquiry_action_reservations reservation
@@ -180,7 +173,7 @@ export async function markInquiryActionDispatched(args: {
         args.row.principal_uid, dispatchTimeoutSeconds],
     )
     if (!updated.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
-  }, { principalId: args.row.principal_uid })
+  })
 }
 
 /** Close an action whose prior process crossed the dispatch boundary but lost its result. */
@@ -190,7 +183,7 @@ export async function failCloseAmbiguousInquiryAction(args: {
   plan_item_id: string
   contract: InquiryContract
 }): Promise<void> {
-  await withChartContext(args.row.chart_id, async (client) => {
+  await withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client) => {
     const reservation = await client.query<{ reservation_hash: string }>(
       `UPDATE planner_inquiry_action_reservations
           SET state='failed_closed', committed_at=now()
@@ -210,18 +203,18 @@ export async function failCloseAmbiguousInquiryAction(args: {
       [JSON.stringify(args.contract), args.row.inquiry_id, args.row.principal_uid, args.row.revision, reservationHash],
     )
     if (!updated.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
-  }, { principalId: args.row.principal_uid })
+  })
 }
 
 export async function getInquiryLifecycle(inquiryId: string, principalUid: string, chartId: string): Promise<InquiryLifecycleRow | null> {
-  return withChartContext(chartId, async (client) => {
+  return withInquiryStoreContext(principalUid, chartId, async (client) => {
     const result = await client.query<InquiryLifecycleRow>(
     `SELECT * FROM planner_inquiry_lifecycles
      WHERE inquiry_id=$1 AND principal_uid=$2 AND expires_at > now()`,
     [inquiryId, principalUid],
   )
     return result.rows[0] ?? null
-  }, { principalId: principalUid })
+  })
 }
 
 export async function commitInquiryObservation(args: {
@@ -241,7 +234,7 @@ export async function commitInquiryObservation(args: {
     payload: unknown
   }
 }): Promise<string> {
-  return withChartContext(args.row.chart_id, async (client: PoolClient) => {
+  return withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client: PoolClient) => {
     const updated = await client.query<{ inquiry_id: string }>(
       `UPDATE planner_inquiry_lifecycles
        SET contract_jsonb=$1::jsonb, status=$2, revision=revision+1,
@@ -273,7 +266,7 @@ export async function commitInquiryObservation(args: {
     )
     if (!reservation.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
     return receipt.rows[0].receipt_id
-  }, { principalId: args.row.principal_uid })
+  })
 }
 
 export async function commitInquiryFinalization(args: {
@@ -282,7 +275,7 @@ export async function commitInquiryFinalization(args: {
   contract: InquiryContract
   action?: { plan_item_id: string; terminal_state: 'failed_closed' }
 }): Promise<void> {
-  await withChartContext(args.row.chart_id, async (client) => {
+  await withInquiryStoreContext(args.row.principal_uid, args.row.chart_id, async (client) => {
     const updated = await client.query(
     `UPDATE planner_inquiry_lifecycles
      SET contract_jsonb=$1::jsonb, status=$2, revision=revision+1,
@@ -304,5 +297,5 @@ export async function commitInquiryFinalization(args: {
       )
       if (!reservation.rowCount) throw new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE')
     }
-  }, { principalId: args.row.principal_uid })
+  })
 }

@@ -12,14 +12,15 @@
     "deeper_conflict": "158_classical_texts_schema.sql requires classical_texts(text_key), while ws2_l0_texts.sql owns classical_texts(text_id) and classical_text_chunks; 081_l0fr_schema.sql also requires unnumbered text and remedy creators",
     "stop_reason": "repairing every pre-tracking generation would redefine the repository-wide canonical baseline and migration-ledger semantics, beyond the Purna release and unsafe to smuggle into the production runner"
   },
-  "preserved_evidence": [
-    "/tmp/purna-empty-r2.log",
-    "/tmp/purna-empty-r3.log",
-    "/tmp/purna-empty-r4.log",
-    "/tmp/purna-empty-r5.log",
-    "/tmp/purna-empty-r6.log",
-    "/tmp/purna-empty-r7.log"
+  "ephemeral_local_evidence": [
+    {"path":"/tmp/purna-empty-r2.log","sha256":"c5d4d20637a218d722e7c4dadd5ea68a96203d541b3f5facdd6704eedabc13f2"},
+    {"path":"/tmp/purna-empty-r3.log","sha256":"9faa7572293a4d713f1f7034e4ef92df6593f64577f37317673035f86505e177"},
+    {"path":"/tmp/purna-empty-r4.log","sha256":"2d38201c07da2a02cc713cabd81f157057d31ee4d80c8d93fc21e1333ba0a462"},
+    {"path":"/tmp/purna-empty-r5.log","sha256":"5c5920be7654be174e11fe7f0afd89eaba0527a472305744c154222558763f8a"},
+    {"path":"/tmp/purna-empty-r6.log","sha256":"4f89d8df2f18a69ac73e4a6bc7b6e94967748de66ccd360373c44cd97ac4c5c6"},
+    {"path":"/tmp/purna-empty-r7.log","sha256":"921878f0da1976df752c4baaae04389fc4516a061aa766547baec3137810ea2a"}
   ],
+  "evidence_qualification": "These redacted failure logs are ephemeral local evidence, not durable repository evidence; hashes preserve identity only. The structural conflict and bounded stop reason are reproduced in this governed artifact.",
   "required_follow_up": "separately charter a canonical-baseline rebuild with production-schema diff, explicit disposition for every pre-tracking seed entry, and a ledger representation for superseded-not-executed files",
   "prohibitions": [
     "do not edit already-applied historical migration SQL",

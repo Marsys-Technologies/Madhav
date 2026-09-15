@@ -9,6 +9,11 @@ const authorityPacket = readFileSync(resolve(
   __dirname,
   '../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_COMPLETION_AUTHORITY_PACKET_v1.json',
 ), 'utf8')
+const mcpDeployJob = deployWorkflow.split('\n  deploy-mcp:')[1]?.split('\n  deploy-pipeline-job:')[0] ?? ''
+const watchdogProvisioner = readFileSync(resolve(
+  __dirname,
+  '../../../platform/scripts/provision_watchdog_scheduler.sh',
+), 'utf8')
 
 describe('managed Prashna worker deadline hierarchy', () => {
   it('preserves the worker hierarchy in the reviewed Cloud Run runtime contract', () => {
@@ -20,6 +25,19 @@ describe('managed Prashna worker deadline hierarchy', () => {
     expect(deployWorkflow).toContain(
       'INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1',
     )
+    expect(deployWorkflow).toContain('Wait for matching web revision and inquiry routes')
+    expect(deployWorkflow).toContain('traffic_sha" = "$DEPLOY_SHA')
+    expect(deployWorkflow).toContain('/api/mcp/inquiry')
+    expect(deployWorkflow).toContain('/api/mcp/prashna_jobs')
+    expect(deployWorkflow).toContain('refusing MCP traffic promotion')
+    expect(deployWorkflow).toContain('DB_INQUIRY_USER=amjis_inquiry_serve')
+    expect(deployWorkflow).toContain('DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:1')
+    expect(deployWorkflow).toContain('--remove-env-vars=WATCHDOG_SECRET')
+    expect(deployWorkflow).toContain('WATCHDOG_SECRET=watchdog-secret:1')
+    expect(watchdogProvisioner).toContain('--update-secrets "WATCHDOG_SECRET=${SECRET_NAME}:${SECRET_VERSION}"')
+    expect(watchdogProvisioner).not.toContain('--update-env-vars "WATCHDOG_SECRET=')
+    expect(mcpDeployJob).toContain('--remove-secrets=MCP_CANARY_KEY')
+    expect(mcpDeployJob).not.toContain('MCP_CANARY_KEY=mcp-canary-key:latest')
     expect(authorityPacket).toContain('amjis-web request timeout 360 seconds')
     expect(authorityPacket).toContain('amjis-mcp request timeout 360 seconds and instance-based CPU')
   })

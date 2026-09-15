@@ -1,6 +1,6 @@
 {
   "schema_version": "madhav-purna-anvesana/source-verification-evidence/v1",
-  "recorded_at": "2026-09-16T00:19:00+05:30",
+  "recorded_at": "2026-09-16T00:45:00+05:30",
   "candidate_parent": "facccfe4b518b997357c08ff7798b703459326df",
   "platform": {
     "typescript": "PASS",
@@ -13,7 +13,7 @@
       "result": "PASS",
       "test_files_passed": 1108,
       "test_files_skipped": 74,
-      "tests_passed": 11781,
+      "tests_passed": 11782,
       "tests_skipped": 685,
       "tests_todo": 2
     },
@@ -71,9 +71,27 @@
     "migration_replay": "PASS_APPLY_AND_IDEMPOTENT_REPLAY",
     "evidence": "PRODUCTION_COMPATIBLE_MIGRATION_EVIDENCE_v1.json"
   },
+  "post_review_repairs": {
+    "reviewed_parent": "466179c6dc23ce21b904f783e982b1aeae2404ae",
+    "initial_parent_protected_ci": "PASS_BUT_SUPERSEDED_BY_REPAIR",
+    "platform_typescript": "PASS",
+    "platform_full_vitest": "PASS_1108_FILES_11782_TESTS_74_FILES_SKIPPED_685_TESTS_SKIPPED_2_TODO",
+    "platform_inquiry": "PASS_13_FILES_115_TESTS_WITH_2_DATABASE_FILES_AND_20_TESTS_SKIPPED_WITHOUT_DATABASE_ENV",
+    "migration_1033_disposable_postgresql_15": "PASS_10_TESTS",
+    "migration_1038_disposable_postgresql_15": "PASS_10_TESTS",
+    "platform_mcp_inquiry": "PASS_6_FILES_52_TESTS",
+    "workflow_yaml": "PASS",
+    "watchdog_provisioner_shell_syntax": "PASS",
+    "diff_check": "PASS",
+    "secret_scan": "PRIMARY_SCAN_PASS_NO_NEW_LITERAL_CREDENTIALS_FULL_HISTORY_GITLEAKS_QUALIFIED_RED_276_INHERITED_FINDINGS",
+    "security_plan": "LIVE_SECURITY_REMEDIATION_PLAN_v1.json",
+    "exact_repair_head_ci_and_independent_review": "PENDING"
+  },
   "qualifications": [
     "These are local and disposable source gates, not protected CI, merge, deployment or production acceptance.",
     "The unrestricted platform-mcp suite is not green and is not represented as green.",
-    "Exact-head protected checks and independent review remain mandatory after the aggregate commit."
+    "The refreshed primary secret scan found no new literal credentials; the optional full-history gitleaks pass remains red on 276 inherited historical findings and is not represented as green.",
+    "The first aggregate commit passed protected CI but was refuted by independent review and is superseded by these repairs.",
+    "Exact repaired-head protected checks and independent review remain mandatory after the repair commit."
   ]
 }
