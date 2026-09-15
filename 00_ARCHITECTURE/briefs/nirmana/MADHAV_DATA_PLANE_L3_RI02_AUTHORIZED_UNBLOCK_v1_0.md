@@ -116,3 +116,25 @@ candidate.
 - **Reversibility and non-claims:** removing the new successor restores the old
   metadata view without changing source behavior or history. It grants no
   physical-data, deployment, freeze, consumer-value or empirical status.
+
+### RI02-R-002 — fail closed on inherited secret reachability
+
+- **Question:** the current build job runs as the web runtime identity, and live
+  project IAM grants broad Secret Manager access to serving/runtime identities.
+  A new Data Plane secret in the same project would therefore be reachable even
+  without an explicit resource grant.
+- **Decision:** Lane S must treat this topology as a failed cutover precondition.
+  The design must first preserve each runtime's existing secret dependencies by
+  exact resource grants, verify a canary and rollback, then remove inherited
+  project-wide secret access from every runtime that must not reach Data Plane
+  credentials. The deployment-only migrator remains CI-only and is never mounted
+  in Cloud Run. The builder uses an independently isolated runtime identity;
+  reuse an existing identity only if its effective privileges satisfy the exact
+  matrix, otherwise specify the smallest dedicated identity.
+- **Evidence required:** effective-access negatives for web, MCP, sidecar and all
+  unrelated runtimes; positive access only for the mapped job/secret pair; exact
+  old/new IAM and secret-binding snapshots; ordinary-serving canary; reversible
+  rollback. Removing broad access is not proof until fresh credentials and live
+  bindings are independently tested.
+- **Scope:** source/design/disposable proof now; no IAM, secret, role, deployment
+  or database mutation under the current RI-02 source-design fence.
