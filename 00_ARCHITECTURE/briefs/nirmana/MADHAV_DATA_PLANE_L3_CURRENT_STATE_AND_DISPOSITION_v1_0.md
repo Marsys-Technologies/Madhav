@@ -496,3 +496,12 @@ versioned successor binds the immutable source and this acceptance artifact.
 No physical data, database, deployment, consumer-value, L4/L5 or empirical
 performance claim follows from this correction. The two Muhūrta failures remain
 a separate cross-layer shared-primitive authority gate.
+
+Successor `efa2dc894d6fe0b4c76e985a1823cc1e03bd2382` now binds the immutable
+source/review surface and admits L3 generation
+`l3:87cc8c9baf89:002a118b218e`. The exact delta is only `ka_kshetra`; the
+complete Yojaka predecessor is archived, protected retired `ka_gochara_sweep`
+remains in the definition, all non-L3 pins and definition bindings are unchanged, the offline pin checker
+passes, and the complete generator suite passes 29/29. This closes only the
+Kṣetra provenance gate. The two Muhūrta failures and the mandatory exact-tip
+release gate remain open, and no later delivery-state claim changes.
