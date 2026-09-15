@@ -177,8 +177,9 @@ def dhara_compute_null(
 
         # ── vectorized circular shift of E — zero evaluator calls ─────────────
         # E_shifted[k] ≈ E_fine at source time (t_grid[k] − delta) mod H.
-        # t_grid[k] = k + 0.5, so source midpoint index = (k + 0.5 − delta) mod H.
-        src_idx = (t_grid - delta) % H   # fractional index in [0, H) = [0, n)
+        # E_fine[j] is sampled at t=j+0.5, so convert the shifted source time
+        # back to that midpoint-relative array coordinate before interpolating.
+        src_idx = (t_grid - delta - 0.5) % H
         i_low = np.floor(src_idx).astype(np.intp) % n
         i_high = (i_low + 1) % n
         frac = src_idx - np.floor(src_idx)

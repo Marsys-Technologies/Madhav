@@ -88,6 +88,35 @@ class TestShiftGrid:
 
 
 class TestResultContract:
+    def test_integer_day_shift_is_an_exact_midpoint_permutation(self):
+        evaluator = _make_evaluator(horizon_days=60.0)
+        evaluator.ln_lambda.side_effect = (
+            lambda t: 0.0 if int(math.floor(t)) % 2 == 0 else math.log(100.0)
+        )
+
+        result = _run(evaluator, replicates=2)
+
+        # A 30-day integer shift only rotates the 60 midpoint samples.  The
+        # alternating daily rates therefore contain exactly fifteen 1s and
+        # fifteen 100s in every 30-day window: 15 + 1,500 = 1,515.
+        assert result.max_stats[30] == pytest.approx([1515.0], abs=1e-12)
+
+    def test_half_day_shift_interpolates_adjacent_midpoint_log_rates(self):
+        evaluator = _make_evaluator(horizon_days=4.0)
+        evaluator.ln_lambda.side_effect = (
+            lambda t: 0.0 if int(math.floor(t)) % 2 == 0 else math.log(100.0)
+        )
+
+        result = _run(evaluator, replicates=8)
+
+        # Half-day shifts interpolate log(1) and log(100), producing rate 10
+        # at all four midpoints and total hazard 40. Integer-day shifts are
+        # exact rotations with total 1 + 100 + 1 + 100 = 202.
+        assert result.max_stats[30] == pytest.approx(
+            [40.0, 202.0, 40.0, 202.0, 40.0, 202.0, 40.0],
+            abs=1e-12,
+        )
+
     def test_returns_complete_null_result(self):
         result = _run(_make_evaluator(), replicates=4)
 
