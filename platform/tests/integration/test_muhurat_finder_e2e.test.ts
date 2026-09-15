@@ -65,8 +65,8 @@ interface MuhuratWindow {
   end_utc: string | null
   star_rating: number
   score: number
-  // breakdown uses verbose keys: tithi_contrib, nakshatra_contrib, etc.
-  breakdown: Record<string, number | string>
+  // Compact weighted-contribution map consumed directly by MuhuratResultsList.
+  breakdown: Record<string, number>
 }
 
 interface MuhuratResponse {
@@ -262,11 +262,11 @@ describe('Muhurat Finder E2E — live sidecar (AC.4C6S4.1)', () => {
 
     for (const w of data.windows) {
       expect(w.breakdown, `Window on ${w.start_utc} has empty breakdown`).toBeDefined()
-      // Breakdown uses short keys (tithi, nakshatra, vara, yoga, karana …) since Phase 4C enrichment
-      const contribKeys = Object.keys(w.breakdown).filter((k) => typeof w.breakdown[k] === 'number')
-      expect(contribKeys.length, `Window on ${w.start_utc} breakdown has no contribution factors`).toBeGreaterThan(0)
+      const contribKeys = Object.keys(w.breakdown)
+      expect(new Set(contribKeys)).toEqual(new Set(['tithi', 'nakshatra', 'vara', 'yoga', 'planet']))
       // At least one contribution must be non-zero (any day has some factor)
-      const numericValues = contribKeys.map((k) => w.breakdown[k] as number)
+      const numericValues = contribKeys.map((k) => w.breakdown[k]!)
+      expect(numericValues.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)).toBe(true)
       const hasNonZero = numericValues.some((v) => v !== 0)
       expect(hasNonZero, `Window on ${w.start_utc} has all-zero contributions`).toBe(true)
     }
