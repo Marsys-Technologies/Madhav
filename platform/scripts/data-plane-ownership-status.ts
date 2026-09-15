@@ -16,6 +16,7 @@ const L1_HISTORY = [
   'l1_data_plane_row_snapshots','l1_data_plane_fact_snapshots','l1_data_plane_dasha_snapshots',
   'l1_data_plane_configuration_snapshots','l1_data_plane_function_attestations','l1_data_plane_policy_attestations',
   'l1_data_plane_view_attestations','l1_data_plane_trigger_attestations',
+  'l1_data_plane_sequence_attestations',
   'l1_data_plane_generation_heads','l1_data_plane_current_rows','l1_data_plane_current_dashas',
   'l1_data_plane_current_facts','l1_data_plane_current_configurations',
 ] as const
@@ -25,6 +26,7 @@ const L2_HISTORY = [
   'l2_data_plane_input_bind_receipts','l2_data_plane_row_snapshots','l2_data_plane_generation_heads',
   'l2_data_plane_asset_outputs','l2_data_plane_function_attestations','l2_data_plane_policy_attestations',
   'l2_data_plane_view_attestations','l2_data_plane_trigger_attestations',
+  'l2_data_plane_sequence_attestations','l2_data_plane_manifest_attestations',
   'l2_data_plane_current_rows',
 ] as const
 
@@ -154,6 +156,71 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
       `, [[...tables], owner])
       if (sequences.rows[0]?.bad) throw new Error(`${owner} protected sequence ownership drift detected.`)
     }
+
+    const exactRelations = await pool.query<{ unsafe: boolean }>(`
+      WITH expected AS (
+        SELECT name,'r'::"char" relation_kind,'data_plane_l1_owner' owner_name
+        FROM unnest($1::text[]) name
+        UNION ALL
+        SELECT name,CASE WHEN name=ANY($2::text[]) THEN 'v'::"char" ELSE 'r'::"char" END,
+               'data_plane_l1_owner' FROM unnest($3::text[]) name
+        UNION ALL
+        SELECT name,'r'::"char",'data_plane_l2_owner' FROM unnest($4::text[]) name
+        UNION ALL
+        SELECT name,CASE WHEN name=ANY($5::text[]) THEN 'v'::"char" ELSE 'r'::"char" END,
+               'data_plane_l2_owner' FROM unnest($6::text[]) name
+      ), actual AS (
+        SELECT c.relname name,c.relkind relation_kind,pg_get_userbyid(c.relowner) owner_name
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m') AND (
+          c.relname=ANY($7::text[]) OR starts_with(c.relname,'l1_data_plane_')
+          OR starts_with(c.relname,'l2_data_plane_') OR c.relname='data_plane_l2_producer_generations'
+        )
+      )
+      SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e
+        USING(name,relation_kind,owner_name)
+        WHERE a.name IS NULL OR e.name IS NULL) AS unsafe
+    `, [
+      [...L1_ACTIVE_TABLES],
+      ['l1_data_plane_current_rows','l1_data_plane_current_dashas','l1_data_plane_current_facts','l1_data_plane_current_configurations'],
+      [...L1_HISTORY],
+      [...L2_ACTIVE_TABLES],
+      ['l2_data_plane_current_rows'],
+      [...L2_HISTORY],
+      [...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES],
+    ])
+    if (exactRelations.rows[0]?.unsafe) throw new Error('Protected relation count, kind, or owner drift detected.')
+
+    const exactSequences = await pool.query<{ unsafe: boolean }>(`
+      WITH expected AS (
+        SELECT * FROM public.l1_data_plane_sequence_attestations
+        UNION ALL SELECT * FROM public.l2_data_plane_sequence_attestations
+      ), actual AS (
+        SELECT seq.relname sequence_name,tab.relname table_name,col.attname column_name,
+               dep.deptype dependency_type,pg_get_userbyid(seq.relowner) owner_name
+        FROM pg_class tab JOIN pg_namespace ns ON ns.oid=tab.relnamespace
+        JOIN pg_attribute col ON col.attrelid=tab.oid AND col.attnum>0
+        JOIN pg_depend dep ON dep.refobjid=tab.oid AND dep.refobjsubid=col.attnum
+          AND dep.refclassid='pg_class'::regclass AND dep.classid='pg_class'::regclass
+          AND dep.deptype IN ('a','i')
+        JOIN pg_class seq ON seq.oid=dep.objid AND seq.relkind='S'
+        WHERE ns.nspname='public' AND tab.relname=ANY($1::text[])
+      )
+      SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e
+        USING(sequence_name,table_name,column_name,dependency_type,owner_name)
+        WHERE a.sequence_name IS NULL OR e.sequence_name IS NULL) AS unsafe
+    `, [[...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
+    if (exactSequences.rows[0]?.unsafe) throw new Error('Protected sequence count, kind, owner, or dependency drift detected.')
+
+    const manifest = await pool.query<{ unsafe: boolean }>(`
+      SELECT count(*)<>1 OR bool_or(manifest_name<>'l2_data_plane_asset_outputs')
+        OR bool_or(definition_digest<>encode(digest(COALESCE((
+          SELECT string_agg(asset_id||chr(31)||source_table,chr(30) ORDER BY asset_id,source_table)
+          FROM public.l2_data_plane_asset_outputs
+        ),''),'sha256'),'hex')) AS unsafe
+      FROM public.l2_data_plane_manifest_attestations
+    `)
+    if (manifest.rows[0]?.unsafe) throw new Error('L2 asset-output manifest digest drift detected.')
 
     const sequenceAcl = await pool.query<{ unsafe: boolean }>(`
       WITH protected AS (

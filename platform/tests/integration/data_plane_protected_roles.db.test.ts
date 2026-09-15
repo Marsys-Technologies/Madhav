@@ -310,6 +310,32 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
         ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM data_plane_builder;
         RESET ROLE`)
     }
+
+    try {
+      await admin.query('CREATE TABLE public.l1_data_plane_rogue(object_id text)')
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/relation count, kind, or owner drift/)
+    } finally {
+      await admin.query('DROP TABLE IF EXISTS public.l1_data_plane_rogue')
+    }
+
+    try {
+      await admin.query(`CREATE SEQUENCE public.dp_rogue_owned_sequence;
+        ALTER SEQUENCE public.dp_rogue_owned_sequence OWNER TO data_plane_l1_owner;
+        ALTER SEQUENCE public.dp_rogue_owned_sequence OWNED BY public.chart_facts.fact_id`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/sequence count, kind, owner, or dependency drift/)
+    } finally {
+      await admin.query('DROP SEQUENCE IF EXISTS public.dp_rogue_owned_sequence')
+    }
+
+    try {
+      await admin.query(`INSERT INTO public.l2_data_plane_manifest_attestations(manifest_name,definition_digest)
+        VALUES('rogue-manifest',repeat('0',64))`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/asset-output manifest digest drift/)
+    } finally {
+      await admin.query(`ALTER TABLE public.l2_data_plane_manifest_attestations DISABLE TRIGGER USER;
+        DELETE FROM public.l2_data_plane_manifest_attestations WHERE manifest_name='rogue-manifest';
+        ALTER TABLE public.l2_data_plane_manifest_attestations ENABLE TRIGGER USER`)
+    }
   })
 
   it('rejects mismatched context atomically', async () => {

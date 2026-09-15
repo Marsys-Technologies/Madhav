@@ -2044,6 +2044,31 @@ CREATE TRIGGER l1_data_plane_trigger_attestations_immutable
 BEFORE UPDATE OR DELETE ON public.l1_data_plane_trigger_attestations
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
 
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_sequence_attestations (
+  sequence_name text PRIMARY KEY,
+  table_name text NOT NULL,
+  column_name text NOT NULL,
+  dependency_type "char" NOT NULL,
+  owner_name text NOT NULL
+);
+INSERT INTO public.l1_data_plane_sequence_attestations
+SELECT seq.relname,tab.relname,col.attname,dep.deptype,pg_get_userbyid(seq.relowner)
+FROM pg_class tab JOIN pg_namespace ns ON ns.oid=tab.relnamespace
+JOIN pg_attribute col ON col.attrelid=tab.oid AND col.attnum>0
+JOIN pg_depend dep ON dep.refobjid=tab.oid AND dep.refobjsubid=col.attnum
+  AND dep.refclassid='pg_class'::regclass AND dep.classid='pg_class'::regclass
+  AND dep.deptype IN ('a','i')
+JOIN pg_class seq ON seq.oid=dep.objid AND seq.relkind='S'
+WHERE ns.nspname='public' AND tab.relname IN (
+  'chart_facts','chart_dashas','chart_divisionals','ga_condition_composite',
+  'ga_yoga_firings','chart_vichara','ga_transit_anchors','l1_tajik_varsha_year_lords',
+  'ga_medical','ga_vastu_planet_direction_map','ga_prashna_lagna','ga_prashna_judgment'
+) ON CONFLICT (sequence_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l1_data_plane_sequence_attestations_immutable ON public.l1_data_plane_sequence_attestations;
+CREATE TRIGGER l1_data_plane_sequence_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_sequence_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l1_owner.
 DO $l1_role_preflight$
@@ -2077,6 +2102,7 @@ REVOKE ALL ON TABLE
   public.l1_data_plane_policy_attestations,
   public.l1_data_plane_view_attestations,
   public.l1_data_plane_trigger_attestations,
+  public.l1_data_plane_sequence_attestations,
   public.l1_data_plane_generation_heads,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
@@ -2098,6 +2124,7 @@ GRANT SELECT ON TABLE
   public.l1_data_plane_policy_attestations,
   public.l1_data_plane_view_attestations,
   public.l1_data_plane_trigger_attestations,
+  public.l1_data_plane_sequence_attestations,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
   public.l1_data_plane_current_facts,

@@ -1845,6 +1845,51 @@ CREATE TRIGGER l2_data_plane_trigger_attestations_immutable
 BEFORE UPDATE OR DELETE ON public.l2_data_plane_trigger_attestations
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_sequence_attestations (
+  sequence_name text PRIMARY KEY,
+  table_name text NOT NULL,
+  column_name text NOT NULL,
+  dependency_type "char" NOT NULL,
+  owner_name text NOT NULL
+);
+INSERT INTO public.l2_data_plane_sequence_attestations
+SELECT seq.relname,tab.relname,col.attname,dep.deptype,pg_get_userbyid(seq.relowner)
+FROM pg_class tab JOIN pg_namespace ns ON ns.oid=tab.relnamespace
+JOIN pg_attribute col ON col.attrelid=tab.oid AND col.attnum>0
+JOIN pg_depend dep ON dep.refobjid=tab.oid AND dep.refobjsubid=col.attnum
+  AND dep.refclassid='pg_class'::regclass AND dep.classid='pg_class'::regclass
+  AND dep.deptype IN ('a','i')
+JOIN pg_class seq ON seq.oid=dep.objid AND seq.relkind='S'
+WHERE ns.nspname='public' AND tab.relname IN (
+  'bodha_msr_signals','bodha_cgm_nodes','bodha_cgm_edges','bodha_contradictions',
+  'bodha_cgm_paths','bodha_cgm_motifs','bodha_cgm_sub_graphs','bodha_cgm_chart_topology_summary',
+  'bodha_mechanisms','bodha_cdlm_cells','bodha_convergence','bodha_triangulation',
+  'bodha_cdlm_chart_summary','bodha_cdlm_domain_rollups','bodha_cdlm_pattern_clusters',
+  'bodha_pratijna','bodha_rm_resonances','bodha_rm_remedy_prescriptions',
+  'bodha_rm_dasha_windowed_prescriptions','bodha_rm_chart_summary','bodha_rm_dosha_remedy_bundles',
+  'bodha_rm_pattern_remedies','bodha_signal_embeddings','bodha_discoveries','bodha_anomalies',
+  'bodha_question_lenses','bodha_chart_gestalt','synthesis_quality_scorecard','bodha_grounding_matches'
+) ON CONFLICT (sequence_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l2_data_plane_sequence_attestations_immutable ON public.l2_data_plane_sequence_attestations;
+CREATE TRIGGER l2_data_plane_sequence_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_sequence_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_manifest_attestations (
+  manifest_name text PRIMARY KEY,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$')
+);
+INSERT INTO public.l2_data_plane_manifest_attestations(manifest_name,definition_digest)
+SELECT 'l2_data_plane_asset_outputs',encode(digest(COALESCE(string_agg(
+  asset_id||chr(31)||source_table,chr(30) ORDER BY asset_id,source_table
+),''),'sha256'),'hex')
+FROM public.l2_data_plane_asset_outputs
+ON CONFLICT (manifest_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l2_data_plane_manifest_attestations_immutable ON public.l2_data_plane_manifest_attestations;
+CREATE TRIGGER l2_data_plane_manifest_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_manifest_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l2_owner.
 DO $l2_role_preflight$
@@ -1881,6 +1926,8 @@ REVOKE ALL ON TABLE
   public.l2_data_plane_policy_attestations,
   public.l2_data_plane_view_attestations,
   public.l2_data_plane_trigger_attestations,
+  public.l2_data_plane_sequence_attestations,
+  public.l2_data_plane_manifest_attestations,
   public.l2_data_plane_current_rows
 FROM PUBLIC, role_orchestrator, data_plane_builder, data_plane_verifier,
      data_plane_migrator, amjis_app;
@@ -1900,6 +1947,8 @@ GRANT SELECT ON TABLE
   public.l2_data_plane_policy_attestations,
   public.l2_data_plane_view_attestations,
   public.l2_data_plane_trigger_attestations,
+  public.l2_data_plane_sequence_attestations,
+  public.l2_data_plane_manifest_attestations,
   public.l2_data_plane_current_rows
 TO data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app;
 

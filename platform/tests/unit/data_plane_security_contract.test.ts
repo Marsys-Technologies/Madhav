@@ -120,6 +120,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
       expect(sql).toMatch(/cannot transfer natural-key column/)
       expect(sql).toMatch(/data_plane_view_attestations/)
       expect(sql).toMatch(/data_plane_trigger_attestations/)
+      expect(sql).toMatch(/data_plane_sequence_attestations/)
       expect(sql).toMatch(/pg_get_viewdef/)
       expect(sql).toMatch(/pg_get_triggerdef/)
       expect(sql).not.toMatch(/GRANT EXECUTE[\s\S]{0,200}TO role_orchestrator/)
@@ -137,6 +138,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(l1).toMatch(/fact_category[\s\S]*owning_asset_id = v_asset/)
     expect(l2).toContain('producer_asset_id')
     expect(l2).toMatch(/l2_data_plane_msr_delete_receipt[\s\S]*asset_id text NOT NULL/)
+    expect(l2).toContain('l2_data_plane_manifest_attestations')
   })
   it('normalizes the complete pre-existing table, sequence, and schema ACL surface', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-ownership-preflight.ts'), 'utf8')
