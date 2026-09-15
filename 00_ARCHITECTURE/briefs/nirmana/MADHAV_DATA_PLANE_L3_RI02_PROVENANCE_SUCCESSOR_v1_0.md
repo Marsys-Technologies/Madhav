@@ -47,16 +47,23 @@ All admitted active successors bind to source commit `d2369b888e760e5b8d693328f0
   `ga_yoga`. Acceptance artifact: L1 producer-ready acceptance at
   `18503e9c2dbb140f5d17b4bc34a5f6d087f97c38`, content SHA-256
   `265ed113e94915ee3dcaa55c842bf3fd61f6a71320ffe33f3dbd22e87a82c267`.
-- **L2 — approved intentional:** `bo_anveshana`, `bo_arudha`, `bo_bimba`,
+- **L2 — approved intentional plus derived/import closure:** `bo_anveshana`,
+  `bo_arudha`, `bo_bimba`,
   `bo_cdlm_summary`, `bo_cgm_motifs`, `bo_cgm_paths`, `bo_chart_gestalt`,
   `bo_drishti`, `bo_grounding`, `bo_karanajala`, `bo_laksana`,
   `bo_laksana_rerank`, `bo_nakshatra_semantic`, `bo_pramana_mapa`, `bo_pratijna`,
   `bo_samskara`, `bo_samvada`, `bo_sangati`, `bo_special_lagna`, `bo_sudarshana`,
   `bo_upaya`, `bo_vargottama_dhana`, `bo_yantra_mechanism`. `bo_grounding`
   remains supporting infrastructure and stays outside the 22-asset receipt
-  denominator while remaining inside the inventory hash. Acceptance artifact:
-  L2 producer-ready acceptance as preserved at `5142109f7f219ea860f859e322646f79d875bee8`,
-  content SHA-256 `adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e`.
+  denominator while remaining inside the inventory hash. Every listed digest
+  combines the accepted L2 producer source with later imports from
+  `services/ka_dasha_kala/service.py` and `services/ka_tulana/ranker.py`; the
+  latter shared-source changes were accepted by L3 W2. Required acceptance
+  artifacts are the L2 producer-ready acceptance and L3 W2 first-frontier source,
+  both preserved at `5142109f7f219ea860f859e322646f79d875bee8`, with
+  content SHA-256 respectively
+  `adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e` and
+  `27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781`.
 - **L3 — derived/import closure only:** `ka_sangam`. This is the narrowly ruled
   RI02-R-001 consequence of the accepted shared W2 source at
   `47131772b355ae2c67b1f6fb2b90e9fa007e2202`; no other L3 identity is admitted.
@@ -122,7 +129,7 @@ canonical serialized base-map SHA-256 is
 ## 5. Verification run
 
 - `python3 -m pytest -q platform/scripts/__tests__/test_nirmana_analysis_layer_pins.py`
-  — 10 passed.
+  — 12 passed.
 - `python3 platform/scripts/generate/nirmana_analysis_layer_pins.py --check`
   — current.
 - `(cd platform/python-sidecar && python3 -m pipeline.orchestrator.provenance_inventory --check)`

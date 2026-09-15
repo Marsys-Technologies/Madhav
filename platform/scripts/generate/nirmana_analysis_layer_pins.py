@@ -58,6 +58,7 @@ DEFINITION_SCHEMA_VERSION = "nirmana-analysis-layer-definition/v1"
 ALLOWED_DELTA_CLASSIFICATIONS = frozenset(
     {
         "approved_intentional_change",
+        "approved_intentional_and_derived_import_change",
         "derived_import_change",
         "generator_defect",
         "stale_receipt",
@@ -112,6 +113,11 @@ EXPECTED_REVIEW_ARTIFACTS = {
         "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md",
         "sha256": "adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e",
         "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+    }, {
+        "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+        "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781",
+        "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
     }],
     "L3": [{
         "commit": "5142109f7f219ea860f859e322646f79d875bee8",

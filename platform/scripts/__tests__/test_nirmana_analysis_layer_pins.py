@@ -40,7 +40,8 @@ L2_CHANGED = sorted(
     if asset_id.startswith("bo_") and BASELINE.get(asset_id) != CANDIDATE.get(asset_id)
 )
 L2_CLASSIFICATIONS = {
-    asset_id: "approved_intentional_change" for asset_id in L2_CHANGED
+    asset_id: "approved_intentional_and_derived_import_change"
+    for asset_id in L2_CHANGED
 }
 
 
@@ -152,6 +153,30 @@ def test_wrong_acceptance_artifact_or_content_digest_is_rejected() -> None:
     wrong_digest["sha256"] = "0" * 64
     with pytest.raises(SystemExit, match="content digest"):
         pins_module.validate_artifact_binding(wrong_digest, "fixture review")
+
+
+@pytest.mark.parametrize("omitted_artifact_index", [0, 1])
+def test_l2_requires_both_acceptance_artifacts(
+    omitted_artifact_index: int,
+) -> None:
+    incomplete = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"])
+    incomplete.pop(omitted_artifact_index)
+
+    with pytest.raises(SystemExit, match="required acceptance artifacts"):
+        pins_module.admit_successor(
+            LEGACY_PINS,
+            layer="L2",
+            previous_writer_digests=BASELINE,
+            candidate_writer_digests=CANDIDATE,
+            source_commit="d2369b888e760e5b8d693328f00683877cbd5f28",
+            review_artifacts=incomplete,
+            authority_decision="DP-SD-018",
+            authority_commit="7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            reason="fixture",
+            classifications=L2_CLASSIFICATIONS,
+            historical_snapshot_commit="c558e60d3267ded79d65fd25f50ee926ce27b75a",
+            definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
+        )
 
 
 def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss() -> None:

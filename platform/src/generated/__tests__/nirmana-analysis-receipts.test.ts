@@ -131,6 +131,13 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
   })
 
   it('admits only the ruled L3 import-closure delta and leaves L5 untouched', () => {
+    expect(new Set(Object.values(layerPinRecord.layers.L2.admission.delta_classifications))).toEqual(
+      new Set(['approved_intentional_and_derived_import_change']),
+    )
+    expect(layerPinRecord.layers.L2.admission.review_artifacts.map(({ path }) => path)).toEqual([
+      '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md',
+      '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md',
+    ])
     expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_sangam'])
     expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
       ka_sangam: 'derived_import_change',
