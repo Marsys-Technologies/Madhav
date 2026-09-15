@@ -86,7 +86,10 @@ def project_layer1(
     k = knot_index
 
     # ── Baseline + promise (constant terms) ──────────────────────────────────
-    lam0 = baseline_rate(evaluator.lifetime_count)
+    lam0, _baseline_is_synthetic = baseline_rate(
+        evaluator.lifetime_count,
+        shape_only=evaluator.shape_only,
+    )
     p_tilde = promise_tilde(evaluator.promise.p)
     ln_base = math.log(lam0) + math.log(p_tilde)
 
