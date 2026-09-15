@@ -1,16 +1,16 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: RI02_AUTHORIZED_UNBLOCK_ACTIVE
-observed_at: 2026-09-15T11:55:00+05:30
+status: DP_SD_019_SOURCE_RELEASE_GATE_GREEN_LIVE_CUTOVER_HELD
+observed_at: 2026-09-16T03:44:00+05:30
 strategy_decision: DP-SD-017_PLUS_DP-SD-018
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-RI-02-AUTHORIZED-UNBLOCK
-implementation_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
+active_packet: L3-DP-SD-019-SOURCE-GATE-GREEN
+implementation_tip: 876fbb69671a74ee1905681fc38d8f4f3e97dba7
 w2_reviewed_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
 w0_accepted_source_tip: 00a161195
@@ -505,3 +505,50 @@ remains in the definition, all non-L3 pins and definition bindings are unchanged
 passes, and the complete generator suite passes 29/29. This closes only the
 Kṣetra provenance gate. The two Muhūrta failures and the mandatory exact-tip
 release gate remain open, and no later delivery-state claim changes.
+
+### Muhūrta compatibility and exact release-gate closure
+
+The two Muhūrta failures were stale callers of the current compact score
+breakdown, but their investigation also exposed a real product-path regression:
+the active Next.js proxy and finder UI still called `/api/compute/muhurat` after
+the sidecar route had been removed by the legacy purge. Commit
+`475f5ab5a` restores that compatibility route over the current direct
+`muhurat.finder.find_muhurat()` path, aligns tests and documentation to the
+compact numeric contract,
+and corrects native-chart calculation to the recorded birth instant and IANA
+timezone rather than sunrise. It deliberately avoids the incomplete cache path,
+which omitted planets and could alter rankings.
+
+The web boundary permits chartless searches but requires read permission before
+forwarding any supplied non-empty `chart_id`; malformed identifiers fail closed,
+and the sidecar retains its API-key dependency. Focused Python route/scoring/L3
+service proof is 79 passed, TypeScript proxy/UI proof is 34 passed, and an
+explicit local live-sidecar E2E is 12/12 passed. A 90-day local direct-engine
+exercise returned 10 windows in approximately 0.66–0.71 seconds; this is
+source-local diagnostic evidence, not a production SLO or performance claim.
+Independent full-diff review reports ACCEPT/PASS with zero HIGH/MED findings.
+
+Commit `6e74ebe66` updates the generated receipt-history test to the admitted
+Kṣetra successor while explicitly retaining the Sangam and Yojaka predecessors.
+The subsequent broad Python run exposed one final stale guard:
+`ka_gochara_sweep` remained in `KNOWN_HAS_WRITER_TRUE` even though MR-09 removed
+its registration at retirement. Commit `876fbb696` removes the retired asset from
+the active-writer set and adds the stronger two-sided invariant: it must remain
+absent from `WRITER_REGISTRY` while remaining present in L3
+`non_writer_assets`. Independent review PASSes with no HIGH/MED findings and
+confirms the 22-active-plus-one-retired denominator is unchanged.
+
+The mandatory gate sequence is green at implementation tip
+`876fbb69671a74ee1905681fc38d8f4f3e97dba7`: ESLint exits zero with 591 inherited
+warnings; TypeScript compilation exits zero; the full JavaScript suite passes
+1,087 files and 11,616 tests with 72 files/675 tests skipped and 2 todos; the
+exact broad Python command passes 9,814 tests, skips 330, retains 3 expected
+failures and 2 unexpected-pass markers, and passes 7 subtests in 854.64 seconds.
+The offline writer inventory and analysis-layer pin checks remain current.
+
+This closes the inherited source release-gate block only. It is not protected
+delivery, deployment, physical data, service health, consumer integration,
+consumer value or empirical outcome acceptance. No production role, credential,
+IAM, database, migration, build, deploy, data, L0, L4 or L5 mutation occurred.
+L3 terminal acceptance therefore remains 0/22, and live cutover still requires
+the separate exclusive authority and external prerequisites already recorded.
