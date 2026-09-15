@@ -27,6 +27,13 @@ describe('DP-SD-018 GCP credential isolation', () => {
   it('accepts only the dedicated builder on the exact secret', () => {
     expect(() => assertSecretIsolation({ bindings: [{ role: 'roles/cloudsql.client', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] }] }, { bindings: [{ role: 'roles/secretmanager.secretAccessor', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] }] }, { disabled: false }))
       .not.toThrow()
+    expect(() => assertSecretIsolation(
+      { bindings: [{ role: 'roles/cloudsql.client', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] }] },
+      { bindings: [
+        { role: 'roles/secretmanager.secretAccessor', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] },
+        { role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:rogue@example'], condition: { expression: 'true' } },
+      ] }, { disabled: false },
+    )).toThrow(/exactly/)
   })
   it('aggregates conditional project bindings and rejects inherited access', () => {
     expect(() => assertSecretIsolation({ bindings: [
@@ -76,6 +83,24 @@ describe('DP-SD-018 GCP credential isolation', () => {
     } } } })
     expect(inventory).toEqual({ serviceAccount: 'web@example.iam.gserviceaccount.com', secrets: ['alpha', 'beta'] })
     expect(() => assertSurfaceSecretGrant(inventory.serviceAccount, 'alpha', { bindings: [] })).toThrow(/explicit resource grant/)
+    expect(extractRunIdentityAndSecrets({ spec: { template: { spec: {
+      serviceAccountName: 'web@example.iam.gserviceaccount.com',
+      volumes: [{ secret: { secretName: 'volume-secret' } }],
+    } } } }).secrets).toEqual(['volume-secret'])
+    expect(() => assertSurfaceSecretGrant(inventory.serviceAccount, 'alpha', { bindings: [{
+      role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:web@example.iam.gserviceaccount.com'],
+      condition: { expression: 'true' },
+    }] })).toThrow(/explicit resource grant/)
+  })
+  it('rejects inherited builder impersonation and builder identity on a service template', () => {
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
+    const policy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }
+    expect(() => assertEffectiveIsolation([{ resource: '//cloudresourcemanager.googleapis.com/projects/example', policy: {
+      bindings: [{ role: 'roles/iam.serviceAccountTokenCreator', members: ['serviceAccount:rogue@example'], condition: { expression: 'true' } }],
+    } }], policy, [])).toThrow(/aggregate builder service-account impersonation/)
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'service', name: 'web', definition: {
+      serviceAccount: BUILDER_SERVICE_ACCOUNT,
+    } }])).toThrow(/Builder identity is used outside/)
   })
 })
 

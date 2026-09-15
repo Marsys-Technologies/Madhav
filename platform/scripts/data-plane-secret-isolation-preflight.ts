@@ -12,6 +12,13 @@ interface ServiceAccount { disabled?: boolean }
 interface CloudRunEntry { metadata?: { name?: string } }
 interface EffectivePolicy { resource?: string; policy?: IamPolicy }
 interface ResourceAncestor { type?: string; id?: string }
+type CloudRunSurface = { kind: 'service' | 'revision' | 'job'; name: string; definition: unknown }
+
+const IMPERSONATION_ROLES = [
+  'roles/iam.serviceAccountUser',
+  'roles/iam.serviceAccountTokenCreator',
+  'roles/iam.serviceAccountOpenIdTokenCreator',
+] as const
 
 export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
   const scopes = new Set<string>([`projects/${project}`])
@@ -29,6 +36,12 @@ export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
 export function extractRunIdentityAndSecrets(definition: unknown): { serviceAccount: string; secrets: string[] } {
   let serviceAccount = ''
   const secrets = new Set<string>()
+  const addSecret = (candidate: string): void => {
+    const resource = candidate.match(/(?:^|\/)secrets\/([^/:]+)(?::|\/versions\/|$)/)
+    if (resource?.[1]) { secrets.add(resource[1]); return }
+    const short = candidate.match(/^([A-Za-z0-9_-]+)(?::[^:]*)?$/)
+    if (short?.[1]) secrets.add(short[1])
+  }
   const walk = (value: unknown): void => {
     if (!value || typeof value !== 'object') return
     if (Array.isArray(value)) { value.forEach(walk); return }
@@ -42,7 +55,20 @@ export function extractRunIdentityAndSecrets(definition: unknown): { serviceAcco
         const ref = child as Record<string, unknown>
         const name = typeof ref.name === 'string' ? ref.name : typeof ref.secret === 'string' ? ref.secret : ''
         if (!name) throw new Error('Cloud Run secretKeyRef has no exact secret name.')
-        secrets.add(name)
+        addSecret(name)
+      }
+      if ((key === 'secretName' || key === 'secret') && typeof child === 'string') addSecret(child)
+      if (key === 'run.googleapis.com/secrets' && typeof child === 'string') {
+        let annotation: unknown
+        try { annotation = JSON.parse(child) }
+        catch { throw new Error('Cloud Run secrets annotation is not valid JSON.') }
+        if (!annotation || typeof annotation !== 'object' || Array.isArray(annotation)) {
+          throw new Error('Cloud Run secrets annotation is not an exact object map.')
+        }
+        for (const secret of Object.values(annotation as Record<string, unknown>)) {
+          if (typeof secret !== 'string') throw new Error('Cloud Run secrets annotation contains a non-string reference.')
+          addSecret(secret)
+        }
       }
       walk(child)
     }
@@ -55,7 +81,7 @@ export function extractRunIdentityAndSecrets(definition: unknown): { serviceAcco
 export function assertSurfaceSecretGrant(serviceAccount: string, secretName: string, policy: IamPolicy): void {
   const member = `serviceAccount:${serviceAccount}`
   const grants = (policy.bindings ?? [])
-    .filter((binding) => binding.role === 'roles/secretmanager.secretAccessor')
+    .filter((binding) => binding.role === 'roles/secretmanager.secretAccessor' && binding.condition === undefined)
     .flatMap((binding) => binding.members ?? [])
   if (!grants.includes(member)) throw new Error(`Cloud Run identity ${serviceAccount} lacks an explicit resource grant on ${secretName}.`)
 }
@@ -71,22 +97,26 @@ export function assertSecretIsolation(projectPolicy: IamPolicy, secretPolicy: Ia
   if (broadMembers.length > 0) {
     throw new Error(`Project-wide Secret Manager accessor binding remains (${broadMembers.length} member(s)); protected credential provisioning/binding is forbidden.`)
   }
-  const grants = (secretPolicy.bindings ?? [])
+  const secretAccessorBindings = (secretPolicy.bindings ?? [])
     .filter((binding) => binding.role === 'roles/secretmanager.secretAccessor')
+  const grants = secretAccessorBindings
     .flatMap((binding) => binding.members ?? [])
   const expected = `serviceAccount:${BUILDER_SERVICE_ACCOUNT}`
-  if (grants.length !== 1 || grants[0] !== expected) {
+  if (secretAccessorBindings.some((binding) => binding.condition !== undefined)
+      || grants.length !== 1 || grants[0] !== expected) {
     throw new Error(`Builder secret must grant accessor to exactly ${expected} and no other principal.`)
   }
   if (serviceAccount.disabled === true) throw new Error('Dedicated data-plane builder service account is disabled.')
-  const projectRoles = (projectPolicy.bindings ?? [])
+  const projectBindings = (projectPolicy.bindings ?? [])
     .filter((binding) => (binding.members ?? []).includes(expected))
+  const projectRoles = projectBindings
     .map((binding) => binding.role)
-  if (projectRoles.length !== 1 || projectRoles[0] !== 'roles/cloudsql.client') {
+  if (projectBindings.some((binding) => binding.condition !== undefined)
+      || projectRoles.length !== 1 || projectRoles[0] !== 'roles/cloudsql.client') {
     throw new Error('Dedicated builder must have exactly project role roles/cloudsql.client.')
   }
   if (topicPolicy) {
-    const publisher = (topicPolicy.bindings ?? []).find((binding) => binding.role === 'roles/pubsub.publisher')
+    const publisher = (topicPolicy.bindings ?? []).find((binding) => binding.role === 'roles/pubsub.publisher' && binding.condition === undefined)
     if (!(publisher?.members ?? []).includes(expected)) throw new Error('Dedicated builder lacks publisher on exact cockpit-events topic.')
   }
 }
@@ -94,7 +124,7 @@ export function assertSecretIsolation(projectPolicy: IamPolicy, secretPolicy: Ia
 export function assertEffectiveIsolation(
   effective: EffectivePolicy[],
   builderServiceAccountPolicy: IamPolicy,
-  surfaces: Array<{ kind: 'revision' | 'job'; name: string; definition: unknown }>,
+  surfaces: CloudRunSurface[],
 ): void {
   for (const hit of effective) {
     const accessors = (hit.policy?.bindings ?? [])
@@ -104,12 +134,24 @@ export function assertEffectiveIsolation(
       throw new Error(`Inherited or aggregate Secret Manager accessor binding remains on ${hit.resource ?? 'unknown resource'}.`)
     }
   }
+  const inheritedImpersonators = effective.flatMap((hit) => (hit.policy?.bindings ?? [])
+    .filter((binding) => IMPERSONATION_ROLES.includes(binding.role as typeof IMPERSONATION_ROLES[number]))
+    .flatMap((binding) => (binding.members ?? []).map((member) => ({ resource: hit.resource ?? '', member }))))
+    .filter(({ resource }) => {
+      const suffix = `/serviceAccounts/${BUILDER_SERVICE_ACCOUNT}`
+      const encodedSuffix = `/serviceAccounts/${encodeURIComponent(BUILDER_SERVICE_ACCOUNT)}`
+      return !resource.endsWith(suffix) && !resource.endsWith(encodedSuffix)
+    })
+  if (inheritedImpersonators.length > 0) {
+    throw new Error('Inherited or aggregate builder service-account impersonation grant remains.')
+  }
   const impersonators = (builderServiceAccountPolicy.bindings ?? [])
-    .filter((binding) => ['roles/iam.serviceAccountTokenCreator','roles/iam.serviceAccountOpenIdTokenCreator'].includes(binding.role)
-      || binding.role === 'roles/iam.serviceAccountUser')
+    .filter((binding) => IMPERSONATION_ROLES.includes(binding.role as typeof IMPERSONATION_ROLES[number]))
     .flatMap((binding) => (binding.members ?? []).map((member) => `${binding.role}:${member}`))
   const expectedDeployer = process.env.DATA_PLANE_DEPLOY_PRINCIPAL
-  if (!expectedDeployer || impersonators.length !== 1
+  const conditionalImpersonation = (builderServiceAccountPolicy.bindings ?? []).some((binding) =>
+    IMPERSONATION_ROLES.includes(binding.role as typeof IMPERSONATION_ROLES[number]) && binding.condition !== undefined)
+  if (!expectedDeployer || conditionalImpersonation || impersonators.length !== 1
       || impersonators[0] !== `roles/iam.serviceAccountUser:${expectedDeployer}`) {
     throw new Error('Builder service-account impersonation policy is not the exact deployment-only allowlist.')
   }
@@ -143,12 +185,18 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   const topicPolicy = gcloud<IamPolicy>(['pubsub', 'topics', 'get-iam-policy', 'cockpit-events', '--project', project])
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy)
   const ancestors = gcloud<ResourceAncestor[]>(['projects', 'get-ancestors', project])
-  const effective = iamSearchScopes(ancestors).flatMap((scope) => gcloud<EffectivePolicy[]>([
-    'asset', 'search-all-iam-policies', '--scope', scope,
-    '--query', 'policy:roles/secretmanager.secretAccessor',
-  ]))
+  const effectiveRoles = ['roles/secretmanager.secretAccessor', ...IMPERSONATION_ROLES]
+  const effective = iamSearchScopes(ancestors).flatMap((scope) => effectiveRoles.flatMap((role) =>
+    gcloud<EffectivePolicy[]>([
+      'asset', 'search-all-iam-policies', '--scope', scope, '--query', `policy:${role}`,
+    ])))
 
-  const surfaces: Array<{ kind: 'revision' | 'job'; name: string; definition: unknown }> = []
+  const surfaces: CloudRunSurface[] = []
+  for (const entry of gcloud<CloudRunEntry[]>(['run', 'services', 'list', '--project', project, '--region', region])) {
+    const name = entry?.metadata?.name
+    if (!name) throw new Error('Could not resolve a Cloud Run service name for credential inspection.')
+    surfaces.push({ kind: 'service', name, definition: gcloud<unknown>(['run', 'services', 'describe', name, '--project', project, '--region', region]) })
+  }
   for (const entry of gcloud<CloudRunEntry[]>(['run', 'revisions', 'list', '--project', project, '--region', region])) {
     const name = entry?.metadata?.name
     if (!name) throw new Error('Could not resolve a Cloud Run revision name for credential inspection.')
