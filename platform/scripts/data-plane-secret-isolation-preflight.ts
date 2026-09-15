@@ -1,7 +1,7 @@
 /** Fail-closed GCP IAM gate before any protected data-plane credential is used or bound. */
 import { execFileSync } from 'node:child_process'
 
-const project = process.env.GCP_PROJECT ?? 'madhav-astrology'
+const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
 export const BUILDER_SERVICE_ACCOUNT = `data-plane-builder-runtime@${project}.iam.gserviceaccount.com`
 export const BUILDER_SECRET = 'data-plane-builder-db-url'
 

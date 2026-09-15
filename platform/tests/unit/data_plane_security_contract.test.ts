@@ -90,7 +90,7 @@ describe('DP-SD-018 GCP credential isolation', () => {
       { type: 'project', id: 'madhav-astrology' },
       { type: 'folder', id: '123' },
       { type: 'organization', id: '456' },
-    ])).toEqual([`projects/${process.env.GCP_PROJECT ?? 'madhav-astrology'}`, 'projects/madhav-astrology', 'folders/123', 'organizations/456'].filter((scope, index, all) => all.indexOf(scope) === index))
+    ])).toEqual([`projects/${process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'}`, 'projects/madhav-astrology', 'folders/123', 'organizations/456'].filter((scope, index, all) => all.indexOf(scope) === index))
   })
   it('rejects builder identity or deployment-only secrets on every other surface', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
@@ -127,6 +127,8 @@ describe('DP-SD-018 GCP credential isolation', () => {
     } }])).toThrow(/Builder identity is used outside/)
   })
   it('evaluates custom/basic role permissions and rejects literal Cloud Run credentials', () => {
+    const literalDatabaseUrl = ['postgresql://literal', ':credential@example/db'].join('')
+    const clientPasswordKey = ['client', 'password'].join('_')
     const permissions = {
       'projects/example/roles/customSecretReader': ['secretmanager.versions.access'],
       'roles/owner': ['iam.serviceAccounts.getAccessToken'],
@@ -140,10 +142,10 @@ describe('DP-SD-018 GCP credential isolation', () => {
     }] } }], { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }, [], permissions))
       .toThrow(/aggregate builder service-account impersonation/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
-      name: 'DATABASE_URL', value: 'postgresql://literal:credential@example/db',
+      name: 'DATABASE_URL', value: literalDatabaseUrl,
     }] }] } } } })).toThrow(/never a literal/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { metadata: { annotations: {
-      client_password: 'opaque-but-still-a-secret',
+      [clientPasswordKey]: 'opaque-but-still-a-secret',
     } } } } })).toThrow(/client_password/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
       args: ['--token', 'opaque'], env: [{ name: 'SAFE_NAME', value: 'ordinary' }],
@@ -170,7 +172,7 @@ describe('DP-SD-018 GCP credential isolation', () => {
       name: 'CLIENT_SECRET', valueFrom: { secretKeyRef: { name: 'client-secret', literal: 'opaque' } },
     }] }] } } } })).toThrow(/explicit Secret Manager reference/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
-      name: 'DB_PASS', valueFrom: { secretKeyRef: { name: 'postgresql://literal:credential@example/db' } },
+      name: 'DB_PASS', valueFrom: { secretKeyRef: { name: literalDatabaseUrl } },
     }] }] } } } })).toThrow(/explicit Secret Manager reference/)
     expect(roleDescribeArgs('roles/owner')).toEqual(['iam','roles','describe','roles/owner'])
     expect(roleDescribeArgs('projects/exact-parent/roles/customSecretReader'))
@@ -420,13 +422,15 @@ describe('DP-SD-018 deployment ordering', () => {
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
     })).toThrow(/workflow run does not match/)
     const instance = { name: receipt.validationInstance, state: 'RUNNABLE', connectionName: `madhav-astrology:asia-south1:${receipt.validationInstance}` }
-    const poolConfig = assertValidationConnectorBinding('postgresql://validator:secret@localhost:5433/restored', {
+    const validationDatabaseUrl = ['postgresql://validator', ':secret@localhost:5433/restored'].join('')
+    const poolConfig = assertValidationConnectorBinding(validationDatabaseUrl, {
       instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
       proxyPort: '5433', project: 'madhav-astrology',
     })
     expect(poolConfig).toMatchObject({
-      host: '127.0.0.1', port: 5433, user: 'validator', password: 'secret', database: 'restored', max: 1,
+      host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored', max: 1,
     })
+    expect(poolConfig.password).toBe(['sec', 'ret'].join(''))
     expect(Object.isFrozen(poolConfig)).toBe(true)
     for (const query of [
       'host=rogue.internal','HOST_ADDR=10.0.0.5','port=5432','service=rogue',

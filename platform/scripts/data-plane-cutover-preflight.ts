@@ -191,7 +191,7 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
     validationInstance,sourceCommit,leaseId: lease,approvedBy: approver,
     repository,workflowRunId,environment: environmentName,
   })
-  const project = process.env.GCP_PROJECT ?? 'madhav-astrology'
+  const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'
   const backup = JSON.parse(execFileSync('gcloud', [
     'sql', 'backups', 'describe', receipt.backupId, '--instance', 'amjis-postgres',
     '--project', project, '--format=json',

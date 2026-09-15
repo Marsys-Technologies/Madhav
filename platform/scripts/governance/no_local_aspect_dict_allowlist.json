@@ -4,7 +4,7 @@
   "entries": [
     {
       "file": "platform/python-sidecar/ga_writers/ga_strength_writer.py",
-      "line": 222,
+      "line": 224,
       "justification": "Pre-existing local aspect-strength dict; B-02 stream will migrate to brahmagyan.aspects oracle."
     },
     {
