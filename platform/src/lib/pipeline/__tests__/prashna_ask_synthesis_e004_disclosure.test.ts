@@ -68,6 +68,7 @@ function baseInput(overrides: Partial<SynthesizeReadingInput> = {}): SynthesizeR
     question: 'What does my current dasha period suggest about career timing?',
     queryClass: 'predictive',
     queryIntentSummary: 'Career timing via current dasha',
+    responseFormat: 'standard',
     evidence: [],
     unresolvedTools: [],
     emptyResultTools: [],

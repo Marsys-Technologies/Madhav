@@ -604,6 +604,7 @@ jobs:
             --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
             --no-traffic
             --min-instances=1
+            --timeout=360s
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
@@ -941,7 +942,10 @@ jobs:
           # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
           # F3 posture correction: --no-allow-unauthenticated was stale; removed.
           # --no-traffic: pre-smoke staging, same pattern as deploy-web's A-S8 step.
-          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi --no-traffic
+          # Managed Prashna workers continue only after the handle response when
+          # instance-based CPU is explicit. The in-process scheduler separately
+          # caps active engine work; durable DB leases recover instance death.
+          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi --timeout=360s --no-cpu-throttling --no-traffic
           env_vars: |
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app

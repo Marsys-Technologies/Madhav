@@ -51,6 +51,9 @@ export const SUBJECT_SCOPE_PREFIXES: readonly string[] = [
 /** Chart-scoped interpretive tables whose names carry no layer prefix. */
 export const SUBJECT_SCOPE_EXTRA_TABLES: readonly string[] = [
   'conversations', // children cascade: conversation_messages, message_parts, summaries, …
+  // Ephemeral full questions/readings are interpretive subject data even though
+  // this operational delivery table has no layer prefix.
+  'planner_managed_prashna_jobs',
   'mcp_predictions',
   'convergence_scores',
   'school_analysis_runs',

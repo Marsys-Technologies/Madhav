@@ -31,9 +31,11 @@ import { GoogleAuth, type IdTokenClient } from 'google-auth-library'
 const PLATFORM_URL = (process.env['PLATFORM_URL'] ?? 'http://localhost:3000').replace(/\/$/, '')
 const MCP_INTERNAL_TOKEN = process.env['MCP_INTERNAL_TOKEN'] ?? ''
 
-// Generous timeout: the route runs synchronously up to its own maxDuration=320s
-// (a few minutes for elevated entitlements) — this bridge must not time out first.
-const ENGINE_CALL_TIMEOUT_MS = 300_000
+// Preserve the authoritative 300s elevated planner budget and the route's 320s
+// maxDuration. The bridge stops at 330s, before the web service's explicit 360s
+// request ceiling; the 450s durable lease leaves a further commit/recovery margin.
+const ENGINE_CALL_TIMEOUT_MS = 330_000
+const MAX_ENGINE_RESPONSE_BYTES = 2 * 1024 * 1024
 
 // ── Response types (mirrors platform/src/app/api/mcp/prashna_ask/route.ts) ────
 
@@ -88,6 +90,7 @@ export interface PrashnaAskPlanOutcome {
   completeness: PrashnaAskCompleteness
   judgment_flags: string[]
   results: Array<{ tool_name: string; bundle: unknown }>
+  persistence?: { status: string; job_id?: string; detail: string }
 }
 
 export interface PrashnaAskClarificationOutcome {
@@ -97,6 +100,7 @@ export interface PrashnaAskClarificationOutcome {
   question: string
   missing_scope_dims: string[]
   suggested_options: unknown[]
+  persistence?: { status: string; job_id?: string; detail: string }
 }
 
 export interface PrashnaAskErrorOutcome {
@@ -106,6 +110,9 @@ export interface PrashnaAskErrorOutcome {
     class: string
     message: string
     remediation?: string
+    /** True only for bridge-generated transport/stream failures. Application
+     * errors remain terminal unless the platform explicitly opts in. */
+    retryable?: boolean
   }
   denial?: unknown
 }
@@ -136,6 +143,9 @@ export interface CallPrashnaAskEngineInput {
   chartId: string
   question: string
   principal: { userUid: string; keyId: string }
+  /** Managed jobs always provide the persisted format. Optionality preserves
+   * compatibility for direct/internal callers predating the durable-job path. */
+  responseFormat?: 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
   /** C-1 signature's optional scope hint — forwarded verbatim to the platform
    *  route's `scope_tuple` body field. See `pipeline_planner.ts`'s
    *  `suppliedScopeTuple` param for how it's consumed (W6.1 fix-cycle). */
@@ -196,7 +206,8 @@ export function __resetPrashnaAskBridgeTokenCacheForTests(): void {
 
 function buildBridgeErrorEnvelope(
   message: string,
-  errorClass: 'internal' | 'auth' = 'internal'
+  errorClass: 'internal' | 'auth' | 'storage_contract' = 'internal',
+  retryable = true,
 ): PrashnaAskErrorOutcome {
   return {
     ok: false,
@@ -205,6 +216,7 @@ function buildBridgeErrorEnvelope(
       class: errorClass,
       message,
       remediation: 'Check platform-mcp logs for details',
+      retryable,
     },
   }
 }
@@ -249,6 +261,7 @@ export async function callPrashnaAskEngine(
       body: JSON.stringify({
         chart_id: input.chartId,
         question: input.question,
+        response_format: input.responseFormat ?? 'standard',
         ...(input.scopeTuple !== undefined ? { scope_tuple: input.scopeTuple } : {}),
       }),
       signal: AbortSignal.timeout(ENGINE_CALL_TIMEOUT_MS),
@@ -316,11 +329,21 @@ export async function callPrashnaAskEngine(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let receivedBytes = 0
 
   try {
     for (;;) {
       const { done, value } = await reader.read()
       if (done) break
+      receivedBytes += value.byteLength
+      if (receivedBytes > MAX_ENGINE_RESPONSE_BYTES) {
+        await reader.cancel('MANAGED_JOB_RESULT_TOO_LARGE').catch(() => undefined)
+        return buildBridgeErrorEnvelope(
+          'MANAGED_JOB_RESULT_TOO_LARGE: platform response exceeded the managed transport ceiling',
+          'storage_contract',
+          false,
+        )
+      }
       buffer += decoder.decode(value, { stream: true })
       let newlineIndex: number
       while ((newlineIndex = buffer.indexOf('\n')) >= 0) {

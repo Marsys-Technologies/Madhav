@@ -43,6 +43,7 @@ function baseInput(overrides: Partial<SynthesizeReadingInput> = {}): SynthesizeR
     question: 'What does my current dasha period suggest about career timing?',
     queryClass: 'predictive',
     queryIntentSummary: 'Career timing via current dasha',
+    responseFormat: 'standard',
     evidence: [
       { tool_name: 'query_dasha_periods', bundle: { results: [{ lord_graha: 'Mercury' }] } },
     ],
@@ -99,6 +100,13 @@ describe('synthesizeReading — happy path', () => {
     await synthesizeReading(baseInput())
     const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
     expect(req.systemPrompt).toMatch(/canonical ayan[aā]ṁśa is.*lahiri_chitrapaksha/i)
+  })
+
+  it('threads the requested response format into the synthesis contract', async () => {
+    await synthesizeReading(baseInput({ responseFormat: 'narrative' }))
+    const req = mockRunAdapter.mock.calls[0][0] as { systemPrompt: string }
+    expect(req.systemPrompt).toMatch(/RESPONSE FORMAT CONTRACT:/)
+    expect(req.systemPrompt).toMatch(/cohesive narrative/i)
   })
 
   it('includes the gathered evidence in the user message', async () => {

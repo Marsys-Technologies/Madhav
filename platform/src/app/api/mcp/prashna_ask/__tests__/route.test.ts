@@ -275,17 +275,12 @@ describe('POST /api/mcp/prashna_ask — auth', () => {
 /**
  * P2-B-004 / E-119 (Paripraśna Experience Assurance): the MCP door assembles a
  * full reading envelope (`reading`, `judgment_flags`, `completeness`) and
- * streams it as the `final` NDJSON event, but nothing durable is ever written
- * for it — `platform-mcp`'s `JobRegistry` is in-memory only (15-min TTL, gone
- * on process restart) and the one durable row per turn
- * (`pariprashna_safety_decisions`) is pre-dispatch classification only, with no
- * `reading`/`judgment_flags`/`completeness` column. This asserts the envelope
- * honestly discloses that gap via a `persistence` field, per the finding's own
- * "or an explicit bounded limitation" acceptance path (CLAUDE.md §N.7 item 6 —
- * an honest null beats a silent, invented completeness claim).
+ * streams it as the `final` NDJSON event. This endpoint does not own the job
+ * lease or terminal write, so it discloses the authenticated-caller handoff;
+ * the managed MCP wrapper replaces this only after its durable commit succeeds.
  */
 describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004 / E-119)', () => {
-  it('discloses persistence:none on the final reading envelope — this door writes no durable record of the turn', async () => {
+  it('discloses caller_required until the managed wrapper durably commits the result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
     const lines = await readNdjson(res)
@@ -293,10 +288,10 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 
     expect(body.event).toBe('final')
     expect(body.persistence).toBeDefined()
-    expect((body.persistence as { status: string }).status).toBe('none')
+    expect((body.persistence as { status: string }).status).toBe('caller_required')
   })
 
-  it('discloses persistence:none on the HS-2 hard-stop safety_withheld envelope too', async () => {
+  it('discloses caller_required on the HS-2 hard-stop safety_withheld envelope too', async () => {
     safetyFlagState.on = true
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
 
@@ -305,7 +300,7 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 
     expect(body.outcome).toBe('safety_withheld')
     expect(body.persistence).toBeDefined()
-    expect(body.persistence.status).toBe('none')
+    expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
   })
@@ -537,6 +532,63 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
 })
 
 describe('POST /api/mcp/prashna_ask — cost cap enforcement', () => {
+  it('stops retaining oversized evidence before building the terminal envelope', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        tool_bundle_id: 'oversized-bundle',
+        tool_name: name,
+        tool_version: '1.0',
+        invocation_params: {},
+        results: [{ payload: 'x'.repeat(1024 * 1024 + 1) }],
+        served_from_cache: false,
+        latency_ms: 1,
+        result_hash: 'sha256:oversized',
+        schema_version: '1.0',
+      }),
+    }))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'deep evidence' }))
+    const responseText = await res.text()
+    const lines = responseText.trim().split('\n').map((line) => JSON.parse(line))
+    const body = lines[lines.length - 1]
+
+    expect(Buffer.byteLength(responseText)).toBeLessThan(1800 * 1024)
+    expect(body.ok).toBe(true)
+    expect(body.results).toEqual([])
+    expect(body.completeness).toMatchObject({
+      status: 'partial',
+      cap_tripped: 'terminal_result_budget',
+      unserved_tools: ['chart_facts_query', 'get_positions'],
+    })
+    expect(body.judgment_flags).toContain('terminal_result_budget_exceeded')
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('replaces an oversized final envelope with a bounded terminal error', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockSynthesizeReading.mockResolvedValue({
+      reading: 'x'.repeat(1800 * 1024),
+      model_id: 'oversized-synthesis-test',
+      judgment_flags: [],
+    })
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'oversized synthesis' }))
+    const responseText = await res.text()
+    const lines = responseText.trim().split('\n').map((line) => JSON.parse(line))
+    const body = lines[lines.length - 1]
+
+    expect(Buffer.byteLength(responseText)).toBeLessThan(16 * 1024)
+    expect(body.event).toBe('final')
+    expect(body.ok).toBe(false)
+    expect(body.error).toMatchObject({
+      class: 'internal',
+      message: 'MANAGED_JOB_RESULT_TOO_LARGE',
+    })
+  })
+
   it('stops dispatch and reports an honest partial result when the call-count cap trips', async () => {
     mockCallPipelinePlanner.mockResolvedValue(
       planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),
@@ -652,6 +704,7 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     const call = mockSynthesizeReading.mock.calls[0][0]
     expect(call.chartId).toBe(CHART)
     expect(call.question).toBe('What is my ascendant?')
+    expect(call.responseFormat).toBe('standard')
     expect(call.evidence.map((e: { tool_name: string }) => e.tool_name)).toEqual([
       'chart_facts_query',
       'get_positions',
@@ -660,6 +713,18 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.emptyResultTools).toEqual([])
     expect(call.strippedLeakedCapabilities).toEqual([])
     expect(call.capTripped).toBeNull()
+  })
+
+  it('passes an explicitly requested response format to synthesis', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'Explain this as a connected narrative.',
+      response_format: 'narrative',
+    }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading.mock.calls[0][0].responseFormat).toBe('narrative')
   })
 
   /**

@@ -17,6 +17,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { createHash } from 'node:crypto'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
@@ -315,7 +316,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
       // Role defaults to 'guest'; super_admin role requires Bearer key with profile lookup.
       principal = {
         user_uid: oauthRecord.uid,
-        key_id: 'oauth:' + token.slice(0, 8),
+        key_id: 'oauth_sha256:' + createHash('sha256').update(token).digest('hex'),
         role: 'guest',
       } satisfies Principal
       authKind = 'oauth'
