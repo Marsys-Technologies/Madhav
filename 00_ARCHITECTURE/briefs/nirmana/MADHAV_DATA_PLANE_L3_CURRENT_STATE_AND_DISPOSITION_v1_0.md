@@ -472,3 +472,27 @@ Kshetra `dhara_null` test/API expectations, absent `networkx` and `asyncpg` in
 the test environment, and an unguarded `DATABASE_URL` read. These files are not
 in the DP-SD-019 delta. The failure blocks PR/release preparation; it does not
 authorize weakening the gate or reopening L0 inside L3.
+
+### Kṣetra Python-gate correction
+
+The inherited collection and stale-contract failures were repaired without
+starting L0. The first reconciled Kṣetra exact tip `ad4f4f27d` remained unsafe:
+independent review found that DHARA midpoint samples were interpolated using
+edge-relative indices, so an integer-day circular shift blended adjacent log
+rates. Its alternating-rate oracle returned `300` rather than `1515`, which
+could corrupt null maxima, thresholds and p-values.
+
+Correction `87cc8c9baf894c615e167672c6c7af57a15cf71c` subtracts the midpoint
+offset before interpolation and protects the behavior with independent literal
+oracles for integer-day permutations and half-day interpolation. Local focused
+null proof is 37 passed; complete Kṣetra is 259 passed/3 skipped. Independent
+exact-tip re-review reproduces `1515` and the alternating `40/202` fractional
+sequence, passes 110 focused tests and reports zero CRITICAL/HIGH/MED/LOW.
+Writer inventory remains 123 identities and changes exactly `ka_kshetra`, from
+`979a2500…` to `c735c02b…`; no other layer moves.
+
+This acceptance remains source-local. The L3 pin stays fail-closed until a
+versioned successor binds the immutable source and this acceptance artifact.
+No physical data, database, deployment, consumer-value, L4/L5 or empirical
+performance claim follows from this correction. The two Muhūrta failures remain
+a separate cross-layer shared-primitive authority gate.
