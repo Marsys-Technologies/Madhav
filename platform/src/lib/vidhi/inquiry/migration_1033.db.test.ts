@@ -185,6 +185,34 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     await pool.end()
   })
 
+  it('rolls back every migration object when the transaction fails before commit', async () => {
+    const schema = 'purna_w7_migration_rollback'
+    const client = await pool.connect()
+    try {
+      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+      await client.query(`CREATE SCHEMA ${schema}`)
+      await client.query(`SET search_path TO ${schema}, public`)
+      const forcedFailureSql = migrationSql.replace(
+        '\nCOMMIT;\n',
+        "\nSELECT 1 / 0; -- disposable proof: force failure inside the migration transaction\nCOMMIT;\n",
+      )
+      await expect(client.query(forcedFailureSql)).rejects.toMatchObject({ code: '22012' })
+      await client.query('ROLLBACK')
+      const objects = await client.query<{ table_count: string; function_count: string }>(`
+        SELECT
+          (SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname=$1 AND c.relname IN ('planner_inquiry_lifecycles','planner_inquiry_evidence_receipts')) AS table_count,
+          (SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname=$1 AND p.proname IN ('planner_inquiry_immutable_guard','create_planner_inquiry_lifecycle','purge_expired_planner_inquiries_global')) AS function_count
+      `, [schema])
+      expect(objects.rows[0]).toEqual({ table_count: '0', function_count: '0' })
+    } finally {
+      await client.query('RESET search_path').catch(() => undefined)
+      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`).catch(() => undefined)
+      client.release()
+    }
+  })
+
   it('applies and replays the up migration without broadening serving-role grants', async () => {
     await pool.query(migrationSql)
     await pool.query(migrationSql)

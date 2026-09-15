@@ -24,6 +24,7 @@ import {
   hashJti,
   inquiryAuthorizationHashes,
   issueInquiryLifecycleToken,
+  loadInquiryLifecycleSigningKeyRing,
   recordInquiryExecution,
   verifyInquiryLifecycleToken,
   type InquiryContract,
@@ -72,16 +73,10 @@ type Body = z.infer<typeof BodySchema>
 const MAX_RESULT_BYTES = 512 * 1024
 const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_TOKEN_MALFORMED', 'INQUIRY_TOKEN_INVALID_SIGNATURE', 'INQUIRY_TOKEN_WRONG_AUDIENCE',
-  'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
+  'INQUIRY_TOKEN_UNKNOWN_KID', 'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
   'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS', 'INQUIRY_ACTION_IN_PROGRESS',
   'INQUIRY_ACTIVE_LIMIT_REACHED', 'INQUIRY_CREATION_RATE_LIMITED',
 ])
-
-function signingKey(): string {
-  const key = process.env.INQUIRY_LIFECYCLE_SIGNING_KEY ?? ''
-  if (key.length < 32) throw new Error('INQUIRY_LIFECYCLE_SIGNING_KEY is missing or too short')
-  return key
-}
 
 async function entitled(uid: string, chartId: string): Promise<boolean> {
   const role = await resolveMcpPrincipalRole(uid)
@@ -118,7 +113,7 @@ export async function POST(request: Request) {
   const body: Body = parsedBody.data
 
   try {
-    const key = signingKey()
+    const key = loadInquiryLifecycleSigningKeyRing()
     if (body.action === 'start') {
       if (!(await entitled(principalUid, body.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
       const scope = ScopeTupleSchema.parse(body.scope_tuple)
@@ -143,7 +138,10 @@ export async function POST(request: Request) {
       return response({ ok: true, inquiry_id: inquiryId, contract, lifecycle_token: issued.token, next_action_ids: issued.claims.next_action_ids })
     }
 
-    const claims = verifyInquiryLifecycleToken(body.lifecycle_token, key, principalSubject)
+    const claims = verifyInquiryLifecycleToken(body.lifecycle_token, key, principalSubject, (kid) => {
+      // KID is public JWT-header metadata. Never log the token, signature or key material.
+      console.info('[mcp:inquiry] lifecycle token verified', { kid })
+    })
     if (!(await entitled(principalUid, claims.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
     const row = await getInquiryLifecycle(claims.inquiry_id, principalUid, claims.chart_id)
     const authorization = row?.authorization_jsonb

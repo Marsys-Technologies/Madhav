@@ -131,7 +131,10 @@ function primeStoredLifecycle(overrides: Record<string, unknown> = {}): InquiryC
 
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.INQUIRY_LIFECYCLE_SIGNING_KEY = 'test-inquiry-signing-key-with-at-least-thirty-two-bytes'
+  process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = 'inquiry-v1'
+  process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = Buffer.alloc(32, 7).toString('base64url')
+  delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS_KID
+  delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS
   mocks.authorize.mockResolvedValue('all')
   mocks.compile.mockImplementation(() => contract())
   mocks.issue.mockImplementation((claims: Record<string, unknown>) => ({ token: 'next-token', claims: { ...claims, jti: 'next-jti', exp: 2_000_000_000 } }))
@@ -242,10 +245,24 @@ describe('raw MCP inquiry route', () => {
     expect(await response.json()).toMatchObject({ ok: false })
   })
 
+  it('fails closed before authorization or compilation when signing configuration is absent', async () => {
+    delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))
+    expect(response.status).toBe(500)
+    expect(await response.json()).toMatchObject({ ok: false, error: 'INQUIRY_REQUEST_FAILED' })
+    expect(mocks.authorize).not.toHaveBeenCalled()
+    expect(mocks.compile).not.toHaveBeenCalled()
+    expect(logged).toHaveBeenCalledWith('[mcp:inquiry] request failed', expect.objectContaining({
+      error: expect.objectContaining({ message: 'INQUIRY_SIGNING_KEY_INVALID' }),
+    }))
+    logged.mockRestore()
+  })
+
   it('binds a new lifecycle token to user and API-key identity', async () => {
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))
     expect(response.status).toBe(200)
-    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ sub: 'user-1:key-1', allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.any(String))
+    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ sub: 'user-1:key-1', allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.objectContaining({ current: expect.objectContaining({ kid: 'inquiry-v1' }) }))
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ principal_uid: 'user-1', jti_hash: 'sha256:next-jti' }))
   })
 
@@ -276,7 +293,7 @@ describe('raw MCP inquiry route', () => {
     primeStoredLifecycle()
     const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
     expect(response.status).toBe(200)
-    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.any(String))
+    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.objectContaining({ current: expect.objectContaining({ kid: 'inquiry-v1' }) }))
     expect(await response.json()).toMatchObject({ next_action_ids: ['item-001'], pagination: { next: 50 } })
   })
 
@@ -284,7 +301,7 @@ describe('raw MCP inquiry route', () => {
     mocks.compile.mockImplementationOnce(() => ({ ...contract(), plan_items: [] }))
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))
     expect(response.status).toBe(200)
-    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'finalize', next_action_ids: [] }), expect.any(String))
+    expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'finalize', next_action_ids: [] }), expect.objectContaining({ current: expect.objectContaining({ kid: 'inquiry-v1' }) }))
   })
 
   it('rejects a token-authorized lifecycle when the pinned knowledge snapshot changed', async () => {
