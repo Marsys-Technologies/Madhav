@@ -291,6 +291,49 @@ INSERT INTO public.l2_data_plane_asset_outputs (asset_id, source_table) VALUES
   ('bo_grounding', 'bodha_grounding_matches')
 ON CONFLICT DO NOTHING;
 
+-- Shared MSR rows carry their immutable producing asset. Legacy rows are
+-- deterministically classified from the closed signal_type_class ownership
+-- sets already enforced by the individual writers; all remaining historical
+-- classes belong to the category-agnostic bo_laksana producer.
+ALTER TABLE public.bodha_msr_signals
+  ADD COLUMN IF NOT EXISTS producer_asset_id text;
+DO $l2_disable_prior_msr_guard$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_trigger
+    WHERE tgrelid='public.bodha_msr_signals'::regclass
+      AND tgname='l2_data_plane_mutation_guard') THEN
+    ALTER TABLE public.bodha_msr_signals DISABLE TRIGGER l2_data_plane_mutation_guard;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_trigger
+    WHERE tgrelid='public.bodha_msr_signals'::regclass
+      AND tgname='l2_data_plane_capture') THEN
+    ALTER TABLE public.bodha_msr_signals DISABLE TRIGGER l2_data_plane_capture;
+  END IF;
+END
+$l2_disable_prior_msr_guard$;
+UPDATE public.bodha_msr_signals SET producer_asset_id=CASE
+  WHEN signal_type_class='arudha' THEN 'bo_arudha'
+  WHEN signal_type_class='special_lagna' THEN 'bo_special_lagna'
+  WHEN signal_type_class='sudarshana_agreement' THEN 'bo_sudarshana'
+  WHEN signal_type_class IN ('vargottama_amplification','dhana_axis') THEN 'bo_vargottama_dhana'
+  WHEN signal_type_class='nakshatra_semantic' THEN 'bo_nakshatra_semantic'
+  ELSE 'bo_laksana'
+END WHERE producer_asset_id IS NULL;
+ALTER TABLE public.bodha_msr_signals ALTER COLUMN producer_asset_id SET NOT NULL;
+DO $l2_msr_producer_constraint$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint
+    WHERE conrelid='public.bodha_msr_signals'::regclass
+      AND conname='bodha_msr_signals_producer_asset_check') THEN
+    ALTER TABLE public.bodha_msr_signals ADD CONSTRAINT bodha_msr_signals_producer_asset_check
+      CHECK (producer_asset_id IN (
+        'bo_laksana','bo_arudha','bo_special_lagna','bo_sudarshana',
+        'bo_vargottama_dhana','bo_nakshatra_semantic'
+      ));
+  END IF;
+END
+$l2_msr_producer_constraint$;
+
 DO $l2_partition_fks$
 BEGIN
   IF NOT EXISTS (
@@ -653,9 +696,21 @@ AS $$
 DECLARE
   v_fk record;
   v_exists boolean;
+  v_asset text := current_setting('madhav.l2_asset_id',true);
+  v_generation text := current_setting('madhav.l2_generation_id',true);
+  v_partition text := current_setting('madhav.l2_partition_key',true);
+  v_build text := current_setting('madhav.l2_build_id',true);
 BEGIN
-  IF session_user <> 'data_plane_builder' THEN
-    RAISE EXCEPTION 'L2 MSR delete authorization requires direct data_plane_builder authentication';
+  IF session_user <> 'data_plane_builder' OR v_asset IS NULL
+     OR current_setting('madhav.l2_chart_id',true) IS DISTINCT FROM p_chart_id::text
+     OR NOT EXISTS (
+       SELECT 1 FROM public.l2_data_plane_run_intents i
+       JOIN public.data_plane_l2_producer_generations g USING(chart_id,asset_id,generation_id)
+       WHERE i.chart_id=p_chart_id AND i.asset_id=v_asset
+         AND i.generation_id=v_generation AND i.partition_key=v_partition
+         AND i.build_id=v_build AND g.state='building'
+     ) THEN
+    RAISE EXCEPTION 'L2 MSR delete authorization is outside admitted asset context';
   END IF;
   -- Parent FOR UPDATE conflicts with the KEY SHARE lock acquired by a foreign-
   -- key insert. Holding the exact replacement scope through the later DELETE
@@ -663,6 +718,7 @@ BEGIN
   PERFORM 1
   FROM public.bodha_msr_signals s
   WHERE s.chart_id = p_chart_id
+    AND s.producer_asset_id = v_asset
     AND (p_ayanamsha_ids IS NULL OR s.ayanamsha_id = ANY(p_ayanamsha_ids))
     AND (p_signal_type_ids IS NULL OR s.signal_type_id = ANY(p_signal_type_ids))
     AND (p_signal_type_classes IS NULL OR s.signal_type_class = ANY(p_signal_type_classes))
@@ -700,10 +756,11 @@ BEGIN
       '   AND ($2 IS NULL OR s.ayanamsha_id = ANY($2))'
       '   AND ($3 IS NULL OR s.signal_type_id = ANY($3))'
       '   AND ($4 IS NULL OR s.signal_type_class = ANY($4))'
+      '   AND s.producer_asset_id = $5'
       ')',
       v_fk.schema_name, v_fk.table_name, v_fk.column_name
     ) INTO v_exists
-      USING p_chart_id, p_ayanamsha_ids, p_signal_type_ids, p_signal_type_classes;
+      USING p_chart_id, p_ayanamsha_ids, p_signal_type_ids, p_signal_type_classes, v_asset;
     IF v_exists THEN
       RAISE EXCEPTION
         'L2 MSR replacement blocked by cross-layer dependent rows in %.%',
@@ -713,12 +770,14 @@ BEGIN
   DROP TABLE IF EXISTS pg_temp.l2_data_plane_msr_delete_receipt;
   CREATE TEMP TABLE l2_data_plane_msr_delete_receipt (
     chart_id uuid NOT NULL,
+    asset_id text NOT NULL,
     signal_id uuid PRIMARY KEY
   ) ON COMMIT DROP;
-  INSERT INTO pg_temp.l2_data_plane_msr_delete_receipt(chart_id, signal_id)
-  SELECT s.chart_id, s.signal_id
+  INSERT INTO pg_temp.l2_data_plane_msr_delete_receipt(chart_id, asset_id, signal_id)
+  SELECT s.chart_id, v_asset, s.signal_id
   FROM public.bodha_msr_signals s
   WHERE s.chart_id = p_chart_id
+    AND s.producer_asset_id = v_asset
     AND (p_ayanamsha_ids IS NULL OR s.ayanamsha_id = ANY(p_ayanamsha_ids))
     AND (p_signal_type_ids IS NULL OR s.signal_type_id = ANY(p_signal_type_ids))
     AND (p_signal_type_classes IS NULL OR s.signal_type_class = ANY(p_signal_type_classes));
@@ -1515,8 +1574,11 @@ DECLARE
   v_generation text := current_setting('madhav.l2_generation_id', true);
   v_partition text := current_setting('madhav.l2_partition_key', true);
   v_build text := current_setting('madhav.l2_build_id', true);
-  v_row jsonb := CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_old jsonb := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) ELSE NULL END;
+  v_new jsonb := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) ELSE NULL END;
+  v_row jsonb := COALESCE(v_new,v_old);
   v_delete_authorized boolean := false;
+  v_key_column text;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'protected L2 % requires direct data_plane_builder authentication', TG_OP;
@@ -1525,8 +1587,37 @@ BEGIN
      OR v_partition IS NULL OR v_build IS NULL THEN
     RAISE EXCEPTION 'protected L2 % has no admitted transaction context', TG_OP;
   END IF;
-  IF COALESCE(v_row->>'chart_id','') <> v_chart THEN
+  IF (v_old IS NOT NULL AND COALESCE(v_old->>'chart_id','') <> v_chart)
+     OR (v_new IS NOT NULL AND COALESCE(v_new->>'chart_id','') <> v_chart) THEN
     RAISE EXCEPTION 'protected L2 % row chart does not match admitted chart', TG_OP;
+  END IF;
+  IF TG_OP='UPDATE' THEN
+    FOR v_key_column IN
+      SELECT DISTINCT a.attname FROM pg_index i
+      JOIN pg_attribute a ON a.attrelid=i.indrelid AND a.attnum=ANY(i.indkey)
+      WHERE i.indrelid=TG_RELID AND (i.indisprimary OR i.indisunique)
+    LOOP
+      IF v_old->v_key_column IS DISTINCT FROM v_new->v_key_column THEN
+        RAISE EXCEPTION 'protected L2 UPDATE cannot transfer natural-key column %', v_key_column;
+      END IF;
+    END LOOP;
+  END IF;
+  IF TG_TABLE_NAME='bodha_msr_signals' THEN
+    IF TG_OP='INSERT' THEN
+      IF v_asset='bo_laksana_rerank' OR (v_new->>'producer_asset_id' IS NOT NULL
+          AND v_new->>'producer_asset_id'<>v_asset) THEN
+        RAISE EXCEPTION 'L2 asset % cannot claim a foreign MSR producer', v_asset;
+      END IF;
+      NEW.producer_asset_id := v_asset;
+      v_new := to_jsonb(NEW);
+      v_row := v_new;
+    ELSIF v_new IS NOT NULL AND v_new->>'producer_asset_id' IS DISTINCT FROM v_old->>'producer_asset_id' THEN
+      RAISE EXCEPTION 'L2 UPDATE cannot transfer immutable MSR producer ownership';
+    END IF;
+    IF TG_OP<>'INSERT' AND v_old->>'producer_asset_id'<>v_asset
+       AND NOT (TG_OP='UPDATE' AND v_asset='bo_laksana_rerank') THEN
+      RAISE EXCEPTION 'L2 asset % cannot mutate MSR rows produced by %', v_asset, v_old->>'producer_asset_id';
+    END IF;
   END IF;
   IF TG_OP='DELETE' AND TG_TABLE_NAME IN (
     'bodha_msr_signals','bodha_signal_embeddings','bodha_contradictions'
@@ -1539,14 +1630,14 @@ BEGIN
       IF TG_TABLE_NAME IN ('bodha_msr_signals','bodha_signal_embeddings') THEN
         EXECUTE 'SELECT EXISTS (
           SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt
-          WHERE chart_id=$1 AND signal_id=$2
-        )' INTO v_delete_authorized USING v_chart::uuid, (v_row->>'signal_id')::uuid;
+          WHERE chart_id=$1 AND signal_id=$2 AND asset_id=$3
+        )' INTO v_delete_authorized USING v_chart::uuid, (v_row->>'signal_id')::uuid, v_asset;
       ELSE
         EXECUTE 'SELECT EXISTS (
           SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt
-          WHERE chart_id=$1 AND signal_id IN ($2,$3)
+          WHERE chart_id=$1 AND signal_id IN ($2,$3) AND asset_id=$4
         )' INTO v_delete_authorized USING v_chart::uuid,
-          (v_row->>'signal_a_id')::uuid, (v_row->>'signal_b_id')::uuid;
+          (v_row->>'signal_a_id')::uuid, (v_row->>'signal_b_id')::uuid, v_asset;
       END IF;
     END IF;
   END IF;

@@ -1748,9 +1748,12 @@ DECLARE
   v_chart text := current_setting('madhav.l1_chart_id', true);
   v_generation text := current_setting('madhav.l1_generation_id', true);
   v_partition text := current_setting('madhav.l1_partition_key', true);
-  v_row jsonb := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_old jsonb := CASE WHEN TG_OP IN ('UPDATE','DELETE') THEN to_jsonb(OLD) ELSE NULL END;
+  v_new jsonb := CASE WHEN TG_OP IN ('INSERT','UPDATE') THEN to_jsonb(NEW) ELSE NULL END;
+  v_row jsonb := COALESCE(v_new,v_old);
   v_expected_asset text;
   v_delete_authorized boolean := false;
+  v_key_column text;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'protected L1 % requires direct data_plane_builder authentication', TG_OP;
@@ -1758,8 +1761,21 @@ BEGIN
   IF v_asset IS NULL OR v_asset = '' OR v_chart IS NULL OR v_generation IS NULL OR v_partition IS NULL THEN
     RAISE EXCEPTION 'protected L1 % has no admitted transaction context', TG_OP;
   END IF;
-  IF COALESCE(v_row->>'chart_id', '') <> v_chart THEN
+  IF (v_old IS NOT NULL AND COALESCE(v_old->>'chart_id','') <> v_chart)
+     OR (v_new IS NOT NULL AND COALESCE(v_new->>'chart_id','') <> v_chart) THEN
     RAISE EXCEPTION 'protected L1 % row chart does not match admitted chart', TG_OP;
+  END IF;
+  IF TG_OP='UPDATE' THEN
+    FOR v_key_column IN
+      SELECT DISTINCT a.attname
+      FROM pg_index i JOIN pg_attribute a ON a.attrelid=i.indrelid
+       AND a.attnum=ANY(i.indkey)
+      WHERE i.indrelid=TG_RELID AND (i.indisprimary OR i.indisunique)
+    LOOP
+      IF v_old->v_key_column IS DISTINCT FROM v_new->v_key_column THEN
+        RAISE EXCEPTION 'protected L1 UPDATE cannot transfer natural-key column %', v_key_column;
+      END IF;
+    END LOOP;
   END IF;
   SELECT CASE TG_TABLE_NAME
     WHEN 'chart_dashas' THEN 'ga_dashas'
@@ -1779,11 +1795,15 @@ BEGIN
       'ga_positions','ga_dashas','ga_nakshatra','ga_panchanga','ga_sensitive',
       'ga_sensitive_degree','ga_strength','ga_structural','ga_condition',
       'ga_sade_sati','ga_ayurdaya'
-    ) OR EXISTS (
+    ) OR (v_old IS NOT NULL AND NOT EXISTS (
       SELECT 1 FROM public.fact_category_ownership fco
-      WHERE fco.fact_category = v_row->>'fact_category'
-        AND fco.owning_asset_id <> v_asset
-    ) THEN
+      WHERE fco.fact_category = v_old->>'fact_category'
+        AND fco.owning_asset_id = v_asset
+    )) OR (v_new IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM public.fact_category_ownership fco
+      WHERE fco.fact_category = v_new->>'fact_category'
+        AND fco.owning_asset_id = v_asset
+    )) THEN
       RAISE EXCEPTION 'L1 asset % cannot mutate chart_facts category %',
         v_asset, v_row->>'fact_category';
     END IF;

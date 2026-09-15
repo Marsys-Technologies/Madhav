@@ -41,6 +41,8 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
             ('bo_laksana','bodha',2,'bo','bo','fixture','postgres_table','bodha_msr_signals','per_chart',ARRAY['ga_positions'],'CURRENT')
       ON CONFLICT(asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on`)
     await admin.query(`UPDATE asset_registry SET target_floor=1 WHERE asset_id='ga_positions'`)
+    await admin.query(`INSERT INTO fact_category_ownership(fact_category,owning_asset_id)
+      VALUES('fixture','ga_positions') ON CONFLICT DO NOTHING`)
   })
 
   it('rejects protected L1/L2 mutations when no lifecycle context was admitted', async () => {
@@ -115,6 +117,11 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
       await client.query(`SELECT open_l1_data_plane_generation($1,'ga_positions',$2,'ayanamsha:lahiri',1,NULL,
         'l1.data-plane.contract.1.0','l0.semantic.2026-09-13.1','665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1',
         'l0-resource-config-g1','d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a')`, [chart, l1Build])
+      await client.query('SAVEPOINT foreign_category')
+      await expect(client.query(`INSERT INTO chart_facts(fact_id,chart_id,ayanamsha_id,build_id,fact_category,fact_subject,fact_key)
+        VALUES($1,$2,'lahiri',$3,'unowned-category','fixture','foreign')`, [randomUUID(), chart, l1Build]))
+        .rejects.toThrow(/cannot mutate chart_facts category/)
+      await client.query('ROLLBACK TO SAVEPOINT foreign_category')
       await client.query(`INSERT INTO chart_facts(fact_id,chart_id,ayanamsha_id,build_id,fact_category,fact_subject,fact_key,
         fact_value_text,citation_ref,citation_human,source_calculation,verification_pass_status,engine_version,computed_at)
         VALUES($1,$2,'lahiri',$3,'fixture','fixture','fixture','value','fixture','fixture','fixture','single','fixture',now())`,
@@ -164,10 +171,18 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
         verification_pass_status,citation_ref,citation_human,computed_at,engine_version)
         VALUES($1,$2,'lahiri',$3,'fixture','fixture','fixture','fixture','ga_positions','fixture','{}',ARRAY['fixture'],1,1,1,
         'fixture',ARRAY['fixture'],'{}','fixture','single','fixture','fixture',now(),'fixture')`, [randomUUID(), chart, build])
+      await client.query('SAVEPOINT foreign_producer')
+      await client.query(`SELECT set_config('madhav.l2_asset_id','bo_arudha',true)`)
+      await expect(client.query(`UPDATE public.bodha_msr_signals
+        SET computed_salience=computed_salience WHERE build_id=$1`, [build]))
+        .rejects.toThrow(/cannot mutate MSR rows produced by bo_laksana/)
+      await client.query('ROLLBACK TO SAVEPOINT foreign_producer')
       await client.query(`SELECT complete_l2_data_plane_partition($1,'bo_laksana','l2-fixture-generation','ayanamsha:lahiri',$2,1,0,0)`, [chart, build])
       await client.query(`UPDATE build_run_assets SET state='complete' WHERE run_id=$1`, [build])
       await client.query(`UPDATE build_runs SET state='completed' WHERE id=$1`, [build])
       await client.query('COMMIT')
+      expect((await verifier.query(`SELECT producer_asset_id FROM bodha_msr_signals WHERE build_id=$1`, [build])).rows[0].producer_asset_id)
+        .toBe('bo_laksana')
       expect((await verifier.query(`SELECT count(*)::int AS n FROM select_l2_data_plane_generation($1,'bo_laksana','l2-fixture-generation')`, [chart])).rows[0].n).toBe(1)
       await expect(migrator.query(`SELECT rollback_l2_data_plane_generation($1,'bo_laksana','l2-fixture-generation')`, [chart])).resolves.toBeDefined()
     } finally { client.release() }
@@ -299,6 +314,47 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
       await client.query('ROLLBACK')
       expect((await verifier.query(`SELECT count(*)::int AS n FROM l1_data_plane_generations WHERE generation_id=$1`, [generation])).rows[0].n).toBe(0)
     } finally { client.release() }
+  })
+
+  it('rejects cross-chart and natural-key UPDATE transfer on every protected table', async () => {
+    const schema = 'dp_guard_negative'
+    const otherChart = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE; CREATE SCHEMA ${schema}; GRANT USAGE ON SCHEMA ${schema} TO data_plane_builder`)
+    try {
+      for (const [layer, table] of [
+        ...L1_ACTIVE_TABLES.map((table) => ['l1', table] as const),
+        ...L2_ACTIVE_TABLES.map((table) => ['l2', table] as const),
+      ]) {
+        const quoted = `"${table.replaceAll('"', '""')}"`
+        const guard = layer === 'l1' ? 'l1_data_plane_guard_active_mutation' : 'l2_data_plane_guard_active_mutation'
+        await admin.query(`CREATE TABLE ${schema}.${quoted}(row_id text PRIMARY KEY,chart_id uuid NOT NULL)`)
+        await admin.query(`INSERT INTO ${schema}.${quoted} VALUES('original',$1)`, [chart])
+        await admin.query(`CREATE TRIGGER protected_guard BEFORE INSERT OR UPDATE OR DELETE ON ${schema}.${quoted}
+          FOR EACH ROW EXECUTE FUNCTION public.${guard}()`)
+        await admin.query(`GRANT SELECT,UPDATE ON ${schema}.${quoted} TO data_plane_builder`)
+        const client = await builder.connect()
+        try {
+          await client.query('BEGIN')
+          for (const [key, value] of Object.entries({
+            [`madhav.${layer}_asset_id`]: 'fixture', [`madhav.${layer}_chart_id`]: chart,
+            [`madhav.${layer}_generation_id`]: 'fixture', [`madhav.${layer}_partition_key`]: 'fixture',
+            ...(layer === 'l2' ? { 'madhav.l2_build_id': randomUUID() } : {}),
+          })) await client.query('SELECT set_config($1,$2,true)', [key, value])
+          await client.query('SAVEPOINT cross_chart')
+          await expect(client.query(`UPDATE ${schema}.${quoted} SET chart_id=$1 WHERE row_id='original'`, [otherChart]))
+            .rejects.toThrow(/row chart does not match admitted chart/)
+          await client.query('ROLLBACK TO SAVEPOINT cross_chart')
+          await expect(client.query(`UPDATE ${schema}.${quoted} SET row_id='transferred' WHERE row_id='original'`))
+            .rejects.toThrow(/cannot transfer natural-key column/)
+          await client.query('ROLLBACK')
+        } finally {
+          client.release()
+          await admin.query(`DROP TABLE ${schema}.${quoted}`)
+        }
+      }
+    } finally {
+      await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+    }
   })
 
   it('commits the ownership-only stage with builder DML denied on every protected table', async () => {
