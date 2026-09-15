@@ -1,16 +1,17 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
-observed_at: 2026-09-15T06:07:00+05:30
+status: W2_SOURCE_ACCEPTED_PROVENANCE_LOCAL_RI01_HELD
+observed_at: 2026-09-15T06:54:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-RI-01-PRECURSOR-GENERATION-INTEGRATION
-implementation_tip: 8bda677aa67747e027a2fc2c5609addc2fee63c9
+active_packet: L3-W2-FIRST-FRONTIER-SOURCE-01
+implementation_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
+w2_reviewed_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
 w0_accepted_source_tip: 00a161195
 coordination_lease: MADHAV-DATA-PLANE-L3-RI01-20260915
@@ -226,6 +227,31 @@ head rather than rewriting history. Kshetra's fifteen tables share one content-
 bound stage plan; Bhavishya fails closed on protected content until its W6 stable-
 generation packet. This is reviewed design, not physical infrastructure.
 
+### 4.5 W2 first-frontier source candidate
+
+W0 permits `L3-W2-FIRST-FRONTIER-SOURCE-01` source/service work while W1 is
+held. Initial candidate `b0c5652ba`, corrected at `a1767bb91` and `47131772b`,
+covers the eight named first-row-frontier writers and all four independent service/pure identities.
+Every row writer now prepares
+its candidate before chart-partition DELETE; empty candidates preserve prior
+capital. Gochara requires all 27 event-class partitions; Kota/Moorti/Vedha
+require an exact unique contiguous daily horizon for every body; and Avadhi
+requires canonical `chara_karaka` plus both MD and AD coverage across all seven
+systems. Yojaka and Avadhi dry runs open no database cursor.
+
+Dasha now fails the whole request when one named system read fails rather than
+returning a partial payload as complete. Tulana rejects non-finite, duplicate or
+unqualified inputs while retaining its fixed forensic result. The DB-free W2
+contract freezes all four service payload shapes. The initial exact-tip review
+rejected `b0c5652ba` with two HIGH and four MED findings. Correction `a1767bb91`
+passes 57 behavioral contracts, 482 affected tests with 5 environment-gated
+skips, and complete `tests/l3` at 1,521 passes, 41 skips and 2 expected failures.
+Final exact-tip review PASSes `47131772b355ae2c67b1f6fb2b90e9fa007e2202`
+with zero CRITICAL/HIGH/MED/LOW findings. Exactly ten reviewed W2 writer digests
+and the L3 aggregate were reconciled locally; the whole checker still reports
+only protected L0/L1/L2/L4 drift. This accepts source only and does not unlock
+physical W1.
+
 ## 5. Migration and release collision
 
 The accepted L1/L2 execution lineage originally used 1033/1034, colliding with
@@ -271,7 +297,7 @@ build.
 
 | Lane | Current bounded owner | State |
 |---|---|---|
-| A — meaning/data/DAG | bounded source-local Bhavishya and contract owners; conductor integrates evidence | SAFETY ACCEPTED; physical data held |
+| A — meaning/data/DAG | bounded source-local Bhavishya and first-frontier contract owners; conductor integrates evidence | W2 SOURCE ACCEPTED LOCALLY; physical data held |
 | B — performance/architecture | bounded Kshetra/DHARA owners and independent reviewers | SAFETY/REFERENCE ACCEPTED; production trial held |
 | C — consumer integration/value | L3-U05 implementation and independent reviewer | SENTINELS ACCEPTED; integration/value not run |
 
@@ -284,7 +310,7 @@ this file, the execution ledger and the exact next eligible action above.
 
 | State | Evidence |
 |---|---|
-| source producer readiness | accepted L0-L2 contracts; W0 terminal PASS at `00a161195`; hardened precursor held on two external authorities |
+| source producer readiness | accepted L0-L2 contracts; W0 terminal PASS at `00a161195`; W2 source accepted at reviewed `47131772b`; hardened precursor held on two external authorities |
 | physical upstream data | `HELD`; required generation-head relations absent |
 | L3 physical data | legacy capital exists, but current t3 acceptance is absent and six canonical outputs are empty |
 | consumer integration | `NOT_RUN` |
@@ -294,11 +320,10 @@ this file, the execution ledger and the exact next eligible action above.
 
 ## 8. Exact recovery action
 
-W0 terminal PASS is recorded at exact source tip `00a161195`. The active recovery
-action is `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`, held before PR/shared
-apply on two exact authorities: reconciliation of protected non-L3 provenance
-pins, including frozen L0, and administrator-owned database
-role/credential/ownership cutover. After both, run
-exact-tip migration/security review and full checks, then establish the protected
-precursor release. No L3 build is eligible until compatible L0-L2 physical heads
-exist.
+W0 terminal PASS is recorded at exact source tip `00a161195`; W2 source is
+accepted at exact reviewed tip `47131772b355ae2c67b1f6fb2b90e9fa007e2202`.
+No further bypass packet is opened here. RI-01 remains held before PR/shared
+apply on reconciliation of protected non-L3 provenance pins, including frozen
+L0, and administrator-owned database role/credential/ownership cutover. No L3
+build is eligible until that precursor is accepted/deployed and compatible
+L0-L2 physical heads exist.

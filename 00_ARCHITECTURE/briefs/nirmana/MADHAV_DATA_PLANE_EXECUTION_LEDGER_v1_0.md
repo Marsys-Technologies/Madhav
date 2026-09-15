@@ -25,7 +25,7 @@ l0_implementation_commits:
   - f648d5add
 l1_stage: PRODUCER_READY
 l2_stage: PRODUCER_READY
-l3_stage: RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
+l3_stage: W2_SOURCE_ACCEPTED_PROVENANCE_LOCAL_RI01_HELD
 role: >
   Append-only execution control for one reusable documentation/execution task. It consumes only
   separately approved strategic briefs, returns evidence, and never converts task activity into
@@ -53,6 +53,9 @@ changelog:
   - "1.0 update 2026-09-15: Records terminal independent W0 PASS at exact source tip 00a161195 with zero HIGH/MED/LOW findings; opens L3-RI-01 precursor generation integration while physical W1 remains held."
   - "1.0 update 2026-09-15: Records RI-01 security-review hardening and local proof, reconciles only the two changed L3 writer digests/L3 pin, and preserves two honest release holds: protected non-L3 pins need their owning authorities and production owner isolation needs administrator role/credential/ownership cutover. No PR, shared apply, deploy or build."
   - "1.0 update 2026-09-15: Records independent exact-tip RI-01 PASS at 6a7ecc171 for all code-owned findings with zero additional CRITICAL/HIGH/MED/LOW, while retaining the separate HIGH production-owner cutover and protected non-L3 pin holds."
+  - "1.0 update 2026-09-15: Opens the W0-authorized W2 source bypass while RI-01/W1 remain held; candidate b0c5652ba makes eight first-frontier replacements candidate-before-delete, fails Dasha/Tulana service contracts closed, and passes 553 bounded plus 1,512 broad L3 tests. Exact-tip review remains pending; no build or shared mutation."
+  - "1.0 update 2026-09-15: Records REQUEST CHANGES on initial W2 tip b0c5652ba (two HIGH, four MED) and correction a1767bb91: canonical Avadhi MD/AD coverage, 27-class Gochara coverage, exact daily horizons, full Tulana typed validation and behavioral no-DML tests. Re-challenge remains pending; no build or shared mutation."
+  - "1.0 update 2026-09-15: Records final W2 source PASS at exact tip 47131772b after two anonymous-result MED corrections; reconciles exactly ten reviewed W2 L3 writer digests and the L3 aggregate locally. Protected L0/L1/L2/L4 and unrelated ka_sangam drift remain held; no release/build/shared mutation."
 ---
 
 # Madhav data-plane execution ledger
@@ -85,7 +88,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L0 Brahmagyan | PRODUCER_READY | DP-SD-009/010/011 + approved L0 brief/addenda + continued goal | Validation and acceptance records; independent challenge PASS; stop with L1 waiting |
 | L1 Gaṇita | PRODUCER_READY | DP-SD-013 + approved L1 brief + new bounded goal | Seven L1 artifacts, 19/19 runtime validator, local commits, migration proof and independent challenge PASS |
 | L2 Bodha | PRODUCER_READY | DP-SD-015 + approved L2 brief + new bounded goal | Seven L2 artifacts, 23/23 runtime validation, first slice and independent challenge PASS |
-| L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | DP-SD-017 + W0 terminal PASS `00a161195` + persistent L3 goal | Hardened precursor and L3 pin locally proved; protected non-L3 pin reconciliation and DB administrator cutover required; physical W1 remains held |
+| L3 Kāla | W2_SOURCE_ACCEPTED_PROVENANCE_LOCAL_RI01_HELD | DP-SD-017 + W0 terminal PASS `00a161195` + persistent L3 goal | W2 source accepted at exact reviewed `47131772b`; ten L3 digests/aggregate reconciled locally; RI-01 external authorities and physical W1 remain held |
 | L4 Phala | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L4 brief + new goal | Layer brief exit record |
 | L5 Mīmāṃsā | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L5 brief + new goal | Layer brief exit record |
 | Cross-layer integration | WAITING_FOR_STRATEGIC_BRIEF | Approved compatible upstream set + integration brief | End-to-end and managed-channel evidence |
@@ -134,6 +137,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L2 acceptance/handoff | `MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md` | `PRODUCER_READY_ACCEPTED`; integration, deployment, population/health, consumer value and empirical evaluation remain unreached. |
 | L3 W0 state | `MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION_v1_0.md` | Exact DP-SD-017 pins, 22 active + protected retired denominator, source/deployment/campaign/DB recheck, no-build frontier, migration collision, ownership and heartbeat truth. |
 | L3 W0 acceptance | `MADHAV_DATA_PLANE_L3_W0_FOUNDATION_SAFETY_v1_0.md`; exact reviewed source tip `00a161195` | Terminal independent PASS with zero HIGH/MED/LOW findings. Physical generations, integration, deployment and value remain unaccepted. |
+| L3 W2 source acceptance | `MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md`; reviewed tip `47131772b` | Twelve source/service identities covered; two review/correction rounds closed; final review PASS, ten local L3 digest changes and L3 aggregate reconciled; physical W1 remains held. |
 
 Open blockers for FOUNDATION: none after applying the explicit managed-profile exception. Open decisions for later stages remain with the strategic parent: proposal adoption/amendment, source rights and rule qualification, canonical observation owner, manifestation operators, consolidation choices, thresholds/baselines, and any future prediction/research activation.
 
@@ -180,6 +184,15 @@ forbids an L3-owned non-L3 repin. RI-01 is held before PR/shared apply for
 protected non-L3 pin reconciliation and database-administrator role/ownership
 cutover, then exact-tip review and full checks. Physical W1 stays held until the
 precursor is accepted/deployed and an upstream physical vector exists.
+
+While those authorities remain external, W0 explicitly allows W2 source/service
+preparation. Initial candidate `b0c5652ba` was rejected with two HIGH and four
+MED findings. Corrections `a1767bb91` and `47131772b` close every finding; final
+exact-tip review PASSes with zero CRITICAL/HIGH/MED/LOW. The source packet has
+57 behavioral passes, 482 affected passes (5 environment-gated skips), complete
+L3 source validation of 1,521 passes, 41 skips and 2 expected failures, plus
+reviewer-focused 204 passes and 5 skips. It has no physical-data,
+integration, deployment, consumer-value or empirical-performance status.
 
 ## 6. Append-only status log
 
@@ -232,6 +245,9 @@ precursor is accepted/deployed and an upstream physical vector exists.
 | 2026-09-15 05:14 | L3 Kāla | RI_01_CANDIDATE_REVIEW | Production read-only tracker/effect reconciliation found all four colliding candidates unapplied; live lease and 1035/1036 claims read back at coordination `ef132c87d`; accepted L1/L2 SQL moved to active directory with exact normalized identities preserved; disposable apply/reapply and 34 combined DB negatives pass. Independent migration/security review next; no shared apply, deploy, build or materialization yet. |
 | 2026-09-15 05:49 | L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | Independent review found three HIGH generation/admission defects and one HIGH production-owner isolation defect. L1/L2 declaration, immutable intent, FK, cardinality, state and replay hardening passes exact apply/reapply, 75 focused contracts, 67 migration tests and expanded disposable DB negatives; lint/tsc pass. RI-01 reconciled only its two changed L3 writer digests and reviewed L3 pin. Full unit run retains 8 frozen-L0 receipt failures (`3dda2611...` current vs `5125cccb...` frozen), and whole-file pins remain stale for protected L0/L1/L2/L4, which L3 cannot repin. Production `amjis_app` ownership also defeats role grants until an administrator-managed build login/protected-owner cutover. Held before PR/shared apply; no deploy/build/materialization. |
 | 2026-09-15 06:07 | L3 Kāla | RI_01_CODE_OWNED_REVIEW_PASS_EXTERNAL_HOLDS_RETAINED | Independent exact-tip re-challenge PASS at `6a7ecc17117163debcc4b742aa183f17588ef621`: all three code-owned HIGH findings closed; no new CRITICAL/HIGH/MED/LOW. Separate HIGH production-owner isolation and protected L0/L1/L2/L4 pin reconciliation remain external holds. No PR, shared apply, deploy, build or materialization. |
+| 2026-09-15 06:28 | L3 Kāla | W2_SOURCE_CANDIDATE_REVIEW | W0-authorized source bypass opened while RI-01/W1 remain held. Commit `b0c5652ba` makes eight first-frontier replacements candidate-before-delete, refuses required partial upstream partitions, adds mutation-free Yojaka/Avadhi dry runs, and fails Dasha/Tulana contracts closed. Bounded 553/8-skip and broad L3 1,512/41-skip/2-xfail pass; exact-tip review pending; no shared mutation/build/deploy. |
+| 2026-09-15 06:45 | L3 Kāla | W2_SOURCE_CORRECTED_CANDIDATE_RECHALLENGE | Exact-tip review of `b0c5652ba` returned REQUEST CHANGES: two HIGH and four MED. Correction `a1767bb91` closes canonical Avadhi identity/MD+AD coverage, 27-event-class Gochara completeness, exact unique contiguous daily horizons, Tulana typed fields, and replaces static source assertions with recording-fake behavioral preservation tests. 57 behavioral, 482/5-skip affected and complete L3 1,521/41-skip/2-xfail pass; independent re-challenge pending; no shared mutation/build/deploy. |
+| 2026-09-15 06:54 | L3 Kāla | W2_SOURCE_ACCEPTED_PROVENANCE_LOCAL | Re-challenge of `a1767bb91` found two MED anonymous WriterResult identities. Correction `47131772b` gives Avadhi/Yojaka canonical identities on every path; 106 focused and complete L3 1,521/41-skip/2-xfail pass. Final exact-tip review PASSes `47131772b355ae2c67b1f6fb2b90e9fa007e2202` with zero findings and 204/5-skip reviewer proof. Exactly ten W2 L3 writer digests and aggregate `a32b7cc7…` reconciled locally; pin check fails only protected L0/L1/L2/L4. RI-01/W1 remain held; no shared mutation/build/deploy. |
 
 ## 7. Return-to-strategy handoff contract
 
