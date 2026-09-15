@@ -195,14 +195,21 @@ class KaMoortiNirnayaWriter(WriterBase):
         bodies_needed = MOORTI_GRAHAS + ("Moon",)
         daily_by_body = _fetch_daily_sidereal_by_body(conn, horizon_start, horizon_end, offset, bodies_needed)
 
+        missing_bodies = [body for body in bodies_needed if not daily_by_body.get(body)]
+        if missing_bodies:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "incomplete ephemeris coverage for " + ",".join(missing_bodies)
+                    + "; prior partition preserved"
+                ),
+            )
+
         moon_daily = daily_by_body.get("Moon") or []
         moon_nak_by_date: dict[date, int] = {
             d: int(lon // NAK_SIZE_DEG) % 27 for d, lon in moon_daily
         }
-
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
 
         all_rows: list[dict] = []
         grahas_with_data = 0
@@ -277,6 +284,20 @@ class KaMoortiNirnayaWriter(WriterBase):
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
             )
+        if grahas_with_data != len(MOORTI_GRAHAS):
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    f"incomplete moorti coverage ({grahas_with_data}/{len(MOORTI_GRAHAS)} grahas); "
+                    "prior partition preserved"
+                ),
+            )
+
+        # Do not turn missing/incomplete upstream coverage into destructive
+        # empty replacement.  The candidate is fully assembled first.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

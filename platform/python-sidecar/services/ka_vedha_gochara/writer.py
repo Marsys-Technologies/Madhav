@@ -298,6 +298,16 @@ class KaVedhaGocharaWriter(WriterBase):
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
             )
+        missing_grahas = [graha for graha in ALL_GRAHAS if not daily_by_body.get(graha)]
+        if missing_grahas:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "incomplete ephemeris coverage for " + ",".join(missing_grahas)
+                    + "; prior partition preserved"
+                ),
+            )
 
         # Per-graha sign runs and nakshatra runs, computed once and reused by
         # both vedha_kind branches below (no repeat ephemeris derivation).

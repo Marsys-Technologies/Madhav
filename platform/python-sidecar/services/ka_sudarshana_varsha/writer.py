@@ -145,10 +145,6 @@ class KaSudarshanaVarshaWriter(WriterBase):
         cl_idx = natal["MOON"]["sign_idx"]
         sl_idx = natal["SUN"]["sign_idx"]
 
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
-
         all_rows: list[dict] = []
         for varsha_year in range(1, DEFAULT_MAX_VARSHA_YEAR + 1):
             year_result = compute_tri_lagna_year(varsha_year, jl_idx, cl_idx, sl_idx)
@@ -174,6 +170,18 @@ class KaSudarshanaVarshaWriter(WriterBase):
                 "sun_fact_id": natal["SUN"]["fact_id"],
                 "formula_version": FORMULA_VERSION,
             })
+
+        if not all_rows:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no sudarshana candidate rows computed; prior partition preserved",
+            )
+
+        # Prepare the complete deterministic candidate before replacement so
+        # an honest-empty result cannot erase prior servable capital.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

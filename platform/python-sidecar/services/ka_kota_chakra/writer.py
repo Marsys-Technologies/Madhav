@@ -230,10 +230,6 @@ class KaKotaChakraWriter(WriterBase):
         offset = _compute_ayanamsha_offset(today)
         daily_by_graha = _fetch_daily_nak_idx_by_graha(conn, horizon_start, horizon_end, offset)
 
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
-
         all_rows: list[dict] = []
         grahas_with_data = 0
         for graha in ALL_GRAHAS:
@@ -273,6 +269,21 @@ class KaKotaChakraWriter(WriterBase):
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
             )
+        if grahas_with_data != len(ALL_GRAHAS):
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    f"incomplete ephemeris coverage ({grahas_with_data}/{len(ALL_GRAHAS)} grahas); "
+                    "prior partition preserved"
+                ),
+            )
+
+        # Preserve the prior chart partition unless a complete non-empty
+        # candidate has been prepared.  Candidate acceptance remains a later
+        # physical-generation gate.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

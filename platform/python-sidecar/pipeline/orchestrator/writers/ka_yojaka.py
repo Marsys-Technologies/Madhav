@@ -60,16 +60,13 @@ class KaYojakaWriter(WriterBase):
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
 
-        # Step 1: delete existing for this chart (delete-then-insert idempotency per §N.3)
+        if ctx.dry_run:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
+
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
-        with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
-                (chart_id,),
-            )
 
-        # Step 2: read all MSR signals for this chart (SELECT only — never write to bodha_*)
+        # Step 1: read all MSR signals for this chart (SELECT only — never write to bodha_*)
         # WP-S4-R45/CR-5/CR-12/CR-48: shadbala_norm added — real per-signal strength
         # feeding the non-affliction proxy below (kills the flat-0.5 alignment wall).
         with conn.cursor() as cur:
@@ -83,6 +80,13 @@ class KaYojakaWriter(WriterBase):
                 (chart_id,),
             )
             signals = cur.fetchall()
+
+        if not signals:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no bodha_msr_signals; prior predicate partition preserved",
+            )
 
         # CR-5/CR-12/CR-48 (flat dasha_activation_proximity_score=0.5 wall): the
         # writer's downstream _proximity_score() formula (dignity * non_affliction)
@@ -363,6 +367,21 @@ class KaYojakaWriter(WriterBase):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """
+
+        if not rows:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no activation-predicate candidate rows; prior partition preserved",
+            )
+
+        # Step 4: replace only after the full candidate exists.  This prevents
+        # missing upstream data from committing an empty chart partition.
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
+                (chart_id,),
+            )
         with conn.cursor() as cur:
             for i in range(0, len(rows), 1000):
                 batch = rows[i:i + 1000]
