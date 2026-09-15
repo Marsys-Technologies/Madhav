@@ -48,10 +48,13 @@ BASELINE = pins_module._inventory_at_commit(
 CANDIDATE = pins_module._inventory_at_commit(
     "d2369b888e760e5b8d693328f00683877cbd5f28"
 )
-PRE_DP019_INVENTORY = pins_module._inventory_at_commit(
-    "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f"
-)
 KSHETRA_SOURCE = "87cc8c9baf894c615e167672c6c7af57a15cf71c"
+PRE_KSHETRA_PINS = pins_module._pins_at_commit(
+    "6c1a65e23be6176322d7a9ab78e0c291feeec700"
+)
+PRE_KSHETRA_INVENTORY = pins_module._inventory_at_commit(
+    "6c1a65e23be6176322d7a9ab78e0c291feeec700"
+)
 L2_CHANGED = sorted(
     asset_id
     for asset_id in set(BASELINE) | set(CANDIDATE)
@@ -368,7 +371,7 @@ SECURITY_SOURCE = "149f8479ac4e22874aabe9a5e5b340fb86bc16fb"
 DP019_SOURCE = "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
 
 
-def test_current_security_successors_are_exact_and_preserve_prior_bytes() -> None:
+def test_current_successors_are_exact_and_preserve_prior_bytes() -> None:
     assert pins_module.check(CURRENT_PINS, CURRENT_INVENTORY) == []
     for layer, expected_delta in (
         ("L1", EXPECTED_L1_SECURITY_DELTA),
@@ -406,23 +409,23 @@ def test_current_security_successors_are_exact_and_preserve_prior_bytes() -> Non
         assert CURRENT_PINS["history"][layer] == ACCEPTED_PINS["history"][layer]
 
     l3_active = CURRENT_PINS["layers"]["L3"]
-    l3_prior = ACCEPTED_PINS["layers"]["L3"]
-    assert l3_active["admission"]["source_commit"] == DP019_SOURCE
+    l3_prior = PRE_KSHETRA_PINS["layers"]["L3"]
+    assert l3_active["admission"]["source_commit"] == KSHETRA_SOURCE
     assert l3_active["admission"]["authority_decision"] == "DP-SD-019"
-    assert l3_active["admission"]["changed_assets"] == ["ka_yojaka"]
+    assert l3_active["admission"]["changed_assets"] == ["ka_kshetra"]
     assert l3_active["admission"]["delta_classifications"] == {
-        "ka_yojaka": "approved_intentional_change",
+        "ka_kshetra": "approved_intentional_change",
     }
     assert l3_active["admission"]["source_acceptance"] == (
         pins_module._source_acceptance_public(
-            pins_module.SOURCE_ACCEPTANCE_BINDINGS[DP019_SOURCE]
+            pins_module.SOURCE_ACCEPTANCE_BINDINGS[KSHETRA_SOURCE]
         )
     )
-    assert CURRENT_PINS["history"]["L3"][:-1] == ACCEPTED_PINS["history"]["L3"]
+    assert CURRENT_PINS["history"]["L3"][:-1] == PRE_KSHETRA_PINS["history"]["L3"]
     assert CURRENT_PINS["history"]["L3"][-1]["pin"] == l3_prior
     assert CURRENT_PINS["history"]["L3"][-1]["writer_digests"] == (
         pins_module.layer_writer_slice(
-            PRE_DP019_INVENTORY, pins_module.LAYER_PREFIX["L3"]
+            PRE_KSHETRA_INVENTORY, pins_module.LAYER_PREFIX["L3"]
         )
     )
     assert l3_active["supersedes_generation_id"] == l3_prior["generation_id"]
