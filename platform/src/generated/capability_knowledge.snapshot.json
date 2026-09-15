@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-15T15:27:26.000Z",
-  "content_hash": "sha256:6560b2e531fe0f66a1b1e4edcf5cc6958b53c256a648845d8eef7f30b74f5a4e",
+  "generated_at": "2026-09-15T15:40:14.000Z",
+  "content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
   "source_catalog_fingerprint": "sha256:523545193ee68cb5fc1cc99dd99a1e5130474683e0a05a701d99c8f410a628a9",
-  "semantic_review_fingerprint": "sha256:db85af3dee748f127af82bb5a1d0e1aaeec23bbdc77f8a0c329f457096be8b6e",
+  "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -21928,25 +21928,28 @@
       "scu_id": "scu.catalog.query_prospective_ledger",
       "version": 1,
       "label": "Query Prospective Ledger",
-      "description": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). Each prediction carries: claim, event_class, temporal shape (point/interval/chain) with its window or milestone_set, confidence, a MANDATORY falsifier, generator_class (reading_synthesis | engine | native_intuition | anchor_engine), source_citation, and lifecycle_status. §11 governance: predictions exist by explicit filing only — this is a READ/confirmation surface, never a filing or calibration write. Filter by domain (question domain — wealth clusters {wealth, residence} as the material/ asset cluster) and lifecycle_status. Non-domain-matching open predictions are still returned under other_domain_predictions (never silently dropped). Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). Each prediction carries: claim, event_class, temporal shape (point/interval/chain) with its window or milestone_set, confidence, a MANDATORY falsifier, generator_class (reading_synthesis | engine | native_intuition | anchor_engine), source_citation, and lifecycle_status. §11 governance: predictions exist by explicit filing only — this is a READ/confirmation surface, never a filing or calibration write. Filter by domain (question domain — wealth clusters {wealth, residence} as the material/ asset cluster) and lifecycle_status. Non-domain-matching open predictions are still returned under other_domain_predictions (never silently dropped). Evidence use: retrieve explicitly filed falsifiable predictions with provenance and lifecycle state through a read-only surface that never files or calibrates predictions.",
       "kind": "temporal",
       "domains": [
+        "evidence_quality",
         "timing"
       ],
       "concepts": [
-        "activation_timing",
+        "falsifier",
+        "filed_prediction",
+        "prediction_confidence",
+        "prediction_lifecycle",
         "query_prospective_ledger",
-        "temporal_sequence",
-        "timing_window"
+        "source_provenance"
       ],
       "intents": [
-        "sequence",
-        "time"
+        "audit",
+        "retrieve",
+        "verify"
       ],
       "horizons": [
         "current",
         "future",
-        "historical",
         "multi_year"
       ],
       "scope": "chart",
@@ -21957,8 +21960,11 @@
         "status"
       ],
       "outputs": [
-        "temporal_sequence_evidence",
-        "timing_windows"
+        "falsifiers",
+        "filed_predictions",
+        "lifecycle_status",
+        "source_citations",
+        "temporal_windows"
       ],
       "primary_binding_uri": "marsys://tool/L4/query_prospective_ledger",
       "edges": [],
@@ -22010,7 +22016,7 @@
       "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger",
           "source_fields": [
             "family_id",
             "domains",
@@ -22047,24 +22053,34 @@
       ],
       "concept_bindings": [
         {
-          "concept_id": "activation_timing",
+          "concept_id": "falsifier",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+        },
+        {
+          "concept_id": "filed_prediction",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+        },
+        {
+          "concept_id": "prediction_confidence",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+        },
+        {
+          "concept_id": "prediction_lifecycle",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
         },
         {
           "concept_id": "query_prospective_ledger",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
         },
         {
-          "concept_id": "temporal_sequence",
+          "concept_id": "source_provenance",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
-        },
-        {
-          "concept_id": "timing_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
         }
       ],
       "gap_dispositions": [],
@@ -22073,7 +22089,7 @@
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
           "CapabilityDescriptor:marsys://tool/L4/query_prospective_ledger",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
         ]
       },
       "producer_semantic_disposition": {
@@ -24971,24 +24987,26 @@
       "scu_id": "scu.catalog.query_signal_families",
       "version": 1,
       "label": "Query Signal Families",
-      "description": "Returns the signal-family registry from mimamsa_signal_families (mi_kula). Global scope — not chart-specific. Returns all signal families. Signal families define the structural groupings (family_class: classical, msr, negative_control, etc.) with evidence_tier, soundness_basis, binding_kind, prior_weight and calibration_status. Negative-control families (family_class = negative_control) are the calibration-test baselines; the per-control battery itself lives in mimamsa_negative_controls (separate table). Used by the L5 calibration harness. No chart_id required. Evidence use: trace source-backed relationships and mechanisms without inferring missing links.",
-      "kind": "mechanism",
+      "description": "Returns the signal-family registry from mimamsa_signal_families (mi_kula). Global scope — not chart-specific. Returns all signal families. Signal families define the structural groupings (family_class: classical, msr, negative_control, etc.) with evidence_tier, soundness_basis, binding_kind, prior_weight and calibration_status. Negative-control families (family_class = negative_control) are the calibration-test baselines; the per-control battery itself lives in mimamsa_negative_controls (separate table). Used by the L5 calibration harness. No chart_id required. Evidence use: inspect global signal-family priors, evidence tiers, negative-control classes, and calibration status without treating registry rows as chart evidence.",
+      "kind": "datum",
       "domains": [
-        "planetary_relationships"
+        "evidence_quality"
       ],
       "concepts": [
-        "causal_structure",
-        "planetary_relationship",
+        "calibration_evidence",
+        "evidence_tier",
+        "negative_control",
         "query_signal_families",
-        "relational_mechanism"
+        "signal_family"
       ],
       "intents": [
-        "explain",
-        "trace"
+        "audit",
+        "inspect",
+        "verify"
       ],
       "horizons": [
         "current",
-        "natal"
+        "historical"
       ],
       "scope": "global",
       "inputs": [
@@ -24998,8 +25016,9 @@
         "top_k"
       ],
       "outputs": [
-        "mechanism_paths",
-        "relationship_evidence"
+        "calibration_status",
+        "evidence_tiers",
+        "signal_family_definitions"
       ],
       "primary_binding_uri": "marsys://tool/L5/query_signal_families",
       "edges": [],
@@ -25052,7 +25071,7 @@
       "editorial_method": "descriptor_metadata_review",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families",
           "source_fields": [
             "family_id",
             "domains",
@@ -25089,24 +25108,29 @@
       ],
       "concept_bindings": [
         {
-          "concept_id": "causal_structure",
+          "concept_id": "calibration_evidence",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         },
         {
-          "concept_id": "planetary_relationship",
+          "concept_id": "evidence_tier",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
+        },
+        {
+          "concept_id": "negative_control",
+          "concept_type": "domain_concept",
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         },
         {
           "concept_id": "query_signal_families",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         },
         {
-          "concept_id": "relational_mechanism",
+          "concept_id": "signal_family",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         }
       ],
       "gap_dispositions": [
@@ -25114,7 +25138,7 @@
           "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         }
       ],
       "graph_disposition": {
@@ -25122,7 +25146,7 @@
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
           "CapabilityDescriptor:marsys://tool/L5/query_signal_families",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
         ]
       },
       "producer_semantic_disposition": {
@@ -31607,7 +31631,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
@@ -31766,7 +31789,8 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_manifestation_sets",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_mimamsa_discoveries",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_quality_scorecard",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_rectification"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_rectification",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
       ]
     },
     {
@@ -31860,7 +31884,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:get_structural",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_motifs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_paths",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signals",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_spine_bundle",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:traverse_chart_graph"
@@ -32266,6 +32289,15 @@
       ]
     },
     {
+      "concept_id": "evidence_tier",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
+      ]
+    },
+    {
       "concept_id": "falsifier",
       "types": [
         "domain_concept"
@@ -32285,7 +32317,17 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_manifestation_sets",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_mimamsa_discoveries",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_quality_scorecard",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_rectification"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_rectification",
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+      ]
+    },
+    {
+      "concept_id": "filed_prediction",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
       ]
     },
     {
@@ -32865,6 +32907,15 @@
       ]
     },
     {
+      "concept_id": "negative_control",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
+      ]
+    },
+    {
       "concept_id": "pact_query",
       "types": [
         "capability"
@@ -32935,7 +32986,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:get_structural",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_motifs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_paths",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signals",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_spine_bundle",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:traverse_chart_graph"
@@ -32961,6 +33011,24 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:query_class_priors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:query_graha_naisargika_friendship",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#planetary_condition:query_transit_av_gates"
+      ]
+    },
+    {
+      "concept_id": "prediction_confidence",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
+      ]
+    },
+    {
+      "concept_id": "prediction_lifecycle",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
       ]
     },
     {
@@ -33531,7 +33599,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
       ]
     },
     {
@@ -33693,7 +33761,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families"
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
       ]
     },
     {
@@ -33933,7 +34001,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:get_structural",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_motifs",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_cgm_paths",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signal_families",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_signals",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:query_spine_bundle",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#relational:traverse_chart_graph"
@@ -34045,12 +34112,30 @@
       ]
     },
     {
+      "concept_id": "signal_family",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#signal_calibration_registry:query_signal_families"
+      ]
+    },
+    {
       "concept_id": "solar_return",
       "types": [
         "domain_concept"
       ],
       "source_refs": [
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#annual:get_tajik"
+      ]
+    },
+    {
+      "concept_id": "source_provenance",
+      "types": [
+        "domain_concept"
+      ],
+      "source_refs": [
+        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#prospective_ledger:query_prospective_ledger"
       ]
     },
     {
@@ -34132,7 +34217,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
@@ -34202,7 +34286,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_obstruction_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_predictive_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_projections",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_prospective_ledger",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_retrograde_periods",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sky_calendar",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_sudarshana_varsha",
@@ -35733,7 +35816,7 @@
     "reviewed_nonpublic_descriptors": 115,
     "producer_output_claims": 8,
     "reviewed_output_claims": 7,
-    "typed_concepts": 250,
+    "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,
     "graph_components": 157,
