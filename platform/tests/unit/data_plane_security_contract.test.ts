@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 describe('DP-SD-018 protected migration routing', () => {
@@ -196,9 +196,23 @@ describe('DP-SD-018 deployment ordering', () => {
   })
   it('requires exact backup and successful-restore identifiers as one receipt', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
-    expect(parseBackupRestoreReceipt('123:restore-op-456')).toEqual({ backupId: '123', restoreOperationId: 'restore-op-456' })
-    expect(() => parseBackupRestoreReceipt('123')).toThrow(/backup-id:restore-operation-id/)
-    expect(preflight).toContain("restore.targetId !== 'amjis-postgres'")
+    const receipt = parseBackupRestoreReceipt(JSON.stringify({
+      backupId: '123', restoreOperationId: 'restore-op-456', validationInstance: 'amjis-ri02-validation',
+      sourceCommit: 'a'.repeat(40), leaseId: '11111111-1111-4111-8111-111111111111',
+      approvedBy: 'independent-reviewer', expiresAt: '2026-09-16T00:00:00.000Z',
+    }))
+    expect(receipt.backupId).toBe('123')
+    expect(() => parseBackupRestoreReceipt('123')).toThrow(/receipt/)
+    expect(() => assertBackupReceiptBinding(receipt, {
+      validationInstance: 'amjis-postgres', sourceCommit: 'a'.repeat(40),
+      leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+    }, new Date('2026-09-15T12:00:00.000Z'))).toThrow(/isolated instance/)
+    expect(() => assertBackupReceiptBinding(receipt, {
+      validationInstance: receipt.validationInstance, sourceCommit: receipt.sourceCommit,
+      leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+    }, new Date('2026-09-15T12:00:00.000Z'))).not.toThrow()
+    expect(preflight).toContain("restore.targetId === 'amjis-postgres'")
+    expect(preflight).toContain('readDataPlaneOwnershipStatus(validationDatabaseUrl)')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
   })
 })
