@@ -10,7 +10,9 @@
     "acceptance_artifact": "BEYOND_ACARYA_ACCEPTANCE_v2.json",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
     "route_coverage": "34/34",
-    "exact_final_head": "PENDING_FINAL_COMMIT_AND_EXTERNAL_REVIEW",
+    "technical_candidate_head": "0f0fc077157454e28d446b77a20c4e9dc4cc9771",
+    "stacked_pull_request": 2605,
+    "exact_final_head": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
     "exact_head_ci": "PENDING",
     "merge": "NOT_RUN",
     "deployment": "NOT_RUN"

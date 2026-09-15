@@ -2,9 +2,9 @@
   "schema_version": "madhav-purna-anvesana/local-disposable-evidence/v1",
   "campaign_id": "madhav-purna-anvesana",
   "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
-  "recorded_at": "2026-09-15T20:17:57+05:30",
+  "recorded_at": "2026-09-15T20:39:00+05:30",
   "immutable_base": "b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
-  "evidence_head_floor": "c1176c01c6734a3f0f2b64701fa4d46c9cf9a463",
+  "evidence_head_floor": "0f0fc077157454e28d446b77a20c4e9dc4cc9771",
   "final_head_binding": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
   "scope": "SOURCE_LOCAL_DISPOSABLE_ONLY",
   "terminal_ceiling": "SOURCE_LOCAL_ACCEPTED",
@@ -70,6 +70,20 @@
       "result": "EXPECTED_INHERITED_FAILURE_REPRODUCED",
       "evidence": "A truly empty database fails first because seed markers suppress the foundational baselines and uuid_generate_v4 is absent; after the documented baseline/auth stub is supplied, lexical ordering reaches migration 1000 before prerequisite 598 and asset_output_digest_specs is absent.",
       "qualification": "diagnosis only; no migration-runner remediation or deployed-current claim"
+    },
+    {
+      "id": "W7-T09-INTEGRATED-PLATFORM-GATE",
+      "command": "cd platform && npm run lint && npx tsc --noEmit && npm test",
+      "result": "PASS_1107_FILES_11772_TESTS_74_FILES_SKIPPED_685_TESTS_SKIPPED_2_TODO",
+      "evidence": "The complete platform suite passes after refreshing deterministic capability knowledge, census, projections and the two intentionally changed route-port baselines; lint reports zero errors and 589 warnings and TypeScript passes.",
+      "qualification": "source-local test evidence only; browser, deployment and empirical gates not exercised"
+    },
+    {
+      "id": "W7-T10-PLATFORM-MCP-QUALIFIED-GATE",
+      "command": "cd platform-mcp && npm run typecheck && npm run codegen:check && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts",
+      "result": "PASS_TYPESCRIPT_CODEGEN_AND_58_WAVE7_FOCUSED_TESTS",
+      "evidence": "The repository-wide platform-mcp test command was also run and retained its inherited non-green baseline of missing legacy .js modules and external routing fixture plus obsolete unrelated expectations; the Wave 7 managed-job surface is green.",
+      "qualification": "qualified source-local MCP gate; no claim that the inherited repository-wide suite is green"
     }
   ],
   "residual_dispositions": [
@@ -139,9 +153,9 @@
     },
     {
       "residual_id": "PA-R09",
-      "local_status": "SOURCE_DELIVERY_IN_PROGRESS",
-      "evidence_refs": ["RECOVERY_DEFINITION_v1.json", "git:codex/purna-anvesana-wave7"],
-      "local_result": "The focused recovery stack is locally committed; protected delivery evidence is recorded only after push, PR and exact-head CI complete.",
+      "local_status": "SOURCE_DELIVERY_CANDIDATE",
+      "evidence_refs": ["RECOVERY_DEFINITION_v1.json", "git:codex/purna-anvesana-wave7", "github:pull/2605", "W7-T09-INTEGRATED-PLATFORM-GATE", "W7-T10-PLATFORM-MCP-QUALIFIED-GATE"],
+      "local_result": "The focused recovery stack is pushed and PR #2605 is open. Exact-final-head CI and independent review remain required after the terminal metadata commit.",
       "external_remainder": "Independent protected-owner approval, merge and deployment remain outside CCD-011.",
       "external_result": "NOT_RUN"
     },

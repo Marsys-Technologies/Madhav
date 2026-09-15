@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.13.0
-status: ACTIVE_COMPLETION_EXECUTION
+version: 0.14.0
+status: SOURCE_LOCAL_CANDIDATE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0045
-last_updated: 2026-09-15T11:05:00+05:30
+last_event: PA-E0052
+last_updated: 2026-09-15T20:39:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -20,8 +20,9 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: Recovery Wave 7 is active. W6's negative verdict and terminal snapshot remain immutable
-  history, but their blanket quarantine of ordinary source/local/disposable remediation is superseded.
+- Wave: Recovery Wave 7 has reached a source/local candidate. W6's negative verdict and terminal
+  snapshot remain immutable history; Wave 7 supersedes only their blanket quarantine of ordinary
+  source/local/disposable remediation.
 - Branch: `codex/purna-anvesana-wave7`, based exactly on immutable W6 head
   `b48a6997b12ebe591bc5e62b7b60ddb295ee352b`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
@@ -29,6 +30,7 @@ layer state, queue or authority.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
 - PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
 - PR #2604: open, stacked on PR #2603; it is a review surface, not merge or deployment proof.
+- PR #2605: open, stacked on PR #2604; exact-final-head CI and independent review remain required.
 - Lease: `MADHAV-PURNA-ANVESANA-W7-20260915`; active and verified at remote coordination commit
   `9cd76037021b502cc35330074e3b9bc229b02e2a`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
@@ -244,6 +246,37 @@ named an unregistered Codex profile. The metadata now records the approved `madh
 the handshake-specific schema validator passes with zero violations. This correction is governance
 metadata only and requires a new immutable external exact-head review before final closure.
 
+## Wave 7 recovery outcome
+
+The unchanged Beyond-Acarya corpus now passes all 34/34 source-local route obligations. The compiler
+derives a deterministic, receipted all-graha single-day transit query when the temporal anchor is
+available and fails closed when it is not. Transit component identities, resolution hashes and
+authorization are recomputed rather than trusted from response prose.
+
+The planner now consumes reviewed semantic planning constraints instead of flat-manifest authority.
+Route authority, weighted consult dispatch, nested pagination and fan-out accounting are explicit;
+active-build overlays reject stale, global or hash-mismatched state. Lifecycle mutations have
+reviewed semantics, restart-safe reservations, a rotating signing-ring contract and durable,
+principal/credential/chart-bound managed jobs with bounded leases, attempts and retention.
+
+Disposable PostgreSQL 17 evidence passes 28 migration and overlay tests. The reviewed three-door
+fixture passes 4 files / 73 tests and the Wave 7 managed-MCP surface passes 58 tests. The exact
+technical candidate passes the complete platform unit gate: 1,107 files and 11,772 tests, with 74
+files and 685 tests skipped and two todo; TypeScript passes and lint reports zero errors / 589
+warnings. Platform-MCP TypeScript and codegen also pass. Its repository-wide test command retains
+an inherited non-green baseline: missing legacy `.js` modules and an external routing fixture plus
+obsolete unrelated expectations. Those failures are recorded rather than rewritten into a green
+claim; none is in the Wave 7 focused managed-MCP change surface.
+
+The inherited empty-database migration bootstrap remains separately diagnosed: seed markers suppress
+foundational baselines, then global lexical ordering reaches migration 1000 before prerequisite 598.
+Wave 7 does not broaden into migration-runner governance repair and does not infer deployed-current
+counts. `W7_COMPLETION_AUTHORITY_PACKET_v1.json` retains deployed reads, shared migrations, key
+rotation, deployed cross-door traces, protected merge/deploy, retirement and blinded expert empirical
+evaluation as separately authorized work. PR #2605 is a review surface only. The immutable final
+source head still requires exact-head CI and external independent review; no merge, deployment,
+shared/production mutation or empirical acceptance is claimed.
+
 ## Reproduction
 
 From the repository root:
@@ -283,6 +316,13 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W5-P2 three-door parity/failure proof | COMPLETE | W5-P1 | parity reviewer approved bounded shared-surface proof |
 | W6-P1 versioned Beyond-Acarya acceptance | COMPLETE_WITH_NEGATIVE_ACCEPTANCE_EVIDENCE | W5-P2 | first review refuted three anti-gaming defects; repaired exact head independently approved |
 | W6-P2 source-scope close and quarantine | COMPLETE | W6-P1 | pre-release head independently approved; remote lease released; immutable final-head external review required |
+| W7-P0 recovery authority and blocker diagnosis | COMPLETE | W6-P2 | inherited bootstrap defect separated without broadening scope |
+| W7-P1 unchanged Beyond-Acarya acceptance | COMPLETE | W7-P0 | 34/34 source-local candidate; final exact-head review pending |
+| W7-P2 semantic planner authority | COMPLETE | W7-P1 | reviewed constraints and weighted dispatch pass locally |
+| W7-P3 pagination, parity and overlays | COMPLETE | W7-P2 | local/disposable gates pass; deployed trace remains external |
+| W7-P4 lifecycle, signing and durable jobs | COMPLETE | W7-P3 | source/disposable gates pass; shared migration/key work remains external |
+| W7-P5 completion and empirical protocol packets | COMPLETE | W7-P4 | all 13 residuals dispositioned; external actions remain unauthorized |
+| W7-P6 protected source candidate | CANDIDATE | W7-P5 | PR #2605 open; exact-final-head CI and independent review pending |
 
 ## Delivery decomposition
 
@@ -298,6 +338,6 @@ would require separate authorization.
 The FC0 implementation brief's R1–R12 remain authoritative inputs and must be mapped without
 renumbering. No packet can close a missing live, migration, route, semantic, graph, inquiry,
 response or acceptance proof by citing green CI, a PR, a local fixture or this state projection.
-Authority-bound production remainder is quarantined for a future separately authorized operation;
-the terminal state available to this campaign is
-`SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER`.
+Authority-bound production remainder is quarantined for a future separately authorized operation.
+After exact-head CI and independent review, the terminal state available to this recovery is
+`SOURCE_LOCAL_ACCEPTED`; it is not whole-campaign, deployed or empirical completion.
