@@ -23,6 +23,20 @@ function validTemporalAnchor(value: unknown): value is string {
     && value <= '2150-12-31'
 }
 
+function validatesScalarIdentity(result: Record<string, unknown>, planet: string, asOfDate: string): boolean {
+  if (result['ok'] !== true || result['planet'] !== planet) return false
+  const window = result['window']
+  if (!window || typeof window !== 'object') return false
+  const windowRecord = window as Record<string, unknown>
+  if (windowRecord['start'] !== asOfDate || windowRecord['end'] !== asOfDate) return false
+  const rows = result['rows']
+  if (!Array.isArray(rows) || rows.length === 0 || result['count'] !== rows.length) return false
+  return rows.every((row) => row !== null
+    && typeof row === 'object'
+    && (row as Record<string, unknown>)['body'] === planet
+    && (row as Record<string, unknown>)['date'] === asOfDate)
+}
+
 export const queryCurrentTransitSnapshotCapability: ToolCapability = {
   uri: 'marsys://tool/L0/query_current_transit_snapshot',
   primitive_type: 'tool',
@@ -96,7 +110,7 @@ export const queryCurrentTransitSnapshotCapability: ToolCapability = {
       }
       const result = raw && typeof raw === 'object' ? raw as Record<string, unknown> : { ok: false, error: 'INVALID_SCALAR_TRANSIT_RESULT' }
       const rows = Array.isArray(result['rows']) ? result['rows'] : []
-      const served = result['ok'] !== false && typeof result['error'] !== 'string' && rows.length > 0
+      const served = validatesScalarIdentity(result, planet, asOfDate)
       return {
         planet,
         args: componentArgs,
@@ -105,7 +119,13 @@ export const queryCurrentTransitSnapshotCapability: ToolCapability = {
         rows,
         row_count: rows.length,
         result_hash: stableFingerprint(result),
-        error: served ? null : typeof result['error'] === 'string' ? result['error'] : 'SCALAR_TRANSIT_COMPONENT_EMPTY',
+        error: served
+          ? null
+          : typeof result['error'] === 'string'
+            ? result['error']
+            : rows.length === 0
+              ? 'SCALAR_TRANSIT_COMPONENT_EMPTY'
+              : 'SCALAR_TRANSIT_IDENTITY_MISMATCH',
       }
     }))
     const missingPlanets = components.filter((component) => component.status !== 'served').map((component) => component.planet)

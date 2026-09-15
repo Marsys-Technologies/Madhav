@@ -41,7 +41,7 @@ export interface InquiryObligation {
 export interface InquiryArgumentResolutionReceipt {
   readonly resolution_version: 'inquiry-argument-resolution-v1'
   readonly strategy: 'all_graha_single_day_transit'
-  readonly source: 'caller_temporal_anchor'
+  readonly source: 'caller_temporal_anchor' | 'request_context_clock'
   readonly status: 'resolved' | 'clarification_required'
   /** Raw caller value is retained so an invalid anchor cannot masquerade as absence. */
   readonly temporal_anchor_date: string | null

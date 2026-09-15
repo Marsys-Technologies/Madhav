@@ -78,6 +78,7 @@ function validTemporalAnchorDate(value: string | undefined): value is string {
 
 function transitArgumentResolution(
   temporalAnchorDate: string | undefined,
+  temporalAnchorSource: InquiryArgumentResolutionReceipt['source'],
   resolvedArgs: Readonly<Record<string, unknown>>,
   unresolvedRequiredArgs: readonly string[],
 ): InquiryArgumentResolutionReceipt {
@@ -92,7 +93,7 @@ function transitArgumentResolution(
   const base = {
     resolution_version: 'inquiry-argument-resolution-v1' as const,
     strategy: 'all_graha_single_day_transit' as const,
-    source: 'caller_temporal_anchor' as const,
+    source: temporalAnchorSource,
     status: valid && unresolvedRequiredArgs.length === 0 ? 'resolved' as const : 'clarification_required' as const,
     temporal_anchor_date: temporalAnchorDate ?? null,
     component_arguments: valid ? CANONICAL_TRANSIT_PLANETS.map((planet) => {
@@ -291,6 +292,7 @@ function planFor(
   scope: InquiryScopeTuple,
   executionChannel: ExecutionChannel,
   temporalAnchorDate: string | undefined,
+  temporalAnchorSource: InquiryArgumentResolutionReceipt['source'],
   overlay?: ChartCapabilityOverlay | null,
 ): InquiryPlanItem[] {
   const byId = new Map(snapshot.scus.map((scu) => [scu.scu_id, scu]))
@@ -331,7 +333,7 @@ function planFor(
         ? Object.entries(binding.input_contract).filter(([key, declaration]) => declaration.endsWith(':required') && itemArgs[key] === undefined).map(([key]) => key)
         : []
       const argumentResolution = aggregateTransitBinding
-        ? transitArgumentResolution(temporalAnchorDate, itemArgs, unresolvedRequired)
+        ? transitArgumentResolution(temporalAnchorDate, temporalAnchorSource, itemArgs, unresolvedRequired)
         : undefined
       const availability = availabilityByScu.get(scuId)
       const overlayAllowsBinding = !overlay || Boolean(binding
@@ -390,6 +392,7 @@ export function compileInquiryContract(args: {
   planning_budget?: Partial<InquiryPlanningBudget>
   /** Explicit request-time anchor; the compiler never reads the wall clock. */
   temporal_anchor_date?: string
+  temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -493,6 +496,7 @@ export function compileInquiryContract(args: {
     scope,
     executionChannel,
     args.temporal_anchor_date,
+    args.temporal_anchor_source ?? 'caller_temporal_anchor',
     args.overlay,
   )
   const obligations = selection.obligations.map((obligation) => {
@@ -765,6 +769,9 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
   }
   for (const item of contract.plan_items) {
     const receipt = item.argument_resolution
+    if (item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID && receipt?.status !== 'resolved') {
+      errors.push(`plan item ${item.item_id} aggregate transit binding lacks a resolved argument receipt`)
+    }
     if (!receipt) continue
     const { resolution_hash: resolutionHash, ...resolution } = receipt
     if (resolutionHash !== stableFingerprint(resolution)) {
@@ -774,7 +781,13 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
       errors.push(`plan item ${item.item_id} argument resolution does not match authorization args`)
     }
     if (receipt.status === 'resolved') {
-      if (item.binding_id !== CURRENT_TRANSIT_SNAPSHOT_BINDING_ID) {
+      const readyAggregate = item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID
+        && (item.state === 'ready' || item.state === 'observed')
+      const overlayBlockedAggregate = item.scu_id === TRANSIT_SCU_ID
+        && item.binding_id === null
+        && item.state === 'blocked'
+        && Boolean(item.blocked_reason)
+      if (item.scu_id !== TRANSIT_SCU_ID || (!readyAggregate && !overlayBlockedAggregate)) {
         errors.push(`plan item ${item.item_id} resolved transit arguments target the wrong binding`)
       }
       if (!validTemporalAnchorDate(receipt.temporal_anchor_date ?? undefined)

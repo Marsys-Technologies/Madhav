@@ -5,6 +5,7 @@ import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledg
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, failInquiryForOverlayDrift, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
 import type { ScopeTuple } from '../types'
+import type { InquiryContract } from './types'
 
 const wealthScope: ScopeTuple = {
   intent: 'wealth_deepdive',
@@ -14,6 +15,11 @@ const wealthScope: ScopeTuple = {
   horizon: 'multi_year',
   intervention: false,
   entitlement: 'native',
+}
+
+function withRecomputedAuthorization(contract: InquiryContract): InquiryContract {
+  const hashes = inquiryAuthorizationHashes(contract)
+  return { ...contract, ...hashes }
 }
 
 describe('versioned inquiry compiler', () => {
@@ -183,6 +189,7 @@ describe('versioned inquiry compiler', () => {
       args: { as_of_date: '2026-09-15' },
       argument_resolution: {
         status: 'resolved',
+        source: 'caller_temporal_anchor',
         component_arguments: [
           { planet: 'Sun', start_date: '2026-09-15', end_date: '2026-09-15' },
           { planet: 'Moon', start_date: '2026-09-15', end_date: '2026-09-15' },
@@ -200,6 +207,17 @@ describe('versioned inquiry compiler', () => {
     expect(transitItems[0]?.argument_resolution?.resolution_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(first.execution_plan_hash).toBe(second.execution_plan_hash)
     expect(inquiryAuthorizationHashes(first).execution_plan_hash).toBe(first.execution_plan_hash)
+
+    const requestClock = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+      temporal_anchor_source: 'request_context_clock',
+    })
+    expect(requestClock.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')?.argument_resolution?.source)
+      .toBe('request_context_clock')
 
     const later = compileInquiryContract({
       snapshot,
@@ -220,6 +238,21 @@ describe('versioned inquiry compiler', () => {
     expect(contract.chart_build_id).toBe('build-1')
     expect(contract.plan_items.every((item) => item.state === 'blocked')).toBe(true)
     expect(finalizeInquiryContract(contract).status).toBe('INCOMPLETE')
+  })
+
+  it('keeps valid transit argument resolution coherent when the overlay blocks dispatch', () => {
+    const overlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-dark', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
+    const contract = compileInquiryContract({
+      snapshot,
+      overlay,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const transit = contract.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')
+    expect(transit).toMatchObject({ state: 'blocked', binding_id: null, argument_resolution: { status: 'resolved' } })
+    expect(validateInquiryContract(contract)).toEqual({ valid: true, errors: [] })
   })
 
   it('admits a validated AI adjacency as a supporting obligation', () => {
@@ -383,6 +416,26 @@ describe('versioned inquiry compiler', () => {
       { ...initial, plan_items: nonCanonicalTransitItems },
     ]
     for (const forged of forgeries) expect(validateInquiryContract(forged).valid).toBe(false)
+  })
+
+  it('rejects an aggregate transit binding whose receipt was removed even after authorization hashes are recomputed', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const strippedItems = initial.plan_items.map((item) => {
+      if (item.binding_id !== 'registry:marsys://tool/L0/query_current_transit_snapshot') return item
+      const { argument_resolution: _removed, ...withoutReceipt } = item
+      return withoutReceipt
+    })
+    const stripped = withRecomputedAuthorization({ ...initial, plan_items: strippedItems })
+    expect(validateInquiryContract(stripped)).toMatchObject({
+      valid: false,
+      errors: expect.arrayContaining([expect.stringContaining('aggregate transit binding lacks a resolved argument receipt')]),
+    })
   })
 
   it('never treats a required failed observation as complete', () => {

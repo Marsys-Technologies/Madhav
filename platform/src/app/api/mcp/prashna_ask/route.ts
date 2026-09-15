@@ -536,6 +536,7 @@ export async function POST(request: Request) {
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
           temporal_anchor_date: nowContextDate,
+          temporal_anchor_source: 'request_context_clock',
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
