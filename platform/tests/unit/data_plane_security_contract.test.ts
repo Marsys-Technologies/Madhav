@@ -156,7 +156,10 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow.indexOf('Re-attest protected data-plane semantic state')).toBeLessThan(workflow.indexOf('Run general database migrations'))
   })
   it('requires exact backup and successful-restore identifiers as one receipt', () => {
+    const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
     expect(parseBackupRestoreReceipt('123:restore-op-456')).toEqual({ backupId: '123', restoreOperationId: 'restore-op-456' })
     expect(() => parseBackupRestoreReceipt('123')).toThrow(/backup-id:restore-operation-id/)
+    expect(preflight).toContain("restore.targetId !== 'amjis-postgres'")
+    expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
   })
 })

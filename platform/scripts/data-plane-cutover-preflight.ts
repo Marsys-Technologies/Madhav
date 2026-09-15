@@ -35,9 +35,11 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
     'sql', 'operations', 'describe', restoreOperationId,
     '--project', process.env.GCP_PROJECT ?? 'madhav-astrology', '--format=json',
   ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as {
-    name?: string; status?: string; operationType?: string; backupContext?: { backupId?: string | number }
+    name?: string; status?: string; operationType?: string; targetId?: string
+    backupContext?: { backupId?: string | number }
   }
   if (restore.name !== restoreOperationId || restore.status !== 'DONE'
+      || restore.targetId !== 'amjis-postgres'
       || !/^RESTORE(?:_|$)/.test(restore.operationType ?? '')
       || String(restore.backupContext?.backupId ?? '') !== backupId) {
     throw new Error('Named Cloud SQL restore operation does not prove the pinned backup was restored successfully.')
@@ -45,11 +47,13 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
   const pool = new Pool({ connectionString: databaseUrl, max: 1 })
   const client = await pool.connect()
   try {
-    await client.query('BEGIN READ ONLY')
+    await client.query('BEGIN')
     const lock = await client.query<{ locked: boolean }>(
       `SELECT pg_try_advisory_xact_lock(hashtextextended('DP-SD-018-PROTECTED-CUTOVER',0)) AS locked`,
     )
     if (!lock.rows[0]?.locked) throw new Error('Exclusive DP-SD-018 cutover lease is already held.')
+    await client.query(`LOCK TABLE public.build_runs, public.build_run_assets
+      IN SHARE ROW EXCLUSIVE MODE NOWAIT`)
     const active = await client.query<{ count: string }>(`
       SELECT count(*)::text AS count FROM public.build_runs
       WHERE state IN ('running','queued','dispatching')
