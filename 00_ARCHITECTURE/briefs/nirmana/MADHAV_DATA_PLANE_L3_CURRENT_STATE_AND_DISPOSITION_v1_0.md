@@ -429,3 +429,25 @@ credential, IAM, secret, database, migration, build, deployment or data action.
 Physical upstream generation is still held, protected deployment and consumer
 integration are not run, consumer value is not evaluated, and therefore L3
 terminal acceptance remains 0/22 despite accepted source/provenance progress.
+
+### DP-SD-019 source result
+
+The routine-delivery packet is independently accepted at exact tip
+`1fa8f1f8f16afa30ae5142227149b5afbdb80214` and integrated through
+`d60bb0736`. The marked routine path avoids one-time environment approval while
+unknown/partial/failing paths remain closed, bootstrap and routine database
+writes serialize across refs, and every shipping service remains behind the
+migration barrier. Combined-tree focused tests, TypeScript, actionlint and YAML
+topology pass. Live environment, reviewer, identity, credential, IAM,
+backup/restore, exclusive-cutover and canary prerequisites remain external.
+
+Yojaka's first source candidate `06c3d944d` was correctly rejected because a
+maximum-across-domains compatibility scalar could lend secondary-domain support
+to `ph_nimitta`'s primary-domain promise. Accepted correction
+`7697c43b31da3655c2add7cda128a57ca4afd44e`, integrated through `fbf7803dc`,
+keeps the complete per-domain structure while aligning the compatibility scalar
+to the same authoritative primary domain consumed downstream. It preserves all
+compatible promises, signed/contrary evidence and exact source context without
+fabrication. Focused 116, full L3 1,525/41-skip/2-expected-failure and reviewer
+81/3-skip checks pass. The measured complete-linkage overhead is recorded as a
+semantic cost, not as a performance improvement.
