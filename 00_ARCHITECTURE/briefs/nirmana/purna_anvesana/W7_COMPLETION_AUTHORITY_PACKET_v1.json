@@ -1,0 +1,129 @@
+{
+  "schema_version": "madhav-purna-anvesana/completion-authority-packet/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
+  "status": "AWAITING_SEPARATE_AUTHORITY",
+  "authorizes_execution": false,
+  "purpose": "Minimized handoff for actions that cannot be completed under CCD-011. Placeholder values must be resolved in an approved change record; this packet is not that approval.",
+  "source_local_preconditions": {
+    "artifact": "W7_LOCAL_DISPOSABLE_EVIDENCE_v1.json",
+    "acceptance_artifact": "BEYOND_ACARYA_ACCEPTANCE_v2.json",
+    "verdict": "ACCEPTED_SOURCE_LOCAL",
+    "route_coverage": "34/34",
+    "exact_final_head": "PENDING_FINAL_COMMIT_AND_EXTERNAL_REVIEW",
+    "exact_head_ci": "PENDING",
+    "merge": "NOT_RUN",
+    "deployment": "NOT_RUN"
+  },
+  "execution_order": [
+    "EXT-01",
+    "EXT-02",
+    "EXT-03",
+    "EXT-04",
+    "EXT-05",
+    "EXT-06"
+  ],
+  "external_actions": [
+    {
+      "id": "EXT-01",
+      "residual_ids": ["PA-R01"],
+      "owner": "production-data-governance",
+      "authority_required": "time-bounded read-only staging or production database access approved for deployed-current census",
+      "preconditions": ["bind AUTHORIZED_READ_ONLY_DATABASE_URL without printing it", "record deployed revision and database environment", "set transaction_read_only on"],
+      "commands": [
+        "psql \"$AUTHORIZED_READ_ONLY_DATABASE_URL\" -X --set=ON_ERROR_STOP=1 --command=\"BEGIN TRANSACTION READ ONLY; SELECT current_setting('transaction_read_only') AS transaction_read_only; SELECT count(*) AS registry_total, count(*) FILTER (WHERE is_active) AS registry_active, count(*) FILTER (WHERE NOT is_active) AS registry_retired FROM asset_registry; SELECT ar.asset_id, ar.is_active, ods.spec_sha256 FROM asset_registry ar LEFT JOIN asset_output_digest_specs ods ON ods.asset_id = ar.asset_id AND ods.retired_at IS NULL ORDER BY ar.asset_id; ROLLBACK;\""
+      ],
+      "required_receipts": ["change/read authority ID", "environment and deployed revision", "read-only transaction proof", "complete ordered membership rows", "active/retired counts", "query SHA-256 and timestamp"],
+      "success_condition": "A reproducible read-only receipt establishes deployed-current asset membership and current reviewed-spec membership without extrapolating from source migrations.",
+      "rollback": "None; read-only transaction ends with ROLLBACK.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "EXT-02",
+      "residual_ids": ["PA-R06"],
+      "owner": "platform-security-release",
+      "authority_required": "approved staging database migration, Secret Manager, IAM, Cloud Run configuration and signing-key change authority",
+      "preconditions": ["EXT-01 receipt accepted", "exact protected source SHA selected", "backups and migration change window approved", "old and new non-secret KIDs/version IDs recorded"],
+      "commands": [
+        "Follow INQUIRY_SIGNING_KEY_ROTATION_RUNBOOK_v1_0.md with its separately approved project, service, service account, secret versions and change record.",
+        "cd platform && DATABASE_URL=\"$APPROVED_STAGING_DATABASE_URL\" npm exec tsx scripts/migrate.ts",
+        "psql \"$APPROVED_STAGING_DATABASE_URL\" -X --set=ON_ERROR_STOP=1 --command=\"SELECT version FROM schema_migrations WHERE version IN ('1033','1037','1038') ORDER BY version; SELECT grantee, privilege_type FROM information_schema.role_table_grants WHERE table_name IN ('planner_inquiry_lifecycles','planner_inquiry_action_reservations','planner_managed_prashna_jobs') ORDER BY table_name, grantee, privilege_type;\""
+      ],
+      "required_receipts": ["approved migration/key change record", "backup/restore reference", "1033/1037/1038 applied-version rows", "RLS and role_web_serve verification", "new and previous public KIDs and secret version numbers without key material", "candidate Cloud Run revision", "rotation overlap and old-KID drain evidence"],
+      "success_condition": "The approved staging schema and service revision use the dedicated rotating signing ring, enforce service-role/RLS contracts, and retain no exposed secret material.",
+      "rollback": "Use the signing runbook rollback; route to a dual-key healthy revision before removing or disabling any previous key. Database DOWN requires separate destructive approval.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "EXT-03",
+      "residual_ids": ["PA-R07", "PA-R13"],
+      "owner": "release-quality-engineering",
+      "authority_required": "approved staging deployment, test principal/chart, Portal session, managed MCP credential and raw MCP credential",
+      "preconditions": ["EXT-02 completed", "one consented chart and principal are pinned", "the exact door-parity fixture question and temporal anchor are frozen", "logs redact tokens and chart content"],
+      "commands": [
+        "Execute the pinned fixture from platform/src/lib/vidhi/inquiry/__fixtures__/door_parity.ts through the deployed Portal inquiry path and retain its inquiry_door_parity receipt.",
+        "Execute the same principal, chart, question, temporal anchor and response format through deployed managed prashna_ask; poll prashna_status to a terminal result and retain the normalized evidence receipt.",
+        "Execute the same inputs through deployed raw inquiry start, execute and finalize; exhaust all returned pagination continuations and retain the normalized evidence receipt.",
+        "Run the deployed overlay read for the same chart_build_id and record active build, knowledge hash, available SCUs, dark SCUs and any fail-closed mismatch code."
+      ],
+      "required_receipts": ["exact deployed revision and environment", "principal/chart aliases with sensitive values redacted", "three normalized door receipt hashes", "first/middle/last pagination and exhaustion receipts", "active overlay build ID and knowledge hash", "available/dark SCU sets", "failure-identity parity", "no raw token, key or chart payload"],
+      "success_condition": "All three deployed doors produce materially identical normalized evidence for the pinned inquiry, pagination exhausts, and the active chart/build overlay is selected without fallback to stale or global data.",
+      "rollback": "Stop the probe and route traffic to the prior approved revision; do not mutate chart or overlay data as part of validation.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "EXT-04",
+      "residual_ids": ["PA-R08"],
+      "owner": "product-research-and-domain-review",
+      "authority_required": "approved expert review, research-data, privacy, model/runtime spend and empirical acceptance authority",
+      "preconditions": ["EXT-03 accepted", "EMPIRICAL_ANSWER_QUALITY_PROTOCOL_v1.json approved and frozen", "held-out corpus and randomization commitments sealed", "reviewer conflicts cleared"],
+      "commands": [
+        "Execute the approved frozen protocol exactly as versioned in EMPIRICAL_ANSWER_QUALITY_PROTOCOL_v1.json; do not reuse Wave 6 synthetic fixtures as held-out evidence.",
+        "Seal all primary scores and exclusions before unblinding; compute the predeclared metrics with the frozen analysis script and bind the signed report to its corpus, rubric, revision and receipt hashes."
+      ],
+      "required_receipts": ["protocol approval", "corpus/rubric/randomization/analysis hashes", "deployed arm revisions and generation settings", "per-item generation receipts", "expert applicability and conflict attestations", "sealed scores and adjudications", "signed aggregate report"],
+      "success_condition": "Every predeclared metric passes with no stop condition and the authorized acceptance owner signs the aggregate result; otherwise PA-R08 remains NOT_ACCEPTED or NOT_RUN.",
+      "rollback": "No outcome rollback. Quarantine invalid runs, preserve their audit trail, and issue a new protocol version before rerun.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "EXT-05",
+      "residual_ids": ["PA-R09", "PA-R12"],
+      "owner": "protected-delivery-owner",
+      "authority_required": "protected branch review, merge, deployment and separately approved asset-retirement authority",
+      "preconditions": ["immutable final source head independently approved", "all required checks bind to that exact head", "stack base and protected tip revalidated", "release and rollback owners present"],
+      "commands": [
+        "Merge only through the repository protected-delivery mechanism after required approvals and exact-head checks pass.",
+        "Deploy the protected merged revision through the governed release workflow and verify the deployed revision oracle before health or acceptance claims.",
+        "Retire flat-manifest assets or compatibility paths only through a separate reviewed retirement change after downstream consumer and rollback evidence is accepted."
+      ],
+      "required_receipts": ["independent final-head approval", "protected required-check conclusions", "merge commit and protected tip", "deployment run and deployed revision oracle", "bounded health window", "separate retirement approval and downstream-consumer proof if retirement proceeds"],
+      "success_condition": "The independently reviewed exact head is protected-merged and deployed with revision proof; any flat-manifest retirement has its own approval and compatibility evidence.",
+      "rollback": "Use the governed release rollback to the last healthy protected revision; asset retirement must retain a reviewed restoration path.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "EXT-06",
+      "residual_ids": ["PA-R10"],
+      "owner": "governance-maintenance",
+      "authority_required": "a new cross-governance charter and writer lease separate from Purna Anvesana Wave 7",
+      "preconditions": ["freeze the current inherited validator and bootstrap findings", "select a fresh isolated branch/worktree", "assign independent governance and migration reviewers"],
+      "commands": [
+        "Charter a separate remediation for the inherited governance-schema findings and the empty-database migration bootstrap/order defects reproduced in W7-T08.",
+        "Prove the replacement bootstrap on a truly empty disposable database and on a production-compatible schema snapshot before proposing protected delivery."
+      ],
+      "required_receipts": ["separate charter and authority decision", "frozen finding denominator", "failing then passing empty-bootstrap reproduction", "production-compatible snapshot replay", "independent governance and migration review", "separate PR and CI evidence"],
+      "success_condition": "The inherited governance and migration-bootstrap baseline is repaired and independently accepted outside this campaign without rewriting Wave 7 evidence.",
+      "rollback": "Keep the current production runner unchanged until the separately reviewed replacement passes all disposable and snapshot gates.",
+      "status": "NOT_RUN"
+    }
+  ],
+  "global_stop_conditions": [
+    "authority record does not name the exact action, environment and owner",
+    "source SHA, protected tip or deployed revision differs from the approved value",
+    "a command would print a credential, token, signing key or sensitive chart payload",
+    "a required backup, rollback owner or audit sink is unavailable",
+    "a local, PR, CI or staging result is being treated as production or empirical acceptance"
+  ],
+  "completion_rule": "FULLY_COMPLETE remains prohibited until all applicable external actions have accepted receipts, the protected merged and deployed revision is proven, deployed traces pass, and PA-R08 has an authorized empirical verdict. This source packet itself cannot satisfy those gates."
+}

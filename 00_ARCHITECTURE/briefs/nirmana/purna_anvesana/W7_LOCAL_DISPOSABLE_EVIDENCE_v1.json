@@ -1,0 +1,192 @@
+{
+  "schema_version": "madhav-purna-anvesana/local-disposable-evidence/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
+  "recorded_at": "2026-09-15T20:17:57+05:30",
+  "immutable_base": "b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
+  "evidence_head_floor": "c1176c01c6734a3f0f2b64701fa4d46c9cf9a463",
+  "final_head_binding": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
+  "scope": "SOURCE_LOCAL_DISPOSABLE_ONLY",
+  "terminal_ceiling": "SOURCE_LOCAL_ACCEPTED",
+  "environment": {
+    "database": "disposable localhost PostgreSQL 17",
+    "shared_or_production_access": false,
+    "shared_or_production_mutation": false,
+    "credential_or_infrastructure_mutation": false
+  },
+  "test_runs": [
+    {
+      "id": "W7-T01-FROZEN-ACCEPTANCE",
+      "command": "cd platform && npm run test -- --run src/lib/vidhi/inquiry/beyond_acarya_acceptance.test.ts",
+      "result": "PASS",
+      "evidence": "BEYOND_ACARYA_ACCEPTANCE_v2.json preserves the v1 corpus and expectations and records 34/34 source-local route obligations.",
+      "qualification": "synthetic source-local acceptance only"
+    },
+    {
+      "id": "W7-T02-THREE-DOOR-PARITY",
+      "command": "cd platform && npm run test -- --run src/lib/vidhi/inquiry/door_parity.test.ts src/lib/pariprashna/pipeline/__tests__/door_parity.integration.test.ts src/app/api/mcp/prashna_ask/__tests__/route.test.ts src/app/api/mcp/inquiry/__tests__/route.test.ts",
+      "result": "PASS_4_FILES_73_TESTS",
+      "evidence": "The shared reviewed surface, pagination, normalized receipts and distinct failure identities pass through the three local door adapters.",
+      "qualification": "not a deployed cross-door trace"
+    },
+    {
+      "id": "W7-T03-OVERLAY-REPLAY",
+      "command": "cd platform && PURNA_ANVESANA_OVERLAY_TEST_DATABASE_URL=<DISPOSABLE_LOCALHOST_URL> npm run test -- --run src/lib/retrieval/registry/knowledge/overlay_loader.test.ts src/lib/retrieval/registry/knowledge/overlay_loader.db.test.ts",
+      "result": "PASS_2_FILES_8_TESTS",
+      "evidence": "The loader selects the active chart/build overlay, rejects stale or globally mismatched overlays, verifies the knowledge hash, and fails closed.",
+      "qualification": "disposable database only"
+    },
+    {
+      "id": "W7-T04-LIFECYCLE-MIGRATION-REPLAY",
+      "command": "cd platform && PURNA_ANVESANA_W5_DATABASE_URL=<DISPOSABLE_LOCALHOST_URL> npm run test -- --run src/lib/vidhi/inquiry/migration_1033.db.test.ts",
+      "result": "PASS_1_FILE_10_TESTS",
+      "evidence": "Migrations 1033 and 1037 apply, reapply and roll back transactionally with RLS, replay, reservation, recovery and role checks.",
+      "qualification": "disposable database only; signing keys unchanged"
+    },
+    {
+      "id": "W7-T05-MANAGED-JOB-MIGRATION-REPLAY",
+      "command": "cd platform && PURNA_ANVESANA_MANAGED_JOB_TEST_DATABASE_URL=<DISPOSABLE_LOCALHOST_URL> npm run test -- --run src/lib/vidhi/inquiry/managed_job_migration_contract.test.ts",
+      "result": "PASS_10_DATABASE_TESTS",
+      "evidence": "Migration 1038 applies and replays with principal and credential ownership, bounded attempts, leases, terminal reconciliation, retention and cascading consent deletion.",
+      "qualification": "disposable database only"
+    },
+    {
+      "id": "W7-T06-MANAGED-JOB-PLATFORM",
+      "command": "cd platform && npm run test -- --run src/lib/vidhi/inquiry/managed_job_migration_contract.test.ts src/app/api/mcp/prashna_jobs/route.test.ts src/app/api/mcp/prashna_ask/__tests__/route.test.ts",
+      "result": "PASS_FOCUSED_PLATFORM",
+      "evidence": "The platform route and store enforce caller idempotency, principal/credential/chart ownership, bounded leases and attempts, distinct result ceilings, and safe ambiguous-outcome reconciliation.",
+      "qualification": "source-local route tests only"
+    },
+    {
+      "id": "W7-T07-MANAGED-JOB-MCP",
+      "command": "cd platform-mcp && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts",
+      "result": "PASS_58_TESTS",
+      "evidence": "Managed MCP uses the platform-backed durable job contract without a process-memory fallback and preserves streaming and terminal byte ceilings.",
+      "qualification": "source-local bridge tests only"
+    },
+    {
+      "id": "W7-T08-EMPTY-BOOTSTRAP-DIAGNOSIS",
+      "command": "cd platform && DATABASE_URL=<EMPTY_DISPOSABLE_LOCALHOST_URL> npm exec tsx scripts/migrate.ts",
+      "result": "EXPECTED_INHERITED_FAILURE_REPRODUCED",
+      "evidence": "A truly empty database fails first because seed markers suppress the foundational baselines and uuid_generate_v4 is absent; after the documented baseline/auth stub is supplied, lexical ordering reaches migration 1000 before prerequisite 598 and asset_output_digest_specs is absent.",
+      "qualification": "diagnosis only; no migration-runner remediation or deployed-current claim"
+    }
+  ],
+  "residual_dispositions": [
+    {
+      "residual_id": "PA-R01",
+      "local_status": "LOCAL_DIAGNOSED_EXTERNAL_REMAINDER",
+      "evidence_refs": ["W7-T08-EMPTY-BOOTSTRAP-DIAGNOSIS", "platform/scripts/migrate.ts", "00_ARCHITECTURE/llm_consumption_audit/briefs/suddha_vaca/PARKED_FINDINGS_CLOSE_v1_0.md"],
+      "local_result": "The ordered empty-bootstrap path is reproducibly blocked by inherited seed-baseline suppression and global lexical ordering; source census remains non-deployed evidence.",
+      "external_remainder": "An authorized read-only deployed-current query or a production-compatible schema snapshot must establish deployed membership and counts.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R02",
+      "local_status": "SOURCE_LOCAL_CLOSED",
+      "evidence_refs": ["W7-T02-THREE-DOOR-PARITY", "platform/src/generated/capability_knowledge.snapshot.json", "platform-mcp/src/lib/mcp_full_route_authority.ts"],
+      "local_result": "Every intended source-local public SCU has a reviewed channel disposition and the shared local three-door fixture normalizes identically.",
+      "external_remainder": "Deployed equivalence is consolidated under PA-R07.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R03",
+      "local_status": "SOURCE_LOCAL_CLOSED",
+      "evidence_refs": ["W7-T01-FROZEN-ACCEPTANCE", "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts", "BEYOND_ACARYA_ACCEPTANCE_v2.json"],
+      "local_result": "Deterministic receipted all-graha single-day transit derivation and clarification close the unchanged 34/34 frozen route denominator.",
+      "external_remainder": "None beyond ordinary protected delivery and deployed validation already named by PA-R07 and PA-R09.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R04",
+      "local_status": "SOURCE_LOCAL_CLOSED",
+      "evidence_refs": ["W7-T04-LIFECYCLE-MIGRATION-REPLAY", "platform/migrations/1037_planner_inquiry_action_reservations.sql", "platform/src/lib/vidhi/inquiry/lifecycle_store.ts"],
+      "local_result": "Durable reservation identity, expiry, reclaim and terminal transitions preserve restart-safe at-most-once dispatch semantics in source and disposable replay.",
+      "external_remainder": "Operational deployment behavior is covered by the PA-R07 deployed trace gate.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R05",
+      "local_status": "SOURCE_LOCAL_CLOSED",
+      "evidence_refs": ["W7-T05-MANAGED-JOB-MIGRATION-REPLAY", "W7-T06-MANAGED-JOB-PLATFORM", "W7-T07-MANAGED-JOB-MCP", "platform/supabase/migrations/1038_planner_managed_prashna_jobs.sql"],
+      "local_result": "Managed jobs are durable, principal/credential/chart-bound, lease-claimed, attempt-bounded, retention-bounded and cross-instance addressable; no runtime memory fallback remains.",
+      "external_remainder": "Migration application and deployed operation are covered by PA-R06, PA-R07 and PA-R09.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R06",
+      "local_status": "SOURCE_DISPOSABLE_READY_EXTERNAL_REMAINDER",
+      "evidence_refs": ["W7-T04-LIFECYCLE-MIGRATION-REPLAY", "W7-T05-MANAGED-JOB-MIGRATION-REPLAY", "INQUIRY_SIGNING_KEY_ROTATION_RUNBOOK_v1_0.md"],
+      "local_result": "Migrations 1033, 1037 and 1038 and fail-closed signing-ring behavior are source/disposable ready.",
+      "external_remainder": "Approved shared migration application, dedicated key provisioning/rotation and service-role verification remain required.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R07",
+      "local_status": "LOCAL_DISPOSABLE_CLOSED_EXTERNAL_REMAINDER",
+      "evidence_refs": ["W7-T02-THREE-DOOR-PARITY", "platform/src/lib/vidhi/inquiry/__fixtures__/door_parity.ts"],
+      "local_result": "The genuine reviewed shared fixture passes all three local paths with normalized evidence, pagination and failure parity.",
+      "external_remainder": "The same pinned inquiry must be captured through deployed Portal, managed MCP and raw MCP endpoints.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R08",
+      "local_status": "PROTOCOL_READY_EXTERNAL_ONLY",
+      "evidence_refs": ["EMPIRICAL_ANSWER_QUALITY_PROTOCOL_v1.json", "BEYOND_ACARYA_ACCEPTANCE_v2.json"],
+      "local_result": "A held-out, blinded, independent expert protocol is predeclared without outcomes.",
+      "external_remainder": "Corpus custody, expert review, model execution and empirical acceptance require separate authority.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R09",
+      "local_status": "SOURCE_DELIVERY_IN_PROGRESS",
+      "evidence_refs": ["RECOVERY_DEFINITION_v1.json", "git:codex/purna-anvesana-wave7"],
+      "local_result": "The focused recovery stack is locally committed; protected delivery evidence is recorded only after push, PR and exact-head CI complete.",
+      "external_remainder": "Independent protected-owner approval, merge and deployment remain outside CCD-011.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R10",
+      "local_status": "DIAGNOSED_SEPARATE_SCOPE",
+      "evidence_refs": ["W7-T08-EMPTY-BOOTSTRAP-DIAGNOSIS", "platform/scripts/migrate.ts", "TERMINAL_QUARANTINE_v1.json"],
+      "local_result": "The inherited migration-bootstrap defects are reproduced and separated from Wave 7 product changes; the inherited governance baseline is not rewritten here.",
+      "external_remainder": "A separately chartered governance/bootstrap remediation must resolve inherited findings and migration order without broadening this campaign.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R11",
+      "local_status": "SOURCE_LOCAL_CLOSED",
+      "evidence_refs": ["W7-T02-THREE-DOOR-PARITY", "platform/src/lib/vidhi/inquiry/pagination.ts", "platform/src/lib/vidhi/inquiry/pagination.test.ts"],
+      "local_result": "Reviewed nested continuation paths, first/middle/last ordering, exhaustion, fan-out accounting and non-exhaustible dispositions are enforced and receipted.",
+      "external_remainder": "Deployed pagination behavior is included in PA-R07.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R12",
+      "local_status": "SOURCE_LOCAL_COMPATIBILITY_CLOSED_EXTERNAL_RETIREMENT",
+      "evidence_refs": ["platform/src/generated/capability_knowledge.snapshot.json", "platform/src/lib/retrieval/registry/knowledge", "git:34dbff8c4"],
+      "local_result": "Planner and inquiry consumers use the reviewed semantic capability graph; flat manifest semantic authority has been removed from source consumers.",
+      "external_remainder": "Physical asset retirement and downstream release confirmation require separate authority.",
+      "external_result": "NOT_RUN"
+    },
+    {
+      "residual_id": "PA-R13",
+      "local_status": "LOCAL_DISPOSABLE_CLOSED_EXTERNAL_REMAINDER",
+      "evidence_refs": ["W7-T03-OVERLAY-REPLAY", "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts"],
+      "local_result": "Current chart/build overlay selection and stale/global/hash mismatch refusal pass on disposable PostgreSQL 17.",
+      "external_remainder": "A deployed compatible schema must record environment-bound available/dark SCU receipts.",
+      "external_result": "NOT_RUN"
+    }
+  ],
+  "prohibited_actions": {
+    "merge": false,
+    "deploy": false,
+    "shared_or_production_migration": false,
+    "shared_or_production_data_mutation": false,
+    "credentials_or_signing_key_change": false,
+    "infrastructure_change": false,
+    "asset_retirement": false,
+    "expert_or_empirical_acceptance": false,
+    "production_acceptance": false
+  }
+}
