@@ -490,6 +490,22 @@ def test_migration_guards_replay_stale_sets_nonfinite_and_cross_layer_delete():
     assert "l2_data_plane_generation_is_compatible" in migration
     assert "l2_data_plane_jsonb_has_nonfinite(v_row)" in migration
     assert "assert_l2_msr_delete_safe" in migration
+    assert "L2 generation progress must equal recorded partitions" in migration
+    assert "L2 producer generation must be inserted in empty building state" in migration
+    assert "L2 partition % was not declared by generation open" in migration
+    assert "L2 generation completed % partitions but declared % of expected %" in migration
+    assert "CREATE TABLE IF NOT EXISTS public.l2_data_plane_run_intents" in migration
+    assert "l2_generation_partitions_declared_fk" in migration
+    assert "l2_generation_runs_intent_fk" in migration
+    assert "l2_run_rows_intent_fk" in migration
+    assert "L2 build % has no declared run intent for partition %" in migration
+    assert "REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC" in migration
+    assert "REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator" in migration
+    assert "GRANT SELECT ON TABLE" in migration
+    assert "GRANT EXECUTE ON FUNCTION public.open_l2_data_plane_generation(" in migration
+    assert "GRANT SELECT, INSERT" not in migration
+    assert "FROM PUBLIC, role_orchestrator" in migration
+    assert "BEFORE INSERT OR UPDATE OR DELETE ON public.data_plane_l2_producer_generations" in migration
 
 
 def test_msr_replacement_invokes_cross_layer_guard_before_delete():

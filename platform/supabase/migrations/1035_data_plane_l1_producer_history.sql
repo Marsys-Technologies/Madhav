@@ -52,6 +52,22 @@ CREATE TABLE IF NOT EXISTS public.l1_data_plane_generation_partitions (
       ON DELETE RESTRICT
 );
 
+-- A partition must be declared by open_l1_data_plane_generation before its
+-- completion receipt can exist.  Keeping declaration separate from completion
+-- preserves legitimate zero-row partitions without allowing an arbitrary key
+-- to manufacture an empty completed generation.
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_partition_contexts (
+    chart_id       UUID NOT NULL,
+    asset_id       TEXT NOT NULL,
+    generation_id TEXT NOT NULL,
+    partition_key TEXT NOT NULL,
+    opened_at      TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    PRIMARY KEY (chart_id, asset_id, generation_id, partition_key),
+    FOREIGN KEY (chart_id, asset_id, generation_id)
+      REFERENCES public.l1_data_plane_generations(chart_id, asset_id, generation_id)
+      ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS public.l1_data_plane_row_snapshots (
     snapshot_id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     chart_id                    UUID NOT NULL,
@@ -258,6 +274,59 @@ CREATE TABLE IF NOT EXISTS public.l1_data_plane_generation_heads (
       ON DELETE RESTRICT
 );
 
+DO $l1_partition_fks$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l1_generation_partitions_declared_fk'
+      AND conrelid = 'public.l1_data_plane_generation_partitions'::regclass
+  ) THEN
+    ALTER TABLE public.l1_data_plane_generation_partitions
+      ADD CONSTRAINT l1_generation_partitions_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l1_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l1_row_snapshots_declared_fk'
+      AND conrelid = 'public.l1_data_plane_row_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.l1_data_plane_row_snapshots
+      ADD CONSTRAINT l1_row_snapshots_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l1_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l1_dasha_snapshots_declared_fk'
+      AND conrelid = 'public.l1_data_plane_dasha_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.l1_data_plane_dasha_snapshots
+      ADD CONSTRAINT l1_dasha_snapshots_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l1_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l1_configuration_snapshots_declared_fk'
+      AND conrelid = 'public.l1_data_plane_configuration_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.l1_data_plane_configuration_snapshots
+      ADD CONSTRAINT l1_configuration_snapshots_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l1_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+END
+$l1_partition_fks$;
+
 CREATE INDEX IF NOT EXISTS l1_data_plane_snapshots_generation_idx
   ON public.l1_data_plane_row_snapshots
   (chart_id, asset_id, generation_id, source_table, row_identity);
@@ -275,6 +344,12 @@ DROP TRIGGER IF EXISTS l1_data_plane_partitions_immutable
   ON public.l1_data_plane_generation_partitions;
 CREATE TRIGGER l1_data_plane_partitions_immutable
 BEFORE UPDATE OR DELETE ON public.l1_data_plane_generation_partitions
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
+DROP TRIGGER IF EXISTS l1_data_plane_partition_contexts_immutable
+  ON public.l1_data_plane_partition_contexts;
+CREATE TRIGGER l1_data_plane_partition_contexts_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_partition_contexts
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
 
 DROP TRIGGER IF EXISTS l1_data_plane_snapshots_immutable
@@ -300,6 +375,71 @@ DROP TRIGGER IF EXISTS l1_data_plane_configurations_immutable
 CREATE TRIGGER l1_data_plane_configurations_immutable
 BEFORE UPDATE OR DELETE ON public.l1_data_plane_configuration_snapshots
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
+CREATE OR REPLACE FUNCTION public.l1_data_plane_guard_generation_change()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_recorded_partitions INTEGER;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.status <> 'building'
+       OR NEW.completed_partitions <> 0
+       OR NEW.semantic_output_digest IS NOT NULL
+       OR NEW.completed_at IS NOT NULL THEN
+      RAISE EXCEPTION 'L1 producer generation must be inserted in empty building state';
+    END IF;
+    RETURN NEW;
+  END IF;
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'L1 producer generations are append-only';
+  END IF;
+  IF OLD.status = 'complete' THEN
+    RAISE EXCEPTION 'completed L1 producer generation is immutable';
+  END IF;
+  IF ROW(NEW.chart_id, NEW.asset_id, NEW.generation_id,
+         NEW.correction_of_generation_id, NEW.contract_version,
+         NEW.l0_semantic_release_id, NEW.l0_semantic_release_digest,
+         NEW.l0_config_generation_id, NEW.l0_config_digest,
+         NEW.base_context_jsonb, NEW.expected_partitions, NEW.opened_at)
+     IS DISTINCT FROM
+     ROW(OLD.chart_id, OLD.asset_id, OLD.generation_id,
+         OLD.correction_of_generation_id, OLD.contract_version,
+         OLD.l0_semantic_release_id, OLD.l0_semantic_release_digest,
+         OLD.l0_config_generation_id, OLD.l0_config_digest,
+         OLD.base_context_jsonb, OLD.expected_partitions, OLD.opened_at) THEN
+    RAISE EXCEPTION 'L1 generation identity/context is immutable';
+  END IF;
+
+  SELECT count(*) INTO v_recorded_partitions
+  FROM public.l1_data_plane_generation_partitions
+  WHERE chart_id = OLD.chart_id AND asset_id = OLD.asset_id
+    AND generation_id = OLD.generation_id;
+  IF NEW.completed_partitions <> v_recorded_partitions THEN
+    RAISE EXCEPTION 'L1 generation progress must equal recorded partitions';
+  END IF;
+  IF NEW.status = 'building' AND (
+       NEW.semantic_output_digest IS NOT NULL OR NEW.completed_at IS NOT NULL
+     ) THEN
+    RAISE EXCEPTION 'invalid building L1 generation progress update';
+  END IF;
+  IF NEW.status = 'complete' AND (
+       NEW.completed_partitions <> NEW.expected_partitions
+       OR NEW.semantic_output_digest IS NULL
+       OR NEW.completed_at IS NULL
+     ) THEN
+    RAISE EXCEPTION 'incomplete L1 generation cannot transition to complete';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS l1_data_plane_generation_immutable
+  ON public.l1_data_plane_generations;
+CREATE TRIGGER l1_data_plane_generation_immutable
+BEFORE INSERT OR UPDATE OR DELETE ON public.l1_data_plane_generations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_guard_generation_change();
 
 CREATE OR REPLACE FUNCTION public.l1_data_plane_jsonb_has_nonfinite(p_value JSONB)
 RETURNS BOOLEAN
@@ -428,6 +568,7 @@ DECLARE
   v_chart public.charts%ROWTYPE;
   v_context JSONB;
   v_existing public.l1_data_plane_generations%ROWTYPE;
+  v_declared INTEGER;
 BEGIN
   IF p_asset_id NOT IN (
     'ga_positions','ga_vargas','ga_dashas','ga_nakshatra','ga_panchanga',
@@ -532,6 +673,20 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'complete generation % cannot admit a new partition', p_generation_id;
   END IF;
+
+  INSERT INTO public.l1_data_plane_partition_contexts (
+    chart_id, asset_id, generation_id, partition_key
+  ) VALUES (
+    p_chart_id, p_asset_id, p_generation_id, p_partition_key
+  ) ON CONFLICT DO NOTHING;
+  SELECT count(*) INTO v_declared
+  FROM public.l1_data_plane_partition_contexts
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id;
+  IF v_declared > v_existing.expected_partitions THEN
+    RAISE EXCEPTION 'generation declared % partitions but expected %',
+      v_declared, v_existing.expected_partitions;
+  END IF;
 END;
 $$;
 
@@ -578,6 +733,13 @@ BEGIN
   END IF;
   IF v_chart_text IS NULL OR v_generation IS NULL OR v_partition IS NULL THEN
     RAISE EXCEPTION 'incomplete transaction-local L1 producer context';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l1_data_plane_partition_contexts
+    WHERE chart_id = v_chart_text::uuid AND asset_id = v_asset
+      AND generation_id = v_generation AND partition_key = v_partition
+  ) THEN
+    RAISE EXCEPTION 'L1 partition was not declared before % insert', TG_TABLE_NAME;
   END IF;
   IF COALESCE(v_row->>'chart_id', '') <> v_chart_text THEN
     RAISE EXCEPTION 'writer row chart % mismatches producer chart %',
@@ -994,6 +1156,13 @@ DECLARE
   v_ayanamsha_id TEXT;
   v_active_rows INTEGER;
 BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l1_data_plane_partition_contexts
+    WHERE chart_id = p_chart_id AND asset_id = 'ga_dashas'
+      AND generation_id = p_generation_id AND partition_key = p_partition_key
+  ) THEN
+    RAISE EXCEPTION 'L1 dasha partition % was not declared before capture', p_partition_key;
+  END IF;
   SELECT status INTO v_status
   FROM public.l1_data_plane_generations
   WHERE chart_id = p_chart_id AND asset_id = 'ga_dashas'
@@ -1106,10 +1275,29 @@ DECLARE
   v_existing_rows INTEGER;
   v_completed INTEGER;
   v_expected INTEGER;
+  v_declared INTEGER;
   v_digest TEXT;
+  v_status TEXT;
+  v_existing_generation_digest TEXT;
 BEGIN
   IF p_rows_inserted < 0 THEN
     RAISE EXCEPTION 'rows_inserted cannot be negative';
+  END IF;
+  SELECT expected_partitions, status, semantic_output_digest
+  INTO v_expected, v_status, v_existing_generation_digest
+  FROM public.l1_data_plane_generations
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'L1 generation % is not open', p_generation_id;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l1_data_plane_partition_contexts
+    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+      AND generation_id = p_generation_id AND partition_key = p_partition_key
+  ) THEN
+    RAISE EXCEPTION 'L1 partition % was not declared by generation open', p_partition_key;
   END IF;
   IF p_asset_id = 'ga_dashas' THEN
     PERFORM public.capture_l1_data_plane_dasha_partition(
@@ -1148,6 +1336,15 @@ BEGIN
     WHERE chart_id = p_chart_id AND asset_id = p_asset_id
       AND generation_id = p_generation_id;
     RETURN;
+  END IF;
+
+  SELECT count(*) INTO v_declared
+  FROM public.l1_data_plane_partition_contexts
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id;
+  IF v_declared <> v_expected THEN
+    RAISE EXCEPTION 'L1 generation completed % partitions but declared % of expected %',
+      v_completed, v_declared, v_expected;
   END IF;
 
   IF p_asset_id = 'ga_dashas' THEN
@@ -1204,12 +1401,18 @@ BEGIN
     ) latest;
   END IF;
 
-  UPDATE public.l1_data_plane_generations
-  SET completed_partitions = v_completed,
-      status = 'complete', semantic_output_digest = v_digest,
-      completed_at = COALESCE(completed_at, clock_timestamp())
-  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
-    AND generation_id = p_generation_id;
+  IF v_status = 'complete' THEN
+    IF v_existing_generation_digest IS DISTINCT FROM v_digest THEN
+      RAISE EXCEPTION 'complete L1 generation replay changed generation digest';
+    END IF;
+  ELSE
+    UPDATE public.l1_data_plane_generations
+    SET completed_partitions = v_completed,
+        status = 'complete', semantic_output_digest = v_digest,
+        completed_at = clock_timestamp()
+    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+      AND generation_id = p_generation_id;
+  END IF;
 
   INSERT INTO public.l1_data_plane_generation_heads (
     chart_id, asset_id, current_generation_id
@@ -1464,6 +1667,92 @@ CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_prashna_judgment
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id'
 );
+
+-- Close PostgreSQL's default PUBLIC EXECUTE surface and declare the intended
+-- future build-role privileges explicitly. Production currently runs both the
+-- migration executor and build path as amjis_app, which owns objects it creates;
+-- these grants therefore do not claim owner isolation. RI-01 remains held until
+-- the separately governed role/credential cutover removes that owner bypass.
+DO $l1_role_preflight$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'role_orchestrator') THEN
+    RAISE EXCEPTION
+      'E1035_PREFLIGHT_MISSING_ROLE: role_orchestrator must exist before L1 history installation';
+  END IF;
+END
+$l1_role_preflight$;
+
+REVOKE ALL ON TABLE
+  public.l1_data_plane_generations,
+  public.l1_data_plane_generation_partitions,
+  public.l1_data_plane_partition_contexts,
+  public.l1_data_plane_row_snapshots,
+  public.l1_data_plane_fact_snapshots,
+  public.l1_data_plane_dasha_snapshots,
+  public.l1_data_plane_configuration_snapshots,
+  public.l1_data_plane_generation_heads,
+  public.l1_data_plane_current_rows,
+  public.l1_data_plane_current_dashas,
+  public.l1_data_plane_current_facts,
+  public.l1_data_plane_current_configurations
+FROM PUBLIC, role_orchestrator;
+
+GRANT SELECT ON TABLE
+  public.l1_data_plane_generations,
+  public.l1_data_plane_generation_heads,
+  public.l1_data_plane_generation_partitions,
+  public.l1_data_plane_partition_contexts,
+  public.l1_data_plane_row_snapshots,
+  public.l1_data_plane_fact_snapshots,
+  public.l1_data_plane_dasha_snapshots,
+  public.l1_data_plane_configuration_snapshots,
+  public.l1_data_plane_current_rows,
+  public.l1_data_plane_current_dashas,
+  public.l1_data_plane_current_facts,
+  public.l1_data_plane_current_configurations
+TO role_orchestrator;
+
+DO $l1_function_acl$
+DECLARE
+  v_function regprocedure;
+BEGIN
+  FOR v_function IN
+    SELECT p.oid::regprocedure
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND (
+        p.proname LIKE 'l1_data_plane_%'
+        OR p.proname IN (
+          'open_l1_data_plane_generation',
+          'capture_l1_data_plane_dasha_partition',
+          'complete_l1_data_plane_partition',
+          'select_l1_data_plane_generation',
+          'rollback_l1_data_plane_generation'
+        )
+      )
+  LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', v_function);
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator', v_function);
+  END LOOP;
+END
+$l1_function_acl$;
+
+GRANT EXECUTE ON FUNCTION public.open_l1_data_plane_generation(
+  UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.capture_l1_data_plane_dasha_partition(
+  UUID, TEXT, TEXT, INTEGER
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.complete_l1_data_plane_partition(
+  UUID, TEXT, TEXT, TEXT, INTEGER
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.select_l1_data_plane_generation(
+  UUID, TEXT, TEXT
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.rollback_l1_data_plane_generation(
+  UUID, TEXT, TEXT
+) TO role_orchestrator;
 
 COMMENT ON TABLE public.l1_data_plane_row_snapshots IS
   'Append-only exact L1 producer rows. Active-table replacement never deletes a prior compatible generation.';

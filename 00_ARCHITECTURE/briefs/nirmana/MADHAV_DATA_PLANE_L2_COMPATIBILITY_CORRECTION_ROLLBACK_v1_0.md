@@ -19,7 +19,7 @@ partition. Multi-substep writers share that generation while recording an exact
 calculation context for each substep key. Each partition completes only in the
 caller's transaction and carries mandatory `UNAVAILABLE_AT_L2` temporal status.
 
-Migration 1034 adds append-only generation, partition-context, replay-run-row,
+Migration 1036 adds append-only generation, partition-context, replay-run-row,
 partition-run, row-snapshot and head-selection structures. Reapply is
 idempotent. Completed generations, partition contexts, partitions, runs, exact
 run-row receipts and snapshots reject update or delete. A completed replay must
@@ -37,7 +37,7 @@ Existing L2 rows and migrations remain readable. The new code neither deletes
 nor appends `bodha_rm_dasha_windowed_prescriptions`; legacy rows are preserved.
 Karanajala writes legacy activation columns as null and imports no Kāla service.
 Samvada is a passive compatibility participant: its legacy serving view remains
-preserved and the producer run performs no shared DDL. Migration 1034 declares
+preserved and the producer run performs no shared DDL. Migration 1036 declares
 its passive zero-row receipt with `target_floor=0`, replaces the legacy view
 count with a constant-zero count and retires the view-based output-digest spec,
 so pre-existing/query-time rows cannot earn current producer output. Pramāṇa Mapa consumes

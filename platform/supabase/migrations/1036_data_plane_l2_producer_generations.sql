@@ -167,6 +167,23 @@ CREATE TABLE IF NOT EXISTS public.l2_data_plane_partition_contexts (
   CHECK (jsonb_typeof(calculation_context_jsonb) = 'object')
 );
 
+-- A calculation partition may be replayed by another build, but every concrete
+-- build/partition pair must first be admitted by open_l2_data_plane_generation.
+-- This prevents an arbitrary build id from manufacturing an empty replay receipt.
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_run_intents (
+  chart_id       uuid NOT NULL,
+  asset_id       text NOT NULL,
+  generation_id text NOT NULL,
+  partition_key text NOT NULL,
+  build_id       text NOT NULL,
+  opened_at      timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (chart_id, asset_id, generation_id, partition_key, build_id),
+  FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+    REFERENCES public.l2_data_plane_partition_contexts(
+      chart_id, asset_id, generation_id, partition_key
+    ) ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS public.l2_data_plane_row_snapshots (
   snapshot_id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   chart_id                    uuid NOT NULL,
@@ -255,6 +272,59 @@ INSERT INTO public.l2_data_plane_asset_outputs (asset_id, source_table) VALUES
   ('bo_grounding', 'bodha_grounding_matches')
 ON CONFLICT DO NOTHING;
 
+DO $l2_partition_fks$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_generation_partitions_declared_fk'
+      AND conrelid = 'public.l2_data_plane_generation_partitions'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_generation_partitions
+      ADD CONSTRAINT l2_generation_partitions_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l2_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_generation_runs_intent_fk'
+      AND conrelid = 'public.l2_data_plane_generation_runs'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_generation_runs
+      ADD CONSTRAINT l2_generation_runs_intent_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key, build_id)
+      REFERENCES public.l2_data_plane_run_intents(
+        chart_id, asset_id, generation_id, partition_key, build_id
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_run_rows_intent_fk'
+      AND conrelid = 'public.l2_data_plane_run_rows'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_run_rows
+      ADD CONSTRAINT l2_run_rows_intent_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key, build_id)
+      REFERENCES public.l2_data_plane_run_intents(
+        chart_id, asset_id, generation_id, partition_key, build_id
+      ) ON DELETE RESTRICT;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'l2_row_snapshots_declared_fk'
+      AND conrelid = 'public.l2_data_plane_row_snapshots'::regclass
+  ) THEN
+    ALTER TABLE public.l2_data_plane_row_snapshots
+      ADD CONSTRAINT l2_row_snapshots_declared_fk
+      FOREIGN KEY (chart_id, asset_id, generation_id, partition_key)
+      REFERENCES public.l2_data_plane_partition_contexts(
+        chart_id, asset_id, generation_id, partition_key
+      ) ON DELETE RESTRICT;
+  END IF;
+END
+$l2_partition_fks$;
+
 -- bo_samvada is retained as a passive registry identity. Its legacy view is a
 -- shared serving projection, not output produced by this per-chart run. Make
 -- zero rows the explicit valid receipt, prevent the runner's no-op probe from
@@ -327,6 +397,12 @@ CREATE TRIGGER l2_data_plane_partition_contexts_immutable
 BEFORE UPDATE OR DELETE ON public.l2_data_plane_partition_contexts
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
+DROP TRIGGER IF EXISTS l2_data_plane_run_intents_immutable
+  ON public.l2_data_plane_run_intents;
+CREATE TRIGGER l2_data_plane_run_intents_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_run_intents
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
 DROP TRIGGER IF EXISTS l2_data_plane_snapshots_immutable
   ON public.l2_data_plane_row_snapshots;
 CREATE TRIGGER l2_data_plane_snapshots_immutable
@@ -341,7 +417,18 @@ FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
 CREATE OR REPLACE FUNCTION public.l2_data_plane_guard_generation_change()
 RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  v_recorded_partitions integer;
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.state <> 'building'
+       OR NEW.completed_partitions <> 0
+       OR NEW.semantic_output_digest IS NOT NULL
+       OR NEW.completed_at IS NOT NULL THEN
+      RAISE EXCEPTION 'L2 producer generation must be inserted in empty building state';
+    END IF;
+    RETURN NEW;
+  END IF;
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'L2 producer generations are append-only';
   END IF;
@@ -365,9 +452,16 @@ BEGIN
             OLD.temporal_semantics_status, OLD.opened_at) THEN
     RAISE EXCEPTION 'L2 generation identity/context is immutable';
   END IF;
+
+  SELECT count(*) INTO v_recorded_partitions
+  FROM public.l2_data_plane_generation_partitions
+  WHERE chart_id = OLD.chart_id AND asset_id = OLD.asset_id
+    AND generation_id = OLD.generation_id;
+  IF NEW.completed_partitions <> v_recorded_partitions THEN
+    RAISE EXCEPTION 'L2 generation progress must equal recorded partitions';
+  END IF;
   IF NEW.state = 'building' AND (
-       NEW.completed_partitions < OLD.completed_partitions
-       OR NEW.semantic_output_digest IS NOT NULL
+       NEW.semantic_output_digest IS NOT NULL
        OR NEW.completed_at IS NOT NULL
      ) THEN
     RAISE EXCEPTION 'invalid building L2 generation progress update';
@@ -386,7 +480,7 @@ $$;
 DROP TRIGGER IF EXISTS l2_data_plane_generation_immutable
   ON public.data_plane_l2_producer_generations;
 CREATE TRIGGER l2_data_plane_generation_immutable
-BEFORE UPDATE OR DELETE ON public.data_plane_l2_producer_generations
+BEFORE INSERT OR UPDATE OR DELETE ON public.data_plane_l2_producer_generations
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_guard_generation_change();
 
 CREATE OR REPLACE FUNCTION public.l2_data_plane_strip_volatile(p_value jsonb)
@@ -695,6 +789,7 @@ DECLARE
   v_dep jsonb;
   v_digest text;
   v_generation_context jsonb;
+  v_declared integer;
 BEGIN
   IF p_asset_id NOT LIKE 'bo\_%%' ESCAPE '\'
      OR p_generation_id IS NULL OR p_generation_id = ''
@@ -847,6 +942,19 @@ BEGIN
     RAISE EXCEPTION 'partition % was reopened with incompatible calculation context',
       p_partition_key;
   END IF;
+  SELECT count(*) INTO v_declared
+  FROM public.l2_data_plane_partition_contexts
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id;
+  IF v_declared > v_existing.expected_partitions THEN
+    RAISE EXCEPTION 'L2 generation declared % partitions but expected %',
+      v_declared, v_existing.expected_partitions;
+  END IF;
+  INSERT INTO public.l2_data_plane_run_intents (
+    chart_id, asset_id, generation_id, partition_key, build_id
+  ) VALUES (
+    p_chart_id, p_asset_id, p_generation_id, p_partition_key, p_build_id
+  ) ON CONFLICT DO NOTHING;
 END;
 $$;
 
@@ -897,6 +1005,14 @@ BEGIN
     AND generation_id = v_generation AND partition_key = v_partition;
   IF NOT FOUND THEN
     RAISE EXCEPTION 'L2 partition context was not opened before % write', TG_TABLE_NAME;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l2_data_plane_run_intents
+    WHERE chart_id = v_chart_text::uuid AND asset_id = v_asset
+      AND generation_id = v_generation AND partition_key = v_partition
+      AND build_id = v_build
+  ) THEN
+    RAISE EXCEPTION 'L2 build/partition run intent was not opened before % write', TG_TABLE_NAME;
   END IF;
   FOREACH v_key IN ARRAY TG_ARGV LOOP
     IF NOT (v_row ? v_key) THEN
@@ -983,9 +1099,34 @@ DECLARE
   v_generation_digest text;
   v_state text;
   v_existing_generation_digest text;
+  v_declared integer;
 BEGIN
   IF p_rows_inserted < 0 OR p_rows_updated < 0 OR p_rows_skipped < 0 THEN
     RAISE EXCEPTION 'L2 producer row counts cannot be negative';
+  END IF;
+  SELECT state, expected_partitions INTO v_state, v_expected
+  FROM public.data_plane_l2_producer_generations
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'L2 generation % is not open', p_generation_id;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l2_data_plane_partition_contexts
+    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+      AND generation_id = p_generation_id AND partition_key = p_partition_key
+  ) THEN
+    RAISE EXCEPTION 'L2 partition % was not declared by generation open', p_partition_key;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l2_data_plane_run_intents
+    WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+      AND generation_id = p_generation_id AND partition_key = p_partition_key
+      AND build_id = p_build_id
+  ) THEN
+    RAISE EXCEPTION 'L2 build % has no declared run intent for partition %',
+      p_build_id, p_partition_key;
   END IF;
   SELECT encode(digest(COALESCE(jsonb_agg(
            jsonb_build_array(source_table, row_identity, semantic_digest)
@@ -1053,6 +1194,15 @@ BEGIN
     WHERE chart_id = p_chart_id AND asset_id = p_asset_id
       AND generation_id = p_generation_id AND state = 'building';
     RETURN;
+  END IF;
+
+  SELECT count(*) INTO v_declared
+  FROM public.l2_data_plane_partition_contexts
+  WHERE chart_id = p_chart_id AND asset_id = p_asset_id
+    AND generation_id = p_generation_id;
+  IF v_declared <> v_expected THEN
+    RAISE EXCEPTION 'L2 generation completed % partitions but declared % of expected %',
+      v_completed, v_declared, v_expected;
   END IF;
 
   SELECT encode(digest(COALESCE(jsonb_agg(
@@ -1221,6 +1371,92 @@ SELECT public.l2_data_plane_install_capture_trigger('bodha_question_lenses', ARR
 SELECT public.l2_data_plane_install_capture_trigger('bodha_chart_gestalt', ARRAY['gestalt_id']);
 SELECT public.l2_data_plane_install_capture_trigger('synthesis_quality_scorecard', ARRAY['scorecard_id']);
 SELECT public.l2_data_plane_install_capture_trigger('bodha_grounding_matches', ARRAY['match_id']);
+
+-- Close PostgreSQL's default PUBLIC EXECUTE surface and declare the intended
+-- future build-role privileges explicitly. Production currently runs both the
+-- migration executor and build path as amjis_app, which owns objects it creates;
+-- these grants therefore do not claim owner isolation. RI-01 remains held until
+-- the separately governed role/credential cutover removes that owner bypass.
+DO $l2_role_preflight$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'role_orchestrator') THEN
+    RAISE EXCEPTION
+      'E1036_PREFLIGHT_MISSING_ROLE: role_orchestrator must exist before L2 history installation';
+  END IF;
+END
+$l2_role_preflight$;
+
+REVOKE ALL ON TABLE
+  public.data_plane_l2_producer_generations,
+  public.l2_data_plane_generation_partitions,
+  public.l2_data_plane_generation_runs,
+  public.l2_data_plane_run_rows,
+  public.l2_data_plane_partition_contexts,
+  public.l2_data_plane_run_intents,
+  public.l2_data_plane_row_snapshots,
+  public.l2_data_plane_generation_heads,
+  public.l2_data_plane_asset_outputs,
+  public.l2_data_plane_current_rows
+FROM PUBLIC, role_orchestrator;
+
+GRANT SELECT ON TABLE
+  public.data_plane_l2_producer_generations,
+  public.l2_data_plane_run_rows,
+  public.l2_data_plane_generation_heads,
+  public.l2_data_plane_generation_partitions,
+  public.l2_data_plane_generation_runs,
+  public.l2_data_plane_partition_contexts,
+  public.l2_data_plane_run_intents,
+  public.l2_data_plane_row_snapshots,
+  public.l2_data_plane_asset_outputs,
+  public.l2_data_plane_current_rows
+TO role_orchestrator;
+
+DO $l2_function_acl$
+DECLARE
+  v_function regprocedure;
+BEGIN
+  FOR v_function IN
+    SELECT p.oid::regprocedure
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND (
+        p.proname LIKE 'l2_data_plane_%'
+        OR p.proname IN (
+          'assert_l2_msr_delete_safe',
+          'bind_l2_exact_inputs',
+          'open_l2_data_plane_generation',
+          'complete_l2_data_plane_partition',
+          'select_l2_data_plane_generation',
+          'rollback_l2_data_plane_generation'
+        )
+      )
+  LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', v_function);
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator', v_function);
+  END LOOP;
+END
+$l2_function_acl$;
+
+GRANT EXECUTE ON FUNCTION public.assert_l2_msr_delete_safe(
+  UUID, TEXT[], TEXT[], TEXT[]
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.bind_l2_exact_inputs(
+  UUID, JSONB
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.open_l2_data_plane_generation(
+  UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, TEXT
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.complete_l2_data_plane_partition(
+  UUID, TEXT, TEXT, TEXT, TEXT, BIGINT, BIGINT, BIGINT
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.select_l2_data_plane_generation(
+  UUID, TEXT, TEXT
+) TO role_orchestrator;
+GRANT EXECUTE ON FUNCTION public.rollback_l2_data_plane_generation(
+  UUID, TEXT, TEXT
+) TO role_orchestrator;
 
 COMMENT ON TABLE public.data_plane_l2_producer_generations IS
   'DP-SD-015 exact upstream context and immutable L2 producer generations; no L3 activation authority.';

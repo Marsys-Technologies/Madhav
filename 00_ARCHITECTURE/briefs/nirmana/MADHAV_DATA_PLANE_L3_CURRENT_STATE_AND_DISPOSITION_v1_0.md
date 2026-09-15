@@ -1,8 +1,8 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: RI_01_CANDIDATE_REVIEW
-observed_at: 2026-09-15T05:14:00+05:30
+status: RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
+observed_at: 2026-09-15T05:49:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
@@ -232,14 +232,30 @@ the open planner/Pūrṇa Anveṣaṇa stack. RI-01 positively confirmed all fou
 filenames and their semantic side effects absent from the only authorized
 shared target, reserved 1035/1036 at live coordination commit `ef132c87d`, and
 relocated the two data-plane candidates to the active
-`platform/supabase/migrations` directory. Their repository-defined normalized
-SQL identities are unchanged; no executable statement changed.
+`platform/supabase/migrations` directory. Their initial normalized SQL identities
+were unchanged by relocation. Independent security review then found three HIGH
+admission/history defects. The candidate now intentionally changes executable SQL
+to add declared L1/L2 partition contexts, immutable L2 build intents, foreign-key
+closure, generation-state/cardinality guards and mutation-free exact replay.
+Hardened SQL identities are `9de44b8285da2d85a1a335f2698e41491f1bedc149114abe1531b2b3d37b572f`
+for 1035 and `eef1dc67912fcde2e58544410e2e91d7676997c1c15d03c8965b5450fc12a982`
+for 1036; neither is applied to the shared target.
 
 The candidate migration guard passes with next number 1037. Direct
-apply/reapply and the combined L1/L2 database negatives pass on disposable
-PostgreSQL. This is not protected delivery: independent migration/security
-review, governed checks, merge-queue integration, exact served-revision proof
-and production `_migrations_applied` proof remain required.
+apply/reapply, 75 focused contracts, 67 migration tests and expanded L1/L2
+admission/replay negatives pass on disposable PostgreSQL. ESLint has zero errors
+and TypeScript passes. The full unit run remains red only in eight frozen L0
+receipt assertions: current aggregate `3dda2611...` differs from reserved frozen
+`5125cccb...`, and precedent forbids an L3-owned repin.
+
+One reviewed HIGH security gate also remains open. Production migration/build
+identity `amjis_app` owns newly created objects; `role_orchestrator` is NOLOGIN
+and has no membership path from `amjis_app`. PUBLIC revocation and intended grants
+do not isolate an owner. Protected owner roles, a distinct build login and the
+role/credential/ownership cutover require administrator authority outside this
+candidate. RI-01 therefore remains held before PR/shared apply; it needs the L0
+pin ruling and database cutover authority, followed by exact-tip review and full
+checks. This is not protected delivery.
 
 ## 6. Workstream ownership and recovery
 
@@ -258,7 +274,7 @@ this file, the execution ledger and the exact next eligible action above.
 
 | State | Evidence |
 |---|---|
-| source producer readiness | accepted L0-L2 contracts; W0 terminal PASS at `00a161195`; precursor release integration opening |
+| source producer readiness | accepted L0-L2 contracts; W0 terminal PASS at `00a161195`; hardened precursor held on two external authorities |
 | physical upstream data | `HELD`; required generation-head relations absent |
 | L3 physical data | legacy capital exists, but current t3 acceptance is absent and six canonical outputs are empty |
 | consumer integration | `NOT_RUN` |
@@ -269,7 +285,9 @@ this file, the execution ledger and the exact next eligible action above.
 ## 8. Exact recovery action
 
 W0 terminal PASS is recorded at exact source tip `00a161195`. The active recovery
-action is `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`: resolve the un-applied 1033/
-1034 collision across the data-plane and planner/Purna lineages, obtain migration
-review, and establish a protected precursor release before W1 physical generation
-work. No L3 build is eligible until compatible L0-L2 physical heads exist.
+action is `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`, held before PR/shared
+apply on two exact authorities: adjudication of the frozen L0 provenance pin and
+administrator-owned database role/credential/ownership cutover. After both, run
+exact-tip migration/security review and full checks, then establish the protected
+precursor release. No L3 build is eligible until compatible L0-L2 physical heads
+exist.

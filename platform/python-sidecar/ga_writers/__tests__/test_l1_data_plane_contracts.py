@@ -421,6 +421,23 @@ def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_view
     assert "('ga_condition_composite','condition_score','rule_derived'" in migration
     assert "FOR v_key, v_value IN SELECT key, value FROM jsonb_each(v_semantic)" not in migration
     assert "capture_l1_data_plane_dasha_partition" in migration
+    assert "CREATE TABLE IF NOT EXISTS public.l1_data_plane_partition_contexts" in migration
+    assert "completed L1 producer generation is immutable" in migration
+    assert "L1 producer generation must be inserted in empty building state" in migration
+    assert "L1 generation progress must equal recorded partitions" in migration
+    assert "L1 partition % was not declared by generation open" in migration
+    assert "L1 generation completed % partitions but declared % of expected %" in migration
+    assert "l1_generation_partitions_declared_fk" in migration
+    assert "l1_row_snapshots_declared_fk" in migration
+    assert "l1_dasha_snapshots_declared_fk" in migration
+    assert "complete L1 generation replay changed generation digest" in migration
+    assert "REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC" in migration
+    assert "REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator" in migration
+    assert "GRANT SELECT ON TABLE" in migration
+    assert "GRANT EXECUTE ON FUNCTION public.open_l1_data_plane_generation(" in migration
+    assert "GRANT SELECT, INSERT" not in migration
+    assert "FROM PUBLIC, role_orchestrator" in migration
+    assert "BEFORE INSERT OR UPDATE OR DELETE ON public.l1_data_plane_generations" in migration
     assert "CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_dashas" not in migration
     assert "dasha partition % reported % rows but active build scope has %" in migration
     assert "l1_data_plane_dasha_semantic_payload" in migration
