@@ -33,6 +33,7 @@ Forgetting step 2 → this test fails immediately.
 """
 from __future__ import annotations
 
+import json
 import os
 import sys
 from pathlib import Path
@@ -159,7 +160,6 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
     "ka_taranga",
     # ── L3 Kāla — migration 459 (D-5 Lane G-1 Resonance Map) ─────────────────
     "ka_gochara_resonance",
-    "ka_gochara_sweep",
     # ── L3 Kāla — migration 480 (ṢAḌ-DARŚANA W2 Lane C, the temporal field) ──
     "ka_kshetra",
     # ── L3 Kāla — migrations 520/521 (ṢAḌ-DARŚANA W3 Lane w3-kota-sudarshana,
@@ -248,6 +248,12 @@ KNOWN_HAS_WRITER_TRUE: frozenset[str] = frozenset({
 KNOWN_SUBASSETS: frozenset[str] = frozenset({
     "bg_nakshatra_medical",   # sub-table inside bg_medical_mappings writer
     "bg_transit_engine",      # sub-table inside bg_transit_rules writer
+})
+
+# Retired assets whose historical receipts remain part of a frozen layer
+# denominator, but which must not be dispatchable as current writers.
+KNOWN_RETIRED_NON_WRITERS: frozenset[str] = frozenset({
+    "ka_gochara_sweep",  # retired by migration 563; successor is ka_gochara
 })
 
 
@@ -637,6 +643,31 @@ class TestOfflineHasWriterCompleteness:
         assert not overlap, (
             f"These asset_ids appear in both KNOWN_SUBASSETS and "
             f"KNOWN_HAS_WRITER_TRUE — pick one: {sorted(overlap)}"
+        )
+
+    def test_retired_non_writers_are_not_dispatchable_and_remain_pinned(self):
+        """Retirement removes dispatchability without erasing provenance."""
+        registry = self._registry()
+        dispatchable = KNOWN_RETIRED_NON_WRITERS & set(registry.keys())
+        assert not dispatchable, (
+            f"Retired non-writer assets were re-added to WRITER_REGISTRY: "
+            f"{sorted(dispatchable)}"
+        )
+
+        repo_root = Path(__file__).parent.parent.parent.parent
+        pins_path = (
+            repo_root
+            / "platform"
+            / "src"
+            / "generated"
+            / "nirmana-analysis-layer-pins.json"
+        )
+        pins = json.loads(pins_path.read_text(encoding="utf-8"))
+        l3_non_writers = set(pins["layers"]["L3"]["non_writer_assets"])
+        missing = KNOWN_RETIRED_NON_WRITERS - l3_non_writers
+        assert not missing, (
+            f"Retired L3 assets disappeared from the frozen provenance pin: "
+            f"{sorted(missing)}"
         )
 
 
