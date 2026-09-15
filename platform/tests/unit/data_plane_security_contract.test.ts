@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -118,6 +118,23 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
       name: 'DATABASE_URL', value: 'postgresql://literal:credential@example/db',
     }] }] } } } })).toThrow(/literal credential/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { metadata: { annotations: {
+      client_password: 'opaque-but-still-a-secret',
+    } } } } })).toThrow(/client_password/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
+      args: ['--token', 'opaque'], env: [{ name: 'SAFE_NAME', value: 'ordinary' }],
+    }] } } } })).toThrow(/--token/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: {
+      volumes: [{ clientSecret: 12345 }],
+    } } } })).toThrow(/clientSecret/)
+    expect(() => assertNoLiteralCredentials({ serviceAccount: 'web@example', secretKeyRef: { name: 'alpha' }, secretName: 'volume-secret' }))
+      .not.toThrow()
+    expect(roleDescribeArgs('roles/owner')).toEqual(['iam','roles','describe','roles/owner'])
+    expect(roleDescribeArgs('projects/exact-parent/roles/customSecretReader'))
+      .toEqual(['iam','roles','describe','customSecretReader','--project','exact-parent'])
+    expect(roleDescribeArgs('organizations/123456/roles/customTokenCreator'))
+      .toEqual(['iam','roles','describe','customTokenCreator','--organization','123456'])
+    expect(() => roleDescribeArgs('folders/123/roles/not-supported')).toThrow(/invalid role resource/)
     expect(cloudRunLocation({ metadata: { labels: { 'cloud.googleapis.com/location': 'asia-south1' } } })).toBe('asia-south1')
   })
 })

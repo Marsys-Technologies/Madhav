@@ -97,15 +97,32 @@ export function extractRunIdentityAndSecrets(definition: unknown): { serviceAcco
 }
 
 export function assertNoLiteralCredentials(definition: unknown): void {
+  const credentialKey = (key: string): boolean => /(?:^|[_./-])(?:password|passwd|token|secret|api[_-]?key|private[_-]?key|credential|database[_-]?url|db[_-]?url)(?:$|[_./-])/i
+    .test(key.replace(/([a-z0-9])([A-Z])/g, '$1_$2'))
+  const secretReferenceKeys = new Set(['secret', 'secretName', 'run.googleapis.com/secrets'])
   const walk = (value: unknown): void => {
     if (!value || typeof value !== 'object') return
-    if (Array.isArray(value)) { value.forEach(walk); return }
+    if (Array.isArray(value)) {
+      value.forEach((child, index) => {
+        if (typeof child === 'string' && /^--(?:password|passwd|token|secret|api-key|private-key|credential)$/i.test(child)
+            && index + 1 < value.length && ['string','number','boolean'].includes(typeof value[index + 1])) {
+          throw new Error(`Cloud Run definition contains a literal credential value after ${child}.`)
+        }
+        walk(child)
+      })
+      return
+    }
     const object = value as Record<string, unknown>
-    if (typeof object.name === 'string' && /(?:DATABASE_URL|PASSWORD|TOKEN|API_KEY|PRIVATE_KEY|CREDENTIAL)/i.test(object.name)
-        && typeof object.value === 'string' && object.value.trim()) {
+    if (typeof object.name === 'string' && credentialKey(object.name)
+        && ['string','number','boolean'].includes(typeof object.value)
+        && String(object.value).trim()) {
       throw new Error(`Cloud Run definition contains a literal credential value for ${object.name}.`)
     }
-    for (const child of Object.values(object)) {
+    for (const [key, child] of Object.entries(object)) {
+      if (credentialKey(key) && !secretReferenceKeys.has(key)
+          && ['string','number','boolean'].includes(typeof child) && String(child).trim()) {
+        throw new Error(`Cloud Run definition contains a literal credential value under ${key}.`)
+      }
       if (typeof child === 'string' && (/(?:postgres(?:ql)?|mysql):\/\/[^\s]+/i.test(child)
           || /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(child)
           || /(?:--password|--token|--api-key)=\S+/i.test(child))) {
@@ -115,6 +132,17 @@ export function assertNoLiteralCredentials(definition: unknown): void {
     }
   }
   walk(definition)
+}
+
+export function roleDescribeArgs(role: string): string[] {
+  if (/^roles\/[A-Za-z0-9_.]+$/.test(role)) return ['iam','roles','describe',role]
+  const custom = role.match(/^(projects|organizations)\/([^/]+)\/roles\/([A-Za-z0-9_.]+)$/)
+  if (!custom) throw new Error(`IAM policy contains an invalid role resource: ${role}`)
+  const [, parentType, parentId, roleId] = custom
+  return [
+    'iam','roles','describe',roleId,
+    parentType === 'projects' ? '--project' : '--organization', parentId,
+  ]
 }
 
 export function cloudRunLocation(entry: CloudRunEntry): string {
@@ -250,7 +278,7 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   }
   const resolved: RolePermissions = {}
   for (const role of roleNames) {
-    resolved[role] = gcloud<{ includedPermissions?: string[] }>(['iam','roles','describe',role]).includedPermissions ?? []
+    resolved[role] = gcloud<{ includedPermissions?: string[] }>(roleDescribeArgs(role)).includedPermissions ?? []
   }
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy, resolved)
 
