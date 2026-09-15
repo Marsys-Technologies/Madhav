@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.16.0
-status: CORRECTIVE_EXACT_HEAD_VALIDATION
+version: 0.17.0
+status: CORRECTIVE_PRE_RELEASE_REVIEW
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0063
-last_updated: 2026-09-15T21:34:00+05:30
+last_event: PA-E0066
+last_updated: 2026-09-15T21:43:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -33,8 +33,8 @@ layer state, queue or authority.
 - PR #2605: open, stacked on PR #2604; exact-final-head CI and independent terminal review remain required.
 - Lease: the original `MADHAV-PURNA-ANVESANA-W7-20260915` lease was released at
   `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. Exact-head CI then found a stale generated census.
-  The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` is active and remotely
-  verified at `8e5f35f0f1e907e4040460df46491e5448af56bc`; it must be released before final metadata.
+  The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` is active, expanded and
+  remotely verified at `610a400a3fd677efa49bde1d93698b314871760d`; it must be released before final metadata.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -56,6 +56,17 @@ refresh occurred after the original release, it is not a terminal candidate by i
 records the independent refutation and PA-E0062 binds the corrective lease that adopts the repair.
 The corrective technical/pre-release head must pass review, the lease must then be remotely released,
 and a metadata-only final head must receive fresh exact-head CI and independent terminal review.
+
+Review of the first corrective pre-release head found that weighted background work could still
+starve behind a sustained stream of smaller interactive dispatches, and that the MCP inquiry route
+treated only the final segment of a nested pagination path as mutable. The same review also caught
+that the corrective SESSION_LOG addendum used a level-two heading and was therefore parsed as an
+incomplete new session. The live lease was expanded at coordination commit `610a400a3` before source
+repair. Failing reproductions were added first. At technical head `f510d1a97`, starved weighted work
+stops later refills and drains capacity after the configured skip bound; nested first/middle/final
+pagination values are authorized at the full path while sibling changes fail closed. The focused
+suite passes 34/34, TypeScript and changed-file lint pass, codegen remains current, and the schema
+validator is back at the inherited 42 findings with zero corrective-session violations.
 
 ## Wave 0 finding that blocked execution
 
@@ -339,7 +350,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W7-P3 pagination, parity and overlays | COMPLETE | W7-P2 | local/disposable gates pass; deployed trace remains external |
 | W7-P4 lifecycle, signing and durable jobs | COMPLETE | W7-P3 | source/disposable gates pass; shared migration/key work remains external |
 | W7-P5 completion and empirical protocol packets | COMPLETE | W7-P4 | all 13 residuals dispositioned; external actions remain unauthorized |
-| W7-P6 protected source candidate | CORRECTIVE_EXACT_HEAD_VALIDATION | W7-P5 | stale census and post-release sequencing refuted; corrective lease active; fresh release, metadata, CI and reviews required |
+| W7-P6 protected source candidate | CORRECTIVE_PRE_RELEASE_REVIEW | W7-P5 | census, sequencing, weighted-starvation, nested-pagination and log-schema findings repaired; pre-release review, lease release, final metadata, exact-head CI/reviews required |
 
 ## Delivery decomposition
 

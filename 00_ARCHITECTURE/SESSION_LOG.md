@@ -41607,7 +41607,7 @@ shared migration, signing/infrastructure change, deployed cross-door trace, prot
 asset retirement, governance-bootstrap remediation or blinded expert evaluation only after the exact
 action is separately authorized through `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
 
-## 2026-09-15 — MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915
+### Corrective exact-head addendum — MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915
 
 Exact-head CI run `34991468186` refuted `71788963da0cbdf4f5ef4b8aa646b3ceeb2ac085`:
 `CI=1 npm run codegen:capability-estate-census:check` reported drift because the committed census
@@ -41627,3 +41627,18 @@ expert/empirical acceptance or production-health action is authorized or claimed
 Next gate: independently approve the corrective pre-release head, release this lease remotely,
 commit only the release/final-candidate metadata allowed by that approval, then run exact-head CI and
 independent terminal reviews with no later source mutation.
+
+The first corrective pre-release review refuted `b80c842c8` on three additional grounds: a nine-unit
+background dispatch could remain starved while one-unit interactive work continually refilled partial
+capacity; the MCP inquiry route reduced `filters.cursor` to the top-level key `cursor` and rejected
+valid continuation state; and this addendum initially used a level-two heading that the schema
+validator correctly treated as an incomplete new session entry. The lease was expanded before source
+repair at remote coordination commit `610a400a3fd677efa49bde1d93698b314871760d`.
+
+Failing tests reproduced both code defects. Technical head
+`f510d1a97afd26d354e5d58287ef6ec0fab26a7d` now reserves capacity for starved weighted work after the
+configured skip bound, carries the complete guarded pagination path through authorization, and rejects
+sibling mutation. First/middle/final nested-page cases plus the mixed-weight starvation case pass;
+the two focused files report 34 tests, TypeScript and changed-file lint pass, all codegen checks remain
+current, and the corrected addendum returns the schema validator to the inherited 42 findings with no
+new Wave 7 violation.

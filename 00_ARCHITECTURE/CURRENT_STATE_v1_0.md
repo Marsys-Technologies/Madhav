@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.76
+version: 6.77
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5935,7 +5935,10 @@ block (post-rebuild era), and proceeds.
 > audit. Exact-head CI then refuted candidate `71788963d` because its capability-estate census was
 > stale; the repair at `ba0bcd0e9` passed CI-mode codegen checks and 35 focused tests but occurred
 > after the original lease release. That sequencing breach is preserved in PA-E0060/PA-E0061, and a
-> narrow corrective lease is active at coordination commit `8e5f35f0f`. PR #2605 and all W0–W6
+> narrow corrective lease was expanded at coordination commit `610a400a3` after review additionally
+> found weighted-dispatch starvation, nested-pagination authorization and log-schema defects. Those
+> repairs now pass 34 focused tests, TypeScript, changed-file lint and the inherited 42-violation
+> schema ceiling. PR #2605 and all W0–W6
 > branches remain unmerged review surfaces. The corrective lease must be released before a new final
 > metadata head receives exact-head CI and independent terminal review. No merge, deployment, shared/production mutation,
 > credential/infrastructure action, expert/empirical acceptance or production health is claimed.
@@ -9363,7 +9366,7 @@ current_state:
   # Current close pointer. Kept here to override the historical embedded value above.
   last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 remains in corrective exact-head validation. CI refuted 71788963d for a stale capability-estate census; the regenerated artifact at ba0bcd0e9 passes CI-mode codegen and 35 focused tests. A reviewer then correctly refuted its post-release mutation sequence. Corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915 is active at 8e5f35f0f; release, metadata-only close, exact-head CI and final reviews remain. No merge, deployment, shared migration, production, user or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 remains in corrective pre-release review. CI refuted 71788963d for a stale census; later reviews refuted the post-release sequence, weighted-task starvation, nested-pagination authorization, and an incomplete SESSION_LOG addendum. Corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915 is expanded and active at 610a400a3. Repairs at f510d1a97 pass 34 focused tests, TypeScript, lint, codegen, and the inherited schema ceiling. Release, metadata-only close, exact-head CI and final reviews remain. No merge, deployment, shared migration, production, user or empirical acceptance claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
@@ -9376,7 +9379,7 @@ current_state:
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-At the corrective checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
+At the corrective pre-release checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
 obligations through deterministic, receipted transit argument derivation for both direct and legacy
 bindings, with clarification when an anchor is absent. The six-layer estate contains 182 editorial
@@ -9386,7 +9389,9 @@ families, then approved their calibrated-registry and prospective-ledger replace
 73 three-door tests and 58 managed-MCP tests pass. TypeScript, codegen and lint also pass, with zero
 lint errors and 589 inherited warnings. Exact-head CI refuted `71788963d` for a stale capability-estate
 census. The artifact was regenerated at `ba0bcd0e9`, but independent review also refuted its post-release
-mutation sequence. The corrective lease is active at `8e5f35f0f`; PR #2605 remains open and unmerged.
+mutation sequence. A later review found weighted-starvation, nested-pagination and log-schema defects;
+the lease was expanded at `610a400a3` before those repairs. Head `f510d1a97` passes 34 focused tests,
+TypeScript, changed-file lint, codegen and the inherited schema ceiling. PR #2605 remains open and unmerged.
 Lease release, a metadata-only final head, exact-head CI and independent terminal reviews remain, so
 the in-tree state remains a corrective candidate rather than a self-certified final-head
 verdict. Shared migrations, signing/infrastructure change, deployed traces, protected merge/deploy,
