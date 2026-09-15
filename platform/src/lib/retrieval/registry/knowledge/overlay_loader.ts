@@ -1,4 +1,4 @@
-import { query } from '@/lib/db/client'
+import { query as defaultQuery } from '@/lib/db/client'
 import { compileChartCapabilityOverlay, type ChartCapabilityEvidence } from './overlay'
 import { stableFingerprint } from './stable'
 import type { CapabilityKnowledgeSnapshot, ChartAssetCapabilityReceipt, ChartCapabilityOverlay, ProducerOutputClaim } from './types'
@@ -16,10 +16,15 @@ interface ReceiptRow {
   freshness_reasons: unknown
 }
 
-interface OverlayQueryRow extends ReceiptRow {
+export interface OverlayQueryRow extends ReceiptRow {
   active_build_id: string | null
   active_build_status: string | null
 }
+
+export type OverlayQueryExecutor = (
+  sql: string,
+  params?: unknown[],
+) => Promise<{ rows: OverlayQueryRow[] }>
 
 function reasons(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : []
@@ -27,14 +32,19 @@ function reasons(value: unknown): string[] {
 
 function receiptForClaim(claim: ProducerOutputClaim, rows: readonly ReceiptRow[], activeBuildId: string | null): ChartAssetCapabilityReceipt {
   const matching = rows.filter((row) => row.asset_id === claim.asset_id)
-  const chartRows = matching.filter((row) => row.chart_id !== null)
-  const chosen = chartRows.length ? chartRows : matching.filter((row) => row.chart_id === null)
+  // A chart-scoped receipt is evidence only for the selected completed build.
+  // Superseded rows must not poison a newer build, and must not be treated as
+  // current merely because they share chart_id. Global evidence is a fallback
+  // only when this asset has no receipt for the active chart build.
+  const activeChartRows = activeBuildId === null
+    ? []
+    : matching.filter((row) => row.chart_id !== null && row.build_id === activeBuildId)
+  const chosen = activeChartRows.length ? activeChartRows : matching.filter((row) => row.chart_id === null)
   if (!chosen.length) return {
     asset_id: claim.asset_id, build_id: null, writer_version: null,
     output_digest_spec_sha256: claim.output_digest_spec_sha256, state: 'missing', receipt_ref: null,
   }
-  const specMismatch = chosen.some((row) => row.output_digest_spec_sha256 !== claim.output_digest_spec_sha256
-    || (row.chart_id !== null && row.build_id !== activeBuildId))
+  const specMismatch = chosen.some((row) => row.output_digest_spec_sha256 !== claim.output_digest_spec_sha256)
   const failed = chosen.some((row) => row.receipt_state !== 'proven' || row.freshness_state !== 'fresh')
   return {
     asset_id: claim.asset_id,
@@ -90,19 +100,20 @@ function evidenceForSnapshot(
 export async function loadChartCapabilityOverlay(
   snapshot: CapabilityKnowledgeSnapshot,
   chartId: string,
+  query: OverlayQueryExecutor = defaultQuery as OverlayQueryExecutor,
 ): Promise<ChartCapabilityOverlay> {
   let build: { build_id: string | null; status: string | null } = { build_id: null, status: null }
   try {
     const assetIds = [...new Set(snapshot.scus.flatMap((scu) => (scu.producer_output_claims ?? []).map((claim) => claim.asset_id)))]
-    const { rows: queryRows } = await query<OverlayQueryRow>(
+    const { rows: queryRows } = await query(
         `WITH latest_build AS (
-           SELECT id::text AS build_id, state AS status
+           SELECT id AS build_id, state AS status
              FROM build_runs
             WHERE chart_id=$2::uuid AND state='completed'
             ORDER BY ended_at DESC NULLS LAST, id DESC
             LIMIT 1
          )
-         SELECT latest_build.build_id AS active_build_id,
+         SELECT latest_build.build_id::text AS active_build_id,
                 latest_build.status AS active_build_status,
                 p.asset_id, p.chart_id::text, p.build_id::text, p.receipt_version,
                 p.receipt_state, p.output_digest_spec_sha256, p.observed_at::text,
@@ -110,7 +121,11 @@ export async function loadChartCapabilityOverlay(
            FROM (SELECT 1) anchor
            LEFT JOIN latest_build ON true
            LEFT JOIN asset_provenance_receipts p
-             ON p.asset_id = ANY($1::text[]) AND (p.chart_id=$2::uuid OR p.chart_id IS NULL)
+             ON p.asset_id = ANY($1::text[])
+            AND (
+              (p.chart_id=$2::uuid AND p.build_id=latest_build.build_id)
+              OR p.chart_id IS NULL
+            )
            LEFT JOIN asset_freshness f
              ON f.asset_id=p.asset_id AND f.scope_key=p.scope_key AND f.partition_key=p.partition_key
           ORDER BY p.asset_id, (p.chart_id IS NOT NULL) DESC, p.observed_at DESC`,

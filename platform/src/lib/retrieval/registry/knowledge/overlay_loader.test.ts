@@ -37,6 +37,7 @@ describe('chart capability overlay loader', () => {
     expect(overlay.availability[0]).toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L1/test'] })
     expect(overlay.build_id).toBe('build-1')
     expect(mocks.query.mock.calls[0]?.[0]).toContain('ORDER BY ended_at DESC NULLS LAST, id DESC')
+    expect(mocks.query.mock.calls[0]?.[0]).toContain('p.build_id=latest_build.build_id')
   })
 
   it('fails closed on a mismatched output specification or unavailable provenance', async () => {
@@ -51,12 +52,60 @@ describe('chart capability overlay loader', () => {
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({ state: 'dark', available_binding_ids: [] })
   })
 
-  it('fails closed when a proven receipt belongs to a superseded build', async () => {
+  it('ignores a proven receipt from a superseded chart build', async () => {
     mocks.query.mockResolvedValue({ rows: [{
       active_build_id: 'build-2', active_build_status: 'completed',
       asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
       output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
     }] })
-    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({ state: 'incompatible', available_binding_ids: [] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      asset_receipts: [expect.objectContaining({ state: 'missing', build_id: null })],
+    })
+  })
+
+  it('uses active chart evidence instead of stale chart or global rows', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
+        output_digest_spec_sha256: 'b'.repeat(64), observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'unknown',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'unknown', unknown_reasons: ['global-not-selected'], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-2', receipt_version: 'current', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+    ] })
+    const availability = (await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]
+    expect(availability).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: 'build-2' })],
+    })
+  })
+
+  it('uses global evidence when no active-build chart receipt exists', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+    ] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: null })],
+    })
   })
 })
