@@ -14,6 +14,7 @@ role: >
   adopted planning-basis and proposal state without granting implementation,
   campaign, merge or deployment authority except through a separately approved brief.
 changelog:
+  - "1.0 update 2026-09-15: Approves DP-SD-019 in-place execution-focus amendment following the velocity audit: retain the full L3 goal and current repair, isolate privileged bootstrap from routine delivery, restore independent asset/value work, and strengthen durable recovery and proportional validation. Dispatch evidence is recorded in section 11."
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
   - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
@@ -134,6 +135,20 @@ The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
 and execution brief.
 
+### DP-SD-019 — execution focus and recovery
+
+The native authorized Strategy to inspect the current L3 execution and inject
+the recommended corrective prompt into the existing task. Strategy selects an
+in-place amendment: preserve the accepted security integration and active
+provenance repair; isolate privileged bootstrap from routine deployment;
+restore useful independent asset/performance/consumer work; use durable
+checkpoints, proportional review and accepted-asset throughput. The full
+DP-SD-017 goal, DP-SD-018 bounded authority and all 22 active identities remain.
+The approved instruction is
+[L3 execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md).
+This is implementation authorization for its stated corrections, not evidence
+that any correction or L3 asset is complete. Exact content and dispatch are in §11.
+
 ## 5. Assumptions, contested findings and evidence limits
 
 ### Working assumptions
@@ -223,3 +238,46 @@ remain separate statuses.
 - Keep layer status and execution links concise. Detailed evidence belongs in versioned layer,
   asset or execution artifacts.
 - Preserve superseded recommendations and decision deltas; do not erase earlier evidence.
+## 9. L3 kickoff control — DP-SD-017
+
+| Control | Exact binding |
+|---|---|
+| Approved strategy/brief/review content | `793972c754b106688097dbc54536c1a9c270a793` on `codex/madhav-data-plane-strategy`; only the four documented strategy files changed |
+| Immutable approval record | `04a9ab33effa23e5e9b4e89772330ae264498a9b`; pins DP-SD-017 to the exact content commit above |
+| Native authority | 2026-09-15 request to implement the L3 campaign and send context/kickoff; one execution task with three coordinated workstreams |
+| Independent handoff review | Scoped approval by `l3_data_dag_astra`; two bounded clarifications applied before content commit; prior three Astra/max planning reviews preserved |
+| Execution destination | `Execution — Data Plane`, task `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`, branch `codex/madhav-data-plane-execution`, worktree `/Users/Dev/.codex/worktrees/c9bd/Madhav` |
+| Verified entry state | Idle task and clean worktree at accepted L2 terminal `e5307fadef42cca557a1c0ca3c1831b1296e22b4`; goal-tool state must be reconciled in the execution task |
+| New goal | Exact `goal_objective` from the pinned L3 execution brief; no token budget; not the old L2 objective or a producer-only terminal |
+| First execution packet | `L3-W0-FOUNDATION-SAFETY-01`; no initial full-chart rebuild |
+| Dispatch state | DISPATCHED: task-message tool returned success for destination `01a0998a-8240-7631-97ce-36c6d4734fde`; kickoff contains exact content/approval pins, goal objective, scope and W0 instructions. At 2026-09-15 02:50 IST a fresh task snapshot reports `active` with turn `01a0a1c8-678b-73e3-a8c2-b1141c27524d` `inProgress`. No implementation, acceptance or completion inferred. |
+| Goal and unattended recovery | Kickoff directs execution to reconcile the old goal, create the exact L3 goal, and activate/reconcile a task heartbeat with tested durable recovery. These are delegated requirements, not confirmed activation or continuity claims in this strategic handoff. |
+| Final limits | Specific holds persist; L4/L5 wait; acceptance requires evidence for each delivery state; no empirical-outcome claim |
+
+## 10. L3 unblock and resume control — DP-SD-018
+
+| Control | Exact binding |
+|---|---|
+| Native decision | Authorize an autonomously executable plan, all scoped authorizations needed to resolve the current blockers, and resumption in the existing execution task through full L3 completion. |
+| Amendment | [L3 unblock and resume](MADHAV_DATA_PLANE_L3_UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md); supplements immutable DP-SD-017 content `793972c75` and approval `04a9ab33e` rather than rewriting them. |
+| Execution checkpoint | Clean `codex/madhav-data-plane-execution@5142109f7f219ea860f859e322646f79d875bee8`; source W2 reviewed at `47131772b`, RI-01 code-owned findings reviewed at `6a7ecc171`. |
+| Protected baseline | `731e311f0b8f5f84db2f152b93951e1d3d50d89a`, rechecked 2026-09-15; revalidate immediately before integration. |
+| Authority delta | Evidence-based source-provenance supersession, metadata-only L4 reconciliation, scoped DBA/credential/resource-binding and protected lifecycle/deployment repair; actual access and independent acceptance are not assumed. |
+| Goal | Continue the existing full DP-SD-017 L3 goal; DP-SD-018 is an authorized prerequisite, not a producer-only replacement goal or a new layer. No token budget. |
+| First packet | `L3-RI-02-AUTHORIZED-UNBLOCK`: reconcile state/authority, assign independent provenance and security lanes, then execute the non-circular release/cutover/W1 path. |
+| Independent handoff review | Source challenge identified the narrative L0-hash discrepancy, hardcoded L0 generator admission, invoker-default lifecycle API, and circular pre-PR cutover gate; all addressed. Reviewer `l3_data_dag_astra` approved the complete draft SHA-256 `4c2588a725c09349cef8cc3a1dd15909d552a7f006faa5c8454b9bf0cd4d2db5` with no blocking changes. Only status/review recording followed. |
+| Immutable approved amendment content | 6b6ce9c06ce54fb7c474d97c70257a505bf2ed84; exactly the new amendment and this strategic-ledger authority record changed. The original DP-SD-017 documents and acceptance history remain untouched. |
+| Approval-record binding | `7f21f27b14a7909424591a530096dc2f5d6e2b13` records native DP-SD-018 approval of the exact content pin above after independent review. |
+| Dispatch | DISPATCHED at 2026-09-15 11:42 IST: task-message tool confirmed success for `01a0998a-8240-7631-97ce-36c6d4734fde`. Fresh task snapshot at 11:43 IST reports `active`, turn `01a0a3b2-18ee-71b1-8e32-dd5cb9d1668a` `inProgress`. Goal/heartbeat reconciliation and actual repair remain execution-owned; no gate-closure claim. |
+| Scope guard | Original history and retired sweep remain protected; no blanket provenance repin, branch-protection bypass, broad IAM, unrelated credential rotation, L4/L5 elevation or empirical claim. |
+
+## 11. L3 execution focus control — DP-SD-019
+
+| Control | Binding |
+|---|---|
+| Native decision | Inspect current execution and, if preferred, build and inject the velocity-audit corrections into the same execution task. Strategy selects in-place continuation. |
+| Approved instruction | [Execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md), version 1.0. |
+| Current observations | Permanent branch clean at `d22533825613c3d428bd844a5dfdc2c0c283b088`; isolated provenance candidate at `66a85047b1b7e2415d7cf2678179983f0708d761`; task active. These are refreshable observations, not final acceptance. |
+| Destination | `Execution — Data Plane`, `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`; preserve `codex/madhav-data-plane-execution` and its existing worktree. |
+| Goal and authority | Retain full DP-SD-017 L3 completion and DP-SD-018 prerequisite authority. Narrowly authorize bootstrap/routine-workflow separation and operating corrections; no protection bypass or new layer scope. |
+| Content pin and dispatch | Pending commit and successful task-message delivery; update from actual results. |
