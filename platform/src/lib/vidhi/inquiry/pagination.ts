@@ -123,8 +123,8 @@ export function deriveInquiryPaginationReceipt(
     const moreAvailable = atPath(object, contract.more_available_path)
     if (typeof moreAvailable === 'boolean') {
       const hasMore = moreAvailable
-      const current = Number(args['offset'] ?? 0)
-      const limit = Number(args['limit'] ?? binding.pagination_contract?.effective_maximum ?? 0)
+      const current = Number(atPath(args, contract.request_position_path) ?? 0)
+      const limit = Number(atPath(args, contract.request_limit_path) ?? contract.effective_maximum ?? 0)
       return { semantics: binding.pagination, exhausted: !hasMore, next: hasMore && limit > 0 ? current + limit : hasMore ? 'unproven' : null }
     }
     const nextCursor = atPath(object, contract.next_path)

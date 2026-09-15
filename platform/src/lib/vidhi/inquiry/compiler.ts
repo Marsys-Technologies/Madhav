@@ -63,6 +63,27 @@ const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
 
 function unique<T>(items: readonly T[]): T[] { return [...new Set(items)] }
 
+function withValueAtPath(
+  source: Readonly<Record<string, unknown>>,
+  path: string,
+  value: unknown,
+): Readonly<Record<string, unknown>> | null {
+  const keys = path.split('.').filter(Boolean)
+  if (keys.length === 0 || keys.some((key) => ['__proto__', 'prototype', 'constructor'].includes(key))) return null
+  const root: Record<string, unknown> = { ...source }
+  let cursor = root
+  for (const key of keys.slice(0, -1)) {
+    const prior = cursor[key]
+    const child = prior && typeof prior === 'object' && !Array.isArray(prior)
+      ? { ...(prior as Record<string, unknown>) }
+      : {}
+    cursor[key] = child
+    cursor = child
+  }
+  cursor[keys.at(-1)!] = value
+  return root
+}
+
 function normalizeQuestion(question: string): string {
   return question.trim().replace(/\s+/g, ' ')
 }
@@ -695,12 +716,13 @@ export function recordInquiryExecution(
     }),
   }])
   if (!args.pagination.exhausted && args.pagination.next !== 'unproven' && args.pagination.next !== null) {
-    const bindingPositionKey = args.request_position_path?.split('.').at(-1)
-    if (!bindingPositionKey) return observed
+    if (!args.request_position_path) return observed
+    const continuedArgs = withValueAtPath(item.args, args.request_position_path, args.pagination.next)
+    if (!continuedArgs) return observed
     observed = {
       ...observed,
       plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
-        ? { ...candidate, args: { ...candidate.args, [bindingPositionKey]: args.pagination.next }, state: 'ready' as const }
+        ? { ...candidate, args: continuedArgs, state: 'ready' as const }
         : candidate),
     }
   } else if (args.disposition === 'failed' && observed.iteration < observed.max_iterations) {

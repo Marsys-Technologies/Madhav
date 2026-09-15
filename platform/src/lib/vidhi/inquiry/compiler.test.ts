@@ -330,6 +330,28 @@ describe('versioned inquiry compiler', () => {
     expect(second.material_frontier).toContainEqual(expect.objectContaining({ scu_id: item.scu_id, disposition: 'absorbed' }))
   })
 
+  it('advances a continuation at the exact reviewed nested argument path', () => {
+    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    const item = initial.plan_items.find((candidate) => candidate.scu_id === 'scu.yoga.firing_and_cancellation')!
+    const nested = {
+      ...initial,
+      plan_items: initial.plan_items.map((candidate) => candidate.item_id === item.item_id
+        ? { ...candidate, args: { filters: { cursor: 'first', keep: true }, untouched: 'value' } }
+        : candidate),
+    }
+    const continued = recordInquiryExecution(nested, {
+      item_id: item.item_id,
+      disposition: 'served',
+      evidence_refs: ['receipt:nested-page'],
+      pagination: { semantics: 'cursor', exhausted: false, next: 'second' },
+      request_position_path: 'filters.cursor',
+    })
+    expect(continued.plan_items.find((candidate) => candidate.item_id === item.item_id)?.args).toEqual({
+      filters: { cursor: 'second', keep: true },
+      untouched: 'value',
+    })
+  })
+
   it('reports BLOCKED honestly when the iteration cap is exhausted', () => {
     const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope, max_iterations: 1 })
     const observed = applyInquiryObservations(initial, initial.plan_items.slice(0, 1).map((item) => ({ item_id: item.item_id, disposition: 'dark' as const, evidence_refs: [], gap_reason: 'build output is unavailable' })))
