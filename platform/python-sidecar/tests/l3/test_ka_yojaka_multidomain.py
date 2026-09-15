@@ -11,6 +11,7 @@ import json
 
 from pipeline.orchestrator.writers import ContextSpec
 from pipeline.orchestrator.writers.ka_yojaka import KaYojakaWriter
+from pipeline.orchestrator.writers.ph_nimitta import PhNimittaWriter
 from services.ph_nimitta.engine import compute_posterior
 
 
@@ -140,7 +141,8 @@ def test_multidomain_signed_structure_and_all_promises_reach_output():
         "career": 1,
         "relationship": 5,
     }
-    assert rule["multi_system_confirmation_count"] == 5
+    assert rule["primary_domain"] == "career"
+    assert rule["multi_system_confirmation_count"] == 1
     assert rule["cdlm_domain_strength_by_domain"] == {
         "career": 0.5,
         "relationship": 1.0,
@@ -151,8 +153,77 @@ def test_multidomain_signed_structure_and_all_promises_reach_output():
     assert hook["contrary_evidence_state"] == "present"
 
 
-def test_existing_receiving_consumer_gets_a_real_result_distinction():
-    rule = _run(_signal(domains=["career", "relationship"]))["dasha"]
+class _PhConsumerCursor:
+    def __init__(self, conn):
+        self.conn = conn
+        self.pending = []
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def execute(self, sql, _params=None):
+        self.pending = []
+        if "FROM bodha_msr_signals" in sql:
+            self.pending = [{
+                "signal_id": "signal-multidomain",
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "domain": "relationship",
+                "signature_class": "SUBSYSTEM",
+                "salience_score": 0.8,
+            }]
+        elif "FROM brahma_event_ontology" in sql:
+            self.pending = [{
+                "event_class_id": "relationship-event",
+                "domain": "relationship",
+                "base_rate_by_age": {},
+            }]
+        elif "FROM bodha_pratijna" in sql:
+            self.pending = [{
+                "ayanamsha_id": "lahiri_chitrapaksha",
+                "event_class_id": "relationship-event",
+                "status": "conditional",
+                "grade": 2.0,
+            }]
+        elif "FROM kala_activation_predicates" in sql:
+            self.pending = [{
+                "signal_id": "signal-multidomain",
+                "mscc": self.conn.confirmation_count,
+            }]
+
+    def fetchall(self):
+        return self.pending
+
+
+class _PhConsumerConnection:
+    def __init__(self, confirmation_count):
+        self.confirmation_count = confirmation_count
+
+    def cursor(self, *_args, **_kwargs):
+        return _PhConsumerCursor(self)
+
+
+def test_real_receiving_loader_gets_primary_multidomain_result_distinction():
+    # signal_type_id's legacy keyword heuristic says career, but L2's accepted
+    # primary membership is relationship.  The old Yojaka path therefore used
+    # career's count (1); the corrected path and ph_nimitta loader both select
+    # relationship's count (5), with no cross-domain inflation.
+    rule = _run(_signal(domains=["relationship", "career"]))["dasha"]
+    assert rule["primary_domain"] == "relationship"
+    assert rule["multi_system_confirmation_count"] == 5
+
+    writer = PhNimittaWriter()
+    conn = _PhConsumerConnection(rule["multi_system_confirmation_count"])
+    signal_meta = writer._load_signal_meta(conn, ["signal-multidomain"])
+    posterior_meta = writer._load_posterior_meta(conn, "chart-1", signal_meta)
+    received = posterior_meta["signal-multidomain"]
+
+    assert signal_meta["signal-multidomain"]["domain"] == "relationship"
+    assert received["event_class_id"] == "relationship-event"
+    assert received["multi_system_confirmation_count"] == 5
+
     legacy_posterior, _ = compute_posterior(
         base_rate=0.2,
         pratijna_grade=2.0,
@@ -162,13 +233,12 @@ def test_existing_receiving_consumer_gets_a_real_result_distinction():
     )
     complete_posterior, _ = compute_posterior(
         base_rate=0.2,
-        pratijna_grade=2.0,
-        pratijna_status="conditional",
-        multi_system_confirmation_count=rule["multi_system_confirmation_count"],
+        pratijna_grade=received["pratijna_grade"],
+        pratijna_status=received["pratijna_status"],
+        multi_system_confirmation_count=received["multi_system_confirmation_count"],
         av_transit_potency=0.0,
     )
 
-    assert rule["multi_system_confirmation_count"] == 5
     assert complete_posterior > legacy_posterior
 
 
