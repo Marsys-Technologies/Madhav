@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.77
+version: 6.78
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,13 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.78 (2026-09-15, MADHAV-PURNA-ANVESANA-W7-20260915): Exact-head CI and independent review
+    refuted the first candidate for a stale census, post-release source mutation, weighted-task
+    starvation, nested-pagination authorization and an incomplete log addendum. Every finding was
+    preserved, reproduced and repaired under corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-
+    20260915. Exact pre-release head b32974cbe was independently approved with no HIGH/MEDIUM
+    findings; the corrective lease is released at 80d47c44d. This metadata-only successor requires
+    fresh exact-head CI and independent final review with no later source mutation.
   - v6.75 (2026-09-15, MADHAV-PURNA-ANVESANA-W7-20260915): Recovery Wave 7 source/local/
     disposable candidate closed under CCD-011 from immutable W6 head b48a6997. The unchanged
     Beyond-Acarya corpus now passes 34/34 route obligations; direct and legacy transit bindings
@@ -5927,7 +5934,7 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟠 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 CORRECTIVE EXACT-HEAD VALIDATION (2026-09-15).** Recovery execution
+> 🟡 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 FINAL SOURCE CANDIDATE (2026-09-15).** Recovery execution
 > from immutable W6 head `b48a6997b12ebe591bc5e62b7b60ddb295ee352b` has completed every authorized
 > source/local/disposable packet under CCD-011. W6's `NOT_ACCEPTED_SOURCE_LOCAL` 30/34 result remains
 > preserved as historical evidence; the unchanged corpus now passes 34/34 after deterministic,
@@ -5938,9 +5945,10 @@ block (post-rebuild era), and proceeds.
 > narrow corrective lease was expanded at coordination commit `610a400a3` after review additionally
 > found weighted-dispatch starvation, nested-pagination authorization and log-schema defects. Those
 > repairs now pass 34 focused tests, TypeScript, changed-file lint and the inherited 42-violation
-> schema ceiling. PR #2605 and all W0–W6
-> branches remain unmerged review surfaces. The corrective lease must be released before a new final
-> metadata head receives exact-head CI and independent terminal review. No merge, deployment, shared/production mutation,
+> schema ceiling. Exact pre-release head `b32974cbe` is independently approved; the corrective lease
+> is released at `80d47c44d`. PR #2605 and all W0–W6 branches remain unmerged review surfaces. This
+> metadata-only final candidate now requires exact-head CI and independent terminal review with no
+> later source mutation. No merge, deployment, shared/production mutation,
 > credential/infrastructure action, expert/empirical acceptance or production health is claimed.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9366,20 +9374,20 @@ current_state:
   # Current close pointer. Kept here to override the historical embedded value above.
   last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 remains in corrective pre-release review. CI refuted 71788963d for a stale census; later reviews refuted the post-release sequence, weighted-task starvation, nested-pagination authorization, and an incomplete SESSION_LOG addendum. Corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915 is expanded and active at 610a400a3. Repairs at f510d1a97 pass 34 focused tests, TypeScript, lint, codegen, and the inherited schema ceiling. Release, metadata-only close, exact-head CI and final reviews remain. No merge, deployment, shared migration, production, user or empirical acceptance claim."
+  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 is at a metadata-only final source candidate. CI and review refutations for stale census, post-release sequencing, weighted starvation, nested pagination and log schema are repaired. Exact pre-release head b32974cbe is approved with no HIGH/MEDIUM findings; corrective lease released at 80d47c44d. Fresh exact-head CI and independent final reviews remain, with no later source mutation. No merge, deployment, shared migration, production, user or empirical acceptance claim."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Finish only the active Wave 7 corrective lease: approve the regenerated census and append-only correction metadata, release the lease remotely, then obtain exact-head CI and independent final review with no later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
+  next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-At the corrective pre-release checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
+At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
 obligations through deterministic, receipted transit argument derivation for both direct and legacy
 bindings, with clarification when an anchor is absent. The six-layer estate contains 182 editorial
@@ -9391,8 +9399,9 @@ lint errors and 589 inherited warnings. Exact-head CI refuted `71788963d` for a 
 census. The artifact was regenerated at `ba0bcd0e9`, but independent review also refuted its post-release
 mutation sequence. A later review found weighted-starvation, nested-pagination and log-schema defects;
 the lease was expanded at `610a400a3` before those repairs. Head `f510d1a97` passes 34 focused tests,
-TypeScript, changed-file lint, codegen and the inherited schema ceiling. PR #2605 remains open and unmerged.
-Lease release, a metadata-only final head, exact-head CI and independent terminal reviews remain, so
+TypeScript, changed-file lint, codegen and the inherited schema ceiling. Exact pre-release head
+`b32974cbe` is approved and the corrective lease is released at `80d47c44d`. PR #2605 remains open
+and unmerged. Exact-head CI and independent terminal reviews remain, so
 the in-tree state remains a corrective candidate rather than a self-certified final-head
 verdict. Shared migrations, signing/infrastructure change, deployed traces, protected merge/deploy,
 retirement, governance-bootstrap remediation and blinded expert evaluation remain `NOT_RUN` pending

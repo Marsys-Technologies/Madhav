@@ -10,10 +10,10 @@
     "acceptance_artifact": "BEYOND_ACARYA_ACCEPTANCE_v2.json",
     "verdict": "ACCEPTED_SOURCE_LOCAL",
     "route_coverage": "34/34",
-    "technical_candidate_head": "99578b1773b10970f7d664e48defd9f10f8cfd80",
+    "technical_candidate_head": "b32974cbee0ef9bd7a93f811d36a6609ad7095eb",
     "stacked_pull_request": 2605,
     "exact_final_head": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
-    "exact_head_ci": "PENDING",
+    "exact_head_ci": "PENDING_FINAL_METADATA_HEAD",
     "merge": "NOT_RUN",
     "deployment": "NOT_RUN"
   },

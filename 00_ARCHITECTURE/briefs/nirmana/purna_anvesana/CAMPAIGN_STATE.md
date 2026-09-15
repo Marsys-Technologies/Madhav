@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.17.0
-status: CORRECTIVE_PRE_RELEASE_REVIEW
+version: 0.18.0
+status: SOURCE_LOCAL_CANDIDATE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0066
-last_updated: 2026-09-15T21:43:00+05:30
+last_event: PA-E0069
+last_updated: 2026-09-15T21:52:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -33,8 +33,9 @@ layer state, queue or authority.
 - PR #2605: open, stacked on PR #2604; exact-final-head CI and independent terminal review remain required.
 - Lease: the original `MADHAV-PURNA-ANVESANA-W7-20260915` lease was released at
   `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. Exact-head CI then found a stale generated census.
-  The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` is active, expanded and
-  remotely verified at `610a400a3fd677efa49bde1d93698b314871760d`; it must be released before final metadata.
+  The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` was expanded at
+  `610a400a3fd677efa49bde1d93698b314871760d`, then released and remotely verified at
+  `80d47c44d38d2f903c844dc674714faa679c2478` after exact pre-release head `b32974cbe` was approved.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -67,6 +68,11 @@ stops later refills and drains capacity after the configured skip bound; nested 
 pagination values are authorized at the full path while sibling changes fail closed. The focused
 suite passes 34/34, TypeScript and changed-file lint pass, codegen remains current, and the schema
 validator is back at the inherited 42 findings with zero corrective-session violations.
+
+All three independent reviewers approved exact pre-release head `b32974cbee0ef9bd7a93f811d36a6609ad7095eb`
+with zero HIGH or MEDIUM findings. The corrective lease was then released at `80d47c44d`; this
+metadata-only successor is the final source candidate. It must receive fresh exact-head CI and
+independent terminal review, and no later source mutation is permitted.
 
 ## Wave 0 finding that blocked execution
 
@@ -300,8 +306,9 @@ foundational baselines, then global lexical ordering reaches migration 1000 befo
 Wave 7 does not broaden into migration-runner governance repair and does not infer deployed-current
 counts. `W7_COMPLETION_AUTHORITY_PACKET_v1.json` retains deployed reads, shared migrations, key
 rotation, deployed cross-door traces, protected merge/deploy, retirement and blinded expert empirical
-evaluation as separately authorized work. The remote Wave 7 lease is released at
-`a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. PR #2605 is a review surface only. The immutable final
+evaluation as separately authorized work. The original release at `a0eb2377` was superseded by the
+corrective sequence; the corrective lease is released at
+`80d47c44d38d2f903c844dc674714faa679c2478`. PR #2605 is a review surface only. The immutable final
 source head still requires exact-head CI and external independent terminal review; no merge, deployment,
 shared/production mutation or empirical acceptance is claimed.
 
@@ -350,7 +357,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W7-P3 pagination, parity and overlays | COMPLETE | W7-P2 | local/disposable gates pass; deployed trace remains external |
 | W7-P4 lifecycle, signing and durable jobs | COMPLETE | W7-P3 | source/disposable gates pass; shared migration/key work remains external |
 | W7-P5 completion and empirical protocol packets | COMPLETE | W7-P4 | all 13 residuals dispositioned; external actions remain unauthorized |
-| W7-P6 protected source candidate | CORRECTIVE_PRE_RELEASE_REVIEW | W7-P5 | census, sequencing, weighted-starvation, nested-pagination and log-schema findings repaired; pre-release review, lease release, final metadata, exact-head CI/reviews required |
+| W7-P6 protected source candidate | CANDIDATE_AWAITING_EXACT_HEAD_EXTERNAL_CHECKS | W7-P5 | corrective pre-release head approved and lease released; final metadata committed; exact-final-head CI and independent reviews required |
 
 ## Delivery decomposition
 

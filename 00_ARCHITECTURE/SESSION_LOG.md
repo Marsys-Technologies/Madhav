@@ -41642,3 +41642,10 @@ sibling mutation. First/middle/final nested-page cases plus the mixed-weight sta
 the two focused files report 34 tests, TypeScript and changed-file lint pass, all codegen checks remain
 current, and the corrected addendum returns the schema validator to the inherited 42 findings with no
 new Wave 7 violation.
+
+All three independent reviewers then approved exact pre-release head
+`b32974cbee0ef9bd7a93f811d36a6609ad7095eb` with zero HIGH or MEDIUM findings. The corrective lease
+was released and remotely verified at `80d47c44d38d2f903c844dc674714faa679c2478`. This is the one
+pre-authorized metadata-only successor. Fresh exact-head CI and independent terminal review are now
+required; no later source mutation is permitted. PR #2605 remains open and unmerged, and all external
+actions remain `NOT_RUN` under `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.

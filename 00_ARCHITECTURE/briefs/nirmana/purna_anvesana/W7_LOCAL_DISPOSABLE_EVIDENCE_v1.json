@@ -2,9 +2,9 @@
   "schema_version": "madhav-purna-anvesana/local-disposable-evidence/v1",
   "campaign_id": "madhav-purna-anvesana",
   "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
-  "recorded_at": "2026-09-15T21:17:00+05:30",
+  "recorded_at": "2026-09-15T21:52:00+05:30",
   "immutable_base": "b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
-  "evidence_head_floor": "99578b1773b10970f7d664e48defd9f10f8cfd80",
+  "evidence_head_floor": "b32974cbee0ef9bd7a93f811d36a6609ad7095eb",
   "final_head_binding": "REQUIRED_EXTERNAL_AFTER_FINAL_COMMIT",
   "scope": "SOURCE_LOCAL_DISPOSABLE_ONLY",
   "terminal_ceiling": "SOURCE_LOCAL_ACCEPTED",
@@ -84,6 +84,20 @@
       "result": "PASS_TYPESCRIPT_CODEGEN_AND_58_WAVE7_FOCUSED_TESTS",
       "evidence": "The repository-wide platform-mcp test command was also run and retained its inherited non-green baseline of missing legacy .js modules and external routing fixture plus obsolete unrelated expectations; the Wave 7 managed-job surface is green.",
       "qualification": "qualified source-local MCP gate; no claim that the inherited repository-wide suite is green"
+    },
+    {
+      "id": "W7-T11-CORRECTIVE-SOURCE-GATES",
+      "command": "cd platform && npx vitest run tests/governance/purna_anvesana_recovery.test.ts tests/governance/purna_anvesana_terminal.test.ts src/lib/retrieval/qos/__tests__/dispatch_queue.test.ts src/app/api/mcp/inquiry/__tests__/route.test.ts",
+      "result": "PASS_4_FILES_42_TESTS",
+      "evidence": "Weighted starvation, nested first/middle/final pagination, sibling-mutation rejection and corrective governance projections pass together; TypeScript, changed-file lint and codegen also pass.",
+      "qualification": "source-local corrective pre-release evidence"
+    },
+    {
+      "id": "W7-T12-CENSUS-SUCCESSOR-CI",
+      "command": "GitHub Actions workflow_dispatch run 34991976703",
+      "result": "PASS_16_JOBS",
+      "evidence": "All CI jobs passed at census-successor head ba0bcd0e905e5152228c0f272b74bf16256d48f1, including the previously failing capability-estate census gate.",
+      "qualification": "precedes the later reviewed weighted-dispatch and nested-pagination source repairs; not final-head CI"
     }
   ],
   "residual_dispositions": [
@@ -155,7 +169,7 @@
       "residual_id": "PA-R09",
       "local_status": "SOURCE_DELIVERY_CANDIDATE",
       "evidence_refs": ["RECOVERY_DEFINITION_v1.json", "git:codex/purna-anvesana-wave7", "github:pull/2605", "W7-T09-INTEGRATED-PLATFORM-GATE", "W7-T10-PLATFORM-MCP-QUALIFIED-GATE"],
-      "local_result": "The focused recovery stack and PR #2605 are prepared. The remote lease is released at a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f; exact-final-head CI and independent review remain required after the terminal metadata commit.",
+      "local_result": "The focused recovery stack and PR #2605 are prepared. Exact pre-release head b32974cbee0ef9bd7a93f811d36a6609ad7095eb is independently approved; the corrective lease is released at 80d47c44d38d2f903c844dc674714faa679c2478. Exact-final-head CI and independent review remain required after this metadata-only commit.",
       "external_remainder": "Independent protected-owner approval, merge and deployment remain outside CCD-011.",
       "external_result": "NOT_RUN"
     },
