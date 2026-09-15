@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0077
-last_updated: 2026-09-16T00:55:00+05:30
+last_event: PA-E0078
+last_updated: 2026-09-16T00:58:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State

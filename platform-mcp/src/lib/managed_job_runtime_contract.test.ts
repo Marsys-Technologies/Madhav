@@ -38,6 +38,7 @@ describe('managed Prashna worker deadline hierarchy', () => {
     expect(watchdogProvisioner).not.toContain('--update-env-vars "WATCHDOG_SECRET=')
     expect(mcpDeployJob).toContain('--remove-secrets=MCP_CANARY_KEY')
     expect(mcpDeployJob).not.toContain('MCP_CANARY_KEY=mcp-canary-key:latest')
+    expect(mcpDeployJob).not.toContain('it does\n      # NOT have')
     expect(authorityPacket).toContain('amjis-web request timeout 360 seconds')
     expect(authorityPacket).toContain('amjis-mcp request timeout 360 seconds and instance-based CPU')
   })

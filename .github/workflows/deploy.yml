@@ -1047,24 +1047,15 @@ jobs:
       # the smoke probes below actually need is the PLAINTEXT key value inside the
       # GitHub Actions runner process, to
       # send as a real Authorization: Bearer header against the candidate revision —
-      # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to itself hold
-      # secretmanager.secretAccessor on mcp-canary-key, which, as of this PR, it does
-      # NOT have (verified via `gcloud projects get-iam-policy madhav-astrology
-      # --flatten="bindings[].members" --filter="bindings.members:github-actions@
-      # madhav-astrology.iam.gserviceaccount.com"` — roles/artifactregistry.writer,
-      # roles/cloudsql.client, roles/iam.serviceAccountUser, roles/run.developer only).
-      # This is the exact structural gap the brief flags: the token exists in Secret
-      # Manager, but nothing wired for a pre-traffic MCP canary can currently read it.
-      # Native follow-up required before this step will succeed:
-      #   gcloud secrets add-iam-policy-binding mcp-canary-key \
-      #     --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
-      #     --role="roles/secretmanager.secretAccessor" \
-      #     --project=madhav-astrology
+      # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to hold a
+      # secret-specific accessor binding. Live read-only IAM inspection on
+      # 2026-09-16 confirmed that exact binding already exists for github-actions;
+      # do not replace it with a project-wide grant.
       - name: Fetch MCP canary key for post-deploy smoke
         id: canary_key
         run: |
           KEY=$(gcloud secrets versions access latest --secret="mcp-canary-key" --project=madhav-astrology 2>/tmp/canary_key_err) || {
-            echo "::warning::Could not read mcp-canary-key from Secret Manager — see native follow-up note above this step in deploy.yml. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
+            echo "::warning::Could not read mcp-canary-key from Secret Manager — verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
             cat /tmp/canary_key_err || true
             KEY=""
           }
