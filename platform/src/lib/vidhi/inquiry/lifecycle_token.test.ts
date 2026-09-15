@@ -97,9 +97,15 @@ describe('inquiry lifecycle token', () => {
       { INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1', INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: current, INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS_KID: 'inquiry-v0', INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS: previous },
       { INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1', INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: current, INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS_KID: 'inquiry-v1', INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS: previous },
       { INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1', INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: current, INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS_KID: 'inquiry-v2' },
+      { INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1', INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: current, INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS_KID: 'inquiry-v2', INQUIRY_LIFECYCLE_SIGNING_KEY_PREVIOUS: previous },
     ]) {
       expect(() => loadInquiryLifecycleSigningKeyRing(env)).toThrow('INQUIRY_SIGNING_KEY_INVALID')
     }
+
+    expect(() => issueInquiryLifecycleToken(base, {
+      current: { kid: 'inquiry-v1', material: key },
+      previous: [{ kid: 'inquiry-v2', material: nextKey }],
+    })).toThrow('INQUIRY_SIGNING_KEY_INVALID')
   })
 
   it('rejects a signed token whose kid is outside the configured ring', () => {

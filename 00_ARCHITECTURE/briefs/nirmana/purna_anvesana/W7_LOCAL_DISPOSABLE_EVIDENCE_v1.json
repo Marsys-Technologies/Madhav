@@ -45,7 +45,7 @@
     },
     {
       "id": "W7-T05-MANAGED-JOB-MIGRATION-REPLAY",
-      "command": "cd platform && PURNA_ANVESANA_MANAGED_JOB_TEST_DATABASE_URL=<DISPOSABLE_LOCALHOST_URL> npm run test -- --run src/lib/vidhi/inquiry/managed_job_migration_contract.test.ts",
+      "command": "cd platform && PURNA_ANVESANA_W7_DATABASE_URL=<DISPOSABLE_LOCALHOST_URL> npm run test -- --run src/lib/vidhi/inquiry/migration_1038.db.test.ts",
       "result": "PASS_10_DATABASE_TESTS",
       "evidence": "Migration 1038 applies and replays with principal and credential ownership, bounded attempts, leases, terminal reconciliation, retention and cascading consent deletion.",
       "qualification": "disposable database only"
@@ -59,7 +59,7 @@
     },
     {
       "id": "W7-T07-MANAGED-JOB-MCP",
-      "command": "cd platform-mcp && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts",
+      "command": "cd platform-mcp && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts src/__tests__/resilience_chaos.test.ts",
       "result": "PASS_58_TESTS",
       "evidence": "Managed MCP uses the platform-backed durable job contract without a process-memory fallback and preserves streaming and terminal byte ceilings.",
       "qualification": "source-local bridge tests only"
@@ -80,7 +80,7 @@
     },
     {
       "id": "W7-T10-PLATFORM-MCP-QUALIFIED-GATE",
-      "command": "cd platform-mcp && npm run typecheck && npm run codegen:check && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts",
+      "command": "cd platform-mcp && npm run typecheck && npm run codegen:check && npm run test -- --run src/lib/managed_prashna_jobs.test.ts src/lib/managed_job_runtime_contract.test.ts src/lib/__tests__/prashna_ask_bridge.test.ts src/tools/register_prashna_ask.test.ts src/tools/register_prashna_status.test.ts src/__tests__/resilience_chaos.test.ts",
       "result": "PASS_TYPESCRIPT_CODEGEN_AND_58_WAVE7_FOCUSED_TESTS",
       "evidence": "The repository-wide platform-mcp test command was also run and retained its inherited non-green baseline of missing legacy .js modules and external routing fixture plus obsolete unrelated expectations; the Wave 7 managed-job surface is green.",
       "qualification": "qualified source-local MCP gate; no claim that the inherited repository-wide suite is green"

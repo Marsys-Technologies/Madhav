@@ -118,7 +118,7 @@ export const queryPlanetTransitCapability: ToolCapability = {
       input_contract: { as_of_date: 'string:required' },
       output_contract: { structured_content: 'declared' },
       pagination: 'none',
-      pagination_verified: true,
+      pagination_verified: null,
       result_collection_verified: true,
       pagination_contract: {
         result_collection_path: 'components',

@@ -38,7 +38,7 @@ export interface InquiryLifecycleSigningKeyRing {
 
 export type InquiryLifecycleSigningSource = string | InquiryLifecycleSigningKeyRing
 
-const KID_PATTERN = /^inquiry-v[1-9][0-9]{0,8}$/
+const KID_PATTERN = /^inquiry-v([1-9][0-9]{0,8})$/
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/
 const MINIMUM_KEY_BYTES = 32
 
@@ -64,6 +64,12 @@ function validateKey(key: InquiryLifecycleSigningKey): InquiryLifecycleSigningKe
   return key
 }
 
+function keyVersion(key: InquiryLifecycleSigningKey): number {
+  const match = KID_PATTERN.exec(key.kid)
+  if (!match) throw new Error('INQUIRY_SIGNING_KEY_INVALID')
+  return Number(match[1])
+}
+
 function normalizeKeyRing(source: InquiryLifecycleSigningSource): InquiryLifecycleSigningKeyRing {
   // Preserve the source API used by non-environment unit callers while routing
   // production configuration through the strictly decoded key-ring loader below.
@@ -72,6 +78,10 @@ function normalizeKeyRing(source: InquiryLifecycleSigningSource): InquiryLifecyc
   const previous = (source.previous ?? []).map(validateKey)
   const kids = [current.kid, ...previous.map((key) => key.kid)]
   if (new Set(kids).size !== kids.length) throw new Error('INQUIRY_SIGNING_KEY_INVALID')
+  const currentVersion = keyVersion(current)
+  if (previous.some((key) => keyVersion(key) >= currentVersion)) {
+    throw new Error('INQUIRY_SIGNING_KEY_INVALID')
+  }
   return { current, previous }
 }
 

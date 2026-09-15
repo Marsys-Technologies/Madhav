@@ -55,7 +55,7 @@ import {
   buildToolSearchIndex,
   resolveType,
 } from './projection_builders'
-import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
+import { extractRegistryBridgeToolsFromDisk } from './extract_registry_bridge_tools'
 import { resolveWebToolBridge, type CanonicalFacesData } from './web_tool_bridge_builder'
 import { buildMcpSurfaceProfiles, consultIsSubsetOfFull, COMPACT_MAX_TOOLS } from './mcp_surface_profile_builder'
 import { buildCapabilityPublicNameBridge } from './extract_registrar_capability_bridge'
@@ -351,7 +351,7 @@ export const MCP_SURFACE_PROFILES: {
       generated_count: mcpTools.length,
       excluded_non_tool_count: mcpNonTools.length,
       registry_bridge_block_count: bridgeBlocks.length,
-      registry_bridge_source: REGISTRY_BRIDGE_PATH,
+      registry_bridge_source: 'platform-mcp/src/tools/registry_bridge.ts',
       name_overlap: mcpNameOverlap,
       only_in_registry_bridge: bridgeOnlyNames,
       only_in_generated: generatedOnlyNames,

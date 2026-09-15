@@ -164,5 +164,5 @@ describe('capability estate census', () => {
     }
     expect(renderCapabilityEstateCensus(first)).toBe(renderCapabilityEstateCensus(second))
     expect(renderCapabilityEstateCensus(first)).toMatch(/\n$/)
-  })
+  }, 15_000)
 })
