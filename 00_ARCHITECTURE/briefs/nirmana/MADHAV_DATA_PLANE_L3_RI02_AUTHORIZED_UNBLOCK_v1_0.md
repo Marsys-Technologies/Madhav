@@ -95,3 +95,24 @@ bindings; has not applied a migration, opened a PR, deployed, built/rebuilt char
 data, selected a generation, integrated a consumer, evaluated value or accepted
 the layer. The exact next gate is the independently accepted P + S source/design
 candidate.
+
+## 6. Bounded technical rulings
+
+### RI02-R-001 — admit the derived `ka_sangam` provenance successor
+
+- **Question:** truthful regeneration at checkpoint `5142109f7` reports a stale
+  checked-in `ka_sangam` digest because an already accepted W2 shared import
+  changed its import closure. Excluding that shared source would conflict with
+  the accepted W2 packet; retaining the stale generated value would make the
+  inventory checker dishonest.
+- **Decision:** Lane P may add an L3 metadata-only, versioned successor binding
+  for exactly `ka_sangam` alongside the affected L0/L1/L2/L4 provenance set.
+  This is a derived/import-closure consequence of accepted L3 source, not new
+  writer behavior or a reopening of W2.
+- **Evidence required:** preserve the original L3 receipt/pin bytes and W2
+  acceptance, name the exact old/new digest and accepted source closure, reject
+  any other unapproved L3 identity/source delta, and prove historical
+  reconstruction plus current generated consistency.
+- **Reversibility and non-claims:** removing the new successor restores the old
+  metadata view without changing source behavior or history. It grants no
+  physical-data, deployment, freeze, consumer-value or empirical status.
