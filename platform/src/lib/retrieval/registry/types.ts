@@ -563,6 +563,13 @@ export interface CapabilityContext {
   chart_id?: string
   /** Request metadata */
   request_id?: string
+  /** Server-injected authority for an explicitly mutation-capable registry call. */
+  mutation_authorization?: {
+    receipt_id: string
+    capability_uri: CapabilityUri
+    chart_id?: string
+    action: 'apply'
+  }
 }
 
 /**

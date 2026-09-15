@@ -5,7 +5,7 @@
  * one or more executable registry descriptors without collapsing either side.
  */
 
-export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '2.0.0' as const
+export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '2.1.0' as const
 export const CAPABILITY_COMPATIBILITY_VERSION = 'planner-scu-v2' as const
 
 export type SemanticCapabilityKind =
@@ -69,8 +69,16 @@ export interface SemanticGraphDisposition {
 
 export interface ProducerSemanticBinding {
   readonly asset_id: string
-  readonly target_scu_id: string
-  readonly relation: 'provides_evidence_for'
+  /** Planner-addressable semantic target, when the producer output is inquiry evidence. */
+  readonly target_scu_id: string | null
+  /** Exact registry target when the serving surface is deliberately planner-excluded. */
+  readonly target_capability_uri: string | null
+  /**
+   * `directly_serves_output` is reserved for a capability whose result reads or
+   * exposes the producer's governed output. The other relations are useful
+   * semantic context, but never count as route coverage.
+   */
+  readonly relation: 'directly_serves_output' | 'consumes_output' | 'supports_same_semantic_domain'
   readonly rationale: string
   readonly source_refs: readonly string[]
 }
@@ -200,6 +208,8 @@ export interface CapabilityKnowledgeCensus {
   readonly dispositioned_isolated_scus: number
   readonly unresolved_isolated_scus: number
   readonly producer_semantic_bindings: number
+  readonly directly_served_producer_outputs: number
+  readonly support_only_producer_bindings: number
   readonly unbound_active_producers: number
   readonly undispositioned_producer_scus: number
   readonly undispositioned_gaps: number

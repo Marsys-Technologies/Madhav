@@ -18,9 +18,9 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(187)
+    expect(snapshot.census.executable_bindings).toBe(186)
     expect(snapshot.census.unavailable_bindings).toBe(0)
-    expect(snapshot.schema_version).toBe('2.0.0')
+    expect(snapshot.schema_version).toBe('2.1.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(snapshot.semantic_review_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/)
@@ -53,7 +53,7 @@ describe('planner capability knowledge', () => {
         editorial_sources?: readonly { source_ref: string; source_fields: readonly string[] }[]
       })[]
     }
-    expect(enriched.census.editorial_scus).toBe(183)
+    expect(enriched.census.editorial_scus).toBe(182)
     expect(enriched.census.derived_scus).toBe(0)
     expect(enriched.scus.every((scu) => scu.editorial)).toBe(true)
     expect(enriched.scus.every((scu) => ['authored_declaration', 'descriptor_metadata_review'].includes(scu.editorial_method ?? ''))).toBe(true)
@@ -160,7 +160,7 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(177)
+    expect(reviewed).toHaveLength(176)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)
@@ -242,7 +242,8 @@ describe('planner capability knowledge', () => {
     const enriched = snapshot as CapabilityKnowledgeSnapshot & {
       producer_semantic_bindings?: readonly {
         asset_id: string
-        target_scu_id: string
+        target_scu_id: string | null
+        target_capability_uri: string | null
         relation: string
         rationale: string
         source_refs: readonly string[]
@@ -263,12 +264,14 @@ describe('planner capability knowledge', () => {
     expect(bindings.map((binding) => binding.asset_id).sort()).toEqual(expected)
     const scuIds = new Set(enriched.scus.map((scu) => scu.scu_id))
     for (const binding of bindings) {
-      expect(scuIds.has(binding.target_scu_id)).toBe(true)
-      expect(binding.relation).toBe('provides_evidence_for')
+      expect(Number(binding.target_scu_id !== null) + Number(binding.target_capability_uri !== null)).toBe(1)
+      if (binding.target_scu_id !== null) expect(scuIds.has(binding.target_scu_id)).toBe(true)
+      if (binding.target_capability_uri !== null) expect(catalog.some((capability) => capability.uri === binding.target_capability_uri)).toBe(true)
+      expect(['directly_serves_output', 'consumes_output', 'supports_same_semantic_domain']).toContain(binding.relation)
       expect(binding.rationale.length).toBeGreaterThan(12)
       expect(binding.source_refs).toEqual([
         `platform/src/generated/capability_estate_census.json#details.producer_output_contracts:${binding.asset_id}`,
-        `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${binding.target_scu_id}:${binding.asset_id}`,
+        `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${binding.target_scu_id ?? binding.target_capability_uri}:${binding.asset_id}`,
       ])
     }
     for (const scu of enriched.scus) {
@@ -283,6 +286,8 @@ describe('planner capability knowledge', () => {
       }
     }
     expect(enriched.census.producer_semantic_bindings).toBe(expected.length)
+    expect(enriched.census.directly_served_producer_outputs).toBe(expected.length - 1)
+    expect(enriched.census.support_only_producer_bindings).toBe(1)
     expect(enriched.census.unbound_active_producers).toBe(0)
     expect(enriched.census.undispositioned_producer_scus).toBe(0)
   })
@@ -308,6 +313,7 @@ describe('planner capability knowledge', () => {
       producer_semantic_bindings: bindings.map((binding, index) => index === 0 ? {
         ...binding,
         target_scu_id: otherScu.scu_id,
+        target_capability_uri: null,
         rationale: 'A plausible but unauthorised replacement rationale for this producer relationship.',
         source_refs: [
           `platform/src/generated/capability_estate_census.json#details.producer_output_contracts:${binding.asset_id}`,

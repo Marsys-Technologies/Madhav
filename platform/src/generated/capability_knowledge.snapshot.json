@@ -1,10 +1,10 @@
 {
-  "schema_version": "2.0.0",
+  "schema_version": "2.1.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-14T15:25:20.000Z",
-  "content_hash": "sha256:c38920bedf643cfd629fe1368f385c40be5ce5127e536779fd87775bcf41d8cb",
-  "source_catalog_fingerprint": "sha256:b77872d26e3adf450ee5a49ec18e5ebfe83f0e1a7365818aa9556702422d9171",
-  "semantic_review_fingerprint": "sha256:9d772ab07b936d4c5869e5245f41904726e56ba50e6c5d5ff24f19a709f0c418",
+  "generated_at": "2026-09-15T06:10:41.000Z",
+  "content_hash": "sha256:2f346495a2b0ce5bd139c9faabed5953f83e5c7f72d473f9ef67f861ef931471",
+  "source_catalog_fingerprint": "sha256:5c1704b16e28e9b69b5c530ef7ea1bad134cf988bbaeed9e1db42226deca65a9",
+  "semantic_review_fingerprint": "sha256:db85af3dee748f127af82bb5a1d0e1aaeec23bbdc77f8a0c329f457096be8b6e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -11513,163 +11513,6 @@
       }
     },
     {
-      "scu_id": "scu.catalog.prediction_lifecycle_sweep",
-      "version": 1,
-      "label": "Prediction Lifecycle Sweep",
-      "description": "EL-58 prediction/window lifecycle sweep. Finds predictions whose window has CLOSED and are still lifecycle_status=open/pending, auto-matches them against the chart-scoped LEL, and closes the ones with no candidate LEL event so they do not sit open indefinitely (the charter's \"2011-window-open-in-2026\" class). Covers both mimamsa_predictions (writes lifecycle_status=expired directly — no schema change needed) and brahma_prospective_ledger (candidate matches are written via the existing matchOpenPredictionsForLelEvent hook; no-match rows are REPORTED as lapsed_unobserved candidates but not written — that value is not yet in this table's CHECK constraint; see the returned migration_pending_note for the ready ALTER TABLE text). dry_run (default true) previews with zero writes. Never auto-adjudicates a candidate match to confirmed/denied/falsified — that stays a human/native call (mimamsa_outcome_record / a future prospective-ledger adjudication tool). Evidence use: establish dated sequence, activation, or timing evidence.",
-      "kind": "temporal",
-      "domains": [
-        "timing"
-      ],
-      "concepts": [
-        "activation_timing",
-        "prediction_lifecycle_sweep",
-        "temporal_sequence",
-        "timing_window"
-      ],
-      "intents": [
-        "sequence",
-        "time"
-      ],
-      "horizons": [
-        "current",
-        "future",
-        "historical",
-        "multi_year"
-      ],
-      "scope": "chart",
-      "inputs": [
-        "chart_id",
-        "dry_run",
-        "table"
-      ],
-      "outputs": [
-        "evidence_references",
-        "temporal_sequence_evidence",
-        "timing_windows"
-      ],
-      "primary_binding_uri": "marsys://tool/L5/prediction_lifecycle_sweep",
-      "edges": [],
-      "provenance_requirements": [
-        "chart_id_when_chart_scoped",
-        "build_id",
-        "formula_or_writer_version"
-      ],
-      "freshness_policy": "Must resolve against the active compatible chart build.",
-      "entitlement": "native",
-      "safety_notes": [
-        "Read-only evidence surface; planner must not interpret returned chart facts."
-      ],
-      "known_gaps": [],
-      "editorial": true,
-      "bindings": [
-        {
-          "binding_id": "registry:marsys://tool/L5/prediction_lifecycle_sweep",
-          "kind": "registry_capability",
-          "relation": "primary",
-          "capability_uri": "marsys://tool/L5/prediction_lifecycle_sweep",
-          "input_contract": {
-            "chart_id": "string:required",
-            "dry_run": "boolean:optional",
-            "table": "string:optional"
-          },
-          "output_contract": {
-            "content": "ToolResult.content"
-          },
-          "pagination": "none",
-          "pagination_verified": null,
-          "executable": true,
-          "execution_channels": [
-            "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/prediction_lifecycle_sweep"
-        }
-      ],
-      "source_descriptor_uris": [
-        "marsys://tool/L5/prediction_lifecycle_sweep"
-      ],
-      "editorial_method": "descriptor_metadata_review",
-      "editorial_sources": [
-        {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep",
-          "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L5/prediction_lifecycle_sweep",
-          "source_fields": [
-            "name",
-            "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
-          ]
-        }
-      ],
-      "concept_bindings": [
-        {
-          "concept_id": "activation_timing",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-        },
-        {
-          "concept_id": "prediction_lifecycle_sweep",
-          "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-        },
-        {
-          "concept_id": "temporal_sequence",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-        },
-        {
-          "concept_id": "timing_window",
-          "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-        }
-      ],
-      "gap_dispositions": [],
-      "graph_disposition": {
-        "status": "isolated_dispositioned",
-        "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
-        "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L5/prediction_lifecycle_sweep",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-        ]
-      },
-      "producer_semantic_disposition": {
-        "status": "linked",
-        "asset_ids": [
-          "mi_abhilekha"
-        ],
-        "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
-        "source_refs": [
-          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_abhilekha",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.prediction_lifecycle_sweep:mi_abhilekha"
-        ]
-      }
-    },
-    {
       "scu_id": "scu.catalog.query_activation_waveform",
       "version": 1,
       "label": "Query Activation Waveform",
@@ -12466,17 +12309,14 @@
         "status": "linked",
         "asset_ids": [
           "bo_grounding",
-          "mi_adhilepa",
-          "ph_pramana"
+          "mi_adhilepa"
         ],
         "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
         "source_refs": [
           "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_grounding",
           "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_adhilepa",
-          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_pramana",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_attribution:bo_grounding",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_attribution:mi_adhilepa",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_attribution:ph_pramana"
+          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_attribution:mi_adhilepa"
         ]
       }
     },
@@ -16034,12 +15874,14 @@
         ]
       },
       "producer_semantic_disposition": {
-        "status": "not_applicable",
-        "asset_ids": [],
-        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "status": "linked",
+        "asset_ids": [
+          "ph_pramana"
+        ],
+        "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L4/query_falsifiers",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_falsifiers"
+          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_pramana",
+          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_falsifiers:ph_pramana"
         ]
       }
     },
@@ -16987,17 +16829,12 @@
         ]
       },
       "producer_semantic_disposition": {
-        "status": "linked",
-        "asset_ids": [
-          "lel_events",
-          "mi_jivanaghatana"
-        ],
-        "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:lel_events",
-          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_jivanaghatana",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_journal:lel_events",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_journal:mi_jivanaghatana"
+          "CapabilityDescriptor:marsys://tool/L5/query_journal",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#evidence_quality:query_journal"
         ]
       }
     },
@@ -22543,14 +22380,12 @@
         ]
       },
       "producer_semantic_disposition": {
-        "status": "linked",
-        "asset_ids": [
-          "bo_upaya"
-        ],
-        "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
+        "status": "not_applicable",
+        "asset_ids": [],
+        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
         "source_refs": [
-          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_upaya",
-          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_remedies_for_chart:bo_upaya"
+          "CapabilityDescriptor:marsys://tool/L0/query_remedies_for_chart",
+          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_remedies_for_chart"
         ]
       }
     },
@@ -24039,12 +23874,14 @@
         ]
       },
       "producer_semantic_disposition": {
-        "status": "not_applicable",
-        "asset_ids": [],
-        "rationale": "The exhaustive W1 producer review found no direct producer-output relationship for this semantic capability.",
+        "status": "linked",
+        "asset_ids": [
+          "bo_upaya"
+        ],
+        "rationale": "One or more W1 producer outputs are editorially linked to this semantic capability.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L2/query_rm_resonances",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#remedial:query_rm_resonances"
+          "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_upaya",
+          "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_rm_resonances:bo_upaya"
         ]
       }
     },
@@ -30792,7 +30629,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
@@ -32164,15 +32000,6 @@
       ]
     },
     {
-      "concept_id": "prediction_lifecycle_sweep",
-      "types": [
-        "capability"
-      ],
-      "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep"
-      ]
-    },
-    {
       "concept_id": "qualification_factor",
       "types": [
         "domain_concept"
@@ -33327,7 +33154,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
@@ -33398,7 +33224,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:prediction_lifecycle_sweep",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_active_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_cleansed_anchors",
@@ -33518,7 +33343,8 @@
     {
       "asset_id": "bg_class_lifetime_counts",
       "target_scu_id": "scu.catalog.query_class_priors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies cohort and lifetime-count priors used to contextualize class-level evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_class_lifetime_counts",
@@ -33528,7 +33354,8 @@
     {
       "asset_id": "bg_class_priors",
       "target_scu_id": "scu.catalog.query_class_priors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies cohort and lifetime-count priors used to contextualize class-level evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_class_priors",
@@ -33538,7 +33365,8 @@
     {
       "asset_id": "bg_cohort",
       "target_scu_id": "scu.catalog.query_class_priors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies cohort and lifetime-count priors used to contextualize class-level evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_cohort",
@@ -33548,7 +33376,8 @@
     {
       "asset_id": "bg_compendium_index",
       "target_scu_id": "scu.catalog.query_compendium_index",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the compendium inventory used to discover bounded classical material.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_compendium_index",
@@ -33558,7 +33387,8 @@
     {
       "asset_id": "bg_concordance",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_concordance",
@@ -33568,7 +33398,8 @@
     {
       "asset_id": "bg_dasha_systems",
       "target_scu_id": "scu.catalog.query_dasha_systems",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the governed system definitions needed to select and interpret a dasha sequence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_dasha_systems",
@@ -33578,7 +33409,8 @@
     {
       "asset_id": "bg_dignity_reference",
       "target_scu_id": "scu.catalog.get_dignity",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the reference tables required to qualify planetary dignity.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_dignity_reference",
@@ -33588,7 +33420,8 @@
     {
       "asset_id": "bg_doshas",
       "target_scu_id": "scu.catalog.query_dosha_catalog",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies configured dosha definitions that distinguish rules from chart-specific findings.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_doshas",
@@ -33598,7 +33431,8 @@
     {
       "asset_id": "bg_ephemeris",
       "target_scu_id": "scu.catalog.query_planet_position",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies governed ephemeris material and computation support for planetary positions.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_ephemeris",
@@ -33608,7 +33442,8 @@
     {
       "asset_id": "bg_ephemeris_engine",
       "target_scu_id": "scu.catalog.query_planet_position",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies governed ephemeris material and computation support for planetary positions.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_ephemeris_engine",
@@ -33618,7 +33453,8 @@
     {
       "asset_id": "bg_formula_constants",
       "target_scu_id": "scu.catalog.query_formula_constants",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies versioned formula constants used by source-grounded computations.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_formula_constants",
@@ -33628,7 +33464,8 @@
     {
       "asset_id": "bg_ghatana",
       "target_scu_id": "scu.catalog.query_convergence_windows",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies event-convergence configuration used to identify candidate timing windows.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_ghatana",
@@ -33638,7 +33475,8 @@
     {
       "asset_id": "bg_gochara_arcs",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_gochara_arcs",
@@ -33648,7 +33486,8 @@
     {
       "asset_id": "bg_gochara_citation_resolution",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_gochara_citation_resolution",
@@ -33658,7 +33497,8 @@
     {
       "asset_id": "bg_kota_chakra_rings",
       "target_scu_id": "scu.catalog.query_kota_chakra",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies ring definitions and evaluated Kota Chakra timing evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_kota_chakra_rings",
@@ -33668,7 +33508,8 @@
     {
       "asset_id": "bg_kp_sublord_division",
       "target_scu_id": "scu.catalog.get_kp_cusps",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies KP sub-lord division evidence required for cusp-level retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_kp_sublord_division",
@@ -33678,7 +33519,8 @@
     {
       "asset_id": "bg_medical_mappings",
       "target_scu_id": "scu.catalog.query_medical_mappings",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies governed medical correspondence data while retaining the non-diagnostic boundary.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_medical_mappings",
@@ -33688,7 +33530,8 @@
     {
       "asset_id": "bg_muhurta_lattice",
       "target_scu_id": "scu.catalog.query_muhurta_lattice",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the electional lattice used to constrain candidate times.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_muhurta_lattice",
@@ -33698,7 +33541,8 @@
     {
       "asset_id": "bg_nakshatra",
       "target_scu_id": "scu.catalog.get_nakshatra",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies nakshatra reference and semantic evidence for the retrieved lunar mansion.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_nakshatra",
@@ -33708,7 +33552,8 @@
     {
       "asset_id": "bg_nakshatra_medical",
       "target_scu_id": "scu.catalog.query_nakshatra_medical",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies nakshatra-specific health correspondence evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_nakshatra_medical",
@@ -33718,7 +33563,8 @@
     {
       "asset_id": "bg_ontology",
       "target_scu_id": "scu.catalog.concept_locate",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the governed ontology used to resolve domain concepts to evidence surfaces.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_ontology",
@@ -33728,7 +33574,8 @@
     {
       "asset_id": "bg_panchanga",
       "target_scu_id": "scu.catalog.get_panchanga",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the calendar factors required for a Panchanga result.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_panchanga",
@@ -33738,7 +33585,8 @@
     {
       "asset_id": "bg_parihara_rules",
       "target_scu_id": "scu.catalog.query_remedies",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies grounded remedy and parihara rules for bounded remedial retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_parihara_rules",
@@ -33748,7 +33596,8 @@
     {
       "asset_id": "bg_phaladeepika_latta",
       "target_scu_id": "scu.catalog.query_vedha_gochara",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies obstruction, latta, sarvatobhadra, and malefic-scale evidence for transit qualification.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_phaladeepika_latta",
@@ -33758,7 +33607,8 @@
     {
       "asset_id": "bg_prashna_rules",
       "target_scu_id": "scu.catalog.query_prashna_special_techniques",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies configured Prashna rules and evaluated special-technique evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_prashna_rules",
@@ -33768,7 +33618,8 @@
     {
       "asset_id": "bg_reference",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_reference",
@@ -33778,7 +33629,8 @@
     {
       "asset_id": "bg_remedies",
       "target_scu_id": "scu.catalog.query_remedies",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies grounded remedy and parihara rules for bounded remedial retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_remedies",
@@ -33788,7 +33640,8 @@
     {
       "asset_id": "bg_rules",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_rules",
@@ -33798,7 +33651,8 @@
     {
       "asset_id": "bg_sarvatobhadra_grid",
       "target_scu_id": "scu.catalog.query_vedha_gochara",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies obstruction, latta, sarvatobhadra, and malefic-scale evidence for transit qualification.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_sarvatobhadra_grid",
@@ -33808,7 +33662,8 @@
     {
       "asset_id": "bg_sign_medical",
       "target_scu_id": "scu.catalog.query_sign_medical",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies sign-specific health correspondence evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_sign_medical",
@@ -33818,7 +33673,8 @@
     {
       "asset_id": "bg_sky_calendar",
       "target_scu_id": "scu.catalog.query_sky_calendar",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies dated sky-calendar evidence for temporal retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_sky_calendar",
@@ -33828,7 +33684,8 @@
     {
       "asset_id": "bg_text_index",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_text_index",
@@ -33838,7 +33695,8 @@
     {
       "asset_id": "bg_texts",
       "target_scu_id": "scu.catalog.query_classical_texts",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed texts, rules, concordance, reference entries, and resolvable citations for classical grounding.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_texts",
@@ -33848,7 +33706,8 @@
     {
       "asset_id": "bg_transit_engine",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_transit_engine",
@@ -33858,7 +33717,8 @@
     {
       "asset_id": "bg_transit_rules",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_transit_rules",
@@ -33868,7 +33728,8 @@
     {
       "asset_id": "bg_vastu_directions",
       "target_scu_id": "scu.catalog.query_vastu_directions",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies directional reference and evaluated Vastu evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_vastu_directions",
@@ -33878,7 +33739,8 @@
     {
       "asset_id": "bg_vedha_malefic_scale",
       "target_scu_id": "scu.catalog.query_vedha_gochara",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies obstruction, latta, sarvatobhadra, and malefic-scale evidence for transit qualification.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_vedha_malefic_scale",
@@ -33888,7 +33750,8 @@
     {
       "asset_id": "bg_vidhi_floors",
       "target_scu_id": "scu.catalog.query_question_lenses",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies governed Vidhi floors and primitives used to frame an inquiry without synthesizing its answer.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_vidhi_floors",
@@ -33898,7 +33761,8 @@
     {
       "asset_id": "bg_vidhi_primitives",
       "target_scu_id": "scu.catalog.query_question_lenses",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies governed Vidhi floors and primitives used to frame an inquiry without synthesizing its answer.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_vidhi_primitives",
@@ -33908,7 +33772,8 @@
     {
       "asset_id": "bg_yogas",
       "target_scu_id": "scu.catalog.query_yoga_catalog",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies configured yoga definitions used to distinguish a rule from a chart firing.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bg_yogas",
@@ -33918,7 +33783,8 @@
     {
       "asset_id": "bo_anveshana",
       "target_scu_id": "scu.catalog.query_discoveries",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies reviewed discovery records for bounded exploratory inquiry.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_anveshana",
@@ -33928,7 +33794,8 @@
     {
       "asset_id": "bo_arudha",
       "target_scu_id": "scu.catalog.query_chart_gestalt",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies whole-chart and Arudha structural summaries for gestalt assessment.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_arudha",
@@ -33938,7 +33805,8 @@
     {
       "asset_id": "bo_bimba",
       "target_scu_id": "scu.catalog.graha_portrait",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the Bimba portrait evidence used to inspect a planet in context.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_bimba",
@@ -33948,7 +33816,8 @@
     {
       "asset_id": "bo_cdlm_summary",
       "target_scu_id": "scu.catalog.query_cdlm_summary",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the CDLM summary used for cross-domain assessment.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_cdlm_summary",
@@ -33958,7 +33827,8 @@
     {
       "asset_id": "bo_cgm_motifs",
       "target_scu_id": "scu.catalog.query_cgm_motifs",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies detected causal-graph motifs for relationship inspection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_cgm_motifs",
@@ -33968,7 +33838,8 @@
     {
       "asset_id": "bo_cgm_paths",
       "target_scu_id": "scu.catalog.query_cgm_paths",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies source-backed causal-graph paths for mechanism tracing.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_cgm_paths",
@@ -33978,7 +33849,8 @@
     {
       "asset_id": "bo_chart_gestalt",
       "target_scu_id": "scu.catalog.query_chart_gestalt",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies whole-chart and Arudha structural summaries for gestalt assessment.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_chart_gestalt",
@@ -33988,7 +33860,8 @@
     {
       "asset_id": "bo_drishti",
       "target_scu_id": "scu.catalog.get_aspects",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies evaluated Drishti relationships for aspect retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_drishti",
@@ -33998,7 +33871,8 @@
     {
       "asset_id": "bo_grounding",
       "target_scu_id": "scu.catalog.query_attribution",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies grounding and attribution records for claim provenance.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_grounding",
@@ -34008,7 +33882,8 @@
     {
       "asset_id": "bo_karanajala",
       "target_scu_id": "scu.catalog.query_spine_bundle",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the Karanajala causal spine used to trace mechanism evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_karanajala",
@@ -34018,7 +33893,8 @@
     {
       "asset_id": "bo_laksana",
       "target_scu_id": "scu.catalog.query_signals",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies extracted Laksana signals for evidence retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_laksana",
@@ -34028,7 +33904,8 @@
     {
       "asset_id": "bo_laksana_rerank",
       "target_scu_id": "scu.catalog.query_signal_families",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies ranked signal families and Mimamsa family evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_laksana_rerank",
@@ -34038,7 +33915,8 @@
     {
       "asset_id": "bo_nakshatra_semantic",
       "target_scu_id": "scu.catalog.get_nakshatra",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies nakshatra reference and semantic evidence for the retrieved lunar mansion.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_nakshatra_semantic",
@@ -34048,7 +33926,8 @@
     {
       "asset_id": "bo_pramana_mapa",
       "target_scu_id": "scu.catalog.query_quality_scorecard",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Pramana and Sodhana quality evidence for confidence constraints.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_pramana_mapa",
@@ -34058,7 +33937,8 @@
     {
       "asset_id": "bo_pratijna",
       "target_scu_id": "scu.catalog.query_pratijna",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies proposition records used to inspect an explicit claim contract.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_pratijna",
@@ -34068,7 +33948,8 @@
     {
       "asset_id": "bo_samskara",
       "target_scu_id": "scu.catalog.query_manifestation_grammar",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Samskara and Sankalpa pattern evidence for manifestation grammar retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_samskara",
@@ -34078,7 +33959,8 @@
     {
       "asset_id": "bo_samvada",
       "target_scu_id": "scu.catalog.query_contradictions",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Samvada and Mimamsa contradiction evidence for explicit tension handling.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_samvada",
@@ -34088,7 +33970,8 @@
     {
       "asset_id": "bo_sangati",
       "target_scu_id": "scu.catalog.query_triangulation",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Sangati agreement evidence for cross-source triangulation.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_sangati",
@@ -34098,7 +33981,8 @@
     {
       "asset_id": "bo_special_lagna",
       "target_scu_id": "scu.catalog.get_structural",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies special-lagna and structural chart evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_special_lagna",
@@ -34108,7 +33992,8 @@
     {
       "asset_id": "bo_sudarshana",
       "target_scu_id": "scu.catalog.query_sudarshana_varsha",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Sudarshana and annual-cycle evidence for time-bounded retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_sudarshana",
@@ -34117,18 +34002,20 @@
     },
     {
       "asset_id": "bo_upaya",
-      "target_scu_id": "scu.catalog.query_remedies_for_chart",
-      "relation": "provides_evidence_for",
-      "rationale": "Supplies chart-specific Upaya evidence with applicability constraints.",
+      "target_scu_id": "scu.catalog.query_rm_resonances",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
+      "rationale": "Directly supplies the bodha_rm_resonances rows served by the Remedial Matrix resonance query.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_upaya",
-        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_remedies_for_chart:bo_upaya"
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_rm_resonances:bo_upaya"
       ]
     },
     {
       "asset_id": "bo_vargottama_dhana",
       "target_scu_id": "scu.finance.prosperity_assessment",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Vargottama-Dhana evidence for the authored prosperity assessment.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_vargottama_dhana",
@@ -34138,7 +34025,8 @@
     {
       "asset_id": "bo_yantra_mechanism",
       "target_scu_id": "scu.bodha.mechanism.network",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the authored Yantra mechanism network used for causal inspection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:bo_yantra_mechanism",
@@ -34148,7 +34036,8 @@
     {
       "asset_id": "ga_ayurdaya",
       "target_scu_id": "scu.catalog.get_ayurdaya",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed Ayurdaya evidence while preserving its bounded interpretive role.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_ayurdaya",
@@ -34158,7 +34047,8 @@
     {
       "asset_id": "ga_condition",
       "target_scu_id": "scu.catalog.get_condition_composite",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the composite planetary-condition output.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_condition",
@@ -34168,7 +34058,8 @@
     {
       "asset_id": "ga_dashas",
       "target_scu_id": "scu.catalog.get_dashas",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed dasha sequences for temporal analysis.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_dashas",
@@ -34178,7 +34069,8 @@
     {
       "asset_id": "ga_medical",
       "target_scu_id": "scu.catalog.get_medical_indications",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed health indications while retaining the non-diagnostic boundary.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_medical",
@@ -34188,7 +34080,8 @@
     {
       "asset_id": "ga_nakshatra",
       "target_scu_id": "scu.catalog.get_nakshatra",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies nakshatra reference and semantic evidence for the retrieved lunar mansion.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_nakshatra",
@@ -34198,7 +34091,8 @@
     {
       "asset_id": "ga_panchanga",
       "target_scu_id": "scu.catalog.get_panchanga",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the calendar factors required for a Panchanga result.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_panchanga",
@@ -34208,7 +34102,8 @@
     {
       "asset_id": "ga_positions",
       "target_scu_id": "scu.catalog.get_positions",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed chart positions for downstream retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_positions",
@@ -34218,7 +34113,8 @@
     {
       "asset_id": "ga_prashna",
       "target_scu_id": "scu.catalog.get_prashna_lagna",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed Prashna-lagna evidence for horary inspection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_prashna",
@@ -34228,7 +34124,8 @@
     {
       "asset_id": "ga_sade_sati",
       "target_scu_id": "scu.catalog.get_sade_sati",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed Sade-Sati interval evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_sade_sati",
@@ -34238,7 +34135,8 @@
     {
       "asset_id": "ga_sensitive",
       "target_scu_id": "scu.catalog.get_sensitive_points",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed sensitive-point evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_sensitive",
@@ -34248,7 +34146,8 @@
     {
       "asset_id": "ga_sensitive_degree",
       "target_scu_id": "scu.catalog.get_sensitive_degrees",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed sensitive-degree evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_sensitive_degree",
@@ -34258,7 +34157,8 @@
     {
       "asset_id": "ga_strength",
       "target_scu_id": "scu.catalog.get_strength",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed planetary-strength evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_strength",
@@ -34268,7 +34168,8 @@
     {
       "asset_id": "ga_structural",
       "target_scu_id": "scu.catalog.get_structural",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies special-lagna and structural chart evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_structural",
@@ -34278,7 +34179,8 @@
     {
       "asset_id": "ga_tajaka",
       "target_scu_id": "scu.catalog.get_tajik",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed Tajaka evidence for annual and horary analysis.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_tajaka",
@@ -34288,7 +34190,8 @@
     {
       "asset_id": "ga_transit_anchors",
       "target_scu_id": "scu.catalog.get_transit_anchors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies evaluated transit anchors and resonance evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_transit_anchors",
@@ -34298,7 +34201,8 @@
     {
       "asset_id": "ga_vargas",
       "target_scu_id": "scu.catalog.get_divisionals",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies computed divisional-chart evidence for authored varga retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_vargas",
@@ -34308,7 +34212,8 @@
     {
       "asset_id": "ga_vastu",
       "target_scu_id": "scu.catalog.query_vastu_directions",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies directional reference and evaluated Vastu evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_vastu",
@@ -34318,7 +34223,8 @@
     {
       "asset_id": "ga_vichara",
       "target_scu_id": "scu.catalog.get_vichara",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies a judged cross-domain Vichara structure for synthesis support.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_vichara",
@@ -34328,7 +34234,8 @@
     {
       "asset_id": "ga_yoga",
       "target_scu_id": "scu.yoga.firing_and_cancellation",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies chart-specific yoga firing and cancellation evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_yoga",
@@ -34338,7 +34245,8 @@
     {
       "asset_id": "ka_avadhi",
       "target_scu_id": "scu.catalog.query_life_arc",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies duration and life-stage evidence for temporal sequencing.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_avadhi",
@@ -34348,7 +34256,8 @@
     {
       "asset_id": "ka_bhavishya_lekha",
       "target_scu_id": "scu.catalog.query_prospective_ledger",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies prospective timing records for future-facing inquiry.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_bhavishya_lekha",
@@ -34358,7 +34267,8 @@
     {
       "asset_id": "ka_dasha_kala",
       "target_scu_id": "scu.catalog.query_active_dashas",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies active dasha-period evidence for current temporal activation.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_dasha_kala",
@@ -34368,7 +34278,8 @@
     {
       "asset_id": "ka_gochara",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_gochara",
@@ -34378,7 +34289,8 @@
     {
       "asset_id": "ka_gochara_resonance",
       "target_scu_id": "scu.catalog.get_transit_anchors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies evaluated transit anchors and resonance evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_gochara_resonance",
@@ -34388,7 +34300,8 @@
     {
       "asset_id": "ka_gochara_v3_century_materialize",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_gochara_v3_century_materialize",
@@ -34398,7 +34311,8 @@
     {
       "asset_id": "ka_graha_sancara",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_graha_sancara",
@@ -34408,7 +34322,8 @@
     {
       "asset_id": "ka_jivana_parva",
       "target_scu_id": "scu.catalog.query_life_arc",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies duration and life-stage evidence for temporal sequencing.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_jivana_parva",
@@ -34418,7 +34333,8 @@
     {
       "asset_id": "ka_kala_darshana",
       "target_scu_id": "scu.catalog.query_temporal_view",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies the Kala Darshana temporal view for ordered event inspection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_kala_darshana",
@@ -34428,7 +34344,8 @@
     {
       "asset_id": "ka_kalasutra",
       "target_scu_id": "scu.kala.temporal_activation",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Kalasutra and Yojaka evidence for the authored temporal-activation capability.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_kalasutra",
@@ -34438,7 +34355,8 @@
     {
       "asset_id": "ka_kota_chakra",
       "target_scu_id": "scu.catalog.query_kota_chakra",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies ring definitions and evaluated Kota Chakra timing evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_kota_chakra",
@@ -34448,7 +34366,8 @@
     {
       "asset_id": "ka_kshetra",
       "target_scu_id": "scu.catalog.query_predictive_anchors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies domain-field anchors used to constrain predictive retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_kshetra",
@@ -34458,7 +34377,8 @@
     {
       "asset_id": "ka_moorti_nirnaya",
       "target_scu_id": "scu.catalog.query_moorti_nirnaya",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies evaluated Moorti Nirnaya evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_moorti_nirnaya",
@@ -34468,7 +34388,8 @@
     {
       "asset_id": "ka_muhurta_seva",
       "target_scu_id": "scu.catalog.query_muhurat",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Muhurta service evidence for electional selection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_muhurta_seva",
@@ -34478,7 +34399,8 @@
     {
       "asset_id": "ka_sangam",
       "target_scu_id": "scu.catalog.query_convergence_windows",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies event-convergence configuration used to identify candidate timing windows.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_sangam",
@@ -34488,7 +34410,8 @@
     {
       "asset_id": "ka_sudarshana_varsha",
       "target_scu_id": "scu.catalog.query_sudarshana_varsha",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Sudarshana and annual-cycle evidence for time-bounded retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_sudarshana_varsha",
@@ -34498,7 +34421,8 @@
     {
       "asset_id": "ka_taranga",
       "target_scu_id": "scu.catalog.query_activation_waveform",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies temporal-wave evidence for activation sequencing.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_taranga",
@@ -34508,7 +34432,8 @@
     {
       "asset_id": "ka_tithi_pravesha",
       "target_scu_id": "scu.catalog.query_tithi_pravesha",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies evaluated Tithi Pravesha evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_tithi_pravesha",
@@ -34518,7 +34443,8 @@
     {
       "asset_id": "ka_tulana",
       "target_scu_id": "scu.catalog.call_priority_ranking",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies comparative timing evidence used to rank candidate activations.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_tulana",
@@ -34528,7 +34454,8 @@
     {
       "asset_id": "ka_vedha_gochara",
       "target_scu_id": "scu.catalog.query_vedha_gochara",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies obstruction, latta, sarvatobhadra, and malefic-scale evidence for transit qualification.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_vedha_gochara",
@@ -34538,7 +34465,8 @@
     {
       "asset_id": "ka_vighnakara",
       "target_scu_id": "scu.catalog.query_obstruction_periods",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Vighnakara obstruction-period evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_vighnakara",
@@ -34548,7 +34476,8 @@
     {
       "asset_id": "ka_yojaka",
       "target_scu_id": "scu.kala.temporal_activation",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Kalasutra and Yojaka evidence for the authored temporal-activation capability.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ka_yojaka",
@@ -34557,28 +34486,31 @@
     },
     {
       "asset_id": "lel_events",
-      "target_scu_id": "scu.catalog.query_journal",
-      "relation": "provides_evidence_for",
-      "rationale": "Supplies recorded life events and Jivanaghatana evidence for audit and calibration.",
+      "target_scu_id": null,
+      "target_capability_uri": "marsys://tool/L5/lel_query",
+      "relation": "directly_serves_output",
+      "rationale": "Directly supplies the chart-scoped life_events rows returned by the LEL serving surface.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:lel_events",
-        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_journal:lel_events"
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#marsys://tool/L5/lel_query:lel_events"
       ]
     },
     {
       "asset_id": "mi_abhilekha",
-      "target_scu_id": "scu.catalog.prediction_lifecycle_sweep",
-      "relation": "provides_evidence_for",
-      "rationale": "Supplies Abhilekha lifecycle records used to inspect prediction outcomes.",
+      "target_scu_id": null,
+      "target_capability_uri": "marsys://tool/L5/query_predictions",
+      "relation": "directly_serves_output",
+      "rationale": "Directly contributes lifecycle_status values to mimamsa_predictions, which the predictions surface returns.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_abhilekha",
-        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.prediction_lifecycle_sweep:mi_abhilekha"
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#marsys://tool/L5/query_predictions:mi_abhilekha"
       ]
     },
     {
       "asset_id": "mi_adhilepa",
       "target_scu_id": "scu.catalog.query_attribution",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies grounding and attribution records for claim provenance.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_adhilepa",
@@ -34588,7 +34520,8 @@
     {
       "asset_id": "mi_bhara",
       "target_scu_id": "scu.catalog.query_load_bearing",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies load-bearing evidence used to identify claims sensitive to weak support.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_bhara",
@@ -34598,7 +34531,8 @@
     {
       "asset_id": "mi_bhavisya",
       "target_scu_id": "scu.catalog.query_prospective_ledger",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies prospective timing records for future-facing inquiry.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_bhavisya",
@@ -34608,7 +34542,8 @@
     {
       "asset_id": "mi_darshana",
       "target_scu_id": "scu.catalog.query_insights",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies reviewed Darshana insights for bounded discovery.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_darshana",
@@ -34618,7 +34553,8 @@
     {
       "asset_id": "mi_gunanaka",
       "target_scu_id": "scu.catalog.query_calibration",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Gunanaka and Seva calibration evidence for confidence control.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_gunanaka",
@@ -34627,18 +34563,20 @@
     },
     {
       "asset_id": "mi_jivanaghatana",
-      "target_scu_id": "scu.catalog.query_journal",
-      "relation": "provides_evidence_for",
-      "rationale": "Supplies recorded life events and Jivanaghatana evidence for audit and calibration.",
+      "target_scu_id": null,
+      "target_capability_uri": "marsys://tool/L5/lel_query",
+      "relation": "supports_same_semantic_domain",
+      "rationale": "Shapes life_events into mimamsa_event_provenance for calibration writers; no registry capability directly serves that relation, so this is same-domain support only.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_jivanaghatana",
-        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_journal:mi_jivanaghatana"
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#marsys://tool/L5/lel_query:mi_jivanaghatana"
       ]
     },
     {
       "asset_id": "mi_kula",
       "target_scu_id": "scu.catalog.query_signal_families",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies ranked signal families and Mimamsa family evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_kula",
@@ -34648,7 +34586,8 @@
     {
       "asset_id": "mi_pariksha",
       "target_scu_id": "scu.catalog.query_quality_scorecard",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Pramana and Sodhana quality evidence for confidence constraints.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_pariksha",
@@ -34658,7 +34597,8 @@
     {
       "asset_id": "mi_pramana",
       "target_scu_id": "scu.catalog.query_quality_scorecard",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Pramana and Sodhana quality evidence for confidence constraints.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_pramana",
@@ -34668,7 +34608,8 @@
     {
       "asset_id": "mi_sambandha",
       "target_scu_id": "scu.catalog.query_contradictions",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Samvada and Mimamsa contradiction evidence for explicit tension handling.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_sambandha",
@@ -34678,7 +34619,8 @@
     {
       "asset_id": "mi_sankalpa",
       "target_scu_id": "scu.catalog.query_manifestation_grammar",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Samskara and Sankalpa pattern evidence for manifestation grammar retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_sankalpa",
@@ -34688,7 +34630,8 @@
     {
       "asset_id": "mi_seva",
       "target_scu_id": "scu.catalog.query_calibration",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Gunanaka and Seva calibration evidence for confidence control.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_seva",
@@ -34698,7 +34641,8 @@
     {
       "asset_id": "mi_vistara",
       "target_scu_id": "scu.catalog.query_insight_embeddings",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies indexed Vistara insight representations for discovery, not conclusion generation.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:mi_vistara",
@@ -34708,7 +34652,8 @@
     {
       "asset_id": "ph_muhurta",
       "target_scu_id": "scu.catalog.query_muhurat",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Muhurta service evidence for electional selection.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_muhurta",
@@ -34718,7 +34663,8 @@
     {
       "asset_id": "ph_nimitta",
       "target_scu_id": "scu.catalog.query_prashna_special_techniques",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies configured Prashna rules and evaluated special-technique evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_nimitta",
@@ -34728,7 +34674,8 @@
     {
       "asset_id": "ph_phaladesa",
       "target_scu_id": "scu.catalog.query_domain_result",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Phaladesa domain results for bounded assessment.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_phaladesa",
@@ -34737,18 +34684,20 @@
     },
     {
       "asset_id": "ph_pramana",
-      "target_scu_id": "scu.catalog.query_attribution",
-      "relation": "provides_evidence_for",
-      "rationale": "Supplies grounding and attribution records for claim provenance.",
+      "target_scu_id": "scu.catalog.query_falsifiers",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
+      "rationale": "Directly supplies the phala_pramana rows returned as machine-evaluable falsifiers.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_pramana",
-        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_attribution:ph_pramana"
+        "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_falsifiers:ph_pramana"
       ]
     },
     {
       "asset_id": "ph_pratikara",
       "target_scu_id": "scu.catalog.query_remedy_program",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Pratikara remedy-program evidence with its constraints.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_pratikara",
@@ -34758,7 +34707,8 @@
     {
       "asset_id": "ph_rectification",
       "target_scu_id": "scu.catalog.query_rectification",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies rectification evidence for explicit uncertainty handling.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_rectification",
@@ -34768,7 +34718,8 @@
     {
       "asset_id": "ph_sankrama",
       "target_scu_id": "scu.catalog.query_planet_transit",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies transit arcs, engine output, rules, and materialized century-scale transit evidence.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_sankrama",
@@ -34778,7 +34729,8 @@
     {
       "asset_id": "ph_sodhana",
       "target_scu_id": "scu.catalog.query_cleansed_anchors",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Sodhana-cleansed anchors for timing retrieval.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_sodhana",
@@ -34788,7 +34740,8 @@
     {
       "asset_id": "ph_suddha_sodhana",
       "target_scu_id": "scu.catalog.query_quality_scorecard",
-      "relation": "provides_evidence_for",
+      "target_capability_uri": null,
+      "relation": "directly_serves_output",
       "rationale": "Supplies Pramana and Sodhana quality evidence for confidence constraints.",
       "source_refs": [
         "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ph_suddha_sodhana",
@@ -34798,24 +34751,26 @@
   ],
   "census": {
     "runtime_descriptors": 186,
-    "addressable_descriptors": 183,
-    "excluded_descriptors": 3,
-    "semantic_capabilities": 183,
-    "editorial_scus": 183,
+    "addressable_descriptors": 182,
+    "excluded_descriptors": 4,
+    "semantic_capabilities": 182,
+    "editorial_scus": 182,
     "derived_scus": 0,
-    "executable_bindings": 187,
+    "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 7,
     "reviewed_pagination_bindings": 2,
     "producer_output_claims": 8,
     "reviewed_output_claims": 7,
-    "typed_concepts": 251,
+    "typed_concepts": 250,
     "unbound_concepts": 0,
-    "isolated_scus": 157,
-    "graph_components": 158,
-    "dispositioned_isolated_scus": 157,
+    "isolated_scus": 156,
+    "graph_components": 157,
+    "dispositioned_isolated_scus": 156,
     "unresolved_isolated_scus": 0,
     "producer_semantic_bindings": 128,
+    "directly_served_producer_outputs": 127,
+    "support_only_producer_bindings": 1,
     "unbound_active_producers": 0,
     "undispositioned_producer_scus": 0,
     "undispositioned_gaps": 0,
@@ -34827,6 +34782,10 @@
       {
         "capability_uri": "marsys://tool/L5/mechanism_retrodiction_get",
         "reason": "calibration_context_only descriptors are not planner-addressable"
+      },
+      {
+        "capability_uri": "marsys://tool/L5/prediction_lifecycle_sweep",
+        "reason": "mutation-capable descriptors are not planner-addressable inquiry evidence"
       },
       {
         "capability_uri": "marsys://tool/L5/query_predictions",

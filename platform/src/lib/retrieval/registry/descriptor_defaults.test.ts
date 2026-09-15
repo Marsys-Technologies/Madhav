@@ -138,18 +138,16 @@ describe('R-1.1 descriptor migration — universal field coverage', () => {
     expect(withFamilyOverrides).toBe(0)
   })
 
-  it('mutation:true is set only for capabilities backed by real write-capable code (currently: none in the registry)', () => {
+  it('mutation:true is set only for capabilities backed by reviewed write-capable code', () => {
     // Honesty check, not a permanent invariant: a repo-wide grep for direct
     // SQL writes (INSERT/UPDATE/DELETE) across the registry layer tree found
-    // zero hits at migration time (2026-07-20) — see descriptor_defaults.ts's
-    // MUTATION_URIS doc comment for the important caveat (the real
-    // write-capable surface, /api/mcp/writes/[action], is NOT one of the 118
-    // registry capabilities). If a future capability legitimately becomes
-    // mutation:true, this test's job is to make that change visible in a
-    // diff, not to forbid it — update the expected count deliberately.
+    // zero hits at migration time (2026-07-20). The later lifecycle sweep added
+    // a real UPDATE/imported write hook and is deliberately classified here.
     const caps = getCatalog()
     const mutationTrue = caps.filter((c) => c.mutation === true)
-    expect(mutationTrue.map((c) => c.uri)).toEqual([])
+    expect(mutationTrue.map((c) => c.uri)).toEqual([
+      'marsys://tool/L5/prediction_lifecycle_sweep',
+    ])
   })
 
   it('calibration_context_only is applied narrowly (F-R7: single-digit, not over-applied)', () => {

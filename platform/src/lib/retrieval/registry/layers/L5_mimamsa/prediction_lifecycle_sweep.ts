@@ -64,7 +64,7 @@
  * function) — never a claim, confidence, or falsifier value.
  */
 
-import type { CapabilityDescriptor } from '../../types'
+import type { CapabilityContext, CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import {
   matchOpenPredictionsForLelEvent,
@@ -209,6 +209,8 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
   emits_references: true,
   grounds_to: { l1_fact_ids: false },
   lel_capable: true,
+  mutation: true,
+  annotations: { read_only: false, idempotent: false, destructive: false, open_world: false },
   // NOT calibration_context_only: that flag (F-R7) is for outcome/LEL-READ tools supplying raw
   // ledger context (lel_query, query_predictions). This tool performs a lifecycle SWEEP/mutation
   // (reclassifying lapsed rows) rather than a context read for planner consumption — a different
@@ -237,13 +239,25 @@ export const predictionLifecycleSweepCapability: CapabilityDescriptor = {
     empty_reason: true,
   },
 
-  async handler(args: Record<string, unknown>, _ctx: unknown) {
-    void _ctx
+  async handler(args: Record<string, unknown>, ctx?: CapabilityContext) {
     const chart_id = args['chart_id'] ? String(args['chart_id']) : ''
     if (!chart_id) {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
     const dryRun = args['dry_run'] === false ? false : true
+    if (!dryRun) {
+      const authority = ctx?.mutation_authorization
+      const authorized = authority?.action === 'apply'
+        && authority.capability_uri === predictionLifecycleSweepCapability.uri
+        && authority.chart_id === chart_id
+        && authority.receipt_id.trim().length > 0
+      if (!authorized) {
+        return {
+          content: 'MUTATION_AUTHORIZATION_REQUIRED: apply mode requires a server-injected, chart-bound authorization receipt.',
+          is_error: true,
+        }
+      }
+    }
     const tableFilter = args['table'] === 'mimamsa_predictions' || args['table'] === 'brahma_prospective_ledger'
       ? (args['table'] as string) : null
 
