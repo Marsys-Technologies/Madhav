@@ -231,6 +231,29 @@ describe('versioned inquiry compiler', () => {
     expect(later.contract_id).not.toBe(first.contract_id)
   })
 
+  it('derives the temporal anchor when the aggregate transit SCU is selected directly', () => {
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'current transit snapshot',
+      scope_tuple: {
+        intent: 'retrieval', domains: ['timing'], width: 'focused', depth: 'standard',
+        horizon: 'current', intervention: false, entitlement: 'native',
+      },
+      planning_budget: { max_search_hits: 1 },
+      temporal_anchor_date: '2026-09-15',
+    })
+    const aggregate = contract.plan_items.find((item) => item.scu_id === 'scu.catalog.query_current_transit_snapshot')
+
+    expect(aggregate).toMatchObject({
+      state: 'ready',
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      args: { as_of_date: '2026-09-15' },
+      argument_resolution: { status: 'resolved', temporal_anchor_date: '2026-09-15' },
+    })
+    expect(validateInquiryContract(contract)).toEqual({ valid: true, errors: [] })
+  })
+
   it('does not authorize a binding that the chart/build overlay leaves dark', () => {
     const overlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-1', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
     const contract = compileInquiryContract({ snapshot, overlay, chart_id: 'chart-fixture', question: 'wealth outlook', scope_tuple: wealthScope })

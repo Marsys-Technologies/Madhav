@@ -25,6 +25,8 @@ import { challengeInquirySelection } from './omission_challenger'
 export const INQUIRY_COMPILER_VERSION = '2.2.0'
 
 const TRANSIT_SCU_ID = 'scu.catalog.query_planet_transit'
+const CURRENT_TRANSIT_SNAPSHOT_SCU_ID = 'scu.catalog.query_current_transit_snapshot'
+const TRANSIT_SCU_IDS = new Set([TRANSIT_SCU_ID, CURRENT_TRANSIT_SNAPSHOT_SCU_ID])
 const CURRENT_TRANSIT_SNAPSHOT_BINDING_ID = 'registry:marsys://tool/L0/query_current_transit_snapshot'
 const CANONICAL_TRANSIT_PLANETS = [
   'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu',
@@ -334,9 +336,8 @@ function planFor(
       const channelBindings = scu.bindings.filter((candidate) => candidate.executable
         && candidate.kind === 'registry_capability'
         && (candidate.execution_channels ?? ['platform_internal']).includes(executionChannel))
-      const aggregateTransitBinding = scuId === TRANSIT_SCU_ID
-        ? channelBindings.find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
-        : undefined
+      const aggregateTransitBinding = channelBindings
+        .find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
       const binding = aggregateTransitBinding
         ?? channelBindings.find((candidate) => candidate.relation === 'primary')
         ?? channelBindings[0]
@@ -791,7 +792,7 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
   }
   for (const item of contract.plan_items) {
     const receipt = item.argument_resolution
-    const requiresTransitReceipt = contract.execution_channel === 'platform_internal' && item.scu_id === TRANSIT_SCU_ID
+    const requiresTransitReceipt = contract.execution_channel === 'platform_internal' && TRANSIT_SCU_IDS.has(item.scu_id)
     if (requiresTransitReceipt && !receipt) {
       errors.push(`plan item ${item.item_id} internal transit plan lacks an argument resolution receipt`)
     }
@@ -812,11 +813,11 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
     if (receipt.status === 'resolved') {
       const readyAggregate = item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID
         && (item.state === 'ready' || item.state === 'observed')
-      const overlayBlockedAggregate = item.scu_id === TRANSIT_SCU_ID
+      const overlayBlockedAggregate = TRANSIT_SCU_IDS.has(item.scu_id)
         && item.binding_id === null
         && item.state === 'blocked'
         && Boolean(item.blocked_reason)
-      if (item.scu_id !== TRANSIT_SCU_ID || (!readyAggregate && !overlayBlockedAggregate)) {
+      if (!TRANSIT_SCU_IDS.has(item.scu_id) || (!readyAggregate && !overlayBlockedAggregate)) {
         errors.push(`plan item ${item.item_id} resolved transit arguments target the wrong binding`)
       }
       if (!validTemporalAnchorDate(receipt.temporal_anchor_date ?? undefined)
