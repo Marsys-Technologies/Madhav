@@ -432,6 +432,49 @@ jobs:
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
+      - name: Verify data-plane secret and runtime isolation
+        env:
+          GCP_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
+      - name: Inspect protected data-plane ownership state
+        id: data-plane-ownership
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the protected data-plane state."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/data-plane-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected protected data-plane state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
+      - name: One-shot protected data-plane DBA preflight
+        if: steps.data-plane-ownership.outputs.state == 'unmarked'
+        env:
+          DATA_PLANE_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_ADMIN_DATABASE_URL }}
+        run: |
+          if [ -z "$DATA_PLANE_ADMIN_DATABASE_URL" ]; then
+            echo "::error::DATA_PLANE_ADMIN_DATABASE_URL secret not set — protected owners cannot be established. This credential is one-shot deployment-only and must never be mounted in Cloud Run."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/data-plane-ownership-preflight.ts
+
+      - name: Attest protected data-plane migrations as deployment-only migrator
+        env:
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: |
+          if [ -z "$DATA_PLANE_MIGRATOR_DATABASE_URL" ]; then
+            echo "::error::DATA_PLANE_MIGRATOR_DATABASE_URL secret not set — migrations 1035/1036 cannot be attested. This credential must never be mounted in Cloud Run."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/data-plane-migration-attestation.ts
+
       - name: Inspect Nirmana evidence ownership handoff marker
         id: nirmana-ownership
         env:
@@ -1151,6 +1194,8 @@ jobs:
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
+            --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --task-timeout=86400 \
             --memory=16Gi \
             --cpu=4 \

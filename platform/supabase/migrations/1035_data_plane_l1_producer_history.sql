@@ -9,7 +9,11 @@
 
 BEGIN;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+    RAISE EXCEPTION 'E1035_PREFLIGHT_EXTENSION: pgcrypto must be installed by the DBA preflight';
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS public.l1_data_plane_generations (
     chart_id                       UUID NOT NULL,
@@ -563,6 +567,8 @@ CREATE OR REPLACE FUNCTION public.open_l1_data_plane_generation(
     p_l0_config_digest TEXT
 ) RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_chart public.charts%ROWTYPE;
@@ -570,6 +576,29 @@ DECLARE
   v_existing public.l1_data_plane_generations%ROWTYPE;
   v_declared INTEGER;
 BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L1 generation open requires direct data_plane_builder authentication';
+  END IF;
+  IF current_setting('madhav.l1_asset_id', true) IS DISTINCT FROM p_asset_id
+     OR current_setting('madhav.l1_chart_id', true) IS DISTINCT FROM p_chart_id::text
+     OR current_setting('madhav.l1_generation_id', true) IS DISTINCT FROM p_generation_id
+     OR current_setting('madhav.l1_partition_key', true) IS DISTINCT FROM p_partition_key
+     OR current_setting('madhav.l1_contract_version', true) IS DISTINCT FROM p_contract_version THEN
+    RAISE EXCEPTION 'L1 transaction context does not match the requested generation';
+  END IF;
+  IF p_generation_id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.build_runs br
+       JOIN public.build_run_assets bra ON bra.run_id = br.id
+       WHERE br.id = p_generation_id::uuid
+         AND br.chart_id = p_chart_id
+         AND br.state = 'running'
+         AND bra.asset_id = p_asset_id
+         AND bra.state = 'building'
+     ) THEN
+    RAISE EXCEPTION 'L1 generation is not bound to the active build run/asset';
+  END IF;
   IF p_asset_id NOT IN (
     'ga_positions','ga_vargas','ga_dashas','ga_nakshatra','ga_panchanga',
     'ga_sensitive','ga_sensitive_degree','ga_strength','ga_structural',
@@ -693,6 +722,8 @@ $$;
 CREATE OR REPLACE FUNCTION public.l1_data_plane_capture_row()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_asset TEXT := current_setting('madhav.l1_asset_id', true);
@@ -730,6 +761,9 @@ BEGIN
   -- a governed runtime generation unless the adapter opened one explicitly.
   IF v_asset IS NULL OR v_asset = '' THEN
     RETURN NEW;
+  END IF;
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L1 governed capture requires direct data_plane_builder authentication';
   END IF;
   IF v_chart_text IS NULL OR v_generation IS NULL OR v_partition IS NULL THEN
     RAISE EXCEPTION 'incomplete transaction-local L1 producer context';
@@ -1149,6 +1183,8 @@ CREATE OR REPLACE FUNCTION public.capture_l1_data_plane_dasha_partition(
     p_rows_inserted INTEGER
 ) RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_status TEXT;
@@ -1156,6 +1192,15 @@ DECLARE
   v_ayanamsha_id TEXT;
   v_active_rows INTEGER;
 BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L1 partition completion requires direct data_plane_builder authentication';
+  END IF;
+  IF current_setting('madhav.l1_asset_id', true) IS DISTINCT FROM 'ga_dashas'
+     OR current_setting('madhav.l1_chart_id', true) IS DISTINCT FROM p_chart_id::text
+     OR current_setting('madhav.l1_generation_id', true) IS DISTINCT FROM p_generation_id
+     OR current_setting('madhav.l1_partition_key', true) IS DISTINCT FROM p_partition_key THEN
+    RAISE EXCEPTION 'L1 completion context does not match the requested generation';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.l1_data_plane_partition_contexts
     WHERE chart_id = p_chart_id AND asset_id = 'ga_dashas'
@@ -1270,6 +1315,8 @@ CREATE OR REPLACE FUNCTION public.complete_l1_data_plane_partition(
     p_rows_inserted INTEGER
 ) RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_existing_rows INTEGER;
@@ -1280,6 +1327,15 @@ DECLARE
   v_status TEXT;
   v_existing_generation_digest TEXT;
 BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L1 partition completion requires direct data_plane_builder authentication';
+  END IF;
+  IF current_setting('madhav.l1_asset_id', true) IS DISTINCT FROM p_asset_id
+     OR current_setting('madhav.l1_chart_id', true) IS DISTINCT FROM p_chart_id::text
+     OR current_setting('madhav.l1_generation_id', true) IS DISTINCT FROM p_generation_id
+     OR current_setting('madhav.l1_partition_key', true) IS DISTINCT FROM p_partition_key THEN
+    RAISE EXCEPTION 'L1 completion context does not match the requested generation';
+  END IF;
   IF p_rows_inserted < 0 THEN
     RAISE EXCEPTION 'rows_inserted cannot be negative';
   END IF;
@@ -1449,6 +1505,8 @@ CREATE OR REPLACE FUNCTION public.select_l1_data_plane_generation(
 )
 LANGUAGE sql
 STABLE
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
   SELECT DISTINCT ON (result.source_table, result.row_identity)
     result.source_table, result.row_identity, result.context_id,
@@ -1528,10 +1586,15 @@ CREATE OR REPLACE FUNCTION public.rollback_l1_data_plane_generation(
     p_generation_id TEXT
 ) RETURNS VOID
 LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_current TEXT;
 BEGIN
+  IF session_user <> 'data_plane_migrator' THEN
+    RAISE EXCEPTION 'L1 rollback requires direct data_plane_migrator authentication';
+  END IF;
   IF NOT EXISTS (
     SELECT 1 FROM public.l1_data_plane_generations
     WHERE chart_id = p_chart_id AND asset_id = p_asset_id
@@ -1668,16 +1731,23 @@ FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id'
 );
 
--- Close PostgreSQL's default PUBLIC EXECUTE surface and declare the intended
--- future build-role privileges explicitly. Production currently runs both the
--- migration executor and build path as amjis_app, which owns objects it creates;
--- these grants therefore do not claim owner isolation. RI-01 remains held until
--- the separately governed role/credential cutover removes that owner bypass.
+-- DP-SD-018 protected-owner boundary. This file is applied only by the
+-- deployment-only attestation runner after SET LOCAL ROLE data_plane_l1_owner.
 DO $l1_role_preflight$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'role_orchestrator') THEN
-    RAISE EXCEPTION
-      'E1035_PREFLIGHT_MISSING_ROLE: role_orchestrator must exist before L1 history installation';
+  IF session_user <> 'data_plane_migrator' OR current_user <> 'data_plane_l1_owner' THEN
+    RAISE EXCEPTION 'E1035_WRONG_ACTOR: expected data_plane_migrator SET ROLE data_plane_l1_owner';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname = 'data_plane_builder' AND rolcanlogin AND NOT rolinherit
+      AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolbypassrls
+  ) OR NOT EXISTS (
+    SELECT 1 FROM pg_roles
+    WHERE rolname = 'data_plane_verifier' AND rolcanlogin AND NOT rolinherit
+      AND NOT rolsuper AND NOT rolcreaterole AND NOT rolcreatedb AND NOT rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'E1035_PREFLIGHT_ROLES: normalized builder and verifier must exist';
   END IF;
 END
 $l1_role_preflight$;
@@ -1695,7 +1765,8 @@ REVOKE ALL ON TABLE
   public.l1_data_plane_current_dashas,
   public.l1_data_plane_current_facts,
   public.l1_data_plane_current_configurations
-FROM PUBLIC, role_orchestrator;
+FROM PUBLIC, role_orchestrator, data_plane_builder, data_plane_verifier,
+     data_plane_migrator, amjis_app;
 
 GRANT SELECT ON TABLE
   public.l1_data_plane_generations,
@@ -1710,7 +1781,11 @@ GRANT SELECT ON TABLE
   public.l1_data_plane_current_dashas,
   public.l1_data_plane_current_facts,
   public.l1_data_plane_current_configurations
-TO role_orchestrator;
+TO data_plane_builder, data_plane_verifier, data_plane_migrator, data_plane_l2_owner, amjis_app;
+
+-- PostgreSQL requires UPDATE privilege for SELECT ... FOR SHARE. The NOLOGIN
+-- L2 owner uses this only to serialize an exact dependency head during open.
+GRANT UPDATE ON TABLE public.l1_data_plane_generation_heads TO data_plane_l2_owner;
 
 DO $l1_function_acl$
 DECLARE
@@ -1733,26 +1808,29 @@ BEGIN
       )
   LOOP
     EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC', v_function);
-    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator', v_function);
+    EXECUTE format(
+      'REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator, data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app',
+      v_function
+    );
   END LOOP;
 END
 $l1_function_acl$;
 
 GRANT EXECUTE ON FUNCTION public.open_l1_data_plane_generation(
   UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
-) TO role_orchestrator;
+) TO data_plane_builder;
 GRANT EXECUTE ON FUNCTION public.capture_l1_data_plane_dasha_partition(
   UUID, TEXT, TEXT, INTEGER
-) TO role_orchestrator;
+) TO data_plane_builder;
 GRANT EXECUTE ON FUNCTION public.complete_l1_data_plane_partition(
   UUID, TEXT, TEXT, TEXT, INTEGER
-) TO role_orchestrator;
+) TO data_plane_builder;
 GRANT EXECUTE ON FUNCTION public.select_l1_data_plane_generation(
   UUID, TEXT, TEXT
-) TO role_orchestrator;
+) TO data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app;
 GRANT EXECUTE ON FUNCTION public.rollback_l1_data_plane_generation(
   UUID, TEXT, TEXT
-) TO role_orchestrator;
+) TO data_plane_migrator;
 
 COMMENT ON TABLE public.l1_data_plane_row_snapshots IS
   'Append-only exact L1 producer rows. Active-table replacement never deletes a prior compatible generation.';
