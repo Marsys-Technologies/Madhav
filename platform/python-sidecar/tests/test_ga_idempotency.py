@@ -260,6 +260,8 @@ class _DispatcherCursor:
 
     def execute(self, sql, params=None):
         compact = " ".join(sql.split())
+        if self.conn.fail_on and compact.startswith(self.conn.fail_on):
+            raise RuntimeError(self.conn.failure_message)
         self.conn.statements.append((compact, params))
         if compact.startswith("SELECT asset_id, depends_on FROM build_dependencies"):
             self._rows = [("ga_positions", [])]
@@ -268,6 +270,8 @@ class _DispatcherCursor:
         else:
             self._rows = []
             self.rowcount = 1
+            if compact.startswith(("DELETE ", "INSERT ")):
+                self.conn.pending_mutations.append(compact)
         return self
 
     def fetchall(self):
@@ -275,18 +279,30 @@ class _DispatcherCursor:
 
 
 class _DispatcherConn:
-    def __init__(self):
+    def __init__(self, fail_on=None):
         self.statements = []
+        self.fail_on = fail_on
+        self.failure_message = "injected rebuild transaction failure"
+        self.pending_mutations = []
+        self.rolled_back_mutations = []
+        self.rollback_calls = 0
 
     def cursor(self):
         return _DispatcherCursor(self)
 
     def execute(self, sql, params=None):
         compact = " ".join(sql.split())
+        if self.fail_on and compact.startswith(self.fail_on):
+            raise RuntimeError(self.failure_message)
         self.statements.append((compact, params))
         if compact.startswith("SELECT public.authorize_l1_chart_facts_delete("):
             return _Cursor(1)
         return _DispatcherCursor(self).execute(sql, params)
+
+    def rollback(self):
+        self.rollback_calls += 1
+        self.rolled_back_mutations.extend(self.pending_mutations)
+        self.pending_mutations.clear()
 
 
 def test_dispatcher_rebuild_authorizes_existing_fact_prefix_without_semantic_drift():
@@ -308,6 +324,7 @@ def test_dispatcher_rebuild_authorizes_existing_fact_prefix_without_semantic_dri
     assert statements[auth_index][1] == [CID, None, None, ["graha_position%"]]
     assert "fact_category LIKE %s" in statements[delete_index][0]
     assert " category LIKE %s" not in statements[delete_index][0]
+    assert conn.rollback_calls == 0
 
 
 def test_dispatcher_rebuild_never_falls_through_after_authorization_failure(monkeypatch):
@@ -324,3 +341,27 @@ def test_dispatcher_rebuild_never_falls_through_after_authorization_failure(monk
         dispatcher.rebuild_asset("ga_positions", CID, "build-1", conn)
     assert not any(sql.startswith("DELETE FROM chart_facts") for sql, _ in conn.statements)
     assert not any(sql.startswith("DELETE FROM build_checkpoints") for sql, _ in conn.statements)
+    assert conn.rollback_calls == 1
+
+
+@pytest.mark.parametrize(
+    "failure_prefix",
+    [
+        "DELETE FROM chart_facts",
+        "DELETE FROM build_checkpoints",
+        "INSERT INTO build_events",
+    ],
+)
+def test_dispatcher_rebuild_mutation_failures_propagate_and_rollback(failure_prefix):
+    from pipeline import dispatcher
+
+    dispatcher.reset_dep_graph()
+    conn = _DispatcherConn(fail_on=failure_prefix)
+
+    with pytest.raises(RuntimeError, match="injected rebuild transaction failure"):
+        dispatcher.rebuild_asset("ga_positions", CID, "build-1", conn)
+
+    assert conn.rollback_calls == 1
+    assert conn.pending_mutations == []
+    if failure_prefix != "DELETE FROM chart_facts":
+        assert conn.rolled_back_mutations, "earlier rebuild mutations must be rolled back"

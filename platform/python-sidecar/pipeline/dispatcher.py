@@ -30,17 +30,8 @@ def _load_dep_graph(conn) -> None:
     global _dep_graph, _dep_loaded
     if _dep_loaded:
         return
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT asset_id, depends_on FROM build_dependencies")
-        rows = cur.fetchall()
-    except Exception:
-        # Fallback: try dict-style cursor
-        try:
-            rows = conn.execute("SELECT asset_id, depends_on FROM build_dependencies").fetchall()
-        except Exception as exc:
-            logger.error("_load_dep_graph: failed to query build_dependencies: %s", exc)
-            return
+    cur = _execute_once(conn, "SELECT asset_id, depends_on FROM build_dependencies")
+    rows = cur.fetchall()
 
     # Build forward edges (dependents): for each dep -> list of assets that need it
     reverse: Dict[str, List[str]] = defaultdict(list)
@@ -167,7 +158,38 @@ def upsert_checkpoint(
 
 # ── Rebuild (cascade-invalidate) ──────────────────────────────────────────────
 
+def _execute_once(conn, sql: str, params=None):
+    """Execute through the supported API without retrying a real SQL error."""
+    cursor_factory = getattr(conn, "cursor", None)
+    if callable(cursor_factory):
+        cur = cursor_factory()
+        cur.execute(sql, params)
+        return cur
+    execute = getattr(conn, "execute", None)
+    if not callable(execute):
+        raise TypeError("database connection exposes neither cursor() nor execute()")
+    return execute(sql, params)
+
+
 def rebuild_asset(asset_id: str, chart_id: str, build_id: str, conn) -> None:
+    """Atomically invalidate an asset cascade and enqueue its rebuild.
+
+    The caller retains the existing success-path commit boundary. Any failure
+    rolls back the current rebuild transaction and propagates.
+    """
+    try:
+        _rebuild_asset_transaction(asset_id, chart_id, build_id, conn)
+    except Exception:
+        rollback = getattr(conn, "rollback", None)
+        if callable(rollback):
+            try:
+                rollback()
+            except Exception:
+                logger.exception("rebuild_asset: rollback failed")
+        raise
+
+
+def _rebuild_asset_transaction(asset_id: str, chart_id: str, build_id: str, conn) -> None:
     """
     Cascade-invalidate asset + all transitive descendants, then re-enqueue.
 
@@ -186,18 +208,12 @@ def rebuild_asset(asset_id: str, chart_id: str, build_id: str, conn) -> None:
 
     # Get category_prefix for each target
     targets_list = list(targets)
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            "SELECT asset_id, category_prefix FROM build_dependencies WHERE asset_id = ANY(%s)",
-            (targets_list,)
-        )
-        rows = cur.fetchall()
-    except Exception:
-        rows = conn.execute(
-            "SELECT asset_id, category_prefix FROM build_dependencies WHERE asset_id = ANY(%s)",
-            (targets_list,)
-        ).fetchall()
+    cur = _execute_once(
+        conn,
+        "SELECT asset_id, category_prefix FROM build_dependencies WHERE asset_id = ANY(%s)",
+        (targets_list,),
+    )
+    rows = cur.fetchall()
 
     prefix_map = {}
     for row in rows:
@@ -218,61 +234,38 @@ def rebuild_asset(asset_id: str, chart_id: str, build_id: str, conn) -> None:
             authorize_chart_fact_delete(
                 conn, chart_id, fact_category_patterns=[prefix + '%'],
             )
-            try:
-                cur = conn.cursor()
-                cur.execute(
-                    "DELETE FROM chart_facts WHERE chart_id=%s AND fact_category LIKE %s",
-                    (chart_id, prefix + '%')
-                )
-                deleted = cur.rowcount
-            except Exception:
-                try:
-                    cur = conn.execute(
-                        "DELETE FROM chart_facts WHERE chart_id=%s AND fact_category LIKE %s",
-                        (chart_id, prefix + '%')
-                    )
-                    deleted = cur.rowcount if hasattr(cur, 'rowcount') else 0
-                except Exception as exc:
-                    logger.warning("rebuild_asset: chart_facts delete for %s failed: %s", tgt, exc)
-                    deleted = 0
+            cur = _execute_once(
+                conn,
+                "DELETE FROM chart_facts WHERE chart_id=%s AND fact_category LIKE %s",
+                (chart_id, prefix + '%'),
+            )
+            deleted = cur.rowcount if hasattr(cur, 'rowcount') else 0
             logger.debug("rebuild_asset: deleted %d chart_facts rows for %s (prefix=%s)", deleted, tgt, prefix)
 
         # Delete build_checkpoints for this asset in this build
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                "DELETE FROM build_checkpoints WHERE build_id=%s AND asset_id=%s",
-                (build_id, tgt)
-            )
-        except Exception:
-            try:
-                conn.execute(
-                    "DELETE FROM build_checkpoints WHERE build_id=%s AND asset_id=%s",
-                    (build_id, tgt)
-                )
-            except Exception as exc:
-                logger.warning("rebuild_asset: checkpoint delete for %s failed: %s", tgt, exc)
+        _execute_once(
+            conn,
+            "DELETE FROM build_checkpoints WHERE build_id=%s AND asset_id=%s",
+            (build_id, tgt),
+        )
 
     # Emit rebuild_requested event
     # build_events columns: build_id, stage_seq (auto), chart_id, ayanamsha_role, asset, stage, status,
     #                       percent, message, metadata, emitted_at
     cascade_payload = json.dumps({'cascade_targets': targets_list, 'root_asset': asset_id})
-    try:
-        cur = conn.cursor()
-        cur.execute(
-            """
-            INSERT INTO build_events
-                (build_id, stage_seq, chart_id, ayanamsha_role, asset, stage, status, metadata, emitted_at)
-            VALUES (
-                %s,
-                COALESCE((SELECT MAX(stage_seq)+1 FROM build_events WHERE build_id=%s), 1),
-                %s, 'all', %s, 'dispatch', 'rebuild_requested', %s::jsonb, NOW()
-            )
-            """,
-            (build_id, build_id, chart_id, asset_id, cascade_payload)
+    _execute_once(
+        conn,
+        """
+        INSERT INTO build_events
+            (build_id, stage_seq, chart_id, ayanamsha_role, asset, stage, status, metadata, emitted_at)
+        VALUES (
+            %s,
+            COALESCE((SELECT MAX(stage_seq)+1 FROM build_events WHERE build_id=%s), 1),
+            %s, 'all', %s, 'dispatch', 'rebuild_requested', %s::jsonb, NOW()
         )
-    except Exception as exc:
-        logger.warning("rebuild_asset: build_events insert failed (non-fatal): %s", exc)
+        """,
+        (build_id, build_id, chart_id, asset_id, cascade_payload),
+    )
 
     logger.info("rebuild_asset: complete — %d assets invalidated for root=%s", len(targets), asset_id)
 
