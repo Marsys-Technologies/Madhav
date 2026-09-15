@@ -26,18 +26,19 @@ import json
 import os
 import uuid
 from typing import Any
+from urllib.parse import urlparse
 
 import psycopg
 import pytest
 
-# All tests in this file require a live DATABASE_URL (psycopg to 127.0.0.1:5433).
-# The CI environment has no DB, so the entire module is marked integration and
-# excluded via `-m "not integration"` in the governance-gates pytest invocation.
+# These data-dependent evaluation tests must never inherit a general
+# DATABASE_URL that could point at shared or production data. A caller must
+# opt in with a dedicated loopback test database populated for this harness.
 pytestmark = pytest.mark.integration
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-DB_URL   = os.environ.get("DATABASE_URL", "")
+DB_URL = os.environ.get("L2_EVAL_TEST_DATABASE_URL")
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 # Thresholds (the native may raise these; they represent the minimum viable bar)
@@ -57,6 +58,18 @@ FORENSIC_ANCHORS = {
 @pytest.fixture(scope="module")
 def conn():
     """Shared read-only DB connection for the eval session (autocommit avoids cascading txn errors)."""
+    if not DB_URL:
+        pytest.skip(
+            "L2_EVAL_TEST_DATABASE_URL is not set for the guarded L2 evaluation harness"
+        )
+
+    parsed_db_url = urlparse(DB_URL)
+    database_name = parsed_db_url.path.lstrip("/")
+    if parsed_db_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
+        raise RuntimeError("L2_EVAL_TEST_DATABASE_URL must use a loopback host")
+    if "test" not in database_name.lower():
+        raise RuntimeError("L2_EVAL_TEST_DATABASE_URL must name a test database")
+
     c = psycopg.connect(DB_URL, prepare_threshold=None, autocommit=True)
     yield c
     c.close()

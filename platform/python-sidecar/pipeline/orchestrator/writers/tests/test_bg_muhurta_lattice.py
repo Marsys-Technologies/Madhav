@@ -480,9 +480,11 @@ def test_writer_fails_closed_when_swisseph_reports_moshier_fallback(monkeypatch)
 
 def test_writer_propagates_day_computation_failure(monkeypatch):
     """A partial year must roll back instead of being marked complete."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
     import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
 
     monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
     monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
     monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
     monkeypatch.setattr(
@@ -502,6 +504,7 @@ def test_writer_propagates_day_computation_failure(monkeypatch):
 
 def test_writer_propagates_insert_failure(monkeypatch):
     """A failed batch write must escape so the substep savepoint is rolled back."""
+    import brahmagyan.l0_ephemeris as l0_ephemeris
     import pipeline.orchestrator.writers.bg_muhurta_lattice as lattice
 
     class CursorContext:
@@ -517,6 +520,7 @@ def test_writer_propagates_insert_failure(monkeypatch):
             return CursorContext()
 
     monkeypatch.setitem(sys.modules, "swisseph", object())
+    monkeypatch.setattr(l0_ephemeris, "_resolve_ephe_path", lambda: "/fake/se1")
     monkeypatch.setattr(lattice, "_require_pinned_ephemeris_files", lambda *_args: None)
     monkeypatch.setattr(lattice, "_require_swiss_file_backend", lambda *_args: None)
     monkeypatch.setattr(

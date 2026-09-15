@@ -4,14 +4,16 @@ test_lambda_decomposition.py — W1.5 acceptance tests.
 Acceptance criteria verified here (VERIFIER will recheck independently):
 
   AC1: Every v3 IntensityResult has term_breakdown with required keys
-       {promise, permission, activity, quality_gates, lambda_v3, activity_terms, formula}.
+       {promise, permission, activity, tara_modifier, w30_modifier,
+        quality_gates, lambda_v3, activity_terms, formula}.
 
   AC2: formula identity holds within 1e-9 tolerance on 1000 random inputs:
-         PROMISE × PERMISSION × activity × quality_gates = lambda_v3
+         PROMISE × PERMISSION × activity × tara_modifier × w30_modifier
+         × quality_gates = lambda_v3
 
        NOTE on noisy-OR: sum(p_i for term in activity_terms) does NOT need
        to equal activity — noisy-OR is not a sum. The formula identity tested
-       here is the multiplicative assembly of the four scalar factors, not the
+       here is the multiplicative assembly of the six scalar factors, not the
        internal noisy-OR aggregation.
 
   AC3: CI fields: lambda_v3_ci_low = max(0, lambda_v3 * 0.8),
@@ -26,8 +28,9 @@ Acceptance criteria verified here (VERIFIER will recheck independently):
   AC6: No gochara_grammar/*.py modified (I2 invariant, re-verified).
 
 Property test strategy: 1000 random (promise, permission, activity,
-quality_gates) tuples drawn from [0, 1]^4, lambda assembled deterministically,
-CI clamped — the formula identity must hold to 1e-9 tolerance on every draw.
+quality_gates) tuples drawn from [0, 1]^4 plus accepted Tara-bala and nodal-
+drishti modifiers, lambda assembled deterministically, CI clamped — the formula
+identity must hold to 1e-9 tolerance on every draw.
 The tuple assembly deliberately mirrors _evaluate_single_from_context's own
 computation so any deviation in the wiring would show up here.
 """
@@ -52,20 +55,26 @@ from services.gochara_intensity.engine import SHAPE_MAP
 
 from services.gochara_v3.context import ClassContext
 from services.gochara_v3.engine import (
+    TERM_BREAKDOWN_FORMULA,
     evaluate_lambda_vector,
     _compute_activity_v3,
     _ACTIVITY_PRIMITIVES,
 )
+from services.gochara_v3.mechanisms.w23_tara_bala import TARA_MODIFIERS
+from services.gochara_v3.mechanisms.w30_nodal_drishti import ASPECT_MODIFIERS
 
 
 CHART_ID = RM.CANONICAL_CHART_ID
 
 _REQUIRED_TERM_BREAKDOWN_KEYS = frozenset({
-    "promise", "permission", "activity", "quality_gates",
+    "promise", "permission", "activity", "tara_modifier", "w30_modifier",
+    "quality_gates",
     "lambda_v3", "activity_terms", "formula",
 })
 
-_EXPECTED_FORMULA_STRING = "PROMISE × PERMISSION × activity × quality_gates"
+_EXPECTED_FORMULA_STRING = (
+    "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +206,10 @@ class TestTermBreakdownStructure:
         results = evaluate_lambda_vector(swe, context, jd_vector, v1_parity_mode=False)
 
         r = results[0]
-        assert r.term_breakdown["formula"] == _EXPECTED_FORMULA_STRING, (
+        assert TERM_BREAKDOWN_FORMULA == _EXPECTED_FORMULA_STRING, (
+            "canonical engine formula changed without updating the decomposition contract"
+        )
+        assert r.term_breakdown["formula"] == TERM_BREAKDOWN_FORMULA, (
             f"formula string mismatch: {r.term_breakdown['formula']!r}"
         )
 
@@ -231,14 +243,16 @@ class TestTermBreakdownStructure:
                 assert 0.0 - 1e-9 <= val <= 1.0 + 1e-9, (
                     f"[{i}] term_breakdown[{key!r}]={val!r} out of [0,1]"
                 )
+            assert min(TARA_MODIFIERS.values()) <= tb["tara_modifier"] <= max(TARA_MODIFIERS.values())
+            assert min(ASPECT_MODIFIERS.values()) <= tb["w30_modifier"] <= max(ASPECT_MODIFIERS.values())
 
 
 # ---------------------------------------------------------------------------
-# AC2: Formula identity — PROMISE × PERMISSION × activity × quality_gates = lambda_v3
+# AC2: Formula identity — full six-factor product = lambda_v3
 # ---------------------------------------------------------------------------
 
 class TestFormulaIdentity:
-    """AC2: PROMISE × PERMISSION × activity × quality_gates = lambda_v3 within 1e-9.
+    """AC2: the full six-factor product equals lambda_v3 within 1e-9.
 
     Property test on 1000 random inputs — does NOT use the full engine
     (which makes real ephemeris calls); instead tests the scalar assembly
@@ -246,13 +260,13 @@ class TestFormulaIdentity:
     correct for arbitrary float inputs.
 
     This is the AC2 property test the spec asks for: "the formula
-    PROMISE × PERMISSION × activity × quality_gates = lambda_v3 must hold
-    within 1e-9 tolerance."
+    PROMISE × PERMISSION × activity × tara_modifier × w30_modifier
+    × quality_gates = lambda_v3 must hold within 1e-9 tolerance."
     """
 
     def test_formula_identity_1000_random_inputs(self):
-        """1000 random (promise, permission, activity, quality_gates) tuples:
-        assembled lambda = product of the four factors, clamped to [0,1],
+        """1000 random base-factor tuples plus accepted mechanism modifiers:
+        assembled lambda = product of the six factors, clamped to [0,1],
         matches term_breakdown['lambda_v3'] within 1e-9.
 
         NOTE on noisy-OR (per spec): sum(p_i for term in activity_terms) does
@@ -267,9 +281,14 @@ class TestFormulaIdentity:
             permission = rng.random()
             activity = rng.random()
             quality_gates = rng.random()
+            tara_modifier = rng.choice(tuple(TARA_MODIFIERS.values()))
+            w30_modifier = rng.choice((1.0, *ASPECT_MODIFIERS.values()))
 
             # Mirror _evaluate_single_from_context's own assembly + clamping
-            raw = promise * permission * activity * quality_gates
+            raw = (
+                promise * permission * activity * tara_modifier
+                * w30_modifier * quality_gates
+            )
             raw_clamped = max(0.0, min(1.0, raw))
 
             # Build term_breakdown as the engine does
@@ -277,6 +296,8 @@ class TestFormulaIdentity:
                 "promise": round(promise, 8),
                 "permission": round(permission, 8),
                 "activity": round(activity, 8),
+                "tara_modifier": round(tara_modifier, 8),
+                "w30_modifier": round(w30_modifier, 8),
                 "quality_gates": round(quality_gates, 8),
                 "lambda_v3": round(raw_clamped, 8),
                 "activity_terms": [],
@@ -288,10 +309,12 @@ class TestFormulaIdentity:
                 term_breakdown["promise"]
                 * term_breakdown["permission"]
                 * term_breakdown["activity"]
+                * term_breakdown["tara_modifier"]
+                * term_breakdown["w30_modifier"]
                 * term_breakdown["quality_gates"]
             )
             # The reconstructed value uses rounded scalars (8dp), so the
-            # tolerance must absorb up to 4 × rounding errors of 5e-9 each.
+            # tolerance must absorb rounding across all six factors.
             # We test within 1e-7 to be robust to 8dp rounding, and then
             # separately test the raw (pre-round) identity within 1e-9.
             if abs(raw_clamped - reconstructed) > 1e-7:
@@ -304,8 +327,8 @@ class TestFormulaIdentity:
             # Raw (pre-rounding) identity must hold within 1e-9
             if not math.isclose(raw_clamped, raw, abs_tol=1e-9):
                 # This can only fail if the clamp changed the value — which is
-                # expected and correct when raw > 1.0 (impossible in [0,1]^4)
-                # or raw < 0.0 (also impossible). Just confirm clamp logic.
+                # expected and correct when the amplifying modifiers make raw
+                # exceed 1.0. Just confirm the production clamp logic.
                 assert raw_clamped == max(0.0, min(1.0, raw)), (
                     f"trial {trial}: clamping logic error "
                     f"raw={raw:.12f} clamped={raw_clamped:.12f}"
@@ -320,7 +343,8 @@ class TestFormulaIdentity:
         """On real v3 IntensityResult outputs, term_breakdown scalars reconstruct lambda_v3.
 
         Uses the actual engine with fixture targets and real ephemeris. The
-        assembled lambda_v3 = promise × permission × activity × quality_gates
+        assembled lambda_v3 = promise × permission × activity × tara_modifier
+        × w30_modifier × quality_gates
         must equal term_breakdown['lambda_v3'] within 1e-9 on every result.
         """
         targets = [t for t in RM.build_fixture_targets(CHART_ID) if t.event_class == "marriage"]
@@ -335,7 +359,10 @@ class TestFormulaIdentity:
             tb = r.term_breakdown
             assert tb is not None, f"[{i}] term_breakdown is None"
 
-            reconstructed = tb["promise"] * tb["permission"] * tb["activity"] * tb["quality_gates"]
+            reconstructed = (
+                tb["promise"] * tb["permission"] * tb["activity"]
+                * tb["tara_modifier"] * tb["w30_modifier"] * tb["quality_gates"]
+            )
             stored = tb["lambda_v3"]
 
             # 1e-9 abs tolerance (spec requirement);

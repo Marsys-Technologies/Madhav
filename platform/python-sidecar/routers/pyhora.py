@@ -9,8 +9,6 @@ Accepts birth_data dict → returns full natal computation via PyJHora:
 
 Stream G deliverable: BRAHMA-G-1 (POST /api/pyhora/compute)
 """
-from __future__ import annotations
-
 import logging
 import os
 from typing import Any

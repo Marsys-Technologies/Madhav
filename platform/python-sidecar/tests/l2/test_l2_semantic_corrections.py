@@ -273,9 +273,18 @@ def test_samvada_passive_receipt_cannot_promote_legacy_view_rows(monkeypatch):
         Path(__file__).resolve().parents[3]
         / "supabase/migrations/1036_data_plane_l2_producer_generations.sql"
     ).read_text()
-    assert "count_sql = 'SELECT 0 AS count'" in migration
+    assert "target_floor IS DISTINCT FROM 0" in migration
+    assert "count_sql IS DISTINCT FROM 'SELECT 0 AS count'" in migration
+    assert (
+        "E1036_PREFLIGHT_BO_SAMVADA: registry transition was not performed by "
+        "DBA preflight"
+    ) in migration
     assert "asset_output_digest_specs" in migration
-    assert "retired_at = COALESCE" in migration
+    assert "asset_id='bo_samvada' AND retired_at IS NULL" in migration
+    assert (
+        "E1036_PREFLIGHT_BO_SAMVADA: digest specification was not retired by "
+        "DBA preflight"
+    ) in migration
 
 
 class _NoMutationConn:

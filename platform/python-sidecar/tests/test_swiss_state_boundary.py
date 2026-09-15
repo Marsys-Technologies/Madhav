@@ -138,6 +138,7 @@ EXPECTED_OPERATION_OWNERS = {
     ("pyjhora_adapter/strength.py", "compute_uchcha_bala"),
     ("pyjhora_adapter/strength.py", "compute_vimsopaka"),
     ("pyjhora_adapter/vargas.py", "compute_vargas"),
+    ("scripts/validate_data_plane_l3_w0_baselines.py", "_transit_ephemeris_context"),
     ("routers/ephemeris.py", "_calculate_sidereal_positions"),
     ("routers/pyhora.py", "compute_natal"),
     ("routers/pyhora.py", "smoke_test"),

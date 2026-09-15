@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+import re
 import uuid
 
 import pytest
@@ -435,7 +436,17 @@ def test_generation_history_freezes_completed_rows_and_exposes_latest_typed_view
     assert "REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator" in migration
     assert "GRANT SELECT ON TABLE" in migration
     assert "GRANT EXECUTE ON FUNCTION public.open_l1_data_plane_generation(" in migration
-    assert "GRANT SELECT, INSERT" not in migration
+    write_grants = re.findall(
+        r"GRANT\s+SELECT,\s*INSERT,\s*UPDATE,\s*DELETE\s+ON\s+TABLE"
+        r"(?P<relations>[^;]+?)\s+TO\s+(?P<recipient>[^;]+);",
+        migration,
+        flags=re.DOTALL,
+    )
+    assert len(write_grants) == 1
+    relations, recipient = write_grants[0]
+    assert recipient.strip() == "data_plane_builder"
+    assert "public.chart_facts" in relations
+    assert "public.ga_prashna_judgment" in relations
     assert "FROM PUBLIC, role_orchestrator" in migration
     assert "BEFORE INSERT OR UPDATE OR DELETE ON public.l1_data_plane_generations" in migration
     assert "CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_dashas" not in migration

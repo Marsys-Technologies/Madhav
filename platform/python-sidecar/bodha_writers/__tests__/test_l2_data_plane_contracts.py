@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
@@ -503,7 +504,17 @@ def test_migration_guards_replay_stale_sets_nonfinite_and_cross_layer_delete():
     assert "REVOKE EXECUTE ON FUNCTION %s FROM role_orchestrator" in migration
     assert "GRANT SELECT ON TABLE" in migration
     assert "GRANT EXECUTE ON FUNCTION public.open_l2_data_plane_generation(" in migration
-    assert "GRANT SELECT, INSERT" not in migration
+    write_grants = re.findall(
+        r"GRANT\s+SELECT,\s*INSERT,\s*UPDATE,\s*DELETE\s+ON\s+TABLE"
+        r"(?P<relations>[^;]+?)\s+TO\s+(?P<recipient>[^;]+);",
+        migration,
+        flags=re.DOTALL,
+    )
+    assert len(write_grants) == 1
+    relations, recipient = write_grants[0]
+    assert recipient.strip() == "data_plane_builder"
+    assert "public.bodha_msr_signals" in relations
+    assert "public.bodha_grounding_matches" in relations
     assert "FROM PUBLIC, role_orchestrator" in migration
     assert "BEFORE INSERT OR UPDATE OR DELETE ON public.data_plane_l2_producer_generations" in migration
 

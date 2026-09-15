@@ -8,6 +8,15 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _remove_synthetic_registrations():
+    from pipeline.orchestrator.writers import WRITER_REGISTRY
+
+    yield
+    for asset_id in ("fixture.asset_a", "fixture.success", "fixture.crashing"):
+        WRITER_REGISTRY.pop(asset_id, None)
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _mock_conn_cur():

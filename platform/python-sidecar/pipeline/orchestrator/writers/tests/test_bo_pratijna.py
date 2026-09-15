@@ -302,7 +302,7 @@ class TestSourceStructure:
         """§N.3: per-chart delete-then-insert, unchanged from v3."""
         import pipeline.orchestrator.writers.bo_pratijna as mod
         src = inspect.getsource(mod)
-        assert "DELETE FROM bodha_pratijna WHERE chart_id=%s" in src
+        assert "DELETE FROM public.bodha_pratijna WHERE chart_id=%s" in src
         assert "ON CONFLICT (chart_id, ayanamsha_id, event_class_id)" in src
 
 

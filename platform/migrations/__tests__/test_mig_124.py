@@ -4,18 +4,20 @@ MARSYS-JIS Multi-Ayanamsha Build Orchestrator
 """
 import os
 import uuid
+from urllib.parse import urlparse
 import pytest
 import psycopg2
 import psycopg2.extras
 
 
-DB_PARAMS = {
-    "host": "127.0.0.1",
-    "port": 5433,
-    "user": "amjis_app",
-    "password": os.environ.get("PGPASSWORD", ""),
-    "dbname": "amjis",
-}
+TEST_DSN = os.environ.get("MIGRATION_TEST_DATABASE_URL")
+if not TEST_DSN:
+    pytest.skip("MIGRATION_TEST_DATABASE_URL is not set", allow_module_level=True)
+_test_url = urlparse(TEST_DSN)
+if _test_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
+    raise RuntimeError("MIGRATION_TEST_DATABASE_URL must use a loopback host")
+if "test" not in _test_url.path.lower():
+    raise RuntimeError("MIGRATION_TEST_DATABASE_URL must name a test database")
 
 EXPECTED_COLUMNS = {
     "build_id",
@@ -42,7 +44,7 @@ VALID_STATUSES = ["queued", "running", "complete", "failed", "cancelled", "cance
 
 @pytest.fixture(scope="module")
 def conn():
-    connection = psycopg2.connect(**DB_PARAMS)
+    connection = psycopg2.connect(TEST_DSN)
     connection.autocommit = False
     yield connection
     connection.rollback()

@@ -13,8 +13,10 @@ Contract (BRAHMA_L1_L5_REGISTRY_SEED §C):
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from unittest.mock import MagicMock, patch, call
+from urllib.parse import urlparse
 
 import pytest
 
@@ -349,16 +351,33 @@ class TestSeedBodhaGraph:
         )
 
 
-# ── Integration tests (require DATABASE_URL + seeded bodha_graph) ─────────────
+# ── Integration tests (require dedicated guarded DB + bodha_graph) ────────────
 
 
 @pytest.mark.integration
 class TestAcceptanceGateIntegration:
     """
-    Integration tests against a real DB.
+    Integration tests against a dedicated disposable loopback DB.
     Run with: pytest -m integration tests/l2/test_bo22.py
-    Requires: DATABASE_URL set + bodha_graph table created + native chart seeded.
+    Requires: BO22_TEST_DATABASE_URL set + bodha_graph table created.
     """
+
+    @pytest.fixture(autouse=True)
+    def _guarded_test_database(self, monkeypatch):
+        url = os.environ.get("BO22_TEST_DATABASE_URL")
+        if not url:
+            pytest.skip("BO22_TEST_DATABASE_URL is not set for integration tests")
+
+        parsed_url = urlparse(url)
+        database_name = parsed_url.path.lstrip("/")
+        if parsed_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise RuntimeError("BO22_TEST_DATABASE_URL must use a loopback host")
+        if "test" not in database_name.lower():
+            raise RuntimeError("BO22_TEST_DATABASE_URL must name a test database")
+
+        # bo22's public API reads DATABASE_URL. Supply only the already
+        # validated disposable target inside this test process.
+        monkeypatch.setenv("DATABASE_URL", url)
 
     def test_seed_then_gate_passes(self):
         """Seed native chart and confirm acceptance gate passes."""
@@ -396,11 +415,8 @@ class TestAcceptanceGateIntegration:
     def test_no_self_loops_in_db(self):
         """Confirm no self-loops exist in the seeded bodha_graph."""
         import psycopg
-        import os
 
-        url = os.environ.get("DATABASE_URL", "")
-        if not url:
-            pytest.skip("DATABASE_URL not set")
+        url = os.environ["DATABASE_URL"]
 
         with psycopg.connect(url) as conn:
             row = conn.execute(

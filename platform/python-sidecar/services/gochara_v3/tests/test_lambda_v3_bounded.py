@@ -53,7 +53,11 @@ from services.gochara_intensity.permission import (
 from services.gochara_intensity.engine import SHAPE_MAP
 
 from services.gochara_v3.context import ClassContext
-from services.gochara_v3.engine import evaluate_lambda_vector, _compute_activity_v3
+from services.gochara_v3.engine import (
+    LAMBDA_V3_FORMULA,
+    evaluate_lambda_vector,
+    _compute_activity_v3,
+)
 
 
 CHART_ID = RM.CANONICAL_CHART_ID
@@ -621,8 +625,14 @@ class TestV1ParityModePreserved:
         assert r.x_t_detail.get("v3_mode") is True, (
             "v3 mode: x_t_detail must carry v3_mode=True"
         )
-        assert "lambda_v3 = PROMISE * PERMISSION * activity * quality_gates" in \
-            r.x_t_detail.get("formula", ""), (
+        expected_formula = (
+            "lambda_v3 = PROMISE * PERMISSION * activity * tara_modifier "
+            "* w30_modifier * quality_gates"
+        )
+        assert LAMBDA_V3_FORMULA == expected_formula, (
+            "canonical engine formula changed without updating the bounded-lambda contract"
+        )
+        assert r.x_t_detail.get("formula") == LAMBDA_V3_FORMULA, (
             "v3 mode: x_t_detail must carry the formula string"
         )
         assert "term_breakdown" in r.x_t_detail, (
