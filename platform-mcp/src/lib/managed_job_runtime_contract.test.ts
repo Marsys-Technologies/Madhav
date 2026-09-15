@@ -5,21 +5,20 @@ import { describe, expect, it } from 'vitest'
 const bridgeSource = readFileSync(resolve(__dirname, 'prashna_ask_bridge.ts'), 'utf8')
 const storeSource = readFileSync(resolve(__dirname, 'managed_prashna_jobs.ts'), 'utf8')
 const deployWorkflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
+const authorityPacket = readFileSync(resolve(
+  __dirname,
+  '../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/W7_COMPLETION_AUTHORITY_PACKET_v1.json',
+), 'utf8')
 
 describe('managed Prashna worker deadline hierarchy', () => {
-  it('preserves the planner budget and reserves time before web timeout and lease expiry', () => {
+  it('preserves source-local budgets while fencing deployment settings behind external authority', () => {
     expect(bridgeSource).toContain('const ENGINE_CALL_TIMEOUT_MS = 330_000')
     expect(storeSource).toContain('lease_seconds: 450')
-
-    const webDeploy = deployWorkflow.match(
-      /service: amjis-web[\s\S]*?flags: >-([\s\S]*?)env_vars:/,
-    )?.[1]
-    const mcpDeploy = deployWorkflow.match(
-      /service: amjis-mcp[\s\S]*?flags: ([^\n]+)/,
-    )?.[1]
-    expect(webDeploy).toContain('--timeout=360s')
-    expect(mcpDeploy).toContain('--timeout=360s')
-    expect(mcpDeploy).toContain('--no-cpu-throttling')
+    expect(deployWorkflow).not.toContain('--timeout=360s')
+    expect(deployWorkflow).not.toContain('--no-cpu-throttling')
+    expect(authorityPacket).toContain('amjis-web request timeout 360 seconds')
+    expect(authorityPacket).toContain('amjis-mcp request timeout 360 seconds and instance-based CPU')
+    expect(authorityPacket).toContain('NOT_RUN')
   })
 
   it('bounds post-response worker concurrency and lets status polls resubmit recovery', () => {
