@@ -35,7 +35,9 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 
 import pytest
@@ -257,14 +259,41 @@ KNOWN_RETIRED_NON_WRITERS: frozenset[str] = frozenset({
 })
 
 
-def _import_writer_registry() -> dict:
-    """Import WRITER_REGISTRY without requiring a live DB connection."""
+@lru_cache(maxsize=1)
+def _production_writer_ids() -> frozenset[str]:
+    """Discover writers in a fresh interpreter, isolated from test imports."""
     sidecar_root = Path(__file__).parent.parent
-    if str(sidecar_root) not in sys.path:
-        sys.path.insert(0, str(sidecar_root))
-    from pipeline.orchestrator.writers import discover_all, WRITER_REGISTRY
-    discover_all()
-    return dict(WRITER_REGISTRY)
+    sentinel = "__MADHAV_PRODUCTION_WRITER_IDS__="
+    probe = f"""
+import json
+from pipeline.orchestrator.writers import WRITER_REGISTRY, discover_all
+discover_all()
+print({sentinel!r} + json.dumps(sorted(WRITER_REGISTRY)))
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=sidecar_root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            "Production writer discovery probe failed in a fresh interpreter:\n"
+            f"{completed.stderr}"
+        )
+    for line in reversed(completed.stdout.splitlines()):
+        if line.startswith(sentinel):
+            return frozenset(json.loads(line.removeprefix(sentinel)))
+    raise AssertionError(
+        "Production writer discovery probe emitted no registry sentinel:\n"
+        f"{completed.stdout}"
+    )
+
+
+def _import_writer_registry() -> dict[str, None]:
+    """Return production-discovered IDs without inheriting pytest module state."""
+    return {asset_id: None for asset_id in _production_writer_ids()}
 
 
 # ── Three-way diff helpers ─────────────────────────────────────────────────────
@@ -668,6 +697,16 @@ class TestOfflineHasWriterCompleteness:
         assert not missing, (
             f"Retired L3 assets disappeared from the frozen provenance pin: "
             f"{sorted(missing)}"
+        )
+
+    def test_direct_retired_service_import_does_not_pollute_production_registry(self):
+        """Forensic service imports must not change production discoverability."""
+        from services.ka_gochara_sweep.writer import KaGocharaSweepWriter  # noqa: F401
+
+        registry = self._registry()
+        assert "ka_gochara_sweep" not in registry, (
+            "Directly importing the preserved retired implementation must not make "
+            "ka_gochara_sweep appear dispatchable through production discovery."
         )
 
 
