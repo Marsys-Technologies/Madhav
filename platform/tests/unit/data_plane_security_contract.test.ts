@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
+import { parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 describe('DP-SD-018 protected migration routing', () => {
@@ -114,13 +115,18 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
 describe('DP-SD-018 deployment ordering', () => {
   const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
   it('gates IAM before DBA/migrator use and routes the build job to the dedicated credential', () => {
-    expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('One-shot protected data-plane DBA preflight'))
-    expect(workflow.indexOf('One-shot protected data-plane DBA preflight')).toBeLessThan(workflow.indexOf('Attest protected data-plane migrations as deployment-only migrator'))
-    expect(workflow.indexOf('Attest protected data-plane migrations as deployment-only migrator')).toBeLessThan(workflow.indexOf('Run general database migrations'))
+    expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('Execute protected cutover under backup'))
+    expect(workflow.indexOf('Execute protected cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
     expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
     expect(workflow).toContain('environment: data-plane-production-cutover')
     expect(workflow).toContain('DATA_PLANE_BACKUP_RESTORE_ID')
+    expect(workflow).toContain('group: data-plane-production-cutover')
+    expect(workflow).toMatch(/deploy-pipeline-job:[\s\S]*?needs: \[changes, migrate\]/)
     expect(workflow.indexOf('Re-attest protected data-plane semantic state')).toBeLessThan(workflow.indexOf('Run general database migrations'))
+  })
+  it('requires exact backup and successful-restore identifiers as one receipt', () => {
+    expect(parseBackupRestoreReceipt('123:restore-op-456')).toEqual({ backupId: '123', restoreOperationId: 'restore-op-456' })
+    expect(() => parseBackupRestoreReceipt('123')).toThrow(/backup-id:restore-operation-id/)
   })
 })

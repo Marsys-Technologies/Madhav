@@ -383,6 +383,9 @@ jobs:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment: data-plane-production-cutover
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
 
     permissions:
       contents: read
@@ -456,35 +459,18 @@ jobs:
           fi
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
-      - name: Verify protected cutover backup, lease, quiescence and independent approval
+      - name: Execute protected cutover under backup, restore, lease, quiescence and independent approval
         if: steps.data-plane-ownership.outputs.state == 'unmarked'
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DATA_PLANE_BACKUP_RESTORE_ID: ${{ secrets.DATA_PLANE_BACKUP_RESTORE_ID }}
           DATA_PLANE_CUTOVER_LEASE: ${{ secrets.DATA_PLANE_CUTOVER_LEASE }}
           DATA_PLANE_INDEPENDENT_APPROVER: ${{ secrets.DATA_PLANE_INDEPENDENT_APPROVER }}
-        run: cd platform && npx tsx scripts/data-plane-cutover-preflight.ts
-
-      - name: One-shot protected data-plane DBA preflight
-        if: steps.data-plane-ownership.outputs.state == 'unmarked'
-        env:
           DATA_PLANE_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_ADMIN_DATABASE_URL }}
-        run: |
-          if [ -z "$DATA_PLANE_ADMIN_DATABASE_URL" ]; then
-            echo "::error::DATA_PLANE_ADMIN_DATABASE_URL secret not set — protected owners cannot be established. This credential is one-shot deployment-only and must never be mounted in Cloud Run."
-            exit 1
-          fi
-          cd platform && npx tsx scripts/data-plane-ownership-preflight.ts
-
-      - name: Attest protected data-plane migrations as deployment-only migrator
-        env:
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: |
-          if [ -z "$DATA_PLANE_MIGRATOR_DATABASE_URL" ]; then
-            echo "::error::DATA_PLANE_MIGRATOR_DATABASE_URL secret not set — migrations 1035/1036 cannot be attested. This credential must never be mounted in Cloud Run."
-            exit 1
-          fi
-          cd platform && npx tsx scripts/data-plane-migration-attestation.ts
+          cd platform
+          npx tsx scripts/data-plane-protected-cutover.ts
 
       - name: Re-attest protected data-plane semantic state
         env:
@@ -1147,7 +1133,7 @@ jobs:
   # Context is the repo root (Dockerfile.pipeline COPYs repo-root paths).
   deploy-pipeline-job:
     name: Build & Deploy Pipeline Job Image
-    needs: [changes]
+    needs: [changes, migrate]
     if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
