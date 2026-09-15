@@ -88,6 +88,8 @@ fields; it previously passed only when L1's real schema was absent.
 | disposable PostgreSQL 15 direct apply/reapply, 1035 then 1036 | PASS; current hardened files applied twice exactly |
 | generation/admission database negatives | PASS; L1/L2 exact replay is generation-row mutation-free; undeclared partitions, undeclared L2 builds, N+1 declarations, completed reset, forged completion and orphan partition receipts all reject |
 | migration-runner and number-guard unit tests | PASS, 67 |
+| L3 writer inventory and layer pin | PASS; only `ka_bhavishya_lekha` and `ka_kshetra` writer digests changed, L3 aggregate `139bde3133923b4513aa2eb8cb0046a0a03291a7adfb2cedfbee8fa14fbaa16d` pinned to reviewed W0 tip `00a161195392a6fd5be7db2c964e0c621e05530b` |
+| whole-file analysis-layer pin check | HELD outside L3: committed L0, L1, L2 and L4 aggregates are stale against the branch inventory; L3 is current and no other layer was repinned |
 | ESLint | PASS with 0 errors and 590 warnings after eight deterministic lint-fix commits |
 | TypeScript | PASS, 0 errors |
 | repository full unit run | HELD; 1,083 files passed, 71 skipped; 11,575 tests passed, 662 skipped and 2 todo, but 8 receipt tests reject current L0 aggregate `3dda261170ee0dc879071d43d8e266e5cbf5c715775f94d2a27edaeee1c9e146` against frozen `5125cccb119713391964576a7442171e353f0e5be8c2c8554b1b009a6c922839` |
@@ -115,12 +117,16 @@ running as `amjis_app`.
 
 The full test run also exposes a reserved-governance blocker rather than an L3
 test defect. Seven intentional L0 writer changes moved the generated L0 aggregate
-from the frozen receipt above. Prior ruling reserves changing that receipt/pin to
-its adjudicating authority, so RI-01 must not silently regenerate or repin it.
+from the frozen receipt above. The full pin checker additionally reports stale
+L1, L2 and L4 aggregates inherited on this branch. RI-01 reconciled its own two
+changed L3 writers and exact reviewed L3 pin only; it did not restate any other
+layer. Prior rulings reserve those pins to their adjudicating/owning authorities,
+so RI-01 must not silently regenerate or repin them.
 
 Accordingly this packet is held before PR, protected merge or shared apply on two
-authorities: (1) an explicit ruling for the L0 frozen provenance pin, and (2) the
-database-administrator role/credential/ownership cutover. After both, the exact
+authorities: (1) explicit reconciliation of the protected non-L3 provenance pins,
+including the frozen L0 receipt, and (2) the database-administrator
+role/credential/ownership cutover. After both, the exact
 committed tip needs fresh independent migration/security review and governed full
 checks. Immediately before protected merge it must also refresh origin/main, the
 open-PR migration sweep, production applied identities and the coordination

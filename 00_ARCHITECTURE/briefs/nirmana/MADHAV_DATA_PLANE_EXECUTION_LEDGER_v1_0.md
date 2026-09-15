@@ -51,7 +51,7 @@ changelog:
   - "1.0 update 2026-09-15: Freezes the L3 W0 acceptance candidate after independently accepted Kshetra planning/recovery, Bhavishya preservation, DHARA numerical identity and U05 sentinel packets; broad L3 validation passes and final packet-level review is pending."
   - "1.0 update 2026-09-15: Records first packet-level REQUEST CHANGES, then integrates Kshetra fail-before-DML populated-slice preservation, the 22-identity/39-partition/699-field contract register and reproducible five-run benchmark evidence; final re-challenge remains pending."
   - "1.0 update 2026-09-15: Records terminal independent W0 PASS at exact source tip 00a161195 with zero HIGH/MED/LOW findings; opens L3-RI-01 precursor generation integration while physical W1 remains held."
-  - "1.0 update 2026-09-15: Records RI-01 security-review hardening and local proof, plus two honest release holds: the reserved frozen L0 receipt needs its adjudicating authority and production owner isolation needs administrator role/credential/ownership cutover. No PR, shared apply, deploy or build."
+  - "1.0 update 2026-09-15: Records RI-01 security-review hardening and local proof, reconciles only the two changed L3 writer digests/L3 pin, and preserves two honest release holds: protected non-L3 pins need their owning authorities and production owner isolation needs administrator role/credential/ownership cutover. No PR, shared apply, deploy or build."
 ---
 
 # Madhav data-plane execution ledger
@@ -84,7 +84,7 @@ Only one stage may be active. A stage opens only after a strategic brief names i
 | L0 Brahmagyan | PRODUCER_READY | DP-SD-009/010/011 + approved L0 brief/addenda + continued goal | Validation and acceptance records; independent challenge PASS; stop with L1 waiting |
 | L1 Gaṇita | PRODUCER_READY | DP-SD-013 + approved L1 brief + new bounded goal | Seven L1 artifacts, 19/19 runtime validator, local commits, migration proof and independent challenge PASS |
 | L2 Bodha | PRODUCER_READY | DP-SD-015 + approved L2 brief + new bounded goal | Seven L2 artifacts, 23/23 runtime validation, first slice and independent challenge PASS |
-| L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | DP-SD-017 + W0 terminal PASS `00a161195` + persistent L3 goal | Hardened precursor locally proved; L0 pin ruling and DB administrator cutover required; physical W1 remains held |
+| L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | DP-SD-017 + W0 terminal PASS `00a161195` + persistent L3 goal | Hardened precursor and L3 pin locally proved; protected non-L3 pin reconciliation and DB administrator cutover required; physical W1 remains held |
 | L4 Phala | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L4 brief + new goal | Layer brief exit record |
 | L5 Mīmāṃsā | WAITING_FOR_STRATEGIC_BRIEF | Separately approved L5 brief + new goal | Layer brief exit record |
 | Cross-layer integration | WAITING_FOR_STRATEGIC_BRIEF | Approved compatible upstream set + integration brief | End-to-end and managed-channel evidence |
@@ -173,8 +173,10 @@ owner-isolation defect. The admission/history findings are hardened and locally
 proved; the owner-isolation finding cannot be closed by an ordinary migration
 executed as production owner `amjis_app`. Full tests also fail eight reserved L0
 receipt assertions because the current aggregate differs from the frozen pin;
-prior adjudication forbids an L3-owned repin. RI-01 is held before PR/shared apply
-for the L0 pin ruling and database-administrator role/credential/ownership
+the whole-file pin checker also reports L1/L2/L4 stale aggregates. RI-01 updated
+only its two changed L3 writer digests and reviewed L3 pin; prior adjudication
+forbids an L3-owned non-L3 repin. RI-01 is held before PR/shared apply for
+protected non-L3 pin reconciliation and database-administrator role/ownership
 cutover, then exact-tip review and full checks. Physical W1 stays held until the
 precursor is accepted/deployed and an upstream physical vector exists.
 
@@ -227,7 +229,7 @@ precursor is accepted/deployed and an upstream physical vector exists.
 | 2026-09-15 04:47 | L3 Kāla | W0_PACKET_CORRECTIONS_INTEGRATED | Kshetra `3f109869d` independently accepted after 27 focused/133 expanded passes; 22-identity/39-partition/699-field register integrated; exact five-run null/preparation/publication/transit baseline and structured row/byte/hash harness recorded. Field/baseline independent review and complete packet re-challenge remain; no production build/mutation/migration/deploy/source push. |
 | 2026-09-15 05:01 | L3 Kāla | W0_ACCEPTED_RI_01_OPENING | Terminal independent review PASS at exact source tip `00a161195`, zero HIGH/MED/LOW; changed-area 307 pass/4 skip, U05 16 pass, migration guard PASS, full W0 diff clean. Open `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`; physical W1 remains held. |
 | 2026-09-15 05:14 | L3 Kāla | RI_01_CANDIDATE_REVIEW | Production read-only tracker/effect reconciliation found all four colliding candidates unapplied; live lease and 1035/1036 claims read back at coordination `ef132c87d`; accepted L1/L2 SQL moved to active directory with exact normalized identities preserved; disposable apply/reapply and 34 combined DB negatives pass. Independent migration/security review next; no shared apply, deploy, build or materialization yet. |
-| 2026-09-15 05:49 | L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | Independent review found three HIGH generation/admission defects and one HIGH production-owner isolation defect. L1/L2 declaration, immutable intent, FK, cardinality, state and replay hardening passes exact apply/reapply, 75 focused contracts, 67 migration tests and expanded disposable DB negatives; lint/tsc pass. Full unit run retains 8 frozen-L0 receipt failures (`3dda2611...` current vs `5125cccb...` frozen), which L3 cannot repin. Production `amjis_app` ownership also defeats role grants until an administrator-managed build login/protected-owner cutover. Held before PR/shared apply; no deploy/build/materialization. |
+| 2026-09-15 05:49 | L3 Kāla | RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER | Independent review found three HIGH generation/admission defects and one HIGH production-owner isolation defect. L1/L2 declaration, immutable intent, FK, cardinality, state and replay hardening passes exact apply/reapply, 75 focused contracts, 67 migration tests and expanded disposable DB negatives; lint/tsc pass. RI-01 reconciled only its two changed L3 writer digests and reviewed L3 pin. Full unit run retains 8 frozen-L0 receipt failures (`3dda2611...` current vs `5125cccb...` frozen), and whole-file pins remain stale for protected L0/L1/L2/L4, which L3 cannot repin. Production `amjis_app` ownership also defeats role grants until an administrator-managed build login/protected-owner cutover. Held before PR/shared apply; no deploy/build/materialization. |
 
 ## 7. Return-to-strategy handoff contract
 

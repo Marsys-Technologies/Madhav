@@ -246,16 +246,19 @@ apply/reapply, 75 focused contracts, 67 migration tests and expanded L1/L2
 admission/replay negatives pass on disposable PostgreSQL. ESLint has zero errors
 and TypeScript passes. The full unit run remains red only in eight frozen L0
 receipt assertions: current aggregate `3dda2611...` differs from reserved frozen
-`5125cccb...`, and precedent forbids an L3-owned repin.
+`5125cccb...`, and precedent forbids an L3-owned repin. RI-01 reconciled only its
+two changed writer digests and L3 aggregate `139bde31...` to reviewed W0 tip
+`00a161195`; the whole-file checker still reports non-L3 stale pins for L0, L1,
+L2 and L4, none of which L3 restated.
 
 One reviewed HIGH security gate also remains open. Production migration/build
 identity `amjis_app` owns newly created objects; `role_orchestrator` is NOLOGIN
 and has no membership path from `amjis_app`. PUBLIC revocation and intended grants
 do not isolate an owner. Protected owner roles, a distinct build login and the
 role/credential/ownership cutover require administrator authority outside this
-candidate. RI-01 therefore remains held before PR/shared apply; it needs the L0
-pin ruling and database cutover authority, followed by exact-tip review and full
-checks. This is not protected delivery.
+candidate. RI-01 therefore remains held before PR/shared apply; it needs
+protected non-L3 pin reconciliation and database cutover authority, followed by
+exact-tip review and full checks. This is not protected delivery.
 
 ## 6. Workstream ownership and recovery
 
@@ -286,8 +289,9 @@ this file, the execution ledger and the exact next eligible action above.
 
 W0 terminal PASS is recorded at exact source tip `00a161195`. The active recovery
 action is `L3-RI-01-PRECURSOR-GENERATION-INTEGRATION`, held before PR/shared
-apply on two exact authorities: adjudication of the frozen L0 provenance pin and
-administrator-owned database role/credential/ownership cutover. After both, run
+apply on two exact authorities: reconciliation of protected non-L3 provenance
+pins, including frozen L0, and administrator-owned database
+role/credential/ownership cutover. After both, run
 exact-tip migration/security review and full checks, then establish the protected
 precursor release. No L3 build is eligible until compatible L0-L2 physical heads
 exist.
