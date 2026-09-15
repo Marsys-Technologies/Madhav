@@ -1,5 +1,5 @@
 /** Read-only, semantic deployment gate for the DP-SD-018 protected boundary. */
-import { Pool } from 'pg'
+import { Pool, type PoolConfig } from 'pg'
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -40,9 +40,13 @@ const LIFECYCLE_FUNCTIONS = [
   'rollback_l2_data_plane_generation',
 ] as const
 
-export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DATABASE_URL): Promise<DataPlaneOwnershipStatus> {
-  if (!databaseUrl) throw new Error('DATABASE_URL is required to read the data-plane ownership state.')
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 })
+export async function readDataPlaneOwnershipStatus(
+  database: string | Readonly<PoolConfig> | undefined = process.env.DATABASE_URL,
+): Promise<DataPlaneOwnershipStatus> {
+  if (!database) throw new Error('DATABASE_URL is required to read the data-plane ownership state.')
+  const pool = new Pool(typeof database === 'string'
+    ? { connectionString: database, max: 1 }
+    : { ...database, max: 1 })
   try {
     const marker = await pool.query<{ count: string }>(
       'SELECT count(DISTINCT filename)::text AS count FROM public._migrations_applied WHERE filename = ANY($1::text[])',

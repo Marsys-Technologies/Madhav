@@ -117,7 +117,7 @@ describe('DP-SD-018 GCP credential isolation', () => {
       .toThrow(/aggregate builder service-account impersonation/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
       name: 'DATABASE_URL', value: 'postgresql://literal:credential@example/db',
-    }] }] } } } })).toThrow(/literal credential/)
+    }] }] } } } })).toThrow(/never a literal/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { metadata: { annotations: {
       client_password: 'opaque-but-still-a-secret',
     } } } } })).toThrow(/client_password/)
@@ -127,8 +127,27 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: {
       volumes: [{ clientSecret: 12345 }],
     } } } })).toThrow(/clientSecret/)
-    expect(() => assertNoLiteralCredentials({ serviceAccount: 'web@example', secretKeyRef: { name: 'alpha' }, secretName: 'volume-secret' }))
-      .not.toThrow()
+    for (const name of ['DB_PASS','PGPASSWORD','PASS','DB_PASSPHRASE','APP_ACCESS_TOKEN','app-client-secret']) {
+      expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
+        name, value: 'opaque',
+      }] }] } } } })).toThrow(/explicit Secret Manager reference/)
+    }
+    for (const flag of ['--worker-db-pass','--prefix-access-token','--service-client-secret']) {
+      expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
+        args: [flag, 'opaque'],
+      }] } } } })).toThrow(new RegExp(flag))
+    }
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
+      name: 'DB_PASS', valueFrom: { secretKeyRef: { name: 'builder-db-pass', key: 'latest' } },
+    }] }], volumes: [{ name: 'credentials', secret: { secretName: 'volume-secret' } }] } }, metadata: { annotations: {
+      'run.googleapis.com/secrets': JSON.stringify({ builder: 'builder-db-pass:latest' }),
+    } } } })).not.toThrow()
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
+      name: 'CLIENT_SECRET', valueFrom: { secretKeyRef: { name: 'client-secret', literal: 'opaque' } },
+    }] }] } } } })).toThrow(/explicit Secret Manager reference/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
+      name: 'DB_PASS', valueFrom: { secretKeyRef: { name: 'postgresql://literal:credential@example/db' } },
+    }] }] } } } })).toThrow(/explicit Secret Manager reference/)
     expect(roleDescribeArgs('roles/owner')).toEqual(['iam','roles','describe','roles/owner'])
     expect(roleDescribeArgs('projects/exact-parent/roles/customSecretReader'))
       .toEqual(['iam','roles','describe','customSecretReader','--project','exact-parent'])
@@ -266,16 +285,31 @@ describe('DP-SD-018 deployment ordering', () => {
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
     })).toThrow(/workflow run does not match/)
     const instance = { name: receipt.validationInstance, state: 'RUNNABLE', connectionName: `madhav-astrology:asia-south1:${receipt.validationInstance}` }
-    expect(() => assertValidationConnectorBinding('postgresql://validator@127.0.0.1:5433/restored', {
+    const poolConfig = assertValidationConnectorBinding('postgresql://validator:secret@localhost:5433/restored', {
       instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
       proxyPort: '5433', project: 'madhav-astrology',
-    })).not.toThrow()
+    })
+    expect(poolConfig).toMatchObject({
+      host: '127.0.0.1', port: 5433, user: 'validator', password: 'secret', database: 'restored', max: 1,
+    })
+    expect(Object.isFrozen(poolConfig)).toBe(true)
+    for (const query of [
+      'host=rogue.internal','HOST_ADDR=10.0.0.5','port=5432','service=rogue',
+      'socket=%2Ftmp%2Frogue.sock','socket_path=%2Ftmp%2Frogue.sock','unixSocketPath=%2Ftmp%2Frogue.sock',
+      'server=rogue.internal',
+    ]) {
+      expect(() => assertValidationConnectorBinding(`postgresql://validator@127.0.0.1:5433/restored?${query}`, {
+        instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+        proxyPort: '5433', project: 'madhav-astrology',
+      })).toThrow(/authenticated isolated Cloud SQL proxy identity/)
+    }
     expect(() => assertValidationConnectorBinding('postgresql://validator@127.0.0.1:5433/restored', {
       instance, validationInstance: receipt.validationInstance, connectionName: 'madhav-astrology:asia-south1:rogue-instance',
       proxyPort: '5433', project: 'madhav-astrology',
     })).toThrow(/authenticated isolated Cloud SQL proxy identity/)
     expect(preflight).toContain("restore.targetId === 'amjis-postgres'")
-    expect(preflight).toContain('readDataPlaneOwnershipStatus(validationDatabaseUrl)')
+    expect(preflight).toContain('readDataPlaneOwnershipStatus(validationPoolConfig)')
+    expect(preflight).toContain('new Pool(validationPoolConfig)')
     expect(workflow).toContain('DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME')
     expect(workflow).toContain('GH_TOKEN: ${{ github.token }}')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)

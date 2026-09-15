@@ -96,38 +96,179 @@ export function extractRunIdentityAndSecrets(definition: unknown): { serviceAcco
   return { serviceAccount, secrets: [...secrets].sort() }
 }
 
+const scalar = (value: unknown): value is string | number | boolean =>
+  ['string','number','boolean'].includes(typeof value)
+
+export function isSensitiveCredentialName(name: string): boolean {
+  const words = name
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+  const compact = words.join('')
+  if (words.some((word) => [
+    'password','passwd','passphrase','passcode','pgpassword','token','secret','credential',
+  ].includes(word))) return true
+  if (words.includes('pass')) return true
+  if (words.some((word, index) =>
+    (word === 'api' && words[index + 1] === 'key')
+    || (word === 'private' && words[index + 1] === 'key')
+    || ((word === 'database' || word === 'db') && words[index + 1] === 'url')
+    || (word === 'access' && words[index + 1] === 'token')
+    || (word === 'client' && words[index + 1] === 'secret'))) return true
+  return /^(?:pg|db|database)?pass(?:word|wd|phrase|code)?$/.test(compact)
+    || /(?:db|database|pg)pass(?:word|wd|phrase|code)?$/.test(compact)
+    || /(?:access|refresh|identity|id)token$/.test(compact)
+    || /clientsecret$/.test(compact)
+    || /(?:api|private)key$/.test(compact)
+    || /(?:database|db)url$/.test(compact)
+}
+
+function containsCredentialLiteral(value: string): boolean {
+  return /(?:postgres(?:ql)?|mysql):\/\/[^\s]+/i.test(value)
+    || /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(value)
+    || /(?:^|\s)-{1,2}[^\s=]*(?:pass(?:word|wd)?|token|secret|api[-_]?key)[^\s=]*=\S+/i.test(value)
+}
+
+function exactSecretName(value: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(value)
+    || /^projects\/(?:[A-Za-z0-9-]+|\d+)\/secrets\/[A-Za-z0-9_-]+$/.test(value)
+}
+
+function exactSecretKeyRef(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const ref = value as Record<string, unknown>
+  const hasName = typeof ref.name === 'string' && ref.name.trim().length > 0
+  const hasSecret = typeof ref.secret === 'string' && ref.secret.trim().length > 0
+  if (hasName === hasSecret) return false
+  const allowed = hasName ? new Set(['name','key']) : new Set(['secret','version'])
+  return Object.entries(ref).every(([key, child]) =>
+    allowed.has(key) && typeof child === 'string' && child.trim().length > 0
+      && (key === 'name' || key === 'secret' ? exactSecretName(child) : /^[A-Za-z0-9_-]+$/.test(child)))
+}
+
+function assertEnvSurface(value: unknown): void {
+  if (!Array.isArray(value)) throw new Error('Cloud Run env surface is not an exact array.')
+  for (const candidate of value) {
+    if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+      throw new Error('Cloud Run env entry is not an exact object.')
+    }
+    const entry = candidate as Record<string, unknown>
+    if (typeof entry.name !== 'string' || !entry.name.trim()) throw new Error('Cloud Run env entry has no exact name.')
+    const sensitive = isSensitiveCredentialName(entry.name)
+    const directLiteral = Object.prototype.hasOwnProperty.call(entry, 'value')
+    const valueFrom = entry.valueFrom && typeof entry.valueFrom === 'object' && !Array.isArray(entry.valueFrom)
+      ? (entry.valueFrom as Record<string, unknown>).secretKeyRef : undefined
+    const valueSource = entry.valueSource && typeof entry.valueSource === 'object' && !Array.isArray(entry.valueSource)
+      ? (entry.valueSource as Record<string, unknown>).secretKeyRef : undefined
+    const references = [valueFrom,valueSource].filter((reference) => reference !== undefined)
+    const sourcePresent = Object.prototype.hasOwnProperty.call(entry, 'valueFrom')
+      || Object.prototype.hasOwnProperty.call(entry, 'valueSource')
+    const wrapper = entry.valueFrom ?? entry.valueSource
+    const exactWrapper = Boolean(wrapper && typeof wrapper === 'object' && !Array.isArray(wrapper)
+      && Object.keys(wrapper as Record<string, unknown>).length === 1
+      && Object.prototype.hasOwnProperty.call(wrapper, 'secretKeyRef'))
+    const exactEntry = Object.keys(entry).every((key) => ['name','valueFrom','valueSource'].includes(key))
+    const invalidReference = references.length !== 1 || !exactSecretKeyRef(references[0])
+      || !exactWrapper || !exactEntry
+    if ((sensitive && (directLiteral || invalidReference))
+        || (sourcePresent && (directLiteral || invalidReference))) {
+      throw new Error(`Cloud Run env ${entry.name} must use exactly one explicit Secret Manager reference and never a literal.`)
+    }
+    if (typeof entry.value === 'string' && containsCredentialLiteral(entry.value)) {
+      throw new Error(`Cloud Run env ${entry.name} contains a literal credential.`)
+    }
+  }
+}
+
+function assertArgsSurface(value: unknown, surface: string): void {
+  if (!Array.isArray(value) || value.some((argument) => typeof argument !== 'string')) {
+    throw new Error(`Cloud Run ${surface} surface is not an exact string array.`)
+  }
+  for (const argument of value as string[]) {
+    const assignment = argument.match(/^([^=]+)=(.*)$/s)
+    const flagName = argument.match(/^-{1,2}([^=]+)(?:=.*)?$/s)?.[1]
+    if ((flagName && isSensitiveCredentialName(flagName))
+        || (assignment && isSensitiveCredentialName(assignment[1]))) {
+      throw new Error(`Cloud Run ${surface} contains credential argument ${argument.split('=')[0]}.`)
+    }
+    if (containsCredentialLiteral(argument)) {
+      throw new Error(`Cloud Run ${surface} contains a literal credential.`)
+    }
+  }
+}
+
+function assertAnnotationsSurface(value: unknown): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Cloud Run annotations surface is not an exact object.')
+  }
+  for (const [key, annotation] of Object.entries(value as Record<string, unknown>)) {
+    if (key === 'run.googleapis.com/secrets') {
+      if (typeof annotation !== 'string') throw new Error('Cloud Run secrets annotation is not valid JSON.')
+      let references: unknown
+      try { references = JSON.parse(annotation) }
+      catch { throw new Error('Cloud Run secrets annotation is not valid JSON.') }
+      if (!references || typeof references !== 'object' || Array.isArray(references)
+          || Object.values(references as Record<string, unknown>).some((reference) =>
+            typeof reference !== 'string'
+            || !/^(?:projects\/(?:[A-Za-z0-9-]+|\d+)\/secrets\/)?[A-Za-z0-9_-]+(?::|\/versions\/)[A-Za-z0-9_-]+$/.test(reference))) {
+        throw new Error('Cloud Run secrets annotation is not an exact Secret Manager reference map.')
+      }
+      continue
+    }
+    if (typeof annotation !== 'string') {
+      throw new Error(`Cloud Run annotation ${key} is not an exact string value.`)
+    }
+    if (isSensitiveCredentialName(key)) {
+      throw new Error(`Cloud Run annotation ${key} contains a literal credential.`)
+    }
+    if (containsCredentialLiteral(annotation)) {
+      throw new Error(`Cloud Run annotation ${key} contains a literal credential.`)
+    }
+  }
+}
+
+function assertVolumesSurface(value: unknown): void {
+  if (!Array.isArray(value)) throw new Error('Cloud Run volumes surface is not an exact array.')
+  const walk = (candidate: unknown, inSecretReference = false): void => {
+    if (!candidate || typeof candidate !== 'object') return
+    if (Array.isArray(candidate)) { candidate.forEach((child) => walk(child, inSecretReference)); return }
+    for (const [key, child] of Object.entries(candidate as Record<string, unknown>)) {
+      if (key === 'secretKeyRef') {
+        if (!exactSecretKeyRef(child)) throw new Error('Cloud Run volume secretKeyRef is not an exact Secret Manager reference.')
+        continue
+      }
+      if (key === 'secret' && child && typeof child === 'object' && !Array.isArray(child)) {
+        walk(child, true)
+        continue
+      }
+      if (inSecretReference && (key === 'secret' || key === 'secretName')) {
+        if (typeof child !== 'string' || !exactSecretName(child)) {
+          throw new Error('Cloud Run volume has an invalid Secret Manager reference.')
+        }
+        continue
+      }
+      if (isSensitiveCredentialName(key) && scalar(child)) {
+        throw new Error(`Cloud Run volume ${key} contains a literal credential.`)
+      }
+      if (typeof child === 'string' && containsCredentialLiteral(child)) {
+        throw new Error(`Cloud Run volume ${key} contains a literal credential.`)
+      }
+      walk(child, inSecretReference)
+    }
+  }
+  walk(value)
+}
+
 export function assertNoLiteralCredentials(definition: unknown): void {
-  const credentialKey = (key: string): boolean => /(?:^|[_./-])(?:password|passwd|token|secret|api[_-]?key|private[_-]?key|credential|database[_-]?url|db[_-]?url)(?:$|[_./-])/i
-    .test(key.replace(/([a-z0-9])([A-Z])/g, '$1_$2'))
-  const secretReferenceKeys = new Set(['secret', 'secretName', 'run.googleapis.com/secrets'])
   const walk = (value: unknown): void => {
     if (!value || typeof value !== 'object') return
-    if (Array.isArray(value)) {
-      value.forEach((child, index) => {
-        if (typeof child === 'string' && /^--(?:password|passwd|token|secret|api-key|private-key|credential)$/i.test(child)
-            && index + 1 < value.length && ['string','number','boolean'].includes(typeof value[index + 1])) {
-          throw new Error(`Cloud Run definition contains a literal credential value after ${child}.`)
-        }
-        walk(child)
-      })
-      return
-    }
-    const object = value as Record<string, unknown>
-    if (typeof object.name === 'string' && credentialKey(object.name)
-        && ['string','number','boolean'].includes(typeof object.value)
-        && String(object.value).trim()) {
-      throw new Error(`Cloud Run definition contains a literal credential value for ${object.name}.`)
-    }
-    for (const [key, child] of Object.entries(object)) {
-      if (credentialKey(key) && !secretReferenceKeys.has(key)
-          && ['string','number','boolean'].includes(typeof child) && String(child).trim()) {
-        throw new Error(`Cloud Run definition contains a literal credential value under ${key}.`)
-      }
-      if (typeof child === 'string' && (/(?:postgres(?:ql)?|mysql):\/\/[^\s]+/i.test(child)
-          || /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(child)
-          || /(?:--password|--token|--api-key)=\S+/i.test(child))) {
-        throw new Error('Cloud Run definition contains a literal credential in env, args, or annotations.')
-      }
+    if (Array.isArray(value)) { value.forEach(walk); return }
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      if (key === 'env') assertEnvSurface(child)
+      else if (key === 'args' || key === 'command') assertArgsSurface(child, key)
+      else if (key === 'annotations') assertAnnotationsSurface(child)
+      else if (key === 'volumes') assertVolumesSurface(child)
       walk(child)
     }
   }

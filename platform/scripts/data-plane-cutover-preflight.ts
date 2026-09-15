@@ -1,6 +1,7 @@
 /** Fail-closed release evidence gate for the one-shot DP-SD-018 cutover. */
 import { execFileSync } from 'node:child_process'
-import { Pool } from 'pg'
+import { Pool, type PoolConfig } from 'pg'
+import { parse as parsePgConnectionString } from 'pg-connection-string'
 import { readDataPlaneOwnershipStatus } from './data-plane-ownership-status'
 
 function requireValue(name: string): string {
@@ -121,17 +122,40 @@ export function assertValidationConnectorBinding(
     instance: CloudSqlInstanceIdentity; validationInstance: string
     connectionName: string; proxyPort: string; project: string
   },
-): void {
-  const url = new URL(databaseUrl)
+): Readonly<PoolConfig> {
+  let url: URL
+  let parsed: ReturnType<typeof parsePgConnectionString>
+  try {
+    url = new URL(databaseUrl)
+    parsed = parsePgConnectionString(databaseUrl)
+  } catch {
+    throw new Error('Validation database URL is not a valid node-postgres connection string.')
+  }
+  const routingQueryNames = new Set([
+    'address','connectionname','connectionstring','host','hostaddr','hostaddress','hostname',
+    'path','port','server','servername','service','servicename','socket','socketpath',
+    'unixsocket','unixsocketpath',
+  ])
+  const routingOverride = [...url.searchParams.keys()].some((key) =>
+    routingQueryNames.has(key.toLowerCase().replace(/[^a-z0-9]/g, '')))
   const parts = binding.connectionName.split(':')
   if (binding.instance.name !== binding.validationInstance || binding.instance.state !== 'RUNNABLE'
       || binding.instance.connectionName !== binding.connectionName || parts.length !== 3
       || parts[0] !== binding.project || parts[2] !== binding.validationInstance
       || !/^\d{2,5}$/.test(binding.proxyPort) || Number(binding.proxyPort) > 65535
       || !['postgres:','postgresql:'].includes(url.protocol)
-      || !['127.0.0.1','localhost'].includes(url.hostname) || url.port !== binding.proxyPort) {
+      || routingOverride || !['127.0.0.1','localhost'].includes(parsed.host ?? '')
+      || parsed.port !== binding.proxyPort) {
     throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
   }
+  return Object.freeze({
+    host: '127.0.0.1',
+    port: Number(binding.proxyPort),
+    user: parsed.user,
+    password: parsed.password,
+    database: parsed.database ?? undefined,
+    max: 1,
+  })
 }
 
 function githubApi<T>(path: string): T {
@@ -197,14 +221,14 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
   const instance = JSON.parse(execFileSync('gcloud', [
     'sql', 'instances', 'describe', validationInstance, '--project', project, '--format=json',
   ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as CloudSqlInstanceIdentity
-  assertValidationConnectorBinding(validationDatabaseUrl, {
+  const validationPoolConfig = assertValidationConnectorBinding(validationDatabaseUrl, {
     instance, validationInstance, connectionName: validationConnectionName,
     proxyPort: validationProxyPort, project,
   })
-  if (await readDataPlaneOwnershipStatus(validationDatabaseUrl) !== 'unmarked') {
+  if (await readDataPlaneOwnershipStatus(validationPoolConfig) !== 'unmarked') {
     throw new Error('Isolated restore does not attest the expected pre-cutover protected state.')
   }
-  const validationPool = new Pool({ connectionString: validationDatabaseUrl, max: 1 })
+  const validationPool = new Pool(validationPoolConfig)
   try {
     const validation = await validationPool.query<{ version: number; build_runs: string | null }>(`
       SELECT current_setting('server_version_num')::int version,
