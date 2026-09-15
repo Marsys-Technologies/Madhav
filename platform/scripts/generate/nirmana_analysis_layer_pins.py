@@ -98,7 +98,18 @@ AUTHORITY_BINDINGS = {
         "sha256": "b1bc568532980e787389d86f4d44ddc3ed4e3709f7133e68713899e13f4ddb26",
         "decision_binding": "strategy_decision: DP-SD-018",
         "authority_identity_binding": "`7f21f27b14a7909424591a530096dc2f5d6e2b13`",
-    }
+    },
+    "DP-SD-019": {
+        # The strategy-side content identity remains immutable metadata.  The
+        # permanent execution branch carries a reachable ledger snapshot that
+        # binds the exact identity and decision without depending on a side ref.
+        "authority_commit": "16590cc49f720e4200a8d9b6cad3f52b68e21792",
+        "evidence_commit": "ec93db981193627c80cc71f583772717318f9d14",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md",
+        "sha256": "2e5c8bd0815f2be318eaa288d99fdb12313b93e133b2350237c13cb086dd802a",
+        "decision_binding": "DP-SD-019",
+        "authority_identity_binding": "`16590cc49f720e4200a8d9b6cad3f52b68e21792`",
+    },
 }
 
 # These source identities were accepted on an earlier lane branch.  They stay
@@ -163,7 +174,10 @@ AUTHORIZED_SOURCE_COMMITS = {
         }),
         "L3": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
         "L4": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
-    }
+    },
+    "DP-SD-019": {
+        "L3": frozenset({"64facb9763d13eece7098b5b24cc03dfb8e3ba81"}),
+    },
 }
 
 # A later compatibility/security source admission must not overwrite the
@@ -212,7 +226,32 @@ SOURCE_ACCEPTANCE_BINDINGS = {
             }]
             for layer in ("L1", "L2")
         },
-    }
+    },
+    "64facb9763d13eece7098b5b24cc03dfb8e3ba81": {
+        "schema_version": SOURCE_ACCEPTANCE_SCHEMA_VERSION,
+        "reviewed_source_commit": "7697c43b31da3655c2add7cda128a57ca4afd44e",
+        "integrated_equivalent_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+        "common_base_commit": "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f",
+        "source_surface_sha256": "c7335980706c9815362f3fc39dca349b42aa94e7f0bddcc6b0e85c56d19d366a",
+        "reviewed_surface": [
+            {
+                "path": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py",
+                "blob_oid": "8939b234c20794eb59edc559bb6f8e3a44865cc5",
+            },
+            {
+                "path": "platform/python-sidecar/tests/l3/test_ka_yojaka_multidomain.py",
+                "blob_oid": "52e7ba3d5ba97024f1327ca2f97d25e98e01e589",
+            },
+        ],
+        "review_artifacts": {
+            "L3": [{
+                "commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md",
+                "sha256": "a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
+            }],
+        },
+    },
 }
 
 # L0's reviewed convergence, carried forward verbatim from the pre-generalisation
