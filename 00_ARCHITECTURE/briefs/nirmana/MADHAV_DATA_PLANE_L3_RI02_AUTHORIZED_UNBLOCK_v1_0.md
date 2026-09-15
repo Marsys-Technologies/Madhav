@@ -64,7 +64,7 @@ database gates have passed.
 | Lane | Writer ownership | Allowed outputs | Explicit exclusions | Terminal source/design gate |
 |---|---|---|---|---|
 | P — provenance | `/root/ri02_provenance`; branch `codex/data-plane-ri02-provenance`; worktree `/tmp/madhav-ri02-provenance.HlOca6` | Generated writer/layer pins; versioned successor receipt generator/runtime representation and exact tests; Lane-P evidence | No writer behavior, migrations, deploy workflow, runtime bindings, L4 behavior, L5, retired sweep, Pūrṇa, execution ledger | Exact delta classification, historical reconstruction, rejection tests, unaffected-layer identity and independent exact-tip review. |
-| S — security/DBA/release design | `/root/ri02_security`; branch `codex/data-plane-ri02-security`; worktree `/tmp/madhav-ri02-security.Ho9lQ5` | Exact 1035/1036 or forward candidates as application state requires; protected-owner lifecycle APIs; role-realistic disposable tests; scoped deploy/preflight/attestation and cutover evidence | No provenance generated files, writer behavior, live role/secret/IAM/DB/deploy mutation, L4/L5, retired sweep, Pūrṇa, execution ledger | Disposable restricted-login positive/negative proof, exact role/object/cutover matrix and independent security/migration review. |
+| S — security/DBA/release design | `/root/ri02_security`; branch `codex/data-plane-ri02-security`; worktree `/tmp/madhav-ri02-security.Ho9lQ5` | Exact 1035/1036 or forward candidates as application state requires; protected-owner lifecycle APIs; role-realistic disposable tests; scoped deploy/preflight/attestation and cutover evidence; bounded individual L1/L2 writer call-site adaptation required to use those lifecycle APIs | No provenance generated files, `WriterBase`, broader producer semantics, live role/secret/IAM/DB/deploy mutation, L4/L5, retired sweep, Pūrṇa, execution ledger | Disposable restricted-login positive/negative proof, exact role/object/cutover matrix and independent security/migration review. |
 | Root — conductor/integrator | Existing execution task/worktree only | Coordination row, session handshake, this packet, execution ledger, serialized later integration | No self-certification; no foreign worktree/branch; no production action under RI-02 source-design lease | Both lane tips independently accepted; exact reviewed release candidate frozen. |
 
 No worker may certify its own terminal claim. Generated files and shared release
@@ -138,3 +138,40 @@ candidate.
   bindings are independently tested.
 - **Scope:** source/design/disposable proof now; no IAM, secret, role, deployment
   or database mutation under the current RI-02 source-design fence.
+
+### RI02-R-003 — require lifecycle enforcement at every protected mutation
+
+- **Question:** independent security review of Lane-S candidate `70417f577` used
+  restricted PostgreSQL logins to bypass the proposed lifecycle boundary through
+  direct active-table DML. Existing individual writers issue direct deletion or
+  replacement statements, so revoking those grants without adapting call sites
+  would either retain the bypass or break the producer path.
+- **Decision:** Lane S may adapt only the individual L1/L2 writer SQL call sites
+  required to invoke scoped lifecycle mutation/deletion APIs. `WriterBase` and
+  producer semantics remain outside the expansion. Every protected table and
+  mutation event must be inventoried and exercised under restricted logins.
+- **Evidence required:** direct builder DML is denied outside admitted context;
+  captured rows determine published counts; exact-input binding is mandatory;
+  complete ACL, recursive membership, function/trigger definition, IAM,
+  deployment-order and migration-identity checks fail closed; the original
+  writer outcomes remain covered by focused compatibility tests.
+- **Non-claims:** this is a source compatibility correction, not live role,
+  credential, IAM, migration, build or deployment authority.
+
+## 7. Source/design gate status
+
+Lane P is independently accepted at exact branch tip
+`8ebb3737cedfd4fde802f30845d94f8e8a641c33` and integrated serially as
+`1b429bd18`, `350582ca6`, `540ad88d4` and `7b1576d59`. Its 12 Python tests,
+13 receipt tests, generator drift check and provenance inventory check pass in
+the integration worktree. The accepted proof binds real commits, exact
+content-addressed decisions, the complete active/non-writer/retired identity
+sets and a recursively validated linear successor history.
+
+Lane S candidate `70417f577bc3d6a02cfc3fb8c6381a9f8fcbcaf9` is rejected by
+independent adversarial review. Restricted-login PostgreSQL probes reproduced
+direct-DML lifecycle bypass, fabricated/empty generation publication and
+semantic-status false-green paths. Source review also found fail-open secret
+isolation, unsafe deployment ordering and incomplete migration identity
+attestation. Correction under RI02-R-003 is active. Therefore both-lane source
+acceptance, release-candidate freeze and production cutover remain ineligible.

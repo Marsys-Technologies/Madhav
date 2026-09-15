@@ -345,11 +345,18 @@ verified source-design fence is
 `origin/campaign-coordination@7eec8577e40778c72c8fdc17c5792646eee791c4`.
 The existing heartbeat was updated in place for RI-02.
 
-Two disjoint isolated lanes are active: Lane P owns versioned L0/L1/L2 and
-metadata-only L4 provenance supersession; Lane S owns the protected-owner,
-lifecycle API, restricted-login disposable proof and exact release/cutover
-design. Their detailed ownership and non-claims are frozen in
-`MADHAV_DATA_PLANE_L3_RI02_AUTHORIZED_UNBLOCK_v1_0.md`. Production role,
-credential, IAM, migration, deployment, build and data mutations remain held
-under this source-design lease. The next eligible gate is independent exact-tip
-acceptance of both lanes, followed by a separate exclusive cutover lease.
+Lane P provenance supersession is independently accepted at exact tip
+`8ebb3737cedfd4fde802f30845d94f8e8a641c33` and integrated serially through
+`7b1576d59`; its immutable decision, identity, retired-sweep and historical-chain
+proofs pass in the integration worktree. Lane S exact candidate `70417f577` is
+rejected: adversarial restricted-login probes reproduced direct-DML lifecycle
+bypass, fabricated generation heads and semantic-status false greens, while
+source review found fail-open IAM isolation, unsafe deployment ordering and
+incomplete migration identity attestation. A bounded correction may adapt only
+individual protected L1/L2 writer call sites to the scoped lifecycle APIs; it
+does not reopen `WriterBase` or producer semantics.
+
+Production role, credential, IAM, migration, deployment, build and data
+mutations remain held under this source-design lease. The next eligible gate is
+independent exact-tip acceptance of corrected Lane S and integrated review,
+followed by a separate exclusive cutover lease.
