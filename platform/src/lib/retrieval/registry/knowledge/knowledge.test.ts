@@ -229,6 +229,16 @@ describe('planner capability knowledge', () => {
     expect(getDescriptorEditorialReview('chart_facts_query')?.family_id).toBe('chart_evidence')
     expect(getDescriptorEditorialReview('maro_mcp_surface')?.family_id).toBe('system_introspection')
     expect(getDescriptorEditorialReview('channel_mcp_wiring')?.family_id).toBe('system_introspection')
+    expect(getDescriptorEditorialReview('query_signal_families')).toMatchObject({
+      family_id: 'signal_calibration_registry',
+      domains: ['evidence_quality'],
+      concepts: expect.arrayContaining(['signal_family', 'negative_control', 'calibration_evidence']),
+    })
+    expect(getDescriptorEditorialReview('query_prospective_ledger')).toMatchObject({
+      family_id: 'prospective_ledger',
+      domains: ['evidence_quality', 'timing'],
+      concepts: expect.arrayContaining(['filed_prediction', 'falsifier', 'prediction_lifecycle', 'source_provenance']),
+    })
   })
 
   it('uses full source descriptions and reviewed output semantics for substantive tools', () => {
