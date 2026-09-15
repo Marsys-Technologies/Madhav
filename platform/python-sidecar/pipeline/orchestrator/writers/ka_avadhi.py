@@ -176,6 +176,8 @@ def _table_exists(conn, name: str) -> bool:
 class KaAvdhiWriter(WriterBase):
     """ka_avadhi — Period Dossiers (L3 Kāla). LIGHT writer."""
 
+    asset_id = "ka_avadhi"
+
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn
         chart_id = ctx.config["chart_id"]

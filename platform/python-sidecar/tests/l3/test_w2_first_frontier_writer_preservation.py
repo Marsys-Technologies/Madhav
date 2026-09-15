@@ -235,6 +235,7 @@ def test_avadhi_requires_canonical_md_and_ad_coverage(monkeypatch):
 
     assert "chara_karaka" in avadhi._DASHA_SYSTEMS
     assert "chara" not in avadhi._DASHA_SYSTEMS
+    assert result.asset_id == "ka_avadhi"
     assert result.rows_inserted == 0
     assert "AD=" in result.notes
     assert conn.mutations == []
@@ -249,6 +250,7 @@ def test_avadhi_deletes_only_after_complete_canonical_md_and_ad(monkeypatch):
 
     result = avadhi.KaAvdhiWriter().run(_ctx(conn))
 
+    assert result.asset_id == "ka_avadhi"
     assert result.rows_inserted == len(md_rows) + len(ad_rows)
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
     assert conn.mutations[-1][0] == "executemany"
@@ -318,6 +320,7 @@ def test_computed_writers_delete_only_after_complete_candidate(monkeypatch):
 def test_yojaka_empty_input_preserves_partition():
     conn = RecordingConnection([[]])
     result = yojaka.KaYojakaWriter().run(_ctx(conn))
+    assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 0
     assert conn.mutations == []
 
@@ -358,6 +361,7 @@ def test_yojaka_deletes_only_after_complete_candidate(monkeypatch):
 
     result = yojaka.KaYojakaWriter().run(_ctx(conn))
 
+    assert result.asset_id == "ka_yojaka"
     assert result.rows_inserted == 1
     assert conn.mutations[0][1].lstrip().upper().startswith("DELETE")
     assert conn.mutations[-1][0] == "executemany"

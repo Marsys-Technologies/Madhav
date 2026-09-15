@@ -56,6 +56,8 @@ DISTRIBUTION_YOGA_MIN_GRAHAS = 6
 
 @register('ka_yojaka')
 class KaYojakaWriter(WriterBase):
+    asset_id = 'ka_yojaka'
+
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
@@ -387,7 +389,7 @@ class KaYojakaWriter(WriterBase):
                 batch = rows[i:i + 1000]
                 cur.executemany(_INSERT_SQL, batch)
 
-        return WriterResult(asset_id='ka_yojaka', rows_inserted=len(rows))
+        return WriterResult(asset_id=self.asset_id, rows_inserted=len(rows))
 
     def _fetch_house_lord_map(self, conn, chart_id: str) -> dict:
         """WP-S4-R45-iter2: fetch chart_facts(fact_category='lord_in_house_per_varga')

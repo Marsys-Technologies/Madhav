@@ -219,5 +219,6 @@ def test_first_frontier_pipeline_writers_are_mutation_free_on_dry_run(writer_cla
         dry_run=True,
     )
     result = writer_class().run(ctx)
+    assert result.asset_id == writer_class.asset_id
     assert result.rows_inserted == 0
     assert result.notes == "dry_run=True"
