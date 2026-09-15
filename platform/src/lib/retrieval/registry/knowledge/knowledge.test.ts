@@ -279,6 +279,23 @@ describe('planner capability knowledge', () => {
       intent: 'assess', domains: ['cross_domain'], width: 'focused', depth: 'deep', horizon: 'current', intervention: false, entitlement: 'native',
     })
     expect(projection.capabilities.map((capability) => capability.id)).toContain('scu.kala.temporal_activation')
+    const judgment = projection.capabilities.find((capability) => capability.id === 'scu.catalog.judgment_query')!
+    expect(judgment).toEqual(expect.objectContaining({
+      inputs: expect.any(Array),
+      outputs: expect.any(Array),
+      provenance_requirements: expect.any(Array),
+      freshness_policy: expect.any(String),
+      safety_notes: expect.any(Array),
+      graph_disposition: expect.objectContaining({ status: expect.any(String) }),
+      producer_semantic_disposition: expect.objectContaining({ status: expect.any(String) }),
+    }))
+    expect(judgment.routes[0]).toEqual(expect.objectContaining({
+      capability_uri: expect.stringMatching(/^marsys:\/\//),
+      input_contract: expect.any(Object),
+      output_contract: expect.any(Object),
+      pagination: expect.any(String),
+      executable: true,
+    }))
   })
 
   it('accounts for every active producer with one exact source-backed semantic binding', () => {

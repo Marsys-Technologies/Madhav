@@ -13,9 +13,45 @@ export interface PlannerCapabilityKnowledgeProjection {
     readonly description: string
     readonly domains: readonly string[]
     readonly concepts: readonly string[]
-    readonly routes: readonly { tool: string; binding_id: string; channel: string }[]
-    readonly edges: readonly { relation: string; target: string }[]
+    readonly concept_bindings: readonly { concept_id: string; concept_type: string }[]
+    readonly intents: readonly string[]
+    readonly horizons: readonly string[]
+    readonly scope: 'chart' | 'global'
+    readonly inputs: readonly string[]
+    readonly outputs: readonly string[]
+    readonly provenance_requirements: readonly string[]
+    readonly freshness_policy: string
+    readonly entitlement: 'native' | 'research' | 'public_disclosed'
+    readonly mutation: boolean
+    readonly safety_notes: readonly string[]
+    readonly routes: readonly {
+      tool: string
+      binding_id: string
+      capability_uri: string
+      channel: string
+      input_contract: Readonly<Record<string, string>>
+      output_contract: Readonly<Record<string, string>>
+      pagination: string
+      pagination_verified: boolean | null
+      executable: boolean
+      route_evidence: string | null
+    }[]
+    readonly edges: readonly { relation: string; target: string; rationale: string }[]
     readonly gaps: readonly string[]
+    readonly gap_dispositions: readonly { gap: string; status: string; rationale: string }[]
+    readonly graph_disposition: { status: string; rationale: string }
+    readonly producer_output_claims: readonly {
+      asset_id: string
+      component: string
+      disposition: string
+      specification_hash: string | null
+      evidence: string
+    }[]
+    readonly producer_semantic_disposition: {
+      status: string
+      asset_ids: readonly string[]
+      rationale: string
+    }
     readonly editorial: boolean
   }[]
 }
@@ -27,21 +63,68 @@ function project(scu: SemanticCapabilityUnit) {
     description: scu.description,
     domains: scu.domains,
     concepts: scu.concepts,
+    concept_bindings: scu.concept_bindings.map((binding) => ({
+      concept_id: binding.concept_id,
+      concept_type: binding.concept_type,
+    })),
+    intents: scu.intents,
+    horizons: scu.horizons,
+    scope: scu.scope,
+    inputs: scu.inputs,
+    outputs: scu.outputs,
+    provenance_requirements: scu.provenance_requirements,
+    freshness_policy: scu.freshness_policy,
+    entitlement: scu.entitlement,
+    mutation: scu.safety_notes.some((note) => note.startsWith('Mutation-capable:')),
+    safety_notes: scu.safety_notes,
     routes: scu.bindings.filter((binding) => binding.executable).map((binding) => ({
       tool: binding.public_tool_name ?? binding.capability_uri.split('/').at(-1) ?? binding.capability_uri,
       binding_id: binding.binding_id,
+      capability_uri: binding.capability_uri,
       channel: binding.execution_channels?.join('|') ?? 'unspecified',
+      input_contract: binding.input_contract,
+      output_contract: binding.output_contract,
+      pagination: binding.pagination,
+      pagination_verified: binding.pagination_verified ?? null,
+      executable: binding.executable,
+      route_evidence: binding.route_evidence ?? null,
     })),
-    edges: (scu.edges ?? []).map((edge) => ({ relation: edge.relation, target: edge.target_scu_id })),
+    edges: (scu.edges ?? []).map((edge) => ({
+      relation: edge.relation,
+      target: edge.target_scu_id,
+      rationale: edge.rationale,
+    })),
     gaps: scu.known_gaps,
+    gap_dispositions: scu.gap_dispositions.map((disposition) => ({
+      gap: disposition.gap,
+      status: disposition.status,
+      rationale: disposition.rationale,
+    })),
+    graph_disposition: {
+      status: scu.graph_disposition.status,
+      rationale: scu.graph_disposition.rationale,
+    },
+    producer_output_claims: (scu.producer_output_claims ?? []).map((claim) => ({
+      asset_id: claim.asset_id,
+      component: claim.component,
+      disposition: claim.disposition,
+      specification_hash: claim.output_digest_spec_sha256,
+      evidence: claim.evidence,
+    })),
+    producer_semantic_disposition: {
+      status: scu.producer_semantic_disposition.status,
+      asset_ids: scu.producer_semantic_disposition.asset_ids,
+      rationale: scu.producer_semantic_disposition.rationale,
+    },
     editorial: scu.editorial,
   }
 }
 
 /**
  * Bounded semantic projection for the LLM decomposition pass. It is derived
- * from the immutable SCU snapshot; the legacy manifest remains only an
- * execution-name compatibility projection during cutover.
+ * solely from the immutable SCU snapshot and retains the semantic, safety,
+ * provenance, graph, producer, and executable-route constraints needed for a
+ * route decision.
  */
 export function buildPlannerCapabilityKnowledgeProjection(
   snapshot: CapabilityKnowledgeSnapshot,
