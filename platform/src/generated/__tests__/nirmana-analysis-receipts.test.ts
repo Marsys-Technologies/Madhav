@@ -173,6 +173,31 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       schema_version: 'nirmana-analysis-source-acceptance/v1',
       source_surface_sha256: '59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876',
     }
+    const expectedReviewedPaths = [
+      '.github/workflows/deploy.yml',
+      '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md',
+      'platform/package-lock.json',
+      'platform/package.json',
+      'platform/pnpm-lock.yaml',
+      'platform/python-sidecar/bodha_writers/_idempotency.py',
+      'platform/python-sidecar/ga_writers/_idempotency.py',
+      'platform/python-sidecar/ga_writers/ga_condition_writer.py',
+      'platform/python-sidecar/ga_writers/ga_dashas_writer.py',
+      'platform/python-sidecar/pipeline/dispatcher.py',
+      'platform/python-sidecar/tests/test_bodha_idempotency.py',
+      'platform/python-sidecar/tests/test_ga_idempotency.py',
+      'platform/scripts/data-plane-cutover-preflight.ts',
+      'platform/scripts/data-plane-migration-attestation.ts',
+      'platform/scripts/data-plane-ownership-preflight.ts',
+      'platform/scripts/data-plane-ownership-status.ts',
+      'platform/scripts/data-plane-protected-cutover.ts',
+      'platform/scripts/data-plane-secret-isolation-preflight.ts',
+      'platform/scripts/migrate.ts',
+      'platform/supabase/migrations/1035_data_plane_l1_producer_history.sql',
+      'platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql',
+      'platform/tests/integration/data_plane_protected_roles.db.test.ts',
+      'platform/tests/unit/data_plane_security_contract.test.ts',
+    ]
     expect(layerPinRecord.layers.L1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
     expect(layerPinRecord.layers.L2.generation_id).toBe('l2:149f8479ac4e:51d3164426ac')
     expect(layerPinRecord.layers.L1.admission.changed_assets).toEqual([
@@ -186,8 +211,15 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       'bo_samskara', 'bo_sangati', 'bo_special_lagna', 'bo_sudarshana',
       'bo_upaya', 'bo_vargottama_dhana',
     ])
-    expect(layerPinRecord.layers.L1.admission.source_acceptance).toEqual(expectedSourceAcceptance)
-    expect(layerPinRecord.layers.L2.admission.source_acceptance).toEqual(expectedSourceAcceptance)
+    for (const acceptance of [
+      layerPinRecord.layers.L1.admission.source_acceptance,
+      layerPinRecord.layers.L2.admission.source_acceptance,
+    ]) {
+      expect(acceptance).toMatchObject(expectedSourceAcceptance)
+      expect(acceptance.reviewed_surface.map(item => item.path)).toEqual(expectedReviewedPaths)
+      expect(acceptance.reviewed_surface).toHaveLength(23)
+      expect(acceptance.reviewed_surface.every(item => /^[a-f0-9]{40}$/.test(item.blob_oid))).toBe(true)
+    }
     expect(layerPinRecord.layers.L1.admission.review_artifacts).toEqual(
       layerPinRecord.layers.L2.admission.review_artifacts,
     )
