@@ -145,20 +145,33 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     expect(priorL3.admission?.delta_classifications).toEqual({
       ka_sangam: 'derived_import_change',
     })
-    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_yojaka'])
-    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+    const priorYojaka = layerPinRecord.history.L3[2].pin
+    expect(priorYojaka.admission?.changed_assets).toEqual(['ka_yojaka'])
+    expect(priorYojaka.admission?.delta_classifications).toEqual({
       ka_yojaka: 'approved_intentional_change',
     })
-    expect(layerPinRecord.layers.L3.admission.authority_decision).toBe('DP-SD-019')
-    expect(layerPinRecord.layers.L3.admission.source_commit)
+    expect(priorYojaka.admission?.source_commit)
       .toBe('64facb9763d13eece7098b5b24cc03dfb8e3ba81')
-    expect(layerPinRecord.layers.L3.admission.review_artifacts).toEqual([{
+    expect(priorYojaka.admission?.review_artifacts).toEqual([{
       commit: '64facb9763d13eece7098b5b24cc03dfb8e3ba81',
       decision_binding: 'status: SOURCE_PACKET_ACCEPTED',
       path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md',
       sha256: 'a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5',
     }])
-    expect(layerPinRecord.history.L3).toHaveLength(2)
+    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_kshetra'])
+    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+      ka_kshetra: 'approved_intentional_change',
+    })
+    expect(layerPinRecord.layers.L3.admission.authority_decision).toBe('DP-SD-019')
+    expect(layerPinRecord.layers.L3.admission.source_commit)
+      .toBe('87cc8c9baf894c615e167672c6c7af57a15cf71c')
+    expect(layerPinRecord.layers.L3.admission.review_artifacts).toEqual([{
+      commit: '58b7d455d803c54238bdae050c1770f9f514d21e',
+      decision_binding: 'status: SOURCE_PACKET_ACCEPTED',
+      path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md',
+      sha256: '687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d',
+    }])
+    expect(layerPinRecord.history.L3).toHaveLength(3)
     expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
       ph_muhurta: 'derived_import_change',
       ph_rectification: 'derived_import_change',
