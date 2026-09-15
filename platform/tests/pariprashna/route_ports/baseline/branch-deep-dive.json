@@ -132,7 +132,7 @@
       "t": "<ms>",
       "subject": "inquiry_contract",
       "grade": "INCOMPLETE",
-      "detail": "5/5 required obligations dispositioned; 0 required frontier items unresolved; receipt sha256:e91871161118730ca5375690f34ebd2688c1029bfac6254b23ec661f373e4a9b"
+      "detail": "5/5 required obligations dispositioned; 0 required frontier items unresolved; receipt sha256:5da766e678fe95ca3ffbe73b5d1b1fc50c112d6ba55c26a6f6d3b6dbd684e04b"
     },
     {
       "type": "grade",
@@ -140,7 +140,7 @@
       "t": "<ms>",
       "subject": "response_accountability",
       "grade": "INCOMPLETE_RESUMABLE",
-      "detail": "{\"accountability_version\":\"inquiry-response-accountability-v1\",\"fact_register\":{\"register_version\":\"inquiry-fact-register-v1\",\"contract_id\":\"sha256:8f26c1b71c2c0b9e28a4acdd2144def0568ee3a6e64144a27e580a61c778e893\",\"semantic_contract_hash\":\"sha256:c7fa199805dd1f57240b1242c19d65e36367f0b774841eb5d1263abc72b55b94\",\"facts\":[{\"fact_id\":\"fact:0003a76f574c255f4a123fe58bc2f856d01b8790a367a8f926666c93d9c01dcf\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-020\"],\"obligation_id\":\"obl-020\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.pact_query\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.pact_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:045660bdf5e7e37cbd42ceec38e4f828bde5e9f04da189751bdbab32e1b34b4b\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-026\"],\"obligation_id\":\"obl-026\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.assess_marriage\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.assess_marriage\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:08f45a6c19d673457ebfeee53e1ca98902fa864e1ebafc73d0115ce39b1c26b1\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-024\"],\"obligation_id\":\"obl-024\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_spillover_cascades\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_spillover_cascades\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:14d3ff146850a347074337e33a01ab0fe71fa7d3abfa374132308fbddba13583\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-004\"],\"obligation_id\":\"obl-004\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_contradictions\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_contradictions; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_contradictions\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:1f11cd5039a8fce6bbc7b8b93fc15f2c40f72ce8cf40260dfa03575b381bb85b\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-018\"],\"obligation_id\":\"obl-018\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_domain_result\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_domain_result\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:32a5122dd031a41e69758e8350ca478c41b96e13dd33ba2b8311d5528f3163e6\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-005\"],\"obligation_id\":\"obl-005\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_domain_reading\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_domain_reading; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_domain_reading\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-014\"],\"obligation_id\":\"obl-014\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.bodha.mechanism.network\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.bodha.mechanism.network; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.bodha.mechanism.network\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-016\"],\"obligation_id\":\"obl-016\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.kala.temporal_activation\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.kala.temporal_activation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.kala.temporal_activation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:4ae7973b7c849f249fa4c45046720a1ac3b779b3e00b8c3b101960b037937d12\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-003\"],\"obligation_id\":\"obl-003\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.classical_attribution_lookup\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.classical_attribution_lookup; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.classical_attribution_lookup\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:4b0a8c232079aebe8a675864b0a316aec18e588d50b44d042e96d51dd54da30d\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-019\"],\"obligation_id\":\"obl-019\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.compose_large_n\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.compose_large_n\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:7230b5c45165f320feeed677933896baf55f80a708ea9bad3b99ceafb6a7790c\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-002\"],\"obligation_id\":\"obl-002\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.chart_facts_query\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.chart_facts_query; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.chart_facts_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-015\"],\"obligation_id\":\"obl-015\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.catalog.get_divisionals\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.catalog.get_divisionals; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.catalog.get_divisionals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:8578dd05a86dd8b81bbf16d2a97a542a552c0ea88edc939ddd97ca896445698c\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-007\"],\"obligation_id\":\"obl-007\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.get_dashas\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_dashas; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.get_dashas\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:89e2ac43f732fbfd31ada49aa5a58679ba499c34d711bab7d785b425879c2480\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-021\"],\"obligation_id\":\"obl-021\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.finance.prosperity_assessment\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.finance.prosperity_assessment\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-017\"],\"obligation_id\":\"obl-017\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.yoga.firing_and_cancellation\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.yoga.firing_and_cancellation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.yoga.firing_and_cancellation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-001\"],\"obligation_id\":\"obl-001\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Required capability: scu.catalog.assess_career\",\"rationale\":\"Deterministic floor for domain_assessment.\",\"scu_ids\":[\"scu.catalog.assess_career\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:b36da764fecdb23123252f940c0925b829dca26c4e108e5f68852cebcf502145\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-010\"],\"obligation_id\":\"obl-010\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.traverse_chart_graph\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.traverse_chart_graph; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.traverse_chart_graph\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:c57da3f67e1e0b1947cc4f1696b89bffe419cbb024782bfb88e9cffe588b9e45\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-006\"],\"obligation_id\":\"obl-006\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_signals\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_signals; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_signals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:c660fc8a5db7b23dd18d808aec425c1c0339a217b3461d749ba5ba5173a24ddf\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-013\"],\"obligation_id\":\"obl-013\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_planet_transit\",\"rationale\":\"Source-backed hop scu.catalog.pact_query enables scu.catalog.query_planet_transit; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.\",\"scu_ids\":[\"scu.catalog.query_planet_transit\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:c72591a5c4f23aa0fb02eb751f7f4c4cd4bec0cb0224e70cb865c38b86db9334\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-023\"],\"obligation_id\":\"obl-023\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_pratijna\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_pratijna\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:cef003c93514dd040266b4ae3f9af3b2d15aae0590dc1971db8dfeec14f9f744\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-008\"],\"obligation_id\":\"obl-008\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.get_divisionals\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_divisionals; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.get_divisionals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:d2c97df1e1d28394733dd06039e4afbe177df9fe8cebb7588908c9fef1cb77ab\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-009\"],\"obligation_id\":\"obl-009\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_classical_texts\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.query_classical_texts; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.query_classical_texts\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:d63f8280ac3964b60a8e19e0efbe94cd675cd655b8644b852f7f34c86c58b90b\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-025\"],\"obligation_id\":\"obl-025\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.assess_health\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.assess_health\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:e006d6f08c663b8e6a6396c64c5509ae90dfdbb29ff97fe4ae8ad48a27208729\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-012\"],\"obligation_id\":\"obl-012\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.judgment_query\",\"rationale\":\"Source-backed hop scu.catalog.pact_query enables scu.catalog.judgment_query; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.\",\"scu_ids\":[\"scu.catalog.judgment_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:e302e14ae511c97ebb31ea82680fb384b089bd4f6f7cb4ca6fc3809f6fd28862\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-022\"],\"obligation_id\":\"obl-022\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.get_dignity\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.get_dignity\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:f333e28175b0872fe8fe7306eca7bf47b4fc5e95bcfcca5941431169d5c2d0af\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-011\"],\"obligation_id\":\"obl-011\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.kala.temporal_activation\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.kala.temporal_activation; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.kala.temporal_activation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null}],\"required_fact_ids\":[\"fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e\",\"fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4\",\"fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e\",\"fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748\",\"fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de\"],\"validation_errors\":[],\"register_hash\":\"sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c\"},\"delivery_parts\":[{\"part_id\":\"structured-findings:sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c\",\"kind\":\"structured_findings\",\"content_hash\":\"sha256:1364d127ff6179d1756f83c5a3d75f213805db9e78fcdd3313277443ac7b8231\",\"fact_ids\":[],\"evidence_payload_hashes\":[],\"content\":null,\"exclusion_reason\":null},{\"part_id\":\"prose:sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"kind\":\"prose\",\"content_hash\":\"sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"content\":null,\"fact_ids\":[],\"evidence_payload_hashes\":[],\"exclusion_reason\":null}],\"response_coverage_receipt\":{\"receipt_version\":\"inquiry-response-coverage-v1\",\"contract_id\":\"sha256:8f26c1b71c2c0b9e28a4acdd2144def0568ee3a6e64144a27e580a61c778e893\",\"semantic_contract_hash\":\"sha256:c7fa199805dd1f57240b1242c19d65e36367f0b774841eb5d1263abc72b55b94\",\"fact_register_hash\":\"sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c\",\"status\":\"INCOMPLETE_RESUMABLE\",\"coverage\":{\"synthesis_present\":true,\"all_total\":26,\"all_delivered\":0,\"all_permitted_exclusions\":0,\"required_total\":5,\"required_delivered\":0,\"interpretation_mapped\":0},\"delivered_fact_ids\":[],\"permitted_exclusion_fact_ids\":[],\"missing_fact_ids\":[\"fact:0003a76f574c255f4a123fe58bc2f856d01b8790a367a8f926666c93d9c01dcf\",\"fact:045660bdf5e7e37cbd42ceec38e4f828bde5e9f04da189751bdbab32e1b34b4b\",\"fact:08f45a6c19d673457ebfeee53e1ca98902fa864e1ebafc73d0115ce39b1c26b1\",\"fact:14d3ff146850a347074337e33a01ab0fe71fa7d3abfa374132308fbddba13583\",\"fact:1f11cd5039a8fce6bbc7b8b93fc15f2c40f72ce8cf40260dfa03575b381bb85b\",\"fact:32a5122dd031a41e69758e8350ca478c41b96e13dd33ba2b8311d5528f3163e6\",\"fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e\",\"fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4\",\"fact:4ae7973b7c849f249fa4c45046720a1ac3b779b3e00b8c3b101960b037937d12\",\"fact:4b0a8c232079aebe8a675864b0a316aec18e588d50b44d042e96d51dd54da30d\",\"fact:7230b5c45165f320feeed677933896baf55f80a708ea9bad3b99ceafb6a7790c\",\"fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e\",\"fact:8578dd05a86dd8b81bbf16d2a97a542a552c0ea88edc939ddd97ca896445698c\",\"fact:89e2ac43f732fbfd31ada49aa5a58679ba499c34d711bab7d785b425879c2480\",\"fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748\",\"fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de\",\"fact:b36da764fecdb23123252f940c0925b829dca26c4e108e5f68852cebcf502145\",\"fact:c57da3f67e1e0b1947cc4f1696b89bffe419cbb024782bfb88e9cffe588b9e45\",\"fact:c660fc8a5db7b23dd18d808aec425c1c0339a217b3461d749ba5ba5173a24ddf\",\"fact:c72591a5c4f23aa0fb02eb751f7f4c4cd4bec0cb0224e70cb865c38b86db9334\",\"fact:cef003c93514dd040266b4ae3f9af3b2d15aae0590dc1971db8dfeec14f9f744\",\"fact:d2c97df1e1d28394733dd06039e4afbe177df9fe8cebb7588908c9fef1cb77ab\",\"fact:d63f8280ac3964b60a8e19e0efbe94cd675cd655b8644b852f7f34c86c58b90b\",\"fact:e006d6f08c663b8e6a6396c64c5509ae90dfdbb29ff97fe4ae8ad48a27208729\",\"fact:e302e14ae511c97ebb31ea82680fb384b089bd4f6f7cb4ca6fc3809f6fd28862\",\"fact:f333e28175b0872fe8fe7306eca7bf47b4fc5e95bcfcca5941431169d5c2d0af\"],\"missing_required_fact_ids\":[\"fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e\",\"fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4\",\"fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e\",\"fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748\",\"fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de\"],\"interpretation_unmapped_fact_ids\":[],\"delivery_part_ids\":[\"prose:sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"structured-findings:sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c\"],\"invalid_delivery_claims\":[],\"continuation\":{\"iteration\":0,\"max_iterations\":28,\"exhausted\":false,\"next_action_ids\":[],\"blocked_item_ids\":[\"item-001\",\"item-002\",\"item-003\",\"item-004\",\"item-005\",\"item-006\",\"item-007\",\"item-008\",\"item-009\",\"item-010\",\"item-011\",\"item-012\",\"item-013\",\"item-014\",\"item-015\",\"item-016\",\"item-017\",\"item-018\",\"item-019\",\"item-020\",\"item-021\",\"item-022\",\"item-023\",\"item-024\"],\"unresolved_obligation_ids\":[\"obl-001\",\"obl-002\",\"obl-003\",\"obl-004\",\"obl-005\",\"obl-006\",\"obl-007\",\"obl-008\",\"obl-009\",\"obl-010\",\"obl-011\",\"obl-012\",\"obl-013\",\"obl-014\",\"obl-015\",\"obl-016\",\"obl-017\",\"obl-018\",\"obl-019\",\"obl-020\",\"obl-021\",\"obl-022\",\"obl-023\",\"obl-024\",\"obl-025\",\"obl-026\"],\"frontier_ids\":[]},\"resume_required\":true,\"receipt_hash\":\"sha256:ce614dee65891c922a9da20945218d69959089854129661b62ef8f8e381aad3d\"}}"
+      "detail": "{\"accountability_version\":\"inquiry-response-accountability-v1\",\"fact_register\":{\"register_version\":\"inquiry-fact-register-v1\",\"contract_id\":\"sha256:1672c537293ebdd5e8d97bab352110eaa49448c89dcc2ff1afd7f57fd7a9e867\",\"semantic_contract_hash\":\"sha256:4a8690ba0bd5492690a48af08f3c11921a7fa57c62f9492d640e160323d10f3b\",\"facts\":[{\"fact_id\":\"fact:0320090869688728b61a37badf7295f62f76443ed9c522ea9b530373e993c46d\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-024\"],\"obligation_id\":\"obl-024\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_spillover_cascades\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_spillover_cascades\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:06466d847e1dceac288f3a18bbc552c76b38e8cfa62142f8bb64bb310adec2c7\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-003\"],\"obligation_id\":\"obl-003\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.classical_attribution_lookup\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.classical_attribution_lookup; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.classical_attribution_lookup\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:0a2e0bb82cf1372244763a3155617dd9fab5e6c8cad6f6048dbc1feee8a3cb91\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-023\"],\"obligation_id\":\"obl-023\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_pratijna\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_pratijna\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:0e112b139d3d8807d4804072abb640dcdb4e74ba65a651e8abf2764268207dae\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-007\"],\"obligation_id\":\"obl-007\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.get_dashas\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_dashas; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.get_dashas\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:1980a8867e2237730d0cb83d0052db489b39c35f58a9074378c4f1b83f060bbd\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-020\"],\"obligation_id\":\"obl-020\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.pact_query\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.pact_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:23733971e23e3dd42944215a8ab1dd7bb3889da6de22d0e1ced4bccb7ed95c4a\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-005\"],\"obligation_id\":\"obl-005\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_domain_reading\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_domain_reading; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_domain_reading\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-014\"],\"obligation_id\":\"obl-014\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.bodha.mechanism.network\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.bodha.mechanism.network; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.bodha.mechanism.network\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:3f3e2f650cc6448236c5c21d90bc02a46313785010f0faf78858fb94b568ae7c\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-019\"],\"obligation_id\":\"obl-019\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.compose_large_n\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.compose_large_n\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:4e0c223cf348fa92e92d5f80e5b0aed68edb49e0339e96945ba152ba6944d332\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-008\"],\"obligation_id\":\"obl-008\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.get_divisionals\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_divisionals; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.get_divisionals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-015\"],\"obligation_id\":\"obl-015\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.catalog.get_divisionals\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.catalog.get_divisionals; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.catalog.get_divisionals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:59e77d9f7e2ea979a2e8c25ad8e181f2df4da58f59025c7c2ba8fb8f15f25353\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-026\"],\"obligation_id\":\"obl-026\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.assess_marriage\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.assess_marriage\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:5a006e3b38f5cd45caace97f1139209823c5c71a8724b2e1b4325e41b11c3f23\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-022\"],\"obligation_id\":\"obl-022\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.get_dignity\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.get_dignity\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-001\"],\"obligation_id\":\"obl-001\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Required capability: scu.catalog.assess_career\",\"rationale\":\"Deterministic floor for domain_assessment.\",\"scu_ids\":[\"scu.catalog.assess_career\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:5fbb559aa46732e80e78901263b14414a1e37344fbcbca8b8cbe48d01975174e\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-004\"],\"obligation_id\":\"obl-004\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_contradictions\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_contradictions; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_contradictions\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:652c7ec7d2652ccf4a953a7ae6827fe9ee3891d2620eebf8ab20abed027d93d3\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-006\"],\"obligation_id\":\"obl-006\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_signals\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.query_signals; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.query_signals\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-016\"],\"obligation_id\":\"obl-016\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.kala.temporal_activation\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.kala.temporal_activation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.kala.temporal_activation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:7a2550de0204dfc0fe270809c20e48e80b473ccb3c98b85f0fdbc2e0c524b0ac\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-010\"],\"obligation_id\":\"obl-010\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.traverse_chart_graph\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.traverse_chart_graph; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.traverse_chart_graph\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:810db12d7a854e052b6e112b5293e211fd34186896bc0c46c89252e77a816156\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-013\"],\"obligation_id\":\"obl-013\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_planet_transit\",\"rationale\":\"Source-backed hop scu.catalog.pact_query enables scu.catalog.query_planet_transit; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.\",\"scu_ids\":[\"scu.catalog.query_planet_transit\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:ac21ae6426f4f9dede1bc7c7637e538c72aae130054335da07c406486d6bf9e0\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-011\"],\"obligation_id\":\"obl-011\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.kala.temporal_activation\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.kala.temporal_activation; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.kala.temporal_activation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:af73768988622b208aef113cbef4c888f71c046507592ae9217787ec0ff8da32\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-002\"],\"obligation_id\":\"obl-002\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.chart_facts_query\",\"rationale\":\"Source-backed hop scu.catalog.assess_career enables scu.catalog.chart_facts_query; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.\",\"scu_ids\":[\"scu.catalog.chart_facts_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:bbb63f20e04fb8aeb690b05743c8df45b0ca9369491547ef8149a0d2e06324b6\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-009\"],\"obligation_id\":\"obl-009\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.query_classical_texts\",\"rationale\":\"Source-backed hop scu.catalog.judgment_query enables scu.catalog.query_classical_texts; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.\",\"scu_ids\":[\"scu.catalog.query_classical_texts\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:bc61925538a2642a13a2314ae252b8005a2eeeab9cca1051972243bd89bb6a4d\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-021\"],\"obligation_id\":\"obl-021\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.finance.prosperity_assessment\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.finance.prosperity_assessment\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-017\"],\"obligation_id\":\"obl-017\",\"frontier_id\":null,\"materiality\":\"required\",\"meaning\":{\"label\":\"Graph requires: scu.yoga.firing_and_cancellation\",\"rationale\":\"Source-backed hop scu.finance.prosperity_assessment requires scu.yoga.firing_and_cancellation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.\",\"scu_ids\":[\"scu.yoga.firing_and_cancellation\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:e1f0f816e00034a5536117268a67ff14df4a5b97123e7f916322ba110c74752a\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-025\"],\"obligation_id\":\"obl-025\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.assess_health\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.assess_health\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:eba4e0d7859eec8338f3d0aec55cbdcf09c904addcbc85bcf5d2b5551704f4b0\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-018\"],\"obligation_id\":\"obl-018\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Question-bearing capability: scu.catalog.query_domain_result\",\"rationale\":\"Deterministic semantic search match.\",\"scu_ids\":[\"scu.catalog.query_domain_result\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null},{\"fact_id\":\"fact:ef3c1e04c2186855d1869f1cf71b647bad3bfb7eab8c5b8dbf5f86dae96c825b\",\"kind\":\"obligation\",\"obligation_ids\":[\"obl-012\"],\"obligation_id\":\"obl-012\",\"frontier_id\":null,\"materiality\":\"supporting\",\"meaning\":{\"label\":\"Graph enables: scu.catalog.judgment_query\",\"rationale\":\"Source-backed hop scu.catalog.pact_query enables scu.catalog.judgment_query; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.\",\"scu_ids\":[\"scu.catalog.judgment_query\"],\"disposition\":\"dark\"},\"evidence_refs\":[],\"normalized_content\":null}],\"required_fact_ids\":[\"fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0\",\"fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad\",\"fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441\",\"fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31\",\"fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c\"],\"validation_errors\":[],\"register_hash\":\"sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598\"},\"delivery_parts\":[{\"part_id\":\"structured-findings:sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598\",\"kind\":\"structured_findings\",\"content_hash\":\"sha256:1364d127ff6179d1756f83c5a3d75f213805db9e78fcdd3313277443ac7b8231\",\"fact_ids\":[],\"evidence_payload_hashes\":[],\"content\":null,\"exclusion_reason\":null},{\"part_id\":\"prose:sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"kind\":\"prose\",\"content_hash\":\"sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"content\":null,\"fact_ids\":[],\"evidence_payload_hashes\":[],\"exclusion_reason\":null}],\"response_coverage_receipt\":{\"receipt_version\":\"inquiry-response-coverage-v1\",\"contract_id\":\"sha256:1672c537293ebdd5e8d97bab352110eaa49448c89dcc2ff1afd7f57fd7a9e867\",\"semantic_contract_hash\":\"sha256:4a8690ba0bd5492690a48af08f3c11921a7fa57c62f9492d640e160323d10f3b\",\"fact_register_hash\":\"sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598\",\"status\":\"INCOMPLETE_RESUMABLE\",\"coverage\":{\"synthesis_present\":true,\"all_total\":26,\"all_delivered\":0,\"all_permitted_exclusions\":0,\"required_total\":5,\"required_delivered\":0,\"interpretation_mapped\":0},\"delivered_fact_ids\":[],\"permitted_exclusion_fact_ids\":[],\"missing_fact_ids\":[\"fact:0320090869688728b61a37badf7295f62f76443ed9c522ea9b530373e993c46d\",\"fact:06466d847e1dceac288f3a18bbc552c76b38e8cfa62142f8bb64bb310adec2c7\",\"fact:0a2e0bb82cf1372244763a3155617dd9fab5e6c8cad6f6048dbc1feee8a3cb91\",\"fact:0e112b139d3d8807d4804072abb640dcdb4e74ba65a651e8abf2764268207dae\",\"fact:1980a8867e2237730d0cb83d0052db489b39c35f58a9074378c4f1b83f060bbd\",\"fact:23733971e23e3dd42944215a8ab1dd7bb3889da6de22d0e1ced4bccb7ed95c4a\",\"fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0\",\"fact:3f3e2f650cc6448236c5c21d90bc02a46313785010f0faf78858fb94b568ae7c\",\"fact:4e0c223cf348fa92e92d5f80e5b0aed68edb49e0339e96945ba152ba6944d332\",\"fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad\",\"fact:59e77d9f7e2ea979a2e8c25ad8e181f2df4da58f59025c7c2ba8fb8f15f25353\",\"fact:5a006e3b38f5cd45caace97f1139209823c5c71a8724b2e1b4325e41b11c3f23\",\"fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441\",\"fact:5fbb559aa46732e80e78901263b14414a1e37344fbcbca8b8cbe48d01975174e\",\"fact:652c7ec7d2652ccf4a953a7ae6827fe9ee3891d2620eebf8ab20abed027d93d3\",\"fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31\",\"fact:7a2550de0204dfc0fe270809c20e48e80b473ccb3c98b85f0fdbc2e0c524b0ac\",\"fact:810db12d7a854e052b6e112b5293e211fd34186896bc0c46c89252e77a816156\",\"fact:ac21ae6426f4f9dede1bc7c7637e538c72aae130054335da07c406486d6bf9e0\",\"fact:af73768988622b208aef113cbef4c888f71c046507592ae9217787ec0ff8da32\",\"fact:bbb63f20e04fb8aeb690b05743c8df45b0ca9369491547ef8149a0d2e06324b6\",\"fact:bc61925538a2642a13a2314ae252b8005a2eeeab9cca1051972243bd89bb6a4d\",\"fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c\",\"fact:e1f0f816e00034a5536117268a67ff14df4a5b97123e7f916322ba110c74752a\",\"fact:eba4e0d7859eec8338f3d0aec55cbdcf09c904addcbc85bcf5d2b5551704f4b0\",\"fact:ef3c1e04c2186855d1869f1cf71b647bad3bfb7eab8c5b8dbf5f86dae96c825b\"],\"missing_required_fact_ids\":[\"fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0\",\"fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad\",\"fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441\",\"fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31\",\"fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c\"],\"interpretation_unmapped_fact_ids\":[],\"delivery_part_ids\":[\"prose:sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796\",\"structured-findings:sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598\"],\"invalid_delivery_claims\":[],\"continuation\":{\"iteration\":0,\"max_iterations\":28,\"exhausted\":false,\"next_action_ids\":[],\"blocked_item_ids\":[\"item-001\",\"item-002\",\"item-003\",\"item-004\",\"item-005\",\"item-006\",\"item-007\",\"item-008\",\"item-009\",\"item-010\",\"item-011\",\"item-012\",\"item-013\",\"item-014\",\"item-015\",\"item-016\",\"item-017\",\"item-018\",\"item-019\",\"item-020\",\"item-021\",\"item-022\",\"item-023\",\"item-024\"],\"unresolved_obligation_ids\":[\"obl-001\",\"obl-002\",\"obl-003\",\"obl-004\",\"obl-005\",\"obl-006\",\"obl-007\",\"obl-008\",\"obl-009\",\"obl-010\",\"obl-011\",\"obl-012\",\"obl-013\",\"obl-014\",\"obl-015\",\"obl-016\",\"obl-017\",\"obl-018\",\"obl-019\",\"obl-020\",\"obl-021\",\"obl-022\",\"obl-023\",\"obl-024\",\"obl-025\",\"obl-026\"],\"frontier_ids\":[]},\"resume_required\":true,\"receipt_hash\":\"sha256:94a7737c4dca6e4daf73761c0ed52ec524d06ab448901bb44ca3c11f1c8e70d8\"}}"
     },
     {
       "type": "grade",
@@ -148,7 +148,7 @@
       "t": "<ms>",
       "subject": "inquiry_door_parity",
       "grade": "INCOMPLETE",
-      "detail": "{\"parity_version\":\"inquiry-door-parity-v1\",\"semantic_contract_hash\":\"sha256:c7fa199805dd1f57240b1242c19d65e36367f0b774841eb5d1263abc72b55b94\",\"capability_content_hash\":\"sha256:6560b2e531fe0f66a1b1e4edcf5cc6958b53c256a648845d8eef7f30b74f5a4e\",\"chart_availability_version\":\"sha256:70c188bc5a6c9bf854bfa5c3c4e5a736731ca703bc8916ce98c60829ada7b7a9\",\"chart_build_id\":null,\"normalized_scope_hash\":\"sha256:79c7c39a4c445e348ea5ae239ff169e05b04bd989e3ac04911653070ca21afcf\",\"status\":\"INCOMPLETE\",\"status_reasons\":[\"5 required obligations failed or are dark\"],\"obligation_coverage\":[{\"obligation_id\":\"obl-001\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-002\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-003\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"BINDING_ARGS_UNRESOLVED:sha256:ee122032d19f587e767a7dc8d15e5533dc2a10c0bdc737d3ba73eec397837e7a\"]},{\"obligation_id\":\"obl-004\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-005\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-006\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-007\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-008\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:b9557156e7d04ccc893943782545a7c422189aad3bafef4e71c42e5ad888e632\"]},{\"obligation_id\":\"obl-009\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-010\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-011\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:33f9c25fccbeee9c80c103ada9002aa465dcfdd00a0fb706c573359162f0327d\",\"DARK_UNCLASSIFIED:sha256:517e3e2c9efbf8ea342a1a897787af0034f36b69cc0e686d11b72fbccabd525c\",\"DARK_UNCLASSIFIED:sha256:dfc9433c630d27b2c0d04d9fd8c3bc43dd7edab2186b77417c1df620516639b7\"]},{\"obligation_id\":\"obl-012\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-013\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-014\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:cc7b84dc55d07c8094338d35ba90dc65d80469bf5900dc1f095339d8d2258b37\"]},{\"obligation_id\":\"obl-015\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:b9557156e7d04ccc893943782545a7c422189aad3bafef4e71c42e5ad888e632\"]},{\"obligation_id\":\"obl-016\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:33f9c25fccbeee9c80c103ada9002aa465dcfdd00a0fb706c573359162f0327d\",\"DARK_UNCLASSIFIED:sha256:517e3e2c9efbf8ea342a1a897787af0034f36b69cc0e686d11b72fbccabd525c\",\"DARK_UNCLASSIFIED:sha256:dfc9433c630d27b2c0d04d9fd8c3bc43dd7edab2186b77417c1df620516639b7\"]},{\"obligation_id\":\"obl-017\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:5304d58b8f191b3c7e5d0274a595f2dcbfc12686ad8f86af1fa6a046afcd730f\"]},{\"obligation_id\":\"obl-018\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-019\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-020\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-021\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:8800f4391025e5406460bffadc289aa064645a8f10b88489cd22a292577d3350\",\"DARK_UNCLASSIFIED:sha256:eb18c079886f18db5c20ac701e11e96d840237ece07a86da51ff8e2961eb775c\"]},{\"obligation_id\":\"obl-022\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-023\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-024\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-025\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-026\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]}],\"residual_frontier\":[],\"parity_hash\":\"sha256:85a09738fc701ad31fae5aa44c0209af7e67bf580ecf737390a7c7b41cc530b7\"}"
+      "detail": "{\"parity_version\":\"inquiry-door-parity-v1\",\"semantic_contract_hash\":\"sha256:4a8690ba0bd5492690a48af08f3c11921a7fa57c62f9492d640e160323d10f3b\",\"capability_content_hash\":\"sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2\",\"chart_availability_version\":\"sha256:81a33d18b85905d4e289d66d72c8ad6d508e4c227773c4883043da443722fd58\",\"chart_build_id\":null,\"normalized_scope_hash\":\"sha256:79c7c39a4c445e348ea5ae239ff169e05b04bd989e3ac04911653070ca21afcf\",\"status\":\"INCOMPLETE\",\"status_reasons\":[\"5 required obligations failed or are dark\"],\"obligation_coverage\":[{\"obligation_id\":\"obl-001\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-002\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-003\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"BINDING_ARGS_UNRESOLVED:sha256:ee122032d19f587e767a7dc8d15e5533dc2a10c0bdc737d3ba73eec397837e7a\"]},{\"obligation_id\":\"obl-004\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-005\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-006\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-007\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-008\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:b9557156e7d04ccc893943782545a7c422189aad3bafef4e71c42e5ad888e632\"]},{\"obligation_id\":\"obl-009\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-010\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-011\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:33f9c25fccbeee9c80c103ada9002aa465dcfdd00a0fb706c573359162f0327d\",\"DARK_UNCLASSIFIED:sha256:517e3e2c9efbf8ea342a1a897787af0034f36b69cc0e686d11b72fbccabd525c\",\"DARK_UNCLASSIFIED:sha256:dfc9433c630d27b2c0d04d9fd8c3bc43dd7edab2186b77417c1df620516639b7\"]},{\"obligation_id\":\"obl-012\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-013\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-014\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:cc7b84dc55d07c8094338d35ba90dc65d80469bf5900dc1f095339d8d2258b37\"]},{\"obligation_id\":\"obl-015\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:b9557156e7d04ccc893943782545a7c422189aad3bafef4e71c42e5ad888e632\"]},{\"obligation_id\":\"obl-016\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:33f9c25fccbeee9c80c103ada9002aa465dcfdd00a0fb706c573359162f0327d\",\"DARK_UNCLASSIFIED:sha256:517e3e2c9efbf8ea342a1a897787af0034f36b69cc0e686d11b72fbccabd525c\",\"DARK_UNCLASSIFIED:sha256:dfc9433c630d27b2c0d04d9fd8c3bc43dd7edab2186b77417c1df620516639b7\"]},{\"obligation_id\":\"obl-017\",\"materiality\":\"required\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:5304d58b8f191b3c7e5d0274a595f2dcbfc12686ad8f86af1fa6a046afcd730f\"]},{\"obligation_id\":\"obl-018\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-019\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-020\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-021\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:8800f4391025e5406460bffadc289aa064645a8f10b88489cd22a292577d3350\",\"DARK_UNCLASSIFIED:sha256:eb18c079886f18db5c20ac701e11e96d840237ece07a86da51ff8e2961eb775c\"]},{\"obligation_id\":\"obl-022\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-023\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-024\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-025\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]},{\"obligation_id\":\"obl-026\",\"materiality\":\"supporting\",\"disposition\":\"dark\",\"evidence_present\":false,\"evidence_hashes\":[],\"gap_classes\":[\"DARK_UNCLASSIFIED:sha256:ecacbb0e5f22354ac5aae94161ff210484789605a4efac53a21d91aeb93562b2\"]}],\"residual_frontier\":[],\"parity_hash\":\"sha256:22bd6a6a2fe67a44d4a772edda984233655a36b3864beb315fbf73cca521cafa\"}"
     },
     {
       "type": "phase",
@@ -473,51 +473,11 @@
             "accountability_version": "inquiry-response-accountability-v1",
             "fact_register": {
               "register_version": "inquiry-fact-register-v1",
-              "contract_id": "sha256:8f26c1b71c2c0b9e28a4acdd2144def0568ee3a6e64144a27e580a61c778e893",
-              "semantic_contract_hash": "sha256:c7fa199805dd1f57240b1242c19d65e36367f0b774841eb5d1263abc72b55b94",
+              "contract_id": "sha256:1672c537293ebdd5e8d97bab352110eaa49448c89dcc2ff1afd7f57fd7a9e867",
+              "semantic_contract_hash": "sha256:4a8690ba0bd5492690a48af08f3c11921a7fa57c62f9492d640e160323d10f3b",
               "facts": [
                 {
-                  "fact_id": "fact:0003a76f574c255f4a123fe58bc2f856d01b8790a367a8f926666c93d9c01dcf",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-020"
-                  ],
-                  "obligation_id": "obl-020",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Question-bearing capability: scu.catalog.pact_query",
-                    "rationale": "Deterministic semantic search match.",
-                    "scu_ids": [
-                      "scu.catalog.pact_query"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:045660bdf5e7e37cbd42ceec38e4f828bde5e9f04da189751bdbab32e1b34b4b",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-026"
-                  ],
-                  "obligation_id": "obl-026",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Question-bearing capability: scu.catalog.assess_marriage",
-                    "rationale": "Deterministic semantic search match.",
-                    "scu_ids": [
-                      "scu.catalog.assess_marriage"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:08f45a6c19d673457ebfeee53e1ca98902fa864e1ebafc73d0115ce39b1c26b1",
+                  "fact_id": "fact:0320090869688728b61a37badf7295f62f76443ed9c522ea9b530373e993c46d",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-024"
@@ -537,107 +497,7 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:14d3ff146850a347074337e33a01ab0fe71fa7d3abfa374132308fbddba13583",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-004"
-                  ],
-                  "obligation_id": "obl-004",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.query_contradictions",
-                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_contradictions; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.query_contradictions"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:1f11cd5039a8fce6bbc7b8b93fc15f2c40f72ce8cf40260dfa03575b381bb85b",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-018"
-                  ],
-                  "obligation_id": "obl-018",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Question-bearing capability: scu.catalog.query_domain_result",
-                    "rationale": "Deterministic semantic search match.",
-                    "scu_ids": [
-                      "scu.catalog.query_domain_result"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:32a5122dd031a41e69758e8350ca478c41b96e13dd33ba2b8311d5528f3163e6",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-005"
-                  ],
-                  "obligation_id": "obl-005",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.query_domain_reading",
-                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_domain_reading; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.query_domain_reading"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-014"
-                  ],
-                  "obligation_id": "obl-014",
-                  "frontier_id": null,
-                  "materiality": "required",
-                  "meaning": {
-                    "label": "Graph requires: scu.bodha.mechanism.network",
-                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.bodha.mechanism.network; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
-                    "scu_ids": [
-                      "scu.bodha.mechanism.network"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-016"
-                  ],
-                  "obligation_id": "obl-016",
-                  "frontier_id": null,
-                  "materiality": "required",
-                  "meaning": {
-                    "label": "Graph requires: scu.kala.temporal_activation",
-                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.kala.temporal_activation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
-                    "scu_ids": [
-                      "scu.kala.temporal_activation"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:4ae7973b7c849f249fa4c45046720a1ac3b779b3e00b8c3b101960b037937d12",
+                  "fact_id": "fact:06466d847e1dceac288f3a18bbc552c76b38e8cfa62142f8bb64bb310adec2c7",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-003"
@@ -657,207 +517,7 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:4b0a8c232079aebe8a675864b0a316aec18e588d50b44d042e96d51dd54da30d",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-019"
-                  ],
-                  "obligation_id": "obl-019",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Question-bearing capability: scu.catalog.compose_large_n",
-                    "rationale": "Deterministic semantic search match.",
-                    "scu_ids": [
-                      "scu.catalog.compose_large_n"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:7230b5c45165f320feeed677933896baf55f80a708ea9bad3b99ceafb6a7790c",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-002"
-                  ],
-                  "obligation_id": "obl-002",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.chart_facts_query",
-                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.chart_facts_query; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.chart_facts_query"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-015"
-                  ],
-                  "obligation_id": "obl-015",
-                  "frontier_id": null,
-                  "materiality": "required",
-                  "meaning": {
-                    "label": "Graph requires: scu.catalog.get_divisionals",
-                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.catalog.get_divisionals; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
-                    "scu_ids": [
-                      "scu.catalog.get_divisionals"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:8578dd05a86dd8b81bbf16d2a97a542a552c0ea88edc939ddd97ca896445698c",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-007"
-                  ],
-                  "obligation_id": "obl-007",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.get_dashas",
-                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_dashas; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.get_dashas"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:89e2ac43f732fbfd31ada49aa5a58679ba499c34d711bab7d785b425879c2480",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-021"
-                  ],
-                  "obligation_id": "obl-021",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Question-bearing capability: scu.finance.prosperity_assessment",
-                    "rationale": "Deterministic semantic search match.",
-                    "scu_ids": [
-                      "scu.finance.prosperity_assessment"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-017"
-                  ],
-                  "obligation_id": "obl-017",
-                  "frontier_id": null,
-                  "materiality": "required",
-                  "meaning": {
-                    "label": "Graph requires: scu.yoga.firing_and_cancellation",
-                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.yoga.firing_and_cancellation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
-                    "scu_ids": [
-                      "scu.yoga.firing_and_cancellation"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-001"
-                  ],
-                  "obligation_id": "obl-001",
-                  "frontier_id": null,
-                  "materiality": "required",
-                  "meaning": {
-                    "label": "Required capability: scu.catalog.assess_career",
-                    "rationale": "Deterministic floor for domain_assessment.",
-                    "scu_ids": [
-                      "scu.catalog.assess_career"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:b36da764fecdb23123252f940c0925b829dca26c4e108e5f68852cebcf502145",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-010"
-                  ],
-                  "obligation_id": "obl-010",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.traverse_chart_graph",
-                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.traverse_chart_graph; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.traverse_chart_graph"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:c57da3f67e1e0b1947cc4f1696b89bffe419cbb024782bfb88e9cffe588b9e45",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-006"
-                  ],
-                  "obligation_id": "obl-006",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.query_signals",
-                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_signals; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.query_signals"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:c660fc8a5db7b23dd18d808aec425c1c0339a217b3461d749ba5ba5173a24ddf",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-013"
-                  ],
-                  "obligation_id": "obl-013",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.query_planet_transit",
-                    "rationale": "Source-backed hop scu.catalog.pact_query enables scu.catalog.query_planet_transit; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.query_planet_transit"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:c72591a5c4f23aa0fb02eb751f7f4c4cd4bec0cb0224e70cb865c38b86db9334",
+                  "fact_id": "fact:0a2e0bb82cf1372244763a3155617dd9fab5e6c8cad6f6048dbc1feee8a3cb91",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-023"
@@ -877,7 +537,107 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:cef003c93514dd040266b4ae3f9af3b2d15aae0590dc1971db8dfeec14f9f744",
+                  "fact_id": "fact:0e112b139d3d8807d4804072abb640dcdb4e74ba65a651e8abf2764268207dae",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-007"
+                  ],
+                  "obligation_id": "obl-007",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.get_dashas",
+                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.get_dashas; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.get_dashas"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:1980a8867e2237730d0cb83d0052db489b39c35f58a9074378c4f1b83f060bbd",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-020"
+                  ],
+                  "obligation_id": "obl-020",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Question-bearing capability: scu.catalog.pact_query",
+                    "rationale": "Deterministic semantic search match.",
+                    "scu_ids": [
+                      "scu.catalog.pact_query"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:23733971e23e3dd42944215a8ab1dd7bb3889da6de22d0e1ced4bccb7ed95c4a",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-005"
+                  ],
+                  "obligation_id": "obl-005",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.query_domain_reading",
+                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_domain_reading; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.query_domain_reading"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-014"
+                  ],
+                  "obligation_id": "obl-014",
+                  "frontier_id": null,
+                  "materiality": "required",
+                  "meaning": {
+                    "label": "Graph requires: scu.bodha.mechanism.network",
+                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.bodha.mechanism.network; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
+                    "scu_ids": [
+                      "scu.bodha.mechanism.network"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:3f3e2f650cc6448236c5c21d90bc02a46313785010f0faf78858fb94b568ae7c",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-019"
+                  ],
+                  "obligation_id": "obl-019",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Question-bearing capability: scu.catalog.compose_large_n",
+                    "rationale": "Deterministic semantic search match.",
+                    "scu_ids": [
+                      "scu.catalog.compose_large_n"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:4e0c223cf348fa92e92d5f80e5b0aed68edb49e0339e96945ba152ba6944d332",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-008"
@@ -897,19 +657,19 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:d2c97df1e1d28394733dd06039e4afbe177df9fe8cebb7588908c9fef1cb77ab",
+                  "fact_id": "fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad",
                   "kind": "obligation",
                   "obligation_ids": [
-                    "obl-009"
+                    "obl-015"
                   ],
-                  "obligation_id": "obl-009",
+                  "obligation_id": "obl-015",
                   "frontier_id": null,
-                  "materiality": "supporting",
+                  "materiality": "required",
                   "meaning": {
-                    "label": "Graph enables: scu.catalog.query_classical_texts",
-                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.query_classical_texts; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
+                    "label": "Graph requires: scu.catalog.get_divisionals",
+                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.catalog.get_divisionals; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
                     "scu_ids": [
-                      "scu.catalog.query_classical_texts"
+                      "scu.catalog.get_divisionals"
                     ],
                     "disposition": "dark"
                   },
@@ -917,19 +677,19 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:d63f8280ac3964b60a8e19e0efbe94cd675cd655b8644b852f7f34c86c58b90b",
+                  "fact_id": "fact:59e77d9f7e2ea979a2e8c25ad8e181f2df4da58f59025c7c2ba8fb8f15f25353",
                   "kind": "obligation",
                   "obligation_ids": [
-                    "obl-025"
+                    "obl-026"
                   ],
-                  "obligation_id": "obl-025",
+                  "obligation_id": "obl-026",
                   "frontier_id": null,
                   "materiality": "supporting",
                   "meaning": {
-                    "label": "Question-bearing capability: scu.catalog.assess_health",
+                    "label": "Question-bearing capability: scu.catalog.assess_marriage",
                     "rationale": "Deterministic semantic search match.",
                     "scu_ids": [
-                      "scu.catalog.assess_health"
+                      "scu.catalog.assess_marriage"
                     ],
                     "disposition": "dark"
                   },
@@ -937,27 +697,7 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:e006d6f08c663b8e6a6396c64c5509ae90dfdbb29ff97fe4ae8ad48a27208729",
-                  "kind": "obligation",
-                  "obligation_ids": [
-                    "obl-012"
-                  ],
-                  "obligation_id": "obl-012",
-                  "frontier_id": null,
-                  "materiality": "supporting",
-                  "meaning": {
-                    "label": "Graph enables: scu.catalog.judgment_query",
-                    "rationale": "Source-backed hop scu.catalog.pact_query enables scu.catalog.judgment_query; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.",
-                    "scu_ids": [
-                      "scu.catalog.judgment_query"
-                    ],
-                    "disposition": "dark"
-                  },
-                  "evidence_refs": [],
-                  "normalized_content": null
-                },
-                {
-                  "fact_id": "fact:e302e14ae511c97ebb31ea82680fb384b089bd4f6f7cb4ca6fc3809f6fd28862",
+                  "fact_id": "fact:5a006e3b38f5cd45caace97f1139209823c5c71a8724b2e1b4325e41b11c3f23",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-022"
@@ -977,7 +717,127 @@
                   "normalized_content": null
                 },
                 {
-                  "fact_id": "fact:f333e28175b0872fe8fe7306eca7bf47b4fc5e95bcfcca5941431169d5c2d0af",
+                  "fact_id": "fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-001"
+                  ],
+                  "obligation_id": "obl-001",
+                  "frontier_id": null,
+                  "materiality": "required",
+                  "meaning": {
+                    "label": "Required capability: scu.catalog.assess_career",
+                    "rationale": "Deterministic floor for domain_assessment.",
+                    "scu_ids": [
+                      "scu.catalog.assess_career"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:5fbb559aa46732e80e78901263b14414a1e37344fbcbca8b8cbe48d01975174e",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-004"
+                  ],
+                  "obligation_id": "obl-004",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.query_contradictions",
+                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_contradictions; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.query_contradictions"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:652c7ec7d2652ccf4a953a7ae6827fe9ee3891d2620eebf8ab20abed027d93d3",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-006"
+                  ],
+                  "obligation_id": "obl-006",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.query_signals",
+                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.query_signals; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.query_signals"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-016"
+                  ],
+                  "obligation_id": "obl-016",
+                  "frontier_id": null,
+                  "materiality": "required",
+                  "meaning": {
+                    "label": "Graph requires: scu.kala.temporal_activation",
+                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.kala.temporal_activation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
+                    "scu_ids": [
+                      "scu.kala.temporal_activation"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:7a2550de0204dfc0fe270809c20e48e80b473ccb3c98b85f0fdbc2e0c524b0ac",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-010"
+                  ],
+                  "obligation_id": "obl-010",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.traverse_chart_graph",
+                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.traverse_chart_graph; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.traverse_chart_graph"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:810db12d7a854e052b6e112b5293e211fd34186896bc0c46c89252e77a816156",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-013"
+                  ],
+                  "obligation_id": "obl-013",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.query_planet_transit",
+                    "rationale": "Source-backed hop scu.catalog.pact_query enables scu.catalog.query_planet_transit; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.query_planet_transit"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:ac21ae6426f4f9dede1bc7c7637e538c72aae130054335da07c406486d6bf9e0",
                   "kind": "obligation",
                   "obligation_ids": [
                     "obl-011"
@@ -995,21 +855,161 @@
                   },
                   "evidence_refs": [],
                   "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:af73768988622b208aef113cbef4c888f71c046507592ae9217787ec0ff8da32",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-002"
+                  ],
+                  "obligation_id": "obl-002",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.chart_facts_query",
+                    "rationale": "Source-backed hop scu.catalog.assess_career enables scu.catalog.chart_facts_query; CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.chart_facts_query"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:bbb63f20e04fb8aeb690b05743c8df45b0ca9369491547ef8149a0d2e06324b6",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-009"
+                  ],
+                  "obligation_id": "obl-009",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.query_classical_texts",
+                    "rationale": "Source-backed hop scu.catalog.judgment_query enables scu.catalog.query_classical_texts; CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.query_classical_texts"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:bc61925538a2642a13a2314ae252b8005a2eeeab9cca1051972243bd89bb6a4d",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-021"
+                  ],
+                  "obligation_id": "obl-021",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Question-bearing capability: scu.finance.prosperity_assessment",
+                    "rationale": "Deterministic semantic search match.",
+                    "scu_ids": [
+                      "scu.finance.prosperity_assessment"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-017"
+                  ],
+                  "obligation_id": "obl-017",
+                  "frontier_id": null,
+                  "materiality": "required",
+                  "meaning": {
+                    "label": "Graph requires: scu.yoga.firing_and_cancellation",
+                    "rationale": "Source-backed hop scu.finance.prosperity_assessment requires scu.yoga.firing_and_cancellation; SemanticCapabilityDeclaration:marsys://tool/L-DOMAIN/assess_wealth.",
+                    "scu_ids": [
+                      "scu.yoga.firing_and_cancellation"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:e1f0f816e00034a5536117268a67ff14df4a5b97123e7f916322ba110c74752a",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-025"
+                  ],
+                  "obligation_id": "obl-025",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Question-bearing capability: scu.catalog.assess_health",
+                    "rationale": "Deterministic semantic search match.",
+                    "scu_ids": [
+                      "scu.catalog.assess_health"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:eba4e0d7859eec8338f3d0aec55cbdcf09c904addcbc85bcf5d2b5551704f4b0",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-018"
+                  ],
+                  "obligation_id": "obl-018",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Question-bearing capability: scu.catalog.query_domain_result",
+                    "rationale": "Deterministic semantic search match.",
+                    "scu_ids": [
+                      "scu.catalog.query_domain_result"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
+                },
+                {
+                  "fact_id": "fact:ef3c1e04c2186855d1869f1cf71b647bad3bfb7eab8c5b8dbf5f86dae96c825b",
+                  "kind": "obligation",
+                  "obligation_ids": [
+                    "obl-012"
+                  ],
+                  "obligation_id": "obl-012",
+                  "frontier_id": null,
+                  "materiality": "supporting",
+                  "meaning": {
+                    "label": "Graph enables: scu.catalog.judgment_query",
+                    "rationale": "Source-backed hop scu.catalog.pact_query enables scu.catalog.judgment_query; CapabilityDescriptor:marsys://tool/L-PACT/pact_query#drill_children.",
+                    "scu_ids": [
+                      "scu.catalog.judgment_query"
+                    ],
+                    "disposition": "dark"
+                  },
+                  "evidence_refs": [],
+                  "normalized_content": null
                 }
               ],
               "required_fact_ids": [
-                "fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e",
-                "fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4",
-                "fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e",
-                "fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748",
-                "fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de"
+                "fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0",
+                "fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad",
+                "fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441",
+                "fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31",
+                "fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c"
               ],
               "validation_errors": [],
-              "register_hash": "sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c"
+              "register_hash": "sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598"
             },
             "delivery_parts": [
               {
-                "part_id": "structured-findings:sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c",
+                "part_id": "structured-findings:sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598",
                 "kind": "structured_findings",
                 "content_hash": "sha256:1364d127ff6179d1756f83c5a3d75f213805db9e78fcdd3313277443ac7b8231",
                 "fact_ids": [],
@@ -1029,9 +1029,9 @@
             ],
             "response_coverage_receipt": {
               "receipt_version": "inquiry-response-coverage-v1",
-              "contract_id": "sha256:8f26c1b71c2c0b9e28a4acdd2144def0568ee3a6e64144a27e580a61c778e893",
-              "semantic_contract_hash": "sha256:c7fa199805dd1f57240b1242c19d65e36367f0b774841eb5d1263abc72b55b94",
-              "fact_register_hash": "sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c",
+              "contract_id": "sha256:1672c537293ebdd5e8d97bab352110eaa49448c89dcc2ff1afd7f57fd7a9e867",
+              "semantic_contract_hash": "sha256:4a8690ba0bd5492690a48af08f3c11921a7fa57c62f9492d640e160323d10f3b",
+              "fact_register_hash": "sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598",
               "status": "INCOMPLETE_RESUMABLE",
               "coverage": {
                 "synthesis_present": true,
@@ -1045,44 +1045,44 @@
               "delivered_fact_ids": [],
               "permitted_exclusion_fact_ids": [],
               "missing_fact_ids": [
-                "fact:0003a76f574c255f4a123fe58bc2f856d01b8790a367a8f926666c93d9c01dcf",
-                "fact:045660bdf5e7e37cbd42ceec38e4f828bde5e9f04da189751bdbab32e1b34b4b",
-                "fact:08f45a6c19d673457ebfeee53e1ca98902fa864e1ebafc73d0115ce39b1c26b1",
-                "fact:14d3ff146850a347074337e33a01ab0fe71fa7d3abfa374132308fbddba13583",
-                "fact:1f11cd5039a8fce6bbc7b8b93fc15f2c40f72ce8cf40260dfa03575b381bb85b",
-                "fact:32a5122dd031a41e69758e8350ca478c41b96e13dd33ba2b8311d5528f3163e6",
-                "fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e",
-                "fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4",
-                "fact:4ae7973b7c849f249fa4c45046720a1ac3b779b3e00b8c3b101960b037937d12",
-                "fact:4b0a8c232079aebe8a675864b0a316aec18e588d50b44d042e96d51dd54da30d",
-                "fact:7230b5c45165f320feeed677933896baf55f80a708ea9bad3b99ceafb6a7790c",
-                "fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e",
-                "fact:8578dd05a86dd8b81bbf16d2a97a542a552c0ea88edc939ddd97ca896445698c",
-                "fact:89e2ac43f732fbfd31ada49aa5a58679ba499c34d711bab7d785b425879c2480",
-                "fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748",
-                "fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de",
-                "fact:b36da764fecdb23123252f940c0925b829dca26c4e108e5f68852cebcf502145",
-                "fact:c57da3f67e1e0b1947cc4f1696b89bffe419cbb024782bfb88e9cffe588b9e45",
-                "fact:c660fc8a5db7b23dd18d808aec425c1c0339a217b3461d749ba5ba5173a24ddf",
-                "fact:c72591a5c4f23aa0fb02eb751f7f4c4cd4bec0cb0224e70cb865c38b86db9334",
-                "fact:cef003c93514dd040266b4ae3f9af3b2d15aae0590dc1971db8dfeec14f9f744",
-                "fact:d2c97df1e1d28394733dd06039e4afbe177df9fe8cebb7588908c9fef1cb77ab",
-                "fact:d63f8280ac3964b60a8e19e0efbe94cd675cd655b8644b852f7f34c86c58b90b",
-                "fact:e006d6f08c663b8e6a6396c64c5509ae90dfdbb29ff97fe4ae8ad48a27208729",
-                "fact:e302e14ae511c97ebb31ea82680fb384b089bd4f6f7cb4ca6fc3809f6fd28862",
-                "fact:f333e28175b0872fe8fe7306eca7bf47b4fc5e95bcfcca5941431169d5c2d0af"
+                "fact:0320090869688728b61a37badf7295f62f76443ed9c522ea9b530373e993c46d",
+                "fact:06466d847e1dceac288f3a18bbc552c76b38e8cfa62142f8bb64bb310adec2c7",
+                "fact:0a2e0bb82cf1372244763a3155617dd9fab5e6c8cad6f6048dbc1feee8a3cb91",
+                "fact:0e112b139d3d8807d4804072abb640dcdb4e74ba65a651e8abf2764268207dae",
+                "fact:1980a8867e2237730d0cb83d0052db489b39c35f58a9074378c4f1b83f060bbd",
+                "fact:23733971e23e3dd42944215a8ab1dd7bb3889da6de22d0e1ced4bccb7ed95c4a",
+                "fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0",
+                "fact:3f3e2f650cc6448236c5c21d90bc02a46313785010f0faf78858fb94b568ae7c",
+                "fact:4e0c223cf348fa92e92d5f80e5b0aed68edb49e0339e96945ba152ba6944d332",
+                "fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad",
+                "fact:59e77d9f7e2ea979a2e8c25ad8e181f2df4da58f59025c7c2ba8fb8f15f25353",
+                "fact:5a006e3b38f5cd45caace97f1139209823c5c71a8724b2e1b4325e41b11c3f23",
+                "fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441",
+                "fact:5fbb559aa46732e80e78901263b14414a1e37344fbcbca8b8cbe48d01975174e",
+                "fact:652c7ec7d2652ccf4a953a7ae6827fe9ee3891d2620eebf8ab20abed027d93d3",
+                "fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31",
+                "fact:7a2550de0204dfc0fe270809c20e48e80b473ccb3c98b85f0fdbc2e0c524b0ac",
+                "fact:810db12d7a854e052b6e112b5293e211fd34186896bc0c46c89252e77a816156",
+                "fact:ac21ae6426f4f9dede1bc7c7637e538c72aae130054335da07c406486d6bf9e0",
+                "fact:af73768988622b208aef113cbef4c888f71c046507592ae9217787ec0ff8da32",
+                "fact:bbb63f20e04fb8aeb690b05743c8df45b0ca9369491547ef8149a0d2e06324b6",
+                "fact:bc61925538a2642a13a2314ae252b8005a2eeeab9cca1051972243bd89bb6a4d",
+                "fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c",
+                "fact:e1f0f816e00034a5536117268a67ff14df4a5b97123e7f916322ba110c74752a",
+                "fact:eba4e0d7859eec8338f3d0aec55cbdcf09c904addcbc85bcf5d2b5551704f4b0",
+                "fact:ef3c1e04c2186855d1869f1cf71b647bad3bfb7eab8c5b8dbf5f86dae96c825b"
               ],
               "missing_required_fact_ids": [
-                "fact:3a927f0ed06d683be144463d48f7a44a8fca5bb4ec5662e3309db76e61a0cb4e",
-                "fact:47218b58566f993dec640ed529dd74bf25b220e1969aa5da2a2e2d111c21baa4",
-                "fact:81cd175375a10fef08349dfd4647458941150d67340f2b0ea554f6cd8db4505e",
-                "fact:a4e108c0ebf8189e5d8f9a17e7a59d482752d908ca9a3bcd71a5d5f5d393e748",
-                "fact:ab7349475b49417245adc90164c01c73b86fae27518d2cf6f3a9d855c55d17de"
+                "fact:3adfda483409d5628d900f266af9cb96e589589bde0b6b19446f3a80bad275b0",
+                "fact:560f833facd195e839236ca7b8887910009f445c2f2b03d5294ded9040e545ad",
+                "fact:5f30703cd7b66284fb5fbb56e6d3abe5e7c8d89b7772d004eab8df783f57a441",
+                "fact:69edf6328e95871ca8b52d4af9eae7ccb0675770991ef41871be3afab75bef31",
+                "fact:be208bc8878cd894061205c4cf670233e2b95bfae8c3fd8acbac8e66b218422c"
               ],
               "interpretation_unmapped_fact_ids": [],
               "delivery_part_ids": [
                 "prose:sha256:0cf6937bcb12f14848ca9389037efda4a338ee5ed3b6b40032d41dd68e0b8796",
-                "structured-findings:sha256:2d43e9755b084e9346e85372ae0761a515ce9128b77eb4439412b9f002ab895c"
+                "structured-findings:sha256:299ef7a45bae0c3188f9a8d5f6c73d47ab5a3c8accc0c2d48dde30d1eb4b3598"
               ],
               "invalid_delivery_claims": [],
               "continuation": {
@@ -1147,7 +1147,7 @@
                 "frontier_ids": []
               },
               "resume_required": true,
-              "receipt_hash": "sha256:ce614dee65891c922a9da20945218d69959089854129661b62ef8f8e381aad3d"
+              "receipt_hash": "sha256:94a7737c4dca6e4daf73761c0ed52ec524d06ab448901bb44ca3c11f1c8e70d8"
             }
           }
         }
