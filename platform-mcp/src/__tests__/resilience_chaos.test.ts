@@ -31,9 +31,16 @@
  *      final payload — a completed-but-honest result, not a failure.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { registerPrashnaAskTool, prashnaAskJobs, type PrashnaAskRegisteringServer } from '../tools/register_prashna_ask.js'
+import {
+  __resetManagedPrashnaSchedulerForTests,
+  registerPrashnaAskTool,
+  resumeManagedPrashnaJob,
+  prashnaAskJobs,
+  type PrashnaAskRegisteringServer,
+} from '../tools/register_prashna_ask.js'
 import { registerPrashnaStatusTool, type PrashnaStatusRegisteringServer } from '../tools/register_prashna_status.js'
 import { __resetPrashnaAskBridgeTokenCacheForTests } from '../lib/prashna_ask_bridge.js'
+import { __setManagedPrashnaJobStoreForTests, InMemoryManagedPrashnaJobStoreForTests } from '../lib/managed_prashna_jobs.js'
 import type { Principal } from '../types.js'
 
 vi.mock('../lib/authz.js', () => ({ remoteAuthorize: vi.fn(async () => true) }))
@@ -42,6 +49,7 @@ const CHART_ID = 'aaaaaaaa-1111-4000-8000-000000000099'
 
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
+const testJobs = new InMemoryManagedPrashnaJobStoreForTests()
 
 function makePrincipal(): Principal {
   return { user_uid: 'user-chaos', key_id: 'key-chaos', role: 'guest' }
@@ -102,6 +110,9 @@ function makeStreamResponse(
 
 beforeEach(() => {
   mockFetch.mockReset()
+  testJobs.clear()
+  __resetManagedPrashnaSchedulerForTests()
+  __setManagedPrashnaJobStoreForTests(testJobs)
   __resetPrashnaAskBridgeTokenCacheForTests()
   process.env['SERVICE_TOKEN'] = 'test-static-token'
   process.env['MCP_INTERNAL_TOKEN'] = 'test-internal-token'
@@ -122,6 +133,26 @@ async function askAndGetJobId(extra: ReturnType<typeof makeExtra>): Promise<stri
   )) as { structuredContent: { job_id: string; status: string } }
   expect(result.structuredContent.status).toBe('pending')
   return result.structuredContent.job_id
+}
+
+async function exhaustLeaseSafeRetries(jobId: string): Promise<void> {
+  await vi.waitFor(async () => expect(
+    await prashnaAskJobs.get(makePrincipal(), jobId),
+  ).toMatchObject({
+    status: 'running', attempt_count: 1,
+    progress: { message: expect.stringContaining('retry waits for lease expiry') },
+  }))
+  for (let nextAttempt = 2; nextAttempt <= 3; nextAttempt += 1) {
+    testJobs.expireLease(jobId)
+    await resumeManagedPrashnaJob(jobId, makePrincipal())
+  }
+  // Attempt three remains ambiguous until its lease expires. The next atomic
+  // claim records exhaustion without issuing a fourth engine request.
+  testJobs.expireLease(jobId)
+  await resumeManagedPrashnaJob(jobId, makePrincipal())
+  expect(await prashnaAskJobs.get(makePrincipal(), jobId)).toMatchObject({
+    status: 'failed', attempt_count: 3,
+  })
 }
 
 describe('resilience/chaos: prashna_ask job-handle path', () => {
@@ -146,7 +177,8 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
       // must have zero effect on the in-flight engine call.
       requestAbort.abort()
 
-      expect(prashnaAskJobs.get(jobId)?.status).toBe('running')
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('running')
+      await vi.waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
 
       // Resolve the "engine call" — this proves the background continuation
       // is still alive and drives the job to completion despite the aborted
@@ -157,8 +189,8 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
         ])
       )
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('complete')
+      await vi.waitFor(async () => {
+        expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('complete')
       })
 
       // A NEW "connection" (a fresh prashna_status call, simulating the
@@ -203,10 +235,10 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('failed')
+      await vi.waitFor(async () => {
+        expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('failed')
       })
-      expect(prashnaAskJobs.get(jobId)?.error).toContain('floor-compile crashed: OOM')
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error).toContain('floor-compile crashed: OOM')
 
       const statusHandler = makeStatusHandler()
       const statusResult = (await statusHandler({ job_id: jobId })) as {
@@ -216,8 +248,8 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
       expect(statusResult.structuredContent.error).toContain('floor-compile crashed: OOM')
     })
 
-    it('degrades honestly when the 5xx body is not even JSON (raw Next.js error page)', async () => {
-      mockFetch.mockResolvedValueOnce({
+    it('retries a non-JSON 5xx only after lease expiry, then fails honestly at the bounded attempt cap', async () => {
+      mockFetch.mockResolvedValue({
         ok: false,
         status: 500,
         body: null,
@@ -226,10 +258,9 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('failed')
-      })
-      expect(prashnaAskJobs.get(jobId)?.error).toContain('non-JSON')
+      await exhaustLeaseSafeRetries(jobId)
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error)
+        .toBe('MANAGED_JOB_RETRY_EXHAUSTED')
 
       const statusHandler = makeStatusHandler()
       const statusResult = (await statusHandler({ job_id: jobId })) as {
@@ -238,16 +269,14 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
       expect(statusResult.structuredContent.status).toBe('failed')
     })
 
-    it('never leaves the job stuck "pending"/"running" when fetch itself throws (network-level failure)', async () => {
-      mockFetch.mockRejectedValueOnce(new Error('ECONNRESET'))
+    it('lease-safely retries a network-level ambiguous failure and terminates at the bounded attempt cap', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNRESET'))
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('failed')
-      })
-      expect(prashnaAskJobs.get(jobId)?.error).toContain('Platform unreachable')
-      expect(prashnaAskJobs.get(jobId)?.error).toContain('ECONNRESET')
+      await exhaustLeaseSafeRetries(jobId)
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error)
+        .toBe('MANAGED_JOB_RETRY_EXHAUSTED')
     })
   })
 
@@ -274,42 +303,38 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
       // (the timer itself is native platform behavior, not this codebase's).
       const timeoutError = new Error('The operation was aborted due to timeout')
       timeoutError.name = 'TimeoutError'
-      mockFetch.mockRejectedValueOnce(timeoutError)
+      mockFetch.mockRejectedValue(timeoutError)
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('failed')
-      })
-      const error = prashnaAskJobs.get(jobId)?.error ?? ''
-      expect(error).toContain('Platform unreachable')
-      expect(error.toLowerCase()).toContain('timeout')
+      await exhaustLeaseSafeRetries(jobId)
+      const error = (await prashnaAskJobs.get(makePrincipal(), jobId))?.error ?? ''
+      expect(error).toBe('MANAGED_JOB_RETRY_EXHAUSTED')
 
       const statusHandler = makeStatusHandler()
       const statusResult = (await statusHandler({ job_id: jobId })) as {
         structuredContent: { status: string; error: string }
       }
       expect(statusResult.structuredContent.status).toBe('failed')
-      expect(statusResult.structuredContent.error.toLowerCase()).toContain('timeout')
+      expect(statusResult.structuredContent.error).toBe('MANAGED_JOB_RETRY_EXHAUSTED')
     })
 
     it('degrades honestly when the response stream itself hangs/errors mid-read (e.g. a DB-pool-exhausted downstream dependency dropping the connection)', async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        body: new ReadableStream<Uint8Array>({
-          start(controller) {
-            controller.error(new Error('downstream connection reset (pool exhausted)'))
-          },
-        }),
-      })
+      mockFetch.mockImplementation(() => Promise.resolve({
+          ok: true,
+          status: 200,
+          body: new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.error(new Error('downstream connection reset (pool exhausted)'))
+            },
+          }),
+        }))
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('failed')
-      })
-      expect(prashnaAskJobs.get(jobId)?.error).toContain('pool exhausted')
+      await exhaustLeaseSafeRetries(jobId)
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error)
+        .toBe('MANAGED_JOB_RETRY_EXHAUSTED')
     })
   })
 
@@ -340,12 +365,15 @@ describe('resilience/chaos: prashna_ask job-handle path', () => {
 
       const jobId = await askAndGetJobId(makeExtra())
 
-      await vi.waitFor(() => {
-        expect(prashnaAskJobs.get(jobId)?.status).toBe('complete')
+      await vi.waitFor(async () => {
+        expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.status).toBe('complete')
       })
       // Never routed through job.fail() — this is a completion, not a crash.
-      expect(prashnaAskJobs.get(jobId)?.error).toBeUndefined()
-      expect(prashnaAskJobs.get(jobId)?.result).toEqual(partialResult)
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.error).toBeNull()
+      expect((await prashnaAskJobs.get(makePrincipal(), jobId))?.result).toMatchObject({
+        ...partialResult,
+        persistence: { status: 'managed_job', job_id: jobId },
+      })
 
       const statusHandler = makeStatusHandler()
       const statusResult = (await statusHandler({ job_id: jobId })) as {

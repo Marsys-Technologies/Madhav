@@ -1,0 +1,66 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v2",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "W7-P1",
+  "supersedes_result": "BEYOND_ACARYA_ACCEPTANCE_v1.json",
+  "preserves_negative_predecessor": true,
+  "acceptance_version": "beyond-acarya-source-acceptance-v2",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "temporal_anchor_date": "2026-09-15",
+  "capability_content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
+  "report_hash": "sha256:bf9961d5c90c5907d486f8a97c0a9ec19999507234dc0efbda97b369dd947e9d",
+  "evidence_kind": "synthetic_source_local",
+  "verdict": "ACCEPTED_SOURCE_LOCAL",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 25,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": true,
+      "covered": 34,
+      "expected": 34,
+      "rate": 1
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 9,
+      "expected": 9,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "minimum_iterations_observed": 11,
+      "pagination_continuations": 1,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3
+    }
+  },
+  "argument_resolution": {
+    "strategy": "all_graha_single_day_transit",
+    "binding": "marsys://tool/L0/query_current_transit_snapshot",
+    "scalar_binding_preserved": "marsys://tool/L0/query_planet_transit",
+    "canonical_component_count": 9,
+    "authorization_receipt": "inquiry-argument-resolution-v1",
+    "missing_or_invalid_anchor_disposition": "CLARIFICATION_REQUIRED_BLOCKED"
+  },
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN"
+}

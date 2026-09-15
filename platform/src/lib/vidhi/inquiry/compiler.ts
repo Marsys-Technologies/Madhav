@@ -6,6 +6,7 @@ import {
   INQUIRY_CONTRACT_VERSION,
   type AiInquiryProposal,
   type InquiryContract,
+  type InquiryArgumentResolutionReceipt,
   type InquiryClosureReceipt,
   type InquiryObservation,
   type InquiryObligation,
@@ -21,7 +22,15 @@ import { traverseCapabilityGraph, sourceBackedEdge } from './graph_traversal'
 import { normalizeInquiryScope } from './intent_normalization'
 import { challengeInquirySelection } from './omission_challenger'
 
-export const INQUIRY_COMPILER_VERSION = '2.1.0'
+export const INQUIRY_COMPILER_VERSION = '2.2.0'
+
+const TRANSIT_SCU_ID = 'scu.catalog.query_planet_transit'
+const CURRENT_TRANSIT_SNAPSHOT_SCU_ID = 'scu.catalog.query_current_transit_snapshot'
+const TRANSIT_SCU_IDS = new Set([TRANSIT_SCU_ID, CURRENT_TRANSIT_SNAPSHOT_SCU_ID])
+const CURRENT_TRANSIT_SNAPSHOT_BINDING_ID = 'registry:marsys://tool/L0/query_current_transit_snapshot'
+const CANONICAL_TRANSIT_PLANETS = [
+  'Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu',
+] as const
 
 const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
   wealth_deepdive: [
@@ -56,8 +65,69 @@ const DOMAIN_FLOORS: Readonly<Record<string, readonly string[]>> = {
 
 function unique<T>(items: readonly T[]): T[] { return [...new Set(items)] }
 
+function withValueAtPath(
+  source: Readonly<Record<string, unknown>>,
+  path: string,
+  value: unknown,
+): Readonly<Record<string, unknown>> | null {
+  const keys = path.split('.').filter(Boolean)
+  if (keys.length === 0 || keys.some((key) => ['__proto__', 'prototype', 'constructor'].includes(key))) return null
+  const root: Record<string, unknown> = { ...source }
+  let cursor = root
+  for (const key of keys.slice(0, -1)) {
+    const prior = cursor[key]
+    const child = prior && typeof prior === 'object' && !Array.isArray(prior)
+      ? { ...(prior as Record<string, unknown>) }
+      : {}
+    cursor[key] = child
+    cursor = child
+  }
+  cursor[keys.at(-1)!] = value
+  return root
+}
+
 function normalizeQuestion(question: string): string {
   return question.trim().replace(/\s+/g, ' ')
+}
+
+function validTemporalAnchorDate(value: string | undefined): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00.000Z`)
+  return !Number.isNaN(parsed.valueOf())
+    && parsed.toISOString().slice(0, 10) === value
+    && value >= '1900-01-01'
+    && value <= '2150-12-31'
+}
+
+function transitArgumentResolution(
+  temporalAnchorDate: string | undefined,
+  temporalAnchorSource: InquiryArgumentResolutionReceipt['source'],
+  resolvedArgs: Readonly<Record<string, unknown>>,
+  unresolvedRequiredArgs: readonly string[],
+): InquiryArgumentResolutionReceipt {
+  const valid = validTemporalAnchorDate(temporalAnchorDate)
+  const clarification = valid ? null : {
+    code: temporalAnchorDate ? 'TEMPORAL_ANCHOR_INVALID' as const : 'TEMPORAL_ANCHOR_REQUIRED' as const,
+    required_inputs: ['temporal_anchor_date'] as const,
+    message: temporalAnchorDate
+      ? 'temporal_anchor_date must be a real ISO date from 1900-01-01 through 2150-12-31.'
+      : 'Provide temporal_anchor_date so the compiler can authorize a complete current transit snapshot.',
+  }
+  const base = {
+    resolution_version: 'inquiry-argument-resolution-v1' as const,
+    strategy: 'all_graha_single_day_transit' as const,
+    source: temporalAnchorSource,
+    status: valid && unresolvedRequiredArgs.length === 0 ? 'resolved' as const : 'clarification_required' as const,
+    temporal_anchor_date: temporalAnchorDate ?? null,
+    component_arguments: valid ? CANONICAL_TRANSIT_PLANETS.map((planet) => {
+      const componentArgs = { planet, start_date: temporalAnchorDate, end_date: temporalAnchorDate }
+      return { ...componentArgs, args_hash: stableFingerprint(componentArgs) }
+    }) : [],
+    resolved_args: resolvedArgs,
+    unresolved_required_args: [...unresolvedRequiredArgs],
+    clarification,
+  }
+  return { ...base, resolution_hash: stableFingerprint(base) }
 }
 
 function normalizeAiProposal(ai: AiInquiryProposal | undefined): AiInquiryProposal | undefined {
@@ -130,6 +200,7 @@ function executionPlanAuthorizationProjection(planItems: readonly InquiryPlanIte
     scu_id: item.scu_id,
     binding_id: item.binding_id,
     args: item.authorization_args ?? item.args,
+    argument_resolution: item.argument_resolution,
     depends_on: item.depends_on,
     state: item.blocked_reason ? 'blocked' as const : 'ready' as const,
     blocked_reason: item.blocked_reason,
@@ -243,6 +314,8 @@ function planFor(
   question: string,
   scope: InquiryScopeTuple,
   executionChannel: ExecutionChannel,
+  temporalAnchorDate: string | undefined,
+  temporalAnchorSource: InquiryArgumentResolutionReceipt['source'],
   overlay?: ChartCapabilityOverlay | null,
 ): InquiryPlanItem[] {
   const byId = new Map(snapshot.scus.map((scu) => [scu.scu_id, scu]))
@@ -252,25 +325,38 @@ function planFor(
     for (const scuId of obligation.scu_ids) {
       const scu = byId.get(scuId)
       if (!scu) continue
-      const existingIndex = plan.findIndex((item) => item.scu_id === scuId)
-      if (existingIndex >= 0) {
-        const existing = plan[existingIndex]!
-        plan[existingIndex] = { ...existing, obligation_ids: unique([...existing.obligation_ids, obligation.obligation_id]) }
+      const existingIndexes = plan.flatMap((item, index) => item.scu_id === scuId ? [index] : [])
+      if (existingIndexes.length > 0) {
+        for (const existingIndex of existingIndexes) {
+          const existing = plan[existingIndex]!
+          plan[existingIndex] = { ...existing, obligation_ids: unique([...existing.obligation_ids, obligation.obligation_id]) }
+        }
         continue
       }
       const channelBindings = scu.bindings.filter((candidate) => candidate.executable
         && candidate.kind === 'registry_capability'
         && (candidate.execution_channels ?? ['platform_internal']).includes(executionChannel))
-      const binding = channelBindings.find((candidate) => candidate.relation === 'primary') ?? channelBindings[0] ?? null
+      const aggregateTransitBinding = channelBindings
+        .find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
+      const binding = aggregateTransitBinding
+        ?? channelBindings.find((candidate) => candidate.relation === 'primary')
+        ?? channelBindings[0]
+        ?? null
       const itemArgs: Record<string, unknown> = {}
       if (binding?.input_contract['chart_id']) itemArgs['chart_id'] = chartId
       if (binding?.input_contract['question']) itemArgs['question'] = question
       if (binding?.input_contract['query']) itemArgs['query'] = question
       if (binding?.input_contract['domain']) itemArgs['domain'] = scope.domains[0]
       if (binding?.input_contract['domains']) itemArgs['domains'] = scope.domains
+      if (aggregateTransitBinding && validTemporalAnchorDate(temporalAnchorDate)) {
+        itemArgs['as_of_date'] = temporalAnchorDate
+      }
       const unresolvedRequired = binding
         ? Object.entries(binding.input_contract).filter(([key, declaration]) => declaration.endsWith(':required') && itemArgs[key] === undefined).map(([key]) => key)
         : []
+      const argumentResolution = aggregateTransitBinding
+        ? transitArgumentResolution(temporalAnchorDate, temporalAnchorSource, itemArgs, unresolvedRequired)
+        : undefined
       const availability = availabilityByScu.get(scuId)
       const overlayAllowsBinding = !overlay || Boolean(binding
         && availability
@@ -279,6 +365,8 @@ function planFor(
       const executable = Boolean(binding && unresolvedRequired.length === 0 && overlayAllowsBinding)
       const blockedReason = !binding
         ? `No executable ${executionChannel} binding is declared.`
+        : argumentResolution?.status === 'clarification_required'
+          ? argumentResolution.clarification!.message
         : unresolvedRequired.length > 0
           ? `Required binding arguments are unresolved: ${unresolvedRequired.join(', ')}.`
           : !overlayAllowsBinding
@@ -303,6 +391,7 @@ function planFor(
         binding_id: executable ? binding!.binding_id : null,
         args: itemArgs,
         authorization_args: itemArgs,
+        ...(argumentResolution ? { argument_resolution: argumentResolution } : {}),
         depends_on: [],
         state: executable ? 'ready' : 'blocked',
         blocked_reason: blockedReason,
@@ -323,6 +412,9 @@ export function compileInquiryContract(args: {
   max_iterations?: number
   execution_channel?: ExecutionChannel
   planning_budget?: Partial<InquiryPlanningBudget>
+  /** Explicit request-time anchor; the compiler never reads the wall clock. */
+  temporal_anchor_date?: string
+  temporal_anchor_source?: InquiryArgumentResolutionReceipt['source']
 }): InquiryContract {
   const question = normalizeQuestion(args.question)
   const normalization = normalizeInquiryScope(args.scope_tuple)
@@ -418,7 +510,17 @@ export function compileInquiryContract(args: {
     })
   }
 
-  const plan = planFor(args.snapshot, selection.obligations, args.chart_id, question, scope, executionChannel, args.overlay)
+  const plan = planFor(
+    args.snapshot,
+    selection.obligations,
+    args.chart_id,
+    question,
+    scope,
+    executionChannel,
+    args.temporal_anchor_date,
+    args.temporal_anchor_source ?? 'caller_temporal_anchor',
+    args.overlay,
+  )
   const obligations = selection.obligations.map((obligation) => {
     const items = plan.filter((item) => item.obligation_ids.includes(obligation.obligation_id))
     if (items.length === 0 || items.some((item) => item.state !== 'blocked')) return obligation
@@ -615,12 +717,13 @@ export function recordInquiryExecution(
     }),
   }])
   if (!args.pagination.exhausted && args.pagination.next !== 'unproven' && args.pagination.next !== null) {
-    const bindingPositionKey = args.request_position_path?.split('.').at(-1)
-    if (!bindingPositionKey) return observed
+    if (!args.request_position_path) return observed
+    const continuedArgs = withValueAtPath(item.args, args.request_position_path, args.pagination.next)
+    if (!continuedArgs) return observed
     observed = {
       ...observed,
       plan_items: observed.plan_items.map((candidate) => candidate.item_id === item.item_id
-        ? { ...candidate, args: { ...candidate.args, [bindingPositionKey]: args.pagination.next }, state: 'ready' as const }
+        ? { ...candidate, args: continuedArgs, state: 'ready' as const }
         : candidate),
     }
   } else if (args.disposition === 'failed' && observed.iteration < observed.max_iterations) {
@@ -687,6 +790,53 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
   if (contract.compiler_version.startsWith('2.') && contract.plan_items.some((item) => !item.authorization_args)) {
     errors.push('compiler v2 contract plan item lacks immutable authorization args')
   }
+  for (const item of contract.plan_items) {
+    const receipt = item.argument_resolution
+    const requiresTransitReceipt = contract.execution_channel === 'platform_internal' && TRANSIT_SCU_IDS.has(item.scu_id)
+    if (requiresTransitReceipt && !receipt) {
+      errors.push(`plan item ${item.item_id} internal transit plan lacks an argument resolution receipt`)
+    }
+    if (!requiresTransitReceipt && receipt) {
+      errors.push(`plan item ${item.item_id} carries a transit argument receipt outside the internal transit plan`)
+    }
+    if (item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID && receipt?.status !== 'resolved') {
+      errors.push(`plan item ${item.item_id} aggregate transit binding lacks a resolved argument receipt`)
+    }
+    if (!receipt) continue
+    const { resolution_hash: resolutionHash, ...resolution } = receipt
+    if (resolutionHash !== stableFingerprint(resolution)) {
+      errors.push(`plan item ${item.item_id} argument resolution receipt hash mismatch`)
+    }
+    if (stableFingerprint(receipt.resolved_args) !== stableFingerprint(item.authorization_args ?? item.args)) {
+      errors.push(`plan item ${item.item_id} argument resolution does not match authorization args`)
+    }
+    if (receipt.status === 'resolved') {
+      const readyAggregate = item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID
+        && (item.state === 'ready' || item.state === 'observed')
+      const overlayBlockedAggregate = TRANSIT_SCU_IDS.has(item.scu_id)
+        && item.binding_id === null
+        && item.state === 'blocked'
+        && Boolean(item.blocked_reason)
+      if (!TRANSIT_SCU_IDS.has(item.scu_id) || (!readyAggregate && !overlayBlockedAggregate)) {
+        errors.push(`plan item ${item.item_id} resolved transit arguments target the wrong binding`)
+      }
+      if (!validTemporalAnchorDate(receipt.temporal_anchor_date ?? undefined)
+        || receipt.clarification !== null
+        || receipt.unresolved_required_args.length > 0
+        || receipt.resolved_args['as_of_date'] !== receipt.temporal_anchor_date) {
+        errors.push(`plan item ${item.item_id} has an invalid resolved transit receipt`)
+      }
+      const expectedComponents = CANONICAL_TRANSIT_PLANETS.map((planet) => {
+        const args = { planet, start_date: receipt.temporal_anchor_date, end_date: receipt.temporal_anchor_date }
+        return { ...args, args_hash: stableFingerprint(args) }
+      })
+      if (stableFingerprint(receipt.component_arguments) !== stableFingerprint(expectedComponents)) {
+        errors.push(`plan item ${item.item_id} transit component arguments are not canonical`)
+      }
+    } else if (!receipt.clarification || item.binding_id !== null || item.state !== 'blocked') {
+      errors.push(`plan item ${item.item_id} clarification receipt does not remain blocked`)
+    }
+  }
   return { valid: errors.length === 0, errors }
 }
 
@@ -726,6 +876,37 @@ export function failInquiryForOverlayDrift(contract: InquiryContract): InquiryCo
     ...finalized,
     status: 'BLOCKED',
     status_reasons: unique([...finalized.status_reasons, 'chart capability overlay changed during dispatch']),
+  }
+}
+
+/**
+ * Fail closed when a previous process durably crossed the dispatch boundary
+ * but crashed before it could persist the result. The action is not replayed:
+ * doing so would silently weaken at-most-once execution.
+ */
+export function failInquiryForAmbiguousDispatch(contract: InquiryContract, itemId: string): InquiryContract {
+  const item = contract.plan_items.find((candidate) => candidate.item_id === itemId)
+  if (!item) return {
+    ...contract,
+    status: 'BLOCKED',
+    status_reasons: unique([...contract.status_reasons, 'ambiguous dispatched action is not present in the contract']),
+  }
+  const affected = new Set(item.obligation_ids)
+  const reason = 'DISPATCH_OUTCOME_AMBIGUOUS_AFTER_PROCESS_LOSS'
+  return {
+    ...contract,
+    obligations: contract.obligations.map((obligation) => affected.has(obligation.obligation_id)
+      ? { ...obligation, disposition: 'failed' as const, evidence_refs: [], gap_reason: reason }
+      : obligation),
+    plan_items: contract.plan_items.map((candidate) => candidate.item_id === itemId
+      ? { ...candidate, state: 'blocked' as const, blocked_reason: reason, observation: null }
+      : candidate),
+    material_frontier: contract.material_frontier.map((frontier) => frontier.scu_id === item.scu_id
+      ? { ...frontier, disposition: 'capped' as const, reason }
+      : frontier),
+    status: 'BLOCKED',
+    status_reasons: unique([...contract.status_reasons, 'dispatch outcome became ambiguous after the at-most-once boundary']),
+    iteration: contract.max_iterations,
   }
 }
 

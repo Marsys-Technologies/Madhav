@@ -299,6 +299,9 @@ interface CapabilityDescriptorBase {
    */
   mutation?: boolean
 
+  /** Atomic broker/QoS capacity consumed by one dispatch (fan-out defaults to 1). */
+  dispatch_units?: number
+
   /**
    * Which generated surfaces serve this capability (plan §3 R-1.1 + R-4's four
    * projections). Absent = not yet classified (v1; classification is W2's
@@ -563,6 +566,13 @@ export interface CapabilityContext {
   chart_id?: string
   /** Request metadata */
   request_id?: string
+  /** Server-injected authority for an explicitly mutation-capable registry call. */
+  mutation_authorization?: {
+    receipt_id: string
+    capability_uri: CapabilityUri
+    chart_id?: string
+    action: 'apply'
+  }
 }
 
 /**
@@ -588,6 +598,10 @@ interface D1Fields {
     deepseek?: Record<string, unknown>
   }
   required_inputs?: string[]
+  mutation?: boolean
+  dispatch_units?: number
+  data_source?: 'stored' | 'computed' | 'hybrid'
+  semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
 }
 
 /** Narrowed descriptor for capabilities with primitive_type = 'tool' */

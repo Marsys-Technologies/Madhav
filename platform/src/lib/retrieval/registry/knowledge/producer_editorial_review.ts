@@ -6,7 +6,10 @@
  * producer census and fails closed on omissions, duplicates, or stale SCU targets.
  */
 export interface ProducerSemanticReviewGroup {
-  readonly target_scu_id: string
+  readonly target_scu_id?: string
+  readonly target_capability_uri?: string
+  /** Defaults to directly_serves_output for the previously source-reviewed table. */
+  readonly relation?: 'directly_serves_output' | 'consumes_output' | 'supports_same_semantic_domain'
   readonly rationale: string
   readonly asset_ids: readonly string[]
 }
@@ -180,7 +183,12 @@ export const PRODUCER_SEMANTIC_REVIEW: readonly ProducerSemanticReviewGroup[] = 
   {
     target_scu_id: 'scu.catalog.query_attribution',
     rationale: 'Supplies grounding and attribution records for claim provenance.',
-    asset_ids: ['bo_grounding', 'mi_adhilepa', 'ph_pramana'],
+    asset_ids: ['bo_grounding', 'mi_adhilepa'],
+  },
+  {
+    target_scu_id: 'scu.catalog.query_falsifiers',
+    rationale: 'Directly supplies the phala_pramana rows returned as machine-evaluable falsifiers.',
+    asset_ids: ['ph_pramana'],
   },
   {
     target_scu_id: 'scu.catalog.query_spine_bundle',
@@ -233,8 +241,8 @@ export const PRODUCER_SEMANTIC_REVIEW: readonly ProducerSemanticReviewGroup[] = 
     asset_ids: ['bo_sudarshana', 'ka_sudarshana_varsha'],
   },
   {
-    target_scu_id: 'scu.catalog.query_remedies_for_chart',
-    rationale: 'Supplies chart-specific Upaya evidence with applicability constraints.',
+    target_scu_id: 'scu.catalog.query_rm_resonances',
+    rationale: 'Directly supplies the bodha_rm_resonances rows served by the Remedial Matrix resonance query.',
     asset_ids: ['bo_upaya'],
   },
   {
@@ -383,13 +391,19 @@ export const PRODUCER_SEMANTIC_REVIEW: readonly ProducerSemanticReviewGroup[] = 
     asset_ids: ['ka_vighnakara'],
   },
   {
-    target_scu_id: 'scu.catalog.query_journal',
-    rationale: 'Supplies recorded life events and Jivanaghatana evidence for audit and calibration.',
-    asset_ids: ['lel_events', 'mi_jivanaghatana'],
+    target_capability_uri: 'marsys://tool/L5/lel_query',
+    rationale: 'Directly supplies the chart-scoped life_events rows returned by the LEL serving surface.',
+    asset_ids: ['lel_events'],
   },
   {
-    target_scu_id: 'scu.catalog.prediction_lifecycle_sweep',
-    rationale: 'Supplies Abhilekha lifecycle records used to inspect prediction outcomes.',
+    target_capability_uri: 'marsys://tool/L5/lel_query',
+    relation: 'supports_same_semantic_domain',
+    rationale: 'Shapes life_events into mimamsa_event_provenance for calibration writers; no registry capability directly serves that relation, so this is same-domain support only.',
+    asset_ids: ['mi_jivanaghatana'],
+  },
+  {
+    target_capability_uri: 'marsys://tool/L5/query_predictions',
+    rationale: 'Directly contributes lifecycle_status values to mimamsa_predictions, which the predictions surface returns.',
     asset_ids: ['mi_abhilekha'],
   },
   {

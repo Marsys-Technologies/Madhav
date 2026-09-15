@@ -17,6 +17,21 @@ describe('inquiry pagination receipts', () => {
       .toEqual({ semantics: 'offset', exhausted: false, next: 75 })
   })
 
+  it('reads a reviewed nested request position and limit path', () => {
+    const nested = binding({
+      pagination_contract: {
+        request_position_path: 'page.offset',
+        request_limit_path: 'page.limit',
+        effective_maximum: 50,
+        result_collection_path: 'content.rows',
+        more_available_path: 'content.more_available',
+        deterministic_order: ['id'],
+      },
+    })
+    expect(deriveInquiryPaginationReceipt(nested, { content: { rows: [1], more_available: true } }, { page: { offset: 40, limit: 10 } }))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 50 })
+  })
+
   it('proves terminal exhaustion when the reviewed marker is false', () => {
     expect(deriveInquiryPaginationReceipt(binding(), { content: { rows: [], more_available: false } }, { offset: 75, limit: 25 }))
       .toEqual({ semantics: 'offset', exhausted: true, next: null })

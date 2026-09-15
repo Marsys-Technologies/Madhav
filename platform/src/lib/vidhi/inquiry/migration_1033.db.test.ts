@@ -7,7 +7,9 @@ import { getServeReadPool } from '../../db/roles'
 import {
   commitInquiryObservation,
   createInquiryLifecycle,
+  failCloseAmbiguousInquiryAction,
   getInquiryLifecycle,
+  markInquiryActionDispatched,
   reserveInquiryAction,
 } from './lifecycle_store'
 import type { InquiryContract } from './types'
@@ -16,6 +18,10 @@ const databaseUrl = process.env.PURNA_ANVESANA_W5_DATABASE_URL
 const describeDisposable = databaseUrl ? describe.sequential : describe.skip
 const migrationSql = readFileSync(
   resolve(__dirname, '../../../../migrations/1033_planner_inquiry_lifecycle.sql'),
+  'utf8',
+)
+const reservationMigrationSql = readFileSync(
+  resolve(__dirname, '../../../../migrations/1037_planner_inquiry_action_reservations.sql'),
   'utf8',
 )
 
@@ -27,6 +33,7 @@ const chartB = '00000000-0000-4000-8000-000000000502'
 const inquiryA = '00000000-0000-4000-8000-000000000511'
 const inquiryB = '00000000-0000-4000-8000-000000000512'
 const inquiryC = '00000000-0000-4000-8000-000000000514'
+const inquiryD = '00000000-0000-4000-8000-000000000515'
 
 function assertDisposableUrl(value: string): void {
   const parsed = new URL(value)
@@ -111,7 +118,7 @@ const downSql = documentedDownSql(migrationSql)
 
 function lifecycleContract(): InquiryContract {
   return {
-    contract_version: '1.2.0', compiler_version: '2.0.0',
+    contract_version: '1.3.0', compiler_version: '2.0.0',
     contract_id: 'sha256:contract-c', semantic_contract_hash: 'sha256:semantic-c',
     execution_plan_hash: 'sha256:execution-c', chart_id: chartA,
     execution_channel: 'mcp_full', question: 'disposable lifecycle proof',
@@ -170,21 +177,56 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
   afterAll(async () => {
     if (!pool) return
     if (servePool) await servePool.end()
-    if (!downApplied) await pool.query(downSql).catch(() => undefined)
+    if (!downApplied) {
+      await pool.query('DROP TABLE IF EXISTS planner_inquiry_action_reservations').catch(() => undefined)
+      await pool.query('DROP FUNCTION IF EXISTS planner_inquiry_action_reservation_guard()').catch(() => undefined)
+      await pool.query(downSql).catch(() => undefined)
+    }
     await pool.end()
+  })
+
+  it('rolls back every migration object when the transaction fails before commit', async () => {
+    const schema = 'purna_w7_migration_rollback'
+    const client = await pool.connect()
+    try {
+      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`)
+      await client.query(`CREATE SCHEMA ${schema}`)
+      await client.query(`SET search_path TO ${schema}, public`)
+      const forcedFailureSql = migrationSql.replace(
+        '\nCOMMIT;\n',
+        "\nSELECT 1 / 0; -- disposable proof: force failure inside the migration transaction\nCOMMIT;\n",
+      )
+      await expect(client.query(forcedFailureSql)).rejects.toMatchObject({ code: '22012' })
+      await client.query('ROLLBACK')
+      const objects = await client.query<{ table_count: string; function_count: string }>(`
+        SELECT
+          (SELECT count(*)::text FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname=$1 AND c.relname IN ('planner_inquiry_lifecycles','planner_inquiry_evidence_receipts')) AS table_count,
+          (SELECT count(*)::text FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+            WHERE n.nspname=$1 AND p.proname IN ('planner_inquiry_immutable_guard','create_planner_inquiry_lifecycle','purge_expired_planner_inquiries_global')) AS function_count
+      `, [schema])
+      expect(objects.rows[0]).toEqual({ table_count: '0', function_count: '0' })
+    } finally {
+      await client.query('RESET search_path').catch(() => undefined)
+      await client.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`).catch(() => undefined)
+      client.release()
+    }
   })
 
   it('applies and replays the up migration without broadening serving-role grants', async () => {
     await pool.query(migrationSql)
     await pool.query(migrationSql)
+    await pool.query(reservationMigrationSql)
+    await pool.query(reservationMigrationSql)
 
     const catalog = await pool.query<{ relname: string; relrowsecurity: boolean }>(`
       SELECT relname, relrowsecurity
       FROM pg_class
-      WHERE relname IN ('planner_inquiry_lifecycles', 'planner_inquiry_evidence_receipts')
+      WHERE relname IN ('planner_inquiry_lifecycles', 'planner_inquiry_evidence_receipts', 'planner_inquiry_action_reservations')
       ORDER BY relname
     `)
     expect(catalog.rows).toEqual([
+      { relname: 'planner_inquiry_action_reservations', relrowsecurity: true },
       { relname: 'planner_inquiry_evidence_receipts', relrowsecurity: true },
       { relname: 'planner_inquiry_lifecycles', relrowsecurity: true },
     ])
@@ -193,10 +235,12 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       SELECT table_name, privilege_type
       FROM information_schema.role_table_grants
       WHERE grantee='role_web_serve'
-        AND table_name IN ('planner_inquiry_lifecycles', 'planner_inquiry_evidence_receipts')
+        AND table_name IN ('planner_inquiry_lifecycles', 'planner_inquiry_evidence_receipts', 'planner_inquiry_action_reservations')
       ORDER BY table_name, privilege_type
     `)
     expect(privileges.rows).toEqual([
+      { table_name: 'planner_inquiry_action_reservations', privilege_type: 'INSERT' },
+      { table_name: 'planner_inquiry_action_reservations', privilege_type: 'SELECT' },
       { table_name: 'planner_inquiry_evidence_receipts', privilege_type: 'INSERT' },
       { table_name: 'planner_inquiry_evidence_receipts', privilege_type: 'SELECT' },
       { table_name: 'planner_inquiry_lifecycles', privilege_type: 'SELECT' },
@@ -216,6 +260,21 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       'status',
       'updated_at',
     ])
+    const reservationUpdateColumns = await pool.query<{ column_name: string }>(`
+      SELECT column_name
+      FROM information_schema.role_column_grants
+      WHERE grantee='role_web_serve'
+        AND table_name='planner_inquiry_action_reservations'
+        AND privilege_type='UPDATE'
+      ORDER BY column_name
+    `)
+    expect(reservationUpdateColumns.rows.map((row) => row.column_name)).toEqual([
+      'committed_at',
+      'dispatch_started_at',
+      'lease_expires_at',
+      'reservation_hash',
+      'state',
+    ])
   })
 
   it('isolates lifecycle and receipt rows by both authenticated subject and chart', async () => {
@@ -227,6 +286,12 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
            canonical_args_hash, raw_result_hash, disposition, evidence_jsonb)
          VALUES ($1,1,ARRAY['obligation-a'],'item-001','scu.a','registry:a',
                  'sha256:args','sha256:result','served','{"rows":[1]}'::jsonb)`,
+        [inquiryA],
+      )
+      await client.query(
+        `INSERT INTO planner_inquiry_action_reservations
+           (inquiry_id, revision, plan_item_id, source_jti_hash, reservation_hash, lease_expires_at)
+         VALUES ($1,0,'item-002','sha256:jti-isolation','sha256:reservation-isolation',now() + interval '1 minute')`,
         [inquiryA],
       )
     })
@@ -242,8 +307,10 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       await inWebContext(pool, principal, chartId, async (client) => {
         const lifecycles = await client.query('SELECT inquiry_id FROM planner_inquiry_lifecycles')
         const receipts = await client.query('SELECT receipt_id FROM planner_inquiry_evidence_receipts')
+        const reservations = await client.query('SELECT plan_item_id FROM planner_inquiry_action_reservations')
         expect(lifecycles.rowCount).toBe(expected)
         expect(receipts.rowCount).toBe(principal === principalA && chartId === chartA ? 1 : 0)
+        expect(reservations.rowCount).toBe(principal === principalA && chartId === chartA ? 1 : 0)
       })
     }
 
@@ -303,6 +370,14 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
         [JSON.stringify({ forged: true }), inquiryA],
       ),
     )).rejects.toMatchObject({ code: '42501' })
+    await expect(inWebContext(pool, principalA, chartA, (client) =>
+      client.query(
+        `UPDATE planner_inquiry_action_reservations
+            SET state='committed', committed_at=now()
+          WHERE inquiry_id=$1 AND plan_item_id='item-002'`,
+        [inquiryA],
+      ),
+    )).rejects.toThrow('invalid planner inquiry action state transition')
 
     await expect(inWebContext(pool, principalA, chartA, (client) =>
       client.query('DELETE FROM planner_inquiry_evidence_receipts WHERE inquiry_id=$1', [inquiryA]),
@@ -315,6 +390,16 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       ),
     )
     expect(retained.rows).toEqual([{ evidence_jsonb: { rows: [1] } }])
+
+    await expect(inWebContext(pool, principalA, chartA, (client) =>
+      client.query('DELETE FROM planner_inquiry_action_reservations WHERE inquiry_id=$1', [inquiryA]),
+    )).rejects.toMatchObject({ code: '42501' })
+    await expect(inWebContext(pool, principalA, chartA, (client) =>
+      client.query(
+        'UPDATE planner_inquiry_action_reservations SET source_jti_hash=$1 WHERE inquiry_id=$2',
+        ['sha256:forged', inquiryA],
+      ),
+    )).rejects.toMatchObject({ code: '42501' })
   })
 
   it('allows exactly one compare-and-swap winner and rejects receipt replay', async () => {
@@ -362,12 +447,13 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     expect(stored).toMatchObject({ inquiry_id: inquiryC, revision: 0, current_jti_hash: 'sha256:jti-c' })
 
     const attempts = await Promise.allSettled([
-      reserveInquiryAction({ row: created, expected_jti_hash: 'sha256:jti-c', reservation_hash: 'sha256:reservation-a' }),
-      reserveInquiryAction({ row: created, expected_jti_hash: 'sha256:jti-c', reservation_hash: 'sha256:reservation-b' }),
+      reserveInquiryAction({ row: created, expected_jti_hash: 'sha256:jti-c', reservation_hash: 'sha256:reservation-a', plan_item_id: 'item-001' }),
+      reserveInquiryAction({ row: created, expected_jti_hash: 'sha256:jti-c', reservation_hash: 'sha256:reservation-b', plan_item_id: 'item-001' }),
     ])
     expect(attempts.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
     expect(attempts.filter((result) => result.status === 'rejected')).toHaveLength(1)
     const winner = attempts[0].status === 'fulfilled' ? 'sha256:reservation-a' : 'sha256:reservation-b'
+    await markInquiryActionDispatched({ row: created, plan_item_id: 'item-001', reservation_hash: winner })
 
     const observed: InquiryContract = {
       ...contract,
@@ -413,6 +499,78 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     })).rejects.toThrow('INQUIRY_TOKEN_REPLAYED_OR_STALE')
   })
 
+  it('recovers only a pre-dispatch expired lease and fails closed after the dispatch boundary', async () => {
+    const contract = lifecycleContract()
+    const created = await createInquiryLifecycle({
+      inquiry_id: inquiryD,
+      principal_uid: principalA,
+      contract,
+      jti_hash: 'sha256:jti-d',
+      expires_at: '2099-01-01T00:00:00.000Z',
+    })
+    const first = await reserveInquiryAction({
+      row: created,
+      expected_jti_hash: 'sha256:jti-d',
+      reservation_hash: 'sha256:reservation-d1',
+      plan_item_id: 'item-001',
+      lease_seconds: 1,
+    })
+    expect(first).toEqual({ status: 'acquired', reservation_hash: 'sha256:reservation-d1', recovered: false })
+
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_100))
+    const recovered = await reserveInquiryAction({
+      row: created,
+      expected_jti_hash: 'sha256:jti-d',
+      reservation_hash: 'sha256:reservation-d2',
+      plan_item_id: 'item-001',
+      lease_seconds: 1,
+    })
+    expect(recovered).toEqual({ status: 'acquired', reservation_hash: 'sha256:reservation-d2', recovered: true })
+    await markInquiryActionDispatched({
+      row: created,
+      plan_item_id: 'item-001',
+      reservation_hash: 'sha256:reservation-d2',
+      dispatch_timeout_seconds: 1,
+    })
+
+    const overlapping = await reserveInquiryAction({
+      row: created,
+      expected_jti_hash: 'sha256:jti-d',
+      reservation_hash: 'sha256:reservation-d3',
+      plan_item_id: 'item-001',
+    })
+    expect(overlapping).toMatchObject({ status: 'in_progress', reservation_hash: 'sha256:reservation-d2' })
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_100))
+    const retry = await reserveInquiryAction({
+      row: created,
+      expected_jti_hash: 'sha256:jti-d',
+      reservation_hash: 'sha256:reservation-d4',
+      plan_item_id: 'item-001',
+    })
+    expect(retry).toEqual({ status: 'ambiguous', reservation_hash: 'sha256:reservation-d2' })
+    const blocked = {
+      ...contract,
+      status: 'BLOCKED' as const,
+      status_reasons: ['dispatch outcome became ambiguous after the at-most-once boundary'],
+    }
+    await failCloseAmbiguousInquiryAction({
+      row: created,
+      expected_source_jti_hash: 'sha256:jti-d',
+      plan_item_id: 'item-001',
+      contract: blocked,
+    })
+    expect(await getInquiryLifecycle(inquiryD, principalA, chartA)).toMatchObject({
+      status: 'BLOCKED',
+      revision: 1,
+      current_jti_hash: 'terminal',
+      contract_jsonb: { status: 'BLOCKED' },
+    })
+    expect((await pool.query(
+      'SELECT state FROM planner_inquiry_action_reservations WHERE inquiry_id=$1',
+      [inquiryD],
+    )).rows).toEqual([{ state: 'failed_closed' }])
+  })
+
   it('fails closed when immutable authorization or overlay identity is changed', async () => {
     for (const statement of [
       `UPDATE planner_inquiry_lifecycles
@@ -429,6 +587,8 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
   })
 
   it('applies the documented down migration and removes every Wave 5 object', async () => {
+    await pool.query('DROP TABLE IF EXISTS planner_inquiry_action_reservations')
+    await pool.query('DROP FUNCTION IF EXISTS planner_inquiry_action_reservation_guard()')
     await pool.query(downSql)
     downApplied = true
     const objects = await pool.query<{ tables: Array<string | null>; functions: Array<string | null> }>(`

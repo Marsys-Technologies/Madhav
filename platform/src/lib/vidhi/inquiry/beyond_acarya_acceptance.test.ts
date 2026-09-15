@@ -22,8 +22,8 @@ function withoutScu(
   }
 }
 
-describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
-  it('evaluates the versioned corpus without hiding the current route-bound closure gap', () => {
+describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
+  it('closes the unchanged frozen route denominator through receipted transit derivation', () => {
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
 
     expect(report.acceptance_version).toBe(BEYOND_ACARYA_ACCEPTANCE_VERSION)
@@ -35,10 +35,9 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
       missing_novel_capabilities: 0,
     })
     expect(report.metrics.omission_rate).toMatchObject({ passed: true, omitted: 0, expected: 25, rate: 0 })
-    expect(report.metrics.route_coverage).toEqual({ passed: false, covered: 30, expected: 34, rate: 30 / 34 })
+    expect(report.metrics.route_coverage).toEqual({ passed: true, covered: 34, expected: 34, rate: 1 })
     expect(report.metrics.semantic_edge_coverage).toMatchObject({ passed: true, covered: 9, expected: 9, rate: 1 })
-    expect(report.cases.filter((item) => item.case_id !== 'long_divisional_continuation').every((item) =>
-      item.missing_required_route_scu_ids.includes('scu.catalog.query_planet_transit'))).toBe(true)
+    expect(report.cases.every((item) => item.missing_required_route_scu_ids.length === 0)).toBe(true)
     expect(report.metrics.long_inquiry_closure).toMatchObject({
       passed: true,
       completed_cases: 1,
@@ -49,8 +48,8 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
     })
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
-    expect(report.passed).toBe(false)
-    expect(report.report_hash).toBe('sha256:f3e28ecc006fab43087dc3f372907f37e982cb0e8e9d553ae61039e4d162c510')
+    expect(report.passed).toBe(true)
+    expect(report.report_hash).toBe('sha256:bf9961d5c90c5907d486f8a97c0a9ec19999507234dc0efbda97b369dd947e9d')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -112,24 +111,22 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
     expect(report.passed).toBe(false)
   })
 
-  it('allows the route gate to turn green only when all frozen route obligations are bindable', () => {
-    const routable: CapabilityKnowledgeSnapshot = {
+  it('keeps the unchanged route gate red when the aggregate transit binding is unavailable', () => {
+    const unroutable: CapabilityKnowledgeSnapshot = {
       ...snapshot,
       scus: snapshot.scus.map((scu) => scu.scu_id === 'scu.catalog.query_planet_transit'
         ? {
             ...scu,
-            bindings: scu.bindings.map((binding) => ({
-              ...binding,
-              input_contract: Object.fromEntries(Object.entries(binding.input_contract)
-                .map(([key, declaration]) => [key, declaration.replace(':required', ':optional')])),
-            })),
+            bindings: scu.bindings.map((binding) => binding.binding_id === 'registry:marsys://tool/L0/query_current_transit_snapshot'
+              ? { ...binding, executable: false, execution_channels: [] }
+              : binding),
           }
         : scu),
     }
-    const report = evaluateBeyondAcaryaAcceptance(routable, BEYOND_ACARYA_ACCEPTANCE_CASES)
+    const report = evaluateBeyondAcaryaAcceptance(unroutable, BEYOND_ACARYA_ACCEPTANCE_CASES)
 
-    expect(report.metrics.route_coverage).toEqual({ passed: true, covered: 34, expected: 34, rate: 1 })
-    expect(report.passed).toBe(true)
+    expect(report.metrics.route_coverage).toEqual({ passed: false, covered: 30, expected: 34, rate: 30 / 34 })
+    expect(report.passed).toBe(false)
   })
 
   it('turns long-inquiry closure red when continuation metadata is removed', () => {
@@ -176,7 +173,7 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
 
   it('pins the governed evidence artifact to the executable report', () => {
     const artifact = JSON.parse(readFileSync(new URL(
-      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v1.json',
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v2.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
@@ -187,7 +184,7 @@ describe('Purna Anvesana Wave 6 Beyond-Acarya source acceptance', () => {
       capability_content_hash: report.capability_content_hash,
       report_hash: report.report_hash,
       evidence_kind: report.evidence_kind,
-      verdict: 'NOT_ACCEPTED_SOURCE_LOCAL',
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
       metrics: {
         novel_combination_suite: report.metrics.novel_combination_suite,
         omission_rate: report.metrics.omission_rate,

@@ -21,6 +21,43 @@ import { getDescriptorEditorialReview, getReviewedDescriptorNames } from './edit
 import { getProducerSemanticReview } from './producer_editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 
+interface DescriptorRouteContract {
+  readonly capability_uri: string
+  readonly public_route_disposition: 'reviewed_exposed' | 'reviewed_not_exposed'
+  readonly public_tool_names: readonly string[]
+  readonly public_route_evidence: readonly string[]
+  readonly pagination: {
+    readonly disposition: 'not_paginated' | 'exhaustible_reviewed' | 'non_exhaustible'
+    readonly blocker?: string
+  }
+}
+
+const DESCRIPTOR_ROUTE_CONTRACTS = (estateCensus.details.descriptor_route_contracts as readonly DescriptorRouteContract[])
+const DESCRIPTOR_ROUTE_BY_URI = new Map(DESCRIPTOR_ROUTE_CONTRACTS.map((contract) => [contract.capability_uri, contract]))
+
+function applyReviewedRouteContract(binding: SemanticCapabilityBinding): SemanticCapabilityBinding {
+  if (binding.kind !== 'registry_capability') return binding
+  const route = DESCRIPTOR_ROUTE_BY_URI.get(binding.capability_uri)
+  if (!route) throw new Error(`MISSING_REVIEWED_ROUTE_CONTRACT:${binding.capability_uri}`)
+  const publicToolName = route.public_tool_names[0]
+  return {
+    ...binding,
+    pagination_verified: route.pagination.disposition === 'exhaustible_reviewed'
+      ? binding.pagination_verified === true
+      : route.pagination.disposition === 'non_exhaustible' ? false : binding.pagination_verified,
+    pagination_review: {
+      disposition: route.pagination.disposition,
+      source_ref: `platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:${binding.capability_uri}`,
+      ...(route.pagination.blocker ? { blocker: route.pagination.blocker } : {}),
+    },
+    execution_channels: binding.executable
+      ? route.public_route_disposition === 'reviewed_exposed' ? ['platform_internal', 'mcp_full'] : ['platform_internal']
+      : [],
+    ...(publicToolName ? { public_tool_name: publicToolName } : {}),
+    route_evidence: [binding.route_evidence, ...route.public_route_evidence].filter(Boolean).join(' | '),
+  }
+}
+
 function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
@@ -99,7 +136,7 @@ function primaryBinding(
   details?: SemanticCapabilityDeclaration['primary_binding_details'],
 ): SemanticCapabilityBinding {
   const executable = isDescriptorExecutable(cap)
-  return {
+  return applyReviewedRouteContract({
     binding_id: `registry:${cap.uri}`,
     kind: 'registry_capability',
     relation: 'primary',
@@ -109,11 +146,10 @@ function primaryBinding(
     pagination: paginationFor(cap),
     pagination_verified: null,
     executable,
-    execution_channels: ['platform_internal'],
     route_evidence: `CapabilityDescriptor:${cap.uri}`,
     ...details,
     ...(executable ? {} : { unavailable_reason: 'CapabilityDescriptor has no executable handler or loader.' }),
-  }
+  })
 }
 
 function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclaration {
@@ -196,7 +232,9 @@ function normalizeDeclaration(
         execution_channels: [] as const,
         unavailable_reason: 'Primary binding descriptor was not the declaration host.',
       }
-  const bindings = [primary, ...(declaration.additional_bindings ?? [])].sort((a, b) => a.binding_id.localeCompare(b.binding_id))
+  const bindings = [primary, ...(declaration.additional_bindings ?? [])]
+    .map(applyReviewedRouteContract)
+    .sort((a, b) => a.binding_id.localeCompare(b.binding_id))
   const paginationGap = bindings.some((binding) => binding.pagination !== 'none' && !binding.pagination_verified)
     ? 'Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.'
     : null
@@ -264,25 +302,36 @@ function producerSourceRef(assetId: string): string {
   return `platform/src/generated/capability_estate_census.json#details.producer_output_contracts:${assetId}`
 }
 
-function producerReviewRef(targetScuId: string, assetId: string): string {
-  return `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${targetScuId}:${assetId}`
+function producerReviewRef(targetId: string, assetId: string): string {
+  return `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${targetId}:${assetId}`
 }
 
-function compileProducerSemanticBindings(scus: readonly SemanticCapabilityUnit[], activeProducerIds: readonly string[]): readonly ProducerSemanticBinding[] {
+function compileProducerSemanticBindings(
+  scus: readonly SemanticCapabilityUnit[],
+  descriptors: readonly CapabilityDescriptor[],
+  activeProducerIds: readonly string[],
+): readonly ProducerSemanticBinding[] {
   const scuIds = new Set(scus.map((scu) => scu.scu_id))
+  const capabilityUris = new Set(descriptors.map((descriptor) => descriptor.uri))
   const bindings = getProducerSemanticReview().flatMap((group) => group.asset_ids.map((asset_id): ProducerSemanticBinding => ({
     asset_id,
-    target_scu_id: group.target_scu_id,
-    relation: 'provides_evidence_for',
+    target_scu_id: group.target_scu_id ?? null,
+    target_capability_uri: group.target_capability_uri ?? null,
+    relation: group.relation ?? 'directly_serves_output',
     rationale: group.rationale,
-    source_refs: [producerSourceRef(asset_id), producerReviewRef(group.target_scu_id, asset_id)],
+    source_refs: [producerSourceRef(asset_id), producerReviewRef(group.target_scu_id ?? group.target_capability_uri ?? 'missing-target', asset_id)],
   }))).sort((a, b) => a.asset_id.localeCompare(b.asset_id))
   const counts = new Map<string, number>()
   for (const binding of bindings) counts.set(binding.asset_id, (counts.get(binding.asset_id) ?? 0) + 1)
   const missing = activeProducerIds.filter((assetId) => !counts.has(assetId))
   const duplicate = [...counts].filter(([, count]) => count !== 1).map(([assetId]) => assetId)
   const unknown = [...counts.keys()].filter((assetId) => !activeProducerIds.includes(assetId))
-  const staleTargets = [...new Set(bindings.filter((binding) => !scuIds.has(binding.target_scu_id)).map((binding) => binding.target_scu_id))]
+  const staleTargets = [...new Set(bindings.filter((binding) => {
+    const targetCount = Number(binding.target_scu_id !== null) + Number(binding.target_capability_uri !== null)
+    return targetCount !== 1
+      || (binding.target_scu_id !== null && !scuIds.has(binding.target_scu_id))
+      || (binding.target_capability_uri !== null && !capabilityUris.has(binding.target_capability_uri))
+  }).map((binding) => binding.target_scu_id ?? binding.target_capability_uri ?? 'missing-target'))]
   if (missing.length > 0 || duplicate.length > 0 || unknown.length > 0 || staleTargets.length > 0) {
     throw new Error(`INVALID_PRODUCER_SEMANTIC_REVIEW:${JSON.stringify({ missing, duplicate, unknown, staleTargets })}`)
   }
@@ -362,6 +411,13 @@ function buildCensus(
     unavailable_bindings: bindings.filter((binding) => !binding.executable).length,
     publicly_named_bindings: bindings.filter((binding) => Boolean(binding.public_tool_name)).length,
     reviewed_pagination_bindings: bindings.filter((binding) => binding.pagination_verified).length,
+    reviewed_pagination_dispositions: DESCRIPTOR_ROUTE_CONTRACTS.length,
+    reviewed_paginated_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition !== 'not_paginated').length,
+    exhaustible_reviewed_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition === 'exhaustible_reviewed').length,
+    non_exhaustible_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition === 'non_exhaustible').length,
+    reviewed_route_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.length,
+    reviewed_public_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+    reviewed_nonpublic_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed').length,
     producer_output_claims: scus.flatMap((scu) => scu.producer_output_claims ?? []).length,
     reviewed_output_claims: scus.flatMap((scu) => scu.producer_output_claims ?? []).filter((claim) => claim.disposition === 'reviewed_output').length,
     typed_concepts: conceptUniverse.length,
@@ -374,6 +430,8 @@ function buildCensus(
       return !incident && scu.graph_disposition.status !== 'isolated_dispositioned'
     }).length,
     producer_semantic_bindings: producerSemanticBindings.length,
+    directly_served_producer_outputs: producerSemanticBindings.filter((binding) => binding.relation === 'directly_serves_output').length,
+    support_only_producer_bindings: producerSemanticBindings.filter((binding) => binding.relation !== 'directly_serves_output').length,
     unbound_active_producers: activeProducerIds.filter((assetId) => !producerSemanticBindings.some((binding) => binding.asset_id === assetId)).length,
     undispositioned_producer_scus: scus.filter((scu) => !scu.producer_semantic_disposition).length,
     undispositioned_gaps: scus.reduce((total, scu) => total + scu.known_gaps.filter((gap) => !scu.gap_dispositions.some((item) => item.gap === gap)).length, 0),
@@ -414,7 +472,7 @@ export function compileCapabilityKnowledge(
       ? scu.editorial_sources[0]!.source_ref
       : `CapabilityDescriptor:${scu.source_descriptor_uris[0]}#drill_children`,
   }))).sort((a, b) => canonicalize(a).localeCompare(canonicalize(b)))
-  const producerSemanticBindings = compileProducerSemanticBindings(scusBase, activeProducerIds)
+  const producerSemanticBindings = compileProducerSemanticBindings(scusBase, catalog, activeProducerIds)
   const scus = scusBase.map((scu): SemanticCapabilityUnit => {
     const incident = edges.filter((edge) => edge.from_scu_id === scu.scu_id || edge.to_scu_id === scu.scu_id)
     const producerBindings = producerSemanticBindings.filter((binding) => binding.target_scu_id === scu.scu_id)
@@ -639,16 +697,22 @@ export function inspectCapabilityKnowledge(
   }
   const validProducerBindings = new Map<string, ProducerSemanticBinding[]>()
   const authoredProducerBindings = new Map(getProducerSemanticReview().flatMap((group) => group.asset_ids.map((assetId) => [assetId, {
-    target_scu_id: group.target_scu_id,
+    target_scu_id: group.target_scu_id ?? null,
+    target_capability_uri: group.target_capability_uri ?? null,
+    relation: group.relation ?? 'directly_serves_output',
     rationale: group.rationale,
-    source_refs: [producerSourceRef(assetId), producerReviewRef(group.target_scu_id, assetId)],
+    source_refs: [producerSourceRef(assetId), producerReviewRef(group.target_scu_id ?? group.target_capability_uri ?? 'missing-target', assetId)],
   }] as const)))
   for (const binding of snapshot.producer_semantic_bindings ?? []) {
     const authored = authoredProducerBindings.get(binding.asset_id)
     const knownAsset = ACTIVE_PRODUCER_IDS.includes(binding.asset_id)
-    const validTarget = scuIds.has(binding.target_scu_id)
-    const valid = knownAsset && validTarget && binding.relation === 'provides_evidence_for'
+    const validTarget = binding.target_scu_id !== null
+      ? scuIds.has(binding.target_scu_id)
+      : binding.target_capability_uri !== null && catalog.some((capability) => capability.uri === binding.target_capability_uri)
+    const valid = knownAsset && validTarget
       && authored?.target_scu_id === binding.target_scu_id
+      && authored.target_capability_uri === binding.target_capability_uri
+      && authored.relation === binding.relation
       && authored.rationale === binding.rationale
       && canonicalize(binding.source_refs) === canonicalize(authored.source_refs)
     if (!valid) {

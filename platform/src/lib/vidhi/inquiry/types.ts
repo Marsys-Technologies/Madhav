@@ -1,6 +1,6 @@
 import type { ExecutionChannel } from '../../retrieval/registry/knowledge/types'
 
-export const INQUIRY_CONTRACT_VERSION = '1.2.0' as const
+export const INQUIRY_CONTRACT_VERSION = '1.3.0' as const
 
 /**
  * Channel-neutral scope carried by an Inquiry Contract. Both the Portal
@@ -38,6 +38,29 @@ export interface InquiryObligation {
   readonly gap_reason: string | null
 }
 
+export interface InquiryArgumentResolutionReceipt {
+  readonly resolution_version: 'inquiry-argument-resolution-v1'
+  readonly strategy: 'all_graha_single_day_transit'
+  readonly source: 'caller_temporal_anchor' | 'request_context_clock'
+  readonly status: 'resolved' | 'clarification_required'
+  /** Raw caller value is retained so an invalid anchor cannot masquerade as absence. */
+  readonly temporal_anchor_date: string | null
+  readonly component_arguments: readonly {
+    readonly planet: string
+    readonly start_date: string
+    readonly end_date: string
+    readonly args_hash: string
+  }[]
+  readonly resolved_args: Readonly<Record<string, unknown>>
+  readonly unresolved_required_args: readonly string[]
+  readonly clarification: {
+    readonly code: 'TEMPORAL_ANCHOR_REQUIRED' | 'TEMPORAL_ANCHOR_INVALID'
+    readonly required_inputs: readonly ['temporal_anchor_date']
+    readonly message: string
+  } | null
+  readonly resolution_hash: string
+}
+
 export interface InquiryPlanItem {
   readonly item_id: string
   readonly obligation_ids: readonly string[]
@@ -46,6 +69,8 @@ export interface InquiryPlanItem {
   readonly args: Readonly<Record<string, unknown>>
   /** Immutable compiler-time arguments; runtime pagination may advance args. */
   readonly authorization_args?: Readonly<Record<string, unknown>>
+  /** Compiler-owned proof for any arguments derived beyond direct contract fields. */
+  readonly argument_resolution?: InquiryArgumentResolutionReceipt
   readonly depends_on: readonly string[]
   readonly state: 'ready' | 'blocked' | 'observed'
   readonly blocked_reason: string | null

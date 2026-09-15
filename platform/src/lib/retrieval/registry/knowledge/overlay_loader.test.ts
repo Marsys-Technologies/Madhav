@@ -8,10 +8,10 @@ import { loadChartCapabilityOverlay } from './overlay_loader'
 
 const claimHash = 'a'.repeat(64)
 const snapshot = {
-  schema_version: '2.0.0', compatibility_version: 'planner-scu-v2', generated_at: '2026-09-13T00:00:00.000Z',
+  schema_version: '2.3.0', compatibility_version: 'planner-scu-v2', generated_at: '2026-09-13T00:00:00.000Z',
   content_hash: 'sha256:content', source_catalog_fingerprint: 'sha256:catalog', semantic_review_fingerprint: 'sha256:review', producer_contract_fingerprint: 'sha256:producer', edges: [], concept_universe: [],
   producer_semantic_bindings: [],
-  census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 1, reviewed_output_claims: 1, typed_concepts: 0, unbound_concepts: 0, isolated_scus: 1, graph_components: 1, dispositioned_isolated_scus: 1, unresolved_isolated_scus: 0, producer_semantic_bindings: 0, unbound_active_producers: 0, undispositioned_producer_scus: 0, undispositioned_gaps: 0, exclusions: [] },
+  census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 1, editorial_scus: 1, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 0, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, reviewed_pagination_dispositions: 1, reviewed_paginated_descriptors: 0, exhaustible_reviewed_descriptors: 0, non_exhaustible_descriptors: 0, reviewed_route_descriptors: 1, reviewed_public_descriptors: 0, reviewed_nonpublic_descriptors: 1, producer_output_claims: 1, reviewed_output_claims: 1, typed_concepts: 0, unbound_concepts: 0, isolated_scus: 1, graph_components: 1, dispositioned_isolated_scus: 1, unresolved_isolated_scus: 0, producer_semantic_bindings: 0, directly_served_producer_outputs: 0, support_only_producer_bindings: 0, unbound_active_producers: 0, undispositioned_producer_scus: 0, undispositioned_gaps: 0, exclusions: [] },
   scus: [{
     scu_id: 'scu.test', version: 1, label: 'Test', description: 'Test', kind: 'datum', domains: ['all'], concepts: [], intents: [], horizons: ['natal'], scope: 'chart', inputs: [], outputs: [],
     primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [], freshness_policy: 'fresh', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
@@ -37,6 +37,7 @@ describe('chart capability overlay loader', () => {
     expect(overlay.availability[0]).toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L1/test'] })
     expect(overlay.build_id).toBe('build-1')
     expect(mocks.query.mock.calls[0]?.[0]).toContain('ORDER BY ended_at DESC NULLS LAST, id DESC')
+    expect(mocks.query.mock.calls[0]?.[0]).toContain('p.build_id=latest_build.build_id')
   })
 
   it('fails closed on a mismatched output specification or unavailable provenance', async () => {
@@ -51,12 +52,60 @@ describe('chart capability overlay loader', () => {
     expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({ state: 'dark', available_binding_ids: [] })
   })
 
-  it('fails closed when a proven receipt belongs to a superseded build', async () => {
+  it('ignores a proven receipt from a superseded chart build', async () => {
     mocks.query.mockResolvedValue({ rows: [{
       active_build_id: 'build-2', active_build_status: 'completed',
       asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
       output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
     }] })
-    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({ state: 'incompatible', available_binding_ids: [] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      asset_receipts: [expect.objectContaining({ state: 'missing', build_id: null })],
+    })
+  })
+
+  it('uses active chart evidence instead of stale chart or global rows', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
+        output_digest_spec_sha256: 'b'.repeat(64), observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'unknown',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'unknown', unknown_reasons: ['global-not-selected'], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-2', receipt_version: 'current', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+    ] })
+    const availability = (await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]
+    expect(availability).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: 'build-2' })],
+    })
+  })
+
+  it('uses global evidence when no active-build chart receipt exists', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'old', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-12T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+      {
+        active_build_id: 'build-2', active_build_status: 'completed',
+        asset_id: 'ga_test', chart_id: null, build_id: null, receipt_version: 'global', receipt_state: 'proven',
+        output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+      },
+    ] })
+    expect((await loadChartCapabilityOverlay(snapshot, 'chart-1')).availability[0]).toMatchObject({
+      state: 'available',
+      asset_receipts: [expect.objectContaining({ state: 'passed', build_id: null })],
+    })
   })
 })

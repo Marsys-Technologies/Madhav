@@ -18,9 +18,9 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(185)
+    expect(snapshot.census.executable_bindings).toBe(186)
     expect(snapshot.census.unavailable_bindings).toBe(0)
-    expect(snapshot.schema_version).toBe('2.0.0')
+    expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(snapshot.semantic_review_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/)
@@ -30,6 +30,49 @@ describe('planner capability knowledge', () => {
     expect(report.passed).toBe(true)
     expect(report.findings.every((finding) => finding.severity === 'warning')).toBe(true)
     expect(report.findings.map((finding) => finding.code)).toContain('BAD_PAGINATION_CONTRACT')
+  })
+
+  it('joins every registry binding to the reviewed full-profile route authority', () => {
+    const routes = estateCensus.details.descriptor_route_contracts
+    expect(routes).toHaveLength(186)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_exposed')).toHaveLength(71)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(115)
+    expect(snapshot.census).toMatchObject({
+      reviewed_route_descriptors: 186,
+      reviewed_public_descriptors: 71,
+      reviewed_nonpublic_descriptors: 115,
+    })
+    const bindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
+    const bindingByUri = new Map(bindings.map((binding) => [binding.capability_uri, binding]))
+    expect(bindingByUri.size).toBe(182)
+    expect(routes.filter((route) => !bindingByUri.has(route.capability_uri)).map((route) => route.capability_uri).sort())
+      .toEqual(snapshot.census.exclusions.map((item) => item.capability_uri).sort())
+    for (const route of routes.filter((candidate) => bindingByUri.has(candidate.capability_uri))) {
+      const binding = bindingByUri.get(route.capability_uri)
+      expect(binding, route.capability_uri).toBeDefined()
+      expect(binding?.execution_channels?.includes('mcp_full')).toBe(route.public_route_disposition === 'reviewed_exposed')
+      expect(binding?.public_tool_name ?? null).toBe(route.public_tool_names[0] ?? null)
+      expect(binding?.route_evidence).toContain(route.public_route_evidence[0])
+    }
+  })
+
+  it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
+    const routes = estateCensus.details.descriptor_route_contracts
+    expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(96)
+    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(1)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(95)
+    expect(snapshot.census).toMatchObject({
+      reviewed_pagination_dispositions: 186,
+      reviewed_paginated_descriptors: 96,
+      exhaustible_reviewed_descriptors: 1,
+      non_exhaustible_descriptors: 95,
+    })
+    const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
+    expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
+    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
+    const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(96)
   })
 
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {
@@ -160,7 +203,7 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(177)
+    expect(reviewed).toHaveLength(176)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)
@@ -186,6 +229,16 @@ describe('planner capability knowledge', () => {
     expect(getDescriptorEditorialReview('chart_facts_query')?.family_id).toBe('chart_evidence')
     expect(getDescriptorEditorialReview('maro_mcp_surface')?.family_id).toBe('system_introspection')
     expect(getDescriptorEditorialReview('channel_mcp_wiring')?.family_id).toBe('system_introspection')
+    expect(getDescriptorEditorialReview('query_signal_families')).toMatchObject({
+      family_id: 'signal_calibration_registry',
+      domains: ['evidence_quality'],
+      concepts: expect.arrayContaining(['signal_family', 'negative_control', 'calibration_evidence']),
+    })
+    expect(getDescriptorEditorialReview('query_prospective_ledger')).toMatchObject({
+      family_id: 'prospective_ledger',
+      domains: ['evidence_quality', 'timing'],
+      concepts: expect.arrayContaining(['filed_prediction', 'falsifier', 'prediction_lifecycle', 'source_provenance']),
+    })
   })
 
   it('uses full source descriptions and reviewed output semantics for substantive tools', () => {
@@ -236,13 +289,31 @@ describe('planner capability knowledge', () => {
       intent: 'assess', domains: ['cross_domain'], width: 'focused', depth: 'deep', horizon: 'current', intervention: false, entitlement: 'native',
     })
     expect(projection.capabilities.map((capability) => capability.id)).toContain('scu.kala.temporal_activation')
+    const judgment = projection.capabilities.find((capability) => capability.id === 'scu.catalog.judgment_query')!
+    expect(judgment).toEqual(expect.objectContaining({
+      inputs: expect.any(Array),
+      outputs: expect.any(Array),
+      provenance_requirements: expect.any(Array),
+      freshness_policy: expect.any(String),
+      safety_notes: expect.any(Array),
+      graph_disposition: expect.objectContaining({ status: expect.any(String) }),
+      producer_semantic_disposition: expect.objectContaining({ status: expect.any(String) }),
+    }))
+    expect(judgment.routes[0]).toEqual(expect.objectContaining({
+      capability_uri: expect.stringMatching(/^marsys:\/\//),
+      input_contract: expect.any(Object),
+      output_contract: expect.any(Object),
+      pagination: expect.any(String),
+      executable: true,
+    }))
   })
 
   it('accounts for every active producer with one exact source-backed semantic binding', () => {
     const enriched = snapshot as CapabilityKnowledgeSnapshot & {
       producer_semantic_bindings?: readonly {
         asset_id: string
-        target_scu_id: string
+        target_scu_id: string | null
+        target_capability_uri: string | null
         relation: string
         rationale: string
         source_refs: readonly string[]
@@ -263,12 +334,14 @@ describe('planner capability knowledge', () => {
     expect(bindings.map((binding) => binding.asset_id).sort()).toEqual(expected)
     const scuIds = new Set(enriched.scus.map((scu) => scu.scu_id))
     for (const binding of bindings) {
-      expect(scuIds.has(binding.target_scu_id)).toBe(true)
-      expect(binding.relation).toBe('provides_evidence_for')
+      expect(Number(binding.target_scu_id !== null) + Number(binding.target_capability_uri !== null)).toBe(1)
+      if (binding.target_scu_id !== null) expect(scuIds.has(binding.target_scu_id)).toBe(true)
+      if (binding.target_capability_uri !== null) expect(catalog.some((capability) => capability.uri === binding.target_capability_uri)).toBe(true)
+      expect(['directly_serves_output', 'consumes_output', 'supports_same_semantic_domain']).toContain(binding.relation)
       expect(binding.rationale.length).toBeGreaterThan(12)
       expect(binding.source_refs).toEqual([
         `platform/src/generated/capability_estate_census.json#details.producer_output_contracts:${binding.asset_id}`,
-        `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${binding.target_scu_id}:${binding.asset_id}`,
+        `platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#${binding.target_scu_id ?? binding.target_capability_uri}:${binding.asset_id}`,
       ])
     }
     for (const scu of enriched.scus) {
@@ -283,6 +356,8 @@ describe('planner capability knowledge', () => {
       }
     }
     expect(enriched.census.producer_semantic_bindings).toBe(expected.length)
+    expect(enriched.census.directly_served_producer_outputs).toBe(expected.length - 1)
+    expect(enriched.census.support_only_producer_bindings).toBe(1)
     expect(enriched.census.unbound_active_producers).toBe(0)
     expect(enriched.census.undispositioned_producer_scus).toBe(0)
   })
@@ -308,6 +383,7 @@ describe('planner capability knowledge', () => {
       producer_semantic_bindings: bindings.map((binding, index) => index === 0 ? {
         ...binding,
         target_scu_id: otherScu.scu_id,
+        target_capability_uri: null,
         rationale: 'A plausible but unauthorised replacement rationale for this producer relationship.',
         source_refs: [
           `platform/src/generated/capability_estate_census.json#details.producer_output_contracts:${binding.asset_id}`,
@@ -439,9 +515,11 @@ describe('planner capability knowledge', () => {
   it('normalizes legacy flat and JSON Schema input dialects without losing required fields', () => {
     const transit = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_planet_transit')
     expect(transit?.inputs).toEqual(expect.arrayContaining(['planet', 'start_date', 'end_date']))
-    expect(transit?.bindings[0]?.input_contract).toMatchObject({
+    expect(transit?.bindings.find((binding) => binding.relation === 'primary')?.input_contract).toMatchObject({
       planet: 'string:required', start_date: 'string:required', end_date: 'string:required',
     })
+    expect(transit?.bindings.find((binding) => binding.binding_id === 'registry:marsys://tool/L0/query_current_transit_snapshot')?.input_contract)
+      .toEqual({ as_of_date: 'string:required' })
     expect(transit?.bindings[0]?.input_contract).not.toHaveProperty('properties')
   })
 

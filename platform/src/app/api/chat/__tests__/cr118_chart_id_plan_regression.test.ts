@@ -22,6 +22,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const NATIVE = '482012f1-710e-4a25-994a-93821f5871aa'
+const COMPILED_TRANSIT_ARGS = {
+  as_of_date: '2026-09-15',
+  requests: ['Sun', 'Moon', 'Mars', 'Mercury', 'Jupiter', 'Venus', 'Saturn', 'Rahu', 'Ketu']
+    .map((planet) => ({ planet, start_date: '2026-09-15', end_date: '2026-09-15' })),
+}
+
+const { plannerSpy, qosSubmitSpy, compileInquirySpy } = vi.hoisted(() => ({
+  plannerSpy: vi.fn(),
+  qosSubmitSpy: vi.fn(async ({ run }: { run: () => Promise<unknown> }) => run()),
+  compileInquirySpy: vi.fn(),
+}))
 
 vi.mock('@/lib/firebase/server', () => ({
   getServerUser: vi.fn(async () => ({ uid: 'tester-uid' })),
@@ -61,28 +72,7 @@ vi.mock('@/lib/bundle/manifest_reader', () => ({
 // Planner authorizes exactly the three CR-118 tools — no leakage/floor noise.
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   PlannerFault: class PlannerFault extends Error {},
-  callPipelinePlanner: vi.fn(async () => ({
-    outcome: 'plan' as const,
-    // SAMĀPTI A7-N8-AUDIT F-23: PlanReceipt now carries the planner's real computed
-    // metrics; the consult route reads them instead of writing constants.
-    metrics: {
-      planning_confidence: 0.82,
-      fallback_used: false,
-      active_model_id: 'mock-planner-model',
-      parsed_on_first_attempt: true,
-      first_parse_error: null,
-    },
-    plan: {
-      query_class: 'holistic',
-      domains: ['career'],
-      forward_looking: false,
-      tool_calls: [
-        { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'CR-118 regression — msr_sql' },
-        { tool_name: 'get_yoga_firings', params: {}, token_budget: 400, priority: 1 as const, reason: 'CR-118 regression — get_yoga_firings' },
-        { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 1 as const, reason: 'CR-118 regression — cgm_graph_walk' },
-      ],
-    },
-  })),
+  callPipelinePlanner: (...args: unknown[]) => plannerSpy(...args),
 }))
 
 vi.mock('@/lib/bundle/bundle_hydrator', () => ({
@@ -96,21 +86,51 @@ vi.mock('@/lib/retrieval/registry/catalog', () => ({
   getCatalog: vi.fn(() => []),
 }))
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
-  getToolByName: vi.fn((name: string) => ({ name })),
+  getToolByName: vi.fn((name: string) => ({
+    name,
+    dispatch_units: name === 'query_current_transit_snapshot' ? 9 : 1,
+  })),
   resolveToolUri: vi.fn((name: string) => name),
+}))
+
+vi.mock('@/lib/retrieval/qos/dispatch_queue', () => ({
+  getSharedQosDispatchQueue: vi.fn(() => ({ submit: qosSubmitSpy })),
+}))
+
+vi.mock('@/lib/retrieval/registry/knowledge', () => ({
+  assertPinnedCapabilityKnowledgeCurrent: vi.fn(() => ({ content_hash: 'sha256:test' })),
+  loadChartCapabilityOverlay: vi.fn(async () => ({ overlay_version: 'overlay-test', build_id: 'build-test' })),
+}))
+
+vi.mock('@/lib/vidhi/inquiry', () => ({
+  managedPlanToAiInquiryProposal: vi.fn(() => ({ question_facets: [], uncommon_adjacencies: [], hypotheses: [] })),
+  compileInquiryContract: (...args: unknown[]) => compileInquirySpy(...args),
+  adoptInquiryPlanItems: vi.fn((plan: { tool_calls: Array<Record<string, unknown>> }, contract: { plan_items: Array<{ state: string; binding_id: string | null; args: Record<string, unknown> }> }) => {
+    const adopted = contract.plan_items
+      .filter((item) => item.state === 'ready' && item.binding_id?.startsWith('registry:'))
+      .map((item) => ({
+        tool_name: item.binding_id!.slice('registry:'.length),
+        params: item.args,
+        token_budget: 800,
+        priority: 1,
+        reason: 'Inquiry Contract fixture',
+      }))
+    plan.tool_calls.splice(0, plan.tool_calls.length, ...adopted)
+    return adopted.map((call) => call.tool_name)
+  }),
 }))
 
 // Capture every `plan` argument executeWithCache is invoked with — this is
 // the exact object tool_name_bridge.ts's retrieve() reads plan['chart_id']
 // off of. CR-118 reproduces if any per_chart tool's captured plan lacks a
 // chart_id matching the request's chartId.
-const capturedPlans: Array<{ toolName: string; plan: Record<string, unknown> }> = []
+const capturedPlans: Array<{ toolName: string; plan: Record<string, unknown>; params: Record<string, unknown> | undefined }> = []
 
 vi.mock('@/lib/cache/index', () => ({
   createToolCache: vi.fn(() => ({})),
   executeWithCache: vi.fn(
-    async (tool: { name: string }, plan: Record<string, unknown>) => {
-      capturedPlans.push({ toolName: tool.name, plan })
+    async (tool: { name: string }, plan: Record<string, unknown>, _cache: unknown, params?: Record<string, unknown>) => {
+      capturedPlans.push({ toolName: tool.name, plan, params })
       return { results: [{ content: `content-for-${tool.name}` }] }
     }
   ),
@@ -174,7 +194,29 @@ function makePost(chartId: string, text: string): Request {
 
 beforeEach(() => {
   dispatchSpy.mockClear()
+  qosSubmitSpy.mockClear()
+  compileInquirySpy.mockReset()
   capturedPlans.length = 0
+  plannerSpy.mockResolvedValue({
+    outcome: 'plan' as const,
+    metrics: {
+      planning_confidence: 0.82,
+      fallback_used: false,
+      active_model_id: 'mock-planner-model',
+      parsed_on_first_attempt: true,
+      first_parse_error: null,
+    },
+    plan: {
+      query_class: 'holistic',
+      domains: ['career'],
+      forward_looking: false,
+      tool_calls: [
+        { tool_name: 'msr_sql', params: {}, token_budget: 600, priority: 1 as const, reason: 'CR-118 regression — msr_sql' },
+        { tool_name: 'get_yoga_firings', params: {}, token_budget: 400, priority: 1 as const, reason: 'CR-118 regression — get_yoga_firings' },
+        { tool_name: 'cgm_graph_walk', params: {}, token_budget: 400, priority: 1 as const, reason: 'CR-118 regression — cgm_graph_walk' },
+      ],
+    },
+  })
 })
 
 describe('CR-118 regression — consult route threads chart_id onto the dispatched queryPlan', () => {
@@ -197,5 +239,48 @@ describe('CR-118 regression — consult route threads chart_id onto the dispatch
     for (const { toolName, plan } of capturedPlans) {
       expect(plan['chart_id'], `${toolName} plan.chart_id`).toBe(NATIVE)
     }
+  })
+
+  it('adopts compiler-owned aggregate arguments and reserves all nine QoS units', async () => {
+    plannerSpy.mockResolvedValueOnce({
+      outcome: 'plan' as const,
+      metrics: {
+        planning_confidence: 0.91, fallback_used: false, active_model_id: 'mock-planner-model',
+        parsed_on_first_attempt: true, first_parse_error: null,
+      },
+      plan: {
+        query_class: 'predictive', domains: ['timing'], forward_looking: true,
+        scope_tuple: {
+          intent: 'transit_timing', domains: ['timing'], width: 'focused', depth: 'standard',
+          horizon: 'current', intervention: false, entitlement: 'native',
+        },
+        tool_calls: [{
+          tool_name: 'query_current_transit_snapshot',
+          params: { as_of_date: '2099-01-01', requests: [{ planet: 'Sun' }] },
+          token_budget: 800, priority: 1 as const, reason: 'planner proposal',
+        }],
+      },
+    })
+    compileInquirySpy.mockReturnValue({
+      obligations: [],
+      plan_items: [{
+        item_id: 'item-transit', state: 'ready',
+        binding_id: 'registry:query_current_transit_snapshot',
+        args: COMPILED_TRANSIT_ARGS,
+      }],
+    })
+
+    const resp = await POST(makePost(NATIVE, 'Where are all current transiting planets today?'))
+    expect(resp.status).toBe(200)
+
+    expect(compileInquirySpy).toHaveBeenCalledWith(expect.objectContaining({
+      temporal_anchor_source: 'request_context_clock',
+      temporal_anchor_date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      execution_channel: 'platform_internal',
+    }))
+    const aggregate = capturedPlans.find((entry) => entry.toolName === 'query_current_transit_snapshot')
+    expect(aggregate?.params).toEqual(COMPILED_TRANSIT_ARGS)
+    expect(aggregate?.params).not.toEqual(expect.objectContaining({ as_of_date: '2099-01-01' }))
+    expect(qosSubmitSpy).toHaveBeenCalledWith(expect.objectContaining({ units: 9 }))
   })
 })

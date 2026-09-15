@@ -23,6 +23,7 @@ import { queryClassicalTextsCapability } from './query_classical_texts'
 // Stream B: ephemeris capabilities
 import { queryPlanetPositionCapability } from './query_planet_position'
 import { queryPlanetTransitCapability } from './query_planet_transit'
+import { queryCurrentTransitSnapshotCapability } from './query_current_transit_snapshot'
 import { queryAspectsAtTimeCapability } from './query_aspects_at_time'
 import { queryRetrogradePeriodsCapability } from './query_retrograde_periods'
 import { ephemerisCacheYearCapability } from './ephemeris_cache_year'
@@ -93,6 +94,7 @@ export const L0_CAPABILITIES = [
   // Stream B: ephemeris (1900-2150, 9 bodies, pyswisseph DE441)
   queryPlanetPositionCapability,
   queryPlanetTransitCapability,
+  queryCurrentTransitSnapshotCapability,
   queryAspectsAtTimeCapability,
   queryRetrogradePeriodsCapability,
   ephemerisCacheYearCapability,

@@ -10,8 +10,9 @@ import {
 import { bindingForInquiryItem } from './managed_bridge'
 import type { InquiryContract } from './types'
 
-export const BEYOND_ACARYA_ACCEPTANCE_VERSION = 'beyond-acarya-source-acceptance-v1' as const
+export const BEYOND_ACARYA_ACCEPTANCE_VERSION = 'beyond-acarya-source-acceptance-v2' as const
 export const BEYOND_ACARYA_CLAIM_CEILING = 'SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER' as const
+export const BEYOND_ACARYA_TEMPORAL_ANCHOR_DATE = '2026-09-15' as const
 
 function unique(values: readonly string[]): string[] {
   return [...new Set(values)].sort()
@@ -33,6 +34,7 @@ function compileCase(snapshot: CapabilityKnowledgeSnapshot, item: BeyondAcaryaAc
     scope_tuple: item.scope_tuple,
     ai_proposal: item.ai_proposal,
     execution_channel: 'platform_internal',
+    temporal_anchor_date: BEYOND_ACARYA_TEMPORAL_ANCHOR_DATE,
     max_iterations: 64,
     planning_budget: item.planning_budget ?? {
       max_search_hits: 32,

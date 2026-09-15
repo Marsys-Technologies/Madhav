@@ -1,11 +1,11 @@
 {
-  "generated_at": "2026-07-24T05:06:15.709Z",
+  "generated_at": "2026-09-15T15:24:35.840Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capability names + canonical_faces.json deprecated_aliases + tool_name_bridge.ts TOOL_NAME_TO_URI/MCP_TO_RETRIEVAL_TOOL (chained, not re-authored)",
   "vidhi_live_tool_bridge": {
-    "total": 31,
-    "mapped": 12,
-    "unmapped": 19,
+    "total": 42,
+    "mapped": 13,
+    "unmapped": 29,
     "entries": [
       {
         "name": "bodha_chart_digest_get",
@@ -22,12 +22,11 @@
         ]
       },
       {
-        "name": "bodha_graph_subgraph_get",
-        "uri": "marsys://tool/L2/traverse_chart_graph",
-        "resolution_kind": "canonical_reverse_alias",
+        "name": "bodha_mechanisms_get",
+        "uri": "marsys://tool/L2/query_mechanisms",
+        "resolution_kind": "mcp_alias_direct",
         "via": [
-          "get_cgm_subgraph",
-          "cgm_graph_walk"
+          "query_mechanisms"
         ]
       },
       {
@@ -38,6 +37,12 @@
       },
       {
         "name": "bodha_signals_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "dossier",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -132,6 +137,20 @@
         "via": []
       },
       {
+        "name": "ganita_transit_anchors_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "ganita_vastu_get",
+        "uri": "marsys://tool/L1/get_vastu_directions",
+        "resolution_kind": "mcp_alias_direct",
+        "via": [
+          "get_vastu_directions"
+        ]
+      },
+      {
         "name": "ganita_yoga_firings_get",
         "uri": "marsys://tool/L1/get_yoga_firings",
         "resolution_kind": "mcp_alias_direct",
@@ -158,7 +177,25 @@
         "via": []
       },
       {
+        "name": "kala_ahead_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
         "name": "kala_bundle_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_elect_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_explain_get",
         "uri": null,
         "resolution_kind": "unmapped",
         "via": []
@@ -171,6 +208,36 @@
           "muhurta_finder",
           "query_muhurat"
         ]
+      },
+      {
+        "name": "kala_now_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_priority_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_ritual_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_story_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
+      },
+      {
+        "name": "kala_upaya_get",
+        "uri": null,
+        "resolution_kind": "unmapped",
+        "via": []
       },
       {
         "name": "kala_windows_get",

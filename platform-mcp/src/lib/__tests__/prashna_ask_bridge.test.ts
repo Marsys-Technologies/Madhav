@@ -72,7 +72,11 @@ describe('callPrashnaAskEngine', () => {
     expect(typeof opts.headers['X-MCP-Internal-Token']).toBe('string')
     expect(opts.headers['X-MCP-User']).toBe('user-1')
     expect(opts.headers['X-MCP-Key-Id']).toBe('key-1')
-    expect(JSON.parse(opts.body)).toEqual({ chart_id: 'c1', question: 'what dasha am I in?' })
+    expect(JSON.parse(opts.body)).toEqual({
+      chart_id: 'c1',
+      question: 'what dasha am I in?',
+      response_format: 'standard',
+    })
   })
 
   it('forwards scopeTuple in the POST body when supplied (W6.1 fix-cycle)', async () => {
@@ -95,8 +99,25 @@ describe('callPrashnaAskEngine', () => {
     expect(JSON.parse(opts.body)).toEqual({
       chart_id: 'c1',
       question: 'career timing?',
+      response_format: 'standard',
       scope_tuple: scopeTuple,
     })
+  })
+
+  it('forwards an explicitly requested response format', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeStreamResponse([JSON.stringify({ ok: true, trace_id: 't1', chart_id: 'c1', outcome: 'plan' })])
+    )
+
+    await callPrashnaAskEngine({
+      chartId: 'c1',
+      question: 'tell this as a story',
+      principal: PRINCIPAL,
+      responseFormat: 'narrative',
+    })
+
+    const [, opts] = mockFetch.mock.calls[0]
+    expect(JSON.parse(opts.body).response_format).toBe('narrative')
   })
 
   it('omits scope_tuple from the POST body entirely when not supplied (not sent as null/undefined)', async () => {
@@ -287,6 +308,28 @@ describe('callPrashnaAskEngine', () => {
     expect(result.ok).toBe(false)
     if (!result.ok) {
       expect(result.error.message).toContain('stream broke')
+    }
+  })
+
+  it('stops reading an oversized platform response before buffering its terminal line', async () => {
+    const oversizedChunk = new Uint8Array(2 * 1024 * 1024 + 1)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(oversizedChunk)
+          controller.close()
+        },
+      }),
+    })
+
+    const result = await callPrashnaAskEngine({ chartId: 'c1', question: 'q', principal: PRINCIPAL })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error.class).toBe('storage_contract')
+      expect(result.error.retryable).toBe(false)
+      expect(result.error.message).toContain('MANAGED_JOB_RESULT_TOO_LARGE')
     }
   })
 })

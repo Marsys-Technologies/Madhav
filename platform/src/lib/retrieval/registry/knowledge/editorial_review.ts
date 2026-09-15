@@ -144,6 +144,23 @@ const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {
     horizons: ['historical', 'current'],
     evidence_use: 'measure provenance, calibration, falsifiers, and evidence quality without overstating confidence',
   },
+  signal_calibration_registry: {
+    family_id: 'signal_calibration_registry', domains: ['evidence_quality'],
+    concepts: ['signal_family', 'negative_control', 'calibration_evidence', 'evidence_tier'],
+    intents: ['audit', 'inspect', 'verify'],
+    outputs: ['signal_family_definitions', 'calibration_status', 'evidence_tiers'],
+    horizons: ['historical', 'current'],
+    evidence_use: 'inspect global signal-family priors, evidence tiers, negative-control classes, and calibration status without treating registry rows as chart evidence',
+  },
+  prospective_ledger: {
+    family_id: 'prospective_ledger', domains: ['evidence_quality', 'timing'],
+    concepts: ['filed_prediction', 'falsifier', 'prediction_confidence', 'prediction_lifecycle', 'source_provenance'],
+    intents: ['audit', 'retrieve', 'verify'],
+    outputs: ['filed_predictions', 'falsifiers', 'lifecycle_status', 'source_citations', 'temporal_windows'],
+    horizons: ['current', 'future', 'multi_year'],
+    kind: 'temporal',
+    evidence_use: 'retrieve explicitly filed falsifiable predictions with provenance and lifecycle state through a read-only surface that never files or calibrates predictions',
+  },
   vastu: {
     family_id: 'vastu', domains: ['vastu'],
     concepts: ['directional_factor', 'space_orientation', 'vastu_constraint'],
@@ -204,7 +221,7 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
   ],
   relational: [
     'get_argala', 'get_aspects', 'get_dispositors', 'get_structural', 'query_cgm_motifs',
-    'query_cgm_paths', 'query_signal_families', 'query_signals', 'query_spine_bundle',
+    'query_cgm_paths', 'query_signals', 'query_spine_bundle',
     'traverse_chart_graph',
   ],
   timing: [
@@ -213,8 +230,8 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
     'query_activation_waveform', 'query_active_dashas', 'query_cleansed_anchors',
     'query_convergence_windows', 'query_dasha_dossier', 'query_dasha_systems',
     'query_kala_paddhati_profile', 'query_kota_chakra', 'query_life_arc',
-    'query_moorti_nirnaya', 'query_obstruction_periods', 'query_planet_transit',
-    'query_predictive_anchors', 'query_projections', 'query_prospective_ledger',
+    'query_current_transit_snapshot', 'query_moorti_nirnaya', 'query_obstruction_periods', 'query_planet_transit',
+    'query_predictive_anchors', 'query_projections',
     'query_retrograde_periods', 'query_sky_calendar', 'query_sudarshana_varsha',
     'query_temporal_view', 'query_tithi_pravesha', 'query_transit_engine',
     'query_transit_moorti', 'query_transit_vedha', 'query_vedha_gochara',
@@ -248,6 +265,8 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
     'query_manifestation_sets', 'query_mimamsa_discoveries', 'query_quality_scorecard',
     'query_rectification',
   ],
+  signal_calibration_registry: ['query_signal_families'],
+  prospective_ledger: ['query_prospective_ledger'],
   vastu: ['get_vastu_directions', 'query_vastu_direction_remedials', 'query_vastu_directions'],
   annual: ['get_tajik'],
 }

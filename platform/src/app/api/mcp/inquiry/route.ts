@@ -19,15 +19,25 @@ import {
   compileInquiryContract,
   deriveInquiryPaginationReceipt,
   finalizeInquiryContract,
+  failInquiryForAmbiguousDispatch,
   failInquiryForOverlayDrift,
   hashJti,
   inquiryAuthorizationHashes,
   issueInquiryLifecycleToken,
+  loadInquiryLifecycleSigningKeyRing,
   recordInquiryExecution,
   verifyInquiryLifecycleToken,
   type InquiryContract,
 } from '@/lib/vidhi/inquiry'
-import { commitInquiryFinalization, commitInquiryObservation, createInquiryLifecycle, getInquiryLifecycle, reserveInquiryAction } from '@/lib/vidhi/inquiry/lifecycle_store'
+import {
+  commitInquiryFinalization,
+  commitInquiryObservation,
+  createInquiryLifecycle,
+  failCloseAmbiguousInquiryAction,
+  getInquiryLifecycle,
+  markInquiryActionDispatched,
+  reserveInquiryAction,
+} from '@/lib/vidhi/inquiry/lifecycle_store'
 
 export const maxDuration = 60
 
@@ -50,6 +60,7 @@ const BodySchema = z.discriminatedUnion('action', [
     action: z.literal('start'), chart_id: z.string().uuid(),
     question: z.string().trim().min(1).max(4000), scope_tuple: z.unknown(),
     ai_proposal: AiProposalSchema.optional(),
+    temporal_anchor_date: z.string().max(32).optional(),
   }).strict(),
   z.object({
     action: z.literal('execute'), lifecycle_token: z.string().min(1).max(16384),
@@ -62,15 +73,10 @@ type Body = z.infer<typeof BodySchema>
 const MAX_RESULT_BYTES = 512 * 1024
 const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_TOKEN_MALFORMED', 'INQUIRY_TOKEN_INVALID_SIGNATURE', 'INQUIRY_TOKEN_WRONG_AUDIENCE',
-  'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
+  'INQUIRY_TOKEN_UNKNOWN_KID', 'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
+  'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS', 'INQUIRY_ACTION_IN_PROGRESS',
   'INQUIRY_ACTIVE_LIMIT_REACHED', 'INQUIRY_CREATION_RATE_LIMITED',
 ])
-
-function signingKey(): string {
-  const key = process.env.INQUIRY_LIFECYCLE_SIGNING_KEY ?? ''
-  if (key.length < 32) throw new Error('INQUIRY_LIFECYCLE_SIGNING_KEY is missing or too short')
-  return key
-}
 
 async function entitled(uid: string, chartId: string): Promise<boolean> {
   const role = await resolveMcpPrincipalRole(uid)
@@ -83,15 +89,62 @@ function nextReady(contract: InquiryContract): string[] {
 
 function response(data: Record<string, unknown>, status = 200) { return NextResponse.json(data, { status }) }
 
+const FORBIDDEN_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function removeGuardedPath(value: Readonly<Record<string, unknown>>, path: readonly string[]): Record<string, unknown> | null {
+  const [key, ...rest] = path
+  const output: Record<string, unknown> = { ...value }
+  if (!Object.prototype.hasOwnProperty.call(value, key)) return output
+  if (rest.length === 0) {
+    delete output[key]
+    return output
+  }
+  const child = value[key]
+  if (!isRecord(child)) return null
+  const withoutChildPath = removeGuardedPath(child, rest)
+  if (!withoutChildPath) return null
+  if (Object.keys(withoutChildPath).length === 0) delete output[key]
+  else output[key] = withoutChildPath
+  return output
+}
+
+function readGuardedPath(value: Readonly<Record<string, unknown>>, path: readonly string[]): { found: boolean; value?: unknown } | null {
+  let cursor: unknown = value
+  for (const segment of path) {
+    if (!isRecord(cursor)) return null
+    if (!Object.prototype.hasOwnProperty.call(cursor, segment)) return { found: false }
+    cursor = cursor[segment]
+  }
+  return { found: true, value: cursor }
+}
+
+function writeGuardedPath(base: Readonly<Record<string, unknown>>, path: readonly string[], value: unknown): Record<string, unknown> | null {
+  const [key, ...rest] = path
+  if (rest.length === 0) return { ...base, [key]: value }
+  const existing = base[key]
+  if (existing !== undefined && !isRecord(existing)) return null
+  const child = writeGuardedPath(isRecord(existing) ? existing : {}, rest, value)
+  return child ? { ...base, [key]: child } : null
+}
+
 function authorizedArgs(base: Readonly<Record<string, unknown>>, current: Readonly<Record<string, unknown>>, positionPath?: string): Record<string, unknown> | null {
-  const positionKey = positionPath?.split('.').at(-1)
-  const permittedKeys = new Set([...Object.keys(base), ...(positionKey ? [positionKey] : [])])
-  if (Object.keys(current).some((key) => !permittedKeys.has(key))) return null
-  const withoutPosition = (value: Readonly<Record<string, unknown>>) => Object.fromEntries(
-    Object.entries(value).filter(([key]) => key !== positionKey),
-  )
-  if (stableFingerprint(withoutPosition(base)) !== stableFingerprint(withoutPosition(current))) return null
-  return { ...base, ...(positionKey && current[positionKey] !== undefined ? { [positionKey]: current[positionKey] } : {}) }
+  if (!positionPath) {
+    return stableFingerprint(base) === stableFingerprint(current) ? { ...base } : null
+  }
+  const path = positionPath.split('.')
+  if (path.some((segment) => !segment || FORBIDDEN_PATH_SEGMENTS.has(segment))) return null
+  const baseWithoutPosition = removeGuardedPath(base, path)
+  const currentWithoutPosition = removeGuardedPath(current, path)
+  if (!baseWithoutPosition || !currentWithoutPosition
+    || stableFingerprint(baseWithoutPosition) !== stableFingerprint(currentWithoutPosition)) return null
+  const position = readGuardedPath(current, path)
+  if (!position) return null
+  if (!position.found || position.value === undefined) return { ...base }
+  return writeGuardedPath(base, path, position.value)
 }
 
 export async function POST(request: Request) {
@@ -107,7 +160,7 @@ export async function POST(request: Request) {
   const body: Body = parsedBody.data
 
   try {
-    const key = signingKey()
+    const key = loadInquiryLifecycleSigningKeyRing()
     if (body.action === 'start') {
       if (!(await entitled(principalUid, body.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
       const scope = ScopeTupleSchema.parse(body.scope_tuple)
@@ -116,6 +169,7 @@ export async function POST(request: Request) {
       const contract = compileInquiryContract({
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
+        temporal_anchor_date: body.temporal_anchor_date,
       })
       const inquiryId = randomUUID()
       const ready = nextReady(contract)
@@ -131,7 +185,10 @@ export async function POST(request: Request) {
       return response({ ok: true, inquiry_id: inquiryId, contract, lifecycle_token: issued.token, next_action_ids: issued.claims.next_action_ids })
     }
 
-    const claims = verifyInquiryLifecycleToken(body.lifecycle_token, key, principalSubject)
+    const claims = verifyInquiryLifecycleToken(body.lifecycle_token, key, principalSubject, (kid) => {
+      // KID is public JWT-header metadata. Never log the token, signature or key material.
+      console.info('[mcp:inquiry] lifecycle token verified', { kid })
+    })
     if (!(await entitled(principalUid, claims.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
     const row = await getInquiryLifecycle(claims.inquiry_id, principalUid, claims.chart_id)
     const authorization = row?.authorization_jsonb
@@ -142,7 +199,8 @@ export async function POST(request: Request) {
     if (row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash ||
       row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash ||
       row.capability_compatibility_version !== claims.compatibility_version || row.revision !== claims.revision ||
-      row.current_jti_hash !== hashJti(claims.jti) || row.chart_overlay_version !== claims.overlay_version ||
+      (body.action === 'finalize' && row.current_jti_hash !== hashJti(claims.jti)) ||
+      row.chart_overlay_version !== claims.overlay_version ||
       row.chart_build_id !== claims.chart_build_id ||
       stableFingerprint(row.contract_jsonb) !== claims.contract_state_hash ||
       authorizationHashes.semantic_contract_hash !== row.semantic_contract_hash ||
@@ -182,7 +240,30 @@ export async function POST(request: Request) {
       if (!invocationArgs) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
 
       const reservationHash = `reserved:${hashJti(randomUUID())}`
-      await reserveInquiryAction({ row, expected_jti_hash: hashJti(claims.jti), reservation_hash: reservationHash })
+      const reservation = await reserveInquiryAction({
+        row,
+        expected_jti_hash: hashJti(claims.jti),
+        reservation_hash: reservationHash,
+        plan_item_id: item.item_id,
+      })
+      if (reservation.status === 'in_progress') {
+        return response({
+          ok: false,
+          error: 'INQUIRY_ACTION_IN_PROGRESS',
+          retry_after_seconds: reservation.retry_after_seconds,
+        }, 409)
+      }
+      if (reservation.status === 'ambiguous') {
+        const blocked = failInquiryForAmbiguousDispatch(contract, item.item_id)
+        await failCloseAmbiguousInquiryAction({
+          row,
+          expected_source_jti_hash: hashJti(claims.jti),
+          plan_item_id: item.item_id,
+          contract: blocked,
+        })
+        return response({ ok: false, error: 'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS', contract: blocked }, 409)
+      }
+      await markInquiryActionDispatched({ row, plan_item_id: item.item_id, reservation_hash: reservation.reservation_hash })
 
       let raw: unknown
       let disposition: 'served' | 'empty' | 'failed' = 'served'
@@ -202,7 +283,12 @@ export async function POST(request: Request) {
       if (postDispatchOverlay.overlay_version !== claims.overlay_version || postDispatchOverlay.build_id !== claims.chart_build_id) {
         console.error('[mcp:inquiry] chart overlay changed during dispatch', { traceId, inquiryId: row.inquiry_id, itemId: item.item_id })
         const blocked = failInquiryForOverlayDrift(contract)
-        await commitInquiryFinalization({ row, expected_jti_hash: reservationHash, contract: blocked })
+        await commitInquiryFinalization({
+          row,
+          expected_jti_hash: reservation.reservation_hash,
+          contract: blocked,
+          action: { plan_item_id: item.item_id, terminal_state: 'failed_closed' },
+        })
         return response({ ok: false, error: 'CAPABILITY_OVERLAY_CHANGED' }, 409)
       }
       let serialized = JSON.stringify(raw)
@@ -228,7 +314,7 @@ export async function POST(request: Request) {
         allowed_transition: remaining.length ? 'execute' : 'finalize', next_action_ids: remaining,
       }, key)
       const receiptId = await commitInquiryObservation({
-        row, expected_jti_hash: reservationHash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
+        row, expected_jti_hash: reservation.reservation_hash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
         evidence: { plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id,
           canonical_args_hash: stableFingerprint(invocationArgs), raw_result_hash: stableFingerprint(raw), disposition,
           pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized) } },
