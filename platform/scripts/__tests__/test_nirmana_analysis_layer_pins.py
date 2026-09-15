@@ -36,7 +36,7 @@ ACCEPTED_PINS = json.loads(
         [
             "git",
             "show",
-            "8ebb3737cedfd4fde802f30845d94f8e8a641c33:"
+            "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda:"
             "platform/src/generated/nirmana-analysis-layer-pins.json",
         ],
         cwd=REPO,
@@ -141,7 +141,7 @@ def test_nonexistent_authority_and_review_commits_are_rejected() -> None:
 
     nonexistent = copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L2"][0])
     nonexistent["commit"] = "0" * 40
-    with pytest.raises(SystemExit, match="does not carry"):
+    with pytest.raises(SystemExit, match="must be an ancestor of HEAD"):
         pins_module.validate_artifact_binding(nonexistent, "fixture review")
 
 
@@ -228,6 +228,16 @@ def test_historical_pin_and_writer_rewrites_are_rejected() -> None:
     rewritten_pin["history"]["L2"][0]["pin"]["convergence_commit"] = "0" * 40
     failures = pins_module.check(rewritten_pin, CURRENT_INVENTORY)
     assert any("archived pin differs" in failure for failure in failures)
+
+
+def test_fabricated_unversioned_convergence_identity_is_rejected() -> None:
+    fabricated = copy.deepcopy(CURRENT_PINS)
+    fabricated["layers"]["L5"]["convergence_commit"] = "0" * 40
+    failures = pins_module.check(fabricated, CURRENT_INVENTORY)
+    assert any(
+        "unversioned active pin differs from immutable definition snapshot" in failure
+        for failure in failures
+    )
 
 
 def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) -> None:
@@ -394,8 +404,7 @@ def test_current_security_successors_are_exact_and_preserve_prior_bytes() -> Non
 def test_security_source_surface_binding_rederives_exact_equivalence() -> None:
     binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE]
     paths, digest = pins_module._source_surface_mapping(
-        binding["common_base_commit"],
-        binding["reviewed_source_commit"],
+        binding["reviewed_surface"],
         binding["integrated_equivalent_commit"],
     )
     assert len(paths) == 23
@@ -469,8 +478,79 @@ def test_security_admission_rejects_wrong_or_omitted_review_artifact() -> None:
                 authority_commit="7f21f27b14a7909424591a530096dc2f5d6e2b13",
                 reason="security fixture",
                 classifications=classifications,
-                historical_snapshot_commit="8ebb3737cedfd4fde802f30845d94f8e8a641c33",
+                historical_snapshot_commit="7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
                 definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
             )
 
     assert expected == CURRENT_PINS["layers"]["L1"]["admission"]["review_artifacts"]
+
+
+def test_side_ref_only_historical_snapshot_is_rejected() -> None:
+    document = copy.deepcopy(CURRENT_PINS)
+    document["history"]["L1"][-1]["historical_snapshot_commit"] = (
+        "8ebb3737cedfd4fde802f30845d94f8e8a641c33"
+    )
+    failures = pins_module.check(document, CURRENT_INVENTORY)
+    assert any("must be an ancestor of HEAD" in failure for failure in failures)
+
+
+@pytest.mark.parametrize("mutation", ["wrong", "extra", "omitted"])
+def test_reviewed_surface_rejects_wrong_extra_or_omitted_paths(
+    monkeypatch, mutation: str
+) -> None:
+    binding = copy.deepcopy(pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE])
+    surface = binding["reviewed_surface"]
+    if mutation == "wrong":
+        surface[0]["path"] = "CLAUDE.md"
+    elif mutation == "extra":
+        surface.append(
+            {
+                "path": "CLAUDE.md",
+                "blob_oid": pins_module._blob_oid_at_commit(
+                    binding["integrated_equivalent_commit"], "CLAUDE.md"
+                ),
+            }
+        )
+        surface.sort(key=lambda item: item["path"])
+    else:
+        surface.pop()
+    monkeypatch.setitem(pins_module.SOURCE_ACCEPTANCE_BINDINGS, SECURITY_SOURCE, binding)
+
+    with pytest.raises(SystemExit):
+        pins_module.validate_source_acceptance(
+            SECURITY_SOURCE, pins_module._source_acceptance_public(binding)
+        )
+
+
+def test_reviewed_surface_rejects_wrong_integrated_blob(monkeypatch) -> None:
+    binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE]
+    real_blob_oid = pins_module._blob_oid_at_commit
+    target = binding["reviewed_surface"][0]["path"]
+
+    def wrong_blob_oid(commit: str, path: str) -> str:
+        if commit == binding["integrated_equivalent_commit"] and path == target:
+            return "0" * 40
+        return real_blob_oid(commit, path)
+
+    monkeypatch.setattr(pins_module, "_blob_oid_at_commit", wrong_blob_oid)
+    with pytest.raises(SystemExit, match="integrated source differs"):
+        pins_module.validate_source_acceptance(
+            SECURITY_SOURCE, pins_module._source_acceptance_public(binding)
+        )
+
+
+def test_every_commit_dereferenced_by_check_is_an_ancestor_of_head(monkeypatch) -> None:
+    dereferenced: list[str] = []
+    real_require = pins_module._require_reachable_commit
+
+    def record(commit: str, label: str) -> None:
+        dereferenced.append(commit)
+        real_require(commit, label)
+
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", record)
+    assert pins_module.check(CURRENT_PINS, CURRENT_INVENTORY) == []
+    assert dereferenced
+    assert all(pins_module._commit_is_ancestor_of_head(commit) for commit in dereferenced)
+    assert "da498ebd980cac87796eceb889c7f1c42cfb952b" not in dereferenced
+    assert "7f21f27b14a7909424591a530096dc2f5d6e2b13" not in dereferenced
+    assert "d2369b888e760e5b8d693328f00683877cbd5f28" not in dereferenced

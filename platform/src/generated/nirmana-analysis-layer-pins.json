@@ -125,7 +125,7 @@
       },
       {
         "generation_id": "l1:d2369b888e76:3e8816fc708a",
-        "historical_snapshot_commit": "8ebb3737cedfd4fde802f30845d94f8e8a641c33",
+        "historical_snapshot_commit": "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
         "pin": {
           "admission": {
             "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
@@ -254,7 +254,7 @@
       },
       {
         "generation_id": "l2:d2369b888e76:ad143c22bd8d",
-        "historical_snapshot_commit": "8ebb3737cedfd4fde802f30845d94f8e8a641c33",
+        "historical_snapshot_commit": "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
         "pin": {
           "admission": {
             "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
@@ -528,6 +528,100 @@
           "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
           "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
           "reviewed_source_commit": "da498ebd980cac87796eceb889c7f1c42cfb952b",
+          "reviewed_surface": [
+            {
+              "blob_oid": "e6a42c8035c47920d745c35da2e10f3036bd6324",
+              "path": ".github/workflows/deploy.yml"
+            },
+            {
+              "blob_oid": "b97ba202377a68de1d6c181b50ab30207be6b189",
+              "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md"
+            },
+            {
+              "blob_oid": "26f2f718d8066fe8df50591b1ff50a774ab44b89",
+              "path": "platform/package-lock.json"
+            },
+            {
+              "blob_oid": "1c05bf84e8077433194424f8c1860e1cda776517",
+              "path": "platform/package.json"
+            },
+            {
+              "blob_oid": "abba1b47b3981ef7e998b7cb322116aa72247f28",
+              "path": "platform/pnpm-lock.yaml"
+            },
+            {
+              "blob_oid": "46d5e70c0af44989afe22db8b94aa78dd807a00b",
+              "path": "platform/python-sidecar/bodha_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "6ea79a86d6654dfab8805ac63ff102fb5a8891d4",
+              "path": "platform/python-sidecar/ga_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "e787b242a1d7c673d9ca62baa908315be3e83855",
+              "path": "platform/python-sidecar/ga_writers/ga_condition_writer.py"
+            },
+            {
+              "blob_oid": "7bc444068023de3502f9056c6799a08b54e09a4a",
+              "path": "platform/python-sidecar/ga_writers/ga_dashas_writer.py"
+            },
+            {
+              "blob_oid": "e72aea9012013f7c0bdfc3a3b2d2c2c072aa9dff",
+              "path": "platform/python-sidecar/pipeline/dispatcher.py"
+            },
+            {
+              "blob_oid": "56242b0b4043a5254f1a4e85bc52720a0c2f697b",
+              "path": "platform/python-sidecar/tests/test_bodha_idempotency.py"
+            },
+            {
+              "blob_oid": "3b6ed86f0572e1c69e6d913552d98e157ab857fd",
+              "path": "platform/python-sidecar/tests/test_ga_idempotency.py"
+            },
+            {
+              "blob_oid": "0e171ae470b931e7328f1437e51f0ab579b74051",
+              "path": "platform/scripts/data-plane-cutover-preflight.ts"
+            },
+            {
+              "blob_oid": "5972102d5894476bd8ed0cfec7bb76c24d5c4a16",
+              "path": "platform/scripts/data-plane-migration-attestation.ts"
+            },
+            {
+              "blob_oid": "85a760356640d943264f3c67c7b6c759c56eefac",
+              "path": "platform/scripts/data-plane-ownership-preflight.ts"
+            },
+            {
+              "blob_oid": "8e9b980ce6e2bef5d7b122c34f185e83bba99328",
+              "path": "platform/scripts/data-plane-ownership-status.ts"
+            },
+            {
+              "blob_oid": "57fb5a613646f25d0f3cbe465f57bd54e05cf2b0",
+              "path": "platform/scripts/data-plane-protected-cutover.ts"
+            },
+            {
+              "blob_oid": "112a3592848d51c462b14269061948fd7f548c15",
+              "path": "platform/scripts/data-plane-secret-isolation-preflight.ts"
+            },
+            {
+              "blob_oid": "1807347da2dbf470b589b3aad6e835768b5504e2",
+              "path": "platform/scripts/migrate.ts"
+            },
+            {
+              "blob_oid": "aa878d964dbdbc5d35d352eec7cbacb62c1bdb0d",
+              "path": "platform/supabase/migrations/1035_data_plane_l1_producer_history.sql"
+            },
+            {
+              "blob_oid": "d00b7cda7f00b1243c8a9e8dfcf5a2903f502e69",
+              "path": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql"
+            },
+            {
+              "blob_oid": "43dfa413d26f39a42c3a7ac2d2336b462884ae94",
+              "path": "platform/tests/integration/data_plane_protected_roles.db.test.ts"
+            },
+            {
+              "blob_oid": "d0c8059efe1487b1f5bc389ed6f094be26586e8f",
+              "path": "platform/tests/unit/data_plane_security_contract.test.ts"
+            }
+          ],
           "schema_version": "nirmana-analysis-source-acceptance/v1",
           "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876"
         },
@@ -591,6 +685,100 @@
           "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
           "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
           "reviewed_source_commit": "da498ebd980cac87796eceb889c7f1c42cfb952b",
+          "reviewed_surface": [
+            {
+              "blob_oid": "e6a42c8035c47920d745c35da2e10f3036bd6324",
+              "path": ".github/workflows/deploy.yml"
+            },
+            {
+              "blob_oid": "b97ba202377a68de1d6c181b50ab30207be6b189",
+              "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md"
+            },
+            {
+              "blob_oid": "26f2f718d8066fe8df50591b1ff50a774ab44b89",
+              "path": "platform/package-lock.json"
+            },
+            {
+              "blob_oid": "1c05bf84e8077433194424f8c1860e1cda776517",
+              "path": "platform/package.json"
+            },
+            {
+              "blob_oid": "abba1b47b3981ef7e998b7cb322116aa72247f28",
+              "path": "platform/pnpm-lock.yaml"
+            },
+            {
+              "blob_oid": "46d5e70c0af44989afe22db8b94aa78dd807a00b",
+              "path": "platform/python-sidecar/bodha_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "6ea79a86d6654dfab8805ac63ff102fb5a8891d4",
+              "path": "platform/python-sidecar/ga_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "e787b242a1d7c673d9ca62baa908315be3e83855",
+              "path": "platform/python-sidecar/ga_writers/ga_condition_writer.py"
+            },
+            {
+              "blob_oid": "7bc444068023de3502f9056c6799a08b54e09a4a",
+              "path": "platform/python-sidecar/ga_writers/ga_dashas_writer.py"
+            },
+            {
+              "blob_oid": "e72aea9012013f7c0bdfc3a3b2d2c2c072aa9dff",
+              "path": "platform/python-sidecar/pipeline/dispatcher.py"
+            },
+            {
+              "blob_oid": "56242b0b4043a5254f1a4e85bc52720a0c2f697b",
+              "path": "platform/python-sidecar/tests/test_bodha_idempotency.py"
+            },
+            {
+              "blob_oid": "3b6ed86f0572e1c69e6d913552d98e157ab857fd",
+              "path": "platform/python-sidecar/tests/test_ga_idempotency.py"
+            },
+            {
+              "blob_oid": "0e171ae470b931e7328f1437e51f0ab579b74051",
+              "path": "platform/scripts/data-plane-cutover-preflight.ts"
+            },
+            {
+              "blob_oid": "5972102d5894476bd8ed0cfec7bb76c24d5c4a16",
+              "path": "platform/scripts/data-plane-migration-attestation.ts"
+            },
+            {
+              "blob_oid": "85a760356640d943264f3c67c7b6c759c56eefac",
+              "path": "platform/scripts/data-plane-ownership-preflight.ts"
+            },
+            {
+              "blob_oid": "8e9b980ce6e2bef5d7b122c34f185e83bba99328",
+              "path": "platform/scripts/data-plane-ownership-status.ts"
+            },
+            {
+              "blob_oid": "57fb5a613646f25d0f3cbe465f57bd54e05cf2b0",
+              "path": "platform/scripts/data-plane-protected-cutover.ts"
+            },
+            {
+              "blob_oid": "112a3592848d51c462b14269061948fd7f548c15",
+              "path": "platform/scripts/data-plane-secret-isolation-preflight.ts"
+            },
+            {
+              "blob_oid": "1807347da2dbf470b589b3aad6e835768b5504e2",
+              "path": "platform/scripts/migrate.ts"
+            },
+            {
+              "blob_oid": "aa878d964dbdbc5d35d352eec7cbacb62c1bdb0d",
+              "path": "platform/supabase/migrations/1035_data_plane_l1_producer_history.sql"
+            },
+            {
+              "blob_oid": "d00b7cda7f00b1243c8a9e8dfcf5a2903f502e69",
+              "path": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql"
+            },
+            {
+              "blob_oid": "43dfa413d26f39a42c3a7ac2d2336b462884ae94",
+              "path": "platform/tests/integration/data_plane_protected_roles.db.test.ts"
+            },
+            {
+              "blob_oid": "d0c8059efe1487b1f5bc389ed6f094be26586e8f",
+              "path": "platform/tests/unit/data_plane_security_contract.test.ts"
+            }
+          ],
           "schema_version": "nirmana-analysis-source-acceptance/v1",
           "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876"
         },

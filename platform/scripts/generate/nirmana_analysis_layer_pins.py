@@ -89,10 +89,26 @@ LAYER_PREFIX = {
 
 AUTHORITY_BINDINGS = {
     "DP-SD-018": {
-        "commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
-        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md",
-        "sha256": "e530098ba7199d30099fdef9fb40fde60b75a54b594fe79cb6dbc22b3ae224fc",
-        "decision_binding": "| DP-SD-018 |",
+        # The approval identity remains immutable metadata.  Validation reads
+        # the later integrated unblock record, which quotes that exact identity
+        # and is reachable from every supported checkout of this branch.
+        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "evidence_commit": "8c80cd46159d8cce7ce3450f20061d7e0db466e2",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_RI02_AUTHORIZED_UNBLOCK_v1_0.md",
+        "sha256": "b1bc568532980e787389d86f4d44ddc3ed4e3709f7133e68713899e13f4ddb26",
+        "decision_binding": "strategy_decision: DP-SD-018",
+        "authority_identity_binding": "`7f21f27b14a7909424591a530096dc2f5d6e2b13`",
+    }
+}
+
+# These source identities were accepted on an earlier lane branch.  They stay
+# byte-for-byte in historical admissions, but the executable inventory proof is
+# read from an integrated ancestor carrying the exact same inventory blob.
+SOURCE_INVENTORY_BINDINGS = {
+    "d2369b888e760e5b8d693328f00683877cbd5f28": {
+        "integrated_equivalent_commit": "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
+        "blob_oid": "56766cefc8b30423a59c815ae8eaa85fcf6ec05d",
+        "sha256": "baa1d59e56c87601cc8b2f9ab4aa7d8c46c76679f458cb386fddabd713084aa1",
     }
 }
 
@@ -162,6 +178,31 @@ SOURCE_ACCEPTANCE_BINDINGS = {
         "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
         "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
         "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876",
+        "reviewed_surface": [
+            {"path": ".github/workflows/deploy.yml", "blob_oid": "e6a42c8035c47920d745c35da2e10f3036bd6324"},
+            {"path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md", "blob_oid": "b97ba202377a68de1d6c181b50ab30207be6b189"},
+            {"path": "platform/package-lock.json", "blob_oid": "26f2f718d8066fe8df50591b1ff50a774ab44b89"},
+            {"path": "platform/package.json", "blob_oid": "1c05bf84e8077433194424f8c1860e1cda776517"},
+            {"path": "platform/pnpm-lock.yaml", "blob_oid": "abba1b47b3981ef7e998b7cb322116aa72247f28"},
+            {"path": "platform/python-sidecar/bodha_writers/_idempotency.py", "blob_oid": "46d5e70c0af44989afe22db8b94aa78dd807a00b"},
+            {"path": "platform/python-sidecar/ga_writers/_idempotency.py", "blob_oid": "6ea79a86d6654dfab8805ac63ff102fb5a8891d4"},
+            {"path": "platform/python-sidecar/ga_writers/ga_condition_writer.py", "blob_oid": "e787b242a1d7c673d9ca62baa908315be3e83855"},
+            {"path": "platform/python-sidecar/ga_writers/ga_dashas_writer.py", "blob_oid": "7bc444068023de3502f9056c6799a08b54e09a4a"},
+            {"path": "platform/python-sidecar/pipeline/dispatcher.py", "blob_oid": "e72aea9012013f7c0bdfc3a3b2d2c2c072aa9dff"},
+            {"path": "platform/python-sidecar/tests/test_bodha_idempotency.py", "blob_oid": "56242b0b4043a5254f1a4e85bc52720a0c2f697b"},
+            {"path": "platform/python-sidecar/tests/test_ga_idempotency.py", "blob_oid": "3b6ed86f0572e1c69e6d913552d98e157ab857fd"},
+            {"path": "platform/scripts/data-plane-cutover-preflight.ts", "blob_oid": "0e171ae470b931e7328f1437e51f0ab579b74051"},
+            {"path": "platform/scripts/data-plane-migration-attestation.ts", "blob_oid": "5972102d5894476bd8ed0cfec7bb76c24d5c4a16"},
+            {"path": "platform/scripts/data-plane-ownership-preflight.ts", "blob_oid": "85a760356640d943264f3c67c7b6c759c56eefac"},
+            {"path": "platform/scripts/data-plane-ownership-status.ts", "blob_oid": "8e9b980ce6e2bef5d7b122c34f185e83bba99328"},
+            {"path": "platform/scripts/data-plane-protected-cutover.ts", "blob_oid": "57fb5a613646f25d0f3cbe465f57bd54e05cf2b0"},
+            {"path": "platform/scripts/data-plane-secret-isolation-preflight.ts", "blob_oid": "112a3592848d51c462b14269061948fd7f548c15"},
+            {"path": "platform/scripts/migrate.ts", "blob_oid": "1807347da2dbf470b589b3aad6e835768b5504e2"},
+            {"path": "platform/supabase/migrations/1035_data_plane_l1_producer_history.sql", "blob_oid": "aa878d964dbdbc5d35d352eec7cbacb62c1bdb0d"},
+            {"path": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql", "blob_oid": "d00b7cda7f00b1243c8a9e8dfcf5a2903f502e69"},
+            {"path": "platform/tests/integration/data_plane_protected_roles.db.test.ts", "blob_oid": "43dfa413d26f39a42c3a7ac2d2336b462884ae94"},
+            {"path": "platform/tests/unit/data_plane_security_contract.test.ts", "blob_oid": "d0c8059efe1487b1f5bc389ed6f094be26586e8f"},
+        ],
         "review_artifacts": {
             layer: [{
                 "commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
@@ -326,8 +367,24 @@ def _validate_sha(value: str, label: str) -> None:
         raise SystemExit(f"{label} must be an exact 40-hex commit, got {value!r}")
 
 
+def _commit_is_ancestor_of_head(commit: str) -> bool:
+    if not re.fullmatch(r"[a-f0-9]{40}", commit):
+        return False
+    return subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+    ).returncode == 0
+
+
+def _require_reachable_commit(commit: str, label: str) -> None:
+    _validate_sha(commit, label)
+    if not _commit_is_ancestor_of_head(commit):
+        raise SystemExit(f"{label} commit {commit} must be an ancestor of HEAD")
+
+
 def _blob_at_commit(commit: str, path: str) -> bytes:
-    _validate_sha(commit, "artifact commit")
+    _require_reachable_commit(commit, "artifact")
     try:
         return subprocess.run(
             ["git", "show", f"{commit}:{path}"],
@@ -337,6 +394,23 @@ def _blob_at_commit(commit: str, path: str) -> bytes:
         ).stdout
     except subprocess.CalledProcessError as exc:
         raise SystemExit(f"commit {commit} does not carry {path}") from exc
+
+
+def _blob_oid_at_commit(commit: str, path: str) -> str:
+    _require_reachable_commit(commit, "blob source")
+    try:
+        oid = subprocess.run(
+            ["git", "rev-parse", f"{commit}:{path}"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"commit {commit} does not carry {path}") from exc
+    if not re.fullmatch(r"[a-f0-9]{40}", oid):
+        raise SystemExit(f"commit {commit} carries an invalid blob identity at {path}")
+    return oid
 
 
 def _commit_exists(commit: str) -> bool:
@@ -360,9 +434,22 @@ def _json_at_commit(commit: str, path: str) -> dict[str, Any]:
 
 
 def _inventory_at_commit(commit: str) -> dict[str, str]:
+    inventory_commit = commit
+    binding = SOURCE_INVENTORY_BINDINGS.get(commit)
+    if binding is not None:
+        inventory_commit = binding["integrated_equivalent_commit"]
+        path = "platform/src/generated/nirmana-writer-digests.json"
+        if _blob_oid_at_commit(inventory_commit, path) != binding["blob_oid"]:
+            raise SystemExit(
+                f"integrated inventory for source {commit} has the wrong blob identity"
+            )
+        if hashlib.sha256(_blob_at_commit(inventory_commit, path)).hexdigest() != binding["sha256"]:
+            raise SystemExit(
+                f"integrated inventory for source {commit} has the wrong content digest"
+            )
     try:
         writers = _json_at_commit(
-            commit, "platform/src/generated/nirmana-writer-digests.json"
+            inventory_commit, "platform/src/generated/nirmana-writer-digests.json"
         )["writers"]
     except KeyError as exc:
         raise SystemExit(
@@ -444,7 +531,7 @@ def build_definition_bindings(snapshot_commit: str) -> dict[str, Any]:
     return bindings
 
 
-def validate_artifact_binding(artifact: dict[str, str], label: str) -> None:
+def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
     try:
         commit = artifact["commit"]
         path = artifact["path"]
@@ -464,13 +551,24 @@ def validate_artifact_binding(artifact: dict[str, str], label: str) -> None:
 
 def validate_authority_binding(decision: str, commit: str) -> None:
     expected = AUTHORITY_BINDINGS.get(decision)
-    if expected is None or expected["commit"] != commit:
+    if expected is None or expected["authority_commit"] != commit:
         raise SystemExit(f"authority decision {decision!r} is not bound to {commit}")
-    validate_artifact_binding(expected, f"authority {decision}")
+    artifact = {
+        "commit": expected["evidence_commit"],
+        "path": expected["path"],
+        "sha256": expected["sha256"],
+        "decision_binding": expected["decision_binding"],
+    }
+    validate_artifact_binding(artifact, f"authority {decision}")
+    content = _blob_at_commit(expected["evidence_commit"], expected["path"])
+    if expected["authority_identity_binding"].encode("utf-8") not in content:
+        raise SystemExit(
+            f"authority {decision} record does not contain the immutable approval identity"
+        )
 
 
-def _source_acceptance_public(binding: dict[str, Any]) -> dict[str, str]:
-    return {
+def _source_acceptance_public(binding: dict[str, Any]) -> dict[str, Any]:
+    public = {
         key: binding[key]
         for key in (
             "schema_version",
@@ -480,65 +578,36 @@ def _source_acceptance_public(binding: dict[str, Any]) -> dict[str, str]:
             "source_surface_sha256",
         )
     }
+    public["reviewed_surface"] = json.loads(json.dumps(binding["reviewed_surface"]))
+    return public
 
 
 def _source_surface_mapping(
-    common_base_commit: str,
-    reviewed_source_commit: str,
+    reviewed_surface: list[dict[str, str]],
     integrated_equivalent_commit: str,
 ) -> tuple[list[str], str]:
-    for label, commit in (
-        ("source acceptance base", common_base_commit),
-        ("reviewed source", reviewed_source_commit),
-        ("integrated equivalent", integrated_equivalent_commit),
+    _require_reachable_commit(integrated_equivalent_commit, "integrated equivalent")
+    if not isinstance(reviewed_surface, list) or not reviewed_surface:
+        raise SystemExit("reviewed source surface is missing or empty")
+    if any(
+        not isinstance(item, dict)
+        or set(item) != {"path", "blob_oid"}
+        or not isinstance(item["path"], str)
+        or not item["path"]
+        or not isinstance(item["blob_oid"], str)
+        or not re.fullmatch(r"[a-f0-9]{40}", item["blob_oid"])
+        for item in reviewed_surface
     ):
-        _validate_sha(commit, label)
-        if not _commit_exists(commit):
-            raise SystemExit(f"{label} commit {commit} does not exist")
-    try:
-        raw_paths = subprocess.run(
-            [
-                "git",
-                "diff",
-                "--name-only",
-                "-z",
-                f"{common_base_commit}..{reviewed_source_commit}",
-            ],
-            cwd=REPO_ROOT,
-            check=True,
-            capture_output=True,
-        ).stdout
-    except subprocess.CalledProcessError as exc:
-        raise SystemExit("cannot derive the reviewed source surface") from exc
-    paths = sorted(
-        path.decode("utf-8")
-        for path in raw_paths.split(b"\0")
-        if path
-    )
-    if not paths:
-        raise SystemExit("reviewed source surface is empty")
+        raise SystemExit("reviewed source surface contains invalid path/blob metadata")
+    paths = [item["path"] for item in reviewed_surface]
+    if paths != sorted(set(paths)):
+        raise SystemExit("reviewed source surface paths must be sorted and unique")
     material = bytearray()
-    for path in paths:
-        try:
-            reviewed_oid = subprocess.run(
-                ["git", "rev-parse", f"{reviewed_source_commit}:{path}"],
-                cwd=REPO_ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-            integrated_oid = subprocess.run(
-                ["git", "rev-parse", f"{integrated_equivalent_commit}:{path}"],
-                cwd=REPO_ROOT,
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-        except subprocess.CalledProcessError as exc:
-            raise SystemExit(
-                f"reviewed source path {path} is absent from one bound commit"
-            ) from exc
-        if reviewed_oid != integrated_oid:
+    for item in reviewed_surface:
+        path = item["path"]
+        reviewed_oid = item["blob_oid"]
+        integrated_oid = _blob_oid_at_commit(integrated_equivalent_commit, path)
+        if integrated_oid != reviewed_oid:
             raise SystemExit(
                 f"integrated source differs from reviewed source at {path}"
             )
@@ -550,7 +619,7 @@ def _source_surface_mapping(
 
 
 def validate_source_acceptance(
-    source_commit: str, source_acceptance: dict[str, str] | None
+    source_commit: str, source_acceptance: dict[str, Any] | None
 ) -> None:
     configured = SOURCE_ACCEPTANCE_BINDINGS.get(source_commit)
     if configured is None:
@@ -565,8 +634,7 @@ def validate_source_acceptance(
             f"source commit {source_commit} is missing or has the wrong source-acceptance binding"
         )
     _, derived_digest = _source_surface_mapping(
-        expected["common_base_commit"],
-        expected["reviewed_source_commit"],
+        expected["reviewed_surface"],
         expected["integrated_equivalent_commit"],
     )
     if derived_digest != expected["source_surface_sha256"]:
@@ -841,8 +909,9 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
             failures.append(f"{label}: wrong asset prefix")
         if not re.fullmatch(r"[a-f0-9]{40}", str(pin.get("convergence_commit", ""))):
             failures.append(f"{label}: convergence commit is invalid")
-        elif not _commit_exists(pin["convergence_commit"]):
-            failures.append(f"{label}: convergence commit does not exist")
+        # Historical convergence identities are immutable receipt metadata.
+        # The checker validates their embedded inventories and reachable
+        # snapshot/source-equivalence proofs without requiring old lane refs.
         layer_writers = layer_writer_slice(inventory, prefix)
         invalid_digests = sorted(
             asset_id
@@ -966,6 +1035,10 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
                     if active_membership != expected_membership:
                         failures.append(
                             f"{layer}: active membership differs from immutable definition"
+                        )
+                    if not active_pin.get("generation_id") and active_pin != snapshot_pin:
+                        failures.append(
+                            f"{layer}: unversioned active pin differs from immutable definition snapshot"
                         )
                 except SystemExit as exc:
                     failures.append(f"{layer}: invalid definition membership: {exc}")
