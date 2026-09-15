@@ -66,27 +66,27 @@ function mockQuerySequence(
 
     // Call 1: information_schema probe
     if (sql.includes('information_schema')) {
-      return { rows: [{ exists: columnExists }] } as any
+      return { rows: [{ exists: columnExists }] } as never
     }
 
     // Call 2: profile role lookup
     if (sql.includes('profiles')) {
-      return { rows: [{ role: 'user' }] } as any
+      return { rows: [{ role: 'user' }] } as never
     }
 
     // Call 3: conversation SELECT
     if (sql.includes('FROM conversations')) {
-      return { rows: conversation ? [conversation] : [] } as any
+      return { rows: conversation ? [conversation] : [] } as never
     }
 
     // Call 4: builds lookup
     if (sql.includes('FROM builds')) {
       return {
         rows: buildAyanamshas ? [{ ayanamshas: buildAyanamshas }] : [],
-      } as any
+      } as never
     }
 
-    return { rows: [] } as any
+    return { rows: [] } as never
   })
 }
 

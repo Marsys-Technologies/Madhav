@@ -22,11 +22,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
 
-  const result = await query(
-    'DELETE FROM pending_streams WHERE expires_at < now() RETURNING query_id',
-    [],
-  )
+  const [result, lifecycleRetention] = await Promise.all([
+    query('DELETE FROM pending_streams WHERE expires_at < now() RETURNING query_id', []),
+    query<{ reaped: number }>('SELECT purge_expired_planner_inquiries_global() AS reaped', []),
+  ])
 
   const count = result.rows.length
-  return NextResponse.json({ reaped: count })
+  return NextResponse.json({ reaped: count, planner_inquiries_reaped: lifecycleRetention.rows[0]?.reaped ?? 0 })
 }

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 export type SidebarState =
   | 'collapsed'        // narrow rail; icons only
@@ -50,51 +51,28 @@ export interface UseSidebarStateReturn {
  * Pin persists via localStorage (key: marsys.consume.sidebar.pinned).
  */
 export function useSidebarState(): UseSidebarStateReturn {
-  const [isMobile, setIsMobile] = useState(false)
-  const [state, setState] = useState<SidebarState>(() => {
-    if (typeof window === 'undefined') return 'collapsed'
-    const mobile = window.innerWidth < 640
-    if (mobile) return 'mobile-closed'
-    return readPin() ? 'pinned-expanded' : 'collapsed'
-  })
-
-  // Sync isMobile and state on viewport resize.
-  useEffect(() => {
-    function onResize() {
-      const mobile = window.innerWidth < 640
-      setIsMobile(mobile)
-      setState(prev => {
-        if (mobile) {
-          if (prev === 'mobile-closed' || prev === 'mobile-open') return prev
-          return 'mobile-closed'
-        } else {
-          if (prev === 'mobile-closed' || prev === 'mobile-open') {
-            return readPin() ? 'pinned-expanded' : 'collapsed'
-          }
-          return prev
-        }
-      })
-    }
-
-    const mq = window.matchMedia('(max-width: 639px)')
-    setIsMobile(mq.matches)
-    mq.addEventListener('change', onResize)
-    return () => mq.removeEventListener('change', onResize)
-  }, [])
+  const isMobile = useMediaQuery('(max-width: 639px)')
+  const [desktopState, setDesktopState] = useState<SidebarState>(() =>
+    readPin() ? 'pinned-expanded' : 'collapsed'
+  )
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const state: SidebarState = isMobile
+    ? (mobileOpen ? 'mobile-open' : 'mobile-closed')
+    : desktopState
 
   const onMouseEnter = useCallback(() => {
     if (isMobile) return
-    setState(prev => prev === 'collapsed' ? 'hover-expanded' : prev)
+    setDesktopState(prev => prev === 'collapsed' ? 'hover-expanded' : prev)
   }, [isMobile])
 
   const onMouseLeave = useCallback(() => {
     if (isMobile) return
-    setState(prev => prev === 'hover-expanded' ? 'collapsed' : prev)
+    setDesktopState(prev => prev === 'hover-expanded' ? 'collapsed' : prev)
   }, [isMobile])
 
   const onPinToggle = useCallback(() => {
     if (isMobile) return
-    setState(prev => {
+    setDesktopState(prev => {
       if (prev === 'pinned-expanded') {
         writePin(false)
         return 'collapsed'
@@ -105,11 +83,7 @@ export function useSidebarState(): UseSidebarStateReturn {
   }, [isMobile])
 
   const onMobileToggle = useCallback(() => {
-    setState(prev => {
-      if (prev === 'mobile-open') return 'mobile-closed'
-      if (prev === 'mobile-closed') return 'mobile-open'
-      return prev
-    })
+    setMobileOpen(prev => !prev)
   }, [])
 
   const isExpanded = state === 'hover-expanded' || state === 'pinned-expanded' || state === 'mobile-open'

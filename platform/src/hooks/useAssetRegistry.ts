@@ -23,8 +23,9 @@ export function useAssetRegistry(): {
     const controller = new AbortController()
     let cancelled = false
 
-    setIsLoading(true)
-    ;(async () => {
+    const initialFetch = setTimeout(() => {
+      setIsLoading(true)
+      void (async () => {
       try {
         // On manual refresh (tick > 0), append a cache-buster so the ISR cache key
         // is unique and Next.js returns a fresh response rather than the 60s stale one.
@@ -52,11 +53,13 @@ export function useAssetRegistry(): {
         console.log('[AR] finally, cancelled=', cancelled)
         if (!cancelled) setIsLoading(false)
       }
-    })()
+      })()
+    }, 0)
 
     return () => {
       console.log('[AR] cleanup, setting cancelled=true')
       cancelled = true
+      clearTimeout(initialFetch)
       controller.abort()
     }
   }, [tick])

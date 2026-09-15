@@ -19,8 +19,15 @@
  *   WATCHDOG_TEST_DATABASE_URL=postgresql://postgres@127.0.0.1:55432/watchdog_lit_test \
  *     npx vitest run tests/integration/watchdog_substep_lit_guard.db.test.ts
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest'
 import { Pool } from 'pg'
+
+vi.mock('@/lib/auth/oidc', () => ({
+  verifyOidcToken: vi.fn().mockResolvedValue({
+    email: 'amjis-scheduler@madhav-astrology.iam.gserviceaccount.com',
+    sub: 'watchdog-db-test',
+  }),
+}))
 
 const TEST_DB_URL = process.env.WATCHDOG_TEST_DATABASE_URL
 const CHART = '00000000-0000-4000-8000-0000000000aa'
@@ -91,7 +98,7 @@ async function runWatchdog(): Promise<Record<string, number>> {
   const res = await POST(
     new Request('http://localhost/api/cockpit/watchdog', {
       method: 'POST',
-      headers: { 'x-watchdog-auth': process.env.WATCHDOG_SECRET! },
+      headers: { Authorization: 'Bearer watchdog-db-test-token' },
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     }) as any
   )
@@ -111,7 +118,6 @@ describe.skipIf(!TEST_DB_URL)('watchdog stuck-asset reaper — live DB (F3 guard
       )
     }
     process.env.DATABASE_URL = TEST_DB_URL
-    process.env.WATCHDOG_SECRET = 'test-watchdog-secret'
     process.env.PUBSUB_DISABLED = '1'
     delete process.env.GOOGLE_CLOUD_PROJECT
 

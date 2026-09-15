@@ -3,7 +3,7 @@
  *
  * Renamed + rewired from manifest_planner.ts. Consumes:
  *   1. PLANNER_PROMPT_v2_0.md §3 system prompt (verbatim).
- *   2. The compressed CAPABILITY_MANIFEST primary-tool view (≤3K tokens).
+ *   2. A bounded semantic projection of the compiled registry SCU snapshot.
  *   3. The PlannerContext window (≤600 tokens) from planner_context_builder.
  *   4. The native's query and chart id (the planner is per-native).
  *
@@ -37,11 +37,6 @@ import {
   type ClarificationRequest,
 } from './types'
 import { classifyScope, type ScopeClassification, type ScopeTuple } from '@/lib/vidhi/scope_classifier'
-import {
-  compressManifest,
-  compressedManifestToString,
-  type CapabilityManifest,
-} from '@/lib/pipeline/manifest_compressor'
 import { buildPlannerContext } from '@/lib/pipeline/planner_context_builder'
 import type { TraceEvent } from '@/lib/trace/types'
 import { writeLlmCallLog, resolveProvider } from '@/lib/db/monitoring-write'
@@ -50,6 +45,11 @@ import { writePlanAlternatives } from '@/lib/db/trace/plan_alternatives_writer'
 import { persistObservation, computeCost } from '@/lib/llm/observability'
 import { getStorageClient } from '@/lib/storage'
 import type { ProviderName, TokenUsage } from '@/lib/llm/observability/types'
+import {
+  buildPlannerCapabilityKnowledgeProjection,
+  getPinnedCapabilityKnowledgeSnapshot,
+  type PlannerCapabilityKnowledgeProjection,
+} from '@/lib/retrieval/registry/knowledge'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Retry helpers — timeout + rate-limit retry gate
@@ -145,22 +145,11 @@ function getSystemPrompt(): string {
   const md = readFileSync(promptPath, 'utf-8')
   const body = extractSystemPromptBody(md)
   const fewShots = extractFewShotSection(md)
-  _systemPromptCache = `${body}\n\n---\n\n${fewShots}\n`
+  _systemPromptCache = `${body}\n\n---\n\n${fewShots}\n\n` +
+    'CAPABILITY AUTHORITY: Use capability_knowledge as the semantic authority for decomposition, prerequisites, contradictions, and known gaps. ' +
+    'Select routes only from the supplied capability bindings. Do not invent a route or infer semantic completeness from a flat tool catalog. ' +
+    'Leave final interpretation to the downstream synthesis layer.\n'
   return _systemPromptCache
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// Manifest loading (read-once, lazy)
-// ────────────────────────────────────────────────────────────────────────────
-
-let _manifestCache: CapabilityManifest | null = null
-
-function loadManifest(): CapabilityManifest {
-  if (_manifestCache) return _manifestCache
-  const manifestPath = path.join(repoRoot(), '00_ARCHITECTURE', 'CAPABILITY_MANIFEST.json')
-  const raw = readFileSync(manifestPath, 'utf-8')
-  _manifestCache = JSON.parse(raw) as CapabilityManifest
-  return _manifestCache
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -195,13 +184,12 @@ function detectM9Query(query: string): boolean {
   return hits >= 2
 }
 
-function buildM9FewShotMessages(manifestStr: string): Array<{ role: 'user' | 'assistant'; content: string }> {
-  const manifest = JSON.parse(manifestStr) as unknown
+function buildM9FewShotMessages(capabilityKnowledge: PlannerCapabilityKnowledgeProjection): Array<{ role: 'user' | 'assistant'; content: string }> {
   const emptyHistory = { turns: [], was_summarized: false }
 
   // Example 1: all-schools career query → R31 (multi_school_signal_lookup) + R32 (convergence_score_lookup)
   const ex1User = JSON.stringify({
-    native_id: 'example', manifest, history: emptyHistory,
+    native_id: 'example', capability_knowledge: capabilityKnowledge, history: emptyHistory,
     query: 'How do all 7 Jyotish schools read my career prospects?',
   })
   const ex1Assistant = JSON.stringify({
@@ -223,7 +211,7 @@ function buildM9FewShotMessages(manifestStr: string): Array<{ role: 'user' | 'as
 
   // Example 2: convergence-only query → R32 alone (convergence_score_lookup)
   const ex2User = JSON.stringify({
-    native_id: 'example', manifest, history: emptyHistory,
+    native_id: 'example', capability_knowledge: capabilityKnowledge, history: emptyHistory,
     query: 'What is the inter-school convergence score for my spiritual domain? Are there any divergent schools?',
   })
   const ex2Assistant = JSON.stringify({
@@ -407,15 +395,19 @@ export async function callPipelinePlanner(
     return buildClarificationFromScope(classification)
   }
 
-  const manifest = loadManifest()
-  const compressed = compressManifest(manifest)
-  const compressedManifestStr = compressedManifestToString(compressed)
+  const knowledgeSnapshot = getPinnedCapabilityKnowledgeSnapshot()
+  const capabilityKnowledge = buildPlannerCapabilityKnowledgeProjection(knowledgeSnapshot, query, scopeTuple)
+  const capabilityRouteCount = capabilityKnowledge.capabilities.reduce(
+    (count, capability) => count + capability.routes.length,
+    0,
+  )
 
   const ctx = await buildPlannerContext(query, conversationHistory, plannerModelId, queryId)
 
   const userPayload = {
     native_id: nativeId,
-    manifest: JSON.parse(compressedManifestStr) as unknown,
+    capability_knowledge: capabilityKnowledge,
+    capability_content_hash: knowledgeSnapshot.content_hash,
     history: {
       turns: ctx.history_turns,
       was_summarized: ctx.history_was_summarized,
@@ -441,7 +433,7 @@ export async function callPipelinePlanner(
       data_summary: {
         model: plannerModelId,
         planner_active: true,
-        tool_count: compressed.length,
+        tool_count: capabilityRouteCount,
       },
       payload: {},
     },
@@ -451,7 +443,7 @@ export async function callPipelinePlanner(
     event: 'planning_start',
     query_id: nativeId,
     planner_model_id: plannerModelId,
-    manifest_tool_count: compressed.length,
+    capability_route_count: capabilityRouteCount,
   })
 
   const start = Date.now()
@@ -470,7 +462,7 @@ export async function callPipelinePlanner(
         modelOverride: { modelId: activeModelId },
         systemPrompt: getSystemPrompt(),
         messages: [
-          ...(detectM9Query(query) ? buildM9FewShotMessages(compressedManifestStr) : []),
+          ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
           { role: 'user', content: userMessage },
         ],
         temperature: 0,
@@ -708,7 +700,7 @@ export async function callPipelinePlanner(
         modelOverride: { modelId: activeModelId },
         systemPrompt: getSystemPrompt(),
         messages: [
-          ...(detectM9Query(query) ? buildM9FewShotMessages(compressedManifestStr) : []),
+          ...(detectM9Query(query) ? buildM9FewShotMessages(capabilityKnowledge) : []),
           { role: 'user', content: userMessage },
           { role: 'assistant', content: rawText || '(empty response)' },
           { role: 'user', content: REPAIR_INSTRUCTION },
@@ -922,11 +914,6 @@ export async function callPipelinePlanner(
       first_parse_error: firstParseError,
     },
   }
-}
-
-// Exported for tests only.
-export function __resetManifestCacheForTests(): void {
-  _manifestCache = null
 }
 
 export function __resetSystemPromptForTests(): void {

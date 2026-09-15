@@ -9,20 +9,27 @@ import { NextRequest } from 'next/server'
 // ─── module-level mocks (must precede route import) ──────────────────────────
 
 const mockQuery = vi.fn()
+const mockVerifyOidcToken = vi.fn()
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
+vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: mockVerifyOidcToken }))
 
 // Disable PubSub in all watchdog tests — publishEvent short-circuits when
 // PUBSUB_DISABLED is set; we assert on query calls, not Pub/Sub messages.
 beforeEach(() => {
   vi.clearAllMocks()
-  process.env.WATCHDOG_SECRET = 'test-secret'
+  mockVerifyOidcToken.mockResolvedValue({
+    email: 'amjis-scheduler@madhav-astrology.iam.gserviceaccount.com',
+    sub: 'scheduler-subject',
+  })
   process.env.PUBSUB_DISABLED = '1'
   delete process.env.GOOGLE_CLOUD_PROJECT
+  delete process.env.WATCHDOG_LEGACY_FALLBACK_ENABLED
+  delete process.env.WATCHDOG_SECRET
 })
 
-function makeReq(secret: string | null = 'test-secret'): NextRequest {
+function makeReq(token: string | null = 'valid-google-id-token'): NextRequest {
   const headers: Record<string, string> = {}
-  if (secret !== null) headers['x-watchdog-auth'] = secret
+  if (token !== null) headers.Authorization = `Bearer ${token}`
   return new NextRequest('http://localhost/api/cockpit/watchdog', {
     method: 'POST',
     headers,
@@ -50,16 +57,17 @@ describe('POST /api/cockpit/watchdog — auth', () => {
     expect(mockQuery).not.toHaveBeenCalled()
   })
 
-  it('returns 401 with wrong secret', async () => {
+  it('returns 403 for a token from the wrong identity', async () => {
+    mockVerifyOidcToken.mockResolvedValue(null)
     const { POST } = await import('../route')
-    const res = await POST(makeReq('wrong-secret'))
-    expect(res.status).toBe(401)
+    const res = await POST(makeReq('wrong-identity'))
+    expect(res.status).toBe(403)
   })
 
-  it('passes with correct secret', async () => {
+  it('passes with the pinned Scheduler identity', async () => {
     noOrphans()
     const { POST } = await import('../route')
-    const res = await POST(makeReq('test-secret'))
+    const res = await POST(makeReq())
     expect(res.status).toBe(200)
   })
 })

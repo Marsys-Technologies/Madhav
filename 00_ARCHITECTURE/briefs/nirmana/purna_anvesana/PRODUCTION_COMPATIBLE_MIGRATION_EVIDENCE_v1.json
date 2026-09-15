@@ -1,0 +1,79 @@
+{
+  "schema_version": "madhav-purna-anvesana/production-compatible-migration-evidence/v2",
+  "recorded_at": "2026-09-16T02:27:00+05:30",
+  "authority": "CCD-012",
+  "production_read": {
+    "mode": "read-only transaction through Cloud SQL Auth Proxy",
+    "database_version": "POSTGRES_15",
+    "database_user": "amjis_app",
+    "transaction_read_only": true,
+    "migration_tracker_rows": 853,
+    "purna_migrations_applied": 0,
+    "purna_relations_present": 0,
+    "active_asset_registry_rows": 128,
+    "current_output_digest_specs": 110,
+    "purna_active_asset_registry_rows": 6,
+    "purna_current_output_digest_specs": 0,
+    "shared_or_production_mutation": false
+  },
+  "disposable_replay": {
+    "database": "ephemeral pgvector/pgvector:pg15 container",
+    "schema_source": "same-run production public schema dump with owners and privileges omitted",
+    "schema_dump_sha256": "4fb955fb42ec65e8e547464fc426b58bc896f6f9bd1c97acac694e859e0ab034",
+    "data_source": "same-run production _migrations_applied, asset_registry and asset_output_digest_specs only",
+    "data_dump_sha256": "da5777a8fd4666ac8d6b362e1484ac5c00daf4ebc7fd4ea415d81bdad05b8b26",
+    "emulated_production_role_topology": {
+      "schema_and_base_object_owner": "amjis_app LOGIN NOINHERIT",
+      "provider_admin": "cloudsqlsuperuser NOSUPERUSER CREATEROLE CREATEDB",
+      "bootstrap_initial": "purna_inquiry_bootstrap LOGIN INHERIT with sole direct cloudsqlsuperuser membership",
+      "web_group": "role_web_serve NOLOGIN"
+    },
+    "candidate_runner": "platform/scripts/migrate.ts --only with exact selection and unselected-predecessor guard",
+    "candidate_sha256": {
+      "1033_planner_inquiry_lifecycle.sql": "608d526abac406764161156fe5895b2ccb0e43a52894ffc1048c97f5b71f0b53",
+      "1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql": "9e7db551ed4a289887bdd526c7f02140fc12a2e4638ce7ad8fbc10771b26a9f8",
+      "1037_planner_inquiry_action_reservations.sql": "db2ac8f3140c0090207d965abbc0d312f0ff69ad09b8aeca1483bbcb0964dec9",
+      "1038_planner_managed_prashna_jobs.sql": "8a0c49d5be132567f3bf393f2ce9f4439cf6266b17d99965c4b233d3b2e2158c",
+      "1039_purna_inquiry_protected_ownership.sql": "654ffe9d0c820bb2ac99e5a20485949598adaeda77bf66a7f09228ca24707cbb",
+      "purna-inquiry-ownership-preflight.ts": "a31c33aaa976a3b4f5f6a52b9bc8f14d1717ecfc17bcc93b686627c01aaab7be",
+      "purna-inquiry-ownership-postflight.ts": "70bc152f7569a46cb1158b0c5f92201de0d4a3271760cec0919a7ad4aaf4a50a",
+      "purna-inquiry-ownership-status.ts": "792623199c07d7d21d8e71f3b43375c59c1a77c9ad85b6fcfbbb81f8a0e1f272"
+    },
+    "observed_state_sequence": ["armed", "interrupted", "cleanup_required", "marked"],
+    "first_run_applied": [
+      "1033_planner_inquiry_lifecycle.sql",
+      "1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
+      "1037_planner_inquiry_action_reservations.sql",
+      "1038_planner_managed_prashna_jobs.sql",
+      "1039_purna_inquiry_protected_ownership.sql"
+    ],
+    "first_run_tracker_rows": 858,
+    "second_run_actor": "amjis_app after bootstrap postflight",
+    "second_run_tracker_rows": 858,
+    "second_run_new_migrations": 0,
+    "protected_rls_tables_verified": 4,
+    "protected_owner_functions_verified": 12,
+    "purna_current_digest_specs_verified": 6,
+    "owner_membership_edges_after_postflight": 0,
+    "bootstrap_membership_edges_after_postflight": 0,
+    "bootstrap_login_after_postflight": false,
+    "serving_login_exact_outbound_memberships": 1,
+    "serving_login_inbound_memberships": 0,
+    "serving_login_can_create_public": false,
+    "real_serving_login_canary": {
+      "tests": 3,
+      "passed": 3,
+      "same_principal_rows": 4,
+      "cross_principal_rows": 0,
+      "persisted_probe_rows": 0,
+      "inbound_membership_attack_rejected": true
+    },
+    "result": "PASS_PROTECTED_OWNER_APPLY_POSTFLIGHT_IDEMPOTENT_REPLAY_AND_SERVING_CANARY"
+  },
+  "qualifications": [
+    "This proves the reviewed Purna protected-owner path against a same-run production-compatible schema and ledger clone, not against production itself.",
+    "The schema dump omits production ownership by design; the replay explicitly reconstructed the observed amjis_app owner and non-superuser Cloud SQL provider-admin topology before preflight.",
+    "Known exact historical hash disclosures remained visible and non-fatal; no guard or disclosure was weakened.",
+    "The separate estate-wide genuinely-empty baseline conflict remains parked in INHERITED_EMPTY_BOOTSTRAP_FINDING_v1.json."
+  ]
+}

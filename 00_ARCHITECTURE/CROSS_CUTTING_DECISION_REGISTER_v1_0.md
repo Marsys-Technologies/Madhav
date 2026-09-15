@@ -30,6 +30,8 @@ coordination lease that produced it.
 | CCD-007 | 2026-08-17 | Codex | ACTIVE | Authorize PARIŚEṢA–RĀTRI V4 execution-first remediation under the operator-approved V4 prompt, while keeping V3 suspended and its state immutable. |
 | CCD-008 | 2026-08-19 | Codex | ACTIVE | Record the owner-authorized PARIŚEṢA V4 Governance Bridge close: adopt the Closure Factory plan and hand off safely to Claude Code without beginning implementation; the exact bridge lease was released before evidence-only close finalization under the owner’s 2026-08-19 ordering ruling. |
 | CCD-009 | 2026-08-20 | Claude Code | ACTIVE | Record the real-time owner authorization for a Claude-Code-driven PARIŚEṢA V4 Phase 0 truth-cut and bounded repair-wave session, closing the gap CCD-007 (Codex-scoped) and CCD-008 (close-mechanics-only, explicitly not exercising CCD-007) left open; no merge/deploy/data/infra exception granted. |
+| CCD-010 | 2026-09-12 | Codex | ACTIVE | Adopt Madhav Product Definition v3.0 as the final target for subsequent product planning; authorize its bounded documentation registration/local commit and one-time actual managed-profile exception. No application, campaign, data, deployment, product push or merge authority. |
+| CCD-011 | 2026-09-14 | Codex | ACTIVE | Record the native-delegated MADHAV PŪRṆA ANVEṢAṆA source campaign: inspect, design, implement, test, document, commit, push and open focused/stacked PRs in isolated worktrees, while prohibiting merge, deployment, shared/production migration application, production mutation, credentials/infrastructure, retirement, doctrine ratification and unsupported acceptance claims. |
 
 ## CCD-001 — Cross-tool onboarding and operating protocol
 
@@ -210,3 +212,79 @@ coordination lease that produced it.
   journal, `parisesa/campaign-state` commit `7298884e9`, flagged for morning ratification.
 - **Supersession:** none of CCD-005 through CCD-008. This is additive authority for the specific
   gap those left open, not a revision of their own stated scopes.
+
+## CCD-010 — Madhav product definition v3.0 adoption
+
+- **Date/tool/session:** 2026-09-12; Codex; `MADHAV-PRODUCT-V3-20260912`.
+- **Authority:** native directed a final, domain-rich, beyond-current-portal product pass, versioning, final registration, saving and commit. After the actual managed desktop profile failed the approved-profile validator, native explicitly answered **“Yes, authorized.”** to the one-time documentation-only exception. The exception is not retrospective success of the earlier blocked attempt.
+- **Decision:** adopt [MADHAV_PRODUCT_DEFINITION_v3_0.md](MADHAV_PRODUCT_DEFINITION_v3_0.md), canonical ID `MADHAV_PRODUCT_DEFINITION`, as the final target product definition for this planning baseline. It directs subsequent planning, not present-capability certification. Future substantive revisions require an explicit successor/amendment. Existing data-plane and layer proposals require reconciliation; none is declared already aligned.
+- **Narrow override:** the actual `tool_profile: managed` is permitted for this documentation-only session under SESSION_OPEN §3's explicit-native-override route. The unchanged validator's `handshake_codex_profile_invalid` failure is retained. Native also authorizes this exact non-lease documentation commit under GIP §P.4; no standing profile, tooling, protocol or commit-policy rewrite occurs.
+- **Exact publication scope:** the final master; one review/adoption work-order record and validation evidence; seven directly relevant product antecedents with historical-status metadata only; CAPABILITY_MANIFEST admission and CCD fingerprint rotation; historical CANONICAL_ARTIFACTS audit pointer; CURRENT_STATE governance-aside pointer; and a validated SESSION_LOG entry. Original strategic-worktree changes are preserved. Independent review is read-only; the parent is the sole publication writer.
+- **Prohibitions:** application code, data, migrations, provider/feature settings, credentials, frozen contracts, active campaign state, audience/research expansion, model activation, production rebuild/deploy, product-branch push, queue admission or merge. Existing consent posture and all safety/forecast firewalls remain unchanged. Documentation may later require the normal protected PR/deployment-authority path for shared integration.
+- **Coordination:** documentation-only scope `MADHAV-PRODUCT-V3-20260912` on `origin/campaign-coordination`; claim remotely verified at `1f22b772bdb2856b603fd965265677a1704d9969`. Release proof belongs to the closing work-order/session record. No exclusive production lease was claimed.
+- **Work order/evidence:** [review and adoption record](briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md). Publication base `731e311f0b8f5f84db2f152b93951e1d3d50d89a`; source-audit baseline `0955849d1864a0f94cd746ab9706194831856a04`; no live/private-data or empirical certification.
+- **Applicability at close:** this non-build documentation session does not serialize/upload production build-state. Record that N/A honestly, following the existing non-build-close precedent; do not create a production action to satisfy a generic close field. All applicable close validation, exact residual accounting and remote coordination release remain required.
+- **Supersession:** product-level predecessor proposals only. Earlier CCD decisions, ratified architecture, campaign authorities/acceptance and output restrictions are not superseded. Native adoption and local registration/commit are distinct from protected-main integration.
+
+## CCD-011 — MADHAV PŪRṆA ANVEṢAṆA source-campaign authority
+
+- **Date/tool/session:** 2026-09-14; Codex; `MADHAV-PURNA-ANVESANA-W0-20260914`.
+- **Authority:** direct native delegation titled `MADHAV PŪRṆA ANVEṢAṆA — SEMANTIC ESTATE COMPLETION AND INQUIRY INTELLIGENCE`, followed by the explicit instruction to set a goal and autonomously complete the entire supplied scope.
+- **Decision:** establish a six-wave governed source campaign that freezes Foundation Candidate 0 at `codex/planner-knowledge-inquiry@fccfbb5ab11eadb33259ff987738068753d12ebc`, corrects and freezes reproducible denominators, decomposes work into independently reviewed packets, and may inspect, design, implement, test, document, commit, push and open focused or stacked PRs from isolated worktrees. PR #2597 remains unchanged and is the fixed stack base until separately advanced.
+- **Exact ceiling:** no merge, deploy, shared or production migration application, production data/build/runtime mutation, traffic/scheduler action, credentials/secrets/infrastructure, asset retirement, doctrine ratification, frozen `WriterBase` or orchestrator-contract change, destructive cleanup, foreign campaign/worktree/ledger mutation, or claim of production/deployment/empirical acceptance from source, CI, PR, local or disposable evidence.
+- **Disposable proof:** migration 1033, RLS/security/lifecycle/overlay/failure behavior and Portal/managed/raw MCP parity may be exercised only in isolated local or disposable environments created for this campaign. Such proof remains non-production evidence.
+- **Coordination:** lease `MADHAV-PURNA-ANVESANA-20260914`, remotely verified at `origin/campaign-coordination@5c82e4813336b6454e3b63b485fefe47e84333b7`; Wave 0 worktree `/Users/Dev/.codex/worktrees/purna-anvesana-wave0`, branch `codex/purna-anvesana-wave0` based exactly on FC0.
+- **Governance reconciliation:** for this campaign only, the native’s explicit source/commit/push/PR authority supersedes GIP §P.4’s generic lease-row-only commit restriction. It does not supersede §P.1–§P.3, any safety/evidence gate, or the ceiling above.
+- **Supersession:** none. Existing Nirmāṇa production-elevation campaign state, database definitions/events, layer state files and historical autonomous authority remain separate and untouched.
+
+## CCD-012 — MADHAV PŪRṆA ANVEṢAṆA live-release and complete-wrap-up authority
+
+- **Date/tool/session:** 2026-09-15; Codex; `MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915`.
+- **Authority:** direct native delegation delivered from the active Madhav product-strategy task to
+  the existing Planner Knowledge and Inquiry task, followed by the native's instruction to set a
+  goal, resume autonomously, and complete the entire supplied scope. The delegation explicitly
+  authorizes protected integration and deployment; necessary reviewed additive/shared migrations;
+  narrowly scoped signing-key and runtime configuration; real Portal, managed MCP and raw MCP
+  validation; empirical evaluation; safe compatibility retirement; and true campaign closure.
+- **Decision:** supersede CCD-011's `SOURCE_LOCAL_ACCEPTED` terminal ceiling for this campaign and
+  execute the governed live wrap-up from current protected `origin/main` plus immutable Wave 7 head
+  `facccfe4b518b997357c08ff7798b703459326df`. Build one aggregate candidate, preserve the original
+  Wave 0–7 history and negative evidence, close PA-R01 through PA-R13 at the strongest applicable
+  gate, and advance only on exact-candidate evidence. A source, PR, CI, staging, timestamp or
+  dashboard result is never substituted for protected delivery, production health, expert review or
+  empirical acceptance.
+- **Delivery authority:** Codex may create, test, review, commit and push the aggregate branch; open
+  or update a focused pull request; admit it through the repository's existing protected merge queue
+  only after every required check and independent review is green; execute the existing governed
+  canary/deployment path; apply only reviewed additive migrations through the established runner;
+  provision or rotate only the dedicated inquiry signing ring without revealing key material; and
+  make only the service configuration changes required by the reviewed inquiry runtime contract.
+- **Safety and serialization:** production or shared mutation requires a fresh operation-specific
+  exclusive coordination lease, a current protected/source/deployed revision check, a recoverable
+  backup or rollback reference where applicable, no-traffic or revision-pinned canary verification,
+  and post-step evidence. The active Data Plane RI-02 lease retains ownership of L0–L3 and migrations
+  1035/1036 until released or expired; this campaign must not overlap its shared migration, key,
+  traffic or rebuild operations. Applied migrations are immutable; any correction is a new
+  collision-free forward migration.
+- **Empirical authority and truth boundary:** the campaign may execute the frozen empirical protocol
+  only with an eligible held-out corpus, valid consent/privacy custody, the required independent
+  domain experts, conflict attestations and blinded receipts already available within approved
+  channels. It may not invent participants, consent, data, scores, approval or signatures, and may
+  not contact or recruit people without a separate instruction. Missing expert or corpus evidence is
+  `NOT_RUN`, never a pass.
+- **Prohibitions:** no administrator/ruleset/required-check bypass; no secret or sensitive-chart
+  disclosure; no destructive shared rebuild; no broad IAM, infrastructure or model-budget expansion;
+  no frozen WriterBase/orchestrator or Data Plane architecture takeover; no unrelated doctrine or
+  campaign mutation; no external contact; and no `FULLY_COMPLETE` claim until every applicable gate
+  has an accepted receipt.
+- **Coordination:** live-wrap-up lease
+  `MADHAV-PURNA-ANVESANA-LIVE-WRAPUP-20260915` was remotely verified at
+  `origin/campaign-coordination@bc6699a1c6e1bcf46bc037d31583157a318b04a8`; initial status is
+  source integration and stocktake only. Shared or production operations require a later fresh,
+  operation-specific exclusive claim.
+- **Execution record:**
+  `briefs/nirmana/purna_anvesana/LIVE_RELEASE_AND_COMPLETE_WRAPUP_PLAN_v1_0.md` and
+  `briefs/nirmana/purna_anvesana/LIVE_COMPLETION_MATRIX_v1.json` are the frozen plan and gap matrix.
+- **Supersession:** CCD-011 is superseded only where its explicit external-action ceiling conflicts
+  with this scoped live-release delegation. Its evidence discipline, source history, security
+  boundaries and all unrelated decisions remain in force.

@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 interface Props {
@@ -15,11 +15,9 @@ export function StopIconButton({ runId, size = 22, onStopped }: Props) {
   // unmounts it (i.e. the run leaves the active state). Without this, the button
   // resets to clickable ~200ms after the API returns — before the Python sidecar
   // has finished the current asset — which makes the user think the stop failed.
-  const stopRequestedRef = useRef(false)
-
   async function handleClick(e: React.MouseEvent) {
     e.stopPropagation()
-    if (loading || stopRequestedRef.current) return
+    if (loading) return
     setLoading(true)
     try {
       const r = await fetch(`/api/cockpit/runs/${runId}/stop`, {
@@ -30,8 +28,6 @@ export function StopIconButton({ runId, size = 22, onStopped }: Props) {
         const body = await r.json().catch(() => ({}))
         throw new Error((body.error as string | undefined) ?? `Stop failed (${r.status})`)
       }
-      // Mark stop as requested — keeps button locked until parent unmounts this component
-      stopRequestedRef.current = true
       toast.success('Stop requested — finishing current asset…')
       onStopped?.()
     } catch (err) {
@@ -39,12 +35,12 @@ export function StopIconButton({ runId, size = 22, onStopped }: Props) {
       setLoading(false)
     }
     // Note: setLoading(false) is intentionally NOT in a finally block.
-    // On success, stopRequestedRef keeps the button visually disabled until unmount.
+    // On success, loading keeps the button visually disabled until unmount.
     // On error, setLoading(false) is called above to restore interactivity.
   }
 
-  const isStopping = stopRequestedRef.current
-  const isDisabled = loading || isStopping
+  const isStopping = loading
+  const isDisabled = loading
 
   return (
     <button

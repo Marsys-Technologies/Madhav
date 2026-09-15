@@ -3,8 +3,8 @@
 #
 # Called from deploy.yml's deploy-mcp job after a new amjis-mcp revision is
 # deployed with --no-traffic (candidate build, 0% real traffic). Runs against
-# the REVISION-specific URL (deploy-cloudrun's steps.deploy.outputs.url), not
-# the public service URL, so this genuinely probes the candidate before any
+# the unique temporary candidate-tag URL resolved by deploy.yml, not the
+# public service URL, so this genuinely probes the candidate before any
 # user sees it. Mirrors end_to_end_smoke.sh's conventions (retry-loop health
 # check, clear PASS/FAIL echoes, non-zero exit on any failure -> deploy.yml
 # skips the traffic-promotion step).
@@ -50,7 +50,7 @@
 
 set -euo pipefail
 
-MCP_URL="${SMOKE_MCP_URL:?SMOKE_MCP_URL env var required (revision-specific URL from the deploy-cloudrun step outputs.url)}"
+MCP_URL="${SMOKE_MCP_URL:?SMOKE_MCP_URL env var required (candidate-tag URL resolved by deploy.yml)}"
 CANARY_KEY="${MCP_CANARY_KEY:-}"
 MAX_RETRIES=5
 RETRY_DELAY=6  # seconds

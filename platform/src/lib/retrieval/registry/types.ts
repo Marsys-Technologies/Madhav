@@ -8,7 +8,7 @@
  * Core shape (CapabilityDescriptor + chart-agnostic gate fields) is FROZEN.
  * New optional fields may only be added via a versioned amendment that bumps
  * the amendment_version below and documents the change.
- * amendment_version: 4 (PB-1/S-2 register.reader_label, 2026-07-28 — see D1_AMENDMENTS)
+ * amendment_version: 5 (planner semantic-capability declarations, 2026-09-13 — see D1_AMENDMENTS)
  *
  * AMENDMENT PROCEDURE:
  * 1. Add the new OPTIONAL field to CapabilityDescriptor (never remove or rename required fields).
@@ -299,6 +299,9 @@ interface CapabilityDescriptorBase {
    */
   mutation?: boolean
 
+  /** Atomic broker/QoS capacity consumed by one dispatch (fan-out defaults to 1). */
+  dispatch_units?: number
+
   /**
    * Which generated surfaces serve this capability (plan §3 R-1.1 + R-4's four
    * projections). Absent = not yet classified (v1; classification is W2's
@@ -378,6 +381,21 @@ interface CapabilityDescriptorBase {
    * compiler filter + CI canary) is R-4's job — this wave lands the flag only.
    */
   calibration_context_only?: boolean
+
+  /**
+   * D1 amendment 5 — planner-facing Semantic Capability Units (SCUs).
+   *
+   * A descriptor MAY publish one or more semantic units delivered by this
+   * executable capability.  The registry knowledge compiler also derives one
+   * conservative unit for descriptors that have not yet been editorially
+   * decomposed, so adoption is total without pretending that one tool always
+   * equals one semantic capability.  A unit may bind several tools and a tool
+   * may publish several units; the compiled graph validates every binding.
+   *
+   * The full authoring shape lives in `knowledge/types.ts` to keep the frozen
+   * executable descriptor contract focused.  Optional and additive by design.
+   */
+  semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
 }
 
 /** Per-family override shape for `family_overrides` (R-1.1; plan §7 amendments). */
@@ -548,6 +566,13 @@ export interface CapabilityContext {
   chart_id?: string
   /** Request metadata */
   request_id?: string
+  /** Server-injected authority for an explicitly mutation-capable registry call. */
+  mutation_authorization?: {
+    receipt_id: string
+    capability_uri: CapabilityUri
+    chart_id?: string
+    action: 'apply'
+  }
 }
 
 /**
@@ -573,6 +598,10 @@ interface D1Fields {
     deepseek?: Record<string, unknown>
   }
   required_inputs?: string[]
+  mutation?: boolean
+  dispatch_units?: number
+  data_source?: 'stored' | 'computed' | 'hybrid'
+  semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
 }
 
 /** Narrowed descriptor for capabilities with primitive_type = 'tool' */
@@ -662,5 +691,17 @@ export const D1_AMENDMENTS: Array<{
       'resolve to the lexicon\'s FALLBACK_READER_LABEL at serve time, never to a raw ' +
       'uri/asset-id/table/layer name — see lexicon.ts `resolveReaderLabel()` and ' +
       'tests/pariprashna/reader_label_fallback.test.ts.',
+  },
+  {
+    version: 5,
+    date: '2026-09-13',
+    field: 'semantic_capabilities',
+    description:
+      'Planner Knowledge and Complete Inquiry — adds an OPTIONAL federated authoring ' +
+      'surface for planner-facing Semantic Capability Units (SCUs). The compiled ' +
+      'knowledge snapshot is derived mechanically from this field plus the live ' +
+      'CapabilityDescriptor catalog, validates all executable bindings, and records ' +
+      'conservative derived units for descriptors not yet editorially decomposed. ' +
+      'It does not change handlers, frozen WriterBase orchestration, or retrieval results.',
   },
 ]

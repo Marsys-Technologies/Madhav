@@ -1,0 +1,146 @@
+{
+  "schema_version": "madhav-purna-anvesana/live-security-remediation-plan/v2",
+  "recorded_at": "2026-09-16T02:20:00+05:30",
+  "authority": "CCD-012",
+  "status": "TRANSITIONAL_SOURCE_READY_LIVE_OPERATIONS_REQUIRE_EXCLUSIVE_LEASE",
+  "reviewed_candidate_parent": "c13957aa01b8e4f112a0ace616874963a906df27",
+  "live_read_only_observation": {
+    "project_wide_secret_accessor_principals": [
+      "938361928218-compute@developer.gserviceaccount.com",
+      "amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com",
+      "amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com",
+      "amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com",
+      "brahma-conductor-bot@madhav-astrology.iam.gserviceaccount.com",
+      "brahma-swarm-bot@madhav-astrology.iam.gserviceaccount.com"
+    ],
+    "current_mcp_secret_mounts": ["mcp-internal-token", "PYTHON_SIDECAR_API_KEY", "mcp-canary-key"],
+    "current_sidecar_secret_mounts": ["PYTHON_SIDECAR_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "amjis-pipeline-db-url"],
+    "pipeline_job_identity": "amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com",
+    "pipeline_job_secret_mounts": ["amjis-pipeline-db-url"],
+    "extra_broad_principal_active_cloud_run_compute_gke_function_or_build_trigger_workloads_found": false,
+    "extra_broad_principal_user_managed_keys_found": false,
+    "extra_broad_principal_non_key_impersonation_paths_present": {
+      "brahma-conductor-bot@madhav-astrology.iam.gserviceaccount.com": "GitHub WIF workloadIdentityUser bindings for Marsys-Technologies/Madhav and amonty84/Madhav",
+      "brahma-swarm-bot@madhav-astrology.iam.gserviceaccount.com": "mail.abhisek.mohanty@gmail.com serviceAccountTokenCreator binding",
+      "938361928218-compute@developer.gserviceaccount.com": "default Compute Engine identity with legacy project Editor",
+      "amjis-builder-runtime@madhav-astrology.iam.gserviceaccount.com": "Abhisek-Mohanty/MadhavStreamC repository WIF plus project Run Admin and direct actAs on all three secret-bearing runtime identities",
+      "github-actions@madhav-astrology.iam.gserviceaccount.com": "approved deploy identity, but currently impersonable by repository-wide Marsys-Technologies/Madhav and amonty84/Madhav principalSets rather than an exact protected-main subject"
+    },
+    "transitive_secret_exfiltration_paths_present": [
+      "default compute Editor includes serviceAccounts.actAs, Cloud Run service/job mutation and Secret Manager version mutation",
+      "brahma-conductor-bot combines repository-wide WIF, project Run Admin and project serviceAccountUser",
+      "amjis-builder-runtime combines unrelated-repository WIF, project Run Admin and direct actAs on web, sidecar and MCP runtimes",
+      "github-actions is the approved release identity but its current repository-wide WIF bindings are broader than the protected-main release boundary"
+    ],
+    "project_owner_and_legacy_editor_boundary": {
+      "approved_human_break_glass_owner": "mail.abhisek.mohanty@gmail.com",
+      "legacy_editor_service_accounts_requiring_attached_resource_audit": [
+        "938361928218@cloudservices.gserviceaccount.com",
+        "madhav-astrology@appspot.gserviceaccount.com"
+      ],
+      "claim_boundary": "The human Owner remains an explicitly approved administrative break-glass principal and is not described as a runtime secret reader. Legacy Google/App Engine service-account Editors are not silently approved and must be narrowed or justified by an exact attached-resource receipt."
+    },
+    "default_compute_existing_secret_specific_access": ["mcp-internal-token", "PYTHON_SIDECAR_API_KEY"],
+    "watchdog_scheduler_oidc_present": false,
+    "watchdog_scheduler_legacy_header_present": true,
+    "watchdog_secret_cloud_run_plaintext_present": true,
+    "inquiry_lifecycle_signing_secret_present": false,
+    "inquiry_database_password_secret_present": false,
+    "inquiry_database_login_present": false,
+    "purna_relations_or_migration_markers_present": false,
+    "shared_or_production_mutation_during_observation": false
+  },
+  "desired_secret_specific_access": {
+    "amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com": [
+      "firebase-admin-credentials", "amjis-db-password", "amjis-inquiry-db-password",
+      "nirmana-campaign-control-db-password", "nirmana-evidence-ingress-db-password",
+      "openai-api-key", "GOOGLE_GENERATIVE_AI_API_KEY", "DEEPSEEK_API_KEY",
+      "NVIDIA_NIM_API_KEY", "PYTHON_SIDECAR_API_KEY", "SUPER_ADMIN_EMAIL",
+      "mcpt-scheduler-secret", "mcp-internal-token", "mcp-canary-key",
+      "inquiry-lifecycle-signing-key", "amjis-pipeline-db-url"
+    ],
+    "amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com": [
+      "PYTHON_SIDECAR_API_KEY", "GOOGLE_GENERATIVE_AI_API_KEY", "amjis-pipeline-db-url"
+    ],
+    "amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com": ["mcp-internal-token", "PYTHON_SIDECAR_API_KEY"],
+    "938361928218-compute@developer.gserviceaccount.com": [],
+    "brahma-conductor-bot@madhav-astrology.iam.gserviceaccount.com": [],
+    "brahma-swarm-bot@madhav-astrology.iam.gserviceaccount.com": []
+  },
+  "transitional_secret_specific_access": {
+    "amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com": ["watchdog-secret"],
+    "removal_gate": "successful pinned Scheduler OIDC invocation followed by the reviewed bridge-removal deploy"
+  },
+  "privileged_deploy_trust_boundary": {
+    "approved_release_identity": "github-actions@madhav-astrology.iam.gserviceaccount.com",
+    "approved_oidc_subject": "repo:Marsys-Technologies/Madhav:ref:refs/heads/main",
+    "approved_administrative_break_glass_principal": "user:mail.abhisek.mohanty@gmail.com",
+    "source_binding": "infra/iam/main.tf binds the exact protected-main subject and deliberately removes WIF, Run Admin and runtime actAs resources from the legacy builder",
+    "mandatory_live_removals_before_new_secrets": [
+      "remove both repository-wide workloadIdentityUser bindings from github-actions after the exact protected-main subject binding is proven",
+      "remove both repository-wide workloadIdentityUser bindings plus project Run Admin and project serviceAccountUser from brahma-conductor-bot",
+      "remove the Abhisek-Mohanty/MadhavStreamC WIF binding, project Run Admin and all three runtime serviceAccountUser bindings from amjis-builder-runtime",
+      "remove project Editor from the default compute identity after proving no attached consumer requires it",
+      "audit 938361928218@cloudservices.gserviceaccount.com and madhav-astrology@appspot.gserviceaccount.com for exact attached resources and narrow their legacy Editor grants to the minimum documented permissions, or fail closed"
+    ],
+    "effective_access_gate": "enumerate project IAM, every service-account IAM policy, WIF provider mappings/conditions, Cloud Run services/jobs, Compute, App Engine, GKE, Functions, Build triggers and user-managed keys; excluding only the named human Owner break-glass principal, fail unless no workload identity outside the exact protected-main github-actions subject can both mutate a Cloud Run service/job and act as a secret-bearing runtime",
+    "secret_mutation_gate": "excluding only the named human Owner break-glass principal, fail if any non-approved workload principal retains a role containing secretmanager.versions.add, enable, disable or destroy on the project or either new Pūrṇa secret",
+    "claim_limit": "Runtime least privilege does not mean the project Owner lacks administrative power; completion requires the Owner to remain an explicit audited break-glass trust boundary and every workload/service-agent path to satisfy the effective-access gates."
+  },
+  "terraform_two_phase_contract": {
+    "phase_a": "add exact bindings for existing secrets only while retaining web, sidecar and MCP project grants behind lifecycle.prevent_destroy; the two absent Pūrṇa secret IDs are intentionally excluded and generic apply cannot remove broad access",
+    "phase_b": "after zero-broad attestation, create the two Pūrṇa secrets, add their web-only Terraform bindings, remove the three transitional resources in a separately reviewed commit and reconcile state after live removals",
+    "forbidden": "never apply a graph that can destroy a project grant before every exact grant and cold-start check succeeds"
+  },
+  "database_identity_contract": {
+    "protected_owner": "purna_inquiry_owner NOLOGIN NOINHERIT with zero membership edges and no public-schema CREATE after postflight",
+    "serving_login": "amjis_inquiry_serve LOGIN INHERIT",
+    "serving_membership": "exactly one direct outbound edge to role_web_serve and zero inbound edges",
+    "credential_secret": "amjis-inquiry-db-password version 1",
+    "runtime_consumer": "amjis-web only",
+    "temporary_bootstrap": "purna_inquiry_bootstrap LOGIN INHERIT, exactly one direct cloudsqlsuperuser edge before preflight, no other edges",
+    "github_one_shot_secrets": ["PURNA_INQUIRY_ADMIN_DATABASE_URL", "PURNA_INQUIRY_SERVE_PASSWORD"],
+    "password_parity": "PURNA_INQUIRY_SERVE_PASSWORD is the exact material written to amjis_inquiry_serve and stored as amjis-inquiry-db-password version 1",
+    "selected_migrations_in_order": [
+      "1033_planner_inquiry_lifecycle.sql",
+      "1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql",
+      "1037_planner_inquiry_action_reservations.sql",
+      "1038_planner_managed_prashna_jobs.sql",
+      "1039_purna_inquiry_protected_ownership.sql"
+    ],
+    "mandatory_postflight": "run immediately after the exact set and before the general runner; revoke owner/app/provider memberships and schema CREATE, disable the bootstrap and clear its password",
+    "final_state": "marked"
+  },
+  "serialized_live_sequence": [
+    "refresh protected main, campaign-coordination, migration allocation and active leases; acquire a fresh operation-specific exclusive lease covering IAM, secrets, roles, migrations, deployment and traffic",
+    "capture exact service images, revisions, traffic, scheduler config, IAM, database role graph, migration ledger and rollback identifiers without reading secret material",
+    "add and prove the exact protected-main OIDC subject binding on github-actions; remove its two repository-wide principalSet bindings, then prove non-main and old-repository subjects cannot impersonate it",
+    "remove conductor-bot repository WIF, project Run Admin and project serviceAccountUser; remove legacy builder WIF, project Run Admin and its three runtime actAs bindings; remove default-compute Editor after the attached-consumer audit; audit and narrow the cloudservices and App Engine legacy Editor service accounts to exact attached-resource permissions; retain explicit rollback commands without secret material",
+    "re-enumerate effective IAM and, excluding only the named human Owner break-glass principal, fail unless the exact protected-main github-actions subject is the only workload identity capable of both mutating Cloud Run and acting as web, sidecar or MCP; also require no non-approved workload secret-version mutation authority",
+    "deploy a zero-traffic config-only amjis-mcp revision from the exact current image with MCP_CANARY_KEY removed; smoke, promote and force a cold start; retain the prior revision for rollback",
+    "add the sidecar runtime's three exact secret bindings; cold-start its service and smoke job; remove only its project-wide secretAccessor; repeat cold-start and prove an unrelated-secret denial",
+    "add the MCP runtime's two exact bindings; cold-start after the stale canary mount is absent; remove only its project-wide secretAccessor; repeat health and prove an unrelated-secret denial",
+    "inventory the swarm-bot TokenCreator impersonation path in addition to workloads and keys; prove each remaining consumer needs no secret payload access or add reviewed exact dependencies, then remove the three extra principals' project-wide accessor grants plus default-compute's two stale secret-level grants and verify no alternate role grants secretmanager.versions.access",
+    "add every existing web and pipeline-job exact binding including amjis-pipeline-db-url and transitional watchdog-secret; cold-start web and brahma-build-pipeline-job; remove the web project grant; repeat health/job checks and prove an unrelated-secret denial",
+    "require zero project-wide payload-access grants for all six observed principals and pass the effective deploy/actAs and secret-version-mutation gates before creating either new Pūrṇa secret",
+    "generate without output and create version 1 of amjis-inquiry-db-password and inquiry-lifecycle-signing-key; grant only amjis-web-runtime payload access",
+    "create or rearm purna_inquiry_bootstrap as a temporary Cloud SQL login; require exact armed topology; store its URL and the same serving password only in the two one-shot GitHub secrets",
+    "refresh migration filenames and hashes, resolve any 1035/1036 protected-tip arrival, require no unselected unapplied predecessor, six active producer rows, absent targets, PUBLIC without CREATE on public and ownership state armed",
+    "merge only the immutable independently reviewed candidate; run preflight, the five exact migrations, immediate postflight, the general runner and final marked attestation",
+    "require web candidate identity, signing round trip, dedicated-login posture, four protected RLS tables, same-principal visibility, cross-principal denial and full rollback before promotion",
+    "require MCP candidate identity and a real prashna_status authenticated miss through the candidate, proving runtime OIDC plus shared-token access to the matching web revision",
+    "ship the watchdog dual-auth bridge without interrupting the current scheduler; converge watchdog-reaper on pinned amjis-scheduler OIDC, clear headers, trigger it and record success",
+    "after an observed OIDC scheduler cycle, merge the final cleanup commit removing WATCHDOG_LEGACY_FALLBACK_ENABLED, WATCHDOG_SECRET, the watchdog-secret exact accessor and the three transitional Terraform project resources; retire the watchdog secret after rollback expiry",
+    "remove one-shot GitHub secrets, delete the disabled Cloud SQL bootstrap user after marked attestation, and retain only non-secret receipts",
+    "run three-channel and independent empirical answer-quality acceptance against the exact production SHA, observe production, reconcile R01-R13, disposition compatibility and hand off maintenance"
+  ],
+  "retry_and_recovery": {
+    "preflight_or_selected_set_interrupted": "status becomes interrupted; next run performs postflight cleanup and fails. Reprovision a new one-shot bootstrap credential and its sole provider edge, update GitHub secrets, require armed, then rerun",
+    "partial_selected_set_without_ledger_row": "postflight removes authority; after rearm, idempotent SQL and exact hashes replay or skip the protected subset; no general migration runs first",
+    "migration_1039_applied_postflight_missing": "status is cleanup_required; use the still-valid bootstrap URL only for postflight, then require marked",
+    "postflight_disabled_credential": "never guess credentials; set a newly generated one-shot password, restore LOGIN INHERIT and the sole cloudsqlsuperuser edge, update the admin URL and re-attest armed",
+    "candidate_or_cold_start_failure": "restore the captured prior revision and only the exact prior IAM binding needed for recovery; do not create new Pūrṇa secrets or advance traffic",
+    "ledger_gap": "do not hand-edit _migrations_applied; preserve object/hash evidence, clean temporary authority, rearm through the reviewed path and let the exact runner reconcile"
+  },
+  "release_rule": "No live mutation occurs from a source-only lease. Live work requires the exclusive lease and refreshed preflight; completion requires protected delivery and empirical production evidence."
+}

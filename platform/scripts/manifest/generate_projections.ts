@@ -16,9 +16,10 @@
  *
  * (e) W5 Lane L4 addition ("tool-search metadata", standing W5 scope line):
  * `tool_search_index.generated.json` — a normalized search-field set (name,
- * description, family/domain tags, keywords) for EVERY live capability, no
- * projection_tags filter (unlike a/b above, search must cover the whole
- * catalog, not just chat/MCP-tagged subsets). Derivation lives in
+ * description, family/domain tags, keywords) for EVERY live capability plus
+ * explicitly reviewed MCP-native discovery entries, with no projection_tags
+ * filter (unlike a/b above, search must cover the whole catalog and the native
+ * MCP surfaces that are intentionally outside it). Derivation lives in
  * `src/lib/retrieval/registry/tool_search.ts` (not here) so the LIVE
  * `tool_search` MCP tool (`layers/L0_brahmagyan/tool_search.ts`, bridged in
  * `registry_bridge.ts`) shares the exact same function — this JSON artifact is
@@ -54,7 +55,7 @@ import {
   buildToolSearchIndex,
   resolveType,
 } from './projection_builders'
-import { extractRegistryBridgeToolsFromDisk, REGISTRY_BRIDGE_PATH } from './extract_registry_bridge_tools'
+import { extractRegistryBridgeToolsFromDisk } from './extract_registry_bridge_tools'
 import { resolveWebToolBridge, type CanonicalFacesData } from './web_tool_bridge_builder'
 import { buildMcpSurfaceProfiles, consultIsSubsetOfFull, COMPACT_MAX_TOOLS } from './mcp_surface_profile_builder'
 import { buildCapabilityPublicNameBridge } from './extract_registrar_capability_bridge'
@@ -212,7 +213,7 @@ function main(): void {
   writeJson('tool_search_index.generated.json', {
     generated_at: generatedAt,
     generator: 'generate_projections.ts',
-    source: 'getCatalog() capabilities — ALL capabilities, no projection_tags filter (search covers the full catalog)',
+    source: 'getCatalog() capabilities plus reviewed MCP-native discovery entries — no projection_tags filter',
     total: toolSearchIndex.length,
     entries: toolSearchIndex,
   })
@@ -350,7 +351,7 @@ export const MCP_SURFACE_PROFILES: {
       generated_count: mcpTools.length,
       excluded_non_tool_count: mcpNonTools.length,
       registry_bridge_block_count: bridgeBlocks.length,
-      registry_bridge_source: REGISTRY_BRIDGE_PATH,
+      registry_bridge_source: 'platform-mcp/src/tools/registry_bridge.ts',
       name_overlap: mcpNameOverlap,
       only_in_registry_bridge: bridgeOnlyNames,
       only_in_generated: generatedOnlyNames,
@@ -540,7 +541,8 @@ mock overrides exercising every merge path: \`description_override\`, \`name_ove
 
 ## 7. (g) W5 Lane L4 — tool-search index (\`tool_search_index.generated.json\`)
 
-**${toolSearchIndex.length}** entries — one per live capability, no filtering. Each entry
+**${toolSearchIndex.length}** entries — **${caps.length}** live catalog capabilities plus
+**${toolSearchIndex.length - caps.length}** reviewed MCP-native discovery entry, with no filtering. Each entry
 carries \`uri\`/\`name\`/\`type\`/\`layer\`/\`scope\`/\`family\` (the descriptor's own
 \`archetype\`)/\`tool_role\`/\`short_label\`/\`one_line\`/\`description\`/\`keywords\` (a deduped,
 sorted, tokenized set derived from name+description+display+layer+archetype+tool_role+

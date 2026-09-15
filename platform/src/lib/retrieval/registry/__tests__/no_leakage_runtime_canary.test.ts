@@ -65,7 +65,10 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', async (importOriginal) => {
 vi.mock('@/lib/db/client', () => ({ query: vi.fn(async () => ({ rows: [] })) }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn(async () => 'all') }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn(async () => 'guest') }))
-vi.mock('@/lib/mcp/service_token', () => ({ validateServiceToken: vi.fn(() => true) }))
+vi.mock('@/lib/mcp/service_token', () => ({
+  validateServiceToken: vi.fn(() => true),
+  validateMcpServiceRequest: vi.fn(async () => true),
+}))
 vi.mock('@/lib/models/runtime_config', () => ({ getEffectiveModel: vi.fn(async () => 'fake-model') }))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({

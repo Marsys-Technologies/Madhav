@@ -82,6 +82,7 @@ export interface SynthesizeReadingInput {
   nowContextDate: string
   /** chart_header.current_maha_antar (e.g. "Mercury MD / Saturn AD"), or null if unresolved. */
   currentMahaAntar: string | null
+  responseFormat: 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
   /**
    * V3-E-024: planner/compiler-authored synthesis framing (`plan.synthesis_guidance`,
    * with the compiler's E-7 insight-mandate `llm_extension_note` folded in by the
@@ -128,6 +129,14 @@ lord/level/system) tagged with different ayanamsha_id values, cite ONLY the
 lahiri_chitrapaksha row as the chart's answer. If a non-canonical-ayanāṁśa
 row is mentioned or compared at all, it must be explicitly labeled by its
 ayanāṁśa name rather than presented as the single unqualified answer.`
+
+const RESPONSE_FORMAT_GUIDANCE: Record<SynthesizeReadingInput['responseFormat'], string> = {
+  digest: 'Return a compact digest with the conclusion and only the strongest supporting evidence.',
+  summary: 'Return a concise summary with the conclusion, key evidence, and material caveats.',
+  standard: 'Return a balanced reading with conclusion, evidence, timing, and caveats.',
+  narrative: 'Return a cohesive narrative reading while keeping evidence and caveats explicit.',
+  full: 'Return the fullest supported reading, including tensions, timing, evidence, and caveats.',
+}
 
 function buildChartContext(chart: {
   id: string
@@ -382,6 +391,7 @@ export async function synthesizeReading(
   const systemPrompt =
     consumeSystemPromptV2(buildChartContext(chartRow), [], 'acharya', false) +
     NO_LIVE_TOOLS_OVERRIDE +
+    `\n\nRESPONSE FORMAT CONTRACT: ${RESPONSE_FORMAT_GUIDANCE[input.responseFormat]}` +
     // V3-E-024: same "SYNTHESIS GUIDANCE:" framing + placement consult's
     // `buildConsultSystemContent` uses (run_adapter_dispatch.ts) — the closest
     // this door has to an equivalent mechanism, so voice stays aligned between

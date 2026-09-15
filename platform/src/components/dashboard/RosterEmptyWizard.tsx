@@ -17,7 +17,7 @@ export function RosterEmptyWizard() {
           Welcome. Begin with your first chart.
         </h2>
         <p className="text-sm text-[rgba(212,175,55,0.45)] max-w-xs">
-          Each chart is a native's complete Jyotish record — facts, build corpus, and conversation history.
+          Each chart is a native&apos;s complete Jyotish record — facts, build corpus, and conversation history.
         </p>
         <Link href="/clients/new" className="brand-cta text-sm rounded-lg px-6 py-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-gold)]">
           + Add first chart

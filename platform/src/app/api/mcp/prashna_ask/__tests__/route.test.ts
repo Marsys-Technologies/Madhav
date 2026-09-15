@@ -25,7 +25,35 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-vi.mock('@/lib/retrieval/registry/catalog', () => ({}))
+const { knowledgeState } = vi.hoisted(() => ({
+  knowledgeState: { snapshot: null as unknown, overlay: null as unknown },
+}))
+
+vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
+vi.mock('@/lib/retrieval/registry/knowledge', () => {
+  const testScu = {
+    scu_id: 'scu.test.wealth', version: 1, label: 'Wealth evidence', description: 'wealth evidence rows', kind: 'datum',
+    domains: ['wealth'], concepts: ['wealth'], intents: ['domain_assessment'], horizons: ['natal'], scope: 'chart',
+    inputs: ['chart_id'], outputs: ['rows'], primary_binding_uri: 'marsys://tool/L1/test', provenance_requirements: [],
+    freshness_policy: 'current build', entitlement: 'native', safety_notes: [], known_gaps: [], editorial: true,
+    bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', relation: 'primary', capability_uri: 'marsys://tool/L1/test', input_contract: { chart_id: 'string:required' }, output_contract: { rows: 'array' }, pagination: 'bounded_complete', pagination_verified: false, result_collection_verified: true, pagination_contract: { result_collection_path: 'content.rows', deterministic_order: ['id'] }, executable: true, execution_channels: ['platform_internal'] }],
+    source_descriptor_uris: ['marsys://tool/L1/test'],
+  }
+  const snapshot = {
+    schema_version: '1.0.0', compatibility_version: 'planner-scu-v1', generated_at: '2026-09-13T00:00:00.000Z',
+    content_hash: 'sha256:test', source_catalog_fingerprint: 'sha256:test', edges: [],
+    scus: [
+      testScu,
+      { ...testScu, scu_id: 'scu.finance.prosperity_assessment', label: 'Prosperity assessment floor', bindings: [], primary_binding_uri: null, source_descriptor_uris: [] },
+      { ...testScu, scu_id: 'scu.catalog.assess_career', label: 'Career assessment floor', domains: ['career'], concepts: ['career'], bindings: [], primary_binding_uri: null, source_descriptor_uris: [] },
+    ],
+    census: { runtime_descriptors: 1, addressable_descriptors: 1, excluded_descriptors: 0, semantic_capabilities: 3, editorial_scus: 3, derived_scus: 0, executable_bindings: 1, unavailable_bindings: 2, publicly_named_bindings: 0, reviewed_pagination_bindings: 0, producer_output_claims: 0, reviewed_output_claims: 0, exclusions: [] },
+  }
+  return {
+    assertPinnedCapabilityKnowledgeCurrent: () => knowledgeState.snapshot ?? snapshot,
+    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
+  }
+})
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: vi.fn() }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
@@ -61,7 +89,10 @@ vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
   ensureDashaContextFloor: vi.fn(() => false),
 }))
 
-vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({ getToolByName: mockGetToolByName }))
+vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
+  getToolByName: mockGetToolByName,
+  resolveToolUri: (name: string) => name === 'authorized_test' ? 'marsys://tool/L1/test' : name.startsWith('marsys://') ? name : undefined,
+}))
 
 // Real filter — Part A — exercised for real so the leakage assertion is genuine.
 vi.mock('@/lib/pipeline/no_leakage_filter', () => ({
@@ -104,6 +135,16 @@ import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
 import { POST } from '../route'
+import {
+  expectedW5DoorParityProjection,
+  W5_DOOR_PARITY_CHART_ID,
+  W5_DOOR_PARITY_OVERLAY,
+  W5_DOOR_PARITY_QUESTION,
+  W5_DOOR_PARITY_SCOPE,
+  W5_DOOR_PARITY_SNAPSHOT,
+  w5DoorParityPlan,
+  w5DoorParityToolResult,
+} from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 // Synthetic test chart — used by the new V3-E-024 tests below only (never the
@@ -134,7 +175,7 @@ async function readNdjson(res: Response): Promise<Array<Record<string, unknown>>
     .map((line) => JSON.parse(line))
 }
 
-function planOutcome(toolNames: string[]) {
+function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>) {
   return {
     outcome: 'plan' as const,
     plan: {
@@ -149,7 +190,7 @@ function planOutcome(toolNames: string[]) {
         priority: 1 as const,
         reason: 'test',
       })),
-      scope_tuple: undefined,
+      scope_tuple,
       history_mode: 'synthesized' as const,
       expected_output_shape: 'structured_data' as const,
     },
@@ -158,7 +199,10 @@ function planOutcome(toolNames: string[]) {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  knowledgeState.snapshot = null
+  knowledgeState.overlay = null
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
   mockGetToolByName.mockImplementation((name: string) => ({
     name,
@@ -232,17 +276,12 @@ describe('POST /api/mcp/prashna_ask — auth', () => {
 /**
  * P2-B-004 / E-119 (Paripraśna Experience Assurance): the MCP door assembles a
  * full reading envelope (`reading`, `judgment_flags`, `completeness`) and
- * streams it as the `final` NDJSON event, but nothing durable is ever written
- * for it — `platform-mcp`'s `JobRegistry` is in-memory only (15-min TTL, gone
- * on process restart) and the one durable row per turn
- * (`pariprashna_safety_decisions`) is pre-dispatch classification only, with no
- * `reading`/`judgment_flags`/`completeness` column. This asserts the envelope
- * honestly discloses that gap via a `persistence` field, per the finding's own
- * "or an explicit bounded limitation" acceptance path (CLAUDE.md §N.7 item 6 —
- * an honest null beats a silent, invented completeness claim).
+ * streams it as the `final` NDJSON event. This endpoint does not own the job
+ * lease or terminal write, so it discloses the authenticated-caller handoff;
+ * the managed MCP wrapper replaces this only after its durable commit succeeds.
  */
 describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004 / E-119)', () => {
-  it('discloses persistence:none on the final reading envelope — this door writes no durable record of the turn', async () => {
+  it('discloses caller_required until the managed wrapper durably commits the result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
     const lines = await readNdjson(res)
@@ -250,10 +289,10 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 
     expect(body.event).toBe('final')
     expect(body.persistence).toBeDefined()
-    expect((body.persistence as { status: string }).status).toBe('none')
+    expect((body.persistence as { status: string }).status).toBe('caller_required')
   })
 
-  it('discloses persistence:none on the HS-2 hard-stop safety_withheld envelope too', async () => {
+  it('discloses caller_required on the HS-2 hard-stop safety_withheld envelope too', async () => {
     safetyFlagState.on = true
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
 
@@ -262,7 +301,7 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
 
     expect(body.outcome).toBe('safety_withheld')
     expect(body.persistence).toBeDefined()
-    expect(body.persistence.status).toBe('none')
+    expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
   })
@@ -322,6 +361,70 @@ describe('POST /api/mcp/prashna_ask — planning-stage latency disclosure (S6-V3
 })
 
 describe('POST /api/mcp/prashna_ask — happy path', () => {
+  it('matches the reviewed shared-fixture projection through the actual managed route', async () => {
+    knowledgeState.snapshot = W5_DOOR_PARITY_SNAPSHOT
+    knowledgeState.overlay = W5_DOOR_PARITY_OVERLAY
+    mockCallPipelinePlanner.mockResolvedValue({ outcome: 'plan', plan: w5DoorParityPlan() })
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: 'wave5-fixture-v1',
+      retrieve: vi.fn().mockImplementation((_queryPlan: unknown, args: Record<string, unknown>) =>
+        Promise.resolve(w5DoorParityToolResult(name, args))),
+    }))
+
+    const res = await POST(makeReq({
+      chart_id: W5_DOOR_PARITY_CHART_ID,
+      question: W5_DOOR_PARITY_QUESTION,
+      scope_tuple: W5_DOOR_PARITY_SCOPE,
+    }))
+    const lines = await readNdjson(res)
+    const body = lines.at(-1)!
+    expect(body).toMatchObject({ outcome: 'plan' })
+    expect(body.inquiry_door_parity).toEqual(expectedW5DoorParityProjection('platform_internal'))
+  })
+
+  it('dispatches only ready Inquiry Contract actions and retains overlay-bound semantic empty evidence', async () => {
+    const inquiryScope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'present', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test', 'planner_extra'], inquiryScope))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        tool_bundle_id: 'b1', tool_name: name, tool_version: '1.0', invocation_params: {},
+        results: [{ content: JSON.stringify({ rows: [] }) }], served_from_cache: false,
+        latency_ms: 1, result_hash: 'sha256:empty', schema_version: '1.0',
+      }),
+    }))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'Show wealth evidence', scope_tuple: inquiryScope }))
+    const lines = await readNdjson(res)
+    const body = lines[lines.length - 1]
+    const dispatched = body.results as Array<{ tool_name: string }>
+    const inquiry = body.inquiry_contract as { semantic_contract_hash: string; chart_availability_version: string; chart_build_id: string; obligations: Array<{ disposition: string }> }
+
+    expect(dispatched.map((item) => item.tool_name)).toEqual(['authorized_test'])
+    expect(mockGetToolByName).toHaveBeenCalledTimes(1)
+    expect(inquiry.chart_availability_version).toBe('sha256:overlay')
+    expect(inquiry.chart_build_id).toBe('build-1')
+    expect(inquiry.obligations.some((item) => item.disposition === 'empty')).toBe(true)
+    expect((body.completeness as { empty_result_tools: string[] }).empty_result_tools).toContain('authorized_test')
+    expect(body.response_accountability).toMatchObject({
+      accountability_version: 'inquiry-response-accountability-v1',
+      response_coverage_receipt: {
+        receipt_version: 'inquiry-response-coverage-v1',
+        status: 'INCOMPLETE_RESUMABLE',
+      },
+    })
+    expect(body.inquiry_door_parity).toMatchObject({
+      parity_version: 'inquiry-door-parity-v1',
+      semantic_contract_hash: inquiry.semantic_contract_hash,
+      chart_availability_version: 'sha256:overlay',
+    })
+  })
+
   it('runs the engine, dispatches every planned tool, and returns a complete result', async () => {
     mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
     const res = await POST(makeReq({ chart_id: CHART, question: 'What is my ascendant?' }))
@@ -430,6 +533,63 @@ describe('POST /api/mcp/prashna_ask — happy path', () => {
 })
 
 describe('POST /api/mcp/prashna_ask — cost cap enforcement', () => {
+  it('stops retaining oversized evidence before building the terminal envelope', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query', 'get_positions']))
+    mockGetToolByName.mockImplementation((name: string) => ({
+      name,
+      version: '1.0',
+      retrieve: vi.fn().mockResolvedValue({
+        tool_bundle_id: 'oversized-bundle',
+        tool_name: name,
+        tool_version: '1.0',
+        invocation_params: {},
+        results: [{ payload: 'x'.repeat(1024 * 1024 + 1) }],
+        served_from_cache: false,
+        latency_ms: 1,
+        result_hash: 'sha256:oversized',
+        schema_version: '1.0',
+      }),
+    }))
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'deep evidence' }))
+    const responseText = await res.text()
+    const lines = responseText.trim().split('\n').map((line) => JSON.parse(line))
+    const body = lines[lines.length - 1]
+
+    expect(Buffer.byteLength(responseText)).toBeLessThan(1800 * 1024)
+    expect(body.ok).toBe(true)
+    expect(body.results).toEqual([])
+    expect(body.completeness).toMatchObject({
+      status: 'partial',
+      cap_tripped: 'terminal_result_budget',
+      unserved_tools: ['chart_facts_query', 'get_positions'],
+    })
+    expect(body.judgment_flags).toContain('terminal_result_budget_exceeded')
+    expect(mockSynthesizeReading).not.toHaveBeenCalled()
+  })
+
+  it('replaces an oversized final envelope with a bounded terminal error', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    mockSynthesizeReading.mockResolvedValue({
+      reading: 'x'.repeat(1800 * 1024),
+      model_id: 'oversized-synthesis-test',
+      judgment_flags: [],
+    })
+
+    const res = await POST(makeReq({ chart_id: CHART, question: 'oversized synthesis' }))
+    const responseText = await res.text()
+    const lines = responseText.trim().split('\n').map((line) => JSON.parse(line))
+    const body = lines[lines.length - 1]
+
+    expect(Buffer.byteLength(responseText)).toBeLessThan(16 * 1024)
+    expect(body.event).toBe('final')
+    expect(body.ok).toBe(false)
+    expect(body.error).toMatchObject({
+      class: 'internal',
+      message: 'MANAGED_JOB_RESULT_TOO_LARGE',
+    })
+  })
+
   it('stops dispatch and reports an honest partial result when the call-count cap trips', async () => {
     mockCallPipelinePlanner.mockResolvedValue(
       planOutcome(['chart_facts_query', 'get_positions', 'get_strength', 'get_dashas']),
@@ -545,6 +705,7 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     const call = mockSynthesizeReading.mock.calls[0][0]
     expect(call.chartId).toBe(CHART)
     expect(call.question).toBe('What is my ascendant?')
+    expect(call.responseFormat).toBe('standard')
     expect(call.evidence.map((e: { tool_name: string }) => e.tool_name)).toEqual([
       'chart_facts_query',
       'get_positions',
@@ -553,6 +714,18 @@ describe('POST /api/mcp/prashna_ask — synthesis wiring (W6.2 fix-cycle)', () =
     expect(call.emptyResultTools).toEqual([])
     expect(call.strippedLeakedCapabilities).toEqual([])
     expect(call.capTripped).toBeNull()
+  })
+
+  it('passes an explicitly requested response format to synthesis', async () => {
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['chart_facts_query']))
+    const res = await POST(makeReq({
+      chart_id: CHART,
+      question: 'Explain this as a connected narrative.',
+      response_format: 'narrative',
+    }))
+    await readNdjson(res)
+
+    expect(mockSynthesizeReading.mock.calls[0][0].responseFormat).toBe('narrative')
   })
 
   /**

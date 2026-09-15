@@ -100,6 +100,8 @@ export const TOOL_NAME_TO_URI: Record<string, CapabilityUri> = {
   query_panchanga: 'marsys://tool/L1/get_panchanga',
 
   // L0 Brahmagyan — ontology / entity resolution
+  // W7 aggregate: internal planner binding with an explicit nine-unit fan-out.
+  query_current_transit_snapshot: 'marsys://tool/L0/query_current_transit_snapshot',
   resolve_entity: 'marsys://tool/L0/resolve_entity',
   list_entities: 'marsys://tool/L0/list_entities',
 
@@ -333,6 +335,7 @@ async function capabilityResultToToolBundle(
 export function getToolByName(toolName: string): {
   name: string
   version: string
+  dispatch_units: number
   retrieve(plan: Record<string, unknown>, params?: Record<string, unknown>): Promise<ToolBundle>
 } | undefined {
   const uri = resolveToolUri(toolName)
@@ -344,6 +347,7 @@ export function getToolByName(toolName: string): {
   return {
     name: toolName,
     version: '1.0',
+    dispatch_units: cap.dispatch_units ?? 1,
     async retrieve(plan: Record<string, unknown>, params?: Record<string, unknown>): Promise<ToolBundle> {
       const t0 = Date.now()
       // Extract chart_id from plan — never default it

@@ -22,10 +22,9 @@ vi.mock('@/lib/adapters', () => ({
   runAdapter: (...args: unknown[]) => runAdapter(...args),
 }))
 
-// ── node:fs — feed getSystemPrompt() + loadManifest() synthetic files ───────────
+// ── node:fs — feed getSystemPrompt() a synthetic file ─────────────────────────
 vi.mock('node:fs', () => {
-  const readFileSync = (p: string) => {
-    if (String(p).includes('CAPABILITY_MANIFEST.json')) return '{}'
+  const readFileSync = () => {
     // Minimal PLANNER_PROMPT_v2_0.md satisfying the §3/§4/§5 section parser.
     return [
       '## 3. System prompt',
@@ -48,10 +47,6 @@ vi.mock('@/lib/pipeline/planner_context_builder', () => ({
     history_turns: [],
     history_was_summarized: false,
   })),
-}))
-vi.mock('@/lib/pipeline/manifest_compressor', () => ({
-  compressManifest: vi.fn(() => []),
-  compressedManifestToString: vi.fn(() => '[]'),
 }))
 vi.mock('@/lib/db/monitoring-write', () => ({
   writeLlmCallLog: vi.fn(),
@@ -137,6 +132,10 @@ describe('callPipelinePlanner — plan outcome', () => {
       expect(outcome.plan.scope_tuple?.intent).toBe('dasha_timing')
     }
     expect(runAdapter).toHaveBeenCalledTimes(1)
+    const request = runAdapter.mock.calls[0]?.[0] as { messages: Array<{ role: string; content: string }> }
+    const payload = JSON.parse(request.messages.at(-1)?.content ?? '{}') as Record<string, unknown>
+    expect(payload).toHaveProperty('capability_knowledge')
+    expect(payload).not.toHaveProperty('manifest')
   })
 })
 

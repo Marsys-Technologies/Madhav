@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useMemo, useSyncExternalStore } from 'react'
+
+const STARRED_CHANGE_EVENT = 'marsys:starred-citations-change'
 
 function starredKey(conversationId: string | null): string {
   return `marsys_chat_v2_starred_${conversationId ?? '__new__'}`
@@ -35,23 +37,32 @@ export function useStarredCitations(
   conversationId: string | null,
 ): [Set<number>, (index: number) => void] {
   const key = starredKey(conversationId)
-
-  const [starredSet, setStarredSet] = useState<Set<number>>(() =>
-    readFromStorage(key)
+  const serialized = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener('storage', onChange)
+      window.addEventListener(STARRED_CHANGE_EVENT, onChange)
+      return () => {
+        window.removeEventListener('storage', onChange)
+        window.removeEventListener(STARRED_CHANGE_EVENT, onChange)
+      }
+    },
+    () => localStorage.getItem(key) ?? '[]',
+    () => '[]',
   )
-
-  // Reload when conversationId changes (switching conversations)
-  useEffect(() => {
-    setStarredSet(readFromStorage(key))
-  }, [key])
+  const starredSet = useMemo(() => {
+    try {
+      const parsed = JSON.parse(serialized) as number[]
+      return new Set(Array.isArray(parsed) ? parsed : [])
+    } catch {
+      return new Set<number>()
+    }
+  }, [serialized])
 
   const toggleStar = useCallback((n: number) => {
-    setStarredSet(prev => {
-      const next = new Set(prev)
-      if (next.has(n)) next.delete(n); else next.add(n)
-      writeToStorage(key, next)
-      return next
-    })
+    const next = readFromStorage(key)
+    if (next.has(n)) next.delete(n); else next.add(n)
+    writeToStorage(key, next)
+    window.dispatchEvent(new Event(STARRED_CHANGE_EVENT))
   }, [key])
 
   return [starredSet, toggleStar]

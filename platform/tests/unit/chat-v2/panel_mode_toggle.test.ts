@@ -54,7 +54,7 @@ describe('B.6 — ConsumeChatV2 wiring', () => {
 
   it('injects panel_opt_in into transport body and renders PanelModeToggle in composer', () => {
     expect(v2Src).toContain('panel_opt_in')
-    expect(v2Src).toContain('panelOptInRef.current')
+    expect(v2Src).toContain('...(panelOptIn ? { panel_opt_in: true } : {})')
     expect(v2Src).toContain('<PanelModeToggle')
     expect(v2Src).toContain('v2-composer-options')
   })

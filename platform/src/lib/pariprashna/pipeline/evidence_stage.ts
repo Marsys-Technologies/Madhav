@@ -14,7 +14,7 @@
  */
 
 import { hydrateBundle } from '@/lib/bundle/bundle_hydrator'
-import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { getSharedQosDispatchQueue } from '@/lib/retrieval/qos/dispatch_queue'
 import type { ToolBundle, RetrievalTool } from '@/lib/retrieval/shared_types'
@@ -29,6 +29,9 @@ import { loadManifest } from '@/lib/bundle/manifest_reader'
 
 import { resolveActivityLabel } from './stage_context'
 import type { LegacyQueryPlan } from './plan_stage'
+import { bindingForInquiryItem, classifyInquiryResult, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, recordInquiryExecution, type InquiryContract } from '@/lib/vidhi/inquiry'
+import { getPinnedCapabilityKnowledgeSnapshot, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
+import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
 
 /** The pass id every first-pass retrieval event carries. */
 export const PASS_ONE = 1
@@ -57,6 +60,7 @@ export interface EvidenceStageOutput {
   toolEventLog: ToolEventLogEntry[]
   completenessReceipt: WebCompletenessReceipt | null
   orientation: ChartOrientation | null
+  inquiryContract: InquiryContract | null
 }
 
 export async function runEvidenceStage(args: {
@@ -69,6 +73,7 @@ export async function runEvidenceStage(args: {
   manifest: Awaited<ReturnType<typeof loadManifest>>
   toolsAuthorized: string[]
   orientationPromise: Promise<ChartOrientation | null>
+  inquiryContract?: InquiryContract | null
 }): Promise<EvidenceStageOutput> {
   const { em, request, chartId, userUid, plan, queryPlan, manifest, toolsAuthorized, orientationPromise } = args
 
@@ -104,6 +109,7 @@ export async function runEvidenceStage(args: {
         const result = await getSharedQosDispatchQueue().submit({
           principalId: userUid,
           priorityClass: 'interactive',
+          units: t.dispatch_units ?? 1,
           run: () => executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName)),
         })
         const ms = Date.now() - toolStart
@@ -134,5 +140,91 @@ export async function runEvidenceStage(args: {
 
   const orientation = await orientationPromise
 
-  return { bundle, validToolResults, toolEventLog, completenessReceipt, orientation }
+  let inquiryContract = args.inquiryContract ?? null
+  if (inquiryContract) {
+    const snapshot = getPinnedCapabilityKnowledgeSnapshot()
+    const resultsByUri = new Map(toolResults.flatMap((result, index) => {
+      const uri = resolveToolUri(toolsAuthorized[index] ?? '')
+      return result && uri ? [[uri, result] as const] : []
+    }))
+    const eventsByUri = new Map(toolEventLog.flatMap((event) => {
+      const uri = resolveToolUri(event.name)
+      return uri ? [[uri, event] as const] : []
+    }))
+    for (const item of [...inquiryContract.plan_items]) {
+      const capabilityUri = item.binding_id?.replace(/^registry:/, '')
+      const event = capabilityUri ? eventsByUri.get(capabilityUri) : undefined
+      if (!event) continue
+      const binding = bindingForInquiryItem(snapshot, inquiryContract, item.item_id)
+      if (event.status === 'error') {
+        inquiryContract = recordInquiryExecution(inquiryContract, {
+          item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: event.error_kind ?? 'dispatch_error',
+          pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+          request_position_path: binding?.pagination_contract?.request_position_path,
+        })
+        continue
+      }
+      const raw = capabilityUri ? resultsByUri.get(capabilityUri) : undefined
+      if (!raw) continue
+      const disposition = classifyInquiryResult(binding, raw)
+      const pagination = deriveInquiryPaginationReceipt(binding, raw, item.args)
+      inquiryContract = recordInquiryExecution(inquiryContract, {
+        item_id: item.item_id, disposition,
+        evidence_refs: [`retrieval:${event.name}:pass-${PASS_ONE}:${stableFingerprint(raw)}`],
+        ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+        pagination, request_position_path: binding?.pagination_contract?.request_position_path,
+      })
+    }
+
+    let pass = PASS_ONE + 1
+    while (inquiryContract.iteration < inquiryContract.max_iterations && !request.signal.aborted) {
+      const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
+        && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+      if (!item?.binding_id) break
+      const capabilityUri = item.binding_id.slice('registry:'.length)
+      const toolName = toolsAuthorized.find((name) => resolveToolUri(name) === capabilityUri)
+      const tool = toolName ? getToolByName(toolName) as RetrievalTool | undefined : undefined
+      const binding = bindingForInquiryItem(snapshot, inquiryContract, item.item_id)
+      if (!toolName || !tool || !binding) break
+      const started = Date.now()
+      try {
+        const raw = await getSharedQosDispatchQueue().submit({
+          principalId: userUid,
+          priorityClass: 'interactive',
+          units: tool.dispatch_units ?? 1,
+          // A continuation has distinct server-authorized cursor arguments.
+          // Execute it directly so request/shared cache normalization can never
+          // replay page one under a later page's authorization envelope.
+          run: () => tool.retrieve(queryPlan, item.args),
+        })
+        const ms = Date.now() - started
+        validToolResults.push(raw)
+        toolEventLog.push({ name: toolName, status: 'done', ms, ok_count: raw.results.length, err_count: 0 })
+        const disposition = classifyInquiryResult(binding, raw)
+        const pagination = deriveInquiryPaginationReceipt(binding, raw, item.args)
+        inquiryContract = recordInquiryExecution(inquiryContract, {
+          item_id: item.item_id, disposition,
+          evidence_refs: [`retrieval:${toolName}:pass-${pass}:${stableFingerprint(raw)}`],
+          ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+          pagination, request_position_path: binding.pagination_contract?.request_position_path,
+        })
+      } catch {
+        const ms = Date.now() - started
+        toolEventLog.push({ name: toolName, status: 'error', ms, ok_count: 0, err_count: 1, error_kind: 'dispatch_error' })
+        inquiryContract = recordInquiryExecution(inquiryContract, {
+          item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+          pagination: { semantics: binding.pagination, exhausted: true, next: null },
+          request_position_path: binding.pagination_contract?.request_position_path,
+        })
+      }
+      pass += 1
+    }
+    const currentOverlay = await loadChartCapabilityOverlay(snapshot, chartId)
+    inquiryContract = currentOverlay.overlay_version === inquiryContract.chart_availability_version
+      && currentOverlay.build_id === inquiryContract.chart_build_id
+      ? finalizeInquiryContract(inquiryContract)
+      : failInquiryForOverlayDrift(inquiryContract)
+  }
+
+  return { bundle, validToolResults, toolEventLog, completenessReceipt, orientation, inquiryContract }
 }

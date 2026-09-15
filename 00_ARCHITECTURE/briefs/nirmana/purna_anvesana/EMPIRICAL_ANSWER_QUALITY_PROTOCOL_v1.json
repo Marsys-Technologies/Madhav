@@ -1,0 +1,117 @@
+{
+  "schema_version": "madhav-purna-anvesana/empirical-answer-quality-protocol/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "residual_id": "PA-R08",
+  "status": "SOURCE_READY_NOT_EXECUTED",
+  "authorizes_execution": false,
+  "purpose": "Measure whether the deployed Purna Anvesana inquiry system improves answer applicability and completeness without increasing unsupported claims, using a held-out corpus and independent domain review.",
+  "authority_required": "approved research-data custody, independent Jyotish expert participation, model/runtime spend, privacy review, and empirical acceptance authority",
+  "pre_registration": {
+    "freeze_before_execution": [
+      "corpus item identifiers and immutable corpus hash",
+      "chart and question eligibility rules",
+      "baseline and candidate source and deployed revision identifiers",
+      "generation settings and tool/channel profile",
+      "review rubric, thresholds and adjudication procedure",
+      "randomization seed commitment and analysis script hash"
+    ],
+    "amendment_rule": "Any post-freeze change creates a new protocol version and restarts the evaluation; outcomes from superseded runs cannot be pooled into acceptance."
+  },
+  "corpus": {
+    "minimum_items": 30,
+    "minimum_unique_charts": 15,
+    "minimum_domains": 6,
+    "domain_balance_rule": "At least four items per declared domain and no domain above 25 percent of the corpus.",
+    "complexity_strata": ["single-domain", "cross-domain", "temporal", "long-multi-hop", "insufficient-evidence-abstention"],
+    "eligibility": "Questions must be answerable or correctly abstainable from frozen chart facts and governed sources; no item used in implementation, golden-route development, prompt tuning, or Wave 6 synthetic acceptance is eligible.",
+    "exclusions": "Remove only predeclared corrupt, duplicate, consent-invalid or technically unexecutable items; record exclusions before unblinding."
+  },
+  "arms": [
+    {
+      "id": "baseline",
+      "definition": "The separately approved deployed baseline revision using the same model family, temperature, context budget and chart snapshot."
+    },
+    {
+      "id": "candidate",
+      "definition": "The separately approved deployed Wave 7 revision using the same model family, temperature, context budget and chart snapshot."
+    }
+  ],
+  "blinding": {
+    "generation_arm_hidden_from_reviewers": true,
+    "held_out_items_hidden_from_implementers_until_freeze": true,
+    "no_outcome_conditioned_edits": true,
+    "randomized_pair_order": true,
+    "reviewers_receive": "question, consented chart context needed for judgment, paired redacted answers, and citation/receipt views without branch, arm, latency or token identifiers",
+    "unblinding_gate": "Only after all primary scores, applicability decisions, exclusions and adjudications are sealed."
+  },
+  "review": {
+    "minimum_independent_domain_experts": 2,
+    "conflict_rule": "No reviewer may have implemented or approved Wave 7 source changes or know arm identity while scoring.",
+    "applicability_gate": "Each corpus item and rubric interpretation must be independently accepted as domain-applicable before its score contributes to acceptance.",
+    "adjudication": "A third independent expert adjudicates dimension disagreements greater than two scale points and any supportedness or safety disagreement.",
+    "missing_review_rule": "Missing expert review is NOT_RUN, never a pass."
+  },
+  "metrics": [
+    {
+      "id": "expert_pairwise_preference",
+      "scale": "forced preference candidate, tie, or baseline",
+      "pass_threshold": "candidate preferred on at least 60 percent of non-tied applicable items and the two-sided 95 percent Wilson lower bound exceeds 50 percent",
+      "result": null
+    },
+    {
+      "id": "required_dimension_completeness",
+      "scale": "0 to 4 expert score per item",
+      "pass_threshold": "candidate mean improves by at least 0.30 and has no domain-level regression greater than 0.20",
+      "result": null
+    },
+    {
+      "id": "source_supportedness",
+      "scale": "supported atomic claims divided by auditable factual claims",
+      "pass_threshold": "candidate rate at least 0.95 and not below baseline by more than 0.01",
+      "result": null
+    },
+    {
+      "id": "material_omission_rate",
+      "scale": "expert-confirmed material omissions divided by predeclared required dimensions",
+      "pass_threshold": "candidate rate at most 0.10 and at least 20 percent relative reduction from baseline",
+      "result": null
+    },
+    {
+      "id": "abstention_precision",
+      "scale": "correct abstentions divided by all abstentions on insufficient-evidence items",
+      "pass_threshold": "candidate precision at least 0.90 with zero fabricated deterministic facts",
+      "result": null
+    },
+    {
+      "id": "cross_door_semantic_equivalence",
+      "scale": "applicable items whose Portal, managed MCP and raw MCP conclusions are materially equivalent",
+      "pass_threshold": "rate equals 1.00 after approved normalization of presentation-only differences",
+      "result": null
+    }
+  ],
+  "stop_conditions": [
+    "any privacy or consent breach",
+    "reviewer unblinding before score seal",
+    "corpus leakage into implementation or prompt changes",
+    "source, deployed revision, model settings or chart snapshot drift between arms",
+    "missing or unverifiable generation and review receipt"
+  ],
+  "required_receipts": [
+    "authority/change record and privacy approval",
+    "immutable corpus and rubric hashes",
+    "baseline and candidate deployed revision identifiers",
+    "per-item generation receipt IDs and normalized door receipts",
+    "reviewer conflict attestations and sealed score hashes",
+    "exclusion and adjudication ledger",
+    "analysis script hash and signed aggregate report"
+  ],
+  "acceptance_rule": "All six metrics must pass, every stop condition must remain false, at least two independent experts must complete applicability review, and an authorized empirical acceptance owner must sign the aggregate report. Otherwise the verdict is NOT_ACCEPTED or NOT_RUN as applicable.",
+  "outcome_fields": {
+    "corpus_hash": null,
+    "execution_receipt_ids": [],
+    "reviewer_identities": [],
+    "dimension_results": null,
+    "aggregate_result": null,
+    "acceptance_verdict": "NOT_RUN"
+  }
+}

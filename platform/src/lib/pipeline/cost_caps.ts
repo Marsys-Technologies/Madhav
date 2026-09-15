@@ -64,7 +64,8 @@ export class CostCapTracker {
    * second. Only when neither cap has tripped does this increment the
    * internal call counter and return `stopped: false`.
    */
-  checkAndRecordCall(): CostCapCheckResult {
+  checkAndRecordCall(units = 1): CostCapCheckResult {
+    if (!Number.isSafeInteger(units) || units < 1) throw new Error('COST_CAP_INVALID_DISPATCH_UNITS')
     const elapsedMs = Date.now() - this.startedAt;
     if (elapsedMs > this.config.maxWallClockMs) {
       return {
@@ -75,7 +76,7 @@ export class CostCapTracker {
         elapsedMs,
       };
     }
-    if (this.calls >= this.config.maxCalls) {
+    if (this.calls + units > this.config.maxCalls) {
       return {
         stopped: true,
         reason: 'call_count_cap',
@@ -84,7 +85,7 @@ export class CostCapTracker {
         elapsedMs,
       };
     }
-    this.calls += 1;
+    this.calls += units;
     return { stopped: false, callsMade: this.calls, elapsedMs };
   }
 }
@@ -102,7 +103,10 @@ export class CostCapTracker {
  * which superseded the retired `prashna_ask_spike.ts` reference implementation.
  */
 export const DEFAULT_COST_CAPS: CostCapConfig = {
-  maxCalls: 10,
+  // W7: one complete current-transit item truthfully reserves nine backend
+  // units. Thirty-two keeps the reviewed multi-capability plan executable
+  // without hiding fan-out, while remaining a hard atomic ceiling.
+  maxCalls: 32,
   maxWallClockMs: 120_000,
 };
 
@@ -118,7 +122,7 @@ export const DEFAULT_COST_CAPS: CostCapConfig = {
  */
 const COST_CAP_OVERRIDES_BY_ENTITLEMENT: Partial<Record<Principal['role'], CostCapConfig>> = {
   super_admin: {
-    maxCalls: 25,
+    maxCalls: 64,
     maxWallClockMs: 300_000,
   },
 };

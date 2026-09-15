@@ -214,7 +214,10 @@ async function mintSessionCookie(serviceUrl: string): Promise<string> {
   if (!sessResp.ok) {
     throw new Error(`/api/auth/session returned ${sessResp.status}: ${await sessResp.text().catch(() => '<unreadable>')}`)
   }
-  const rawSetCookie = (sessResp.headers as any).getSetCookie?.() ?? sessResp.headers.get('set-cookie') ?? ''
+  const rawSetCookie =
+    (sessResp.headers as Headers & { getSetCookie?: () => string[] }).getSetCookie?.() ??
+    sessResp.headers.get('set-cookie') ??
+    ''
   const setCookieStr = Array.isArray(rawSetCookie) ? rawSetCookie.join('\n') : String(rawSetCookie)
   const match = setCookieStr.match(/__session=([^;]+)/)
   if (!match) throw new Error(`__session cookie not found in Set-Cookie header. Got: ${setCookieStr.slice(0, 200)}`)
@@ -332,9 +335,9 @@ async function main() {
       for (const frame of frames) {
         const dataLine = frame.split('\n').find((l) => l.startsWith('data: '))
         if (!dataLine) continue
-        let parsed: any
+        let parsed: Record<string, unknown>
         try {
-          parsed = JSON.parse(dataLine.slice('data: '.length))
+          parsed = JSON.parse(dataLine.slice('data: '.length)) as Record<string, unknown>
         } catch {
           continue
         }

@@ -16,12 +16,14 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { TEMPORAL_SCUS } from '../../knowledge/editorial'
 
 export const queryTemporalActivationCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_temporal_activation',
   type:  'tool',
   layer: 'L3',
   name:  'query_temporal_activation',
+  semantic_capabilities: TEMPORAL_SCUS,
 
   description: [
     'Returns temporal activation windows and predicate conditions for a chart.',

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.66
+version: 6.78
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -56,6 +56,71 @@ consumers:
     `session_close.session_id`
   - Every session-close checklist from Step 10 onward
 changelog:
+  - v6.78 (2026-09-15, MADHAV-PURNA-ANVESANA-W7-20260915): Exact-head CI and independent review
+    refuted the first candidate for a stale census, post-release source mutation, weighted-task
+    starvation, nested-pagination authorization and an incomplete log addendum. Every finding was
+    preserved, reproduced and repaired under corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-
+    20260915. Exact pre-release head b32974cbe was independently approved with no HIGH/MEDIUM
+    findings; the corrective lease is released at 80d47c44d. This metadata-only successor requires
+    fresh exact-head CI and independent final review with no later source mutation.
+  - v6.75 (2026-09-15, MADHAV-PURNA-ANVESANA-W7-20260915): Recovery Wave 7 source/local/
+    disposable candidate closed under CCD-011 from immutable W6 head b48a6997. The unchanged
+    Beyond-Acarya corpus now passes 34/34 route obligations; direct and legacy transit bindings
+    receive deterministic receipted arguments or fail closed for clarification. Reviewed semantic
+    planning, channel authority, nested pagination, overlays, restart-safe reservations, rotating
+    signing-ring contracts and durable principal/credential/chart-bound managed jobs are complete
+    at source/local scope. Independent semantic review approved the repaired 182-SCU, 257-concept,
+    53-edge audit after rejecting two generic family mappings. Full platform tests pass 11,775 in
+    1,108 files; 28 disposable DB tests, 73 three-door tests and 58 managed-MCP tests pass; TypeScript,
+    codegen and lint pass with zero errors and 589 inherited warnings. The remote lease is released
+    at a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f. PR #2605 remains an unmerged review surface; the
+    immutable final metadata head still requires exact-head CI and independent terminal reviews.
+    No deployment, shared/production mutation, migration application, credential/infrastructure
+    action, retirement, doctrine ratification, expert review or empirical acceptance occurred.
+  - v6.71 (2026-09-14, MADHAV-PURNA-ANVESANA-W1-20260914): governed Wave 1 source/local/
+    disposable close. All 128 current-active producers have explicit, machine-checked contract
+    dispositions with zero unexplained records; 267 implementation/test references resolve.
+    Migration 1034 adds six reviewed digest specifications and passed disposable PostgreSQL 16.15
+    schema/key and service-effect proof. The exact full MCP surface is 129 unique names, now
+    fail-closed against authored authority; all 185 runtime descriptors have explicit exposure,
+    route, pagination, provenance and dark-state dispositions with zero ambiguous/unresolved route
+    records. Independent reviews approved W1-P1, W1-P2 and migration safety after initial findings
+    were corrected. The deployed-current estate remains unread, migration 1034 is unapplied outside
+    the disposable database, and `mi_abhilekha` product behavior remains unratified. No merge,
+    deployment, shared/production mutation, credential/infrastructure action, retirement or
+    doctrine ratification occurred.
+  - v6.70 (2026-09-14, MADHAV-PURNA-ANVESANA-W0-20260914): governed Wave 0 source-only
+    reconciliation stacked on frozen FC0 `fccfbb5ab`. The estate census now scans both governed
+    migration trees and reproducibly reports 111/128 current-source-active assets ever named by a
+    static reviewed output-digest spec, with 17 exact gaps; this is not deployed-current or semantic
+    coverage. The campaign control plane freezes distinct 129 portfolio, 128 formal-receipt and 128
+    current-active membership sets, plus descriptor, route, SCU and graph denominators. Independent
+    review first refuted stale revision provenance, then approved the corrected two-commit sequence.
+    PR #2597 remains frozen unchanged. No merge, deployment, migration application, production or
+    shared mutation, credential/infrastructure action, retirement, or doctrine ratification occurred.
+  - v6.69 (2026-09-14, MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914):
+    source/review close for the planner-facing federated Semantic Capability Unit
+    knowledge and inquiry candidate on `codex/planner-knowledge-inquiry` / PR #2597.
+    The continuation audit closed a required capped-frontier false-completion defect,
+    aligned reader receipts, made equal-time latest-build selection deterministic, and
+    regenerated provenance-bearing snapshot/census artifacts. At source checkpoint
+    `daa813f9a5f78a31b791f3e73aa035c2ad7fbbe1`, all 50 protected checks were terminal
+    (37 pass, 13 intentional skip, 0 fail/pending); mandatory local lint/typecheck/full
+    tests were green. This is a branch candidate only: no merge, deployment, migration
+    application, production mutation, credential or infrastructure action occurred.
+  - v6.68 (2026-09-13, MADHAV-DATA-PLANE-V2-20260913): documentation-only planning aside.
+    Data-plane value architecture v2.0, 129-identity provisional asset register and source/review
+    record prepared against Product Definition v3.0; proposed and committed locally on dedicated
+    branch `codex/madhav-data-plane-value-v2` for durable strategic review.
+    Actual managed-profile exception explicitly extended by native. No application/data/campaign
+    changes, canonical adoption, implementation, model activation, product push, merge or deployment.
+    Next product task is review/adoption and then the L0 definition with precise asset contracts.
+  - v6.67 (2026-09-12, MADHAV-PRODUCT-V3-20260912): governance aside only. Native adopted
+    MADHAV_PRODUCT_DEFINITION_v3_0.md as the final target for subsequent product planning;
+    CCD-010 records bounded documentation registration/local-commit authority and the actual
+    managed-profile exception. Earlier product proposals retained as history. Next product
+    task is data-plane reconciliation, not implementation. Active Nirmana position, campaign
+    authorities, acceptance, consent posture and deployment state are unchanged.
   - v6.66 (2026-08-30, PARIPRASHNA-V3-FINAL-CLOSE): Paripraśna Experience Assurance Programme
     v3.0 SEALED. New §2 top entry. All 8 gates CG-0..CG-7 CLOSED; campaign 100.0%; tracker
     replay integrity ok:true. Native acceptance fired by the native's own native_acceptance
@@ -5869,6 +5934,36 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
+> 🟡 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 FINAL SOURCE CANDIDATE (2026-09-15).** Recovery execution
+> from immutable W6 head `b48a6997b12ebe591bc5e62b7b60ddb295ee352b` has completed every authorized
+> source/local/disposable packet under CCD-011. W6's `NOT_ACCEPTED_SOURCE_LOCAL` 30/34 result remains
+> preserved as historical evidence; the unchanged corpus now passes 34/34 after deterministic,
+> receipted transit argument derivation. Independent semantic review approved the repaired six-layer
+> audit. Exact-head CI then refuted candidate `71788963d` because its capability-estate census was
+> stale; the repair at `ba0bcd0e9` passed CI-mode codegen checks and 35 focused tests but occurred
+> after the original lease release. That sequencing breach is preserved in PA-E0060/PA-E0061, and a
+> narrow corrective lease was expanded at coordination commit `610a400a3` after review additionally
+> found weighted-dispatch starvation, nested-pagination authorization and log-schema defects. Those
+> repairs now pass 34 focused tests, TypeScript, changed-file lint and the inherited 42-violation
+> schema ceiling. Exact pre-release head `b32974cbe` is independently approved; the corrective lease
+> is released at `80d47c44d`. PR #2605 and all W0–W6 branches remain unmerged review surfaces. This
+> metadata-only final candidate now requires exact-head CI and independent terminal review with no
+> later source mutation. No merge, deployment, shared/production mutation,
+> credential/infrastructure action, expert/empirical acceptance or production health is claimed.
+
+> **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
+> [Madhav Product Definition v3.0](MADHAV_PRODUCT_DEFINITION_v3_0.md) is the final product
+> planning reference under [CCD-010](CROSS_CUTTING_DECISION_REGISTER_v1_0.md#ccd-010--madhav-product-definition-v30-adoption).
+> The [review/adoption record](briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md)
+> contains source coverage, preserved lineage and delivery/validation evidence. This package
+> records local-branch adoption/registration; protected integration must be verified separately.
+> The [Data Plane Value Architecture v2.0 proposal](briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md)
+> and its [asset contribution register](briefs/nirmana/MADHAV_DATA_PLANE_ASSET_CONTRIBUTION_REGISTER_v2_0.md)
+> are now prepared locally for native review (2026-09-13); they are not adopted or implemented.
+> Next **product-planning** objective: review this proposal, then derive the L0 definition and
+> remaining L1–L5/asset contracts preserving useful capital. This aside does not advance,
+> stop or recertify the active Nirmana campaign, and grants no execution or deployment authority.
+
 > 🔵 **ACTIVE CAMPAIGN (2026-09-01): Nirmāṇa L0→L5 velocity-reset.** Native-authorized, full
 > execution authority delegated per `00_ARCHITECTURE/briefs/nirmana/
 > NIRMANA_AUTONOMOUS_EXECUTION_PROMPT_v1_0.md` (doctrine amendments in
@@ -7861,12 +7956,12 @@ current_state:
     # platform/scripts/temporal/compute_narayana.py, 025_HOLISTIC_SYNTHESIS/**,
     # 035_DISCOVERY_LAYER/**, 01_FACTS_LAYER/FORENSIC_ASTROLOGICAL_DATA_v8_0.md
     # (read-only for cross-check anchor only), 01_FACTS_LAYER/**. L1 frozen.
-  last_session_closed_at: 2026-05-02T22:00:00+05:30
-  last_session_attempted_close_at: 2026-05-02T22:00:00+05:30
-  last_session_agent: claude-opus-4-7[1m]
-  last_session_cowork_thread_name: "Madhav M4-D-S1 — M4 Macro-Phase Close"
+  last_session_closed_at: 2026-09-12T20:03:33Z
+  last_session_attempted_close_at: 2026-09-12T20:03:33Z
+  last_session_agent: Codex
+  last_session_cowork_thread_name: "Madhav — Data Plane Value Architecture"
   last_session_close_state: atomically_closed
-  last_session_drift_verdict: >
+  historical_m3_close_drift_verdict: >
     M3-D Wave 4 D2 — M3 MACRO-PHASE CLOSE. Substantive governance-layer
     session: M3_CLOSE_v1_0.md + HANDOFF_M3_TO_M4_v1_0.md authoring +
     CURRENT_STATE flip M3→M4 + MP.1+MP.2 mirror sync. Counter incremented
@@ -9135,8 +9230,8 @@ current_state:
   # ------------------------------------------------------------------
   # Freshness metadata (for drift detection)
   # ------------------------------------------------------------------
-  file_updated_at: 2026-05-22T00:30:00+05:30
-  file_updated_by_session: NATIVE-CLIENT-ID-FIX
+  file_updated_at: 2026-09-14T08:43:00Z
+  file_updated_by_session: MADHAV-PLANNER-KNOWLEDGE-CONTINUATION-20260914
   cross_check_hash: >
     Derived from the tuple (active_governance_step, last_session_id, next_governance_step)
     = (Step_15 completed, M4-D-S1, null). ROTATED from v3.3 — M4-D-S1 is the
@@ -9277,12 +9372,129 @@ current_state:
     close once the M4-C parallel-pair coordination phase has fully settled
     (likely at M4-C-S3 close or M4-C-S4 sub-phase close).
   # Current close pointer. Kept here to override the historical embedded value above.
-  last_session_id: PARISESA-V4-CONDUCTOR-20260822T023000Z-CLOSE
+  last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
+  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 is at a metadata-only final source candidate. CI and review refutations for stale census, post-release sequencing, weighted starvation, nested pagination and log schema are repaired. Exact pre-release head b32974cbe is approved with no HIGH/MEDIUM findings; corrective lease released at 80d47c44d. Fresh exact-head CI and independent final reviews remain, with no later source mutation. No merge, deployment, shared migration, production, user or empirical acceptance claim."
+  product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
+  data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
+  planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
+  planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
+  purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
+  next_product_strategy_objective: "Run exact-head CI and independent final review on the immutable Wave 7 metadata-only candidate without later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
+
+At the final source-candidate checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
+disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
+obligations through deterministic, receipted transit argument derivation for both direct and legacy
+bindings, with clarification when an anchor is absent. The six-layer estate contains 182 editorial
+SCUs, 257 typed concepts and 53 source-backed edges; independent semantic review rejected two generic
+families, then approved their calibrated-registry and prospective-ledger replacements at exact head
+`b4e9b7454`. Full platform tests pass 11,775 tests in 1,108 files; 28 disposable database tests,
+73 three-door tests and 58 managed-MCP tests pass. TypeScript, codegen and lint also pass, with zero
+lint errors and 589 inherited warnings. Exact-head CI refuted `71788963d` for a stale capability-estate
+census. The artifact was regenerated at `ba0bcd0e9`, but independent review also refuted its post-release
+mutation sequence. A later review found weighted-starvation, nested-pagination and log-schema defects;
+the lease was expanded at `610a400a3` before those repairs. Head `f510d1a97` passes 34 focused tests,
+TypeScript, changed-file lint, codegen and the inherited schema ceiling. Exact pre-release head
+`b32974cbe` is approved and the corrective lease is released at `80d47c44d`. PR #2605 remains open
+and unmerged. Exact-head CI and independent terminal reviews remain, so
+the in-tree state remains a corrective candidate rather than a self-certified final-head
+verdict. Shared migrations, signing/infrastructure change, deployed traces, protected merge/deploy,
+retirement, governance-bootstrap remediation and blinded expert evaluation remain `NOT_RUN` pending
+separate authority.
+
+At the close of **MADHAV-PURNA-ANVESANA-W6-20260915**, all source-scope packets are complete and
+the authority-bound remainder is quarantined. The five-case Beyond-Acarya corpus independently
+freezes its concept, route and semantic-edge denominators and includes positive and negative
+ablations for every declared metric. Its honest result is `NOT_ACCEPTED_SOURCE_LOCAL`: 30 of 34
+required routes are bindable because transit retrieval still lacks derivable planet and date
+arguments. Verified long inquiry continuation retains earlier evidence, but does not erase that
+material route gap. Independent acceptance review approved exact head `201b420d9`.
+
+The terminal artifact maps every packet and the original R1–R12 register to append-only evidence,
+then quarantines 13 remaining risks with owners, triggers and authority gates. Independent terminal
+review approved exact pre-release head `4e7464700` after successive anti-gaming corrections. The W6
+lease is released at remote coordination commit `2c4a99481`; PR #2604 remains open and stacked on
+Wave 5. No merge, deploy, shared/production migration or mutation, credential/infrastructure action,
+retirement, doctrine change, production trace, runtime-health claim, user acceptance or empirical
+acceptance occurred. The immutable final source head is subject to external exact-head review, with
+no later source mutation permitted.
+
+At the close of **MADHAV-PURNA-ANVESANA-W5-20260914**, migration 1033's durable lifecycle is
+proved only against disposable PostgreSQL: atomic principal/chart-bound creation, RLS isolation,
+append-only receipts, compare-and-swap/replay, immutable authorization and overlay fields, quota,
+retention and reversible down behavior. Portal, managed `prashna_ask` and raw inquiry routes execute
+one genuinely shared fixture and emit the same exact evidence projection, including continuation.
+Independent migration/security and parity reviewers approved exact clean head
+`9bd525bf0cd46ea076da9a26928075a4af4c845c` with no HIGH or MEDIUM finding. The shared denominator
+is only six of 184 platform-executable bindings; full-catalog parity is therefore expressly open.
+Focused, database, TypeScript, 56 golden-stream and lint gates pass. The full unit run passed 11,704
+tests in 1,100 files but one census file exceeded its five-second timeout; the isolated two-test
+rerun passed in 4.69 seconds. No merge, deployment, shared migration, credential/infrastructure
+action, production trace, runtime-health or empirical-value claim occurred.
+
+At the close of **MADHAV-PURNA-ANVESANA-W4-20260914**, response accountability is derived from
+the immutable inquiry denominator, canonical evidence and exact response spans rather than prose
+self-assertion. Reviewed collection paths expose each semantic row; unreviewed adapters remain
+opaque. One physical row has one canonical identity even when it serves multiple obligations,
+arrives through retries with volatile bundle metadata, or has reordered object keys. Singleton and
+conjoint interpretations are validated independently, and any missing finding or open continuation
+keeps the receipt incomplete. Independent review drove and then approved all repairs at exact
+technical head `c7d9b021a86007bfc80a90cc2e0ba5921609ed93`, with no HIGH or MEDIUM finding.
+The exact-head unit gate passed 11,687 tests in 1,099 files; TypeScript, 56 golden streams and lint
+(zero errors, 590 inherited warnings) also pass. PR #2602 is stacked on #2601. This is source/local
+evidence only and does not merge, deploy, apply migration 1033, touch shared/production state, or
+establish runtime health or empirical value.
+
+At the close of **MADHAV-PURNA-ANVESANA-W3-20260914**, compiler 2.0 canonicalizes inquiry scope,
+applies mandatory domain floors, traverses only reviewed source-backed graph edges, and runs an
+independent omission challenger under immutable search, graph and challenger budgets. Required
+work excluded by a cap remains a material frontier and cannot finalize as complete. Independent
+review initially found four fail-closed defects across obligation materiality, frontier merging,
+budget accounting and authorization hashes; all four have direct regressions and both reviewers
+approved exact technical head `b19be1b7ad844bd26a0ecb3166373a386da7dcd9`. The exact-head unit
+gate passed 11,664 tests in 1,098 files; TypeScript, codegen freshness, 56 golden streams and lint
+(zero errors, 590 inherited warnings) also pass. PR #2601 is stacked on #2600. This does not merge
+or deploy either PR, touch shared/production state, or establish runtime health or empirical value.
+
+At the close of **MADHAV-PURNA-ANVESANA-W2-20260914**, all 182 planner-addressable Semantic
+Capability Units are editorial, including 177 reviewed descriptor units and five authored units;
+none remain descriptor-derived stubs. The source-linked typed estate contains 250 concepts with
+zero unbound concepts, 53 exact source-backed edges, explicit dispositions for all 156 isolated
+SCUs and unique semantic bindings for all 128 current-active producers. Both independent packet
+reviewers approved the exact technical head. A narrowly documented scope amendment recaptured two
+career-branch golden receipts after the improved semantics directly satisfied one former omission
+obligation; only one line per baseline changed, and the full 12,304-test unit gate passed. TypeScript,
+codegen freshness and lint also pass, with the inherited 590-warning lint ceiling unchanged. This
+is source/local compatibility evidence only: it does not merge or deploy the branch, read current
+production state, establish empirical acceptance, or alter PR #2597. W3 inquiry compilation and
+independent omission challenging are the next governed frontier.
+
+At the close of **MADHAV-PURNA-ANVESANA-W1-20260914**, the producer and route contract frontier is
+machine-closed at source/local/disposable scope. Every current-active producer has a testable
+disposition; six new digest specifications and the two service effects passed a disposable
+PostgreSQL replay. The full MCP surface now fails closed against 129 exact names, all 185 runtime
+descriptors have explicit route/exposure/pagination/provenance/dark-state dispositions, and the
+three inquiry lifecycle handlers are profile-gated. Independent reviewers approved both packets
+and migration safety after their initial refutations were corrected. This does not establish
+deployed-current state, apply migration 1034 outside the disposable database, ratify the
+`mi_abhilekha` effect, merge or deploy any branch, or alter PR #2597. Wave 2 editorial semantics
+and graph closure are the next governed frontier.
+
+At the close of **MADHAV-PURNA-ANVESANA-W0-20260914**, execution resumed by investigating the
+blocking denominator rather than accepting FC0's generated headline. The generator had scanned
+only `platform/supabase/migrations` and omitted the governed `platform/migrations` tree. The fixed
+dual-tree census, its exact 17-gap regression, and a provenance-correct two-commit regeneration now
+form the Wave 0 source record. Separate 128-member receipt and current-active sets are preserved as
+different memberships despite equal cardinality; deployed-current rows remain unresolved. The
+campaign definition, append-only events and human projection establish the six-wave packet DAG and
+stacked-PR boundary without mutating PR #2597. Independent review refuted the first package because
+its artifact named a pre-fix revision; after correction, that reviewer approved it. No prohibited
+production, deployment, migration, infrastructure, retirement or doctrine action occurred.
 
 At the close of **PARIPRASHNA-P3-PREFLIGHT-PART-H-2026-08-22**, a fresh Claude Code session with
 no memory of any prior conversation was handed a native ruling ("CONTINUE INTO PARTS G AND H

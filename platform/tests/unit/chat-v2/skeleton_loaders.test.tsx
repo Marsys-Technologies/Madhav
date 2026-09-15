@@ -7,7 +7,7 @@
  *   When data loads, both skeletons disappear and real content is shown.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, act } from '@testing-library/react'
+import { render, act, fireEvent } from '@testing-library/react'
 import React, { useState } from 'react'
 import { SidebarSkeleton } from '@/components/chat/SidebarSkeleton'
 import { HeaderSkeleton } from '@/components/chat/HeaderSkeleton'
@@ -65,16 +65,19 @@ describe('SidebarSkeleton — parent-context integration (Amendment 2)', () => {
   })
 
   it('transitions from skeleton to content when loading flips', () => {
-    let setLoading!: (v: boolean) => void
     function ToggleSidebarShell() {
       const [loading, setL] = useState(true)
-      setLoading = setL
-      return <SidebarShell isLoading={loading} />
+      return (
+        <>
+          <button data-testid="finish-sidebar-loading" onClick={() => setL(false)}>finish loading</button>
+          <SidebarShell isLoading={loading} />
+        </>
+      )
     }
-    const { container } = render(<ToggleSidebarShell />)
+    const { container, getByTestId } = render(<ToggleSidebarShell />)
     expect(container.querySelector('[data-testid="v2-sidebar-skeleton"]')).not.toBeNull()
 
-    act(() => { setLoading(false) })
+    act(() => { fireEvent.click(getByTestId('finish-sidebar-loading')) })
     expect(container.querySelector('[data-testid="v2-sidebar-skeleton"]')).toBeNull()
     expect(container.querySelector('[data-testid="sidebar-content"]')).not.toBeNull()
   })
@@ -101,16 +104,19 @@ describe('HeaderSkeleton — parent-context integration (Amendment 2)', () => {
   })
 
   it('shows chart name after skeleton dismissed', () => {
-    let setLoading!: (v: boolean) => void
     function ToggleHeaderShell() {
       const [loading, setL] = useState(true)
-      setLoading = setL
-      return <HeaderShell isLoading={loading} chartName="Abhisek Mohanty" />
+      return (
+        <>
+          <button data-testid="finish-header-loading" onClick={() => setL(false)}>finish loading</button>
+          <HeaderShell isLoading={loading} chartName="Abhisek Mohanty" />
+        </>
+      )
     }
-    const { container } = render(<ToggleHeaderShell />)
+    const { container, getByTestId } = render(<ToggleHeaderShell />)
     expect(container.querySelector('[data-testid="v2-header-skeleton"]')).not.toBeNull()
 
-    act(() => { setLoading(false) })
+    act(() => { fireEvent.click(getByTestId('finish-header-loading')) })
     expect(container.querySelector('[data-testid="v2-header-skeleton"]')).toBeNull()
     expect(container.querySelector('[data-testid="v2-chart-name"]')?.textContent).toBe('Abhisek Mohanty')
   })

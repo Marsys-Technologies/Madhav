@@ -35,8 +35,6 @@ export function useChartList(): UseChartListResult {
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    setError(null)
 
     fetch('/api/panchang/charts')
       .then(async (res) => {

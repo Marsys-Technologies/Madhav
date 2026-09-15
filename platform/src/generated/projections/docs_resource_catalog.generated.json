@@ -1,8 +1,8 @@
 {
   "uri": "marsys://resource/catalog",
   "mime_type": "application/json",
-  "generated_at": "2026-07-24T05:06:15.709Z",
-  "total": 168,
+  "generated_at": "2026-09-15T15:24:35.840Z",
+  "total": 186,
   "capabilities": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -437,12 +437,28 @@
       ]
     },
     {
+      "uri": "marsys://tool/L0/query_current_transit_snapshot",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_current_transit_snapshot",
+      "short_label": "Query Current Transit Snapshot",
+      "one_line": "Return the complete nine-graha transit state for one explicit date by invoking the strict scalar planet-transit capability once per canonical Jyotish body.",
+      "scope": "global",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L0/query_dasha_systems",
       "type": "tool",
       "layer": "L0",
       "name": "query_dasha_systems",
       "short_label": "Query Dasha Systems",
-      "one_line": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 18 rows).",
+      "one_line": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 20 rows).",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -456,7 +472,7 @@
       "layer": "L0",
       "name": "query_dosha_catalog",
       "short_label": "Query Dosha Catalog",
-      "one_line": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 50 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and…",
+      "one_line": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 79 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and…",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -528,7 +544,7 @@
       "layer": "L0",
       "name": "query_medical_mappings",
       "short_label": "Query Medical Mappings",
-      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
+      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 /…",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -551,12 +567,40 @@
       ]
     },
     {
+      "uri": "marsys://tool/L0/query_muhurta_lattice",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_muhurta_lattice",
+      "short_label": "Query Muhurta Lattice",
+      "one_line": "Read the global muhūrta boundary/factor lattice (bg_muhurta_lattice) for a time interval.",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
       "uri": "marsys://tool/L0/query_nakshatra_medical",
       "type": "tool",
       "layer": "L0",
       "name": "query_nakshatra_medical",
       "short_label": "Query Nakshatra Medical",
       "one_line": "Query the nakshatra→body-part medical reference (bg_nakshatra_medical, 27 rows — Ashtanga Hridayam / BPHS).",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L0/query_parihara_graph",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_parihara_graph",
+      "short_label": "Query Parihara Graph",
+      "one_line": "Read the parihāra (doṣa-cancellation) graph, the per-activity muhūrta factor-quality rule tables, and the Muhūrta Factor Census / corpus-gap register…",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -757,6 +801,20 @@
       ]
     },
     {
+      "uri": "marsys://tool/L0/query_sky_calendar",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_sky_calendar",
+      "short_label": "Query Sky Calendar",
+      "one_line": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval.",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
       "uri": "marsys://tool/L0/query_sutravali_rules",
       "type": "tool",
       "layer": "L0",
@@ -908,7 +966,7 @@
       "layer": "L0",
       "name": "query_yoga_catalog",
       "short_label": "Query Yoga Catalog",
-      "one_line": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 175 canonical yogas with classical activation rules, tradition, domain tags, and classical sources.",
+      "one_line": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 233 canonical yogas with classical activation rules, tradition, domain tags, and classical sources.",
       "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -1012,6 +1070,23 @@
       "short_label": "Chart Snapshot",
       "one_line": "The compact \"show me the chart\" answer: a 12-rashi D1 (rashi/D1 chart) text grid -- every graha's sign + degree-in-sign, Lagna sign clearly marked -- sized for…",
       "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact",
+        "mcp_consult"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L1/concept_locate",
+      "type": "tool",
+      "layer": "L1",
+      "name": "concept_locate",
+      "short_label": "Concept Locate",
+      "one_line": "Resolve a free-text concept name (English or Sanskrit, e.g.",
+      "scope": "global",
       "archetype": "flat_fact",
       "tool_role": "leaf",
       "projection_tags": [
@@ -1179,6 +1254,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L1/get_database_schema",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_database_schema",
+      "short_label": "Get Database Schema",
+      "one_line": "Discovery substrate: every fact_category x fact_subject combination that actually exists in the live chart_facts data model, mechanically enumerated (never…",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L1/get_dignity",
       "type": "tool",
       "layer": "L1",
@@ -1291,6 +1382,20 @@
       ]
     },
     {
+      "uri": "marsys://tool/L1/get_nakshatra",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_nakshatra",
+      "short_label": "Get Nakshatra",
+      "one_line": "Retrieve the nakshatra-semantic layer for a chart: graha-nakshatra/pada joins, nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and…",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
       "uri": "marsys://tool/L1/get_panchanga",
       "type": "tool",
       "layer": "L1",
@@ -1352,7 +1457,7 @@
       "layer": "L1",
       "name": "get_sensitive_degrees",
       "short_label": "Get Sensitive Degrees",
-      "one_line": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check', 275 rows/chart).",
+      "one_line": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check').",
       "scope": "per_chart",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -1381,6 +1486,20 @@
       "name": "get_strength",
       "short_label": "Get Strength",
       "one_line": "Retrieve all graha strength metrics for a chart: Shadbala (6 components + total), Vimsopaka Bala (4 varga groupings), Saptavargaja Bala, Ishta/Kashta Phala,…",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "leaf",
+      "projection_tags": [
+        "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L1/get_structural",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_structural",
+      "short_label": "Get Structural",
+      "one_line": "Retrieve ga_structural's residual relational/graph signal layer: sambandha (planetary relationship grade) and virupa-drishti aspect strength, contradiction and…",
       "scope": "per_chart",
       "archetype": "flat_fact",
       "tool_role": "leaf",
@@ -1484,6 +1603,22 @@
       "tool_role": "leaf",
       "projection_tags": [
         "mcp_full"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L1/query_planet",
+      "type": "tool",
+      "layer": "L1",
+      "name": "query_planet",
+      "short_label": "Query Planet",
+      "one_line": "Canonical assembled-entity face for ONE graha: sign, house (D1), nakshatra+pada, degree, retrograde/combustion state, dignity chain…",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "tool_role": "umbrella",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
       ]
     },
     {
@@ -1651,7 +1786,7 @@
       "layer": "L2",
       "name": "query_pratijna",
       "short_label": "Query Pratijna",
-      "one_line": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional),…",
+      "one_line": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional |…",
       "scope": "per_chart",
       "archetype": "rich_relational",
       "tool_role": "leaf",
@@ -1952,6 +2087,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L3/query_active_dashas",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_active_dashas",
+      "short_label": "Query Active Dashas",
+      "one_line": "Convenience face (EL-33): \"which dashas am I running on a given date?\" — reports the active lord chain (level 1/2/3 = Mahā/Antar/Pratyantar) with exact…",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L3/query_convergence_windows",
       "type": "tool",
       "layer": "L3",
@@ -1984,6 +2135,38 @@
       ]
     },
     {
+      "uri": "marsys://tool/L3/query_kala_paddhati_profile",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_kala_paddhati_profile",
+      "short_label": "Query Kala Paddhati Profile",
+      "one_line": "Retrieve the per-chart paddhati (convention) profile from kala_paddhati_profile (ṢAḌ-DARŚANA item 37 / ADJUDICATION-8).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/query_kota_chakra",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_kota_chakra",
+      "short_label": "Query Kota Chakra",
+      "one_line": "Retrieve Kota-Chakra (fort chart) ring-run rows for a chart from kala_kota_chakra (ka_kota_chakra, registry item 16).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L3/query_life_arc",
       "type": "tool",
       "layer": "L3",
@@ -1993,6 +2176,22 @@
       "scope": "per_chart",
       "archetype": "temporal",
       "tool_role": "drill",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/query_moorti_nirnaya",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_moorti_nirnaya",
+      "short_label": "Query Moorti Nirnaya",
+      "one_line": "Retrieve Moorti-nirṇaya rows for a chart from kala_moorti_nirnaya (ka_moorti_nirnaya, registry item 4).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2030,6 +2229,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L3/query_sudarshana_varsha",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_sudarshana_varsha",
+      "short_label": "Query Sudarshana Varsha",
+      "one_line": "Retrieve Sudarśana-Chakra year-wheel rows for a chart from kala_sudarshana_varsha (ka_sudarshana_varsha, registry item 17).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L3/query_temporal_activation",
       "type": "tool",
       "layer": "L3",
@@ -2052,6 +2267,38 @@
       "name": "query_temporal_view",
       "short_label": "Query Temporal View",
       "one_line": "Returns the temporal Kāla-Darshana view for a chart from kala_darshana (ka_kala_darshana) — the lifetime confluence catalog (750 rows/chart).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/query_tithi_pravesha",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_tithi_pravesha",
+      "short_label": "Query Tithi Pravesha",
+      "one_line": "Retrieve Tithi-Praveśa (lunar-return annual chart) rows for a chart from kala_tithi_pravesha (ka_tithi_pravesha, registry item 13).",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "tool_role": "temporal",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L3/query_vedha_gochara",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_vedha_gochara",
+      "short_label": "Query Vedha Gochara",
+      "one_line": "Retrieve vedha (transit obstruction) rows for a chart from kala_vedha_gochara (ka_vedha_gochara, registry item 5, closes defect R-19 CLOSED-PARTIAL-BY-DESIGN).",
       "scope": "per_chart",
       "archetype": "temporal",
       "tool_role": "temporal",
@@ -2230,6 +2477,22 @@
       ]
     },
     {
+      "uri": "marsys://tool/L5/lel_intake_checklist",
+      "type": "tool",
+      "layer": "L5",
+      "name": "lel_intake_checklist",
+      "short_label": "Lel Intake Checklist",
+      "one_line": "Guided Life Event Log (LEL) intake surface (EL-54).",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "tool_role": "quality",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
       "uri": "marsys://tool/L5/lel_query",
       "type": "tool",
       "layer": "L5",
@@ -2252,6 +2515,22 @@
       "name": "mechanism_retrodiction_get",
       "short_label": "Mechanism Retrodiction Get",
       "one_line": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input).",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "tool_role": "quality",
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ]
+    },
+    {
+      "uri": "marsys://tool/L5/prediction_lifecycle_sweep",
+      "type": "tool",
+      "layer": "L5",
+      "name": "prediction_lifecycle_sweep",
+      "short_label": "Prediction Lifecycle Sweep",
+      "one_line": "EL-58 prediction/window lifecycle sweep.",
       "scope": "per_chart",
       "archetype": "calibration",
       "tool_role": "quality",
@@ -2538,17 +2817,17 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 63,
+      "L0": 67,
       "L2": 32,
-      "L3": 14,
-      "L1": 35,
+      "L3": 21,
+      "L1": 40,
       "L4": 11,
-      "L5": 13
+      "L5": 15
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 162
+      "tool": 180
     }
   }
 }

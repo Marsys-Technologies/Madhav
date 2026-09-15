@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { TraceStep, TraceDataSummary } from '@/lib/trace/types'
 
@@ -48,32 +48,36 @@ export function InlineToolFlow({ queryId, isAdmin }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const cacheRef = useRef<Map<string, StepRow[]>>(new Map())
+  const [cache, setCache] = useState<Map<string, StepRow[]>>(() => new Map())
 
   const fetchTrace = useCallback(async (qid: string) => {
-    if (cacheRef.current.has(qid)) return
+    if (cache.has(qid)) return
     setLoading(true)
     setError(null)
     try {
       const r = await fetch(`/api/audit/${encodeURIComponent(qid)}/trace`)
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       const data = await r.json() as { steps: StepRow[] }
-      cacheRef.current.set(qid, data.steps ?? [])
+      setCache((current) => {
+        const next = new Map(current)
+        next.set(qid, data.steps ?? [])
+        return next
+      })
     } catch {
       setError('Failed to load trace.')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [cache])
 
   if (!FLAG_ON || !isAdmin || !queryId) return null
 
-  const steps = cacheRef.current.get(queryId) ?? null
+  const steps = cache.get(queryId) ?? null
 
   function handleToggle() {
     const next = !open
     setOpen(next)
-    if (next && queryId && !cacheRef.current.has(queryId)) {
+    if (next && queryId && !cache.has(queryId)) {
       fetchTrace(queryId)
     }
   }

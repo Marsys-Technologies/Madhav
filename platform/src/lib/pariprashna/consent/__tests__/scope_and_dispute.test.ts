@@ -48,6 +48,7 @@ describe('isSubjectScopedTable — the L2+ boundary', () => {
 
   it('includes the prefix-less chart-scoped extras', () => {
     for (const t of SUBJECT_SCOPE_EXTRA_TABLES) expect(isSubjectScopedTable(t), t).toBe(true)
+    expect(SUBJECT_SCOPE_EXTRA_TABLES).toContain('planner_managed_prashna_jobs')
   })
 
   it('EXCLUDES L1 computation, root identity, and build bookkeeping', () => {
@@ -94,6 +95,7 @@ describe('isSubjectScopedTable — the L2+ boundary', () => {
             { table_name: 'chart_subject_consent' },
             { table_name: 'kala_field' },
             { table_name: 'conversations' },
+            { table_name: 'planner_managed_prashna_jobs' },
             // A table nobody has written yet: prefix allowlisting picks it up
             // WITHOUT anyone remembering to edit a list.
             { table_name: 'bodha_some_future_table' },
@@ -105,6 +107,7 @@ describe('isSubjectScopedTable — the L2+ boundary', () => {
       'bodha_msr_signals',
       'kala_field',
       'conversations',
+      'planner_managed_prashna_jobs',
       'bodha_some_future_table',
     ])
   })

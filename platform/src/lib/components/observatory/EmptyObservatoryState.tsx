@@ -22,7 +22,7 @@ export function EmptyObservatoryState({ dateRangeLabel }: EmptyObservatoryStateP
         </p>
       </div>
       <div className="mt-2 rounded border border-[rgba(212,175,55,0.12)] bg-background/60 px-5 py-3 text-left text-xs text-muted-foreground">
-        <p className="mb-1 font-semibold text-[rgba(212,175,55,0.6)]">If you've sent queries and still see this:</p>
+        <p className="mb-1 font-semibold text-[rgba(212,175,55,0.6)]">If you&apos;ve sent queries and still see this:</p>
         <ol className="list-decimal space-y-0.5 pl-4">
           <li>Check that the pricing seed has been applied to the database</li>
           <li>Verify <code className="rounded bg-muted px-1 py-0.5">MARSYS_FLAG_OBSERVATORY_ENABLED=true</code></li>

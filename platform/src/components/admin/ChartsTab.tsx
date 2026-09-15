@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { adminCard } from './styles'
 import type { AdminUser, AdminChartGrant } from './types'
@@ -188,6 +188,7 @@ function ChartAccessPanel({
   onGrantCountKnown: (guestId: string, count: number) => void
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [search, setSearch] = useState('')
 
   const { data, isError, refetch } = useQuery({
@@ -197,11 +198,10 @@ function ChartAccessPanel({
     ),
   })
 
-  const [localCharts, setLocalCharts] = useState<AdminChartGrant[]>([])
+  const localCharts = data?.charts ?? []
 
   useEffect(() => {
     if (data?.charts) {
-      setLocalCharts(data.charts)
       const count = data.charts.filter(c => c.granted && !c.is_own).length
       onGrantCountKnown(guest.id, count)
     }
@@ -209,14 +209,17 @@ function ChartAccessPanel({
   }, [data?.charts])
 
   function handleToggled(chartId: string, nowGranted: boolean) {
-    setLocalCharts(prev =>
-      prev
-        .map(c => c.id === chartId ? { ...c, granted: nowGranted } : c)
-        .sort((a, b) => {
-          if (a.granted !== b.granted) return a.granted ? -1 : 1
-          if (a.is_own !== b.is_own) return a.is_own ? 1 : -1
-          return 0
-        })
+    queryClient.setQueryData<{ charts: AdminChartGrant[] }>(
+      ['admin', 'chart-grants', guest.id],
+      (current) => current ? {
+        charts: current.charts
+          .map(c => c.id === chartId ? { ...c, granted: nowGranted } : c)
+          .sort((a, b) => {
+            if (a.granted !== b.granted) return a.granted ? -1 : 1
+            if (a.is_own !== b.is_own) return a.is_own ? 1 : -1
+            return 0
+          }),
+      } : current,
     )
     onGrantMutated()
     refetch()
@@ -308,14 +311,6 @@ export function ChartsTab({
 
   const [selectedId, setSelectedId] = useState<string | null>(guestParam)
   const [fromUsers, setFromUsers] = useState(!!guestParam)
-
-  useEffect(() => {
-    if (guestParam) {
-      setSelectedId(guestParam)
-      setFromUsers(true)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   const [grantCounts, setGrantCounts] = useState<Record<string, number>>({})
 

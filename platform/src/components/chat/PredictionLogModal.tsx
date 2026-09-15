@@ -22,6 +22,13 @@ interface PredictionLogModalProps {
 }
 
 export function PredictionLogModal({
+  ...props
+}: PredictionLogModalProps) {
+  if (!props.open) return null
+  return <PredictionLogModalContent {...props} />
+}
+
+function PredictionLogModalContent({
   open,
   onClose,
   queryId,
@@ -38,18 +45,11 @@ export function PredictionLogModal({
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  // Reset state when modal opens for a new prediction
+  // Focus the freshly mounted form.
   useEffect(() => {
-    if (open) {
-      setText(predictionText)
-      setHor(horizon ?? '')
-      setConf('')
-      setFalsifier('')
-      setSaved(false)
-      setError(null)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [open, predictionText, horizon])
+    const timer = setTimeout(() => inputRef.current?.focus(), 50)
+    return () => clearTimeout(timer)
+  }, [])
 
   // Close on Escape
   useEffect(() => {
@@ -159,7 +159,7 @@ export function PredictionLogModal({
               {/* Horizon */}
               <div>
                 <label htmlFor="pred-horizon" className="block text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">
-                  Horizon <span className="text-zinc-600 normal-case font-normal">(e.g. "6 months", "by 2027")</span>
+                  Horizon <span className="text-zinc-600 normal-case font-normal">(e.g. &quot;6 months&quot;, &quot;by 2027&quot;)</span>
                 </label>
                 <input
                   id="pred-horizon"

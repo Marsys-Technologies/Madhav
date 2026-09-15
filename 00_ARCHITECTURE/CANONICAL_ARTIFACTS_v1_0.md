@@ -42,6 +42,8 @@ consumers:
   - Step 9 (CLAUDE.md rebuild) — CLAUDE.md's canonical-path table is replaced by a
     cite-CANONICAL_ARTIFACTS-by-reference rule
 changelog:
+  - 2026-09-12 (MADHAV-PRODUCT-V3-20260912): post-cutover audit pointer for the adopted
+    product definition. This file remains SUPERSEDED; CAPABILITY_MANIFEST remains authoritative.
   - 2026-08-17 (PARISESA preflight governance reconciliation): the historical
     MACRO_PLAN record is reconciled from v2.0 / `2fef28fd…451c3` to v2.1 /
     `8e98ad46…e6c6e`, after independent provenance and semantic review. This
@@ -66,6 +68,11 @@ date: 2026-04-24
 ---
 
 ## §0 — How to read this registry
+
+**Post-cutover admission, 2026-09-12:** canonical ID `MADHAV_PRODUCT_DEFINITION` is registered
+in [CAPABILITY_MANIFEST.json](CAPABILITY_MANIFEST.json) at
+`00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md` under CCD-010. This is an audit/discovery
+pointer, not revival of this historical registry or its retired mirror obligations.
 
 - **§1 Canonical artifact table** — one row per canonical_id. Each row is a YAML-block header (for machine parse) plus a human-readable summary paragraph. The YAML block is authoritative; the paragraph is a reading aid.
 - **§2 Mirror-pair inventory** — one row per mirror pair (MP.1 through MP.8 as of v1.0). Each row is a YAML-block header + summary paragraph. The YAML is authoritative.

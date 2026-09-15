@@ -27,6 +27,7 @@ import {
   type ToolRegisteringServer,
 } from '../mcp_profile.js'
 import { MCP_SURFACE_PROFILES, COMPACT_MAX_TOOLS } from '../../generated/mcp_surface_profiles.generated.js'
+import { REVIEWED_FULL_PROFILE_TOOL_NAMES } from '../mcp_full_route_authority.js'
 
 // ── 1. Profile resolution ────────────────────────────────────────────────────
 
@@ -71,8 +72,8 @@ describe('resolveMcpProfile()', () => {
 // ── 2. getAllowedToolNames() ──────────────────────────────────────────────────
 
 describe('getAllowedToolNames()', () => {
-  it('full profile returns null (no filter — every tool passes through)', () => {
-    expect(getAllowedToolNames('full')).toBeNull()
+  it('full profile returns the reviewed public route authority', () => {
+    expect(getAllowedToolNames('full')).toEqual(new Set(REVIEWED_FULL_PROFILE_TOOL_NAMES))
   })
 
   it('compact/consult profiles return the exact generated tool_names set for that profile', () => {
@@ -104,17 +105,17 @@ function makeFakeServer(): ToolRegisteringServer & { registered: string[] } {
 }
 
 describe('applyProfileGate() — full profile', () => {
-  it('is a no-op: every registration attempt succeeds, none blocked', () => {
+  it('allows reviewed registrations and blocks unreviewed names', () => {
     const server = makeFakeServer()
     const gate = applyProfileGate(server, 'full')
-    expect(gate.allowed).toBeNull()
+    expect(gate.allowed).toEqual(new Set(REVIEWED_FULL_PROFILE_TOOL_NAMES))
 
     server.tool('any_tool_name_at_all')
-    server.tool('chart_facts_query')
+    server.tool('ganita_chart_facts_get')
     server.tool('assess_career')
 
-    expect(server.registered).toEqual(['any_tool_name_at_all', 'chart_facts_query', 'assess_career'])
-    expect(gate.blockedAttempts).toEqual([])
+    expect(server.registered).toEqual(['ganita_chart_facts_get', 'assess_career'])
+    expect(gate.blockedAttempts).toEqual(['any_tool_name_at_all'])
   })
 })
 

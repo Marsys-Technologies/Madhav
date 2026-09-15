@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useSyncExternalStore, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams, usePathname } from 'next/navigation'
 import { ClientCard } from './ClientCard'
 import { RosterStatsRibbon } from './RosterStatsRibbon'
@@ -17,6 +17,23 @@ import {
 import type { ChartWithMeta, FilterState, RosterStats } from '@/lib/roster/types'
 
 const VIEW_STORAGE_KEY = 'marsys.roster.view'
+const VIEW_CHANGE_EVENT = 'marsys:roster-view-change'
+
+function subscribeToView(onChange: () => void): () => void {
+  window.addEventListener('storage', onChange)
+  window.addEventListener(VIEW_CHANGE_EVENT, onChange)
+  return () => {
+    window.removeEventListener('storage', onChange)
+    window.removeEventListener(VIEW_CHANGE_EVENT, onChange)
+  }
+}
+
+function getViewSnapshot(): ViewMode {
+  const stored = localStorage.getItem(VIEW_STORAGE_KEY)
+  return stored === 'table' ? 'table' : 'grid'
+}
+
+const getServerViewSnapshot = (): ViewMode => 'grid'
 
 interface Props {
   charts: ChartWithMeta[]
@@ -29,15 +46,10 @@ export function ClientRoster({ charts, stats }: Props) {
   const searchParams = useSearchParams()
 
   // View mode — persisted to localStorage
-  const [view, setView] = useState<ViewMode>('grid')
-  useEffect(() => {
-    const stored = localStorage.getItem(VIEW_STORAGE_KEY)
-    if (stored === 'grid' || stored === 'table') setView(stored)
-  }, [])
-
+  const view = useSyncExternalStore(subscribeToView, getViewSnapshot, getServerViewSnapshot)
   function handleViewChange(next: ViewMode) {
-    setView(next)
     localStorage.setItem(VIEW_STORAGE_KEY, next)
+    window.dispatchEvent(new Event(VIEW_CHANGE_EVENT))
   }
 
   // Filter state — lives in URL

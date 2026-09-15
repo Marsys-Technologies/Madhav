@@ -27,6 +27,8 @@
  */
 
 import { test, expect, Page } from '@playwright/test'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000'
 const SESSION_COOKIE = process.env.SMOKE_SESSION_COOKIE
@@ -109,9 +111,6 @@ test.describe('R11.B Brand Preservation — r11b-active CSS rules', () => {
    * These tests verify brand CSS rules are present in globals.css WITHOUT
    * requiring a live browser session. They read the compiled CSS/source.
    */
-  const { readFileSync } = require('fs')
-  const { resolve } = require('path')
-
   test('globals.css retains --gold-gradient or gold-cta color in r11b-active scope', () => {
     const css = readFileSync(
       resolve(__dirname, '../../src/app/globals.css'),

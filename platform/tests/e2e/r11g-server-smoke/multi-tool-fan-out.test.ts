@@ -111,8 +111,8 @@ describe('multi-tool-fan-out — 2 simultaneous tool calls in one iteration', ()
     }
 
     vi.mocked(getTool).mockImplementation((name: string) => {
-      if (name === 'msr_sql') return msrSqlTool as any
-      if (name === 'query_panchanga') return panchangaTool as any
+      if (name === 'msr_sql') return msrSqlTool as never
+      if (name === 'query_panchanga') return panchangaTool as never
       return undefined
     })
 
@@ -251,8 +251,8 @@ describe('multi-tool-fan-out — 2 simultaneous tool calls in one iteration', ()
     }
 
     vi.mocked(getTool).mockImplementation((name: string) => {
-      if (name === 'msr_sql') return msrSqlTool as any
-      if (name === 'query_panchanga') return panchangaTool as any
+      if (name === 'msr_sql') return msrSqlTool as never
+      if (name === 'query_panchanga') return panchangaTool as never
       return undefined
     })
 

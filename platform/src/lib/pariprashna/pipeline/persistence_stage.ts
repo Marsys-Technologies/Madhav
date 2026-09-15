@@ -62,6 +62,7 @@ import type { ToolBundle } from '@/lib/retrieval/shared_types'
 import type { PipelinePlan } from '@/lib/pipeline/types'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
+import type { InquiryResponseAccountability } from '@/lib/vidhi/inquiry'
 import {
   assembleAcharyaReadingReceipt,
   validateAcharyaReadingReceipt,
@@ -188,6 +189,8 @@ export async function runPersistenceStage(args: {
    * own honest-zero-when-flag-off convention in `synthesis_stage.ts`.
    */
   citationHallucinationCount?: number
+  /** Wave 4: deterministic fact/delivery denominator persisted for export parity. */
+  responseAccountability?: InquiryResponseAccountability | null
 }): Promise<void> {
   const {
     em,
@@ -210,6 +213,7 @@ export async function runPersistenceStage(args: {
     groundingSummary,
     completenessReceipt = null,
     citationHallucinationCount = 0,
+    responseAccountability = null,
   } = args
   const { turnId, queryId, conversationId, chartId, isFirstTurn } = identity
 
@@ -501,7 +505,12 @@ export async function runPersistenceStage(args: {
           // off or the block below never runs — `canonicalMessage.metadata`
           // must stay byte-identical to `writeArgs.lastAssistantMetadata`,
           // `undefined` included, for the flag-OFF path.
-          let metadataWithReceipt = writeArgs.lastAssistantMetadata
+          let metadataWithReceipt = responseAccountability
+            ? {
+                ...(writeArgs.lastAssistantMetadata ?? {}),
+                inquiry_response_accountability: responseAccountability,
+              }
+            : writeArgs.lastAssistantMetadata
           if (isReceiptEmissionEnabled()) {
             try {
               // ── G3-B (PPR-02): interpretation_sets. ─────────────────────

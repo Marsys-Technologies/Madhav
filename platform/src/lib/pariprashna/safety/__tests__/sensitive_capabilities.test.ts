@@ -91,6 +91,15 @@ describe('HS-1/HS-4 plan-time capability exclusion', () => {
     expect(stripped).toEqual(['get_ayurdaya'])
     expect(kept).toEqual(['ganita_positions_get', 'bodha_signals_get'])
   })
+
+  it('excludes the canonical registry URI as well as a legacy sensitive name', () => {
+    const { kept, stripped } = applyCapabilityExclusion(
+      ['marsys://tool/L1/get_ayurdaya', 'marsys://tool/L1/get_positions'],
+      capabilitiesExcludedFor(['hs1_date_of_death']),
+    )
+    expect(stripped).toEqual(['marsys://tool/L1/get_ayurdaya'])
+    expect(kept).toEqual(['marsys://tool/L1/get_positions'])
+  })
 })
 
 describe('what is deliberately NOT in the class', () => {

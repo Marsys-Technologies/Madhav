@@ -19,6 +19,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMessagePartReasoning } from '@assistant-ui/react'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 
 /** Approx tokens: Claude tokenizer averages ~4 chars/token. */
 function estimateTokens(text: string): number {
@@ -67,34 +68,28 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
   // Collapsed state: starts expanded if short, starts collapsed if long.
   // On mobile viewports (<768px), defaults to collapsed regardless of length.
   const [collapsed, setCollapsed] = useState(false)
+  const [userHasToggled, setUserHasToggled] = useState(false)
+  const isMobile = useMediaQuery('(max-width: 767px)')
   const hasAutoCollapsed = useRef(false)
   /**
    * C-S3: Track whether the user has manually toggled within this message
    * lifetime. When true, the auto-collapse heuristics (token count + first
    * text_delta) are suppressed so user intent is preserved.
    */
-  const userHasToggled = useRef(false)
-
   const handleToggle = () => {
-    userHasToggled.current = true
+    setUserHasToggled(true)
     setCollapsed((c) => !c)
   }
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      setCollapsed(true)
-    }
-  }, [])
   const wasStreaming = useRef(isStreaming)
 
   // Auto-collapse at end of stream if text is long (only fires once)
   useEffect(() => {
-    if (wasStreaming.current && !isStreaming && isLong && !hasAutoCollapsed.current && !userHasToggled.current) {
+    if (wasStreaming.current && !isStreaming && isLong && !hasAutoCollapsed.current && !userHasToggled) {
       hasAutoCollapsed.current = true
       setCollapsed(true)
     }
     wasStreaming.current = isStreaming
-  }, [isStreaming, isLong])
+  }, [isStreaming, isLong, userHasToggled])
 
   /**
    * C-S3: Auto-collapse when first text_delta arrives.
@@ -110,11 +105,11 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
   useEffect(() => {
     const flipped = !prevHasFirstTextDelta.current && hasFirstTextDelta
     prevHasFirstTextDelta.current = hasFirstTextDelta
-    if (flipped && !userHasToggled.current && !hasAutoCollapsed.current) {
+    if (flipped && !userHasToggled && !hasAutoCollapsed.current) {
       hasAutoCollapsed.current = true
       setCollapsed(true)
     }
-  }, [hasFirstTextDelta])
+  }, [hasFirstTextDelta, userHasToggled])
 
   // Elapsed timer — counts seconds while streaming, freezes on stop.
   const startRef = useRef<number | null>(null)
@@ -143,6 +138,7 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
 
   const elapsedSec = (elapsedMs / 1000).toFixed(1)
   const collapseLabel = `Show ${tokenCount.toLocaleString()} tokens of reasoning`
+  const isCollapsed = collapsed || (isMobile && !userHasToggled)
 
   // Y-S4: Parse step labels from streaming text.
   // The server-side R10_REASONING_STEPS flag controls whether the synthesis prompt
@@ -161,7 +157,7 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
         type="button"
         onClick={handleToggle}
         className="flex w-full items-center justify-between px-4 py-2 text-xs text-zinc-400 hover:bg-zinc-800/40 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-zinc-500"
-        aria-expanded={!collapsed}
+        aria-expanded={!isCollapsed}
         aria-controls="reasoning-content"
         data-testid="reasoning-toggle"
       >
@@ -194,7 +190,7 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          className={`h-3 w-3 transition-transform ${collapsed ? '' : 'rotate-180'}`}
+          className={`h-3 w-3 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}
           aria-hidden="true"
         >
           <path d="M2 4l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -202,7 +198,7 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
       </button>
 
       {/* Collapsed affordance label */}
-      {collapsed && isLong && (
+      {isCollapsed && isLong && (
         <div
           className="px-4 py-1 text-[10px] text-zinc-600 italic cursor-pointer hover:text-zinc-500"
           onClick={() => setCollapsed(false)}
@@ -214,7 +210,7 @@ export function ReasoningProgress({ text, hasFirstTextDelta = false, 'data-testi
       )}
 
       {/* Content */}
-      {!collapsed && (
+      {!isCollapsed && (
         <div
           id="reasoning-content"
           className="border-t border-zinc-800"

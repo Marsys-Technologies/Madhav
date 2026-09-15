@@ -475,7 +475,75 @@ jobs:
             cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
           fi
 
+      - name: Inspect Pūrṇa inquiry protected-owner handoff
+        id: purna-ownership
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL is required to inspect the Pūrṇa ownership state."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/purna-inquiry-ownership-status.ts)" || exit 1
+          case "$ownership_state" in
+            armed|rearm_required|interrupted|cleanup_required|marked) ;;
+            *) echo "::error::Invalid or partial Pūrṇa ownership state; refusing migration."; exit 1 ;;
+          esac
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
+      - name: One-shot Pūrṇa protected-owner preflight
+        id: purna-preflight
+        if: steps.purna-ownership.outputs.state == 'armed'
+        env:
+          PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
+          PURNA_INQUIRY_SERVE_PASSWORD: ${{ secrets.PURNA_INQUIRY_SERVE_PASSWORD }}
+        run: |
+          if [ -z "$PURNA_INQUIRY_ADMIN_DATABASE_URL" ] || [ -z "$PURNA_INQUIRY_SERVE_PASSWORD" ]; then
+            echo "::error::The two one-shot Pūrṇa ownership bootstrap secrets are required before migrations."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/purna-inquiry-ownership-preflight.ts
+
+      - name: Apply exact Pūrṇa protected-owner migrations
+        if: steps.purna-ownership.outputs.state == 'armed'
+        env:
+          DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::The one-shot Pūrṇa bootstrap URL is required for protected migrations."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/migrate.ts --only \
+            1033_planner_inquiry_lifecycle.sql,1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql,1037_planner_inquiry_action_reservations.sql,1038_planner_managed_prashna_jobs.sql,1039_purna_inquiry_protected_ownership.sql
+
+      # Run immediately after the protected set, before any unrelated migration.
+      # If a prior runner died after preflight COMMIT, `interrupted` makes the next
+      # run clean the privileged bootstrap first and then stop for explicit rearm.
+      - name: Close and attest Pūrṇa protected-owner handoff
+        if: ${{ always() && (steps.purna-ownership.outputs.state == 'armed' || steps.purna-ownership.outputs.state == 'interrupted' || steps.purna-ownership.outputs.state == 'cleanup_required') }}
+        env:
+          PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
+        run: |
+          if [ -z "$PURNA_INQUIRY_ADMIN_DATABASE_URL" ]; then
+            echo "::error::Pūrṇa bootstrap admin URL is required for mandatory membership cleanup."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/purna-inquiry-ownership-postflight.ts
+
+      - name: Require explicit bootstrap rearm after interrupted cleanup
+        if: steps.purna-ownership.outputs.state == 'interrupted'
+        run: |
+          echo "::error::Interrupted Pūrṇa bootstrap authority was removed. Reprovision its one-shot login credential and cloudsqlsuperuser membership, then rerun."
+          exit 1
+
+      - name: Require Pūrṇa bootstrap provisioning or rearm
+        if: steps.purna-ownership.outputs.state == 'rearm_required'
+        run: |
+          echo "::error::Pūrṇa migrations are unmarked and the one-shot bootstrap is absent or disabled. Provision/rearm the exact bootstrap login and rerun."
+          exit 1
+
       - name: Run general database migrations
+        id: general-migrations
         env:
           DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: |
@@ -485,6 +553,13 @@ jobs:
           else
             cd platform && npx tsx scripts/migrate.ts
           fi
+
+      - name: Verify final Pūrṇa ownership marker
+        if: success()
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          test "$(cd platform && npx tsx scripts/purna-inquiry-ownership-status.ts)" = marked
       # ── /A-S8: migrations ─────────────────────────────────────────────────────
   # ── /Schema barrier ─────────────────────────────────────────────────────────
 
@@ -587,6 +662,20 @@ jobs:
             NEXT_PUBLIC_PARIPRASHNA_LIVE=1
 
       # ── A-S8: Deploy no-traffic, smoke, then promote ──────────────────────────
+      - name: Define zero-traffic web candidate identity
+        id: web-candidate
+        env:
+          RELEASE_SHA: ${{ env.DEPLOY_SHA }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          suffix="probe-${RELEASE_SHA:0:12}-${RELEASE_RUN_ID}-${RELEASE_ATTEMPT}"
+          {
+            echo "suffix=$suffix"
+            echo "tag=$suffix"
+            echo "revision=amjis-web-$suffix"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy web to Cloud Run (no traffic)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -594,6 +683,7 @@ jobs:
           service: amjis-web
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-web:${{ env.DEPLOY_SHA }}
+          suffix: ${{ steps.web-candidate.outputs.suffix }}
           # deploy-cloudrun otherwise uses github.sha for commit-sha, which is
           # the default-branch tip for workflow_run rather than the CI head.
           labels: |
@@ -603,17 +693,19 @@ jobs:
           flags: >-
             --service-account=amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com
             --no-traffic
+            --tag=${{ steps.web-candidate.outputs.tag }}
             --min-instances=1
+            --timeout=360s
+          # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
+          # its secret is provisioned before merge and never falls back to DB_USER.
+          # The signing ring is likewise dedicated and mounted only in web.
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
             INSTANCE_CONNECTION_NAME=madhav-astrology:asia-south1:amjis-postgres
             DB_USER=amjis_app
             DB_NAME=amjis
-            # Campaign definitions, labels, and non-server receipts use this
-            # distinct Cloud-SQL principal.  Its absent secret fails those
-            # writes closed; neither the migrator nor legacy-owner credential
-            # is ever present in the serving revision.
+            DB_INQUIRY_USER=amjis_inquiry_serve
             NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
             # Server-reconstructed evidence (probe_accepted, integrity_verified,
             # asset_frozen, stage_transition_accepted, foundation_lane_accepted)
@@ -630,7 +722,14 @@ jobs:
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             NIRMANA_PROBE_RUNNER_URL=https://amjis-sidecar-938361928218.asia-south1.run.app/internal/nirmana/probe
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
-            BUILD_REAPER_SA_EMAIL=build-reaper@madhav-astrology.iam.gserviceaccount.com
+            WATCHDOG_SCHEDULER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
+            WATCHDOG_SCHEDULER_SERVICE_ACCOUNT=amjis-scheduler@madhav-astrology.iam.gserviceaccount.com
+            # Transitional bridge only: keep the current Scheduler invocation
+            # working until its OIDC configuration is triggered and attested.
+            WATCHDOG_LEGACY_FALLBACK_ENABLED=true
+            MCP_CALLER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
+            MCP_CALLER_OIDC_SERVICE_ACCOUNT=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com
+            PURNA_READINESS_CANARY_KEY_ID=mcp_prod_tDO7obNw
             VERTEX_AI_LOCATION=asia-south1
             MARSYS_FLAG_HISTORY_COMPRESSION_ENABLED=true
             BOOTSTRAP_JOB_NAME=brahma-foundation-bootstrap
@@ -641,6 +740,7 @@ jobs:
             MARSYS_FLAG_VECTOR_SEARCH_ENABLED=true
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
+            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
             # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
             # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
             # build-args above). Cloud Run env_vars are never read by Next.js at
@@ -649,6 +749,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
+            DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:1
             NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
             NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
@@ -660,20 +761,94 @@ jobs:
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
+            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1
+            WATCHDOG_SECRET=watchdog-secret:1
+
+      - name: Resolve web candidate URL
+        id: web-candidate-url
+        env:
+          CANDIDATE_TAG: ${{ steps.web-candidate.outputs.tag }}
+        run: |
+          candidate_url=$(gcloud run services describe amjis-web \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
+              '.status.traffic[] | select(.tag == $tag) | .url')
+          test -n "$candidate_url"
+          echo "url=$candidate_url" >> "$GITHUB_OUTPUT"
 
       - name: Post-deploy smoke
         id: smoke
         env:
-          SMOKE_WEB_URL: ${{ steps.deploy.outputs.url }}
+          SMOKE_WEB_URL: ${{ steps.web-candidate-url.outputs.url }}
         run: |
           bash scripts/operator/end_to_end_smoke.sh
 
-      - name: Promote traffic to latest revision
+      - name: Pūrṇa inquiry signing and RLS candidate canary
+        env:
+          SMOKE_WEB_URL: ${{ steps.web-candidate-url.outputs.url }}
+          SMOKE_CHART_ID: ${{ secrets.SMOKE_CHART_ID }}
+          EXPECTED_SHA: ${{ env.DEPLOY_SHA }}
+          EXPECTED_REVISION: ${{ steps.web-candidate.outputs.revision }}
+        run: |
+          if [ -z "$SMOKE_CHART_ID" ]; then
+            echo "::error::SMOKE_CHART_ID is required for the non-vacuous Pūrṇa candidate canary."
+            exit 1
+          fi
+          CANARY_KEY="$(gcloud secrets versions access latest \
+            --secret=mcp-canary-key --project=madhav-astrology)" || {
+            echo "::error::Could not read mcp-canary-key through the existing secret-specific deploy binding."
+            exit 1
+          }
+          CANARY_BODY="$(jq -cn --arg chart_id "$SMOKE_CHART_ID" '{chart_id:$chart_id}')"
+          STATUS="$(curl -sS -o "$RUNNER_TEMP/purna-readiness.json" -w '%{http_code}' \
+            -X POST "$SMOKE_WEB_URL/api/mcp/inquiry/readiness" \
+            -H 'Content-Type: application/json' \
+            -H "Authorization: Bearer $CANARY_KEY" \
+            --data "$CANARY_BODY")"
+          unset CANARY_KEY CANARY_BODY
+          if [ "$STATUS" != "200" ]; then
+            echo "::error::Pūrṇa candidate canary returned HTTP $STATUS; refusing traffic promotion."
+            jq -c '{ok,error}' "$RUNNER_TEMP/purna-readiness.json" 2>/dev/null || true
+            exit 1
+          fi
+          jq -e '
+            .ok == true and
+            .deployed_sha == env.EXPECTED_SHA and
+            .revision == env.EXPECTED_REVISION and
+            .signing_round_trip == true and
+            .database.dedicated_login == true and
+            .database.least_privilege_role == true and
+            .database.rls_tables == 4 and
+            .database.same_principal_rows == 4 and
+            .database.cross_principal_rows == 0 and
+            .database.security_definer_search_path == true and
+            .database.rolled_back == true
+          ' "$RUNNER_TEMP/purna-readiness.json" >/dev/null || {
+            echo "::error::Pūrṇa candidate canary did not earn every signing/database/RLS signal; refusing traffic promotion."
+            exit 1
+          }
+
+      - name: Promote verified web candidate
         if: success()
+        env:
+          EXPECTED_REVISION: ${{ steps.web-candidate.outputs.revision }}
         run: |
           gcloud run services update-traffic amjis-web \
-            --to-latest \
+            --project=madhav-astrology \
+            --to-revisions="$EXPECTED_REVISION=100" \
             --region=${{ env.GCP_REGION }} \
+            --quiet
+
+      - name: Remove web candidate tag
+        if: ${{ always() && steps.deploy.outcome == 'success' }}
+        env:
+          CANDIDATE_TAG: ${{ steps.web-candidate.outputs.tag }}
+        run: |
+          gcloud run services update-traffic amjis-web \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --remove-tags="$CANDIDATE_TAG" \
             --quiet
       # ── /A-S8: deploy + smoke + promote ──────────────────────────────────────
 
@@ -773,6 +948,7 @@ jobs:
           secrets: |
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
             GOOGLE_GENERATIVE_AI_API_KEY=GOOGLE_GENERATIVE_AI_API_KEY:1
+            DATABASE_URL=amjis-pipeline-db-url:latest
 
       - name: Resolve candidate revision URL
         id: sidecar-candidate-url
@@ -826,6 +1002,17 @@ jobs:
             --project=madhav-astrology \
             --region=${{ env.GCP_REGION }} \
             --to-revisions="$EXPECTED_REVISION=100" \
+            --quiet
+
+      - name: Remove sidecar candidate tag
+        if: ${{ always() && steps.deploy-sidecar.outcome == 'success' }}
+        env:
+          CANDIDATE_TAG: ${{ steps.sidecar-candidate.outputs.tag }}
+        run: |
+          gcloud run services update-traffic amjis-sidecar \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --remove-tags="$CANDIDATE_TAG" \
             --quiet
 
   # ── 4.edge_and_infra_hygiene ──
@@ -920,13 +1107,23 @@ jobs:
           cache-to: type=gha,mode=max,scope=amjis-mcp
 
       # ── PARISHODHANA Phase C item 2: deploy-pipeline parity with deploy-web ────
-      # --no-traffic stages the new revision at 0% traffic; steps.deploy.outputs.url
-      # is the REVISION-specific URL (not the public service URL), so the smoke
-      # step below hits the candidate directly before any real user does. Traffic
-      # only moves via the explicit "Promote traffic to latest revision" step,
-      # and --to-latest there means traffic always tracks the newest revision,
-      # never a pinned name (this is the fix for the stale-pin incident class —
-      # see 00_ARCHITECTURE/llm_consumption_audit/briefs/samapana/SAMAPANA_REPORT_v1_0.md).
+      # A unique tagged URL binds smoke traffic to the zero-traffic candidate.
+      # Promotion names the exact verified revision, and the temporary tag is
+      # removed on both success and failure so it cannot become a stale bypass.
+      - name: Define zero-traffic MCP candidate identity
+        id: mcp-candidate
+        env:
+          RELEASE_SHA: ${{ env.DEPLOY_SHA }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          suffix="probe-${RELEASE_SHA:0:12}-${RELEASE_RUN_ID}-${RELEASE_ATTEMPT}"
+          {
+            echo "suffix=$suffix"
+            echo "tag=$suffix"
+            echo "revision=amjis-mcp-$suffix"
+          } >> "$GITHUB_OUTPUT"
+
       - name: Deploy MCP to Cloud Run (IAM-gated, least-priv SA)
         id: deploy
         uses: google-github-actions/deploy-cloudrun@v2
@@ -934,6 +1131,7 @@ jobs:
           service: amjis-mcp
           region: ${{ env.GCP_REGION }}
           image: asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp:${{ env.DEPLOY_SHA }}
+          suffix: ${{ steps.mcp-candidate.outputs.suffix }}
           labels: |
             managed-by=github-actions
             commit-sha=${{ env.DEPLOY_SHA }}
@@ -941,8 +1139,22 @@ jobs:
           # Bearer gate in server.ts is the auth enforcement layer, not Cloud Run IAM.
           # F3 posture correction: --no-allow-unauthenticated was stale; removed.
           # --no-traffic: pre-smoke staging, same pattern as deploy-web's A-S8 step.
-          flags: --allow-unauthenticated --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com --min-instances=1 --concurrency=80 --memory=512Mi --no-traffic
+          # The managed Prashna bridge can spend 330s in the engine and leases jobs
+          # for 450s. Cloud Run therefore permits the reviewed 360s request window,
+          # while instance-based CPU keeps the post-response durable worker runnable.
+          flags: >-
+            --allow-unauthenticated
+            --service-account=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com
+            --min-instances=1
+            --concurrency=80
+            --memory=512Mi
+            --timeout=360s
+            --no-cpu-throttling
+            --remove-secrets=MCP_CANARY_KEY
+            --no-traffic
+            --tag=${{ steps.mcp-candidate.outputs.tag }}
           env_vars: |
+            NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
             PLATFORM_URL=https://amjis-web-938361928218.asia-south1.run.app
             PYTHON_SIDECAR_URL=https://amjis-sidecar-938361928218.asia-south1.run.app
             # M5: MCP_BASE_URL used for OAuth discovery + callback URL construction.
@@ -1021,33 +1233,36 @@ jobs:
           secrets: |
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             PYTHON_SIDECAR_API_KEY=PYTHON_SIDECAR_API_KEY:1
-            MCP_CANARY_KEY=mcp-canary-key:latest
 
-      # NOTE on the runner-side fetch below (distinct from the container-side mount
-      # above): server.ts never reads MCP_CANARY_KEY as an env var — Bearer keys are
+      - name: Resolve MCP candidate URL
+        id: mcp-candidate-url
+        env:
+          CANDIDATE_TAG: ${{ steps.mcp-candidate.outputs.tag }}
+        run: |
+          candidate_url=$(gcloud run services describe amjis-mcp \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --format=json | jq --arg tag "$CANDIDATE_TAG" -r \
+              '.status.traffic[] | select(.tag == $tag) | .url')
+          test -n "$candidate_url"
+          echo "url=$candidate_url" >> "$GITHUB_OUTPUT"
+
+      # NOTE on the runner-side fetch below: server.ts never reads MCP_CANARY_KEY
+      # as a container env var — Bearer keys are
       # validated by call-through to amjis-web's /api/mcp/keys/validate (auth.ts), not
-      # against a local secret. The mount above is included for parity/consistency
-      # with the deploy-web secrets block only. What the smoke probes below actually
-      # need is the PLAINTEXT key value inside the GitHub Actions runner process, to
+      # against a local secret. The runtime mount is explicitly removed above. What
+      # the smoke probes below actually need is the PLAINTEXT key value inside the
+      # GitHub Actions runner process, to
       # send as a real Authorization: Bearer header against the candidate revision —
-      # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to itself hold
-      # secretmanager.secretAccessor on mcp-canary-key, which, as of this PR, it does
-      # NOT have (verified via `gcloud projects get-iam-policy madhav-astrology
-      # --flatten="bindings[].members" --filter="bindings.members:github-actions@
-      # madhav-astrology.iam.gserviceaccount.com"` — roles/artifactregistry.writer,
-      # roles/cloudsql.client, roles/iam.serviceAccountUser, roles/run.developer only).
-      # This is the exact structural gap the brief flags: the token exists in Secret
-      # Manager, but nothing wired for a pre-traffic MCP canary can currently read it.
-      # Native follow-up required before this step will succeed:
-      #   gcloud secrets add-iam-policy-binding mcp-canary-key \
-      #     --member="serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com" \
-      #     --role="roles/secretmanager.secretAccessor" \
-      #     --project=madhav-astrology
+      # that requires the *deploying* identity (WIF_SERVICE_ACCOUNT) to hold a
+      # secret-specific accessor binding. Live read-only IAM inspection on
+      # 2026-09-16 confirmed that exact binding already exists for github-actions;
+      # do not replace it with a project-wide grant.
       - name: Fetch MCP canary key for post-deploy smoke
         id: canary_key
         run: |
           KEY=$(gcloud secrets versions access latest --secret="mcp-canary-key" --project=madhav-astrology 2>/tmp/canary_key_err) || {
-            echo "::warning::Could not read mcp-canary-key from Secret Manager — see native follow-up note above this step in deploy.yml. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
+            echo "::warning::Could not read mcp-canary-key from Secret Manager — verify its existing secret-specific deploy-identity binding and enabled version. Smoke will FAIL LOUD on the auth probes (by design; see mcp_end_to_end_smoke.sh)."
             cat /tmp/canary_key_err || true
             KEY=""
           }
@@ -1059,17 +1274,125 @@ jobs:
       - name: Post-deploy smoke
         id: smoke
         env:
-          SMOKE_MCP_URL: ${{ steps.deploy.outputs.url }}
+          SMOKE_MCP_URL: ${{ steps.mcp-candidate-url.outputs.url }}
           MCP_CANARY_KEY: ${{ steps.canary_key.outputs.key }}
         run: |
           bash scripts/operator/mcp_end_to_end_smoke.sh
 
-      - name: Promote traffic to latest revision
+      - name: Attest exact MCP candidate identity
+        env:
+          SMOKE_MCP_URL: ${{ steps.mcp-candidate-url.outputs.url }}
+          EXPECTED_SHA: ${{ env.DEPLOY_SHA }}
+          EXPECTED_REVISION: ${{ steps.mcp-candidate.outputs.revision }}
+        run: |
+          curl --fail --silent --show-error --max-time 15 \
+            "$SMOKE_MCP_URL/health" > "$RUNNER_TEMP/mcp-candidate-health.json"
+          jq -e --arg sha "$EXPECTED_SHA" --arg revision "$EXPECTED_REVISION" \
+            '.status == "ok" and .deployed_sha == $sha and .revision == $revision' \
+            "$RUNNER_TEMP/mcp-candidate-health.json" >/dev/null || {
+              echo "::error::MCP health did not attest the exact zero-traffic candidate."
+              exit 1
+            }
+
+      # Pūrṇa Anveṣaṇa: this MCP revision registers tools whose durable job and
+      # raw-lifecycle stores are served by the matching amjis-web revision. The
+      # two images still build in parallel, but MCP traffic must not move first.
+      # A revision label alone is insufficient because --no-traffic makes a new
+      # revision ready before it is live; require the 100%-traffic web revision
+      # to carry this exact source SHA, then prove both dependent routes exist
+      # and preserve their unauthenticated fail-closed boundary.
+      - name: Wait for matching web revision and inquiry routes
+        env:
+          WEB_SERVICE_URL: https://amjis-web-938361928218.asia-south1.run.app
+        run: |
+          ready=false
+          for attempt in $(seq 1 80); do
+            service_json=$(gcloud run services describe amjis-web \
+              --region="${GCP_REGION}" --format=json 2>"$RUNNER_TEMP/web-service-readiness.err" || true)
+            traffic_revision=$(jq -r \
+              '[.status.traffic[]? | select((.percent // 0) == 100) | .revisionName][0] // empty' \
+              <<<"$service_json" 2>/dev/null || true)
+            traffic_sha=""
+            if [ -n "$traffic_revision" ]; then
+              traffic_sha=$(gcloud run revisions describe "$traffic_revision" \
+                --region="${GCP_REGION}" --format="value(metadata.labels['commit-sha'])" \
+                2>"$RUNNER_TEMP/web-revision-readiness.err" || true)
+            fi
+            if [ "$traffic_sha" = "$DEPLOY_SHA" ]; then
+              inquiry_status=$(curl --silent --show-error --output "$RUNNER_TEMP/inquiry-readiness.json" \
+                --write-out '%{http_code}' --max-time 15 --request POST \
+                --header 'Content-Type: application/json' --data '{}' \
+                "${WEB_SERVICE_URL}/api/mcp/inquiry" || true)
+              jobs_status=$(curl --silent --show-error --output "$RUNNER_TEMP/prashna-jobs-readiness.json" \
+                --write-out '%{http_code}' --max-time 15 --request POST \
+                --header 'Content-Type: application/json' --data '{}' \
+                "${WEB_SERVICE_URL}/api/mcp/prashna_jobs" || true)
+              if [ "$inquiry_status" = 401 ] && [ "$jobs_status" = 401 ] \
+                && jq -e '.ok == false and .error == "Unauthorized"' "$RUNNER_TEMP/inquiry-readiness.json" >/dev/null \
+                && jq -e '.ok == false and .error == "Unauthorized"' "$RUNNER_TEMP/prashna-jobs-readiness.json" >/dev/null; then
+                ready=true
+                break
+              fi
+            fi
+            echo "Web dependency not ready for ${DEPLOY_SHA} (attempt ${attempt}/80); MCP remains no-traffic."
+            sleep 15
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Matching web revision and inquiry routes were not ready; refusing MCP traffic promotion."
+            exit 1
+          fi
+
+      - name: Prove MCP runtime OIDC and shared-token path
+        env:
+          SMOKE_MCP_URL: ${{ steps.mcp-candidate-url.outputs.url }}
+          MCP_CANARY_KEY: ${{ steps.canary_key.outputs.key }}
+        run: |
+          JOB_ID="$(python3 -c 'import uuid; print(uuid.uuid4())')"
+          BODY="$(jq -cn --arg job_id "$JOB_ID" '{jsonrpc:"2.0",id:1039,method:"tools/call",params:{name:"prashna_status",arguments:{job_id:$job_id}}}')"
+          STATUS="$(curl --silent --show-error --output "$RUNNER_TEMP/purna-mcp-oidc.json" \
+            --write-out '%{http_code}' --max-time 30 --request POST \
+            --header 'Content-Type: application/json' \
+            --header 'Accept: application/json, text/event-stream' \
+            --header "Authorization: Bearer ${MCP_CANARY_KEY}" \
+            --data "$BODY" "${SMOKE_MCP_URL}/mcp")"
+          unset BODY MCP_CANARY_KEY
+          if [ "$STATUS" != 200 ]; then
+            echo "::error::Candidate MCP OIDC probe returned HTTP $STATUS."
+            exit 1
+          fi
+          PAYLOAD="$(sed -n 's/^data:[[:space:]]*//p' "$RUNNER_TEMP/purna-mcp-oidc.json" | head -n 1)"
+          if [ -z "$PAYLOAD" ]; then PAYLOAD="$(cat "$RUNNER_TEMP/purna-mcp-oidc.json")"; fi
+          TOOL_TEXT="$(jq -er '.result.content[0].text' <<<"$PAYLOAD")" || {
+            echo "::error::Candidate MCP OIDC probe did not return an MCP tool envelope."
+            exit 1
+          }
+          jq -e --arg job_id "$JOB_ID" \
+            '.ok == false and .tool == "prashna_status" and .job_id == $job_id and (.error | startswith("Unknown or expired job_id"))' \
+            <<<"$TOOL_TEXT" >/dev/null || {
+              echo "::error::Candidate MCP did not reach the authenticated durable-store miss path."
+              exit 1
+            }
+
+      - name: Promote verified MCP candidate
         if: success()
+        env:
+          EXPECTED_REVISION: ${{ steps.mcp-candidate.outputs.revision }}
         run: |
           gcloud run services update-traffic amjis-mcp \
-            --to-latest \
+            --project=madhav-astrology \
+            --to-revisions="$EXPECTED_REVISION=100" \
             --region=${{ env.GCP_REGION }} \
+            --quiet
+
+      - name: Remove MCP candidate tag
+        if: ${{ always() && steps.deploy.outcome == 'success' }}
+        env:
+          CANDIDATE_TAG: ${{ steps.mcp-candidate.outputs.tag }}
+        run: |
+          gcloud run services update-traffic amjis-mcp \
+            --project=madhav-astrology \
+            --region=${{ env.GCP_REGION }} \
+            --remove-tags="$CANDIDATE_TAG" \
             --quiet
 
       - name: Show deployment URL
@@ -1154,6 +1477,7 @@ jobs:
             --task-timeout=86400 \
             --memory=16Gi \
             --cpu=4 \
+            --update-secrets=DATABASE_URL=amjis-pipeline-db-url:latest \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
 

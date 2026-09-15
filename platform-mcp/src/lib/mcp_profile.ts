@@ -36,6 +36,7 @@
  */
 import { MCP_SURFACE_PROFILES, type McpProfileName } from '../generated/mcp_surface_profiles.generated.js'
 import { subtractSensitiveClass } from './sensitive_capability_class.js'
+import { REVIEWED_FULL_PROFILE_TOOL_NAMES } from './mcp_full_route_authority.js'
 
 export type { McpProfileName }
 
@@ -88,13 +89,14 @@ export function resolveMcpProfile(ctx: ProfileAuthContext): McpProfileName {
 }
 
 /**
- * Allowed tool names for a profile. `null` for `full` means "no filter" — every tool this
- * codebase ever registers is within the `mcp_full` profile's remit by construction (the
- * registry's own projection_tags rule tags every LLM-facing tool at least `mcp_full`).
+ * Allowed tool names for a profile. Full is an authored allowlist because the served MCP
+ * surface contains native tools outside the retrieval registry projection. A new
+ * registration therefore fails closed until its public name is reviewed into the authority.
  */
-export function getAllowedToolNames(profile: McpProfileName): Set<string> | null {
-  if (profile === 'full') return null
-  const allowed = new Set(MCP_SURFACE_PROFILES[profile].tool_names)
+export function getAllowedToolNames(profile: McpProfileName): Set<string> {
+  const allowed = new Set(profile === 'full'
+    ? REVIEWED_FULL_PROFILE_TOOL_NAMES
+    : MCP_SURFACE_PROFILES[profile].tool_names)
   if (profile !== 'consult') return allowed
 
   // ── P1 lane G1-A · PARIPRASHNA_ARCHITECTURE §2 · abuse case A6 ─────────────
@@ -121,8 +123,7 @@ export function getAllowedToolNames(profile: McpProfileName): Set<string> | null
 
 export interface ProfileGateResult {
   profile: McpProfileName
-  /** null when profile === 'full' (no gate applied — every tool passes through). */
-  allowed: Set<string> | null
+  allowed: Set<string>
   /**
    * Tool names whose registration was BLOCKED this request (mutated in place as
    * `register*Tools()` calls happen after this function returns — read after all
@@ -148,18 +149,15 @@ export interface ToolRegisteringServer {
  * the resolved profile's allowlist becomes a no-op (never reaches the real SDK registration
  * — the tool is simply never added to this request's `McpServer` instance). Call this ONCE,
  * immediately after constructing the per-request `McpServer`, before any `register*Tools()`
- * call site runs. A no-op for the `full` profile (server.tool left untouched).
+ * call site runs. Every profile, including `full`, is fail-closed.
  *
  * Safe to call on a fresh `McpServer` per request (this codebase is stateless per D10 — a
  * new `McpServer` is constructed for every `/mcp` POST, per `server.ts`), so patching the
- * instance method has no cross-request leakage risk.
+ * instance method has no cross-request leakage risk. Full is gated too.
  */
 export function applyProfileGate(server: ToolRegisteringServer, profile: McpProfileName): ProfileGateResult {
   const allowed = getAllowedToolNames(profile)
   const blockedAttempts: string[] = []
-  if (allowed === null) {
-    return { profile, allowed, blockedAttempts }
-  }
   const originalTool = server.tool.bind(server)
   server.tool = (name: string, ...rest: any[]) => {
     if (!allowed.has(name)) {

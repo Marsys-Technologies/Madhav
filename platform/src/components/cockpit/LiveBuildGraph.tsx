@@ -6,7 +6,7 @@
  * [PHASE-C-03]
  */
 
-import { useEffect, useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState } from 'react'
 import dynamic from 'next/dynamic'
 import { NodeDetailModal } from './NodeDetailModal'
 
@@ -59,7 +59,7 @@ interface Props {
 export function LiveBuildGraph({ buildId, chartId }: Props) {
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], links: [] })
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null)
-  const [connected, setConnected] = useState(false)
+  const connected = false
   const esRef = useRef<EventSource | null>(null)
 
   const addNode = useCallback((node: GraphNode) => {
@@ -85,14 +85,6 @@ export function LiveBuildGraph({ buildId, chartId }: Props) {
       nodes: prev.nodes.map((n) => n.id === id ? { ...n, status } : n),
     }))
   }, [])
-
-  // Live SSE for the build graph was removed when /api/build/events/[buildId]
-  // was decommissioned (HTTP 410). The v2 cockpit (Nirmāṇa) uses useCockpitSSE
-  // + Pub/Sub for live monitoring. This component renders a static snapshot only.
-  useEffect(() => {
-    if (!buildId) return
-    setConnected(false)
-  }, [buildId])
 
   const handleNodeClick = useCallback((node: unknown) => {
     setSelectedNode(node as GraphNode)
