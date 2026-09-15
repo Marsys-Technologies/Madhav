@@ -47,12 +47,14 @@ from pathlib import Path
 from typing import Any
 
 GENERATED = Path(__file__).resolve().parents[2] / "src" / "generated"
+REPO_ROOT = Path(__file__).resolve().parents[3]
 WRITER_DIGESTS_PATH = GENERATED / "nirmana-writer-digests.json"
 PINS_PATH = GENERATED / "nirmana-analysis-layer-pins.json"
 
 PINS_VERSION = "nirmana-analysis-layer-pins/v2"
 LEGACY_PINS_VERSION = "nirmana-analysis-layer-pins/v1"
-SUCCESSOR_SCHEMA_VERSION = "nirmana-analysis-layer-successor/v1"
+SUCCESSOR_SCHEMA_VERSION = "nirmana-analysis-layer-successor/v2"
+DEFINITION_SCHEMA_VERSION = "nirmana-analysis-layer-definition/v1"
 ALLOWED_DELTA_CLASSIFICATIONS = frozenset(
     {
         "approved_intentional_change",
@@ -72,6 +74,7 @@ ALLOWED_DELTA_CLASSIFICATIONS = frozenset(
 # supporting writer's code change must still fail the spine closed and force
 # a reviewed re-pin, exactly like any other writer in the layer.
 SUPPORTING_WRITERS = frozenset({"bo_grounding"})
+NON_WRITER_PREFIX_EXCEPTIONS = {"L5": frozenset({"lel_events"})}
 
 LAYER_PREFIX = {
     "L0": "bg_",
@@ -80,6 +83,55 @@ LAYER_PREFIX = {
     "L3": "ka_",
     "L4": "ph_",
     "L5": "mi_",
+}
+
+AUTHORITY_BINDINGS = {
+    "DP-SD-018": {
+        "commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_STRATEGIC_LEDGER_v1_0.md",
+        "sha256": "e530098ba7199d30099fdef9fb40fde60b75a54b594fe79cb6dbc22b3ae224fc",
+        "decision_binding": "| DP-SD-018 |",
+    }
+}
+
+EXPECTED_REVIEW_ARTIFACTS = {
+    "L0": [{
+        "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+        "sha256": "abeb3ffa67d646bdbf4777145ba43e97318e04da9226c78a3fb2e0876b7e76f4",
+        "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+    }],
+    "L1": [{
+        "commit": "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L1_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+        "sha256": "265ed113e94915ee3dcaa55c842bf3fd61f6a71320ffe33f3dbd22e87a82c267",
+        "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+    }],
+    "L2": [{
+        "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+        "sha256": "adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e",
+        "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+    }],
+    "L3": [{
+        "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+        "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781",
+        "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+    }],
+    "L4": [{
+        "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+        "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md",
+        "sha256": "0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79",
+        "decision_binding": "status: VALIDATED_INDEPENDENT_CHALLENGE_PASS",
+    }],
+}
+
+AUTHORIZED_SOURCE_COMMITS = {
+    "DP-SD-018": {
+        layer: frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"})
+        for layer in ("L0", "L1", "L2", "L3", "L4")
+    }
 }
 
 # L0's reviewed convergence, carried forward verbatim from the pre-generalisation
@@ -161,6 +213,7 @@ def build_pins(
     writer_digests: dict[str, str],
     manifest_assets: list[dict[str, Any]],
     convergence_commit: str,
+    definition_snapshot_commit: str,
 ) -> dict[str, Any]:
     layers: dict[str, Any] = {}
     for layer, prefix in LAYER_PREFIX.items():
@@ -194,10 +247,18 @@ def build_pins(
                         "its accepted analyses. Investigate before regenerating."
                     )
         layers[layer] = pin
+    definition_bindings = build_definition_bindings(definition_snapshot_commit)
+    for layer, pin in layers.items():
+        membership = receipt_membership(layer, pin, writer_digests)
+        if membership_sha256(membership) != definition_bindings[layer]["membership_sha256"]:
+            raise SystemExit(
+                f"{layer} database manifest differs from immutable definition snapshot"
+            )
     return {
         "version": PINS_VERSION,
         "layers": layers,
         "history": {layer: [] for layer in LAYER_PREFIX},
+        "definition_bindings": definition_bindings,
     }
 
 
@@ -225,32 +286,165 @@ def _validate_sha(value: str, label: str) -> None:
         raise SystemExit(f"{label} must be an exact 40-hex commit, got {value!r}")
 
 
-def _is_immutable_ref(value: str) -> bool:
-    return bool(
-        re.fullmatch(r"[a-f0-9]{40}|[a-f0-9]{64}", value)
-        or re.fullmatch(r"[^@\s]+@[a-f0-9]{40}|[^@\s]+@[a-f0-9]{64}", value)
-    )
+def _blob_at_commit(commit: str, path: str) -> bytes:
+    _validate_sha(commit, "artifact commit")
+    try:
+        return subprocess.run(
+            ["git", "show", f"{commit}:{path}"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(f"commit {commit} does not carry {path}") from exc
+
+
+def _commit_exists(commit: str) -> bool:
+    if not re.fullmatch(r"[a-f0-9]{40}", commit):
+        return False
+    return subprocess.run(
+        ["git", "cat-file", "-e", f"{commit}^{{commit}}"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+    ).returncode == 0
+
+
+def _json_at_commit(commit: str, path: str) -> dict[str, Any]:
+    try:
+        value = json.loads(_blob_at_commit(commit, path))
+    except json.JSONDecodeError as exc:
+        raise SystemExit(f"commit {commit} carries invalid JSON at {path}") from exc
+    if not isinstance(value, dict):
+        raise SystemExit(f"commit {commit} does not carry an object at {path}")
+    return value
 
 
 def _inventory_at_commit(commit: str) -> dict[str, str]:
-    _validate_sha(commit, "source commit")
     try:
-        raw = subprocess.run(
-            [
-                "git",
-                "show",
-                f"{commit}:platform/src/generated/nirmana-writer-digests.json",
-            ],
-            cwd=Path(__file__).resolve().parents[3],
-            check=True,
-            capture_output=True,
-            text=True,
-        ).stdout
-        return json.loads(raw)["writers"]
-    except (subprocess.CalledProcessError, KeyError, json.JSONDecodeError) as exc:
+        writers = _json_at_commit(
+            commit, "platform/src/generated/nirmana-writer-digests.json"
+        )["writers"]
+    except KeyError as exc:
         raise SystemExit(
             f"source commit {commit} does not carry a readable writer inventory"
         ) from exc
+    if not isinstance(writers, dict):
+        raise SystemExit(f"source commit {commit} carries an invalid writer inventory")
+    return writers
+
+
+def _pins_at_commit(commit: str) -> dict[str, Any]:
+    return _json_at_commit(
+        commit, "platform/src/generated/nirmana-analysis-layer-pins.json"
+    )
+
+
+def receipt_membership(
+    layer: str, pin: dict[str, Any], writer_digests: dict[str, str]
+) -> dict[str, Any]:
+    prefix = LAYER_PREFIX[layer]
+    non_writers = pin.get("non_writer_assets")
+    if not isinstance(non_writers, list):
+        raise SystemExit(f"{layer} non_writer_assets must be a list")
+    if (
+        any(not isinstance(asset_id, str) for asset_id in non_writers)
+        or non_writers != sorted(set(non_writers))
+        or any(
+            (
+                not asset_id.startswith(prefix)
+                and asset_id not in NON_WRITER_PREFIX_EXCEPTIONS.get(layer, frozenset())
+            )
+            for asset_id in non_writers
+        )
+        or any(asset_id in writer_digests for asset_id in non_writers)
+    ):
+        raise SystemExit(
+            f"{layer} non_writer_assets must be sorted, unique, layer-scoped and writer-disjoint"
+        )
+    asset_ids = sorted(
+        asset_id
+        for asset_id in writer_digests
+        if asset_id.startswith(prefix) and asset_id not in SUPPORTING_WRITERS
+    ) + non_writers
+    asset_ids = sorted(asset_ids)
+    if len(asset_ids) != len(set(asset_ids)):
+        raise SystemExit(f"{layer} receipt membership contains duplicate identities")
+    return {
+        "asset_ids": asset_ids,
+        "layer": layer,
+        "non_writer_assets": non_writers,
+    }
+
+
+def membership_sha256(membership: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            membership, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def build_definition_bindings(snapshot_commit: str) -> dict[str, Any]:
+    _validate_sha(snapshot_commit, "definition snapshot commit")
+    snapshot_pins = _pins_at_commit(snapshot_commit).get("layers", {})
+    snapshot_inventory = _inventory_at_commit(snapshot_commit)
+    bindings: dict[str, Any] = {}
+    for layer in LAYER_PREFIX:
+        snapshot_pin = snapshot_pins.get(layer)
+        if not isinstance(snapshot_pin, dict):
+            raise SystemExit(
+                f"definition snapshot {snapshot_commit} has no {layer} pin"
+            )
+        membership = receipt_membership(layer, snapshot_pin, snapshot_inventory)
+        bindings[layer] = {
+            "schema_version": DEFINITION_SCHEMA_VERSION,
+            "snapshot_commit": snapshot_commit,
+            "membership_sha256": membership_sha256(membership),
+        }
+    return bindings
+
+
+def validate_artifact_binding(artifact: dict[str, str], label: str) -> None:
+    try:
+        commit = artifact["commit"]
+        path = artifact["path"]
+        digest = artifact["sha256"]
+        decision_binding = artifact["decision_binding"]
+    except KeyError as exc:
+        raise SystemExit(f"{label} is missing {exc.args[0]}") from exc
+    _validate_sha(commit, f"{label} commit")
+    if not path or not decision_binding or not re.fullmatch(r"[a-f0-9]{64}", digest):
+        raise SystemExit(f"{label} metadata is invalid")
+    content = _blob_at_commit(commit, path)
+    if hashlib.sha256(content).hexdigest() != digest:
+        raise SystemExit(f"{label} content digest does not match {commit}:{path}")
+    if decision_binding.encode("utf-8") not in content:
+        raise SystemExit(f"{label} does not contain its expected decision binding")
+
+
+def validate_authority_binding(decision: str, commit: str) -> None:
+    expected = AUTHORITY_BINDINGS.get(decision)
+    if expected is None or expected["commit"] != commit:
+        raise SystemExit(f"authority decision {decision!r} is not bound to {commit}")
+    validate_artifact_binding(expected, f"authority {decision}")
+
+
+def validate_review_artifacts(layer: str, artifacts: list[dict[str, str]]) -> None:
+    expected = EXPECTED_REVIEW_ARTIFACTS.get(layer)
+    if expected is None or artifacts != expected:
+        raise SystemExit(
+            f"{layer} review artifacts do not match the required acceptance artifacts"
+        )
+    for index, artifact in enumerate(artifacts):
+        validate_artifact_binding(artifact, f"{layer} review artifact {index}")
+
+
+def validate_authorized_source(decision: str, layer: str, source_commit: str) -> None:
+    authorized = AUTHORIZED_SOURCE_COMMITS.get(decision, {}).get(layer, frozenset())
+    if source_commit not in authorized:
+        raise SystemExit(
+            f"{layer} source commit {source_commit} is not authorized by {decision}"
+        )
 
 
 def parse_classifications(values: list[str]) -> dict[str, str]:
@@ -272,6 +466,22 @@ def parse_classifications(values: list[str]) -> dict[str, str]:
     return classifications
 
 
+def parse_review_artifacts(values: list[str]) -> list[dict[str, str]]:
+    artifacts: list[dict[str, str]] = []
+    for value in values:
+        try:
+            artifact = json.loads(value)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"review artifact must be a JSON object: {exc}") from exc
+        if not isinstance(artifact, dict) or any(
+            not isinstance(key, str) or not isinstance(item, str)
+            for key, item in artifact.items()
+        ):
+            raise SystemExit("review artifact must be a string-to-string JSON object")
+        artifacts.append(artifact)
+    return artifacts
+
+
 def admit_successor(
     committed: dict[str, Any],
     *,
@@ -279,12 +489,13 @@ def admit_successor(
     previous_writer_digests: dict[str, str],
     candidate_writer_digests: dict[str, str],
     source_commit: str,
-    review_refs: list[str],
+    review_artifacts: list[dict[str, str]],
     authority_decision: str,
     authority_commit: str,
     reason: str,
     classifications: dict[str, str],
     historical_snapshot_commit: str,
+    definition_snapshot_commit: str,
 ) -> dict[str, Any]:
     """Append one fail-closed provenance successor without rewriting history.
 
@@ -299,12 +510,16 @@ def admit_successor(
     _validate_sha(source_commit, "source commit")
     _validate_sha(authority_commit, "authority commit")
     _validate_sha(historical_snapshot_commit, "historical snapshot commit")
+    _validate_sha(definition_snapshot_commit, "definition snapshot commit")
     if not authority_decision.strip() or not reason.strip():
         raise SystemExit("authority decision and reason must be non-empty")
-    if not review_refs or any(
-        not _is_immutable_ref(ref) or "PENDING" in ref.upper() for ref in review_refs
-    ):
-        raise SystemExit("at least one completed immutable review ref is required")
+    validate_authority_binding(authority_decision, authority_commit)
+    validate_review_artifacts(layer, review_artifacts)
+    validate_authorized_source(authority_decision, layer, source_commit)
+    if _inventory_at_commit(source_commit) != candidate_writer_digests:
+        raise SystemExit(
+            "candidate writer inventory is not byte-equivalent to its immutable source commit"
+        )
 
     document = json.loads(json.dumps(committed))
     if document.get("version") == LEGACY_PINS_VERSION:
@@ -315,9 +530,19 @@ def admit_successor(
             f"cannot admit successor from pins version {document.get('version')!r}"
         )
     document.setdefault("history", {known_layer: [] for known_layer in LAYER_PREFIX})
+    definition_bindings = build_definition_bindings(definition_snapshot_commit)
+    existing_definitions = document.get("definition_bindings")
+    if existing_definitions is not None and existing_definitions != definition_bindings:
+        raise SystemExit("definition bindings cannot be silently replaced")
+    document["definition_bindings"] = definition_bindings
 
     prefix = LAYER_PREFIX[layer]
     old_pin = document["layers"][layer]
+    historical_pin = _pins_at_commit(historical_snapshot_commit).get("layers", {}).get(layer)
+    if old_pin != historical_pin:
+        raise SystemExit(
+            f"{layer} active predecessor pin is not present at its historical snapshot commit"
+        )
     old_slice = layer_writer_slice(previous_writer_digests, prefix)
     new_slice = layer_writer_slice(candidate_writer_digests, prefix)
     old_aggregate = layer_inventory_sha256(previous_writer_digests, prefix)
@@ -326,6 +551,16 @@ def admit_successor(
         raise SystemExit(
             f"{layer} historical inventory derives {old_aggregate}, but the active "
             f"predecessor pin says {old_pin.get('writer_inventory_sha256')}"
+        )
+    definition_membership = receipt_membership(
+        layer, old_pin, candidate_writer_digests
+    )
+    if (
+        membership_sha256(definition_membership)
+        != definition_bindings[layer]["membership_sha256"]
+    ):
+        raise SystemExit(
+            f"{layer} candidate membership does not match the immutable definition snapshot"
         )
     changed_assets = sorted(
         asset_id
@@ -369,7 +604,7 @@ def admit_successor(
                 "authority_decision": authority_decision,
                 "authority_commit": authority_commit,
                 "source_commit": source_commit,
-                "review_refs": sorted(review_refs),
+                "review_artifacts": review_artifacts,
                 "reason": reason,
                 "changed_assets": changed_assets,
                 "delta_classifications": {
@@ -408,120 +643,172 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
     if not isinstance(history, dict):
         failures.append("successor history is missing or is not an object")
         history = {}
-    inventory_commit_cache: dict[str, dict[str, str] | None] = {}
+    definitions = pins.get("definition_bindings")
+    if not isinstance(definitions, dict) or set(definitions) != set(LAYER_PREFIX):
+        failures.append("definition bindings must cover every and only L0-L5")
+        definitions = {}
+
+    inventory_cache: dict[str, dict[str, str] | None] = {}
+    pin_cache: dict[str, dict[str, Any] | None] = {}
 
     def inventory_at_commit(commit: str, label: str) -> dict[str, str] | None:
-        if commit not in inventory_commit_cache:
+        if commit not in inventory_cache:
             try:
-                inventory_commit_cache[commit] = _inventory_at_commit(commit)
+                inventory_cache[commit] = _inventory_at_commit(commit)
             except SystemExit as exc:
                 failures.append(f"{label}: {exc}")
-                inventory_commit_cache[commit] = None
-        return inventory_commit_cache[commit]
+                inventory_cache[commit] = None
+        return inventory_cache[commit]
 
-    for layer, prefix in LAYER_PREFIX.items():
-        pin = pins.get("layers", {}).get(layer)
-        if pin is None:
-            failures.append(f"{layer}: missing from the pin record")
-            continue
+    def pins_at_commit(commit: str, label: str) -> dict[str, Any] | None:
+        if commit not in pin_cache:
+            try:
+                pin_cache[commit] = _pins_at_commit(commit)
+            except SystemExit as exc:
+                failures.append(f"{label}: {exc}")
+                pin_cache[commit] = None
+        return pin_cache[commit]
+
+    def pin_common(
+        layer: str,
+        pin: dict[str, Any],
+        inventory: dict[str, str],
+        label: str,
+    ) -> None:
+        prefix = LAYER_PREFIX[layer]
         if pin.get("asset_prefix") != prefix:
-            failures.append(f"{layer}: asset_prefix {pin.get('asset_prefix')!r} != {prefix!r}")
+            failures.append(f"{label}: wrong asset prefix")
         if not re.fullmatch(r"[a-f0-9]{40}", str(pin.get("convergence_commit", ""))):
-            failures.append(f"{layer}: convergence commit is invalid")
-        invalid_active_digests = sorted(
+            failures.append(f"{label}: convergence commit is invalid")
+        elif not _commit_exists(pin["convergence_commit"]):
+            failures.append(f"{label}: convergence commit does not exist")
+        layer_writers = layer_writer_slice(inventory, prefix)
+        invalid_digests = sorted(
             asset_id
-            for asset_id, digest in layer_writer_slice(writer_digests, prefix).items()
+            for asset_id, digest in layer_writers.items()
             if not isinstance(digest, str) or not re.fullmatch(r"[a-f0-9]{64}", digest)
         )
-        if invalid_active_digests:
-            failures.append(
-                f"{layer}: current writer inventory carries invalid digests for "
-                f"{invalid_active_digests}"
-            )
-        derived = layer_inventory_sha256(writer_digests, prefix)
+        if invalid_digests:
+            failures.append(f"{label}: invalid writer digests for {invalid_digests}")
+        try:
+            derived = layer_inventory_sha256(inventory, prefix)
+        except SystemExit as exc:
+            failures.append(f"{label}: {exc}")
+            return
         if pin.get("writer_inventory_sha256") != derived:
             failures.append(
-                f"{layer}: writer_inventory_sha256 is stale — committed "
-                f"{pin.get('writer_inventory_sha256')}, current inventory derives {derived}"
+                f"{label}: writer_inventory_sha256 is stale — committed "
+                f"{pin.get('writer_inventory_sha256')}, inventory derives {derived}"
             )
-        expected_receipts = pin.get("receipt_count")
-        actual_receipts = sum(
-            1
-            for asset_id in writer_digests
-            if asset_id.startswith(prefix) and asset_id not in SUPPORTING_WRITERS
-        ) + len(pin.get("non_writer_assets") or [])
-        if expected_receipts != actual_receipts:
-            failures.append(
-                f"{layer}: receipt_count {expected_receipts} != "
-                f"{actual_receipts} writers+non-writers currently available"
-            )
-        current_generation = pin.get("generation_id")
-        if current_generation and current_generation != generation_id(layer, pin):
-            failures.append(
-                f"{layer}: generation_id {current_generation!r} does not match its pin"
-            )
-        if current_generation:
-            admission = pin.get("admission")
-            if not isinstance(admission, dict):
-                failures.append(f"{layer}: successor pin has no admission record")
-            else:
-                if admission.get("schema_version") != SUCCESSOR_SCHEMA_VERSION:
-                    failures.append(f"{layer}: successor admission schema is invalid")
-                if admission.get("source_commit") != pin.get("convergence_commit"):
-                    failures.append(
-                        f"{layer}: successor source commit does not match its convergence pin"
-                    )
-                source_commit = str(admission.get("source_commit", ""))
-                if re.fullmatch(r"[a-f0-9]{40}", source_commit):
-                    source_inventory = inventory_at_commit(
-                        source_commit, f"{layer} source commit"
-                    )
-                    if (
-                        source_inventory is not None
-                        and layer_writer_slice(source_inventory, prefix)
-                        != layer_writer_slice(writer_digests, prefix)
-                    ):
-                        failures.append(
-                            f"{layer}: current layer inventory does not match its "
-                            "immutable source commit"
-                        )
-                if not re.fullmatch(
-                    r"[a-f0-9]{40}", str(admission.get("authority_commit", ""))
-                ):
-                    failures.append(f"{layer}: successor authority commit is invalid")
-                if not str(admission.get("authority_decision", "")).strip():
-                    failures.append(f"{layer}: successor authority decision is missing")
-                if not str(admission.get("reason", "")).strip():
-                    failures.append(f"{layer}: successor reason is missing")
-                review_refs = admission.get("review_refs")
-                if (
-                    not isinstance(review_refs, list)
-                    or not review_refs
-                    or review_refs != sorted(set(review_refs))
-                    or any(
-                        not isinstance(ref, str)
-                        or not _is_immutable_ref(ref)
-                        or "PENDING" in ref.upper()
-                        for ref in review_refs
-                    )
-                ):
-                    failures.append(f"{layer}: completed immutable review refs are invalid")
-                changed_assets = admission.get("changed_assets")
-                classifications = admission.get("delta_classifications")
-                if not isinstance(changed_assets, list) or changed_assets != sorted(set(changed_assets)):
-                    failures.append(f"{layer}: changed_assets must be sorted and unique")
-                if not isinstance(classifications, dict) or sorted(classifications) != changed_assets:
-                    failures.append(f"{layer}: delta classifications do not exactly cover changed_assets")
-                elif any(value not in ALLOWED_DELTA_CLASSIFICATIONS for value in classifications.values()):
-                    failures.append(f"{layer}: delta classification vocabulary is invalid")
-                elif "unapproved_foreign_source" in classifications.values():
-                    failures.append(f"{layer}: an unapproved/foreign delta was admitted")
+        try:
+            membership = receipt_membership(layer, pin, inventory)
+        except SystemExit as exc:
+            failures.append(f"{label}: {exc}")
+            return
+        if pin.get("receipt_count") != len(membership["asset_ids"]):
+            failures.append(f"{label}: receipt_count does not match exact membership")
 
-        seen_generations: set[str] = set()
+    def admission_common(
+        layer: str,
+        pin: dict[str, Any],
+        inventory: dict[str, str],
+        label: str,
+    ) -> None:
+        admission = pin.get("admission")
+        if not isinstance(admission, dict):
+            failures.append(f"{label}: successor pin has no admission record")
+            return
+        if admission.get("schema_version") != SUCCESSOR_SCHEMA_VERSION:
+            failures.append(f"{label}: successor admission schema is invalid")
+        if admission.get("source_commit") != pin.get("convergence_commit"):
+            failures.append(f"{label}: source commit does not match convergence pin")
+        source_commit = str(admission.get("source_commit", ""))
+        if re.fullmatch(r"[a-f0-9]{40}", source_commit):
+            source_inventory = inventory_at_commit(source_commit, f"{label} source")
+            if (
+                source_inventory is not None
+                and layer_writer_slice(source_inventory, LAYER_PREFIX[layer])
+                != layer_writer_slice(inventory, LAYER_PREFIX[layer])
+            ):
+                failures.append(f"{label}: inventory does not match immutable source commit")
+        decision = str(admission.get("authority_decision", ""))
+        authority_commit = str(admission.get("authority_commit", ""))
+        try:
+            validate_authority_binding(decision, authority_commit)
+        except SystemExit as exc:
+            failures.append(f"{label}: {exc}")
+        try:
+            validate_authorized_source(decision, layer, source_commit)
+        except SystemExit as exc:
+            failures.append(f"{label}: {exc}")
+        artifacts = admission.get("review_artifacts")
+        if not isinstance(artifacts, list):
+            failures.append(f"{label}: review artifacts are missing")
+        else:
+            try:
+                validate_review_artifacts(layer, artifacts)
+            except SystemExit as exc:
+                failures.append(f"{label}: {exc}")
+        if not str(admission.get("reason", "")).strip():
+            failures.append(f"{label}: successor reason is missing")
+        changed_assets = admission.get("changed_assets")
+        classifications = admission.get("delta_classifications")
+        if not isinstance(changed_assets, list) or changed_assets != sorted(set(changed_assets)):
+            failures.append(f"{label}: changed_assets must be sorted and unique")
+        if not isinstance(classifications, dict) or sorted(classifications) != changed_assets:
+            failures.append(f"{label}: classifications do not exactly cover changed_assets")
+        elif any(value not in ALLOWED_DELTA_CLASSIFICATIONS for value in classifications.values()):
+            failures.append(f"{label}: delta classification vocabulary is invalid")
+        elif "unapproved_foreign_source" in classifications.values():
+            failures.append(f"{label}: an unapproved/foreign delta was admitted")
+
+    for layer, prefix in LAYER_PREFIX.items():
+        active_pin = pins.get("layers", {}).get(layer)
+        if not isinstance(active_pin, dict):
+            failures.append(f"{layer}: missing from the pin record")
+            continue
+        pin_common(layer, active_pin, writer_digests, f"{layer} active")
+
+        definition = definitions.get(layer)
+        if not isinstance(definition, dict):
+            failures.append(f"{layer}: immutable definition binding is missing")
+        else:
+            snapshot_commit = str(definition.get("snapshot_commit", ""))
+            if definition.get("schema_version") != DEFINITION_SCHEMA_VERSION:
+                failures.append(f"{layer}: definition schema is invalid")
+            snapshot_inventory = inventory_at_commit(snapshot_commit, f"{layer} definition")
+            snapshot_pins = pins_at_commit(snapshot_commit, f"{layer} definition")
+            snapshot_pin = (
+                snapshot_pins.get("layers", {}).get(layer)
+                if isinstance(snapshot_pins, dict)
+                else None
+            )
+            if snapshot_inventory is not None and isinstance(snapshot_pin, dict):
+                try:
+                    expected_membership = receipt_membership(
+                        layer, snapshot_pin, snapshot_inventory
+                    )
+                    active_membership = receipt_membership(
+                        layer, active_pin, writer_digests
+                    )
+                    expected_digest = membership_sha256(expected_membership)
+                    if definition.get("membership_sha256") != expected_digest:
+                        failures.append(f"{layer}: definition membership digest is invalid")
+                    if active_membership != expected_membership:
+                        failures.append(
+                            f"{layer}: active membership differs from immutable definition"
+                        )
+                except SystemExit as exc:
+                    failures.append(f"{layer}: invalid definition membership: {exc}")
+            elif snapshot_pin is None:
+                failures.append(f"{layer}: definition snapshot has no layer pin")
+
         layer_history = history.get(layer, [])
         if not isinstance(layer_history, list):
             failures.append(f"{layer}: history is not a list")
             continue
+        nodes: dict[str, tuple[dict[str, Any], dict[str, str]]] = {}
+        outgoing: dict[str, str] = {}
         for entry in layer_history:
             if not isinstance(entry, dict):
                 failures.append(f"{layer}: malformed history entry")
@@ -532,106 +819,100 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
             if not isinstance(archived_pin, dict) or not isinstance(archived_writers, dict):
                 failures.append(f"{layer}: historical pin or writer snapshot is missing")
                 continue
-            if archived_pin.get("asset_prefix") != prefix:
-                failures.append(f"{layer}: historical pin carries the wrong asset prefix")
-            foreign_archived_assets = sorted(
-                asset_id
-                for asset_id in archived_writers
-                if not isinstance(asset_id, str) or not asset_id.startswith(prefix)
-            )
-            if foreign_archived_assets:
-                failures.append(
-                    f"{layer}: historical writer snapshot carries foreign assets "
-                    f"{foreign_archived_assets}"
-                )
-            invalid_archived_digests = sorted(
-                asset_id
-                for asset_id, digest in archived_writers.items()
-                if not isinstance(digest, str)
-                or not re.fullmatch(r"[a-f0-9]{64}", digest)
-            )
-            if invalid_archived_digests:
-                failures.append(
-                    f"{layer}: historical writer snapshot carries invalid digests for "
-                    f"{invalid_archived_digests}"
-                )
+            if not isinstance(archived_generation, str):
+                failures.append(f"{layer}: historical generation id is invalid")
+                continue
+            pin_common(layer, archived_pin, archived_writers, f"{layer} history {archived_generation}")
             if archived_generation != generation_id(layer, archived_pin):
                 failures.append(f"{layer}: historical generation id does not match its pin")
-            if archived_generation in seen_generations:
+            if archived_generation in nodes:
                 failures.append(f"{layer}: duplicate historical generation {archived_generation}")
-            seen_generations.add(archived_generation)
-            try:
-                archived_aggregate = layer_inventory_sha256(archived_writers, prefix)
-            except SystemExit as exc:
-                failures.append(f"{layer}: invalid historical writer snapshot: {exc}")
                 continue
-            if archived_aggregate != archived_pin.get("writer_inventory_sha256"):
+            nodes[archived_generation] = (archived_pin, archived_writers)
+            successor_generation = entry.get("superseded_by_generation_id")
+            if not isinstance(successor_generation, str):
+                failures.append(f"{layer}: historical successor generation is invalid")
+                continue
+            outgoing[archived_generation] = successor_generation
+            snapshot_commit = str(entry.get("historical_snapshot_commit", ""))
+            snapshot_inventory = inventory_at_commit(snapshot_commit, f"{layer} history snapshot")
+            snapshot_pins = pins_at_commit(snapshot_commit, f"{layer} history snapshot")
+            snapshot_pin = (
+                snapshot_pins.get("layers", {}).get(layer)
+                if isinstance(snapshot_pins, dict)
+                else None
+            )
+            if snapshot_inventory is not None and layer_writer_slice(
+                snapshot_inventory, prefix
+            ) != archived_writers:
                 failures.append(
-                    f"{layer}: historical aggregate {archived_aggregate} does not match "
-                    f"{archived_pin.get('writer_inventory_sha256')}"
+                    f"{layer}: archived writers differ from immutable historical snapshot"
                 )
-            archived_count = sum(
-                1 for asset_id in archived_writers
-                if asset_id.startswith(prefix) and asset_id not in SUPPORTING_WRITERS
-            ) + len(archived_pin.get("non_writer_assets") or [])
-            if archived_count != archived_pin.get("receipt_count"):
-                failures.append(f"{layer}: historical receipt count is not reconstructable")
-            if not re.fullmatch(r"[a-f0-9]{40}", str(entry.get("historical_snapshot_commit", ""))):
-                failures.append(f"{layer}: historical snapshot commit is invalid")
-            else:
-                historical_inventory = inventory_at_commit(
-                    entry["historical_snapshot_commit"],
-                    f"{layer} historical snapshot commit",
+            if snapshot_pin != archived_pin:
+                failures.append(
+                    f"{layer}: archived pin differs from immutable historical snapshot"
                 )
-                if (
-                    historical_inventory is not None
-                    and layer_writer_slice(historical_inventory, prefix)
-                    != archived_writers
-                ):
-                    failures.append(
-                        f"{layer}: archived writer snapshot does not match its immutable "
-                        "historical commit"
-                    )
 
+        current_generation = active_pin.get("generation_id")
         if current_generation:
-            predecessor_generation = pin.get("supersedes_generation_id")
-            predecessor_entries = [
-                entry
-                for entry in layer_history
-                if isinstance(entry, dict)
-                and entry.get("generation_id") == predecessor_generation
-            ]
-            if len(predecessor_entries) != 1:
-                failures.append(
-                    f"{layer}: successor does not name exactly one archived predecessor"
-                )
+            if not isinstance(current_generation, str):
+                failures.append(f"{layer}: active generation id is invalid")
+                continue
+            if current_generation != generation_id(layer, active_pin):
+                failures.append(f"{layer}: active generation id does not match its pin")
+            if current_generation in nodes:
+                failures.append(f"{layer}: active generation is duplicated in history")
+            nodes[current_generation] = (active_pin, layer_writer_slice(writer_digests, prefix))
+            targets = list(outgoing.values())
+            unknown_targets = sorted(set(targets) - set(nodes), key=str)
+            if unknown_targets:
+                failures.append(f"{layer}: history points to unknown successors {unknown_targets}")
+            roots = sorted(set(nodes) - set(targets), key=str)
+            if len(roots) != 1:
+                failures.append(f"{layer}: successor history must have exactly one root")
             else:
-                predecessor = predecessor_entries[0]
-                if predecessor.get("superseded_by_generation_id") != current_generation:
-                    failures.append(
-                        f"{layer}: predecessor does not point to the active successor"
-                    )
-                archived_writers = predecessor.get("writer_digests")
-                admission = pin.get("admission")
-                if isinstance(archived_writers, dict) and isinstance(admission, dict):
-                    current_slice = layer_writer_slice(writer_digests, prefix)
-                    exact_delta = sorted(
-                        asset_id
-                        for asset_id in set(archived_writers) | set(current_slice)
-                        if archived_writers.get(asset_id) != current_slice.get(asset_id)
-                    )
-                    if admission.get("changed_assets") != exact_delta:
-                        failures.append(
-                            f"{layer}: admitted changed_assets do not match the exact "
-                            "predecessor-to-successor delta"
-                        )
+                visited: list[str] = []
+                cursor = roots[0]
+                while cursor not in visited:
+                    visited.append(cursor)
+                    if cursor == current_generation:
+                        break
+                    next_generation = outgoing.get(cursor)
+                    if next_generation is None:
+                        break
+                    cursor = next_generation
+                if cursor != current_generation or set(visited) != set(nodes):
+                    failures.append(f"{layer}: successor history is not one complete linear chain")
+                root_pin = nodes[roots[0]][0]
+                if root_pin.get("admission") or root_pin.get("supersedes_generation_id"):
+                    failures.append(f"{layer}: successor history root is not the legacy predecessor")
 
-        all_generation_ids = seen_generations | ({current_generation} if current_generation else set())
-        for entry in layer_history:
-            if isinstance(entry, dict) and entry.get("superseded_by_generation_id") not in all_generation_ids:
-                failures.append(
-                    f"{layer}: historical generation points to an unknown successor"
+            predecessor_by_successor: dict[str, list[str]] = {}
+            for predecessor, successor in outgoing.items():
+                predecessor_by_successor.setdefault(successor, []).append(predecessor)
+            for successor, predecessors in predecessor_by_successor.items():
+                if len(predecessors) != 1 or successor not in nodes:
+                    continue
+                predecessor = predecessors[0]
+                successor_pin, successor_writers = nodes[successor]
+                predecessor_writers = nodes[predecessor][1]
+                if successor_pin.get("supersedes_generation_id") != predecessor:
+                    failures.append(f"{layer}: successor does not name its actual predecessor")
+                admission_common(
+                    layer, successor_pin, successor_writers, f"{layer} successor {successor}"
                 )
+                exact_delta = sorted(
+                    asset_id
+                    for asset_id in set(predecessor_writers) | set(successor_writers)
+                    if predecessor_writers.get(asset_id) != successor_writers.get(asset_id)
+                )
+                admission = successor_pin.get("admission")
+                if isinstance(admission, dict) and admission.get("changed_assets") != exact_delta:
+                    failures.append(
+                        f"{layer}: successor {successor} changed_assets do not match exact delta"
+                    )
+        elif layer_history:
+            failures.append(f"{layer}: history exists but active pin is not versioned")
 
     l0_history = history.get("L0", []) if isinstance(history, dict) else []
     active_l0 = pins.get("layers", {}).get("L0", {})
@@ -664,10 +945,14 @@ def main() -> int:
     parser.add_argument("--authority-decision", help="decision authorizing this successor")
     parser.add_argument("--authority-commit", help="immutable approval commit")
     parser.add_argument(
-        "--review-ref",
+        "--review-artifact",
         action="append",
         default=[],
-        help="completed immutable review reference; repeat when multiple reviews apply",
+        help="immutable acceptance-artifact JSON; repeat when multiple reviews apply",
+    )
+    parser.add_argument(
+        "--definition-snapshot-commit",
+        help="immutable pin/inventory snapshot defining exact receipt membership",
     )
     parser.add_argument("--reason", help="bounded evidence-backed successor reason")
     parser.add_argument(
@@ -714,6 +999,7 @@ def main() -> int:
             "--layer": args.layer,
             "--source-commit": args.source_commit,
             "--historical-snapshot-commit": args.historical_snapshot_commit,
+            "--definition-snapshot-commit": args.definition_snapshot_commit,
             "--authority-decision": args.authority_decision,
             "--authority-commit": args.authority_commit,
             "--reason": args.reason,
@@ -721,14 +1007,6 @@ def main() -> int:
         missing = [flag for flag, value in required.items() if not value]
         if missing:
             print(f"ERROR: successor admission requires {', '.join(missing)}", file=sys.stderr)
-            return 1
-        source_inventory = _inventory_at_commit(args.source_commit)
-        if source_inventory != writer_digests:
-            print(
-                "ERROR: current writer inventory is not byte-equivalent to the immutable "
-                "source commit inventory",
-                file=sys.stderr,
-            )
             return 1
         previous_inventory = _inventory_at_commit(args.historical_snapshot_commit)
         committed = json.loads(args.output.read_text(encoding="utf-8"))
@@ -738,12 +1016,13 @@ def main() -> int:
             previous_writer_digests=previous_inventory,
             candidate_writer_digests=writer_digests,
             source_commit=args.source_commit,
-            review_refs=args.review_ref,
+            review_artifacts=parse_review_artifacts(args.review_artifact),
             authority_decision=args.authority_decision,
             authority_commit=args.authority_commit,
             reason=args.reason,
             classifications=parse_classifications(args.classification),
             historical_snapshot_commit=args.historical_snapshot_commit,
+            definition_snapshot_commit=args.definition_snapshot_commit,
         )
         args.output.write_text(render(successor), encoding="utf-8")
         print(
@@ -758,8 +1037,17 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
+    if not args.definition_snapshot_commit:
+        print(
+            "ERROR: --definition-snapshot-commit <40-hex sha> is required to regenerate.",
+            file=sys.stderr,
+        )
+        return 1
     pins = build_pins(
-        writer_digests, load_frozen_manifest_assets(), args.convergence_commit
+        writer_digests,
+        load_frozen_manifest_assets(),
+        args.convergence_commit,
+        args.definition_snapshot_commit,
     )
 
     if args.layer:
@@ -799,6 +1087,9 @@ def main() -> int:
         fresh = pins["layers"][args.layer]
         before = committed["layers"][args.layer]
         committed["layers"][args.layer] = fresh
+        committed.setdefault("definition_bindings", {})[args.layer] = pins[
+            "definition_bindings"
+        ][args.layer]
         args.output.write_text(render(committed), encoding="utf-8")
         moved = [k for k in fresh if before.get(k) != fresh.get(k)]
         print(f"Wrote {args.output} -- {args.layer} only.")

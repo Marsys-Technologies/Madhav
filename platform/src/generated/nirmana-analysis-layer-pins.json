@@ -1,4 +1,36 @@
 {
+  "definition_bindings": {
+    "L0": {
+      "membership_sha256": "e136c56d9720f7383234f9c524fd1756071fa0e4dabfee8b6367a8a562139bbd",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L1": {
+      "membership_sha256": "967e107735c2c0ff2174fad8886aefb6b86e60a680f4c35c9b9c3ab8c759cc24",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L2": {
+      "membership_sha256": "ed79468208d665dc9eb7f47bf70392e058f6a1b7d1f51ad492afdbaad7f058bb",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L3": {
+      "membership_sha256": "b0df0e0a5767c530ca8161c11e768d6e2797830a53b8445e0751736f6d8bc4ab",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L4": {
+      "membership_sha256": "367159d666a511051e6364788a6638009b832fb4529409c01aa4869fa25388a4",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L5": {
+      "membership_sha256": "70221ef549ea99db55541d0f09a78650b22ec634575314f2b6f89711a356db53",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    }
+  },
   "history": {
     "L0": [
       {
@@ -222,10 +254,15 @@
           "bg_sky_calendar": "derived_import_change"
         },
         "reason": "Admit the already accepted L0 producer and Swiss-state source closure while preserving the frozen predecessor receipts; source scope only.",
-        "review_refs": [
-          "f648d5add412d8e7c99ab3afd5166210b7dda9c7"
+        "review_artifacts": [
+          {
+            "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+            "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+            "sha256": "abeb3ffa67d646bdbf4777145ba43e97318e04da9226c78a3fb2e0876b7e76f4"
+          }
         ],
-        "schema_version": "nirmana-analysis-layer-successor/v1",
+        "schema_version": "nirmana-analysis-layer-successor/v2",
         "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
       },
       "asset_prefix": "bg_",
@@ -286,10 +323,15 @@
           "ga_yoga": "approved_intentional_change"
         },
         "reason": "Admit the independently accepted L1 producer-contract source closure; source scope only and no inherited runtime acceptance.",
-        "review_refs": [
-          "a9c44c298a3b6460d676e84cd7b26468e3d2e053"
+        "review_artifacts": [
+          {
+            "commit": "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+            "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L1_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+            "sha256": "265ed113e94915ee3dcaa55c842bf3fd61f6a71320ffe33f3dbd22e87a82c267"
+          }
         ],
-        "schema_version": "nirmana-analysis-layer-successor/v1",
+        "schema_version": "nirmana-analysis-layer-successor/v2",
         "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
       },
       "asset_prefix": "ga_",
@@ -355,11 +397,15 @@
           "bo_yantra_mechanism": "approved_intentional_change"
         },
         "reason": "Admit independently accepted L2 producer contracts plus their accepted L3 W2 derived import closure; source scope only.",
-        "review_refs": [
-          "47131772b355ae2c67b1f6fb2b90e9fa007e2202",
-          "8aeff12d4b32174bab1a1352768fc077828c38bd"
+        "review_artifacts": [
+          {
+            "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+            "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+            "sha256": "adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e"
+          }
         ],
-        "schema_version": "nirmana-analysis-layer-successor/v1",
+        "schema_version": "nirmana-analysis-layer-successor/v2",
         "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
       },
       "asset_prefix": "bo_",
@@ -381,10 +427,15 @@
           "ka_sangam": "derived_import_change"
         },
         "reason": "Metadata-only admission of ka_sangam import-closure movement caused by accepted W2 shared source; no ka_sangam behavior, data, deployment or freeze claim.",
-        "review_refs": [
-          "47131772b355ae2c67b1f6fb2b90e9fa007e2202"
+        "review_artifacts": [
+          {
+            "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+            "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+            "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+          }
         ],
-        "schema_version": "nirmana-analysis-layer-successor/v1",
+        "schema_version": "nirmana-analysis-layer-successor/v2",
         "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
       },
       "asset_prefix": "ka_",
@@ -407,14 +458,18 @@
         ],
         "delta_classifications": {
           "ph_muhurta": "derived_import_change",
-          "ph_rectification": "approved_intentional_change"
+          "ph_rectification": "derived_import_change"
         },
-        "reason": "Provenance-only admission of the protected Swiss-state closure affecting ph_muhurta and already reviewed ph_rectification source; no L4 behavior change, rebuild, freeze or elevation.",
-        "review_refs": [
-          "0b10bdb321231b8af5291e9b39a0a556680442cf",
-          "e0cfad5c14a6f1c8ee30cdfec37d326c4631ffa9"
+        "reason": "Provenance-only admission of the accepted Swiss-state shared import closure affecting ph_muhurta and ph_rectification; no L4 behavior change, rebuild, freeze or elevation.",
+        "review_artifacts": [
+          {
+            "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+            "decision_binding": "status: VALIDATED_INDEPENDENT_CHALLENGE_PASS",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md",
+            "sha256": "0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79"
+          }
         ],
-        "schema_version": "nirmana-analysis-layer-successor/v1",
+        "schema_version": "nirmana-analysis-layer-successor/v2",
         "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
       },
       "asset_prefix": "ph_",

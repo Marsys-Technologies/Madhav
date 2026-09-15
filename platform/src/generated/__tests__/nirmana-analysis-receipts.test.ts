@@ -136,6 +136,16 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       ka_sangam: 'derived_import_change',
     })
     expect(layerPinRecord.history.L3).toHaveLength(1)
+    expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
+      ph_muhurta: 'derived_import_change',
+      ph_rectification: 'derived_import_change',
+    })
+    expect(layerPinRecord.layers.L4.admission.review_artifacts).toEqual([{
+      commit: 'f6fed12c794224329f6b3b436f8b1b814499d06d',
+      decision_binding: 'status: VALIDATED_INDEPENDENT_CHALLENGE_PASS',
+      path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md',
+      sha256: '0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79',
+    }])
     expect(layerPinRecord.layers.L5).toEqual({
       asset_prefix: 'mi_',
       convergence_commit: 'fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5',
