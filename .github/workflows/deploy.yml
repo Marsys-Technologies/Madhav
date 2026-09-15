@@ -388,6 +388,7 @@ jobs:
       cancel-in-progress: false
 
     permissions:
+      actions: read
       contents: read
       id-token: write
 
@@ -465,12 +466,24 @@ jobs:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DATA_PLANE_BACKUP_RESTORE_ID: ${{ secrets.DATA_PLANE_BACKUP_RESTORE_ID }}
           DATA_PLANE_RESTORE_VALIDATION_INSTANCE: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_INSTANCE }}
+          DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME }}
           DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL }}
+          DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT: '5433'
           DATA_PLANE_CUTOVER_LEASE: ${{ secrets.DATA_PLANE_CUTOVER_LEASE }}
-          DATA_PLANE_INDEPENDENT_APPROVER: ${{ secrets.DATA_PLANE_INDEPENDENT_APPROVER }}
+          DATA_PLANE_CUTOVER_ENVIRONMENT: data-plane-production-cutover
+          GH_TOKEN: ${{ github.token }}
           DATA_PLANE_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_ADMIN_DATABASE_URL }}
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: |
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
+            "$DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME" &
+          validation_proxy_pid=$!
+          trap 'kill "$validation_proxy_pid" 2>/dev/null || true' EXIT
+          sleep 5
+          if ! kill -0 "$validation_proxy_pid" 2>/dev/null; then
+            echo "::error::Authenticated validation Cloud SQL proxy failed to stay running."
+            exit 1
+          fi
           cd platform
           npx tsx scripts/data-plane-protected-cutover.ts
 

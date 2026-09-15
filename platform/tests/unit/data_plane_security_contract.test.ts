@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubDeploymentReviewEvidence, assertValidationConnectorBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 describe('DP-SD-018 protected migration routing', () => {
@@ -228,19 +228,56 @@ describe('DP-SD-018 deployment ordering', () => {
       backupId: '123', restoreOperationId: 'restore-op-456', validationInstance: 'amjis-ri02-validation',
       sourceCommit: 'a'.repeat(40), leaseId: '11111111-1111-4111-8111-111111111111',
       approvedBy: 'independent-reviewer', expiresAt: '2026-09-16T00:00:00.000Z',
+      repository: 'owner/repo', workflowRunId: '123456', environment: 'data-plane-production-cutover',
     }))
     expect(receipt.backupId).toBe('123')
     expect(() => parseBackupRestoreReceipt('123')).toThrow(/receipt/)
     expect(() => assertBackupReceiptBinding(receipt, {
       validationInstance: 'amjis-postgres', sourceCommit: 'a'.repeat(40),
       leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, environment: receipt.environment,
     }, new Date('2026-09-15T12:00:00.000Z'))).toThrow(/isolated instance/)
     expect(() => assertBackupReceiptBinding(receipt, {
       validationInstance: receipt.validationInstance, sourceCommit: receipt.sourceCommit,
       leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, environment: receipt.environment,
     }, new Date('2026-09-15T12:00:00.000Z'))).not.toThrow()
+    const protectedEnvironment = {
+      name: receipt.environment,
+      protection_rules: [{ type: 'required_reviewers', prevent_self_review: true, reviewers: [{}] }],
+      deployment_branch_policy: { protected_branches: true, custom_branch_policies: false },
+    }
+    const reviews = [{ state: 'approved', environments: [{ name: receipt.environment }], user: { login: receipt.approvedBy } }]
+    const workflowRun = { id: Number(receipt.workflowRunId), head_sha: receipt.sourceCommit, repository: { full_name: receipt.repository } }
+    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, workflowRun, {
+      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
+    })).not.toThrow()
+    expect(() => assertGitHubDeploymentReviewEvidence({ ...protectedEnvironment, protection_rules: [] }, reviews, workflowRun, {
+      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
+    })).toThrow(/lacks exact required-reviewer/)
+    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, workflowRun, {
+      environment: receipt.environment, actor: receipt.approvedBy, approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
+    })).toThrow(/not the one authenticated independent/)
+    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, { ...workflowRun, head_sha: 'b'.repeat(40) }, {
+      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
+    })).toThrow(/workflow run does not match/)
+    const instance = { name: receipt.validationInstance, state: 'RUNNABLE', connectionName: `madhav-astrology:asia-south1:${receipt.validationInstance}` }
+    expect(() => assertValidationConnectorBinding('postgresql://validator@127.0.0.1:5433/restored', {
+      instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+      proxyPort: '5433', project: 'madhav-astrology',
+    })).not.toThrow()
+    expect(() => assertValidationConnectorBinding('postgresql://validator@127.0.0.1:5433/restored', {
+      instance, validationInstance: receipt.validationInstance, connectionName: 'madhav-astrology:asia-south1:rogue-instance',
+      proxyPort: '5433', project: 'madhav-astrology',
+    })).toThrow(/authenticated isolated Cloud SQL proxy identity/)
     expect(preflight).toContain("restore.targetId === 'amjis-postgres'")
     expect(preflight).toContain('readDataPlaneOwnershipStatus(validationDatabaseUrl)')
+    expect(workflow).toContain('DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME')
+    expect(workflow).toContain('GH_TOKEN: ${{ github.token }}')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
   })
 })

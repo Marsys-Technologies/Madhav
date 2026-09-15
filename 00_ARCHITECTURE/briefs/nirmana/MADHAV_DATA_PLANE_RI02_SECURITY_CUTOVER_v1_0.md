@@ -1,4 +1,4 @@
-# MADHAV Data Plane RI-02 Security Cutover v1.1
+# MADHAV Data Plane RI-02 Security Cutover v1.2
 
 **Authority:** DP-SD-018 §§5–6 source design. This artifact does not authorize live IAM, role, credential, database, deployment, or data mutation.
 
@@ -41,6 +41,26 @@ L2 binding locks every selected upstream head, builds an empty-or-populated temp
 
 The semantic status gate is bound to the exact migration filename, SHA-256 and normalized `sql_identity`, rejecting null, missing, duplicate or mismatched rows. It recursively traverses role membership, compares exact schema/table/sequence/function EXECUTE allowlists, verifies function signatures through protected definition digests, checks trigger function OIDs/event/timing bits, rejects policies and unknown grantees, and attests views and default privileges.
 
+## External GitHub environment prerequisite (not provisioned by this lane)
+
+Before a cutover run is dispatched, repository administrators must provision the
+`data-plane-production-cutover` environment with exactly one `required_reviewers`
+protection rule containing at least one independent user or team,
+`prevent_self_review=true`, and a deployment branch policy of
+`protected_branches=true, custom_branch_policies=false`. The workflow token must
+retain `actions:read` so the job can authenticate both
+`GET /repos/{owner}/{repo}/environments/data-plane-production-cutover` and
+`GET /repos/{owner}/{repo}/actions/runs/{run_id}` plus its `/approvals` history. An environment name
+alone is not protection evidence: absent/unreadable policy, self-review, an
+unprotected branch policy, or no approval for this exact run all fail closed.
+
+The backup receipt is prepared for the queued run and records the exact
+`repository`, `workflowRunId`, `environment`, and `approvedBy`. The reviewer
+approves that run only after the receipt and isolated restore are ready. At
+execution, the source matches `approvedBy` to the authenticated GitHub review
+history and binds those four values to the immutable deploy SHA and cutover
+lease. A free-form approver secret is not accepted.
+
 ## Mandatory IAM transition before first cutover
 
 1. Inventory the exact secrets on the current revisions/jobs. Observed inventory:
@@ -48,16 +68,29 @@ The semantic status gate is bound to the exact migration filename, SHA-256 and n
    - MCP: `PYTHON_SIDECAR_API_KEY`, `mcp-canary-key`, `mcp-internal-token`;
    - sidecar: `GOOGLE_GENERATIVE_AI_API_KEY`, `PYTHON_SIDECAR_API_KEY`, `amjis-pipeline-db-url`;
    - current build job: `amjis-pipeline-db-url`.
-2. Grant each runtime service account `roles/secretmanager.secretAccessor` on only its exact current secret resources. Do not create a data-plane secret yet.
-3. Deploy/canary the unchanged revisions and one non-mutating job probe; retain the previous revision and policies as rollback material.
-4. Remove every project-level `roles/secretmanager.secretAccessor` binding. Re-run canaries and prove unrelated identities cannot access each sampled secret.
-5. Create dedicated `data-plane-builder-runtime@...` with only `roles/cloudsql.client` at project scope and `roles/pubsub.publisher` on `cockpit-events`. Grant it accessor only on new `data-plane-builder-db-url`; grant no Run Admin, Artifact Registry writer, token-creator, owner/editor, or project-wide secret role.
-6. Provision `data_plane_builder`, `data_plane_verifier`, and `data_plane_migrator` database logins through the approved secret channel. Store builder URL only in the exact Secret Manager secret. Store DBA and migrator URLs only as protected GitHub deployment secrets; never argv, image, log, artifact, service, job, web, build-image step, or MCP configuration.
-7. The workflow IAM preflight must pass before the DBA URL or migrator URL is read. It aggregates conditional bindings, queries effective IAM through Cloud Asset Inventory, rejects ancestor/project aggregate secret access, checks the builder SA impersonation policy, inventories every Cloud Run revision and job, permits the builder secret only on `brahma-build-pipeline-job`, and forbids DBA/migrator material everywhere.
+2. Grant each current runtime identity resource-level accessor on only the exact inventory above, then canary the unchanged web/MCP/sidecar revisions and one non-mutating build-job probe. Retain the previous policies and revisions as rollback material.
+3. During the exclusive maintenance window, remove these exact six project-wide grants, in this order, and verify after each removal:
+   1. `serviceAccount:938361928218-compute@developer.gserviceaccount.com`
+   2. `serviceAccount:amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com`
+   3. `serviceAccount:amjis-sidecar-runtime@madhav-astrology.iam.gserviceaccount.com`
+   4. `serviceAccount:amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com`
+   5. `serviceAccount:brahma-conductor-bot@madhav-astrology.iam.gserviceaccount.com`
+   6. `serviceAccount:brahma-swarm-bot@madhav-astrology.iam.gserviceaccount.com`
+
+   Each operation is `gcloud projects remove-iam-policy-binding madhav-astrology --role=roles/secretmanager.secretAccessor --member=<exact-member>`. Re-read the policy and halt unless the project-level accessor member set is empty. Also halt on any folder/organization accessor grant; do not compensate with a condition.
+4. Only after step 3 is proven, create `data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com` and the `data-plane-builder-db-url` secret. The builder receives exactly `roles/cloudsql.client` on project `madhav-astrology`, `roles/pubsub.publisher` on topic `cockpit-events`, and no other project/topic role. Set the builder service-account IAM policy to exactly one unconditional `roles/iam.serviceAccountUser` member: `serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com`.
+5. Provision `data_plane_builder`, `data_plane_verifier`, and `data_plane_migrator` database logins through the approved secret channel. Add the builder URL as a new secret version through stdin; never place it in argv or a file retained after the window. Set the `data-plane-builder-db-url` resource IAM policy—not an additive project grant—to exactly one unconditional binding: `roles/secretmanager.secretAccessor` for `serviceAccount:data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com`. Re-read the complete policy and require byte-for-byte principal/role/condition equality.
+6. Store DBA and migrator URLs only as protected GitHub environment secrets; never argv, image, log, artifact, service, job, web, build-image step, or MCP configuration. Prepare the isolated restore and exact cutover receipt before approving the queued environment deployment.
+7. Rebind only `brahma-build-pipeline-job` in `asia-south1` using `--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com --set-secrets=DATABASE_URL=data-plane-builder-db-url:latest`. Read every service, revision and job in every region and require exactly one conforming named job, with no other builder identity/secret reference or literal credential scalar.
+8. Run the fail-closed IAM preflight before the DBA URL or migrator URL is used. It aggregates conditional bindings across project/folder/organization, resolves predefined/basic/custom permissions with their exact parent, checks builder impersonation, and verifies the full Cloud Run inventory. Then execute one governed canary covering open, bind, populate, capture, complete, replay, select and rollback; independently verify negatives before dispatch resumes.
+
+These are future operator actions. This source lane performed only the read-only
+inventory needed to name the six existing grants and did not mutate IAM, secrets,
+Cloud Run, or a live database.
 
 ## Database cutover and attestation
 
-1. Take a fresh Cloud SQL backup and restore that exact backup only to a distinct isolated validation instance—never over production. Read-attest PostgreSQL 15, the expected schema identity, and unmarked pre-cutover state on that instance. Record one exact JSON receipt containing `backupId`, `restoreOperationId`, `validationInstance`, `sourceCommit`, `leaseId`, `approvedBy`, and `expiresAt`; it expires within 48 hours and is accepted only for the matching immutable deploy commit, unique lease, independent approver, and validation instance. Pause build dispatch; serving reads continue. The `data-plane-production-cutover` GitHub environment must require an independent reviewer and hold the one-shot DBA/migrator/validation evidence secrets. The deploying actor and recorded approver must differ.
+1. Take a fresh Cloud SQL backup and restore that exact backup only to a distinct isolated validation instance—never over production. Read-attest PostgreSQL 15, the expected schema identity, and unmarked pre-cutover state on that instance. Record one exact JSON receipt containing `backupId`, `restoreOperationId`, `validationInstance`, `sourceCommit`, `leaseId`, `approvedBy`, `expiresAt`, `repository`, `workflowRunId`, and `environment`; it expires within 48 hours and is accepted only for the matching immutable deploy commit, unique lease, authenticated independent GitHub deployment review, and validation instance. Start the authenticated Cloud SQL Auth Proxy for the API-verified `project:region:validationInstance` connection name on the dedicated loopback validation port. The validation database URL must address that loopback port exactly; a separately supplied URL/instance string is rejected. Pause build dispatch; serving reads continue.
 2. Run `data-plane-protected-cutover.ts` once. It holds the exclusive PostgreSQL advisory transaction lease plus `SHARE ROW EXCLUSIVE` locks on `build_runs` and `build_run_assets` while proving build-run quiescence, running `data-plane-ownership-preflight.ts` as direct `postgres`, running `data-plane-migration-attestation.ts` as direct `data_plane_migrator`, and earning semantic `marked` status before releasing the lease. The table locks prevent a new build from entering after the zero-active-build observation. The ownership preflight checks normalized pre-created logins and `pgcrypto`, creates the three NOLOGIN owners, performs the exact `bo_samvada` legacy-owner row transition, transfers schema/tables/sequences, closes default PUBLIC execution/type grants, and installs explicit ACLs atomically.
 3. The migration attestation applies stripped 1035 and 1036 bodies under `SET LOCAL ROLE` to their exact owners and inserts both ledger rows in the same transaction. Either both migrations and both markers commit or none do.
 4. Run semantic status attestation before any general migration or deploy dependency can complete. A ledger row alone is insufficient: exact identities, recursive memberships, owners, ACLs, definition digests, triggers, views, policies, sequences, schemas, defaults and negative privileges must converge.
@@ -75,7 +108,7 @@ The semantic status gate is bound to the exact migration filename, SHA-256 and n
 
 - Live IAM transition, secret/role provisioning, backup, maintenance window, and canary execution remain operator actions; none were performed by this source-design lane.
 - Rotate the pre-existing shared `amjis_app` credential and replace MCP argv URL transport in a separate governed change.
-- Verify GitHub environment protection restricts the one-shot DBA and migrator secrets, then remove the DBA secret after durable marked status.
+- Provision and API-verify the GitHub environment protection described above; the current source cannot be released while that external prerequisite is absent. Remove the DBA secret after durable marked status.
 
 ## Bounded writer compatibility authority delta
 
