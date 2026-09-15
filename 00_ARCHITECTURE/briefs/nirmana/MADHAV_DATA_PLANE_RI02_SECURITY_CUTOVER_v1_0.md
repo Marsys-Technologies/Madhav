@@ -21,8 +21,8 @@ pipeline-image release; it did not add safety after semantic cutover acceptance.
 - this cutover record.
 
 No migration, role definition, lifecycle API, writer, orchestrator, producer
-semantics, asset registry or pin is changed. The database roles remain exactly the
-seven roles in **Principals and exact authority** below. The workflow has three
+semantics, asset registry or pin is changed. The database principals remain exactly
+the eight entries in **Principals and exact authority** below. The workflow has three
 database jobs with a finite contract:
 
 1. `migration-state` has no environment and receives only the ordinary
@@ -180,6 +180,9 @@ Cloud Run, or a live database.
 ## Residual release gates
 
 - Live IAM transition, secret/role provisioning, backup, maintenance window, and canary execution remain operator actions; none were performed by this source-design lane.
+- Verify that the existing `PROD_DATABASE_URL` Actions secret is available to
+  non-environment jobs before integration. The state and routine jobs fail closed
+  when it is absent; this packet does not copy or widen any secret.
 - Rotate the pre-existing shared `amjis_app` credential and replace MCP argv URL transport in a separate governed change.
 - Provision and API-verify the GitHub environment protection described above; the current source cannot be released while that external prerequisite is absent. Remove the DBA secret after durable marked status.
 
