@@ -110,6 +110,36 @@ async function revokeAllPublicSchemaGrantees(client: PoolClient): Promise<void> 
   await client.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
 }
 
+async function revokeAllDefaultPrivilegeGrantees(client: PoolClient, owner: string): Promise<void> {
+  const grants = await client.query<{
+    namespace_name: string | null
+    object_kind: 'TABLES' | 'SEQUENCES' | 'FUNCTIONS' | 'TYPES' | 'SCHEMAS'
+    grantee: string
+    privilege_type: string
+  }>(`
+    SELECT ns.nspname namespace_name,
+      CASE d.defaclobjtype
+        WHEN 'r' THEN 'TABLES' WHEN 'S' THEN 'SEQUENCES'
+        WHEN 'f' THEN 'FUNCTIONS' WHEN 'T' THEN 'TYPES' WHEN 'n' THEN 'SCHEMAS'
+      END object_kind,
+      COALESCE(grantee.rolname,'PUBLIC') grantee,acl.privilege_type
+    FROM pg_default_acl d JOIN pg_roles default_owner ON default_owner.oid=d.defaclrole
+    LEFT JOIN pg_namespace ns ON ns.oid=d.defaclnamespace
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+    WHERE default_owner.rolname=$1
+      AND COALESCE(grantee.rolname,'PUBLIC')<>default_owner.rolname
+  `, [owner])
+  for (const grant of grants.rows) {
+    if (!grant.object_kind) throw new Error(`Unsupported default privilege object kind for ${owner}.`)
+    const namespace = grant.namespace_name ? ` IN SCHEMA ${qi(grant.namespace_name)}` : ''
+    const principal = grant.grantee === 'PUBLIC' ? 'PUBLIC' : qi(grant.grantee)
+    await client.query(
+      `ALTER DEFAULT PRIVILEGES${namespace} REVOKE ${grant.privilege_type} ON ${grant.object_kind} FROM ${principal}`,
+    )
+  }
+}
+
 async function assertRoles(client: PoolClient): Promise<void> {
   const actor = await client.query<{ current_user: string; can_manage: boolean }>(`
     SELECT current_user,
@@ -232,6 +262,12 @@ export async function runDataPlaneOwnershipPreflight(databaseUrl = process.env[A
     }
     await client.query('SET LOCAL ROLE data_plane_schema_owner')
     await revokeAllPublicSchemaGrantees(client)
+    await client.query('RESET ROLE')
+    await client.query('SET LOCAL ROLE data_plane_l1_owner')
+    await revokeAllDefaultPrivilegeGrantees(client, 'data_plane_l1_owner')
+    await client.query('RESET ROLE')
+    await client.query('SET LOCAL ROLE data_plane_l2_owner')
+    await revokeAllDefaultPrivilegeGrantees(client, 'data_plane_l2_owner')
     await client.query('RESET ROLE')
     await client.query(`
       DO $$ BEGIN EXECUTE format('REVOKE CREATE ON DATABASE %I FROM amjis_app, data_plane_schema_owner', current_database()); END $$;

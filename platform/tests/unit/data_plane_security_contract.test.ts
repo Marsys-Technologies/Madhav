@@ -90,6 +90,10 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
       expect(sql).not.toMatch(/IF v_asset IS NULL OR v_asset = '' THEN\s+RETURN NEW/)
       expect(sql).toMatch(/mutation_guard BEFORE INSERT OR UPDATE OR DELETE/)
       expect(sql).toMatch(/protected capture contains/)
+      expect(sql).toMatch(/data_plane_view_attestations/)
+      expect(sql).toMatch(/data_plane_trigger_attestations/)
+      expect(sql).toMatch(/pg_get_viewdef/)
+      expect(sql).toMatch(/pg_get_triggerdef/)
       expect(sql).not.toMatch(/GRANT EXECUTE[\s\S]{0,200}TO role_orchestrator/)
     })
   }
@@ -109,6 +113,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(preflight).toContain("revokeAllRelationGrantees(client, 'TABLE'")
     expect(preflight).toContain("revokeAllRelationGrantees(client, 'SEQUENCE'")
     expect(preflight).toContain('revokeAllPublicSchemaGrantees(client)')
+    expect(preflight).toContain('revokeAllDefaultPrivilegeGrantees(client')
   })
 })
 

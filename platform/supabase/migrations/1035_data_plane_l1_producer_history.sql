@@ -1976,6 +1976,54 @@ CREATE TRIGGER l1_data_plane_policy_attestations_immutable
 BEFORE UPDATE OR DELETE ON public.l1_data_plane_policy_attestations
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
 
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_view_attestations (
+  view_name text PRIMARY KEY,
+  relation_kind "char" NOT NULL,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  owner_name text NOT NULL,
+  options text[]
+);
+INSERT INTO public.l1_data_plane_view_attestations(view_name, relation_kind, definition_digest, owner_name, options)
+SELECT c.relname,c.relkind,
+       encode(digest(pg_get_viewdef(c.oid, true), 'sha256'), 'hex'),
+       pg_get_userbyid(c.relowner),c.reloptions
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relkind='v'
+  AND starts_with(c.relname, 'l1_data_plane_current_')
+ON CONFLICT (view_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l1_data_plane_view_attestations_immutable ON public.l1_data_plane_view_attestations;
+CREATE TRIGGER l1_data_plane_view_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_view_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_trigger_attestations (
+  table_name text NOT NULL,
+  trigger_name text NOT NULL,
+  trigger_type smallint NOT NULL,
+  enabled "char" NOT NULL,
+  function_oid oid NOT NULL,
+  function_signature text NOT NULL,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  PRIMARY KEY(table_name, trigger_name)
+);
+INSERT INTO public.l1_data_plane_trigger_attestations(
+  table_name,trigger_name,trigger_type,enabled,function_oid,function_signature,definition_digest
+)
+SELECT c.relname,t.tgname,t.tgtype,t.tgenabled,t.tgfoid,
+       t.tgfoid::regprocedure::text,
+       encode(digest(pg_get_triggerdef(t.oid, true), 'sha256'), 'hex')
+FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname IN (
+  'chart_facts','chart_dashas','chart_divisionals','ga_condition_composite',
+  'ga_yoga_firings','chart_vichara','ga_transit_anchors','l1_tajik_varsha_year_lords',
+  'ga_medical','ga_vastu_planet_direction_map','ga_prashna_lagna','ga_prashna_judgment'
+) ON CONFLICT (table_name,trigger_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l1_data_plane_trigger_attestations_immutable ON public.l1_data_plane_trigger_attestations;
+CREATE TRIGGER l1_data_plane_trigger_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_trigger_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l1_owner.
 DO $l1_role_preflight$
@@ -2007,6 +2055,8 @@ REVOKE ALL ON TABLE
   public.l1_data_plane_configuration_snapshots,
   public.l1_data_plane_function_attestations,
   public.l1_data_plane_policy_attestations,
+  public.l1_data_plane_view_attestations,
+  public.l1_data_plane_trigger_attestations,
   public.l1_data_plane_generation_heads,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
@@ -2026,6 +2076,8 @@ GRANT SELECT ON TABLE
   public.l1_data_plane_configuration_snapshots,
   public.l1_data_plane_function_attestations,
   public.l1_data_plane_policy_attestations,
+  public.l1_data_plane_view_attestations,
+  public.l1_data_plane_trigger_attestations,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
   public.l1_data_plane_current_facts,

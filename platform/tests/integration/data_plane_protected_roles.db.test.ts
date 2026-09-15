@@ -253,6 +253,38 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
     }
   })
 
+  it('fails semantic attestation on rewritten views and undeclared protected-table triggers', async () => {
+    const view = 'public.l1_data_plane_current_facts'
+    const originalView = (await admin.query<{ definition: string }>(
+      'SELECT pg_get_viewdef($1::regclass,true) AS definition', [view],
+    )).rows[0].definition.replace(/;\s*$/, '')
+    try {
+      await admin.query(`CREATE OR REPLACE VIEW ${view} AS SELECT * FROM (${originalView}) AS drift WHERE false`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/policies, views, or default privileges drift/)
+    } finally {
+      await admin.query(`CREATE OR REPLACE VIEW ${view} AS ${originalView}`)
+    }
+
+    try {
+      await admin.query(`CREATE TRIGGER dp_rogue_trigger BEFORE INSERT ON public.chart_facts
+        FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change()`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/trigger inventory or definition drift/)
+    } finally {
+      await admin.query('DROP TRIGGER IF EXISTS dp_rogue_trigger ON public.chart_facts')
+    }
+
+    try {
+      await admin.query(`SET ROLE data_plane_l1_owner;
+        ALTER DEFAULT PRIVILEGES GRANT EXECUTE ON FUNCTIONS TO data_plane_builder;
+        RESET ROLE`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/default privileges drift/)
+    } finally {
+      await admin.query(`SET ROLE data_plane_l1_owner;
+        ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM data_plane_builder;
+        RESET ROLE`)
+    }
+  })
+
   it('rejects mismatched context atomically', async () => {
     const generation = randomUUID()
     const client = await builder.connect()

@@ -15,6 +15,7 @@ const L1_HISTORY = [
   'l1_data_plane_generations','l1_data_plane_generation_partitions','l1_data_plane_partition_contexts',
   'l1_data_plane_row_snapshots','l1_data_plane_fact_snapshots','l1_data_plane_dasha_snapshots',
   'l1_data_plane_configuration_snapshots','l1_data_plane_function_attestations','l1_data_plane_policy_attestations',
+  'l1_data_plane_view_attestations','l1_data_plane_trigger_attestations',
   'l1_data_plane_generation_heads','l1_data_plane_current_rows','l1_data_plane_current_dashas',
   'l1_data_plane_current_facts','l1_data_plane_current_configurations',
 ] as const
@@ -23,6 +24,7 @@ const L2_HISTORY = [
   'l2_data_plane_run_rows','l2_data_plane_partition_contexts','l2_data_plane_run_intents',
   'l2_data_plane_input_bind_receipts','l2_data_plane_row_snapshots','l2_data_plane_generation_heads',
   'l2_data_plane_asset_outputs','l2_data_plane_function_attestations','l2_data_plane_policy_attestations',
+  'l2_data_plane_view_attestations','l2_data_plane_trigger_attestations',
   'l2_data_plane_current_rows',
 ] as const
 
@@ -201,6 +203,29 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
     `, [[...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
     if (triggerShape.rows[0]?.unsafe) throw new Error('Protected mutation trigger OID/event/timing drift detected.')
 
+    const triggerSurface = await pool.query<{ unsafe: boolean }>(`
+      WITH expected AS (
+        SELECT * FROM public.l1_data_plane_trigger_attestations
+        UNION ALL SELECT * FROM public.l2_data_plane_trigger_attestations
+      ), actual AS (
+        SELECT c.relname table_name,t.tgname trigger_name,t.tgtype trigger_type,
+               t.tgenabled enabled,t.tgfoid function_oid,t.tgfoid::regprocedure::text function_signature,
+               encode(digest(pg_get_triggerdef(t.oid,true),'sha256'),'hex') definition_digest
+        FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+        JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname=ANY($1::text[])
+      )
+      SELECT EXISTS (
+        SELECT 1 FROM actual a FULL JOIN expected e
+          ON a.table_name=e.table_name AND a.trigger_name=e.trigger_name
+         AND a.trigger_type=e.trigger_type AND a.enabled=e.enabled
+         AND a.function_oid=e.function_oid AND a.function_signature=e.function_signature
+         AND a.definition_digest=e.definition_digest
+        WHERE a.table_name IS NULL OR e.table_name IS NULL
+      ) AS unsafe
+    `, [[...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
+    if (triggerSurface.rows[0]?.unsafe) throw new Error('Protected trigger inventory or definition drift detected.')
+
     const functionDigests = await pool.query<{ unsafe: boolean }>(`
       SELECT EXISTS (
         SELECT 1 FROM (
@@ -238,6 +263,9 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
       WITH expected_policies AS (
         SELECT * FROM public.l1_data_plane_policy_attestations
         UNION ALL SELECT * FROM public.l2_data_plane_policy_attestations
+      ), expected_views AS (
+        SELECT * FROM public.l1_data_plane_view_attestations
+        UNION ALL SELECT * FROM public.l2_data_plane_view_attestations
       ), actual_policies AS (
         SELECT c.relname table_name,p.polname policy_name,p.polcmd command,
                p.polpermissive permissive,p.polroles role_oids,
@@ -246,6 +274,14 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
         FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
         JOIN pg_namespace n ON n.oid=c.relnamespace
         WHERE n.nspname='public' AND c.relname=ANY($1::text[])
+      ), actual_views AS (
+        SELECT c.relname view_name,c.relkind relation_kind,
+               encode(digest(pg_get_viewdef(c.oid,true),'sha256'),'hex') definition_digest,
+               pg_get_userbyid(c.relowner) owner_name,c.reloptions options
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind IN ('v','m')
+          AND (starts_with(c.relname, 'l1_data_plane_current_')
+            OR starts_with(c.relname, 'l2_data_plane_current_'))
       )
       SELECT EXISTS (
         SELECT 1 FROM actual_policies a FULL JOIN expected_policies e
@@ -254,19 +290,37 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
          AND a.using_expression IS NOT DISTINCT FROM e.using_expression
          AND a.check_expression IS NOT DISTINCT FROM e.check_expression
         WHERE a.table_name IS NULL OR e.table_name IS NULL
+      ) OR EXISTS (
+        SELECT 1 FROM actual_views a FULL JOIN expected_views e
+          ON a.view_name=e.view_name AND a.relation_kind=e.relation_kind
+         AND a.definition_digest=e.definition_digest
+         AND a.owner_name=e.owner_name AND a.options IS NOT DISTINCT FROM e.options
+        WHERE a.view_name IS NULL OR e.view_name IS NULL
       )
-        OR EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-                   JOIN pg_roles r ON r.oid=c.relowner
-                   WHERE n.nspname='public' AND c.relname=ANY($2::text[])
-                     AND (c.relkind<>'v' OR r.rolname<>CASE WHEN c.relname LIKE 'l1_%' THEN 'data_plane_l1_owner' ELSE 'data_plane_l2_owner' END))
-        OR EXISTS (SELECT 1 FROM pg_default_acl d JOIN pg_roles r ON r.oid=d.defaclrole,
-                   LATERAL aclexplode(d.defaclacl) a
-                   WHERE r.rolname=ANY($3::text[]) AND a.grantee=0
-                     AND a.privilege_type IN ('EXECUTE','USAGE'))
+        OR EXISTS (
+          WITH actual AS (
+            SELECT owner.rolname owner_name,ns.nspname namespace_name,d.defaclobjtype object_type,
+                   COALESCE(grantee.rolname,'PUBLIC') grantee,a.privilege_type,a.is_grantable
+            FROM pg_default_acl d JOIN pg_roles owner ON owner.oid=d.defaclrole
+            LEFT JOIN pg_namespace ns ON ns.oid=d.defaclnamespace
+            CROSS JOIN LATERAL aclexplode(d.defaclacl) a
+            LEFT JOIN pg_roles grantee ON grantee.oid=a.grantee
+            WHERE owner.rolname=ANY($2::text[])
+          ), expected(owner_name,namespace_name,object_type,grantee,privilege_type,is_grantable) AS (VALUES
+            ('data_plane_l1_owner',NULL::text,'f'::"char",'data_plane_l1_owner','EXECUTE',false),
+            ('data_plane_l1_owner',NULL::text,'T'::"char",'data_plane_l1_owner','USAGE',false),
+            ('data_plane_l2_owner',NULL::text,'f'::"char",'data_plane_l2_owner','EXECUTE',false),
+            ('data_plane_l2_owner',NULL::text,'T'::"char",'data_plane_l2_owner','USAGE',false)
+          )
+          SELECT 1 FROM actual a FULL JOIN expected e
+            ON a.owner_name=e.owner_name AND a.namespace_name IS NOT DISTINCT FROM e.namespace_name
+           AND a.object_type=e.object_type AND a.grantee=e.grantee
+           AND a.privilege_type=e.privilege_type AND a.is_grantable=e.is_grantable
+          WHERE a.owner_name IS NULL OR e.owner_name IS NULL
+        )
         AS unsafe
     `, [
       [...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES],
-      ['l1_data_plane_current_rows','l1_data_plane_current_dashas','l1_data_plane_current_facts','l1_data_plane_current_configurations','l2_data_plane_current_rows'],
       ['data_plane_l1_owner','data_plane_l2_owner'],
     ])
     if (catalogSurface.rows[0]?.unsafe) throw new Error('Protected policies, views, or default privileges drift detected.')

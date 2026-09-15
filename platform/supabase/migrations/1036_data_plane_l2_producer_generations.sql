@@ -1701,6 +1701,59 @@ CREATE TRIGGER l2_data_plane_policy_attestations_immutable
 BEFORE UPDATE OR DELETE ON public.l2_data_plane_policy_attestations
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_view_attestations (
+  view_name text PRIMARY KEY,
+  relation_kind "char" NOT NULL,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  owner_name text NOT NULL,
+  options text[]
+);
+INSERT INTO public.l2_data_plane_view_attestations(view_name, relation_kind, definition_digest, owner_name, options)
+SELECT c.relname,c.relkind,
+       encode(digest(pg_get_viewdef(c.oid, true), 'sha256'), 'hex'),
+       pg_get_userbyid(c.relowner),c.reloptions
+FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relkind='v'
+  AND starts_with(c.relname, 'l2_data_plane_current_')
+ON CONFLICT (view_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l2_data_plane_view_attestations_immutable ON public.l2_data_plane_view_attestations;
+CREATE TRIGGER l2_data_plane_view_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_view_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_trigger_attestations (
+  table_name text NOT NULL,
+  trigger_name text NOT NULL,
+  trigger_type smallint NOT NULL,
+  enabled "char" NOT NULL,
+  function_oid oid NOT NULL,
+  function_signature text NOT NULL,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  PRIMARY KEY(table_name, trigger_name)
+);
+INSERT INTO public.l2_data_plane_trigger_attestations(
+  table_name,trigger_name,trigger_type,enabled,function_oid,function_signature,definition_digest
+)
+SELECT c.relname,t.tgname,t.tgtype,t.tgenabled,t.tgfoid,
+       t.tgfoid::regprocedure::text,
+       encode(digest(pg_get_triggerdef(t.oid, true), 'sha256'), 'hex')
+FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE NOT t.tgisinternal AND n.nspname='public' AND c.relname IN (
+  'bodha_msr_signals','bodha_cgm_nodes','bodha_cgm_edges','bodha_contradictions',
+  'bodha_cgm_paths','bodha_cgm_motifs','bodha_cgm_sub_graphs','bodha_cgm_chart_topology_summary',
+  'bodha_mechanisms','bodha_cdlm_cells','bodha_convergence','bodha_triangulation',
+  'bodha_cdlm_chart_summary','bodha_cdlm_domain_rollups','bodha_cdlm_pattern_clusters',
+  'bodha_pratijna','bodha_rm_resonances','bodha_rm_remedy_prescriptions',
+  'bodha_rm_dasha_windowed_prescriptions','bodha_rm_chart_summary','bodha_rm_dosha_remedy_bundles',
+  'bodha_rm_pattern_remedies','bodha_signal_embeddings','bodha_discoveries','bodha_anomalies',
+  'bodha_question_lenses','bodha_chart_gestalt','synthesis_quality_scorecard','bodha_grounding_matches'
+) ON CONFLICT (table_name,trigger_name) DO NOTHING;
+DROP TRIGGER IF EXISTS l2_data_plane_trigger_attestations_immutable ON public.l2_data_plane_trigger_attestations;
+CREATE TRIGGER l2_data_plane_trigger_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_trigger_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l2_owner.
 DO $l2_role_preflight$
@@ -1735,6 +1788,8 @@ REVOKE ALL ON TABLE
   public.l2_data_plane_asset_outputs,
   public.l2_data_plane_function_attestations,
   public.l2_data_plane_policy_attestations,
+  public.l2_data_plane_view_attestations,
+  public.l2_data_plane_trigger_attestations,
   public.l2_data_plane_current_rows
 FROM PUBLIC, role_orchestrator, data_plane_builder, data_plane_verifier,
      data_plane_migrator, amjis_app;
@@ -1752,6 +1807,8 @@ GRANT SELECT ON TABLE
   public.l2_data_plane_asset_outputs,
   public.l2_data_plane_function_attestations,
   public.l2_data_plane_policy_attestations,
+  public.l2_data_plane_view_attestations,
+  public.l2_data_plane_trigger_attestations,
   public.l2_data_plane_current_rows
 TO data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app;
 
