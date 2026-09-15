@@ -340,7 +340,8 @@ class KaYojakaWriter(WriterBase):
             rule['multi_system_confirmation_count'] = structural[
                 'multi_system_confirmation_count'
             ]
-            rule['multi_system_confirmation_aggregate_rule'] = 'max_supported_domain_v1'
+            rule['primary_domain'] = structural['primary_domain']
+            rule['multi_system_confirmation_aggregate_rule'] = 'primary_domain_v1'
 
             hook = pred['strength_affliction_hook']
             hook['signal_valence'] = structural['signal_valence']
@@ -849,10 +850,11 @@ def _build_structural_domain_context(
     The per-domain maps retain exact distinctions.  The existing CDLM scalar
     stays bound to the legacy inferred-domain lookup so the accepted CDLM
     behavior does not drift; the new per-domain map carries the complete view.
-    Multi-system confirmation uses the maximum supported domain as an explicitly
-    versioned signal-level aggregate, so existing consumers receive a meaningful
-    distinction without silently dropping secondary-domain support.  Promise IDs
-    are never capped; they are stable and de-duplicated in upstream domain order,
+    Multi-system confirmation's compatibility scalar uses the authoritative
+    primary domain (the first L2 membership), exactly matching ph_nimitta's
+    existing ``domains_affected_array[1]`` selection; the complete map preserves
+    secondary-domain support without cross-domain inflation.  Promise IDs are
+    never capped; they are stable and de-duplicated in upstream domain order,
     then SQL grade/id order.
     """
     domains, domain_source = _normalize_signal_domains(signal_dict)
@@ -881,6 +883,7 @@ def _build_structural_domain_context(
         domain: max(0, int(domain_confirmation.get(domain, 0)))
         for domain in domains
     }
+    primary_domain = domains[0] if domains else None
 
     raw_contrary = signal_dict.get('contradicts_signals_array')
     contrary_ids = _stable_string_ids(raw_contrary)
@@ -897,6 +900,7 @@ def _build_structural_domain_context(
 
     return {
         'domains_affected': domains,
+        'primary_domain': primary_domain,
         'domain_source': domain_source,
         'domain_salience_by_domain': _domain_salience_for(
             signal_dict.get('domain_salience_jsonb'), domains,
@@ -909,8 +913,10 @@ def _build_structural_domain_context(
         'pratijna_ids_by_domain': promise_ids_by_domain,
         'pratijna_ids': all_promise_ids,
         'multi_system_confirmation_by_domain': confirmation_by_domain,
-        'multi_system_confirmation_count': max(
-            confirmation_by_domain.values(), default=0,
+        'multi_system_confirmation_count': (
+            confirmation_by_domain.get(primary_domain, 0)
+            if primary_domain is not None
+            else 0
         ),
         'signal_valence': (
             str(signal_dict['valence'])
