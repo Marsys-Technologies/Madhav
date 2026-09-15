@@ -2,7 +2,7 @@
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
 status: RI_01_HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
-observed_at: 2026-09-15T05:49:00+05:30
+observed_at: 2026-09-15T06:07:00+05:30
 strategy_decision: DP-SD-017
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
@@ -11,6 +11,7 @@ active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 active_packet: L3-RI-01-PRECURSOR-GENERATION-INTEGRATION
 implementation_tip: 8bda677aa67747e027a2fc2c5609addc2fee63c9
+ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
 w0_accepted_source_tip: 00a161195
 coordination_lease: MADHAV-DATA-PLANE-L3-RI01-20260915
 heartbeat_id: l3-k-la-execution-recovery
@@ -259,6 +260,12 @@ role/credential/ownership cutover require administrator authority outside this
 candidate. RI-01 therefore remains held before PR/shared apply; it needs
 protected non-L3 pin reconciliation and database cutover authority, followed by
 exact-tip review and full checks. This is not protected delivery.
+
+Independent exact-tip re-challenge at `6a7ecc17117163debcc4b742aa183f17588ef621`
+returned PASS for all code-owned findings with no additional
+CRITICAL/HIGH/MED/LOW finding. It explicitly retained the separate HIGH
+production-owner cutover hold and authorized no PR, shared apply, deployment or
+build.
 
 ## 6. Workstream ownership and recovery
 

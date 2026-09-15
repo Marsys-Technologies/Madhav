@@ -2,10 +2,11 @@
 artifact: MADHAV_DATA_PLANE_L3_RI01_PRECURSOR_INTEGRATION
 version: "1.0"
 status: HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
-observed_at: 2026-09-15T05:49:00+05:30
+observed_at: 2026-09-15T06:07:00+05:30
 strategy_decision: DP-SD-017
 accepted_w0_source_tip: 00a161195
 hardening_commit: 8bda677aa67747e027a2fc2c5609addc2fee63c9
+reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
 protected_main_observed: 731e311f0b8f5f84db2f152b93951e1d3d50d89a
 planner_head_observed: fccfbb5ab11eadb33259ff987738068753d12ebc
 coordination_commit: ef132c87dbf483aae0b2c805a61deeb9bee0ba1e
@@ -104,8 +105,10 @@ is not counted as migration evidence.
 
 ## 5. Review findings and release gates
 
-The independent review's generation/admission HIGH findings are corrected and
-locally proved. One HIGH security finding remains deliberately open: production
+Independent exact-tip re-challenge PASS at `6a7ecc17117163debcc4b742aa183f17588ef621`
+confirmed all three code-owned HIGH findings closed with no additional
+CRITICAL/HIGH/MED/LOW finding. One HIGH security finding remains deliberately
+open: production
 migrations and the current build path authenticate as `amjis_app`, which owns
 objects it creates. `role_orchestrator` is NOLOGIN, `amjis_app` is not its member,
 and grants or revokes cannot constrain an object owner. The migration closes
