@@ -14,6 +14,7 @@ role: >
   adopted planning-basis and proposal state without granting implementation,
   campaign, merge or deployment authority except through a separately approved brief.
 changelog:
+  - "1.0 update 2026-09-15: Approves DP-SD-019 in-place execution-focus amendment following the velocity audit: retain the full L3 goal and current repair, isolate privileged bootstrap from routine delivery, restore independent asset/value work, and strengthen durable recovery and proportional validation. Dispatch evidence is recorded in section 11."
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
   - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
@@ -146,6 +147,20 @@ The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
 and execution brief.
 
+### DP-SD-019 — execution focus and recovery
+
+The native authorized Strategy to inspect the current L3 execution and inject
+the recommended corrective prompt into the existing task. Strategy selects an
+in-place amendment: preserve the accepted security integration and active
+provenance repair; isolate privileged bootstrap from routine deployment;
+restore useful independent asset/performance/consumer work; use durable
+checkpoints, proportional review and accepted-asset throughput. The full
+DP-SD-017 goal, DP-SD-018 bounded authority and all 22 active identities remain.
+The approved instruction is
+[L3 execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md).
+This is implementation authorization for its stated corrections, not evidence
+that any correction or L3 asset is complete. Exact content and dispatch are in §11.
+
 ## 5. Assumptions, contested findings and evidence limits
 
 ### Working assumptions
@@ -268,3 +283,14 @@ remain separate statuses.
 | Approval-record binding | `7f21f27b14a7909424591a530096dc2f5d6e2b13` records native DP-SD-018 approval of the exact content pin above after independent review. |
 | Dispatch | DISPATCHED at 2026-09-15 11:42 IST: task-message tool confirmed success for `01a0998a-8240-7631-97ce-36c6d4734fde`. Fresh task snapshot at 11:43 IST reports `active`, turn `01a0a3b2-18ee-71b1-8e32-dd5cb9d1668a` `inProgress`. Goal/heartbeat reconciliation and actual repair remain execution-owned; no gate-closure claim. |
 | Scope guard | Original history and retired sweep remain protected; no blanket provenance repin, branch-protection bypass, broad IAM, unrelated credential rotation, L4/L5 elevation or empirical claim. |
+
+## 11. L3 execution focus control — DP-SD-019
+
+| Control | Binding |
+|---|---|
+| Native decision | Inspect current execution and, if preferred, build and inject the velocity-audit corrections into the same execution task. Strategy selects in-place continuation. |
+| Approved instruction | [Execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md), version 1.0. |
+| Current observations | Permanent branch clean at `d22533825613c3d428bd844a5dfdc2c0c283b088`; isolated provenance candidate at `66a85047b1b7e2415d7cf2678179983f0708d761`; task active. These are refreshable observations, not final acceptance. |
+| Destination | `Execution — Data Plane`, `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`; preserve `codex/madhav-data-plane-execution` and its existing worktree. |
+| Goal and authority | Retain full DP-SD-017 L3 completion and DP-SD-018 prerequisite authority. Narrowly authorize bootstrap/routine-workflow separation and operating corrections; no protection bypass or new layer scope. |
+| Content pin and dispatch | Pending commit and successful task-message delivery; update from actual results. |
