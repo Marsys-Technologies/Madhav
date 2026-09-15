@@ -4,6 +4,8 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { Pool } from 'pg'
 import { runDataPlaneOwnershipPreflight } from '../../scripts/data-plane-ownership-preflight'
 import { attestDataPlaneMigrations } from '../../scripts/data-plane-migration-attestation'
+import { readDataPlaneOwnershipStatus } from '../../scripts/data-plane-ownership-status'
+import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 const adminUrl = process.env.DATA_PLANE_ROLE_TEST_DATABASE_URL
 function roleUrl(role: string): string {
@@ -49,10 +51,38 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
     )).rejects.toThrow(/no admitted transaction context/)
   })
 
+  it('installs the exact BEFORE INSERT/UPDATE/DELETE admission guard on every protected table', async () => {
+    const guards = await admin.query<{ relname: string; valid: boolean }>(`
+      SELECT c.relname,
+        t.tgtype=31 AND t.tgenabled IN ('O','A') AND t.tgfoid=CASE
+          WHEN c.relname=ANY($1::text[]) THEN 'public.l1_data_plane_guard_active_mutation()'::regprocedure
+          ELSE 'public.l2_data_plane_guard_active_mutation()'::regprocedure
+        END AS valid
+      FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+      LEFT JOIN pg_trigger t ON t.tgrelid=c.oid AND NOT t.tgisinternal
+        AND t.tgname=CASE WHEN c.relname=ANY($1::text[])
+          THEN 'l1_data_plane_mutation_guard' ELSE 'l2_data_plane_mutation_guard' END
+      WHERE n.nspname='public' AND c.relname=ANY($2::text[])
+    `, [[...L1_ACTIVE_TABLES], [...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
+    expect(new Set(guards.rows.filter((row) => row.valid).map((row) => row.relname)))
+      .toEqual(new Set([...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]))
+  })
+
   it('rejects an undeclared empty L1 head and rolls the receipt back atomically', async () => {
     const generation = randomUUID()
     const client = await builder.connect()
     try {
+      await client.query('BEGIN')
+      await client.query(`INSERT INTO build_runs(id,chart_id,scope,action,state,plan,triggered_by) VALUES($1,$2,'asset','build','running','{}','test')`, [generation, chart])
+      await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'ga_positions',1,'building')`, [generation])
+      for (const [key, value] of Object.entries({
+        'madhav.l1_asset_id': 'ga_positions', 'madhav.l1_chart_id': chart,
+        'madhav.l1_generation_id': generation, 'madhav.l1_partition_key': 'empty',
+        'madhav.l1_contract_version': 'l1.data-plane.contract.1.0',
+      })) await client.query('SELECT set_config($1,$2,true)', [key, value])
+      await client.query(`SELECT open_l1_data_plane_generation($1,'ga_positions',$2,'empty',1,NULL,'l1.data-plane.contract.1.0','l0.semantic.2026-09-13.1','665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1','l0-resource-config-g1','d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a')`, [chart, generation])
+      await expect(client.query(`SELECT complete_l1_data_plane_partition($1,'ga_positions',$2,'empty',777)`, [chart, generation])).rejects.toThrow(/reported 777 rows but protected capture contains 0/)
+      await client.query('ROLLBACK')
       await client.query('BEGIN')
       await client.query(`INSERT INTO build_runs(id,chart_id,scope,action,state,plan,triggered_by) VALUES($1,$2,'asset','build','running','{}','test')`, [generation, chart])
       await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'ga_positions',1,'building')`, [generation])
@@ -150,6 +180,77 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
     await expect(builder.query(`UPDATE l1_data_plane_generations SET status='complete' WHERE chart_id=$1`, [chart])).rejects.toThrow()
     await expect(verifier.query(`DELETE FROM chart_facts WHERE chart_id=$1`, [chart])).rejects.toThrow()
     await expect(verifier.query(`SELECT count(*) FROM select_l1_data_plane_generation($1,'ga_positions',$2)`, [chart, l1Build])).resolves.toBeDefined()
+  })
+
+  it('rejects direct UPDATE/DELETE and fabricated or unbound L2 completion', async () => {
+    await expect(builder.query(`UPDATE chart_facts SET fact_key=fact_key WHERE chart_id=$1`, [chart])).rejects.toThrow(/no admitted transaction context/)
+    await expect(builder.query(`DELETE FROM chart_facts WHERE chart_id=$1`, [chart])).rejects.toThrow(/no admitted transaction context/)
+    await expect(builder.query(`UPDATE bodha_msr_signals SET signal_type_id=signal_type_id WHERE chart_id=$1`, [chart])).rejects.toThrow(/no admitted transaction context/)
+    await expect(builder.query(`DELETE FROM bodha_msr_signals WHERE chart_id=$1`, [chart])).rejects.toThrow(/no admitted transaction context/)
+
+    const digest = (await verifier.query(`SELECT semantic_output_digest FROM l1_data_plane_generations WHERE generation_id=$1`, [l1Build])).rows[0].semantic_output_digest
+    const vector = [{ layer: 'L1', asset_id: 'ga_positions', generation_id: l1Build, semantic_output_digest: digest }]
+    const context = { chart_id: chart, generation_context_id: 'negative-context', calculation_context_id: 'negative-calculation', subject_id: 'fixture', ayanamsha_id: 'lahiri', reference_frame: 'sidereal', varga_id: 'D1', partition_key: 'negative' }
+    for (const bind of [false, true]) {
+      const build = randomUUID()
+      const generation = randomUUID()
+      const client = await builder.connect()
+      try {
+        await client.query('BEGIN')
+        await client.query(`INSERT INTO build_runs(id,chart_id,scope,action,state,plan,triggered_by) VALUES($1,$2,'asset','build','running','{}','test')`, [build, chart])
+        await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'bo_laksana',1,'building')`, [build])
+        for (const [key, value] of Object.entries({
+          'madhav.l2_asset_id': 'bo_laksana', 'madhav.l2_chart_id': chart,
+          'madhav.l2_generation_id': generation, 'madhav.l2_partition_key': 'negative',
+          'madhav.l2_build_id': build, 'madhav.l2_contract_version': 'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0',
+        })) await client.query('SELECT set_config($1,$2,true)', [key, value])
+        if (bind) await client.query('SELECT bind_l2_exact_inputs($1,$2)', [chart, JSON.stringify(vector)])
+        const open = client.query(`SELECT open_l2_data_plane_generation($1,'bo_laksana',$2,'negative',1,$3,NULL,
+          'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0',$4,$5,$6,'data_plane_builder')`,
+        [chart, generation, build, '1'.repeat(64), context, JSON.stringify(vector)])
+        if (!bind) {
+          await expect(open).rejects.toThrow(/requires an exact-input bind receipt/)
+        } else {
+          await open
+          await expect(client.query(`SELECT complete_l2_data_plane_partition($1,'bo_laksana',$2,'negative',$3,99,88,77)`, [chart, generation, build]))
+            .rejects.toThrow(/reported 99 inserts \+ 88 updates but protected capture contains 0 rows/)
+        }
+        await client.query('ROLLBACK')
+      } finally { client.release() }
+    }
+  })
+
+  it('fails semantic attestation on recursive membership, function replacement, and marker tampering', async () => {
+    await admin.query('CREATE ROLE dp_owner_bridge NOLOGIN NOINHERIT')
+    try {
+      await admin.query('GRANT data_plane_l1_owner TO dp_owner_bridge; GRANT dp_owner_bridge TO data_plane_builder')
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/Recursive protected-owner membership/)
+    } finally {
+      await admin.query('REVOKE dp_owner_bridge FROM data_plane_builder; REVOKE data_plane_l1_owner FROM dp_owner_bridge; DROP ROLE dp_owner_bridge')
+    }
+
+    const signature = 'public.open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text)'
+    const original = (await admin.query<{ definition: string }>('SELECT pg_get_functiondef($1::regprocedure) AS definition', [signature])).rows[0].definition
+    try {
+      await admin.query(`CREATE OR REPLACE FUNCTION public.open_l1_data_plane_generation(
+        p_chart_id uuid,p_asset_id text,p_generation_id text,p_partition_key text,p_expected_partitions integer,
+        p_correction_of_generation_id text,p_contract_version text,p_l0_semantic_release_id text,
+        p_l0_semantic_release_digest text,p_l0_config_generation_id text,p_l0_config_digest text
+      ) RETURNS void LANGUAGE plpgsql SECURITY DEFINER
+        SET search_path=pg_catalog,public,pg_temp AS $$ BEGIN NULL; END $$`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/function definition digest/)
+    } finally { await admin.query(original) }
+
+    const identities = await admin.query<{ filename: string; sql_identity: string }>(`
+      SELECT filename,sql_identity FROM _migrations_applied
+      WHERE filename IN ('1035_data_plane_l1_producer_history.sql','1036_data_plane_l2_producer_generations.sql') ORDER BY filename`)
+    try {
+      await admin.query(`UPDATE _migrations_applied SET sql_identity='tampered'
+        WHERE filename IN ('1035_data_plane_l1_producer_history.sql','1036_data_plane_l2_producer_generations.sql')`)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/mismatched protected identity/)
+    } finally {
+      for (const row of identities.rows) await admin.query('UPDATE _migrations_applied SET sql_identity=$1 WHERE filename=$2', [row.sql_identity, row.filename])
+    }
   })
 
   it('rejects mismatched context atomically', async () => {

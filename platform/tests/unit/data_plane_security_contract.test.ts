@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, extractRunIdentityAndSecrets } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
@@ -41,10 +41,32 @@ describe('DP-SD-018 GCP credential isolation', () => {
   it('permits the builder secret only on the named build job', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
     const policy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }
-    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'amjis-web', definition: { secret: 'data-plane-builder-db-url' } }]))
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'amjis-web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'data-plane-builder-db-url' } } }]))
       .toThrow(/outside the one named build job/)
-    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'job', name: 'brahma-build-pipeline-job', definition: { secret: 'data-plane-builder-db-url', serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'job', name: 'brahma-build-pipeline-job', definition: { secretKeyRef: { name: 'data-plane-builder-db-url' }, serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
       .not.toThrow()
+  })
+  it('requires exactly one deployer impersonation grant and searches project ancestry', () => {
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
+    const surface = [{ kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: { serviceAccount: BUILDER_SERVICE_ACCOUNT, secretKeyRef: { name: 'data-plane-builder-db-url' } } }]
+    expect(() => assertEffectiveIsolation([], { bindings: [] }, surface)).toThrow(/impersonation policy/)
+    expect(() => assertEffectiveIsolation([], { bindings: [
+      { role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] },
+      { role: 'roles/iam.serviceAccountTokenCreator', members: ['serviceAccount:conditional@example'], condition: { expression: 'true' } },
+    ] }, surface)).toThrow(/impersonation policy/)
+    expect(iamSearchScopes([
+      { type: 'project', id: 'madhav-astrology' },
+      { type: 'folder', id: '123' },
+      { type: 'organization', id: '456' },
+    ])).toEqual([`projects/${process.env.GCP_PROJECT ?? 'madhav-astrology'}`, 'projects/madhav-astrology', 'folders/123', 'organizations/456'].filter((scope, index, all) => all.indexOf(scope) === index))
+  })
+  it('rejects builder identity or deployment-only secrets on every other surface', () => {
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
+    const policy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
+      .toThrow(/Builder identity is used outside/)
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'data-plane-admin-db-url' } } }]))
+      .toThrow(/DBA\/migrator credential/)
   })
   it('extracts every revision secret and requires an explicit per-secret runtime grant', () => {
     const inventory = extractRunIdentityAndSecrets({ spec: { template: { spec: {

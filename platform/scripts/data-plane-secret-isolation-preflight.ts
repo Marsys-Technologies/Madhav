@@ -11,6 +11,20 @@ interface IamPolicy { bindings?: IamBinding[] }
 interface ServiceAccount { disabled?: boolean }
 interface CloudRunEntry { metadata?: { name?: string } }
 interface EffectivePolicy { resource?: string; policy?: IamPolicy }
+interface ResourceAncestor { type?: string; id?: string }
+
+export function iamSearchScopes(ancestors: ResourceAncestor[]): string[] {
+  const scopes = new Set<string>([`projects/${project}`])
+  for (const ancestor of ancestors) {
+    if (!ancestor.type || !ancestor.id || !['project', 'folder', 'organization'].includes(ancestor.type)) {
+      throw new Error('Could not resolve the complete project/folder/organization IAM ancestry.')
+    }
+    if (ancestor.type === 'project') scopes.add(`projects/${ancestor.id}`)
+    if (ancestor.type === 'folder') scopes.add(`folders/${ancestor.id}`)
+    if (ancestor.type === 'organization') scopes.add(`organizations/${ancestor.id}`)
+  }
+  return [...scopes]
+}
 
 export function extractRunIdentityAndSecrets(definition: unknown): { serviceAccount: string; secrets: string[] } {
   let serviceAccount = ''
@@ -95,21 +109,27 @@ export function assertEffectiveIsolation(
       || binding.role === 'roles/iam.serviceAccountUser')
     .flatMap((binding) => (binding.members ?? []).map((member) => `${binding.role}:${member}`))
   const expectedDeployer = process.env.DATA_PLANE_DEPLOY_PRINCIPAL
-  if (!expectedDeployer || impersonators.some((entry) => entry !== `roles/iam.serviceAccountUser:${expectedDeployer}`)) {
+  if (!expectedDeployer || impersonators.length !== 1
+      || impersonators[0] !== `roles/iam.serviceAccountUser:${expectedDeployer}`) {
     throw new Error('Builder service-account impersonation policy is not the exact deployment-only allowlist.')
   }
   for (const surface of surfaces) {
     const serialized = JSON.stringify(surface.definition)
-    if (/data-plane-migrator|DATA_PLANE_MIGRATOR_DATABASE_URL|DATA_PLANE_ADMIN_DATABASE_URL/i.test(serialized)) {
+    const inventory = extractRunIdentityAndSecrets(surface.definition)
+    if (/data-plane-(?:migrator|admin|dba)|DATA_PLANE_MIGRATOR_DATABASE_URL|DATA_PLANE_ADMIN_DATABASE_URL/i.test(serialized)) {
       throw new Error(`Deployment-only DBA/migrator credential is mounted on Cloud Run ${surface.kind}/${surface.name}.`)
     }
-    const hasBuilderSecret = serialized.includes(BUILDER_SECRET)
+    const hasBuilderSecret = inventory.secrets.includes(BUILDER_SECRET)
     if (hasBuilderSecret && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job'
-        || !serialized.includes(BUILDER_SERVICE_ACCOUNT))) {
+        || inventory.serviceAccount !== BUILDER_SERVICE_ACCOUNT)) {
       throw new Error(`Builder credential is mounted outside the one named build job (${surface.kind}/${surface.name}).`)
     }
+    if (inventory.serviceAccount === BUILDER_SERVICE_ACCOUNT
+        && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job')) {
+      throw new Error(`Builder identity is used outside the one named build job (${surface.kind}/${surface.name}).`)
+    }
     if (surface.kind === 'job' && surface.name === 'brahma-build-pipeline-job'
-        && (!hasBuilderSecret || !serialized.includes(BUILDER_SERVICE_ACCOUNT))) {
+        && (!hasBuilderSecret || inventory.serviceAccount !== BUILDER_SERVICE_ACCOUNT)) {
       throw new Error('Named build job lacks the exact builder identity and secret binding.')
     }
   }
@@ -122,10 +142,11 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   const serviceAccountPolicy = gcloud<IamPolicy>(['iam', 'service-accounts', 'get-iam-policy', BUILDER_SERVICE_ACCOUNT, '--project', project])
   const topicPolicy = gcloud<IamPolicy>(['pubsub', 'topics', 'get-iam-policy', 'cockpit-events', '--project', project])
   assertSecretIsolation(projectPolicy, secretPolicy, serviceAccount, topicPolicy)
-  const effective = gcloud<EffectivePolicy[]>([
-    'asset', 'search-all-iam-policies', '--scope', `projects/${project}`,
+  const ancestors = gcloud<ResourceAncestor[]>(['projects', 'get-ancestors', project])
+  const effective = iamSearchScopes(ancestors).flatMap((scope) => gcloud<EffectivePolicy[]>([
+    'asset', 'search-all-iam-policies', '--scope', scope,
     '--query', 'policy:roles/secretmanager.secretAccessor',
-  ])
+  ]))
 
   const surfaces: Array<{ kind: 'revision' | 'job'; name: string; definition: unknown }> = []
   for (const entry of gcloud<CloudRunEntry[]>(['run', 'revisions', 'list', '--project', project, '--region', region])) {
