@@ -1,9 +1,13 @@
 import { createHash } from 'node:crypto'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import {
   buildCapabilityEstateCensus,
   canonicalJson,
+  readCommittedCapabilityEstateCensusProvenance,
   renderCapabilityEstateCensus,
 } from '../generate_capability_estate_census'
 
@@ -165,4 +169,35 @@ describe('capability estate census', () => {
     expect(renderCapabilityEstateCensus(first)).toBe(renderCapabilityEstateCensus(second))
     expect(renderCapabilityEstateCensus(first)).toMatch(/\n$/)
   }, 15_000)
+
+  it('pins reviewed provenance across synthetic merge-group and squash commits', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
+    try {
+      const generatedDir = join(repoRoot, 'platform', 'src', 'generated')
+      mkdirSync(generatedDir, { recursive: true })
+      writeFileSync(join(generatedDir, 'capability_estate_census.json'), JSON.stringify({
+        generated_at: '2026-09-15T15:40:14.000Z',
+        source_revision: '77c4aa43b673cf730ea4adfc4389e777ce24045a',
+      }))
+
+      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot)).toEqual({
+        generatedAt: '2026-09-15T15:40:14.000Z',
+        sourceRevision: '77c4aa43b673cf730ea4adfc4389e777ce24045a',
+      })
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
+
+  it('uses deterministic fail-closed provenance when the reviewed artifact is absent', () => {
+    const repoRoot = mkdtempSync(join(tmpdir(), 'capability-estate-provenance-'))
+    try {
+      expect(readCommittedCapabilityEstateCensusProvenance(repoRoot)).toEqual({
+        generatedAt: '1970-01-01T00:00:00.000Z',
+        sourceRevision: 'unavailable',
+      })
+    } finally {
+      rmSync(repoRoot, { recursive: true, force: true })
+    }
+  })
 })

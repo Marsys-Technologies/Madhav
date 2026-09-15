@@ -10,9 +10,9 @@
  * Usage:
  *   npm run codegen:capability-estate-census
  *   npm run codegen:capability-estate-census:check
+ *   npm run codegen:capability-estate-census -- --generated-at=<ISO timestamp> --source-revision=<40-hex SHA>
  */
 import { createHash } from 'node:crypto'
-import { execFileSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
@@ -526,19 +526,52 @@ function readReviewedFullProfileToolNames(authorityPath: string): Set<string> {
   return new Set([...block[1]!.matchAll(/'([a-z0-9_]+)'/g)].map((match) => match[1]!))
 }
 
-function gitValue(repoRoot: string, args: string[]): string {
-  return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim()
+export interface CapabilityEstateCensusProvenance {
+  generatedAt: string
+  sourceRevision: string
 }
 
-function sourceCommit(repoRoot: string, sourcePaths: readonly string[]): { revision: string; generatedAt: string } {
+function normalizedGeneratedAt(value: unknown): string {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error('generated_at must be a non-empty ISO timestamp')
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) throw new Error('generated_at must be a valid ISO timestamp')
+  return parsed.toISOString()
+}
+
+function normalizedSourceRevision(value: unknown, allowUnavailable = false): string {
+  if (typeof value !== 'string') throw new Error('source_revision must be a string')
+  if (allowUnavailable && value === 'unavailable') return value
+  if (!/^[a-f0-9]{40}$/.test(value)) throw new Error('source_revision must be a 40-character lowercase Git SHA')
+  return value
+}
+
+/**
+ * The reviewed artifact owns its non-authoritative display provenance. Semantic
+ * freshness is enforced independently by the rendered artifact comparison,
+ * content_sha256, and complete source fingerprints. Reading the committed
+ * values makes the artifact stable across GitHub's synthetic merge-group and
+ * squash commits, which attribute every changed path to a new queue SHA.
+ */
+export function readCommittedCapabilityEstateCensusProvenance(repoRoot: string): CapabilityEstateCensusProvenance {
+  const outputPath = join(repoRoot, 'platform', 'src', 'generated', 'capability_estate_census.json')
   try {
-    const relativePaths = sourcePaths.map((path) => relative(repoRoot, path))
-    const revision = gitValue(repoRoot, ['log', '-1', '--format=%H', '--', ...relativePaths])
-    const committedAt = gitValue(repoRoot, ['show', '-s', '--format=%cI', revision])
-    return { revision, generatedAt: new Date(committedAt).toISOString() }
+    const artifact = JSON.parse(readFileSync(outputPath, 'utf8')) as {
+      generated_at?: unknown
+      source_revision?: unknown
+    }
+    return {
+      generatedAt: normalizedGeneratedAt(artifact.generated_at),
+      sourceRevision: normalizedSourceRevision(artifact.source_revision),
+    }
   } catch {
-    // Content hashes still make archive builds reproducible when git metadata is absent.
-    return { revision: 'unavailable', generatedAt: '1970-01-01T00:00:00.000Z' }
+    // A source archive without the reviewed artifact remains deterministic.
+    // Check mode still fails because the artifact is absent or differs.
+    return {
+      generatedAt: '1970-01-01T00:00:00.000Z',
+      sourceRevision: 'unavailable',
+    }
   }
 }
 
@@ -556,9 +589,11 @@ async function loadAssetSeedWithoutRunningWriter(): Promise<AssetDefShape[]> {
 
 export async function buildCapabilityEstateCensus(options: {
   generatedAt?: string
+  sourceRevision?: string
   repoRoot?: string
 } = {}): Promise<CapabilityEstateCensus> {
   const repoRoot = resolve(options.repoRoot ?? DEFAULT_REPO_ROOT)
+  const committedProvenance = readCommittedCapabilityEstateCensusProvenance(repoRoot)
   const catalog = getCatalog()
 
   const plannerExcluded = catalog
@@ -844,29 +879,17 @@ export async function buildCapabilityEstateCensus(options: {
       digestMigrationFiles,
     ),
   ].sort((a, b) => a.id.localeCompare(b.id))
-  const sourcePaths = sortedUnique([
-    catalogSourcePath,
-    assetSeedPath,
-    writerDigestPath,
-    pinsPath,
-    canonicalFacesPath,
-    generatorPath,
-    bridgeExtractorPath,
-    serviceProbePath,
-    serviceEffectPath,
-    disposableEvidencePath,
-    fullRouteAuthorityPath,
-    ...descriptorSourceFiles,
-    ...registrarFiles,
-    ...digestMigrationFiles,
-  ])
-  const sourceCommitMetadata = sourceCommit(repoRoot, sourcePaths)
-  const generatedAt = options.generatedAt ?? sourceCommitMetadata.generatedAt
+  const generatedAt = options.generatedAt === undefined
+    ? committedProvenance.generatedAt
+    : normalizedGeneratedAt(options.generatedAt)
+  const sourceRevision = options.sourceRevision === undefined
+    ? committedProvenance.sourceRevision
+    : normalizedSourceRevision(options.sourceRevision)
 
   const base = {
     schema_version: GENERATOR_VERSION,
     generated_at: generatedAt,
-    source_revision: sourceCommitMetadata.revision,
+    source_revision: sourceRevision,
     caveats: [
       'This artifact is an estate census only. It does not create SCUs or infer that a descriptor semantically covers a producer output.',
       'Descriptor exposure is joined to the authored, fail-closed full-profile allowlist. Exact URI bindings are source-evidenced; a same-name parallel route is enumerated separately and never substituted for exact URI proof.',
@@ -993,7 +1016,15 @@ export function renderCapabilityEstateCensus(census: CapabilityEstateCensus): st
 
 async function main(): Promise<void> {
   const check = process.argv.includes('--check')
-  const census = await buildCapabilityEstateCensus()
+  const generatedAtArg = process.argv.find((arg) => arg.startsWith('--generated-at='))?.slice('--generated-at='.length)
+  const sourceRevisionArg = process.argv.find((arg) => arg.startsWith('--source-revision='))?.slice('--source-revision='.length)
+  if (check && (generatedAtArg !== undefined || sourceRevisionArg !== undefined)) {
+    throw new Error('check mode does not accept provenance overrides')
+  }
+  const census = await buildCapabilityEstateCensus({
+    generatedAt: generatedAtArg,
+    sourceRevision: sourceRevisionArg,
+  })
   const rendered = renderCapabilityEstateCensus(census)
   if (check) {
     if (!existsSync(DEFAULT_OUTPUT_PATH)) {
@@ -1009,6 +1040,12 @@ async function main(): Promise<void> {
     }
     console.log(`[capability-estate-census] OK ${census.content_sha256}`)
     return
+  }
+  if (existsSync(DEFAULT_OUTPUT_PATH)) {
+    const current = readFileSync(DEFAULT_OUTPUT_PATH, 'utf8')
+    if (current !== rendered && (generatedAtArg === undefined || sourceRevisionArg === undefined)) {
+      throw new Error('semantic census refresh requires explicit --generated-at and --source-revision provenance')
+    }
   }
   mkdirSync(dirname(DEFAULT_OUTPUT_PATH), { recursive: true })
   writeFileSync(DEFAULT_OUTPUT_PATH, rendered, 'utf8')
