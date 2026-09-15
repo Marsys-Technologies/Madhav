@@ -58,6 +58,8 @@ def _validate_window(window: "WindowInput") -> None:
         raise ValueError("window_id must be a non-empty string")
     if not isinstance(window.peak_date, date):
         raise ValueError("peak_date must be a date")
+    if window.mode not in {"A", "B"}:
+        raise ValueError(f"unknown mode: {window.mode!r}")
     if window.window_start is not None:
         if not isinstance(window.window_start, date):
             raise ValueError("window_start must be a date or None")
@@ -98,6 +100,15 @@ def _validate_window(window: "WindowInput") -> None:
         isinstance(domain, str) for domain in window.dissonance_domains
     ):
         raise ValueError("dissonance_domains must be a list of strings")
+    unknown_dissonance_domains = sorted(
+        set(window.dissonance_domains) - set(_KNOWN_DOMAINS)
+    )
+    if unknown_dissonance_domains:
+        raise ValueError(
+            "unknown dissonance domains: " + ", ".join(unknown_dissonance_domains)
+        )
+    if not isinstance(window.has_dissonance, bool):
+        raise ValueError("has_dissonance must be a boolean")
 
 
 def _validate_window_set(windows: list["WindowInput"]) -> None:

@@ -26,16 +26,15 @@ import psycopg.rows
 
 from brahmagyan.graha_vocabulary import norm_graha
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
+from services.ka_dasha_kala.tree_walk import ALL_DASHA_SYSTEMS
 
 logger = logging.getLogger(__name__)
 
 FORMULA_VERSION = "ka_avadhi_v1.0"
 
-# Dasha systems available in chart_dashas
-_DASHA_SYSTEMS = (
-    "vimshottari", "yogini", "ashtottari",
-    "chara", "naisargika", "mudda", "kalachakra",
-)
+# Dasha systems available in chart_dashas.  Use the service-owned canonical set
+# so this writer cannot drift to aliases that the L1 producer never emits.
+_DASHA_SYSTEMS = tuple(sorted(ALL_DASHA_SYSTEMS))
 
 # Classical graha → natural domain mapping (for pratijna linkage)
 _GRAHA_DOMAINS: dict[str, list[str]] = {
@@ -203,14 +202,21 @@ class KaAvdhiWriter(WriterBase):
             return WriterResult(asset_id=self.asset_id, rows_inserted=0,
                                 notes="no chart_dashas — run ka_dasha_kala first")
 
-        observed_systems = {row["system_id"] for row in md_rows}
-        missing_systems = sorted(set(_DASHA_SYSTEMS) - observed_systems)
-        if missing_systems:
+        observed_md_systems = {row["system_id"] for row in md_rows}
+        observed_ad_systems = {row["system_id"] for row in ad_rows}
+        missing_md_systems = sorted(set(_DASHA_SYSTEMS) - observed_md_systems)
+        missing_ad_systems = sorted(set(_DASHA_SYSTEMS) - observed_ad_systems)
+        if missing_md_systems or missing_ad_systems:
+            missing_levels = []
+            if missing_md_systems:
+                missing_levels.append("MD=" + ",".join(missing_md_systems))
+            if missing_ad_systems:
+                missing_levels.append("AD=" + ",".join(missing_ad_systems))
             return WriterResult(
                 asset_id=self.asset_id,
                 rows_inserted=0,
                 notes=(
-                    "incomplete dasha-system coverage for " + ",".join(missing_systems)
+                    "incomplete dasha-system coverage for " + ";".join(missing_levels)
                     + "; prior partition preserved"
                 ),
             )

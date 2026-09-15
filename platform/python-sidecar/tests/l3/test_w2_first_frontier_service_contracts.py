@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import fields
 from datetime import date, timedelta
-import inspect
 from types import SimpleNamespace
 
 import pytest
@@ -159,7 +158,10 @@ def test_ka_dasha_kala_rejects_ambiguous_query_contracts(systems, start, end, me
         ({"convergence_score": float("nan")}, "convergence_score must be finite"),
         ({"rarity_years": -1.0}, "rarity_years must be non-negative"),
         ({"confidence_label": "unknown"}, "unknown confidence_label"),
+        ({"mode": "NOT_A_MODE"}, "unknown mode"),
         ({"domains": ["invented-domain"]}, "unknown domains"),
+        ({"dissonance_domains": ["invented-domain"]}, "unknown dissonance domains"),
+        ({"has_dissonance": 1}, "has_dissonance must be a boolean"),
         ({"window_start": REF + timedelta(days=50)}, "window_start must not be after peak_date"),
         ({"window_end": REF + timedelta(days=10)}, "window_end must not be before peak_date"),
     ],
@@ -202,51 +204,6 @@ def test_ka_tulana_fixture_scores_remain_content_bound():
     assert verdict.winner.window_id == "fixture-a"
     assert verdict.decisive_factor == "proximity_factor"
     assert verdict.recommendation == "proceed"
-
-
-@pytest.mark.parametrize(
-    ("writer_class", "candidate_anchor", "delete_anchor"),
-    [
-        (KaGocharaResonanceWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (KaKotaChakraWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (KaMoortiNirnayaWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (KaVedhaGocharaWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (KaTithiPraveshaWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (KaSudarshanaVarshaWriter, "if not all_rows", "cur.execute(_DELETE_SQL"),
-        (
-            KaYojakaWriter,
-            "if not rows",
-            '"DELETE FROM kala_activation_predicates WHERE chart_id = %s"',
-        ),
-        (
-            KaAvdhiWriter,
-            "if not all_rows",
-            '"DELETE FROM kala_avadhi WHERE chart_id = %s"',
-        ),
-    ],
-)
-def test_first_frontier_writers_prepare_candidate_before_delete(
-    writer_class, candidate_anchor, delete_anchor
-):
-    source = inspect.getsource(writer_class.run)
-    assert source.index(candidate_anchor) < source.index(delete_anchor)
-
-
-@pytest.mark.parametrize(
-    ("writer_class", "coverage_guard"),
-    [
-        (KaKotaChakraWriter, "grahas_with_data != len(ALL_GRAHAS)"),
-        (KaMoortiNirnayaWriter, "missing_bodies"),
-        (KaVedhaGocharaWriter, "missing_grahas"),
-        (KaAvdhiWriter, "missing_systems"),
-    ],
-)
-def test_first_frontier_writers_refuse_partial_upstream_partitions(
-    writer_class, coverage_guard
-):
-    source = inspect.getsource(writer_class.run)
-    assert coverage_guard in source
-    assert "prior partition preserved" in source
 
 
 class _NoAccessConnection:

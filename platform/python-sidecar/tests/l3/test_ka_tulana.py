@@ -145,7 +145,7 @@ class TestDissonanceAwareVerdicts:
             confidence_label='high',
             domains=['relationship'],
             has_dissonance=True,
-            dissonance_domains=['finance'],
+            dissonance_domains=['wealth'],
         )
         clean = _make_window('clean', convergence_score=0.4, domains=['career'])
         verdict = svc.compare(dissonant, clean, REF)
