@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -101,6 +101,24 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'service', name: 'web', definition: {
       serviceAccount: BUILDER_SERVICE_ACCOUNT,
     } }])).toThrow(/Builder identity is used outside/)
+  })
+  it('evaluates custom/basic role permissions and rejects literal Cloud Run credentials', () => {
+    const permissions = {
+      'projects/example/roles/customSecretReader': ['secretmanager.versions.access'],
+      'roles/owner': ['iam.serviceAccounts.getAccessToken'],
+    }
+    expect(() => assertSecretIsolation({ bindings: [{
+      role: 'projects/example/roles/customSecretReader', members: ['serviceAccount:rogue@example'],
+    }] }, {}, {}, undefined, permissions)).toThrow(/Project-wide/)
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
+    expect(() => assertEffectiveIsolation([{ resource: 'folders/123', policy: { bindings: [{
+      role: 'roles/owner', members: ['user:rogue@example'], condition: { expression: 'true' },
+    }] } }], { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }, [], permissions))
+      .toThrow(/aggregate builder service-account impersonation/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
+      name: 'DATABASE_URL', value: 'postgresql://literal:credential@example/db',
+    }] }] } } } })).toThrow(/literal credential/)
+    expect(cloudRunLocation({ metadata: { labels: { 'cloud.googleapis.com/location': 'asia-south1' } } })).toBe('asia-south1')
   })
 })
 
