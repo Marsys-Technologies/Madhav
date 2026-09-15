@@ -11,6 +11,10 @@ import {
   w5DoorParityToolResult,
 } from '@/lib/vidhi/inquiry/__fixtures__/door_parity'
 
+const { qosSubmit } = vi.hoisted(() => ({
+  qosSubmit: vi.fn(async ({ run }: { units: number; run: () => Promise<unknown> }) => run()),
+}))
+
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({
   callPipelinePlanner: vi.fn(async () => ({ outcome: 'plan', plan: w5DoorParityPlan() })),
 }))
@@ -51,8 +55,12 @@ vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   getToolByName: (name: string) => ({
     name,
     version: 'wave5-fixture-v1',
+    dispatch_units: 3,
     retrieve: async (_query: unknown, args: Record<string, unknown>) => w5DoorParityToolResult(name, args),
   }),
+}))
+vi.mock('@/lib/retrieval/qos/dispatch_queue', () => ({
+  getSharedQosDispatchQueue: () => ({ submit: qosSubmit }),
 }))
 
 const { runPlanStage } = await import('../plan_stage')
@@ -111,6 +119,8 @@ describe('Wave 5 actual Portal door parity integration', () => {
     })
 
     expect(projection).toEqual(expectedW5DoorParityProjection('platform_internal'))
+    expect(qosSubmit.mock.calls.length).toBeGreaterThan(1)
+    expect(qosSubmit.mock.calls.every(([submission]) => submission.units === 3)).toBe(true)
     const emitted = grades.find((grade) => grade.subject === 'inquiry_door_parity')
     expect(JSON.parse(String(emitted?.detail))).toEqual(projection)
   })

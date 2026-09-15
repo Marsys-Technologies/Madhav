@@ -191,6 +191,7 @@ export async function runEvidenceStage(args: {
         const raw = await getSharedQosDispatchQueue().submit({
           principalId: userUid,
           priorityClass: 'interactive',
+          units: tool.dispatch_units ?? 1,
           // A continuation has distinct server-authorized cursor arguments.
           // Execute it directly so request/shared cache normalization can never
           // replay page one under a later page's authorization envelope.
