@@ -41606,3 +41606,24 @@ Treat the immutable Wave 7 head as source-local evidence only. Proceed with any 
 shared migration, signing/infrastructure change, deployed cross-door trace, protected merge/deploy,
 asset retirement, governance-bootstrap remediation or blinded expert evaluation only after the exact
 action is separately authorized through `W7_COMPLETION_AUTHORITY_PACKET_v1.json`.
+
+## 2026-09-15 — MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915
+
+Exact-head CI run `34991468186` refuted `71788963da0cbdf4f5ef4b8aa646b3ceeb2ac085`:
+`CI=1 npm run codegen:capability-estate-census:check` reported drift because the committed census
+still pinned the pre-repair `editorial_review.ts` fingerprint. The census was regenerated at
+`ba0bcd0e905e5152228c0f272b74bf16256d48f1`; its new content hash is
+`46570ce791b8d96a44ae90d732148237e137f337f402f08e54099732e2c9eaf9`. CI-mode census and knowledge
+checks pass, and the focused census/knowledge suite passes two files / 35 tests.
+
+Independent final guard then refuted `ba0bcd0e9` because the generated source mutation followed the
+PA-E0058 writer-lease release. That sequencing defect is preserved rather than waived. The narrow
+corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` is remotely active at
+`8e5f35f0f1e907e4040460df46491e5448af56bc`; it adopts the provisional repair and owns only the
+generated census, append-only Wave 7 governance, PR #2605 exact-head CI and read-only reviews. No
+merge, deploy, shared/production mutation, credential/infrastructure action, retirement, doctrine,
+expert/empirical acceptance or production-health action is authorized or claimed.
+
+Next gate: independently approve the corrective pre-release head, release this lease remotely,
+commit only the release/final-candidate metadata allowed by that approval, then run exact-head CI and
+independent terminal reviews with no later source mutation.

@@ -1,6 +1,6 @@
 ---
 artifact: CURRENT_STATE_v1_0.md
-version: 6.75
+version: 6.76
 status: LIVE
 produced_during: STEP_10_SESSION_LOG_SCHEMA (Step 0 → Step 15 governance rebuild)
 produced_on: 2026-04-24
@@ -5927,14 +5927,17 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 SOURCE-LOCAL CANDIDATE (2026-09-15).** Recovery execution
+> 🟠 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 CORRECTIVE EXACT-HEAD VALIDATION (2026-09-15).** Recovery execution
 > from immutable W6 head `b48a6997b12ebe591bc5e62b7b60ddb295ee352b` has completed every authorized
 > source/local/disposable packet under CCD-011. W6's `NOT_ACCEPTED_SOURCE_LOCAL` 30/34 result remains
 > preserved as historical evidence; the unchanged corpus now passes 34/34 after deterministic,
 > receipted transit argument derivation. Independent semantic review approved the repaired six-layer
-> audit. The remote lease is released at `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. PR #2605 and all
-> W0–W6 branches remain unmerged review surfaces. The immutable final metadata head still requires
-> exact-head CI and independent terminal review. No merge, deployment, shared/production mutation,
+> audit. Exact-head CI then refuted candidate `71788963d` because its capability-estate census was
+> stale; the repair at `ba0bcd0e9` passed CI-mode codegen checks and 35 focused tests but occurred
+> after the original lease release. That sequencing breach is preserved in PA-E0060/PA-E0061, and a
+> narrow corrective lease is active at coordination commit `8e5f35f0f`. PR #2605 and all W0–W6
+> branches remain unmerged review surfaces. The corrective lease must be released before a new final
+> metadata head receives exact-head CI and independent terminal review. No merge, deployment, shared/production mutation,
 > credential/infrastructure action, expert/empirical acceptance or production health is claimed.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
@@ -9360,20 +9363,20 @@ current_state:
   # Current close pointer. Kept here to override the historical embedded value above.
   last_session_id: MADHAV-PURNA-ANVESANA-W7-20260915
   last_product_strategy_session: MADHAV-DATA-PLANE-V2-20260913
-  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 has completed every CCD-011-authorized source/local/disposable packet and the unchanged corpus passes 34/34. The repaired six-layer semantic audit is independently approved. Lease released at coordination commit a0eb23770; PR #2605 is open and stacked. Exact-final-head CI and independent terminal reviews remain external closure checks. No merge, deployment, shared migration, production, user or empirical acceptance claim. PR #2597 remains frozen."
+  last_session_drift_verdict: "Purna Anvesana Recovery Wave 7 remains in corrective exact-head validation. CI refuted 71788963d for a stale capability-estate census; the regenerated artifact at ba0bcd0e9 passes CI-mode codegen and 35 focused tests. A reviewer then correctly refuted its post-release mutation sequence. Corrective lease MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915 is active at 8e5f35f0f; release, metadata-only close, exact-head CI and final reviews remain. No merge, deployment, shared migration, production, user or empirical acceptance claim. PR #2597 remains frozen."
   product_definition: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
   data_plane_proposal: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_VALUE_ARCHITECTURE_v2_0.md
   planner_knowledge_candidate: 00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md
   planner_knowledge_pull_request: "https://github.com/Marsys-Technologies/Madhav/pull/2597"
   purna_anvesana_campaign_state: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md
-  next_product_strategy_objective: "Do not resume Wave 7 source work after immutable-head review. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for deployed-current reads, shared migrations and signing/infrastructure change, deployed cross-door traces, protected merge/deploy, retirement, governance-bootstrap remediation, or blinded expert empirical evaluation."
+  next_product_strategy_objective: "Finish only the active Wave 7 corrective lease: approve the regenerated census and append-only correction metadata, release the lease remotely, then obtain exact-head CI and independent final review with no later source mutation. Use W7_COMPLETION_AUTHORITY_PACKET_v1.json only after separate authority for all external actions."
 ```
 
 ---
 
 ## §3 — Narrative (human-reading surface — must agree with §2)
 
-At the close of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
+At the corrective checkpoint of **MADHAV-PURNA-ANVESANA-W7-20260915**, every CCD-011-authorized source/local/
 disposable recovery packet is complete. The unchanged Beyond-Acarya corpus now passes 34/34 route
 obligations through deterministic, receipted transit argument derivation for both direct and legacy
 bindings, with clarification when an anchor is absent. The six-layer estate contains 182 editorial
@@ -9381,9 +9384,11 @@ SCUs, 257 typed concepts and 53 source-backed edges; independent semantic review
 families, then approved their calibrated-registry and prospective-ledger replacements at exact head
 `b4e9b7454`. Full platform tests pass 11,775 tests in 1,108 files; 28 disposable database tests,
 73 three-door tests and 58 managed-MCP tests pass. TypeScript, codegen and lint also pass, with zero
-lint errors and 589 inherited warnings. The remote lease is released at `a0eb237705`; PR #2605 remains
-open and unmerged. The immutable final metadata head still requires exact-head CI and independent
-terminal reviews, so the in-tree state remains a candidate rather than a self-certified final-head
+lint errors and 589 inherited warnings. Exact-head CI refuted `71788963d` for a stale capability-estate
+census. The artifact was regenerated at `ba0bcd0e9`, but independent review also refuted its post-release
+mutation sequence. The corrective lease is active at `8e5f35f0f`; PR #2605 remains open and unmerged.
+Lease release, a metadata-only final head, exact-head CI and independent terminal reviews remain, so
+the in-tree state remains a corrective candidate rather than a self-certified final-head
 verdict. Shared migrations, signing/infrastructure change, deployed traces, protected merge/deploy,
 retirement, governance-bootstrap remediation and blinded expert evaluation remain `NOT_RUN` pending
 separate authority.

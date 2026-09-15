@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.15.0
-status: SOURCE_LOCAL_CANDIDATE
+version: 0.16.0
+status: CORRECTIVE_EXACT_HEAD_VALIDATION
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0059
-last_updated: 2026-09-15T21:18:00+05:30
+last_event: PA-E0063
+last_updated: 2026-09-15T21:34:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -31,8 +31,10 @@ layer state, queue or authority.
 - PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
 - PR #2604: open, stacked on PR #2603; it is a review surface, not merge or deployment proof.
 - PR #2605: open, stacked on PR #2604; exact-final-head CI and independent terminal review remain required.
-- Lease: `MADHAV-PURNA-ANVESANA-W7-20260915`; released and remotely verified at coordination commit
-  `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f` after the technical packets and local/disposable gates completed.
+- Lease: the original `MADHAV-PURNA-ANVESANA-W7-20260915` lease was released at
+  `a0eb237705cc7b9b0dec3ce5ecbdbe6fc0355f0f`. Exact-head CI then found a stale generated census.
+  The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` is active and remotely
+  verified at `8e5f35f0f1e907e4040460df46491e5448af56bc`; it must be released before final metadata.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
@@ -42,6 +44,18 @@ The unchanged Beyond-Ācārya denominator remains 34 route obligations; acceptan
 by changing its corpus or expectations. The W7 terminal ceiling is `SOURCE_LOCAL_ACCEPTED`, and
 only genuinely external merge/deploy/shared-migration/key/deployed-trace/expert/empirical actions
 may remain in the final completion-authority packet.
+
+## Corrective exact-head gate
+
+Exact-head CI run `34991468186` refuted candidate `71788963d` because the capability-estate census
+still pinned the pre-semantic-repair `editorial_review.ts` fingerprint. The drift reproduced locally
+under `CI=1`. The generated census was refreshed at provisional head `ba0bcd0e9`; its content hash is
+`46570ce791b8d96a44ae90d732148237e137f337f402f08e54099732e2c9eaf9`, both census and capability-
+knowledge checks pass in CI mode, and the focused census/knowledge suite passes 35/35. Because that
+refresh occurred after the original release, it is not a terminal candidate by itself. PA-E0061
+records the independent refutation and PA-E0062 binds the corrective lease that adopts the repair.
+The corrective technical/pre-release head must pass review, the lease must then be remotely released,
+and a metadata-only final head must receive fresh exact-head CI and independent terminal review.
 
 ## Wave 0 finding that blocked execution
 
@@ -325,7 +339,7 @@ jq -r '.edges[] | [.from_scu_id,.relation,.to_scu_id] | @tsv' platform/src/gener
 | W7-P3 pagination, parity and overlays | COMPLETE | W7-P2 | local/disposable gates pass; deployed trace remains external |
 | W7-P4 lifecycle, signing and durable jobs | COMPLETE | W7-P3 | source/disposable gates pass; shared migration/key work remains external |
 | W7-P5 completion and empirical protocol packets | COMPLETE | W7-P4 | all 13 residuals dispositioned; external actions remain unauthorized |
-| W7-P6 protected source candidate | CANDIDATE_AWAITING_EXACT_HEAD_EXTERNAL_CHECKS | W7-P5 | lease released; terminal metadata next, then exact-final-head CI and independent reviews |
+| W7-P6 protected source candidate | CORRECTIVE_EXACT_HEAD_VALIDATION | W7-P5 | stale census and post-release sequencing refuted; corrective lease active; fresh release, metadata, CI and reviews required |
 
 ## Delivery decomposition
 
