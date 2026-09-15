@@ -401,6 +401,67 @@
           "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
           "ka_yojaka": "2c591d8c214b12c647f9bdcce370efd236a5700695c6f88251e36084d6afe04a"
         }
+      },
+      {
+        "generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+        "historical_snapshot_commit": "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f",
+        "pin": {
+          "admission": {
+            "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            "authority_decision": "DP-SD-018",
+            "changed_assets": [
+              "ka_sangam"
+            ],
+            "delta_classifications": {
+              "ka_sangam": "derived_import_change"
+            },
+            "reason": "Metadata-only admission of ka_sangam import-closure movement caused by accepted W2 shared source; no ka_sangam behavior, data, deployment or freeze claim.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+          "generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:47131772b355:a32b7cc7b4fc",
+          "writer_inventory_sha256": "44e78dc0ccbce53661d79dcc43188382604e25d57667d8afff0a7339110e6e3b"
+        },
+        "superseded_by_generation_id": "l3:64facb9763d1:f86cf07a0a75",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "b4017881abc4c6f8157ce270631bff26627ce40f53edd7c5c70cbe43e2aa324d",
+          "ka_gochara_resonance": "58e76f509505b3929dcdaf7048e29780ba59294ab359941f43c11e5458b93a3e",
+          "ka_gochara_v3_century_materialize": "3ffa1741b70cd1ba18fbec0bd93292311461853bba510604e08de1559a25abb2",
+          "ka_graha_sancara": "d05aeb1a98e2552a658d55ae0cd7ea39a60f58974fb432c41e5b77e6f59512cf",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "2137a22ef0bb583a54e0aae45cf1f81e59ce13eb5f4bc4dfab9c6c2b6f161bfd",
+          "ka_kshetra": "979a2500f639f42865ed5be1e26861cb5f97db2535c0309f060e75255a764085",
+          "ka_moorti_nirnaya": "61da1016db8a720a5cbba84ecd907ba49cf5d8ce58250272bc3be31c85c92715",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "1c692a0fb4c6d6f8ba027ae40d9140fa225c7489b16505285874e72c06ace6a3",
+          "ka_sudarshana_varsha": "85d80944d1cbb0c17449d01acb40c17d3d25794b4f82bc775bb9ed45abd1b9ea",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "e2129b0bb8def10a8c1f8a58fc57d69b10458de299ca8febc470e5e5010b2929",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "2c591d8c214b12c647f9bdcce370efd236a5700695c6f88251e36084d6afe04a"
+        }
       }
     ],
     "L4": [
@@ -794,35 +855,52 @@
     },
     "L3": {
       "admission": {
-        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
-        "authority_decision": "DP-SD-018",
+        "authority_commit": "16590cc49f720e4200a8d9b6cad3f52b68e21792",
+        "authority_decision": "DP-SD-019",
         "changed_assets": [
-          "ka_sangam"
+          "ka_yojaka"
         ],
         "delta_classifications": {
-          "ka_sangam": "derived_import_change"
+          "ka_yojaka": "approved_intentional_change"
         },
-        "reason": "Metadata-only admission of ka_sangam import-closure movement caused by accepted W2 shared source; no ka_sangam behavior, data, deployment or freeze claim.",
+        "reason": "DP-SD-019 accepted Yojaka signed multidomain projection and complete compatible promise linkage with primary-domain consumer alignment; no physical-data, deployment, value or empirical claim.",
         "review_artifacts": [
           {
-            "commit": "5142109f7f219ea860f859e322646f79d875bee8",
-            "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
-            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
-            "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+            "commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+            "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md",
+            "sha256": "a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5"
           }
         ],
         "schema_version": "nirmana-analysis-layer-successor/v2",
-        "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+        "source_acceptance": {
+          "common_base_commit": "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f",
+          "integrated_equivalent_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+          "reviewed_source_commit": "7697c43b31da3655c2add7cda128a57ca4afd44e",
+          "reviewed_surface": [
+            {
+              "blob_oid": "8939b234c20794eb59edc559bb6f8e3a44865cc5",
+              "path": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+            },
+            {
+              "blob_oid": "52e7ba3d5ba97024f1327ca2f97d25e98e01e589",
+              "path": "platform/python-sidecar/tests/l3/test_ka_yojaka_multidomain.py"
+            }
+          ],
+          "schema_version": "nirmana-analysis-source-acceptance/v1",
+          "source_surface_sha256": "c7335980706c9815362f3fc39dca349b42aa94e7f0bddcc6b0e85c56d19d366a"
+        },
+        "source_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
       },
       "asset_prefix": "ka_",
-      "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
-      "generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+      "convergence_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+      "generation_id": "l3:64facb9763d1:f86cf07a0a75",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "supersedes_generation_id": "l3:47131772b355:a32b7cc7b4fc",
-      "writer_inventory_sha256": "44e78dc0ccbce53661d79dcc43188382604e25d57667d8afff0a7339110e6e3b"
+      "supersedes_generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+      "writer_inventory_sha256": "f86cf07a0a75b95e3ef524419caf3ddfc6f09f6a4d900ff709ad296e49cf6c0b"
     },
     "L4": {
       "admission": {

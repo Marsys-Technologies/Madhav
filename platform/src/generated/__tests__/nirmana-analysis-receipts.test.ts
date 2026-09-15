@@ -130,7 +130,7 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     }
   })
 
-  it('preserves the first ruled successors and leaves L3-L5 untouched', () => {
+  it('preserves prior ruled successors and admits only the DP-SD-019 L3 delta', () => {
     const priorL2 = layerPinRecord.history.L2[1].pin
     const priorL2Admission = priorL2.admission!
     expect(new Set(Object.values(priorL2Admission.delta_classifications))).toEqual(
@@ -140,11 +140,25 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md',
       '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md',
     ])
-    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_sangam'])
-    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+    const priorL3 = layerPinRecord.history.L3[1].pin
+    expect(priorL3.admission?.changed_assets).toEqual(['ka_sangam'])
+    expect(priorL3.admission?.delta_classifications).toEqual({
       ka_sangam: 'derived_import_change',
     })
-    expect(layerPinRecord.history.L3).toHaveLength(1)
+    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_yojaka'])
+    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+      ka_yojaka: 'approved_intentional_change',
+    })
+    expect(layerPinRecord.layers.L3.admission.authority_decision).toBe('DP-SD-019')
+    expect(layerPinRecord.layers.L3.admission.source_commit)
+      .toBe('64facb9763d13eece7098b5b24cc03dfb8e3ba81')
+    expect(layerPinRecord.layers.L3.admission.review_artifacts).toEqual([{
+      commit: '64facb9763d13eece7098b5b24cc03dfb8e3ba81',
+      decision_binding: 'status: SOURCE_PACKET_ACCEPTED',
+      path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md',
+      sha256: 'a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5',
+    }])
+    expect(layerPinRecord.history.L3).toHaveLength(2)
     expect(layerPinRecord.layers.L4.admission.delta_classifications).toEqual({
       ph_muhurta: 'derived_import_change',
       ph_rectification: 'derived_import_change',
