@@ -64,6 +64,52 @@ export const CONTROL_AND_L0_L3_TABLES = [
 
 const qi = (value: string): string => `"${value.replaceAll('"', '""')}"`
 
+async function revokeAllRelationGrantees(
+  client: PoolClient,
+  objectKind: 'TABLE' | 'SEQUENCE',
+  relation: string,
+  owner: string,
+): Promise<void> {
+  const grantees = await client.query<{ grantee: string }>(`
+    SELECT DISTINCT COALESCE(grantee.rolname, 'PUBLIC') AS grantee
+    FROM pg_class object
+    JOIN pg_namespace ns ON ns.oid=object.relnamespace
+    CROSS JOIN LATERAL aclexplode(COALESCE(
+      object.relacl,
+      acldefault(CASE WHEN object.relkind='S' THEN 'S'::"char" ELSE 'r'::"char" END, object.relowner)
+    )) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+    JOIN pg_roles object_owner ON object_owner.oid=object.relowner
+    WHERE ns.nspname='public' AND object.relname=$1
+      AND COALESCE(grantee.rolname, 'PUBLIC')<>object_owner.rolname
+  `, [relation])
+  for (const { grantee } of grantees.rows) {
+    const principal = grantee === 'PUBLIC' ? 'PUBLIC' : qi(grantee)
+    await client.query(`REVOKE ALL ON ${objectKind} public.${qi(relation)} FROM ${principal}`)
+  }
+  // A NULL ACL still implies PUBLIC defaults for functions, but not for tables
+  // and sequences. Keep this explicit so future PostgreSQL default changes or
+  // fixture drift cannot silently widen the protected relation surface.
+  await client.query(`REVOKE ALL ON ${objectKind} public.${qi(relation)} FROM PUBLIC`)
+}
+
+async function revokeAllPublicSchemaGrantees(client: PoolClient): Promise<void> {
+  const grantees = await client.query<{ grantee: string }>(`
+    SELECT DISTINCT COALESCE(grantee.rolname, 'PUBLIC') AS grantee
+    FROM pg_namespace ns
+    CROSS JOIN LATERAL aclexplode(COALESCE(ns.nspacl, acldefault('n',ns.nspowner))) acl
+    LEFT JOIN pg_roles grantee ON grantee.oid=acl.grantee
+    JOIN pg_roles object_owner ON object_owner.oid=ns.nspowner
+    WHERE ns.nspname='public'
+      AND COALESCE(grantee.rolname, 'PUBLIC')<>object_owner.rolname
+  `)
+  for (const { grantee } of grantees.rows) {
+    const principal = grantee === 'PUBLIC' ? 'PUBLIC' : qi(grantee)
+    await client.query(`REVOKE ALL ON SCHEMA public FROM ${principal}`)
+  }
+  await client.query('REVOKE ALL ON SCHEMA public FROM PUBLIC')
+}
+
 async function assertRoles(client: PoolClient): Promise<void> {
   const actor = await client.query<{ current_user: string; can_manage: boolean }>(`
     SELECT current_user,
@@ -132,11 +178,11 @@ async function transferTables(client: PoolClient, owner: string, tables: readonl
       WHERE ns.nspname = 'public' AND tab.relname = $1
     `, [table])
     await client.query(`SET LOCAL ROLE ${qi(owner)}`)
-    await client.query(`REVOKE ALL ON TABLE public.${qi(table)} FROM PUBLIC, role_orchestrator, amjis_app, data_plane_builder, data_plane_verifier, data_plane_migrator`)
+    await revokeAllRelationGrantees(client, 'TABLE', table, owner)
     await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${qi(table)} TO data_plane_builder`)
     await client.query(`GRANT SELECT ON TABLE public.${qi(table)} TO amjis_app, data_plane_verifier, data_plane_migrator${owner === 'data_plane_l1_owner' ? ', data_plane_l2_owner' : ''}`)
     for (const { sequence_name: sequence } of sequences.rows) {
-      await client.query(`REVOKE ALL ON SEQUENCE public.${qi(sequence)} FROM PUBLIC, role_orchestrator, amjis_app, data_plane_builder, data_plane_verifier, data_plane_migrator`)
+      await revokeAllRelationGrantees(client, 'SEQUENCE', sequence, owner)
       await client.query(`GRANT USAGE, SELECT ON SEQUENCE public.${qi(sequence)} TO data_plane_builder`)
       await client.query(`GRANT SELECT ON SEQUENCE public.${qi(sequence)} TO data_plane_verifier, data_plane_migrator, amjis_app`)
     }
@@ -178,15 +224,18 @@ export async function runDataPlaneOwnershipPreflight(databaseUrl = process.env[A
       UPDATE public.asset_registry SET target_floor=0, count_sql='SELECT 0 AS count' WHERE asset_id='bo_samvada';
       UPDATE public.asset_output_digest_specs SET retired_at=COALESCE(retired_at,clock_timestamp()) WHERE asset_id='bo_samvada' AND retired_at IS NULL;
       GRANT SELECT ON public.charts, public.chart_grants, public.asset_registry, public.build_runs, public.build_run_assets TO data_plane_l1_owner, data_plane_l2_owner;
+      GRANT SELECT ON public.fact_category_ownership TO data_plane_l1_owner;
       GRANT SELECT ON public.asset_output_digest_specs TO data_plane_l2_owner;
       RESET ROLE`)
     if (schemaOwner.rows[0]?.owner === 'amjis_app') {
       await client.query('SET LOCAL ROLE amjis_app; ALTER SCHEMA public OWNER TO data_plane_schema_owner; RESET ROLE')
     }
+    await client.query('SET LOCAL ROLE data_plane_schema_owner')
+    await revokeAllPublicSchemaGrantees(client)
+    await client.query('RESET ROLE')
     await client.query(`
       DO $$ BEGIN EXECUTE format('REVOKE CREATE ON DATABASE %I FROM amjis_app, data_plane_schema_owner', current_database()); END $$;
       SET LOCAL ROLE data_plane_schema_owner;
-      REVOKE ALL ON SCHEMA public FROM PUBLIC, role_orchestrator, amjis_app, data_plane_builder, data_plane_verifier, data_plane_migrator, data_plane_l1_owner, data_plane_l2_owner;
       GRANT USAGE ON SCHEMA public TO data_plane_schema_owner, data_plane_l1_owner, data_plane_l2_owner, data_plane_migrator, data_plane_builder, data_plane_verifier, amjis_app;
       GRANT CREATE ON SCHEMA public TO data_plane_l1_owner, data_plane_l2_owner;
       RESET ROLE;

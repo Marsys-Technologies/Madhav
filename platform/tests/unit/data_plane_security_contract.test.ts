@@ -80,6 +80,13 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(l2).toContain('l2_data_plane_input_bind_receipts')
     expect(l2).toContain('L2 exact-input bind receipt is missing, forged, or mismatched')
   })
+  it('normalizes the complete pre-existing table, sequence, and schema ACL surface', () => {
+    const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-ownership-preflight.ts'), 'utf8')
+    expect(preflight).toContain('CROSS JOIN LATERAL aclexplode')
+    expect(preflight).toContain("revokeAllRelationGrantees(client, 'TABLE'")
+    expect(preflight).toContain("revokeAllRelationGrantees(client, 'SEQUENCE'")
+    expect(preflight).toContain('revokeAllPublicSchemaGrantees(client)')
+  })
 })
 
 describe('DP-SD-018 deployment ordering', () => {

@@ -275,7 +275,7 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
       WITH protected AS (
         SELECT c.oid,c.relname,CASE WHEN c.relname=ANY($1::text[]) THEN 'L1' ELSE 'L2' END layer
         FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-        WHERE n.nspname='public' AND c.relname=ANY($3::text[])
+        WHERE n.nspname='public' AND c.relname=ANY($2::text[])
       ), actual AS (
         SELECT p.relname,p.layer,COALESCE(r.rolname,'PUBLIC') grantee,owner.rolname owner_name,a.privilege_type
         FROM protected p JOIN pg_class c ON c.oid=p.oid
@@ -296,14 +296,14 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
         SELECT 1 FROM protected p CROSS JOIN allowed x
         WHERE NOT EXISTS (SELECT 1 FROM actual a WHERE a.relname=p.relname AND a.grantee=x.grantee AND a.privilege_type=x.privilege_type)
       ) AS unsafe
-    `, [[...L1_ACTIVE_TABLES], [...L2_ACTIVE_TABLES], [...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
+    `, [[...L1_ACTIVE_TABLES], [...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
     if (aclSurface.rows[0]?.unsafe) throw new Error('Protected table ACL allowlist drift detected.')
 
     const historyAcl = await pool.query<{ unsafe: boolean }>(`
       WITH protected AS (
         SELECT c.oid,c.relname,CASE WHEN c.relname=ANY($1::text[]) THEN 'L1' ELSE 'L2' END layer,c.relowner,c.relacl
         FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-        WHERE n.nspname='public' AND c.relname=ANY($3::text[])
+        WHERE n.nspname='public' AND c.relname=ANY($2::text[])
       ), actual AS (
         SELECT p.relname,p.layer,COALESCE(r.rolname,'PUBLIC') grantee,owner.rolname owner_name,a.privilege_type
         FROM protected p CROSS JOIN LATERAL aclexplode(COALESCE(p.relacl,acldefault('r',p.relowner))) a
@@ -330,7 +330,7 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
         SELECT 1 FROM actual WHERE relname='l1_data_plane_generation_heads'
           AND grantee='data_plane_l2_owner' AND privilege_type='UPDATE'
       ) AS unsafe
-    `, [[...L1_HISTORY], [...L2_HISTORY], [...L1_HISTORY, ...L2_HISTORY]])
+    `, [[...L1_HISTORY], [...L1_HISTORY, ...L2_HISTORY]])
     if (historyAcl.rows[0]?.unsafe) throw new Error('Protected history/view ACL allowlist drift detected.')
 
     const schemaAcl = await pool.query<{ unsafe: boolean }>(`

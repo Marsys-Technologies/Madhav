@@ -1516,6 +1516,7 @@ DECLARE
   v_partition text := current_setting('madhav.l2_partition_key', true);
   v_build text := current_setting('madhav.l2_build_id', true);
   v_row jsonb := CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_delete_authorized boolean := false;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'protected L2 % requires direct data_plane_builder authentication', TG_OP;
@@ -1527,16 +1528,29 @@ BEGIN
   IF COALESCE(v_row->>'chart_id','') <> v_chart THEN
     RAISE EXCEPTION 'protected L2 % row chart does not match admitted chart', TG_OP;
   END IF;
-  IF TG_OP='DELETE' AND TG_TABLE_NAME='bodha_msr_signals' AND NOT (
-    EXISTS (
+  IF TG_OP='DELETE' AND TG_TABLE_NAME IN (
+    'bodha_msr_signals','bodha_signal_embeddings','bodha_contradictions'
+  ) THEN
+    IF EXISTS (
       SELECT 1 FROM pg_class c
       WHERE c.oid=to_regclass('pg_temp.l2_data_plane_msr_delete_receipt')
         AND pg_get_userbyid(c.relowner)=current_user
-    ) AND EXISTS (
-      SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
-      WHERE r.chart_id=v_chart::uuid AND r.signal_id=(v_row->>'signal_id')::uuid
-    )
-  ) THEN
+    ) THEN
+      IF TG_TABLE_NAME IN ('bodha_msr_signals','bodha_signal_embeddings') THEN
+        EXECUTE 'SELECT EXISTS (
+          SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt
+          WHERE chart_id=$1 AND signal_id=$2
+        )' INTO v_delete_authorized USING v_chart::uuid, (v_row->>'signal_id')::uuid;
+      ELSE
+        EXECUTE 'SELECT EXISTS (
+          SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt
+          WHERE chart_id=$1 AND signal_id IN ($2,$3)
+        )' INTO v_delete_authorized USING v_chart::uuid,
+          (v_row->>'signal_a_id')::uuid, (v_row->>'signal_b_id')::uuid;
+      END IF;
+    END IF;
+  END IF;
+  IF TG_OP='DELETE' AND TG_TABLE_NAME='bodha_msr_signals' AND NOT v_delete_authorized THEN
     RAISE EXCEPTION 'L2 MSR deletion lacks an exact protected-owner scope receipt';
   END IF;
   IF NOT EXISTS (
@@ -1545,23 +1559,7 @@ BEGIN
   ) AND NOT (
     TG_OP='DELETE'
     AND TG_TABLE_NAME IN ('bodha_signal_embeddings','bodha_contradictions')
-    AND EXISTS (
-      SELECT 1 FROM pg_class c
-      WHERE c.oid=to_regclass('pg_temp.l2_data_plane_msr_delete_receipt')
-        AND pg_get_userbyid(c.relowner)=current_user
-    )
-    AND (
-      (TG_TABLE_NAME='bodha_signal_embeddings' AND EXISTS (
-        SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
-        WHERE r.chart_id=v_chart::uuid AND r.signal_id=(v_row->>'signal_id')::uuid
-      ))
-      OR
-      (TG_TABLE_NAME='bodha_contradictions' AND EXISTS (
-        SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
-        WHERE r.chart_id=v_chart::uuid
-          AND r.signal_id IN ((v_row->>'signal_a_id')::uuid,(v_row->>'signal_b_id')::uuid)
-      ))
-    )
+    AND v_delete_authorized
   ) THEN
     RAISE EXCEPTION 'L2 asset % cannot mutate protected table %', v_asset, TG_TABLE_NAME;
   END IF;

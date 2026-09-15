@@ -1750,6 +1750,7 @@ DECLARE
   v_partition text := current_setting('madhav.l1_partition_key', true);
   v_row jsonb := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
   v_expected_asset text;
+  v_delete_authorized boolean := false;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'protected L1 % requires direct data_plane_builder authentication', TG_OP;
@@ -1786,17 +1787,20 @@ BEGIN
       RAISE EXCEPTION 'L1 asset % cannot mutate chart_facts category %',
         v_asset, v_row->>'fact_category';
     END IF;
-    IF TG_OP='DELETE' AND NOT (
-      EXISTS (
+    IF TG_OP='DELETE' THEN
+      IF EXISTS (
         SELECT 1 FROM pg_class c
         WHERE c.oid=to_regclass('pg_temp.l1_data_plane_chart_facts_delete_receipt')
           AND pg_get_userbyid(c.relowner)=current_user
-      ) AND EXISTS (
-        SELECT 1 FROM pg_temp.l1_data_plane_chart_facts_delete_receipt r
-        WHERE r.chart_id=v_chart::uuid AND r.fact_id=v_row->>'fact_id'
-      )
-    ) THEN
-      RAISE EXCEPTION 'L1 chart_facts deletion lacks an exact protected-owner scope receipt';
+      ) THEN
+        EXECUTE 'SELECT EXISTS (
+          SELECT 1 FROM pg_temp.l1_data_plane_chart_facts_delete_receipt
+          WHERE chart_id=$1 AND fact_id=$2
+        )' INTO v_delete_authorized USING v_chart::uuid, v_row->>'fact_id';
+      END IF;
+      IF NOT v_delete_authorized THEN
+        RAISE EXCEPTION 'L1 chart_facts deletion lacks an exact protected-owner scope receipt';
+      END IF;
     END IF;
   ELSIF v_expected_asset IS DISTINCT FROM v_asset THEN
     RAISE EXCEPTION 'L1 asset % cannot mutate protected table %', v_asset, TG_TABLE_NAME;
