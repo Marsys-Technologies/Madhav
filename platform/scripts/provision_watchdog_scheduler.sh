@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Converge the watchdog Cloud Scheduler job on audience-bound OIDC.
-# Run immediately after deploying the OIDC-only watchdog route.
+# Run after deploying the dual-auth transition route; an observed OIDC cycle
+# is required before the separately reviewed legacy-fallback removal.
 # Requires Scheduler update plus iam.serviceAccounts.actAs on the scheduler SA.
 
 set -euo pipefail
