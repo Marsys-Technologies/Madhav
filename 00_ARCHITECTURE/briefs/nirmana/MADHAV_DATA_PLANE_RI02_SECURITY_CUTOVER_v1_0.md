@@ -1,6 +1,79 @@
-# MADHAV Data Plane RI-02 Security Cutover v1.2
+# MADHAV Data Plane RI-02 Security Cutover v1.3
 
-**Authority:** DP-SD-018 §§5–6 source design. This artifact does not authorize live IAM, role, credential, database, deployment, or data mutation.
+**Authority:** DP-SD-018 §§5–6 source design, amended by DP-SD-019 §§4 and 7. This artifact does not authorize live IAM, role, credential, database, deployment, or data mutation.
+
+## DP-SD-019 bootstrap/routine delivery correction
+
+**Reproduced failure.** At source base `d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f`,
+`.github/workflows/deploy.yml` assigned `environment:
+data-plane-production-cutover` to the always-run `migrate` job. GitHub evaluates
+job environment protection before its steps, so a deployment against an already
+`marked` database still requested the one-time independent bootstrap approval and
+made protected DBA/migrator secrets part of the ordinary job's credential surface.
+This blocked the routine no-new-migration path and every dependent web, MCP and
+pipeline-image release; it did not add safety after semantic cutover acceptance.
+
+**Smallest correction and finite source manifest.** This packet changes exactly:
+
+- `.github/workflows/deploy.yml`;
+- `platform/tests/unit/data_plane_security_contract.test.ts`;
+- `platform/tests/unit/nirmana_evidence_ownership_deploy.test.ts`; and
+- this cutover record.
+
+No migration, role definition, lifecycle API, writer, orchestrator, producer
+semantics, asset registry or pin is changed. The database roles remain exactly the
+seven roles in **Principals and exact authority** below. The workflow has three
+database jobs with a finite contract:
+
+1. `migration-state` has no environment and receives only the ordinary
+   `PROD_DATABASE_URL`. It reads the data-plane and Nirmana semantic status
+   functions and emits only `marked` or `unmarked`; a missing secret, command
+   failure or any other value fails the workflow.
+2. `privileged-bootstrap` is the sole job bound to
+   `data-plane-production-cutover`. It is created only when either inspected
+   state is `unmarked`; it alone may receive the existing backup/isolated-restore
+   receipt, cutover lease, DBA, data-plane migrator, Nirmana legacy-owner and
+   Nirmana migrator secrets. Inside the cross-ref exclusive concurrency lock it
+   re-reads both semantic states. A stale `unmarked -> marked` observation skips
+   the already-completed operation; `marked -> unmarked`, unknown state, failed
+   cutover or failed re-attestation fails closed. The existing exact-source GitHub
+   deployment-review check, backup/restore binding, PostgreSQL advisory lease,
+   quiescence locks, atomic migrations and rollback/canary controls are unchanged.
+3. `migrate` has no environment and no bootstrap-only secret. It shares the exact
+   `data-plane-production-cutover` concurrency group (without acquiring its
+   environment) so routine migrations serialize across refs with bootstrap and
+   with each other. It runs only after an intentional both-marked bootstrap skip
+   or a successful required bootstrap, re-attests both states as `marked` using
+   the ordinary credential, repeats IAM/runtime isolation attestation, and then
+   invokes the general runner. Web, MCP and pipeline-image delivery retain
+   `needs: [migrate]`; an unknown/partial/failed state cannot reach them.
+
+The general runner remains unconditional and idempotent, so no-new-migration and
+ordinary L3 code releases take the routine path without bootstrap approval. Its
+existing protected-filename guard still rejects pending 1035/1036 application by
+the ordinary credential. Workflow-level concurrency remains unchanged and the
+shared job group closes the cross-ref concurrent-deployment race. Nirmana's
+unrelated one-shot ownership transfer remains inside the privileged job rather
+than being weakened into routine delivery.
+
+**Affected frontier and exit condition.** This source correction unlocks only the
+shared W1 release barrier and the first L3 frontier that depends on web/MCP/build
+delivery (resonance, Yojaka, Avadhi, qualified overlays and applicable Kshetra
+S0/S2/service proofs). It does not accept any asset, physical generation,
+deployment or consumer value. Source exit requires parsed-workflow state-matrix
+tests for marked, unmarked, unknown, pending, failed, stale and concurrent cases;
+the existing security/Nirmana contract suites; YAML and `actionlint`; TypeScript;
+and independent exact-tip review. Operational exit still requires the external
+prerequisites below, a protected merge, authenticated bootstrap approval, accepted
+isolated restore and cutover, marked-state routine deployment, governed canary and
+independent physical W1 acceptance.
+
+**Workflow rollback.** Before cutover, revert this four-file packet to restore the
+prior single-job topology; no database rollback is involved. After cutover, do
+not restore the approval-on-every-deploy topology as a substitute for data-plane
+rollback. Keep the database marked and restricted, pause dependent delivery, use
+the migrator-only generation rollback and prior serving/job revisions described
+below, and repair the routine gate through a new protected change.
 
 ## Observed live state (read-only, 2026-09-15)
 

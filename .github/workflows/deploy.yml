@@ -377,20 +377,20 @@ jobs:
   # to correctly predict every way a migration can reach main (merge commits,
   # squash, revert, force-push) to stay safe. A cheap always-run beats a clever
   # filter for a barrier whose failure mode is a fail-closed production outage.
-  migrate:
-    name: Apply DB Migrations
+  # DP-SD-019: inspect semantic state before GitHub decides whether to create a
+  # protected-environment deployment. This read-only job emits only the two
+  # markers needed to choose the one-time privileged route.
+  migration-state:
+    name: Inspect DB Migration State
     needs: [changes]
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    environment: data-plane-production-cutover
-    concurrency:
-      group: data-plane-production-cutover
-      cancel-in-progress: false
-
     permissions:
-      actions: read
       contents: read
       id-token: write
+    outputs:
+      data_plane: ${{ steps.data-plane-ownership.outputs.state }}
+      nirmana: ${{ steps.nirmana-ownership.outputs.state }}
 
     steps:
       - name: Checkout
@@ -437,13 +437,6 @@ jobs:
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
 
-      - name: Verify data-plane secret and runtime isolation
-        env:
-          GCP_PROJECT: madhav-astrology
-          GCP_REGION: ${{ env.GCP_REGION }}
-          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
-        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
-
       - name: Inspect protected data-plane ownership state
         id: data-plane-ownership
         env:
@@ -460,8 +453,124 @@ jobs:
           fi
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
+      - name: Inspect Nirmana evidence ownership handoff marker
+        id: nirmana-ownership
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the Nirmana ownership marker."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected Nirmana ownership marker state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
+
+  # DP-SD-019: bootstrap-only credentials and authenticated environment
+  # approval exist only on this job. When both markers are already established,
+  # GitHub skips the entire job before requesting environment approval.
+  privileged-bootstrap:
+    name: One-time Protected DB Bootstrap
+    needs: [changes, migration-state]
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      (needs.migration-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.nirmana == 'unmarked')
+    runs-on: ubuntu-latest
+    environment: data-plane-production-cutover
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Bootstrapping immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
+
+      - name: Set up Node.js for protected bootstrap
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install protected bootstrap deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      # The job-level concurrency lock is held before this step starts. Re-read
+      # both markers inside that lock so a second run queued on stale `unmarked`
+      # output cannot replay a cutover completed by the first run.
+      - name: Refresh protected bootstrap state under the exclusive lock
+        id: bootstrap-state
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PRIOR_DATA_PLANE_STATE: ${{ needs.migration-state.outputs.data_plane }}
+          PRIOR_NIRMANA_STATE: ${{ needs.migration-state.outputs.nirmana }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — bootstrap state cannot be refreshed."
+            exit 1
+          fi
+          data_plane_state="$(cd platform && npx tsx scripts/data-plane-ownership-status.ts)" || exit 1
+          nirmana_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          for state in "$data_plane_state" "$nirmana_state"; do
+            if [ "$state" != "marked" ] && [ "$state" != "unmarked" ]; then
+              echo "::error::Unexpected protected bootstrap state under the exclusive lock."
+              exit 1
+            fi
+          done
+          if [ "$PRIOR_DATA_PLANE_STATE" = "marked" ] && [ "$data_plane_state" != "marked" ]; then
+            echo "::error::Protected data-plane state regressed after the initial inspection."
+            exit 1
+          fi
+          if [ "$PRIOR_NIRMANA_STATE" = "marked" ] && [ "$nirmana_state" != "marked" ]; then
+            echo "::error::Nirmana ownership state regressed after the initial inspection."
+            exit 1
+          fi
+          {
+            echo "data_plane=$data_plane_state"
+            echo "nirmana=$nirmana_state"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Verify data-plane secret and runtime isolation before privileged access
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+        env:
+          GCP_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
       - name: Execute protected cutover under backup, restore, lease, quiescence and independent approval
-        if: steps.data-plane-ownership.outputs.state == 'unmarked'
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           DATA_PLANE_BACKUP_RESTORE_ID: ${{ secrets.DATA_PLANE_BACKUP_RESTORE_ID }}
@@ -487,29 +596,14 @@ jobs:
           cd platform
           npx tsx scripts/data-plane-protected-cutover.ts
 
-      - name: Re-attest protected data-plane semantic state
+      - name: Re-attest protected data-plane semantic state with deployment-only migrator
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
         env:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
 
-      - name: Inspect Nirmana evidence ownership handoff marker
-        id: nirmana-ownership
-        env:
-          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-        run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::PROD_DATABASE_URL secret not set — cannot read the Nirmana ownership marker."
-            exit 1
-          fi
-          ownership_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
-          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
-            echo "::error::Unexpected Nirmana ownership marker state."
-            exit 1
-          fi
-          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
-
       - name: One-shot Nirmana evidence ownership preflight
-        if: steps.nirmana-ownership.outputs.state == 'unmarked'
+        if: steps.bootstrap-state.outputs.nirmana == 'unmarked'
         env:
           NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
           NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
@@ -525,6 +619,7 @@ jobs:
           cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
 
       - name: Attest Nirmana ownership handoff as deployment-only migrator
+        if: steps.bootstrap-state.outputs.nirmana == 'unmarked'
         env:
           NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |
@@ -534,6 +629,105 @@ jobs:
           else
             cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
           fi
+
+  # The routine path receives no DBA, data-plane migrator, legacy-owner or
+  # Nirmana migrator credential and has no protected environment. `always()` is
+  # used only to admit the intentional "both already marked" bootstrap skip;
+  # every failed, cancelled, partial or inconsistent predecessor remains closed.
+  migrate:
+    name: Apply Routine DB Migrations
+    needs: [changes, migration-state, privileged-bootstrap]
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      needs.changes.result == 'success' &&
+      needs.migration-state.result == 'success' &&
+      (
+        (
+          needs.migration-state.outputs.data_plane == 'marked' &&
+          needs.migration-state.outputs.nirmana == 'marked' &&
+          needs.privileged-bootstrap.result == 'skipped'
+        ) ||
+        (
+          (
+            needs.migration-state.outputs.data_plane == 'unmarked' ||
+            needs.migration-state.outputs.nirmana == 'unmarked'
+          ) &&
+          needs.privileged-bootstrap.result == 'success'
+        )
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Migrating against immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres &
+          sleep 5
+
+      - name: Set up Node.js for migration runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install migration runner deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Verify data-plane secret and runtime isolation
+        env:
+          GCP_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
+      - name: Re-attest protected data-plane semantic state with routine credential
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — protected data-plane state cannot be re-attested."
+            exit 1
+          fi
+          cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
+
+      - name: Re-attest Nirmana evidence ownership state with routine credential
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — Nirmana ownership state cannot be re-attested."
+            exit 1
+          fi
+          cd platform && test "$(npx tsx scripts/nirmana-evidence-ownership-status.ts)" = marked
 
       - name: Run general database migrations
         env:

@@ -1,11 +1,35 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { runInNewContext } from 'node:vm'
+import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubDeploymentReviewEvidence, assertValidationConnectorBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
+
+type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
+type WorkflowJob = {
+  needs?: string[]
+  if?: string
+  environment?: string
+  concurrency?: { group?: string; 'cancel-in-progress'?: boolean }
+  outputs?: Record<string, string>
+  steps?: WorkflowStep[]
+}
+
+const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
+const workflowJobs = (load(workflow) as { jobs: Record<string, WorkflowJob> }).jobs
+
+function evaluateWorkflowCondition(expression: string, values: Record<string, string>): boolean {
+  let executable = expression.replace(/always\(\)/g, 'true')
+  executable = executable.replace(/\b(?:github|needs)\.[A-Za-z0-9_.-]+\b/g, (token) => JSON.stringify(values[token] ?? ''))
+  if (/\b(?:github|needs)\./.test(executable) || !/^[\s()&|!='".A-Za-z0-9_-]+$/.test(executable)) {
+    throw new Error(`Unsupported workflow expression: ${expression}`)
+  }
+  return Boolean(runInNewContext(executable, Object.create(null)))
+}
 
 describe('DP-SD-018 protected migration routing', () => {
   it.each(['1035_data_plane_l1_producer_history.sql', '1036_data_plane_l2_producer_generations.sql'])(
@@ -229,7 +253,6 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
 })
 
 describe('DP-SD-018 deployment ordering', () => {
-  const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
   it('gates IAM before DBA/migrator use and routes the build job to the dedicated credential', () => {
     expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('Execute protected cutover under backup'))
     expect(workflow.indexOf('Execute protected cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
@@ -240,6 +263,118 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow).toContain('group: data-plane-production-cutover')
     expect(workflow).toMatch(/deploy-pipeline-job:[\s\S]*?needs: \[changes, migrate\]/)
     expect(workflow.indexOf('Re-attest protected data-plane semantic state')).toBeLessThan(workflow.indexOf('Run general database migrations'))
+  })
+
+  it('isolates one-time privileged bootstrap from routine migration and dependent delivery', () => {
+    const state = workflowJobs['migration-state']
+    const bootstrap = workflowJobs['privileged-bootstrap']
+    const migrate = workflowJobs.migrate
+
+    expect(state.needs).toEqual(['changes'])
+    expect(state.environment).toBeUndefined()
+    expect(state.outputs).toEqual({
+      data_plane: '${{ steps.data-plane-ownership.outputs.state }}',
+      nirmana: '${{ steps.nirmana-ownership.outputs.state }}',
+    })
+    expect(state.steps?.map((step) => step.name)).toEqual(expect.arrayContaining([
+      'Inspect protected data-plane ownership state',
+      'Inspect Nirmana evidence ownership handoff marker',
+    ]))
+
+    expect(bootstrap.needs).toEqual(['changes', 'migration-state'])
+    expect(bootstrap.environment).toBe('data-plane-production-cutover')
+    expect(bootstrap.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
+    expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane == 'unmarked'")
+    expect(bootstrap.if).toContain("needs.migration-state.outputs.nirmana == 'unmarked'")
+    expect(Object.entries(workflowJobs).filter(([, job]) => job.environment === 'data-plane-production-cutover').map(([name]) => name))
+      .toEqual(['privileged-bootstrap'])
+    expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_ADMIN_DATABASE_URL')
+    expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
+    expect(JSON.stringify(bootstrap)).toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
+    expect(JSON.stringify(bootstrap)).toContain('NIRMANA_MIGRATOR_DATABASE_URL')
+
+    expect(migrate.needs).toEqual(['changes', 'migration-state', 'privileged-bootstrap'])
+    expect(migrate.environment).toBeUndefined()
+    expect(migrate.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
+    expect(migrate.if).toContain('always()')
+    expect(JSON.stringify(migrate)).not.toContain('DATA_PLANE_ADMIN_DATABASE_URL')
+    expect(JSON.stringify(migrate)).not.toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
+    expect(JSON.stringify(migrate)).not.toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
+    expect(JSON.stringify(migrate)).not.toContain('NIRMANA_MIGRATOR_DATABASE_URL')
+    expect(migrate.if).not.toContain('needs.changes.outputs.')
+    const routineStepNames = migrate.steps?.map((step) => step.name) ?? []
+    const bootstrapRefresh = bootstrap.steps?.find((step) => step.name === 'Refresh protected bootstrap state under the exclusive lock')
+    expect(bootstrapRefresh?.run).toContain('PRIOR_DATA_PLANE_STATE')
+    expect(bootstrapRefresh?.run).toContain('PRIOR_NIRMANA_STATE')
+    expect(bootstrapRefresh?.run).toContain('data-plane-ownership-status.ts')
+    expect(bootstrapRefresh?.run).toContain('nirmana-evidence-ownership-status.ts')
+    expect(bootstrapRefresh?.run).toContain('state regressed after the initial inspection')
+    for (const stepName of [
+      'Execute protected cutover under backup, restore, lease, quiescence and independent approval',
+      'One-shot Nirmana evidence ownership preflight',
+      'Attest Nirmana ownership handoff as deployment-only migrator',
+    ]) {
+      expect(bootstrap.steps?.find((step) => step.name === stepName)?.if).toContain('steps.bootstrap-state.outputs.')
+    }
+    expect(routineStepNames.indexOf('Verify data-plane secret and runtime isolation'))
+      .toBeLessThan(routineStepNames.indexOf('Re-attest protected data-plane semantic state with routine credential'))
+    expect(routineStepNames.indexOf('Re-attest protected data-plane semantic state with routine credential'))
+      .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
+    expect(routineStepNames.indexOf('Re-attest Nirmana evidence ownership state with routine credential'))
+      .toBeLessThan(routineStepNames.indexOf('Run general database migrations'))
+    expect(migrate.steps?.find((step) => step.name === 'Run general database migrations')?.if).toBeUndefined()
+
+    for (const secret of [
+      'DATA_PLANE_ADMIN_DATABASE_URL',
+      'DATA_PLANE_MIGRATOR_DATABASE_URL',
+      'NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL',
+      'NIRMANA_MIGRATOR_DATABASE_URL',
+    ]) {
+      expect(Object.entries(workflowJobs).filter(([, job]) => JSON.stringify(job).includes(secret)).map(([name]) => name))
+        .toEqual(['privileged-bootstrap'])
+    }
+
+    for (const jobName of ['deploy-web', 'deploy-mcp', 'deploy-pipeline-job']) {
+      expect(workflowJobs[jobName].needs).toContain('migrate')
+    }
+  })
+
+  it('admits only marked routine delivery or a successful required bootstrap', () => {
+    const bootstrapIf = workflowJobs['privileged-bootstrap'].if as string
+    const migrateIf = workflowJobs.migrate.if as string
+    const base = {
+      'github.event_name': 'workflow_run',
+      'github.event.workflow_run.conclusion': 'success',
+      'needs.changes.result': 'success',
+      'needs.migration-state.result': 'success',
+    }
+    const scenario = (dataPlane: string, nirmana: string, bootstrapResult: string) => ({
+      ...base,
+      'needs.migration-state.outputs.data_plane': dataPlane,
+      'needs.migration-state.outputs.nirmana': nirmana,
+      'needs.privileged-bootstrap.result': bootstrapResult,
+    })
+
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'skipped'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('unmarked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'unmarked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'unmarked', 'success'))).toBe(true)
+
+    for (const result of ['failure', 'cancelled', 'skipped']) {
+      expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', result))).toBe(false)
+    }
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'success'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('unknown', 'marked', 'skipped'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, {
+      ...scenario('marked', 'marked', 'skipped'),
+      'needs.migration-state.result': 'failure',
+    })).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, {
+      ...scenario('marked', 'marked', 'skipped'),
+      'github.event.workflow_run.conclusion': 'failure',
+    })).toBe(false)
   })
   it('requires exact backup and successful-restore identifiers as one receipt', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
