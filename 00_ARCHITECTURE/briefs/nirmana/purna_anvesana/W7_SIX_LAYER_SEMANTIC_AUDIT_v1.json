@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0",
   "audit_id": "MADHAV-PURNA-ANVESANA-W7-P2-SEMANTIC-AUDIT",
-  "audited_source_head": "012ffbf2c",
-  "capability_knowledge_content_hash": "sha256:6560b2e531fe0f66a1b1e4edcf5cc6958b53c256a648845d8eef7f30b74f5a4e",
+  "audited_source_head": "12d153018",
+  "capability_knowledge_content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
   "evidence_ceiling": "SOURCE_LOCAL_STRUCTURAL_AND_MANUAL_SEMANTIC_REVIEW",
   "explicit_exclusions": [
     "No doctrine or classical correctness ratification.",
@@ -27,7 +27,7 @@
     "empty_required_semantic_fields": 0,
     "editorial_source_refs_checked": 358,
     "unresolved_editorial_source_refs": 0,
-    "typed_concepts": 250,
+    "typed_concepts": 257,
     "unbound_concept_uses": 0,
     "semantic_edges": 53,
     "invalid_edge_endpoints_or_sources": 0,
@@ -58,13 +58,13 @@
 
     { "layer": "L4", "scu_id": "scu.catalog.query_anomaly_flags", "verdict": "PASS", "note": "Names anomaly type, severity, expected/observed fields and leakage class while explicitly limiting use to evidence-quality calibration." },
     { "layer": "L4", "scu_id": "scu.catalog.query_domain_result", "verdict": "PASS", "note": "Explains the intentional 13-domain sparse shape and reconciliation fields; avoids treating row count as missing coverage." },
-    { "layer": "L4", "scu_id": "scu.catalog.query_prospective_ledger", "verdict": "PASS", "note": "Preserves explicit filing-only governance, mandatory falsifiers and lifecycle state; states that this read surface never files predictions." },
+    { "layer": "L4", "scu_id": "scu.catalog.query_prospective_ledger", "verdict": "PASS", "note": "Uses a dedicated evidence-quality and timing family for explicitly filed predictions, mandatory falsifiers, source provenance, confidence and lifecycle state; states that this read surface never files or calibrates predictions." },
     { "layer": "L4", "scu_id": "scu.catalog.query_spillover_cascades", "verdict": "PASS", "note": "Defines cross-domain A-to-B-to-C propagation, conflict chains and mitigation routing with anchor references." },
 
     { "layer": "L5", "scu_id": "scu.catalog.lel_intake_checklist", "verdict": "PASS", "note": "Strong fail-closed boundary: structures and validates native-authored events but never invents, defaults or writes event content." },
     { "layer": "L5", "scu_id": "scu.catalog.query_insight_embeddings", "verdict": "PASS", "note": "Separates embedding provenance/nearest-neighbor lookup from unsupported live text embedding and never exposes raw vectors." },
     { "layer": "L5", "scu_id": "scu.catalog.query_manifestation_grammar", "verdict": "PASS", "note": "Specifies propensity evidence, prior comparison and lived-reality calibration while retaining evidence references." },
-    { "layer": "L5", "scu_id": "scu.catalog.query_signal_families", "verdict": "PASS", "note": "Defines global family classes, negative controls and calibration metadata without conflating the family registry with the per-control battery." }
+    { "layer": "L5", "scu_id": "scu.catalog.query_signal_families", "verdict": "PASS", "note": "Uses a dedicated evidence-quality registry family for global signal-family priors, evidence tiers, negative-control classes and calibration status without treating the registry as chart or relational evidence." }
   ],
   "writer_verdict": "PASS_WITH_DECLARED_LIMITS",
   "repairs_required_by_this_audit": [],

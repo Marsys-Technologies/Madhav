@@ -61,7 +61,7 @@ describe('Wave 7 six-layer semantic audit evidence', () => {
       descriptor_derived_stubs: 0,
       editorial_source_refs_checked: 358,
       unresolved_editorial_source_refs: 0,
-      typed_concepts: 250,
+      typed_concepts: 257,
       unbound_concept_uses: 0,
       semantic_edges: 53,
       invalid_edge_endpoints_or_sources: 0,
