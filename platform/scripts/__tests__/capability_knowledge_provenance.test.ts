@@ -20,13 +20,19 @@ describe('capability knowledge provenance', () => {
   it('ignores a synthetic merge-group commit when binding generated_at', () => {
     const repoRoot = mkdtempSync(path.join(tmpdir(), 'capability-knowledge-provenance-'))
     const registryRoot = path.join(repoRoot, 'platform/src/lib/retrieval/registry')
+    const generatedRoot = path.join(repoRoot, 'platform/src/generated')
     mkdirSync(registryRoot, { recursive: true })
+    mkdirSync(generatedRoot, { recursive: true })
 
     git(repoRoot, ['init', '-q', '-b', 'main'])
     git(repoRoot, ['config', 'user.email', 'test@example.com'])
     git(repoRoot, ['config', 'user.name', 'Test'])
 
     writeFileSync(path.join(registryRoot, 'catalog.ts'), 'export const catalog = 1\n')
+    writeFileSync(
+      path.join(generatedRoot, 'capability_knowledge.snapshot.json'),
+      '{"generated_at":"2026-09-15T15:40:50.000Z"}\n',
+    )
     git(repoRoot, ['add', '.'])
     git(repoRoot, ['commit', '-q', '-m', 'base'], '2026-09-15T15:00:00Z')
 
@@ -51,7 +57,43 @@ describe('capability knowledge provenance', () => {
       .toBe('2026-09-15T15:40:50.000Z')
   })
 
-  it('falls back to the epoch without Git provenance', () => {
+  it('ignores a single-parent merge-queue squash timestamp', () => {
+    const repoRoot = mkdtempSync(path.join(tmpdir(), 'capability-knowledge-squash-'))
+    const registryRoot = path.join(repoRoot, 'platform/src/lib/retrieval/registry')
+    const generatedRoot = path.join(repoRoot, 'platform/src/generated')
+    mkdirSync(registryRoot, { recursive: true })
+    mkdirSync(generatedRoot, { recursive: true })
+
+    git(repoRoot, ['init', '-q', '-b', 'main'])
+    git(repoRoot, ['config', 'user.email', 'test@example.com'])
+    git(repoRoot, ['config', 'user.name', 'Test'])
+
+    writeFileSync(path.join(registryRoot, 'catalog.ts'), 'export const catalog = 1\n')
+    writeFileSync(
+      path.join(generatedRoot, 'capability_knowledge.snapshot.json'),
+      '{"generated_at":"2026-09-15T15:40:50.000Z"}\n',
+    )
+    git(repoRoot, ['add', '.'])
+    git(repoRoot, ['commit', '-q', '-m', 'base'], '2026-09-15T15:00:00Z')
+
+    // GitHub's queue can materialize the reviewed PR as one synthetic squash
+    // commit whose sole parent is main. That shape is not excluded by
+    // `git log --no-merges`, even though the artifact already pins provenance.
+    writeFileSync(path.join(registryRoot, 'catalog.ts'), 'export const catalog = 2\n')
+    git(repoRoot, ['add', '.'])
+    git(repoRoot, ['commit', '-q', '-m', 'queued squash'], '2026-09-15T16:00:00Z')
+
+    expect(resolveCapabilityKnowledgeGeneratedAt(repoRoot))
+      .toBe('2026-09-15T15:40:50.000Z')
+  })
+
+  it('accepts an explicit reviewed timestamp when refreshing the artifact', () => {
+    const archiveRoot = mkdtempSync(path.join(tmpdir(), 'capability-knowledge-explicit-'))
+    expect(resolveCapabilityKnowledgeGeneratedAt(archiveRoot, '2026-09-16T03:47:00+05:30'))
+      .toBe('2026-09-15T22:17:00.000Z')
+  })
+
+  it('falls back to the epoch without a committed artifact', () => {
     const archiveRoot = mkdtempSync(path.join(tmpdir(), 'capability-knowledge-archive-'))
     expect(resolveCapabilityKnowledgeGeneratedAt(archiveRoot))
       .toBe('1970-01-01T00:00:00.000Z')
