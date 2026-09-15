@@ -241,9 +241,19 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
     await admin.query('CREATE ROLE dp_owner_bridge NOLOGIN NOINHERIT')
     try {
       await admin.query('GRANT data_plane_l1_owner TO dp_owner_bridge; GRANT dp_owner_bridge TO data_plane_builder')
-      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/Recursive protected-owner membership/)
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/role membership/)
     } finally {
       await admin.query('REVOKE dp_owner_bridge FROM data_plane_builder; REVOKE data_plane_l1_owner FROM dp_owner_bridge; DROP ROLE dp_owner_bridge')
+    }
+
+    await admin.query('CREATE ROLE dp_foreign_role NOLOGIN NOINHERIT')
+    try {
+      await admin.query('GRANT dp_foreign_role TO data_plane_builder')
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/Exact bidirectional/)
+      await admin.query('REVOKE dp_foreign_role FROM data_plane_builder; GRANT data_plane_verifier TO dp_foreign_role')
+      await expect(readDataPlaneOwnershipStatus(roleUrl('data_plane_verifier'))).rejects.toThrow(/Exact bidirectional/)
+    } finally {
+      await admin.query('REVOKE dp_foreign_role FROM data_plane_builder; REVOKE data_plane_verifier FROM dp_foreign_role; DROP ROLE dp_foreign_role')
     }
 
     const signature = 'public.open_l1_data_plane_generation(uuid,text,text,text,integer,text,text,text,text,text,text)'

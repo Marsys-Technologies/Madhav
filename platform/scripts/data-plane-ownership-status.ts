@@ -102,6 +102,26 @@ export async function readDataPlaneOwnershipStatus(databaseUrl = process.env.DAT
     if (t?.schema_owner !== 'data_plane_schema_owner' || Number(t.bad_memberships) !== 0 || Number(t.migrator_memberships) !== 3) {
       throw new Error('DP-SD-018 protected role membership or schema-owner drift detected.')
     }
+    const exactMemberships = await pool.query<{ unsafe: boolean }>(`
+      WITH controlled(role_name) AS (SELECT unnest($1::text[])),
+      actual AS (
+        SELECT parent.rolname parent_role,member.rolname member_role
+        FROM pg_auth_members m JOIN pg_roles parent ON parent.oid=m.roleid
+        JOIN pg_roles member ON member.oid=m.member
+        WHERE parent.rolname IN (SELECT role_name FROM controlled)
+           OR member.rolname IN (SELECT role_name FROM controlled)
+      ), expected(parent_role,member_role) AS (VALUES
+        ('data_plane_schema_owner','data_plane_migrator'),
+        ('data_plane_l1_owner','data_plane_migrator'),
+        ('data_plane_l2_owner','data_plane_migrator')
+      )
+      SELECT EXISTS (SELECT 1 FROM actual a FULL JOIN expected e USING(parent_role,member_role)
+        WHERE a.parent_role IS NULL OR e.parent_role IS NULL) AS unsafe
+    `, [[
+      'data_plane_schema_owner','data_plane_l1_owner','data_plane_l2_owner',
+      'data_plane_migrator','data_plane_builder','data_plane_verifier',
+    ]])
+    if (exactMemberships.rows[0]?.unsafe) throw new Error('Exact bidirectional data-plane role membership drift detected.')
     const recursiveMembership = await pool.query<{ unsafe: boolean }>(`
       WITH RECURSIVE reach(roleid, member) AS (
         SELECT roleid, member FROM pg_auth_members

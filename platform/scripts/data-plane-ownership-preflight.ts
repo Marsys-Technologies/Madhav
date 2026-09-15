@@ -140,6 +140,23 @@ async function revokeAllDefaultPrivilegeGrantees(client: PoolClient, owner: stri
   }
 }
 
+async function normalizeDataPlaneMemberships(client: PoolClient): Promise<void> {
+  const controlled = [
+    'data_plane_schema_owner','data_plane_l1_owner','data_plane_l2_owner',
+    'data_plane_migrator','data_plane_builder','data_plane_verifier',
+  ]
+  const unexpected = await client.query<{ parent_role: string; member_role: string }>(`
+    SELECT parent.rolname parent_role,member.rolname member_role
+    FROM pg_auth_members m JOIN pg_roles parent ON parent.oid=m.roleid
+    JOIN pg_roles member ON member.oid=m.member
+    WHERE (parent.rolname=ANY($1::text[]) OR member.rolname=ANY($1::text[]))
+      AND NOT (parent.rolname=ANY($2::text[]) AND member.rolname='data_plane_migrator')
+  `, [controlled, ['data_plane_schema_owner','data_plane_l1_owner','data_plane_l2_owner']])
+  for (const edge of unexpected.rows) {
+    await client.query(`REVOKE ${qi(edge.parent_role)} FROM ${qi(edge.member_role)}`)
+  }
+}
+
 async function assertRoles(client: PoolClient): Promise<void> {
   const actor = await client.query<{ current_user: string; can_manage: boolean }>(`
     SELECT current_user,
@@ -324,6 +341,7 @@ export async function runDataPlaneOwnershipPreflight(databaseUrl = process.env[A
       REVOKE amjis_app FROM postgres;
       GRANT data_plane_schema_owner, data_plane_l1_owner, data_plane_l2_owner TO data_plane_migrator;
     `)
+    await normalizeDataPlaneMemberships(client)
     await client.query(`DO $$ BEGIN
       EXECUTE format('REVOKE ALL PRIVILEGES ON DATABASE %I FROM data_plane_migrator, data_plane_builder, data_plane_verifier', current_database());
       EXECUTE format('GRANT CONNECT, TEMPORARY ON DATABASE %I TO data_plane_builder', current_database());

@@ -145,6 +145,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(preflight).toContain("revokeAllRelationGrantees(client, 'SEQUENCE'")
     expect(preflight).toContain('revokeAllPublicSchemaGrantees(client)')
     expect(preflight).toContain('revokeAllDefaultPrivilegeGrantees(client')
+    expect(preflight).toContain('normalizeDataPlaneMemberships(client)')
     const transfer = preflight.slice(preflight.indexOf('async function transferTables'), preflight.indexOf('export async function runDataPlaneOwnershipPreflight'))
     expect(transfer).not.toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE/)
   })
