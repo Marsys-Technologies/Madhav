@@ -136,7 +136,7 @@ export const queryPlanetTransitCapability: ToolCapability = {
     known_gaps: ['The scalar date-window binding is capped at 5,000 rows and is not exhaustion-proven.'],
     editorial: true,
   }],
-  async handler(args: Record<string, unknown>, _ctx?: unknown) {
+  async handler(args: Record<string, unknown>) {
     const planet = args['planet'] as string
     const start_date = args['start_date'] as string
     const end_date = args['end_date'] as string

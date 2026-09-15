@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
-import { applyInquiryObservations, compileInquiryContract, finalizeInquiryContract, recordInquiryExecution } from './compiler'
+import { applyInquiryObservations, compileInquiryContract as compileRawInquiryContract, finalizeInquiryContract, recordInquiryExecution } from './compiler'
 import { bindingForInquiryItem } from './managed_bridge'
 import {
   buildInquiryFactRegister,
@@ -23,6 +23,14 @@ const wealthScope: InquiryScopeTuple = {
 }
 
 const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-13T00:00:00.000Z')
+const fixtureTemporalAnchorDate = '2026-09-15'
+
+function compileInquiryContract(input: Parameters<typeof compileRawInquiryContract>[0]) {
+  return compileRawInquiryContract({
+    ...input,
+    temporal_anchor_date: fixtureTemporalAnchorDate,
+  })
+}
 
 function completeFixture(): { contract: InquiryContract; evidencePayloads: readonly unknown[] } {
   const initial = compileInquiryContract({

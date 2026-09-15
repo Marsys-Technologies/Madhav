@@ -132,7 +132,11 @@ export const queryCurrentTransitSnapshotCapability: ToolCapability = {
       }
     }))
     const missingPlanets = components.filter((component) => component.status !== 'served').map((component) => component.planet)
-    const receipts = components.map(({ rows: _rows, ...receipt }) => receipt)
+    const receipts = components.map((component) => {
+      const { rows, ...receipt } = component
+      void rows
+      return receipt
+    })
     const normalized = {
       as_of_date: asOfDate,
       expected_components: CANONICAL_TRANSIT_PLANETS.length,

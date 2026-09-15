@@ -89,11 +89,9 @@ vi.mock('@/lib/bundle/bundle_hydrator', () => ({
 // REAL `compileFloorForPlan` so the assertion is a genuine before/after check
 // on the fix, not a stand-in.
 
-vi.mock('@/lib/retrieval/registry', () => ({
+vi.mock('@/lib/retrieval/registry', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/lib/retrieval/registry')>(),
   getCapability: vi.fn(() => undefined),
-}))
-vi.mock('@/lib/retrieval/registry/catalog', () => ({
-  getCatalog: vi.fn(() => []),
 }))
 vi.mock('@/lib/retrieval/registry/tool_name_bridge', () => ({
   getToolByName: vi.fn((name: string) => ({ name })),

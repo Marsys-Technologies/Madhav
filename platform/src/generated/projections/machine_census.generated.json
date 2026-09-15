@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-07-24T05:06:15.709Z",
+  "generated_at": "2026-09-15T14:58:49.569Z",
   "generator": "generate_projections.ts",
   "generator_version": "1.0",
   "source": "getCatalog() (platform/src/lib/retrieval/registry/catalog.ts) — live registry, no DB read",
-  "total": 168,
+  "total": 186,
   "entries": [
     {
       "uri": "marsys://prompt/intent-classify",
@@ -695,7 +695,7 @@
       "required_inputs": [
         "category"
       ],
-      "input_param_count": 1,
+      "input_param_count": 3,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -938,6 +938,39 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L0/query_current_transit_snapshot",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_current_transit_snapshot",
+      "scope": "global",
+      "archetype": "temporal",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "temporal",
+      "data_source": "computed",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Current Transit Snapshot",
+      "one_line": "Return the complete nine-graha transit state for one explicit date by invoking the strict scalar planet-transit capability once per canonical Jyotish body.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": true,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L0/query_dasha_systems",
       "type": "tool",
       "layer": "L0",
@@ -958,7 +991,7 @@
         "mcp_full"
       ],
       "short_label": "Query Dasha Systems",
-      "one_line": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 18 rows).",
+      "one_line": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 20 rows).",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -989,7 +1022,7 @@
         "mcp_full"
       ],
       "short_label": "Query Dosha Catalog",
-      "one_line": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 50 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and…",
+      "one_line": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 79 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -1146,7 +1179,7 @@
         "mcp_full"
       ],
       "short_label": "Query Medical Mappings",
-      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 / Ashtanga Hridayam / Charaka Samhita).",
+      "one_line": "Query the Jyotish→Ayurvedic medical reference (bg_medical_mappings, 21 rows — 9 grahas, 6 planetary combinations, and 6 dignity modifiers — BPHS Ch.18 /…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -1188,6 +1221,40 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L0/query_muhurta_lattice",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_muhurta_lattice",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "start_utc",
+        "end_utc"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Query Muhurta Lattice",
+      "one_line": "Read the global muhūrta boundary/factor lattice (bg_muhurta_lattice) for a time interval.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L0/query_nakshatra_medical",
       "type": "tool",
       "layer": "L0",
@@ -1209,6 +1276,37 @@
       ],
       "short_label": "Query Nakshatra Medical",
       "one_line": "Query the nakshatra→body-part medical reference (bg_nakshatra_medical, 27 rows — Ashtanga Hridayam / BPHS).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L0/query_parihara_graph",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_parihara_graph",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [],
+      "input_param_count": 4,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Query Parihara Graph",
+      "one_line": "Read the parihāra (doṣa-cancellation) graph, the per-activity muhūrta factor-quality rule tables, and the Muhūrta Factor Census / corpus-gap register…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -1636,6 +1734,40 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L0/query_sky_calendar",
+      "type": "tool",
+      "layer": "L0",
+      "name": "query_sky_calendar",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SOURCE",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "start_utc",
+        "end_utc"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Query Sky Calendar",
+      "one_line": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L0/query_sutravali_rules",
       "type": "tool",
       "layer": "L0",
@@ -1974,7 +2106,7 @@
         "mcp_full"
       ],
       "short_label": "Query Yoga Catalog",
-      "one_line": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 175 canonical yogas with classical activation rules, tradition, domain tags, and classical sources.",
+      "one_line": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 233 canonical yogas with classical activation rules, tradition, domain tags, and classical sources.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -2203,7 +2335,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 3,
+      "input_param_count": 4,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -2212,6 +2344,42 @@
       ],
       "short_label": "Chart Snapshot",
       "one_line": "The compact \"show me the chart\" answer: a 12-rashi D1 (rashi/D1 chart) text grid -- every graha's sign + degree-in-sign, Lagna sign clearly marked -- sized for…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L1/concept_locate",
+      "type": "tool",
+      "layer": "L1",
+      "name": "concept_locate",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-ORIENT",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "query"
+      ],
+      "input_param_count": 2,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact",
+        "mcp_consult"
+      ],
+      "short_label": "Concept Locate",
+      "one_line": "Resolve a free-text concept name (English or Sanskrit, e.g.",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -2239,7 +2407,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 7,
       "projection_tags": [
         "mcp_full"
       ],
@@ -2588,6 +2756,39 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L1/get_database_schema",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_database_schema",
+      "scope": "global",
+      "archetype": "flat_fact",
+      "traversal_level": "L-OVERVIEW",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Get Database Schema",
+      "one_line": "Discovery substrate: every fact_category x fact_subject combination that actually exists in the live chart_facts data model, mechanically enumerated (never…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L1/get_dignity",
       "type": "tool",
       "layer": "L1",
@@ -2852,6 +3053,39 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L1/get_nakshatra",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_nakshatra",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 6,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Get Nakshatra",
+      "one_line": "Retrieve the nakshatra-semantic layer for a chart: graha-nakshatra/pada joins, nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L1/get_panchanga",
       "type": "tool",
       "layer": "L1",
@@ -2968,7 +3202,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3006,7 +3240,7 @@
         "mcp_full"
       ],
       "short_label": "Get Sensitive Degrees",
-      "one_line": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check', 275 rows/chart).",
+      "one_line": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check').",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3067,12 +3301,45 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 7,
+      "input_param_count": 8,
       "projection_tags": [
         "mcp_full"
       ],
       "short_label": "Get Strength",
       "one_line": "Retrieve all graha strength metrics for a chart: Shadbala (6 components + total), Vimsopaka Bala (4 varga groupings), Saptavargaja Bala, Ishta/Kashta Phala,…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L1/get_structural",
+      "type": "tool",
+      "layer": "L1",
+      "name": "get_structural",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "leaf",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 6,
+      "projection_tags": [
+        "mcp_full"
+      ],
+      "short_label": "Get Structural",
+      "one_line": "Retrieve ga_structural's residual relational/graph signal layer: sambandha (planetary relationship grade) and virupa-drishti aspect strength, contradiction and…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3100,7 +3367,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 10,
       "projection_tags": [
         "mcp_full"
       ],
@@ -3159,7 +3426,7 @@
       "tool_role": "leaf",
       "data_source": "stored",
       "mutation": false,
-      "emits_references": false,
+      "emits_references": true,
       "lel_capable": false,
       "calibration_context_only": false,
       "bearing_first": false,
@@ -3298,12 +3565,48 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "mcp_full"
       ],
       "short_label": "Get Yoga Firings",
       "one_line": "Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L1/query_planet",
+      "type": "tool",
+      "layer": "L1",
+      "name": "query_planet",
+      "scope": "per_chart",
+      "archetype": "flat_fact",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "umbrella",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id",
+        "planet"
+      ],
+      "input_param_count": 3,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Planet",
+      "one_line": "Canonical assembled-entity face for ONE graha: sign, house (D1), nakshatra+pada, degree, retrograde/combustion state, dignity chain…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3576,7 +3879,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 6,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -3687,7 +3990,7 @@
         "mcp_full"
       ],
       "short_label": "Query Pratijna",
-      "one_line": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional),…",
+      "one_line": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional |…",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -3786,7 +4089,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 8,
+      "input_param_count": 9,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -4259,7 +4562,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 5,
+      "input_param_count": 7,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -4345,6 +4648,41 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L3/query_active_dashas",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_active_dashas",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Active Dashas",
+      "one_line": "Convenience face (EL-33): \"which dashas am I running on a given date?\" — reports the active lord chain (level 1/2/3 = Mahā/Antar/Pratyantar) with exact…",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L3/query_convergence_windows",
       "type": "tool",
       "layer": "L3",
@@ -4415,6 +4753,76 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L3/query_kala_paddhati_profile",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_kala_paddhati_profile",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 3,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Kala Paddhati Profile",
+      "one_line": "Retrieve the per-chart paddhati (convention) profile from kala_paddhati_profile (ṢAḌ-DARŚANA item 37 / ADJUDICATION-8).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/query_kota_chakra",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_kota_chakra",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Kota Chakra",
+      "one_line": "Retrieve Kota-Chakra (fort chart) ring-run rows for a chart from kala_kota_chakra (ka_kota_chakra, registry item 16).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L3/query_life_arc",
       "type": "tool",
       "layer": "L3",
@@ -4440,6 +4848,41 @@
       ],
       "short_label": "Query Life Arc",
       "one_line": "Returns biographical life-arc chapters (parvas) for a chart from kala_jivana_parva.",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/query_moorti_nirnaya",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_moorti_nirnaya",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Moorti Nirnaya",
+      "one_line": "Retrieve Moorti-nirṇaya rows for a chart from kala_moorti_nirnaya (ka_moorti_nirnaya, registry item 4).",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -4518,6 +4961,41 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L3/query_sudarshana_varsha",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_sudarshana_varsha",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Sudarshana Varsha",
+      "one_line": "Retrieve Sudarśana-Chakra year-wheel rows for a chart from kala_sudarshana_varsha (ka_sudarshana_varsha, registry item 17).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L3/query_temporal_activation",
       "type": "tool",
       "layer": "L3",
@@ -4578,6 +5056,76 @@
       ],
       "short_label": "Query Temporal View",
       "one_line": "Returns the temporal Kāla-Darshana view for a chart from kala_darshana (ka_kala_darshana) — the lifetime confluence catalog (750 rows/chart).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/query_tithi_pravesha",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_tithi_pravesha",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 5,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Tithi Pravesha",
+      "one_line": "Retrieve Tithi-Praveśa (lunar-return annual chart) rows for a chart from kala_tithi_pravesha (ka_tithi_pravesha, registry item 13).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L3/query_vedha_gochara",
+      "type": "tool",
+      "layer": "L3",
+      "name": "query_vedha_gochara",
+      "scope": "per_chart",
+      "archetype": "temporal",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "temporal",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": true,
+      "lel_capable": false,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 6,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Query Vedha Gochara",
+      "one_line": "Retrieve vedha (transit obstruction) rows for a chart from kala_vedha_gochara (ka_vedha_gochara, registry item 5, closes defect R-19 CLOSED-PARTIAL-BY-DESIGN).",
       "read_only": true,
       "destructive": false,
       "open_world": false,
@@ -4918,7 +5466,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 4,
+      "input_param_count": 5,
       "projection_tags": [
         "mcp_full"
       ],
@@ -4967,6 +5515,41 @@
       "has_drill_children": false
     },
     {
+      "uri": "marsys://tool/L5/lel_intake_checklist",
+      "type": "tool",
+      "layer": "L5",
+      "name": "lel_intake_checklist",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "data_source": "stored",
+      "mutation": false,
+      "emits_references": false,
+      "lel_capable": true,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 4,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Lel Intake Checklist",
+      "one_line": "Guided Life Event Log (LEL) intake surface (EL-54).",
+      "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
       "uri": "marsys://tool/L5/lel_query",
       "type": "tool",
       "layer": "L5",
@@ -4984,7 +5567,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 7,
+      "input_param_count": 9,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -5028,6 +5611,41 @@
       "short_label": "Mechanism Retrodiction Get",
       "one_line": "CONFIRMATION-ONLY retrodictive evidence surface (never prediction input).",
       "read_only": true,
+      "destructive": false,
+      "open_world": false,
+      "has_density_contract": true,
+      "has_output_schema": false,
+      "has_family_overrides": false,
+      "has_register_glossary": false,
+      "has_drill_children": false
+    },
+    {
+      "uri": "marsys://tool/L5/prediction_lifecycle_sweep",
+      "type": "tool",
+      "layer": "L5",
+      "name": "prediction_lifecycle_sweep",
+      "scope": "per_chart",
+      "archetype": "calibration",
+      "traversal_level": "L-SIGNAL",
+      "tool_role": "quality",
+      "data_source": "stored",
+      "mutation": true,
+      "emits_references": true,
+      "lel_capable": true,
+      "calibration_context_only": false,
+      "bearing_first": false,
+      "required_inputs": [
+        "chart_id"
+      ],
+      "input_param_count": 3,
+      "projection_tags": [
+        "chat",
+        "mcp_full",
+        "mcp_compact"
+      ],
+      "short_label": "Prediction Lifecycle Sweep",
+      "one_line": "EL-58 prediction/window lifecycle sweep.",
+      "read_only": false,
       "destructive": false,
       "open_world": false,
       "has_density_contract": true,
@@ -5089,7 +5707,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 3,
+      "input_param_count": 4,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -5367,7 +5985,7 @@
       "required_inputs": [
         "chart_id"
       ],
-      "input_param_count": 4,
+      "input_param_count": 5,
       "projection_tags": [
         "chat",
         "mcp_full",
@@ -5635,52 +6253,52 @@
   ],
   "summary": {
     "by_layer": {
-      "L0": 63,
+      "L0": 67,
       "L2": 32,
-      "L3": 14,
-      "L1": 35,
+      "L3": 21,
+      "L1": 40,
       "L4": 11,
-      "L5": 13
+      "L5": 15
     },
     "by_type": {
       "prompt": 1,
       "resource": 5,
-      "tool": 162
+      "tool": 180
     },
     "by_scope": {
-      "global": 67,
-      "per_chart": 101
+      "global": 73,
+      "per_chart": 113
     },
     "by_archetype": {
       "orientation_digest": 11,
-      "flat_fact": 74,
-      "calibration": 20,
+      "flat_fact": 82,
+      "calibration": 22,
       "rich_relational": 21,
       "cross_domain": 9,
-      "temporal": 21,
+      "temporal": 29,
       "prose_citation": 8,
       "graph_traversal": 4
     },
     "by_tool_role": {
-      "umbrella": 19,
-      "leaf": 83,
-      "quality": 20,
+      "umbrella": 21,
+      "leaf": 89,
+      "quality": 22,
       "drill": 19,
       "synthesizer": 4,
-      "temporal": 15,
+      "temporal": 23,
       "hybrid_retrieval": 4,
       "graph": 4
     },
     "by_data_source": {
-      "stored": 147,
-      "computed": 20,
+      "stored": 164,
+      "computed": 21,
       "hybrid": 1
     },
     "by_projection_tag": {
-      "chat": 85,
-      "mcp_full": 166,
-      "mcp_compact": 84,
-      "mcp_consult": 14
+      "chat": 98,
+      "mcp_full": 184,
+      "mcp_compact": 97,
+      "mcp_consult": 15
     },
     "no_projection_tags": [
       "marsys://tool/channel/chat_dispatch",
@@ -5690,6 +6308,7 @@
       "marsys://resource/ephemeris-cache/native-lifetime",
       "marsys://resource/ephemeris-cache/year/{yyyy}",
       "marsys://tool/L0/query_aspects_at_time",
+      "marsys://tool/L0/query_current_transit_snapshot",
       "marsys://tool/L0/query_planet_position",
       "marsys://tool/L0/query_planet_transit",
       "marsys://tool/L0/query_retrograde_periods"

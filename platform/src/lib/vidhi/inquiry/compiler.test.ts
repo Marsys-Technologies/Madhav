@@ -426,7 +426,8 @@ describe('versioned inquiry compiler', () => {
         ? { ...component, planet: 'Pluto', args_hash: stableFingerprint({ planet: 'Pluto', start_date: component.start_date, end_date: component.end_date }) }
         : component)
       const resolution = { ...item.argument_resolution!, component_arguments: componentArguments }
-      const { resolution_hash: _oldHash, ...withoutHash } = resolution
+      const withoutHash = { ...resolution }
+      delete (withoutHash as Partial<typeof withoutHash>).resolution_hash
       return { ...item, argument_resolution: { ...withoutHash, resolution_hash: stableFingerprint(withoutHash) } }
     })
     const forgeries = [
@@ -450,7 +451,8 @@ describe('versioned inquiry compiler', () => {
     })
     const strippedItems = initial.plan_items.map((item) => {
       if (item.binding_id !== 'registry:marsys://tool/L0/query_current_transit_snapshot') return item
-      const { argument_resolution: _removed, ...withoutReceipt } = item
+      const withoutReceipt = { ...item }
+      delete (withoutReceipt as Partial<typeof withoutReceipt>).argument_resolution
       return withoutReceipt
     })
     const stripped = withRecomputedAuthorization({ ...initial, plan_items: strippedItems })
@@ -481,7 +483,8 @@ describe('versioned inquiry compiler', () => {
         ...original,
         plan_items: original.plan_items.map((item) => {
           if (item.scu_id !== 'scu.catalog.query_planet_transit') return item
-          const { argument_resolution: _removed, ...withoutReceipt } = item
+          const withoutReceipt = { ...item }
+          delete (withoutReceipt as Partial<typeof withoutReceipt>).argument_resolution
           return withoutReceipt
         }),
       })

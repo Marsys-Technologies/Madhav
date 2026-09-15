@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-07-24T05:06:15.709Z",
+  "generated_at": "2026-09-15T14:58:49.569Z",
   "generator": "generate_projections.ts",
   "source": "getCatalog() capabilities with type=tool AND projection_tags includes \"mcp_full\"",
-  "total": 160,
+  "total": 178,
   "tool_registrations": [
     {
       "tool_name": "assess_career",
@@ -323,7 +323,7 @@
     },
     {
       "tool_name": "call_priority_ranking",
-      "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window.",
+      "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -346,6 +346,14 @@
           "top_k": {
             "type": "number",
             "description": "Max signals to return (default: 20, max: 100)."
+          },
+          "domain": {
+            "type": "string",
+            "description": "MC-024 (ŚODHANA T4): filter to signals affecting ONE life domain (e.g. \"wealth\", \"career\", \"health\", \"relationship\", \"spirituality\", \"character\") — matched against domains_affected_array (case-insensitive). Takes precedence over `domains` if both given."
+          },
+          "domains": {
+            "type": "array",
+            "description": "MC-024: filter to signals affecting ANY of these life domains (OR/overlap match against domains_affected_array, case-insensitive). Ignored if `domain` is also given."
           }
         },
         "required": [
@@ -471,7 +479,7 @@
           },
           "category": {
             "type": "string",
-            "description": "Fact category to filter by (e.g. \"graha_position\", \"graha_dignity_per_varga\", \"yoga_label\", \"house_bhava_bala_total\"). Accepts a single value or comma-separated list for multiple categories."
+            "description": "Fact category to filter by (e.g. \"graha_position\", \"graha_dignity_per_varga\", \"yoga_label\", \"house_bhava_bala_total\"). Accepts a single value or comma-separated list for multiple categories. The umbrella term \"panchanga\" expands to the full panchanga_* family (panchanga_tithi, panchanga_karana, panchanga_sun_moon_dynamics, etc.)."
           },
           "planet": {
             "type": "string",
@@ -539,7 +547,7 @@
     },
     {
       "tool_name": "chart_snapshot",
-      "description": "The compact \"show me the chart\" answer: a 12-rashi D1 (rashi/D1 chart) text grid -- every graha's sign + degree-in-sign, Lagna sign clearly marked -- sized for direct display in a chat client (hard-capped at 2KB). Pass include_navamsa:true to ALSO get the D9 (navamsa) grid in the same response -- D9 is never included by default, only on explicit request. Renders already-computed chart_divisionals positions (varga_position category); no new computation.",
+      "description": "The compact \"show me the chart\" answer: a 12-rashi D1 (rashi/D1 chart) text grid -- every graha's sign + degree-in-sign, Lagna sign clearly marked -- sized for direct display in a chat client (hard-capped at 2KB for D1 alone). Pass include_navamsa:true to ALSO get the D9 (navamsa) grid in the same response -- D9 is never included by default, only on explicit request. Pass vargas:[\"D2\",\"D10\",...] to ADDITIVELY assemble any number of further divisional-chart grids server-side (EL-48) -- served in the `additional_vargas` array, alongside the unchanged D1(+D9) `grids`/`snapshot_text` shape. A requested varga this chart has no data for is named honestly in `unresolved_vargas`, never silently rendered as an empty-looking grid. Renders already-computed chart_divisionals positions (varga_position category); no new computation.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -554,6 +562,13 @@
           "include_navamsa": {
             "type": "boolean",
             "description": "Also include the D9 (navamsa) grid. Default: false (D1 only)."
+          },
+          "vargas": {
+            "type": "array",
+            "description": "Additional varga codes to assemble (e.g. [\"D2\",\"D10\",\"D11\"]). Additive to D1 (and D9 if include_navamsa is set) -- served in `additional_vargas`, never replacing the D1/D9 default. Standard codes: D1-D10, D12, D16, D20, D24, D27, D30, D40, D45, D60.",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -668,6 +683,36 @@
       }
     },
     {
+      "tool_name": "concept_locate",
+      "description": "Resolve a free-text concept name (English or Sanskrit, e.g. \"Gulika\", \"sphuta\", \"panchanga\", \"mangal shadbala\") to the real fact_category value(s) it serves through and the MCP tool that serves them (query_chart_facts / chart_facts_query, or a dedicated face like get_dignity/get_strength when the category maps to one). Tries the seeded alias table first, then falls back to a direct substring match against the live fact_category list. Returns an HONEST MISS (resolved:false, empty_reason naming exactly what was checked) when nothing matches — never a silent empty result. Use this before phrasing any answer as \"not in the data\" / \"doesn't exist\" (Absence Protocol, EL-07).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Free-text concept name to resolve."
+          },
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID for the live-category fallback pass. Defaults to the canonical chart."
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "uri": "marsys://tool/L1/concept_locate",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Concept Locate",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "find_verses_about",
       "description": "Discover classical text verses about a specific astrological topic using embedding similarity. Required: topic (free-text astrological topic, e.g. \"Saturn in 7th house effects\"). Optional: text_ids (array — restrict search to specific texts), top_k (default 10, max 50). Returns ranked verses with source text key and confidence score. Distinct from query_classical_texts (which does keyword/ILIKE search) — this tool uses semantic vector similarity over embedded verse chunks. Registry equivalent of lib/retrieve/index.ts::find_verses_about (D7 gap fill).",
       "input_schema": {
@@ -706,7 +751,7 @@
     },
     {
       "tool_name": "get_argala",
-      "description": "Retrieve Argala (intervention) and Virodha Argala (obstruction) matrices for a chart. Argala measures which grahas intervene in the results of each house via 2nd/4th/5th/11th placements; Virodha Argala measures which grahas block those interventions via 3rd/12th/10th/3rd (opposite). These are large matrices covering all 5 ayanamshas × all house × graha combos. Use offset/limit for pagination. Covers: argala_natal_matrix, virodha_argala_natal_matrix.",
+      "description": "Retrieve Argala (intervention) and Virodha Argala (obstruction) matrices for a chart. Argala measures which grahas intervene in the results of each house via 2nd/4th/5th/11th placements; Virodha Argala measures which grahas block those interventions via 3rd/12th/10th/3rd (opposite). This is a per-varga × per-sign × per-offset matrix (all divisional charts, not just D1) — pass `varga` (e.g. \"D1\", \"D9\") to scope to one divisional chart; omit for all ~29 vargas at once (large — use offset/limit for pagination, and prefer a `varga` filter over raising limit). shape=\"resolved\" (default) adds `argala_on_house` (1-indexed house count from that row's OWN varga lagna) to each row; shape=\"matrix\" returns the raw sign-indexed rows unchanged (backward compat). `category_counts`/`total` report TRUE counts across the full filtered set, not just this page. `all_zero` flags when every row on THIS page has fact_value_num=0 (many cells are legitimately 0 by classical rule — offsets outside the argala/virodha position set — this flag is a disclosure, not an error signal). Covers: argala_natal_matrix, virodha_argala_natal_matrix.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -724,6 +769,18 @@
             "enum": [
               "argala",
               "virodha_argala"
+            ]
+          },
+          "varga": {
+            "type": "string",
+            "description": "Filter to one divisional chart (e.g. \"D1\", \"D9\"). Omit for all vargas (large)."
+          },
+          "shape": {
+            "type": "string",
+            "description": "resolved (default, adds argala_on_house) | matrix (raw, backward compat).",
+            "enum": [
+              "resolved",
+              "matrix"
             ]
           },
           "offset": {
@@ -962,7 +1019,7 @@
     },
     {
       "tool_name": "get_ayurdaya",
-      "description": "Retrieve classical longevity (Āyurdāya) computations for a chart from chart_facts (fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu / Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years (fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu). Filter by ayanamsha_id (omit for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band computation only. Bounded with a disclosed total.",
+      "description": "Retrieve classical longevity (Āyurdāya) computations for a chart from chart_facts (fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu / Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years (fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu). Every row carries fact_value_jsonb with method-specific detail: total_years rows carry per_graha contributions, lagna_years, classification, and harana_status; the CHART/ maraka_grahas row carries the 2nd/7th-house maraka significators (signs, lords, occupants); the CHART/applicable_method row carries the ruling method + all three raw totals. harana_status is also promoted to a top-level field on this response whenever a total_years row is present on the page (honest disclosure — reductive haranas are not yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band computation only. Bounded with a disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1151,7 +1208,7 @@
     },
     {
       "tool_name": "get_dashas",
-      "description": "Retrieve dasha period data for a chart from the chart_dashas table. Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, Chara Karaka (Jaimini), Kalachakra, Mudda (annual/varshaphal), and Naisargika. Returns period boundaries (start/end dates), lord graha, level (Maha=1/Antar=2/Pratyantar=3/Sookshma=4/Prana=5), and the dasha system identifier. FACETED (R5 W1): system (default vimshottari — pass system=\"all\" for every system), level (default cap = 3, i.e. Maha/Antar/Pratyantar only — pass level for one exact level, or all_levels=true for every level), and window (default now±5y when no date filter is given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). Use as_of_date to retrieve the dasha running on a specific date (e.g. today). Spans all systems, levels and ayanamshas as a large, paginated result set — never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. NOTE: unlike system/level/window, ayanamsha_id has NO server-side default — omitting it returns one row PER AYANAMSHA (5 rows). For the standard \"current dasha\" gate shape (one row, <=1KB), ALWAYS pass ayanamsha_id=\"lahiri_chitrapaksha\" explicitly.",
+      "description": "Retrieve dasha period data for a chart from the chart_dashas table. Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, Chara Karaka (Jaimini), Kalachakra, Mudda (annual/varshaphal), and Naisargika. Returns period boundaries (start/end dates), lord graha, level (Maha=1/Antar=2/Pratyantar=3/Sookshma=4/Prana=5), and the dasha system identifier. FACETED (R5 W1): system (default vimshottari — pass system=\"all\" for every system), level (default cap = 3, i.e. Maha/Antar/Pratyantar only — pass level for one exact level, or all_levels=true for every level), and window (default now±5y when no date filter is given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). Use as_of_date to retrieve the dasha running on a specific date (e.g. today). Spans all systems and levels as a large, paginated result set — never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1161,7 +1218,7 @@
           },
           "ayanamsha_id": {
             "type": "string",
-            "description": "Filter by ayanamsha_id (e.g. lahiri_chitrapaksha). Omit to get ALL 5 ayanamshas (one row per ayanamsha for the same period — NOT a single unfiltered answer). For the standard \"current dasha\" gate shape (one row, <=1KB) ALWAYS pass ayanamsha_id=\"lahiri_chitrapaksha\" explicitly — this param has no server-side default."
+            "description": "Filter by a stored ayanamsha_id (krishnamurti | lahiri_chitrapaksha | raman | surya_siddhanta_classical | true_chitra). Unknown values are rejected. F-93: defaults server-side to lahiri_chitrapaksha (the project canonical ayanamsha) when omitted — a bare call returns exactly one row, not one row per ayanamsha. Pass this explicitly only to request a different, non-canonical ayanamsha."
           },
           "system": {
             "type": "string",
@@ -1201,7 +1258,7 @@
           },
           "as_of_date": {
             "type": "string",
-            "description": "ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date (\"what dasha am I running as of X\"). Takes effect the same as date_contains; if both are passed, date_contains wins."
+            "description": "ISO date (YYYY-MM-DD). Alias for date_contains — returns dashas active on this date (\"what dasha am I running as of X\"). Takes effect the same as date_contains; if both are passed, date_contains wins. A date before the chart birth date is served with an explicit structured pre-birth warning."
           },
           "lord_graha": {
             "type": "string",
@@ -1229,6 +1286,42 @@
       "name_valid": true,
       "annotations": {
         "title": "Get Dashas",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "get_database_schema",
+      "description": "Discovery substrate: every fact_category x fact_subject combination that actually exists in the live chart_facts data model, mechanically enumerated (never hand-authored), each with its observed fact_keys, row_count, and up to 3 sample fact_ids for spot-checking. PAGINATED (offset/limit/cursor, budget_kb) — never an unbounded dump. Also returns concept_aliases: a seeded table mapping common alternate names (e.g. \"Gulika\"/\"Maandi\", \"sphuta\", \"panchanga\", \"mangal\") to the real fact_category value(s) they resolve through. Use concept_locate to resolve a single free-text term instead of scanning this whole substrate. Conforms to the C3 SchemaMap contract.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID to enumerate against. Defaults to the canonical chart if omitted — the schema SHAPE is deterministic across charts built by the same writers."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Entries per page (default 50, max 200).",
+            "default": 50
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination cursor from a previous response's next_cursor."
+          },
+          "budget_kb": {
+            "type": "number",
+            "description": "Optional response-size ceiling override, 1-64 KB (C1). Tighter than the tool default is honored; wider is clamped to the default."
+          }
+        }
+      },
+      "uri": "marsys://tool/L1/get_database_schema",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Database Schema",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -1331,7 +1424,7 @@
     },
     {
       "tool_name": "get_divisionals",
-      "description": "Retrieve divisional chart (varga) placements for a chart from the chart_divisionals table. Contains graha positions in each of the 16 standard vargas (D1–D60 including D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60). Each row: graha, varga, sign, sign_number, degree_in_sign, house, vargottama. Contains a large, paginated row set per chart.",
+      "description": "Retrieve divisional chart (varga) placements for a chart from the chart_divisionals table. Contains graha positions in each of the 16 standard vargas (D1–D60 including D1, D2, D3, D4, D5, D6, D7, D8, D9, D10, D12, D16, D20, D24, D27, D30, D40, D45, D60). Each row: graha, varga, sign, sign_number, degree_in_sign, house, vargottama. EL-47: every row whose `sign` is resolvable also carries a server-computed `house_from_varga_lagna` (1-indexed count from THAT VARGA'S OWN lagna sign — not D1 — matching the house_from_frame/houseCountedFrom convention used elsewhere in this registry). Contains a large, paginated row set per chart.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1528,7 +1621,7 @@
     },
     {
       "tool_name": "get_medical_indications",
-      "description": "Retrieve classical medical (Vaidya-phala) indications for a chart from ga_medical. Per-graha rows: natal_sign, natal_nakshatra, indication_strength, dosha_aggravated (vata/pitta/kapha), organ_watch, body_part_watch, nakshatra_body_part, indication_tier, and classical_citation. NOT a diagnosis (not_diagnosis=true on every row) — these are classical watch-indications, not medical advice. Filters: graha, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
+      "description": "Retrieve classical medical (Vaidya-phala) indications for a chart from ga_medical. Per-graha rows: natal_sign, natal_nakshatra, indication_strength, dosha_aggravated (vata/pitta/kapha), organ_watch, body_part_watch, nakshatra_body_part, indication_tier, and classical_citation. NOT a diagnosis (not_diagnosis=true on every row) — these are classical watch-indications, not medical advice. Filters: graha, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total and an honest empty_reason when zero rows match. Derived from chart_facts + bg_medical_mappings (see provenance).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1562,6 +1655,62 @@
       "name_valid": true,
       "annotations": {
         "title": "Get Medical Indications",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "get_nakshatra",
+      "description": "Retrieve the nakshatra-semantic layer for a chart: graha-nakshatra/pada joins, nakshatra lord placement, KP (Krishnamurti Paddhati) sub-lords for grahas and cusps plus KP house/planet significators, gandanta and degree-flag markers, nakshatra dispositor/exchange/conjunction/co-gravity relations, graha tara bala, and cross-ayanamsha nakshatra statistics. Covers 16 fact_categories.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID"
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Filter by ayanamsha. Omit for all."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Filter by domain: identity | kp | relational | strength | meta.",
+            "enum": [
+              "identity",
+              "kp",
+              "relational",
+              "strength",
+              "meta"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "description": "Explicit category list.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "offset": {
+            "type": "number",
+            "default": 0
+          },
+          "limit": {
+            "type": "number",
+            "default": 500
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L1/get_nakshatra",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Nakshatra",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -1629,7 +1778,7 @@
     },
     {
       "tool_name": "get_positions",
-      "description": "Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, retrograde status, and combust status. CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, etc.) and aprakasha (dark/shadow) bodies are NOT interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` list containing \"upagraha_position\"/\"aprakasha_position\") to fetch those behind this facet — when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. Each row carries fact_id for Bodha constituent_facts_array back-reference. Covers fact_categories: graha_position, upagraha_position, aprakasha_position. Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each row's house count onto that reference frame in-response (design §27.3) — e.g. frame:\"chandra\" answers \"what house is X in, from Moon\" in one call, without a second lookup. graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde and combustion state (already on the default page) — numeric speed (degrees/day) for the chart's birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). A further real category, nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check), is available on request via categories:[\"nakshatra_cross_ayanamsha\"] — not on the default page.",
+      "description": "Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, retrograde status, and combust status. CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, Sun-derived shadow points, etc.) and aprakasha (dark/shadow) bodies are NOT interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` list containing \"upagraha_position\"/\"sun_derived_upagraha\"/\"aprakasha_position\") to fetch those behind this facet — when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. Each row carries fact_id for Bodha constituent_facts_array back-reference. Covers fact_categories: graha_position, upagraha_position, sun_derived_upagraha, aprakasha_position. Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each row's house count onto that reference frame in-response (design §27.3) — e.g. frame:\"chandra\" answers \"what house is X in, from Moon\" in one call, without a second lookup; applies to sun_derived_upagraha rows too (they carry house_d1), not just graha/upagraha_position. graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde and combustion state (already on the default page) — numeric speed (degrees/day) for the chart's birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). Two further real categories are available on request, not on the default page or the include_upagrahas bundle: nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check) via categories:[\"nakshatra_cross_ayanamsha\"], and sandhi_flag (bhava-junction flag per graha — not an upagraha, no house_d1) via categories:[\"sandhi_flag\"].",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1643,20 +1792,22 @@
           },
           "categories": {
             "type": "array",
-            "description": "Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default (graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check, not on the default page).",
+            "description": "Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default (graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check) and the F-B32 opt-in category sandhi_flag (bhava-junction flag per graha) — neither is on the default page or the include_upagrahas bundle.",
             "items": {
               "type": "string",
               "enum": [
                 "graha_position",
                 "upagraha_position",
+                "sun_derived_upagraha",
                 "aprakasha_position",
-                "nakshatra_cross_ayanamsha"
+                "nakshatra_cross_ayanamsha",
+                "sandhi_flag"
               ]
             }
           },
           "include_upagrahas": {
             "type": "boolean",
-            "description": "CR-50: when true (and `categories` is omitted), also includes upagraha_position and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, never interleaved into the default page. Default false.",
+            "description": "CR-50: when true (and `categories` is omitted), also includes upagraha_position, sun_derived_upagraha, and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, never interleaved into the default page. Default false.",
             "default": false
           },
           "planet": {
@@ -1665,7 +1816,7 @@
           },
           "frame": {
             "type": "string",
-            "description": "Reference frame to re-base house counts onto (default: lagna). chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the stored lagna-relative `house_d1` (fact_key) value.",
+            "description": "Reference frame to re-base house counts onto (default: lagna). chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the stored lagna-relative `house_d1` (fact_key) value. F-159: frame=\"chandra\" additionally carries `ayanamsha_frame_sensitivity` — a disclosure (never a correctness ruling) of whether the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.",
             "enum": [
               "lagna",
               "chandra",
@@ -1764,6 +1915,11 @@
               "type": "string"
             }
           },
+          "all": {
+            "type": "boolean",
+            "description": "ŚODHANA T3 (MC-014): default false — serves only the CURRENT + adjacent period(s) for every dated category (cycles/phases/quarters/periods/retrograde subsets), not the full historical+future sweep spanning ~1950-2100. Pass true to get every row across every period this chart has ever had or will ever have (the pre-fix behavior) — useful for a rectification/historical-events pass, not a \"how is Saturn affecting me now\" question. Rows with no start/end date pair (flags/modifiers/overlays keyed off a parent cycle) are always served regardless of this flag.",
+            "default": false
+          },
           "offset": {
             "type": "number",
             "default": 0
@@ -1790,7 +1946,7 @@
     },
     {
       "tool_name": "get_sensitive_degrees",
-      "description": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check', 275 rows/chart). Classically flagged longitudes (gaṇḍānta, sandhi, mṛtyu-bhāga, pushkara, etc.) checked against each graha's placement. Filter by ayanamsha_id, subject (fact_subject, e.g. graha code), or check_type (fact_key). Bounded with a disclosed total.",
+      "description": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check'). Classically flagged longitudes (gaṇḍānta, sandhi, mṛtyu-bhāga, pushkara, etc.) checked against each graha's placement. Also serves fact_category='sensitive_point_yogi' — the Yogi/ Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (Yogi Sphuta = Sun+Moon+93°20',  Yogi Graha = its nakshatra lord; Avayogi = Yogi+186°40', its nakshatra lord;  Duplicate-Yogi/Sahayogi = the rasi lord of the Yogi Sphuta's own sign). Filter by  ayanamsha_id, subject (fact_subject, e.g. graha code or YOGI/AVAYOGI/DUPLICATE_YOGI/ SAHAYOGI), or check_type (fact_key). Every row carries fact_category and  verification_pass_status so the two families and confirmation tiers are  distinguishable; tier_breakdown + unverified_rows_in_page summarize the page  (rows are never dropped — a single/pending_w3_verification tier is a genuine  classical computation, just not yet independently cross-verified). Bounded with a  disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1804,11 +1960,11 @@
           },
           "subject": {
             "type": "string",
-            "description": "Filter by fact_subject (e.g. a graha code like SUN, VEN). Omit for all."
+            "description": "Filter by fact_subject (e.g. a graha code like SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI). Omit for all."
           },
           "check_type": {
             "type": "string",
-            "description": "Filter by fact_key (the specific sensitive-degree check). Omit for all."
+            "description": "Filter by fact_key (the specific sensitive-degree or Yogi-system check). Omit for all."
           },
           "limit": {
             "type": "number",
@@ -1832,7 +1988,7 @@
     },
     {
       "tool_name": "get_sensitive_points",
-      "description": "Retrieve esoteric and sensitive mathematical points for a chart. Includes: 13 tradition-specific esoteric points (Yogi/Avayogi, Brahma/Vishnu/Shiva, Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, Trisphuta, Panchasphuta, Pranapada, Chatushphuta, Bhrigu Bindu), Bhrigu Nadi point, 100 Lal Kitab special points, Maharṣi-specific points, midpoints (all graha pairs), 2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, and nakshatra-pada sensitive degrees. Covers 20 fact_categories (a large row set per chart).",
+      "description": "Retrieve esoteric and sensitive mathematical points for a chart. Includes: 15 tradition-specific esoteric points (Yogi/Avayogi, Yogi-system sign/nakshatra/ longitude, Brahma/Vishnu/Shiva, Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, Trisphuta, Panchasphuta, Pranapada, Chatushphuta, Sphuta Fertility (Beeja/Kshetra), Bhrigu Bindu), Bhrigu Nadi point, 100 Lal Kitab special points, Maharṣi-specific points, midpoints (all graha pairs), 2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, and nakshatra-pada sensitive degrees. Covers 22 fact_categories (a large row set per chart).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1931,6 +2087,11 @@
           "limit": {
             "type": "number",
             "default": 500
+          },
+          "all": {
+            "type": "boolean",
+            "description": "ŚODHANA T3 (MC-014): default false — `graha_in_house_composite_strength` (the one category with a row per graha PER HOUSE, 12x a graha's real placement) is filtered to each graha's single ACTUAL house under `frame` by default, dropping the other 11 counterfactual \"what if this graha sat in house N\" rows per graha. Every other strength category (Shadbala, Vimsopaka, Ishta/Kashta, etc.) is one row per graha already and is unaffected either way. Pass true to get every counterfactual placement row for every graha (the pre-fix behavior).",
+            "default": false
           }
         },
         "required": [
@@ -1949,8 +2110,64 @@
       }
     },
     {
+      "tool_name": "get_structural",
+      "description": "Retrieve ga_structural's residual relational/graph signal layer: sambandha (planetary relationship grade) and virupa-drishti aspect strength, contradiction and conjunction special-point pairs, nakshatra dispositor-chain/lord-relationship/co-tenancy relations, chart-graph metrics (centrality, clustering, center-of-gravity, significator path), per-varga n-way configuration, net argala, and graha-yuddha, kendradhipati dosha flags, bhava-significance links (lord placement/aspect per varga), panchadha (five-fold) compound graha-relationship, and tara bala (each graha's tara count/name from the Moon's own nakshatra — distinct from the per-graha graha_tara_bala served by get_nakshatra.ts). Does NOT cover ga_structural categories already served by get_yoga_dosha/get_dispositors/get_bhava_bala/get_karakas/get_kp_cusps or register_d8_assess_domain — this tool is the residual-coverage complement to those. Covers 19 fact_categories.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID"
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Filter by ayanamsha. Omit for all."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Filter by domain: relational | graph | special_point | per_varga | dosha.",
+            "enum": [
+              "relational",
+              "graph",
+              "special_point",
+              "per_varga",
+              "dosha"
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "description": "Explicit category list.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "offset": {
+            "type": "number",
+            "default": 0
+          },
+          "limit": {
+            "type": "number",
+            "default": 500
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L1/get_structural",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Get Structural",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "get_tajik",
-      "description": "Retrieve Tājika Varṣaphal (Persian/Tajik annual chart) data for a chart. From chart_facts: Tajik Hadda lord (Ptolemaic term lord for the degree), Triraashipathi (annual chart ruler — lord of the sign the Sun transits at birthday), and Tajik Vargottama specific. From l1_tajik_varsha_year_lords table: all annual Solar Return year lord combinations (Muntha, Varsha Lord, TrirasheePathi) across available years. Includes FORENSIC-exact Muntha = Libra/7H/Venus. Covers 3 fact_categories + l1_tajik_varsha_year_lords table.",
+      "description": "Retrieve Tājika Varṣaphal (Persian/Tajik annual chart) data for a chart. From chart_facts: Tajik Hadda lord (Ptolemaic term lord for the degree), Triraashipathi (annual chart ruler — lord of the sign the Sun transits at birthday), and Tajik Vargottama specific — gated behind include_hadda (default false; these 245 static rows do not change year to year, see include_hadda). From l1_tajik_varsha_year_lords table: all annual Solar Return year lord combinations (Muntha, Varsha Lord, TrirasheePathi) across available years — defaults to CURRENT-YEAR-FIRST ordering (see varsha_year / varsha_date) rather than oldest-first, since the current solar year is what a consultation actually needs. Includes FORENSIC-exact Muntha = Libra/7H/Venus. Covers 3 fact_categories + l1_tajik_varsha_year_lords table.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -1967,6 +2184,11 @@
             "description": "Include l1_tajik_varsha_year_lords rows (default true)",
             "default": true
           },
+          "include_hadda": {
+            "type": "boolean",
+            "description": "MC-021/024 fix: include the hadda_lord_facts / triraashipathi / vargottama chart_facts rows (245 static, non-year-varying rows). Default FALSE — these rows drowned the envelope by default while the actually-wanted current-year varsha row was unreachable. The total count is still always reported (hadda_lord_facts.total); pass include_hadda=true to fetch the rows.",
+            "default": false
+          },
           "year_min": {
             "type": "number",
             "description": "Filter varsha lords to year >= this."
@@ -1977,7 +2199,11 @@
           },
           "varsha_year": {
             "type": "number",
-            "description": "R6 3b-budgets (R-25): filter varsha_year_lords to this EXACT year (e.g. current age for the native). Preferred over year_min/year_max when a single year is wanted — it is the only way to reach a specific solar-return year without paging through every prior year."
+            "description": "R6 3b-budgets (R-25): filter varsha_year_lords to this EXACT year (e.g. current age for the native). Preferred over year_min/year_max when a single year is wanted — it is the only way to reach a specific solar-return year without paging through every prior year. Takes precedence over varsha_date if both are given."
+          },
+          "varsha_date": {
+            "type": "string",
+            "description": "MC-021/024 \"current year\" convenience: an ISO date (YYYY-MM-DD); resolved server-side to the solar-return varsha_year whose window [birth_date + (N-1)y, birth_date + N*y) contains this date, then applied as an exact-year filter (same as passing that varsha_year directly). Ignored if varsha_year is also given. The resolved year is echoed back in varsha_year_lords.varsha_year_resolved_from_date."
           },
           "offset": {
             "type": "number",
@@ -2044,7 +2270,7 @@
     },
     {
       "tool_name": "get_transit_anchors",
-      "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha. Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows per chart (9 grahas × 5 ayanamshas). natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1).",
+      "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha. Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows per chart (9 grahas × 5 ayanamshas). natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1). Each row carries constituent_fact_ids (§N.5) resolving back to the source chart_facts rows (graha_position/graha_sign_attributes) it was derived from.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -2086,7 +2312,7 @@
     },
     {
       "tool_name": "get_vastu_directions",
-      "description": "Retrieve the vastu (directional) planet-impact map for a chart from ga_vastu_planet_direction_map. Per-graha rows: direction, condition_score, dignity_d1, direction_impact, indication_tier, classical_citation. Filters: graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
+      "description": "Retrieve the vastu (directional) planet-impact map for a chart from ga_vastu_planet_direction_map. Per-graha rows: direction, condition_score, dignity_d1, direction_impact, indication_tier, classical_citation, and direction_remedies (F-E11) -- the classical per-direction remedy set (color/symbol/material/space guidance, Brihat Samhita Ch.53 / Mayamata Ch.6) from bg_vastu_direction_remedials for that direction, joined server-side so an afflicted direction and its remedy are never read apart. Filters: graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -2258,7 +2484,7 @@
     },
     {
       "tool_name": "get_yoga_firings",
-      "description": "Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings. Each row: yoga_canonical_id, fired (bool), strength + strength_label, partial_formation_pct + is_partial, bhanga_active + bhanga_rule_fired (cancellation), constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation. Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column, not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows with a disclosed total.",
+      "description": "Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings. Each row: yoga_canonical_id, fired (bool), strength + strength_label, partial_formation_pct + is_partial, bhanga_active + bhanga_rule_fired (cancellation), constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation, catalog_classical_citations (the classical textual grounding from brahma_yoga_catalog — citation_ref/citation_human describe the strength-derivation formula instead, not the classical source; both are served, never conflated). MC-016: constituent_planets is a flat, role-blind union — DEPRECATED for role-sensitive reads (constituent_planets_deprecated_note explains why). When grounds_jsonb is present, each row also carries labeled role-split fields derived server-side: for neecha_bhanga_raja_yoga specifically, debilitated_planets (the debilitated grahas) vs rescuer_planets (the grahas whose placement cancels the debility); for any other yoga family carrying the same per-planet grounds_jsonb shape, principal_planets vs supporting_planets. constituent_planets_role_split_available (bool) discloses whether the split could be derived for that row. Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column, not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows per page with a disclosed total and more_available; pass offset to page past the first 50 (F-D2).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -2293,6 +2519,10 @@
           "limit": {
             "type": "number",
             "description": "Max rows (default 50, max 50)."
+          },
+          "offset": {
+            "type": "number",
+            "description": "Row offset for paging past the first page (default 0). F-D2: without this, rows beyond the limit were permanently unreachable."
           }
         },
         "required": [
@@ -2386,7 +2616,7 @@
           },
           "domain": {
             "type": "string",
-            "description": "Life-domain name, resolved via the shastra map (design §28.5): marriage/relationship/partnership (bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), wealth/finance (bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), progeny/children (bhava 5, Jupiter, D7), education/vidya (bhava 4, Mercury+Jupiter+Ketu, D24), residence/property/home (bhava 4, Moon+Mars, D4), character/buddhi (bhava 1, Moon+Mercury, D1), spirituality (bhava 9 dharma, Jupiter+Ketu, D20), moksha/liberation (bhava 12 mokṣa-trikoṇa, Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th). Takes precedence over `bhava` if both given."
+            "description": "Life-domain name, resolved via the shastra map (design §28.5): marriage/relationship/partnership (bhava 7, Venus, D9), career/vocation (bhava 10, Sun+Mercury+Saturn, D10), wealth/finance (bhava 2, Jupiter, D2), health/vitality (bhava 1, Sun, D6), progeny/children (bhava 5, Jupiter, D7), education/vidya (bhava 4, Mercury+Jupiter+Ketu, D24), residence/property/home (bhava 4, Moon+Mars, D4), character/buddhi (bhava 1, Moon+Mercury, D1), spirituality (bhava 9 dharma, Jupiter+Ketu, D20), moksha/liberation (bhava 12 mokṣa-trikoṇa, Ketu+Saturn+Jupiter, D20 — distinct from spirituality/9th), family (bhava 2, Jupiter+Moon, D12), travel (bhava 9, Jupiter+Rahu, D9), transition (bhava 8, Saturn+Rahu+Mars, D8), general (bhava 1, Sun+Moon, D1). Takes precedence over `bhava` if both given. The response's `domain_resolution` block states which CANONICAL domain tag the domain-scoped legs (MSR signals / afflictions / mechanisms / gochara sweep) were actually queried with — e.g. `marriage` reads `relationship`, `moksha` reads `spirituality` — so an empty domain-scoped leg is always readable against a named tag (F-57)."
           },
           "bhava": {
             "type": "number",
@@ -2425,8 +2655,50 @@
       }
     },
     {
+      "tool_name": "lel_intake_checklist",
+      "description": "Guided Life Event Log (LEL) intake surface (EL-54). mode=checklist (default) returns, per domain, the real event classes brahma_event_ontology already defines that retrodiction needs LEL coverage for — each with its required temporal shape (point/interval/chain -> which life_events date fields to fill), suggested verification sources, and self-report-risk flag. Also reports current life_events coverage per domain so the native can see which domains are already logged vs. thin. mode=validate takes a `entries[]` array of native-authored DRAFT life events and checks each against the real event_class/shape/field rules, returning per-entry errors + warnings. HARD BOUNDARY: this tool never invents, fills in, or guesses life-event content, and it never writes to life_events — it only structures and validates what the native supplies. A missing field is always reported as an error for the native to fill, never defaulted. Designed as a 30-60 minute guided session scaffold (charter §13 packet 1).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "mode": {
+            "type": "string",
+            "description": "'checklist' (default) — the per-domain guided checklist. 'validate' — check draft entries[] against the real shape/field rules.",
+            "enum": [
+              "checklist",
+              "validate"
+            ]
+          },
+          "domain": {
+            "type": "string",
+            "description": "checklist mode only: filter to one domain. Omit for all domains."
+          },
+          "entries": {
+            "type": "array",
+            "description": "validate mode only: draft entries to check. Each: {domain?, event_class, event_date|interval_start+interval_end|milestone_label, date_confidence?, category, description, significance?, source_citation}."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L5/lel_intake_checklist",
+      "layer": "L5",
+      "name_valid": true,
+      "annotations": {
+        "title": "Lel Intake Checklist",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "lel_query",
-      "description": "Query the native's user-authored Life Event Log (LEL) for a chart — the observed life events used by the L5 Mīmāṃsā calibration loop. Reads the chart-scoped life_events table (NOT MSR signals). Returns event_id, event_date, description, domain, category, significance, event_type, source, and outcome_observed. Filters: category, domain, significance, start_date, end_date. Bounded to 50 rows. NO-LEAKAGE: life_events is a calibration corpus only — it must never feed prediction generation; consume it only to score predictions against observed reality.",
+      "description": "Query the native's user-authored Life Event Log (LEL) for a chart — the observed life events used by the L5 Mīmāṃsā calibration loop. Reads the chart-scoped life_events table (NOT MSR signals). Returns event_id, event_date, description, domain, category, significance, event_type, source, outcome_observed, shape (point|interval|chain), and interval_start/interval_end (LEL schema v2, populated only for shape=interval rows). Filters: category, domain, significance, start_date, end_date, query (case-insensitive substring text search over description/domain/category/event_type/source_citation — multi-word queries require every word to match, AND semantics). Paginate with limit + offset. Bounded to 50 rows per page. NO-LEAKAGE: life_events is a calibration corpus only — it must never feed prediction generation; consume it only to score predictions against observed reality.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -2454,9 +2726,17 @@
             "type": "string",
             "description": "Include events on or before this date (YYYY-MM-DD)."
           },
+          "query": {
+            "type": "string",
+            "description": "Case-insensitive text search over description/domain/category/event_type/source_citation. Whitespace-separated words all must match (AND semantics). Omit for no text filter."
+          },
           "limit": {
             "type": "number",
-            "description": "Max events to return (default: 50, max: 50)."
+            "description": "Max events to return per page (default: 50, max: 50)."
+          },
+          "offset": {
+            "type": "number",
+            "description": "Rows to skip before the page starts (pagination; default: 0)."
           }
         },
         "required": [
@@ -2500,7 +2780,7 @@
         "properties": {
           "entity_class": {
             "type": "string",
-            "description": "Optional filter: entity class to list. Accepts either the stored vocabulary (planet, sign, house, nakshatra, upagraha, dasha_system, domain, concept, karaka, aspect_type, remedy_type, school, text) or the Sanskrit synonyms graha (→planet), rashi (→sign), bhava (→house). If omitted, returns all classes. \"yoga\"/\"karana\" are NOT valid filters here (see empty_reason if requested) — they have no dedicated top-level class; use query_yoga_catalog / L0 panchanga tools instead.",
+            "description": "Optional filter: entity class to list. Accepts either the stored vocabulary (planet, sign, house, nakshatra, upagraha, dasha_system, domain, concept, karaka, aspect_type, remedy_type, school, text, varga) or the Sanskrit synonyms graha (→planet), rashi (→sign), bhava (→house), amsa (→varga). If omitted, returns all classes. \"yoga\"/\"karana\" are NOT valid filters here (see empty_reason if requested) — they have no dedicated top-level class; use query_yoga_catalog / L0 panchanga tools instead.",
             "enum": [
               "graha",
               "planet",
@@ -2517,7 +2797,9 @@
               "aspect_type",
               "remedy_type",
               "school",
-              "text"
+              "text",
+              "varga",
+              "amsa"
             ]
           },
           "limit": {
@@ -2563,6 +2845,16 @@
               "vastu",
               "behavioral"
             ]
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum remedies in one response (default and max 10). Use offset to continue.",
+            "default": 10
+          },
+          "offset": {
+            "type": "number",
+            "description": "Zero-based offset for the next remedy page (default 0).",
+            "default": 0
           }
         },
         "required": [
@@ -2789,6 +3081,44 @@
       }
     },
     {
+      "tool_name": "prediction_lifecycle_sweep",
+      "description": "EL-58 prediction/window lifecycle sweep. Finds predictions whose window has CLOSED and are still lifecycle_status=open/pending, auto-matches them against the chart-scoped LEL, and closes the ones with no candidate LEL event so they do not sit open indefinitely (the charter's \"2011-window-open-in-2026\" class). Covers both mimamsa_predictions (writes lifecycle_status=expired directly — no schema change needed) and brahma_prospective_ledger (candidate matches are written via the existing matchOpenPredictionsForLelEvent hook; no-match rows are REPORTED as lapsed_unobserved candidates but not written — that value is not yet in this table's CHECK constraint; see the returned migration_pending_note for the ready ALTER TABLE text). dry_run (default true) previews with zero writes. Never auto-adjudicates a candidate match to confirmed/denied/falsified — that stays a human/native call (mimamsa_outcome_record / a future prospective-ledger adjudication tool).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "Preview only, no writes (default true). Set false to apply schema-safe transitions."
+          },
+          "table": {
+            "type": "string",
+            "description": "Restrict the sweep to one table: 'mimamsa_predictions' | 'brahma_prospective_ledger'. Omit for both.",
+            "enum": [
+              "mimamsa_predictions",
+              "brahma_prospective_ledger"
+            ]
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L5/prediction_lifecycle_sweep",
+      "layer": "L5",
+      "name_valid": true,
+      "annotations": {
+        "title": "Prediction Lifecycle Sweep",
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "query_activation_waveform",
       "description": "Retrieve the monthly activation waveform for a chart from kala_taranga (ka_taranga, a large per-chart row set). mode=\"summary\" (default) returns an aggregate: total months, date span, distinct scopes, and the top peak-activation months — a bounded payload, never the full waveform. mode=\"drill\" returns at most 50 raw monthly rows and requires a scope filter (scope_kind or scope_id) plus optionally month_from/month_to. Filters: scope_kind, scope_id, month_from, month_to. Every response discloses the total count.",
       "input_schema": {
@@ -2836,6 +3166,48 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Activation Waveform",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_active_dashas",
+      "description": "Convenience face (EL-33): \"which dashas am I running on a given date?\" — reports the active lord chain (level 1/2/3 = Mahā/Antar/Pratyantar) with exact start/end bounds across ALL built dasha systems for the chart, at a single instant (default today). Unlike get_dashas/query_dasha_dossier (deep windowed sets), this is bounded to one date × ≤3 levels × the systems present — a light \"you are here\" read, not the heavy tree. Params: chart_id (req), date (YYYY-MM-DD, default today), ayanamsha_id (default lahiri_chitrapaksha), systems (comma list or \"all\", default all), max_level (default 3). Honest coverage: discloses which of the 9 expected systems are present vs absent for the chart (narayana is a known-absent system on current builds) — never fabricates a lord for an empty system.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "date": {
+            "type": "string",
+            "description": "Point in time (YYYY-MM-DD). Default: today."
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Ayanamsha (default 'lahiri_chitrapaksha'). Omit-safe: defaulted to avoid 5x per-ayanamsha rows."
+          },
+          "systems": {
+            "type": "string",
+            "description": "Comma-separated system_ids or 'all' (default). e.g. 'vimshottari,yogini'."
+          },
+          "max_level": {
+            "type": "number",
+            "description": "Deepest level to report (1=Mahā, 2=Antar, 3=Pratyantar). Default 3."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_active_dashas",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Active Dashas",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -3026,6 +3398,10 @@
           "promoted_only": {
             "type": "boolean",
             "description": "Return only promoted (gate_passed=true) multipliers (default: false)"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Optional life-domain filter (e.g. \"career\", \"relationship\", \"transition\"). Narrows verdict_distribution to matches whose PREDICTION carries this domain, resolved via mimamsa_calibration.prediction_id -> mimamsa_predictions.domain. Sections with no domain dimension in the data are returned unfiltered and are named explicitly in filters.domain_unfiltered_sections."
           }
         },
         "required": [
@@ -3208,7 +3584,7 @@
     },
     {
       "tool_name": "query_class_priors",
-      "description": "Query the versioned salience class-prior weight reference (brahma_class_priors, 164 rows). Axes: prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition; each row: class_prior (weight), varga_weights (JSON overlay), contested flag, citation, ratified_by. Filter by prior_version, signal_type_class, or source_subsystem. Global reference — no chart_id needed. These are the SAME weights the internal composite ranking pipeline reads at query time — this tool exposes them directly for audit/citation, not a separately computed value.",
+      "description": "Query the versioned salience class-prior weight reference (brahma_class_priors, 164 rows). Axes: prior_version, signal_type_class, fact_kind, source_subsystem, signal_tradition; each row: class_prior (weight), varga_weights (JSON overlay), contested flag, citation, ratified_by. Filter by prior_version, signal_type_class, or source_subsystem. Global reference — no chart_id needed. These are the SAME weights the internal composite ranking pipeline reads at query time — this tool exposes them directly for audit/citation, not a separately computed value. SCOPE: salience weights ONLY. Rows at fact_kind=lifetime_count_per_100y are excluded — those are N_e expected-event-counts for the Kala Kshetra hazard field (asset bg_class_lifetime_counts), a different quantity in different units that shares this table; they are served through that field's surfaces.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3469,6 +3845,29 @@
       }
     },
     {
+      "tool_name": "query_current_transit_snapshot",
+      "description": "Return the complete nine-graha transit state for one explicit date by invoking the strict scalar planet-transit capability once per canonical Jyotish body. Every component carries immutable argument and result hashes. The aggregate fails if any component is missing or fails.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "type": {},
+          "properties": {},
+          "required": {},
+          "additionalProperties": {}
+        }
+      },
+      "uri": "marsys://tool/L0/query_current_transit_snapshot",
+      "layer": "L0",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Current Transit Snapshot",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "query_dasha_dossier",
       "description": "Retrieve per-dasha-period dossier rows for a chart from kala_avadhi (ka_avadhi). Each row: system_id (dasha system), level_n (nesting depth: maha=1, antar=2, …), lord_graha, period_start, period_end, dossier (jsonb narrative), quality (jsonb). Filters: system_id (default vimshottari), level_n, lord_graha, date_from, date_to, active_on (a date the period must contain). Bounded to 50 rows with a disclosed total — narrow by system/level/date rather than pulling all 1.5k periods at once.",
       "input_schema": {
@@ -3524,7 +3923,7 @@
     },
     {
       "tool_name": "query_dasha_systems",
-      "description": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 18 rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit (nakshatra_lord|sign_lord|special), sequence_jsonb, computation_method, computation_pseudocode, conditions_for_use, school, classical_citations. Filter by canonical_id or school. Global classical reference — no chart_id needed; returns the system DEFINITION only, not any chart's computed dasha periods (see get_dashas).",
+      "description": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 20 rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit (nakshatra_lord|sign_lord|special), sequence_jsonb, computation_method, computation_pseudocode, conditions_for_use, school, classical_citations. Filter by canonical_id or school. Global classical reference — no chart_id needed; returns the system DEFINITION only, not any chart's computed dasha periods (see get_dashas).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3551,7 +3950,7 @@
     },
     {
       "tool_name": "query_discoveries",
-      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination.",
+      "description": "Retrieve ranked non-obvious chart discoveries from bodha_discoveries (ph: bo_* discovery engine). Each row is a cross-subsystem finding an individual acharya would likely miss, with a non_obviousness_score, consequence_score, composite_discovery_rank (1 = most salient), surface_reading vs depth_reading (+ surface_depth_delta), hypothesis_text, novelty_class, and why_an_acharya_misses_it. Filters: ayanamsha_id, discovery_class, domain. Ordered by composite_discovery_rank ASC. Bounded (LIMIT ≤50) with a disclosed total and offset pagination. MC-015/026: the raw `rows` array repeats the SAME underlying finding once per ayanāṃśa variant and once per matching signal instance (a single motif can appear ~40+ times). Prefer `discovery_families` — one entry per distinct (discovery_class, discovery_subsystem, hypothesis_text) motif, with a cross-ayanāṃśa agreement score (e.g. \"5/5 ayanāṃśas agree\"), a bounded member_discovery_ids list, and the best-ranked member's narrative fields.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3567,13 +3966,17 @@
             "type": "string",
             "description": "Filter by discovery_class. Omit for all."
           },
+          "domain": {
+            "type": "string",
+            "description": "Filter to discoveries whose affected_domains_array contains this domain (e.g. \"wealth\", \"career\", \"relationship\", \"health\", \"character\"). Omit for all."
+          },
           "limit": {
             "type": "number",
-            "description": "Max rows (default 50, max 50)."
+            "description": "Max rows (default 50, max 50). Applies independently to both rows and discovery_families."
           },
           "offset": {
             "type": "number",
-            "description": "Pagination offset (default 0)."
+            "description": "Pagination offset (default 0). Applies to rows; discovery_families is offset identically."
           }
         },
         "required": [
@@ -3603,15 +4006,21 @@
           },
           "domain": {
             "type": "string",
-            "description": "Life domain to query. One of: career, wealth, relationship, health, character, spirituality, education, moksha, other. education = vidyā (bhāva 4/5/2/9 + Mercury/Jupiter/Ketu); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu axis (NOT a 9th-house/dharma alias — that is spirituality). Each domain re-ranks its signals by a domain-specific graha×bhāva×varga overlay, so the ranked_signals surface genuinely differs across domains (see ranked_signals[].rationale). If omitted or unrecognized, returns the list of available domains for this chart.",
+            "description": "Life domain to query. 13 canonical domains: career, wealth, relationship, health, character, spirituality, education, progeny, family, residence, travel, transition, general. Plus backward-compat extras: moksha (spirituality alias via 4-8-12 overlay), other (all lenses). education = vidyā (bhāva 4/5/2/9 + Me/Ju/Ke); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu (NOT a spirituality alias — has its own overlay). Each domain re-ranks signals by a domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale). If omitted or unrecognized, returns the list of available domains for this chart.",
             "enum": [
               "career",
-              "wealth",
-              "relationship",
-              "health",
               "character",
-              "spirituality",
               "education",
+              "family",
+              "general",
+              "health",
+              "progeny",
+              "relationship",
+              "residence",
+              "spirituality",
+              "transition",
+              "travel",
+              "wealth",
               "moksha",
               "other"
             ]
@@ -3662,7 +4071,7 @@
     },
     {
       "tool_name": "query_domain_result",
-      "description": "Returns the L4 domain result map for a chart from phala_phaladesa (ph_phaladesa). Source: phala_phaladesa (7 rows — one per life domain, by design). Each row is a B.11-compliant domain result declaration covering: anchor inventory count, clean/staged/anomaly counts, incoming spillover, mitigation availability, and muhurta availability. Returns all 7 domains by default; filter by domain for a specific one. NOTE: 7 total rows is by design — one row per domain per chart. Expected sparse count.",
+      "description": "Returns the L4 domain result map for a chart from phala_phaladesa (ph_phaladesa). Source: phala_phaladesa (13 rows — one per canonical life domain, by design). Each row is a B.11-compliant domain result declaration covering: anchor inventory count, clean/staged/anomaly counts, incoming spillover, mitigation availability, and muhurta availability. Returns all 13 domains by default; filter by domain for a specific one. NOTE: 13 total rows is by design — one row per canonical domain per chart. Expected sparse count.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3672,15 +4081,21 @@
           },
           "domain": {
             "type": "string",
-            "description": "Filter by domain (career, wealth, relationship, health, character, spirituality, other). Omit for all 7.",
+            "description": "Filter by canonical domain (career, character, education, family, general, health, progeny, relationship, residence, spirituality, transition, travel, wealth). Omit for all 13.",
             "enum": [
               "career",
-              "wealth",
-              "relationship",
-              "health",
               "character",
+              "education",
+              "family",
+              "general",
+              "health",
+              "progeny",
+              "relationship",
+              "residence",
               "spirituality",
-              "other"
+              "transition",
+              "travel",
+              "wealth"
             ]
           }
         },
@@ -3701,7 +4116,7 @@
     },
     {
       "tool_name": "query_dosha_catalog",
-      "description": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 50 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and classical sources. Use to look up what a dosha means, how it is cancelled (neechabhanga-style conditions), and which text defines it. Covers Manglik dosha, Kala Sarpa dosha, Pitra dosha, Guru Chandala, Grahan dosha, Kemdruma, Daridra, and 43 more. Returns all 50 entries with no truncation.",
+      "description": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 79 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and classical sources. Use to look up what a dosha means, how it is cancelled (neechabhanga-style conditions), and which text defines it. Covers Manglik dosha, Kala Sarpa dosha, Pitra dosha, Guru Chandala, Grahan dosha, Kemdruma, Daridra, and 72 more. An unfiltered request defaults to all 79 entries. Paginated requests disclose the true matching total and returned count.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3723,7 +4138,7 @@
           },
           "limit": {
             "type": "number",
-            "default": 50
+            "default": 79
           }
         }
       },
@@ -3908,7 +4323,7 @@
           },
           "insight_type": {
             "type": "string",
-            "description": "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'load_bearing'|'negative_knowledge'"
+            "description": "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'retrodiction'|'load_bearing'|'negative_knowledge'|'verdict_object'. ('retrodiction' and 'verdict_object' rows are written by mi_darshana and were previously undocumented here — insight_type mirrors mimamsa_discoveries.discovery_class for discovery-sourced rows.)"
           },
           "domain": {
             "type": "string",
@@ -3974,6 +4389,93 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Journal",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_kala_paddhati_profile",
+      "description": "Retrieve the per-chart paddhati (convention) profile from kala_paddhati_profile (ṢAḌ-DARŚANA item 37 / ADJUDICATION-8). Each row: factor_family (e.g. \"agnivasa\"), convention_id, school_tag, constraint_role (hard/soft/informational), convention_status (computed | declared_not_computed — BOTH values are returned; the consumer filters on computed for grading per ADJUDICATION-8 rail 2), provenance, corpus_gap_ref, native_confirmed, awaiting_native_confirmation, version (zero-padded, e.g. paddhati_v01/paddhati_v02 — version selection is string-sort client-side; paddhati_v10 would sort below paddhati_v2 without padding), confirmation_provenance (set iff native_confirmed=TRUE, migration 534), arbitration_role (this convention's role for a concordance-verdict arbiter — primary, corroborating, a future veto-gate role, or a non-voting role — NULL on rows seeded before migration 675) and precedence (tie-break rank, migration 675) — read by a concordance-verdict arbiter (N1, Temporal Concordance Contract) to decide which engine testimony is the reference point vs. a corroborating vote. Returns all versions for the chart; client applies ORDER BY version DESC to get latest. native_confirmed and confirmation_provenance are served verbatim — ADJUDICATION-8 rail 3.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "factor_family": {
+            "type": "string",
+            "description": "Filter by factor_family (e.g. 'agnivasa'). Omit for all families."
+          },
+          "version": {
+            "type": "string",
+            "description": "Filter by exact version string (e.g. 'paddhati_v01'). Omit for all versions."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_kala_paddhati_profile",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Kala Paddhati Profile",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_kota_chakra",
+      "description": "Retrieve Kota-Chakra (fort chart) ring-run rows for a chart from kala_kota_chakra (ka_kota_chakra, registry item 16). Each row: graha, nakshatra_name, kota_ring (stambha/durgantara/prakara/bahya — the graha's ring counted from the janma nakshatra), posture/severity (this writer's own attack/defence synthesis), window_start/window_end (entry/exit dates for that ring occupancy, with start_truncated/end_truncated flags when the true boundary lies outside the scanned horizon), and ring_table_citation (the ring table's own tier-(iii) secondary-source disclosure). `as_of` (default: today) marks which row is `is_current` per graha. Filter by graha to focus on one planet.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "graha": {
+            "type": "string",
+            "description": "Filter by graha (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu). Omit for all.",
+            "enum": [
+              "Sun",
+              "Moon",
+              "Mars",
+              "Mercury",
+              "Jupiter",
+              "Venus",
+              "Saturn",
+              "Rahu",
+              "Ketu"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) to mark as 'current' (default: today)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 50, max 50)."
+          },
+          "current_only": {
+            "type": "boolean",
+            "description": "When true, restrict the result to rows whose window contains `as_of` — i.e. apply the currency filter in SQL, BEFORE the row cap, instead of leaving the caller to filter a capped page afterwards. Default false (unchanged paging behaviour for existing callers)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_kota_chakra",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Kota Chakra",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -4204,7 +4706,7 @@
     },
     {
       "tool_name": "query_mechanisms",
-      "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination, and an honest empty_reason when a chart carries no mechanisms.",
+      "description": "Retrieve named, valenced Mechanism (Yantra) objects from bodha_mechanisms — the first-class CGM-subgraph mechanisms the bo_yantra_mechanism writer builds. Each row: mechanism_name, mechanism_class (convergent_dispositor_chain | dispositor_cycle | house_lordship_cycle | yoga_cluster | mutual_reception | parivartana_chain | stellium | mutual_aspect | mutual_aspect_triangle | graha_bhava_affliction), valence (benefic|malefic|mixed|neutral), member_node_ids / member_edge_ids composition, edge_strength_avg/min/max (DR-7 edge_strength_v1 provenance), centrality_summary, and a grounding citation. The chain/circuit family (multi-node named mechanisms) is served FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class, valence, chain_circuit_only. Per-class and per-valence facet counts over the full match set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination, and an honest empty_reason when a chart carries no mechanisms. SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna, Ārūḍha) convergence mechanism is computed anywhere in this instrument. If a question names a divisional chart or a special lagna, this tool does NOT answer that part of it; the response carries a `varga_scope` block with drill pointers to the surfaces that do serve per-varga data (assess_wealth varga_analysis, ganita_chart_facts_get divisional_chart=…, ganita_special_lagnas_get).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -4277,7 +4779,7 @@
     },
     {
       "tool_name": "query_mimamsa_discoveries",
-      "description": "Retrieve L5 research-value discoveries from mimamsa_discoveries (mi_pariksha) — NOT the L2 bodha_discoveries table (a different concept; see bodha_discoveries_get for that). Each row: discovery_class (emergent_law|contradiction_dominance| temporal_rhythm|residual_candidate), statement, evidence_refs, strength, n_support, confidence_band, activation_status (candidate|supported|promoted), citation_ref. Filters: discovery_class, activation_status. Bounded to 50 rows with a disclosed total.",
+      "description": "Retrieve L5 research-value discoveries from mimamsa_discoveries (mi_pariksha) — NOT the L2 bodha_discoveries table (a different concept; see bodha_discoveries_get for that). Each row: discovery_class (emergent_law|retrodiction|contradiction_dominance| temporal_rhythm|residual_candidate), statement, evidence_refs, strength, n_support, confidence_band, activation_status (candidate|supported|promoted), citation_ref. n_support is NOT a count of scored outcomes and means something different per class — read n_support_semantics in the response provenance before treating it as evidence (F-143). Filters: discovery_class, activation_status. Bounded to 50 rows with a disclosed total.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -4287,9 +4789,10 @@
           },
           "discovery_class": {
             "type": "string",
-            "description": "Filter by discovery_class (emergent_law|contradiction_dominance|temporal_rhythm|residual_candidate). Omit for all.",
+            "description": "Filter by discovery_class (emergent_law|retrodiction|contradiction_dominance|temporal_rhythm|residual_candidate). Omit for all.",
             "enum": [
               "emergent_law",
+              "retrodiction",
               "contradiction_dominance",
               "temporal_rhythm",
               "residual_candidate"
@@ -4318,6 +4821,58 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Mimamsa Discoveries",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_moorti_nirnaya",
+      "description": "Retrieve Moorti-nirṇaya rows for a chart from kala_moorti_nirnaya (ka_moorti_nirnaya, registry item 4). Each row: graha, target_sign_name (the sign it is transiting), window_start/window_end (the ingress-to-next-ingress stay), and — when moorti_computed is true — moorti_name (swarna/rajata/tamra/loha), quality_tier (1-4, 1=best), phala_brief, and moorti_classical_citation (REAL, from bg_transit_moorti: Phaladeepika Ch.26; BPHS Ch.28). moorti_computed=false means the run's true ingress moment falls outside the scanned horizon — an honest gap, never a guessed value; all moorti fields are NULL on those rows. `as_of` (default: today) marks which row is `is_current` per graha. Filter by graha to focus on one planet.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "graha": {
+            "type": "string",
+            "description": "Filter by graha (Sun/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu — Moon is out of scope, see writer docstring). Omit for all.",
+            "enum": [
+              "Sun",
+              "Mars",
+              "Mercury",
+              "Jupiter",
+              "Venus",
+              "Saturn",
+              "Rahu",
+              "Ketu"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) to mark as 'current' (default: today)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 50, max 50)."
+          },
+          "current_only": {
+            "type": "boolean",
+            "description": "When true, restrict the result to rows whose window contains `as_of` — i.e. apply the currency filter in SQL, BEFORE the row cap, instead of leaving the caller to filter a capped page afterwards. Default false (unchanged paging behaviour for existing callers)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_moorti_nirnaya",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Moorti Nirnaya",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -4405,6 +4960,49 @@
       }
     },
     {
+      "tool_name": "query_muhurta_lattice",
+      "description": "Read the global muhūrta boundary/factor lattice (bg_muhurta_lattice) for a time interval. Nine chart-independent factor families: agnivasa (Agni's tithi-keyed elemental residence), combination_yoga (Sarvārtha-siddhi, Amṛta-siddhi, Ravi/Guru-Puṣya, Tripuṣkara/Dvipuṣkara, Siddha, Bhadra, Pañchaka spans), kalam (rāhu-kālam, yamagaṇḍa, gulika, durmuhūrta, brāhma-muhūrta, abhijit, amṛta-kālam, varjyam and siblings), ghati_muhurta (the 30-fold named day+night muhūrtas), hora (the 24 planetary hours per sunrise-to-next-sunrise cycle), vara (sunrise-to-sunrise weekday), nakshatra (sunrise nakṣatra), tithi (sunrise tithi), and lagna (the 12 rising-sign spans per day at the reference location). Every row carries its own source_citation and a corpus_status of either computed_cited (a real inline classical citation exists for that table) or computed_uncited_convention (a live deterministic convention with no per-row classical citation in source — disclosed, not invented). The two are counted separately in the response; do not read the raw row count as a count of cited classical factors. Sunrise-anchored families are computed at one fixed IST reference location returned as data on every row — these are NOT querent-local windows. Global reference: no chart_id needed.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "start_utc": {
+            "type": "string",
+            "description": "Interval start, ISO-8601 UTC (e.g. 2026-08-05T00:00:00Z). Required."
+          },
+          "end_utc": {
+            "type": "string",
+            "description": "Interval end, ISO-8601 UTC. Required. Rows overlapping [start_utc, end_utc) are returned."
+          },
+          "factor_family": {
+            "type": "string",
+            "description": "Optional filter: one of agnivasa, combination_yoga, kalam, ghati_muhurta, hora, vara, nakshatra, tithi, lagna. Omit for all nine."
+          },
+          "factor_key": {
+            "type": "string",
+            "description": "Optional exact factor_key filter (e.g. rahu_kalam, abhijit, bhadra)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 2000, hard cap 2000). Narrow the interval rather than raising this."
+          }
+        },
+        "required": [
+          "start_utc",
+          "end_utc"
+        ]
+      },
+      "uri": "marsys://tool/L0/query_muhurta_lattice",
+      "layer": "L0",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Muhurta Lattice",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "query_nakshatra_medical",
       "description": "Query the nakshatra→body-part medical reference (bg_nakshatra_medical, 27 rows — Ashtanga Hridayam / BPHS). Each row: nakshatra_name, nakshatra_number (1-27), body_part, classical_citation. Filter by nakshatra_name or nakshatra_number. Global classical reference — no chart_id needed. Jyotish reference only — not medical advice.",
       "input_schema": {
@@ -4467,6 +5065,76 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Obstruction Periods",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_parihara_graph",
+      "description": "Read the parihāra (doṣa-cancellation) graph, the per-activity muhūrta factor-quality rule tables, and the Muhūrta Factor Census / corpus-gap register (bg_parihara_rules, bg_muhurta_activity_rules, bg_muhurta_factor_census). Request one section or all three. Parihāra rows are citation-filtered: only doṣas carrying a real, non-placeholder classical citation are represented, and the count of doṣas excluded for carrying only a 'classical_tradition' placeholder is returned alongside — never read the served row count as the whole corpus. Rows also carry extraction_context (translator_gloss_in_narrative vs mula_sutra_citation, nullable) so a translator gloss is never read with a mūla-sūtra’s evidentiary weight. Nearly every row is scope=natal; the one named muhūrta-scope exception is reported via the live muhurta_scope_rule_count, never assumed absent or assumed present. The census disposes each named timing-factor family as computed, not_computed or not_in_corpus with a citation or an honest gap reason and an ingestion pointer. Global classical reference — no chart_id needed; returns RULES, not any chart's verdict.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "section": {
+            "type": "string",
+            "description": "Which payload: parihara_rules, activity_rules, factor_census, or omit for all three."
+          },
+          "activity_class": {
+            "type": "string",
+            "description": "Filter activity_rules to one of: vivah, griha_pravesh, vyapara, yatra, property_purchase, mantra_initiation, upaya_ritual, sadhana_initiation."
+          },
+          "dosha_canonical_id": {
+            "type": "string",
+            "description": "Filter parihara_rules to one doṣa canonical id."
+          },
+          "disposition": {
+            "type": "string",
+            "description": "Filter factor_census by disposition: computed, not_computed, not_in_corpus."
+          }
+        }
+      },
+      "uri": "marsys://tool/L0/query_parihara_graph",
+      "layer": "L0",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Parihara Graph",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_planet",
+      "description": "Canonical assembled-entity face for ONE graha: sign, house (D1), nakshatra+pada, degree, retrograde/combustion state, dignity chain (exalted/own/friend/neutral/enemy/debilitated + functional class for this Aries lagna), shadbala (6 components + total), avasthas (baladi/ deepta/jagrad/lajjitadi/sayanadi), aspects given/received (best-effort matched), yogas this graha participates in (firings-authoritative + catalog-label, both flagged separately), and its dispositor chain. Gathers ALL of this from already-served L1 capabilities in one call (get_positions/get_dignity/get_strength/get_avasthas/get_aspects/get_yoga_dosha/ get_yoga_firings/get_dispositors) — no new computation. Use this instead of chaining 7+ individual EAV tool calls for an entity-shaped (\"tell me about Saturn\") question.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID"
+          },
+          "planet": {
+            "type": "string",
+            "description": "Graha name (English, Sanskrit, or 2-3 letter code), e.g. \"Saturn\", \"shani\", \"SAT\"."
+          },
+          "ayanamsha_id": {
+            "type": "string",
+            "description": "Filter by ayanamsha. Omit for default."
+          }
+        },
+        "required": [
+          "chart_id",
+          "planet"
+        ]
+      },
+      "uri": "marsys://tool/L1/query_planet",
+      "layer": "L1",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Planet",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -4648,7 +5316,7 @@
     },
     {
       "tool_name": "query_pratijna",
-      "description": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional), grade, varga_confirmation, the supporting_signal_ids and contradicting_signal_ids that back it, and a derivation. Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50) with a disclosed total + offset pagination.",
+      "description": "Retrieve the chart pratijna (promise / denial) ledger from bodha_pratijna — one adjudicated row per event_class: status (promised | denied | conditional | no_evidence), grade, varga_confirmation, and a derivation (bo_pratijna v4.1: a factor ledger of classical significators, weights, and denial checks — the row's real evidence). Filters: ayanamsha_id, status, event_class_id. Bounded (LIMIT ≤50) with a disclosed total + offset pagination. supporting_signal_ids / contradicting_signal_ids are always NULL under the v4 engine (it does not use MSR-signal matching); no_evidence rows now mean \"no karyatva registry entry for this event class\" (a defensive case, not \"zero signals\") — their grade is NULL (not scored), served honestly per R6/R8, not gated or fabricated. varga_confirmation (JSONB, G10/SAMPURTI L0e): cross-ayanamsha consensus — per_system gives each of the 5 ayanamshas' varga_sign + dignity_state + band; consensus_dignity is the plurality dignity state; unanimous=true when all 5 agree; dissent lists the diverging systems. NULL for classes with no divisional in their KaryatvaMap (e.g. birth_anchor whose kill_switch excludes it from scoring).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -4662,7 +5330,7 @@
           },
           "status": {
             "type": "string",
-            "description": "Filter by status ('promised' | 'denied' | 'conditional'). Omit for all."
+            "description": "Filter by status ('promised' | 'denied' | 'conditional' | 'no_evidence'). Omit for all."
           },
           "event_class_id": {
             "type": "string",
@@ -4694,7 +5362,7 @@
     },
     {
       "tool_name": "query_predictions",
-      "description": "Returns logged predictions for a chart from mimamsa_predictions (mi_bhavisya). Source: mimamsa_predictions (50 rows per chart — sparse, early-stage L5 population). Each prediction carries: outcome_claim, confidence band, falsifier_jsonb, lifecycle_status (pending|confirmed|denied|expired), and domain. emits_references: prediction_id references link to ph_pramana (L4 via source_pramana_id). Filter by lifecycle_status to review confirmed/denied predictions.",
+      "description": "Returns logged predictions for a chart from mimamsa_predictions (mi_bhavisya). Source: mimamsa_predictions — a sparse, early-stage L5 population that GROWS with each calibration cycle; the served response reports the real total_matching it measured for this chart rather than a pinned count. Each prediction carries: outcome_claim, confidence band, falsifier_jsonb, lifecycle_status (pending|confirmed|denied|expired), and domain. emits_references: prediction_id references link to ph_pramana (L4 via source_pramana_id). Filter by lifecycle_status to review confirmed/denied predictions. Bounded to 200 rows with a disclosed total_matching + more_available.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -4719,6 +5387,10 @@
           "domain": {
             "type": "string",
             "description": "Filter by domain (career, wealth, relationship, health, character, spirituality, other)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max predictions to return (default 200, max 200)."
           }
         },
         "required": [
@@ -4784,7 +5456,7 @@
     },
     {
       "tool_name": "query_projections",
-      "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4).",
+      "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4). MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many times (one per contributing signal) — e.g. dozens of rows can share one (window_start, window_end, domain) triple. Prefer `projection_families` — one entry per distinct (window_start, window_end, domain), with member_count and bounded member_ids/ member_signal_ids — copying query_temporal_activation's window_families pattern.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -5026,6 +5698,10 @@
           "limit": {
             "type": "number",
             "description": "Max rows to return per section (resonances, prescriptions). Default: all (45 resonances / 135 prescriptions); max: 200."
+          },
+          "leverage_ranked": {
+            "type": "boolean",
+            "description": "When true, rank resonance targets by L1 leverage_index = (domain load-bearing weight ÷ graha capability) × forward daśā runway (read from chart_vichara, §N.5). Pair with `domain` for a domain-specific leverage rank; without a domain each graha takes its peak-leverage domain. This is the intervention_synthesis primitive axis."
           }
         },
         "required": [
@@ -5171,6 +5847,10 @@
           "intensity_tier": {
             "type": "string",
             "description": "Filter by intensity_tier (free-text tier label as stored on phala_mitigation)."
+          },
+          "domain": {
+            "type": "string",
+            "description": "Filter remedies by the domain of their linked phala_anchors row."
           },
           "limit": {
             "type": "number",
@@ -5580,7 +6260,7 @@
           },
           "domain": {
             "type": "string",
-            "description": "Filter signals by domain (career, wealth, relationship, health, character, spirituality, other)."
+            "description": "Filter signals by canonical domain — one of: career, character, education, family, general, health, progeny, relationship, residence, spirituality, transition, travel, wealth. A value outside this vocabulary (e.g. the legacy 'other') matches no rows."
           },
           "source_subsystem": {
             "type": "string",
@@ -5653,6 +6333,49 @@
       }
     },
     {
+      "tool_name": "query_sky_calendar",
+      "description": "Read the global chart-independent sky-event diary (bg_sky_events) for a time interval. Five event families: ingress (sign-boundary crossings, 9 grahas), station (retro/direct stations for Mars/Mercury/Jupiter/Venus/Saturn -- Sun/Moon never station, Rahu/Ketu are deliberately excluded), eclipse_solar / eclipse_lunar (TIMING only -- max/begin/end instant and classical type; per-location visibility/magnitude is NOT computed here), and double_transit (slow-mover conjunction geometry, e.g. Jupiter-Saturn). Every row carries its own source_citation (computational provenance, not a classical text citation -- this is instrument-emergent ephemeris output). Chart-contact/natal-join questions (\"does this event touch a specific chart\") are explicitly OUT of scope -- that is a separate, chart-scoped consumer's job, not this global diary's. Global reference: no chart_id needed.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "start_utc": {
+            "type": "string",
+            "description": "Interval start, ISO-8601 UTC (e.g. 2026-08-05T00:00:00Z). Required."
+          },
+          "end_utc": {
+            "type": "string",
+            "description": "Interval end, ISO-8601 UTC. Required. Events with event_datetime_utc in [start_utc, end_utc) are returned."
+          },
+          "event_type": {
+            "type": "string",
+            "description": "Optional filter: one of ingress, station, eclipse_solar, eclipse_lunar, double_transit. Omit for all five."
+          },
+          "primary_body": {
+            "type": "string",
+            "description": "Optional exact primary_body filter (e.g. Jupiter, Saturn, Mars)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 2000, hard cap 2000). Narrow the interval rather than raising this."
+          }
+        },
+        "required": [
+          "start_utc",
+          "end_utc"
+        ]
+      },
+      "uri": "marsys://tool/L0/query_sky_calendar",
+      "layer": "L0",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Sky Calendar",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "query_spillover_cascades",
       "description": "Returns cross-domain spillover cascades for a chart from phala_sankrama (ph_sankrama). Source: phala_sankrama (73 rows — A→B→C domain cascade dynamics). Models how activation in one domain propagates to others. Returns conflict chains, trajectory vectors, and mitigation routing. emits_references: anchor_id back to phala_anchors.",
       "input_schema": {
@@ -5698,15 +6421,21 @@
           },
           "domain": {
             "type": "string",
-            "description": "Domain to bundle. One of: career, wealth, relationship, health, character, spirituality, other. Default: 'career'.",
+            "description": "Domain to bundle. One of: career, character, education, family, general, health, progeny, relationship, residence, spirituality, transition, travel, wealth. Default: 'career'.",
             "enum": [
               "career",
-              "wealth",
-              "relationship",
-              "health",
               "character",
+              "education",
+              "family",
+              "general",
+              "health",
+              "progeny",
+              "relationship",
+              "residence",
               "spirituality",
-              "other"
+              "transition",
+              "travel",
+              "wealth"
             ]
           },
           "ayanamsha_id": {
@@ -5727,6 +6456,48 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Spine Bundle",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_sudarshana_varsha",
+      "description": "Retrieve Sudarśana-Chakra year-wheel rows for a chart from kala_sudarshana_varsha (ka_sudarshana_varsha, registry item 17). Each row: varsha_year (1..120, the Nth year of life), window_start/window_end (calendar anniversary window), jl/cl/sl_active_sign_name (the progressed Janma/Chandra/Sūrya Lagna signs for that year), and tri_lagna_convergence (true when all three coincide — a classically notable alignment year). `as_of` (default: today) marks which row is `is_current`. Filter by varsha_year_from/to to page a range — default returns the full 120-year wheel (cheap, pure-arithmetic rows).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "as_of": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) to mark as 'current' (default: today)."
+          },
+          "varsha_year_from": {
+            "type": "number",
+            "description": "Only years >= this (1..120). Omit for 1."
+          },
+          "varsha_year_to": {
+            "type": "number",
+            "description": "Only years <= this (1..120). Omit for 120."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 120, max 120)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_sudarshana_varsha",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Sudarshana Varsha",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -5938,6 +6709,48 @@
       "name_valid": true,
       "annotations": {
         "title": "Query Temporal View",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "tool_name": "query_tithi_pravesha",
+      "description": "Retrieve Tithi-Praveśa (lunar-return annual chart) rows for a chart from kala_tithi_pravesha (ka_tithi_pravesha, registry item 13). Each row: pravesha_year (1..120, the Nth praveśa year), window_start/window_end (the lunar-return instant beginning/ending this year), pravesha_lagna_sign_name/degree (the annual ascendant), graha_positions_jsonb (all 9 grahas at the return instant), and ephemeris_audit_jsonb (root-find convergence + two-pass cross-check). `as_of` (default: today) marks which row is `is_current`. Filter by pravesha_year_from/to to page a range — default returns the full 120-year window.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "as_of": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) to mark as 'current' (default: today)."
+          },
+          "pravesha_year_from": {
+            "type": "number",
+            "description": "Only years >= this (1..120). Omit for 1."
+          },
+          "pravesha_year_to": {
+            "type": "number",
+            "description": "Only years <= this (1..120). Omit for 120."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 120, max 120)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_tithi_pravesha",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Tithi Pravesha",
         "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
@@ -6206,6 +7019,68 @@
       }
     },
     {
+      "tool_name": "query_vedha_gochara",
+      "description": "Retrieve vedha (transit obstruction) rows for a chart from kala_vedha_gochara (ka_vedha_gochara, registry item 5, closes defect R-19 CLOSED-PARTIAL-BY-DESIGN). Each row carries vedha_kind (\"house_vedha\" — REAL, cited BPHS/Phaladeepika house-level rule, uncited_extension=false, plus a Phaladeepika PG353 malefic-count grading in detail; \"sarvatobhadra\" — nakshatra-level, grid_basis/grid_school_tag (top-level, machine-readable) name the source, currently always algorithmic_approximation/uncited_extension=true, see detail.r19_disclosure; or \"latta\" — Phaladeepika PG338-339 Lattā affliction, REAL cited, uncited_extension=false), graha, window_start/window_end, classical_citation, and a kind-specific `detail` object (house_vedha: primary_house/vedha_house/obstruction_active/ obstructing_graha/obstruction_window_*/malefic_count/malefic_effect_grade/ malefic_grade_uncited_extension; sarvatobhadra: target_nakshatra_name/vedha_nakshatra_name/ cancellation_effect/r19_disclosure; latta: count_from_graha/direction/latta_nakshatra_name/ effect_description/affliction_condition). `as_of` (default: today) marks which row is `is_current`. Filter by vedha_kind and/or graha.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "chart_id": {
+            "type": "string",
+            "description": "Chart UUID. Required."
+          },
+          "vedha_kind": {
+            "type": "string",
+            "description": "Filter by mechanism: house_vedha (REAL cited), sarvatobhadra (R-19, disclosed approximation), or latta (REAL cited). Omit for all.",
+            "enum": [
+              "house_vedha",
+              "sarvatobhadra",
+              "latta"
+            ]
+          },
+          "graha": {
+            "type": "string",
+            "description": "Filter by graha (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu). Omit for all.",
+            "enum": [
+              "Sun",
+              "Moon",
+              "Mars",
+              "Mercury",
+              "Jupiter",
+              "Venus",
+              "Saturn",
+              "Rahu",
+              "Ketu"
+            ]
+          },
+          "as_of": {
+            "type": "string",
+            "description": "Date (YYYY-MM-DD) to mark as 'current' (default: today)."
+          },
+          "limit": {
+            "type": "number",
+            "description": "Max rows (default 50, max 50)."
+          },
+          "current_only": {
+            "type": "boolean",
+            "description": "When true, restrict the result to rows whose window contains `as_of` — i.e. apply the currency filter in SQL, BEFORE the row cap, instead of leaving the caller to filter a capped page afterwards. Default false (unchanged paging behaviour for existing callers)."
+          }
+        },
+        "required": [
+          "chart_id"
+        ]
+      },
+      "uri": "marsys://tool/L3/query_vedha_gochara",
+      "layer": "L3",
+      "name_valid": true,
+      "annotations": {
+        "title": "Query Vedha Gochara",
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
       "tool_name": "query_vichara_constants",
       "description": "Query the vichara ratification-constants registry (brahma_vichara_constants, 7 rows). Each row: constant_key, value_jsonb, citation, version, updated_at. Filter by constant_key. Global reference — no chart_id needed. Registry data (ratification steps/clamps for the chart_vichara family), not hand-copied literals.",
       "input_schema": {
@@ -6230,7 +7105,7 @@
     },
     {
       "tool_name": "query_yoga_catalog",
-      "description": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 175 canonical yogas with classical activation rules, tradition, domain tags, and classical sources. Use to look up what a yoga means, its activation predicate, and which classical text defines it. Supports search by yoga name, tradition (parashari/jaimini/tajik/lal_kitab/kp/nadi_bhrigu/maharsi), or domain (wealth/career/health/relationship/spirituality/longevity). Returns the weak-tail too — every yoga in the catalog regardless of activation strength.",
+      "description": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 233 canonical yogas with classical activation rules, tradition, domain tags, and classical sources. Use to look up what a yoga means, its activation predicate, and which classical text defines it. Supports search by yoga name, tradition (parashari/jaimini/tajik/lal_kitab/kp/nadi_bhrigu/maharsi), or domain (wealth/career/health/relationship/spirituality/longevity). Returns the weak-tail too — every yoga in the catalog regardless of activation strength.",
       "input_schema": {
         "type": "object",
         "properties": {
