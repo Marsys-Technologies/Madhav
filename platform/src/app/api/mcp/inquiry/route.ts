@@ -19,6 +19,7 @@ import {
   compileInquiryContract,
   deriveInquiryPaginationReceipt,
   finalizeInquiryContract,
+  failInquiryForAmbiguousDispatch,
   failInquiryForOverlayDrift,
   hashJti,
   inquiryAuthorizationHashes,
@@ -27,7 +28,15 @@ import {
   verifyInquiryLifecycleToken,
   type InquiryContract,
 } from '@/lib/vidhi/inquiry'
-import { commitInquiryFinalization, commitInquiryObservation, createInquiryLifecycle, getInquiryLifecycle, reserveInquiryAction } from '@/lib/vidhi/inquiry/lifecycle_store'
+import {
+  commitInquiryFinalization,
+  commitInquiryObservation,
+  createInquiryLifecycle,
+  failCloseAmbiguousInquiryAction,
+  getInquiryLifecycle,
+  markInquiryActionDispatched,
+  reserveInquiryAction,
+} from '@/lib/vidhi/inquiry/lifecycle_store'
 
 export const maxDuration = 60
 
@@ -64,6 +73,7 @@ const MAX_RESULT_BYTES = 512 * 1024
 const PUBLIC_ERROR_CODES = new Set([
   'INQUIRY_TOKEN_MALFORMED', 'INQUIRY_TOKEN_INVALID_SIGNATURE', 'INQUIRY_TOKEN_WRONG_AUDIENCE',
   'INQUIRY_TOKEN_WRONG_SUBJECT', 'INQUIRY_TOKEN_EXPIRED', 'INQUIRY_TOKEN_REPLAYED_OR_STALE',
+  'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS', 'INQUIRY_ACTION_IN_PROGRESS',
   'INQUIRY_ACTIVE_LIMIT_REACHED', 'INQUIRY_CREATION_RATE_LIMITED',
 ])
 
@@ -144,7 +154,8 @@ export async function POST(request: Request) {
     if (row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash ||
       row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash ||
       row.capability_compatibility_version !== claims.compatibility_version || row.revision !== claims.revision ||
-      row.current_jti_hash !== hashJti(claims.jti) || row.chart_overlay_version !== claims.overlay_version ||
+      (body.action === 'finalize' && row.current_jti_hash !== hashJti(claims.jti)) ||
+      row.chart_overlay_version !== claims.overlay_version ||
       row.chart_build_id !== claims.chart_build_id ||
       stableFingerprint(row.contract_jsonb) !== claims.contract_state_hash ||
       authorizationHashes.semantic_contract_hash !== row.semantic_contract_hash ||
@@ -184,7 +195,30 @@ export async function POST(request: Request) {
       if (!invocationArgs) return response({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' }, 409)
 
       const reservationHash = `reserved:${hashJti(randomUUID())}`
-      await reserveInquiryAction({ row, expected_jti_hash: hashJti(claims.jti), reservation_hash: reservationHash })
+      const reservation = await reserveInquiryAction({
+        row,
+        expected_jti_hash: hashJti(claims.jti),
+        reservation_hash: reservationHash,
+        plan_item_id: item.item_id,
+      })
+      if (reservation.status === 'in_progress') {
+        return response({
+          ok: false,
+          error: 'INQUIRY_ACTION_IN_PROGRESS',
+          retry_after_seconds: reservation.retry_after_seconds,
+        }, 409)
+      }
+      if (reservation.status === 'ambiguous') {
+        const blocked = failInquiryForAmbiguousDispatch(contract, item.item_id)
+        await failCloseAmbiguousInquiryAction({
+          row,
+          expected_source_jti_hash: hashJti(claims.jti),
+          plan_item_id: item.item_id,
+          contract: blocked,
+        })
+        return response({ ok: false, error: 'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS', contract: blocked }, 409)
+      }
+      await markInquiryActionDispatched({ row, plan_item_id: item.item_id, reservation_hash: reservation.reservation_hash })
 
       let raw: unknown
       let disposition: 'served' | 'empty' | 'failed' = 'served'
@@ -204,7 +238,12 @@ export async function POST(request: Request) {
       if (postDispatchOverlay.overlay_version !== claims.overlay_version || postDispatchOverlay.build_id !== claims.chart_build_id) {
         console.error('[mcp:inquiry] chart overlay changed during dispatch', { traceId, inquiryId: row.inquiry_id, itemId: item.item_id })
         const blocked = failInquiryForOverlayDrift(contract)
-        await commitInquiryFinalization({ row, expected_jti_hash: reservationHash, contract: blocked })
+        await commitInquiryFinalization({
+          row,
+          expected_jti_hash: reservation.reservation_hash,
+          contract: blocked,
+          action: { plan_item_id: item.item_id, terminal_state: 'failed_closed' },
+        })
         return response({ ok: false, error: 'CAPABILITY_OVERLAY_CHANGED' }, 409)
       }
       let serialized = JSON.stringify(raw)
@@ -230,7 +269,7 @@ export async function POST(request: Request) {
         allowed_transition: remaining.length ? 'execute' : 'finalize', next_action_ids: remaining,
       }, key)
       const receiptId = await commitInquiryObservation({
-        row, expected_jti_hash: reservationHash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
+        row, expected_jti_hash: reservation.reservation_hash, next_jti_hash: hashJti(issued.claims.jti), contract: observed,
         evidence: { plan_item_id: item.item_id, obligation_ids: item.obligation_ids, scu_id: item.scu_id, binding_id: item.binding_id,
           canonical_args_hash: stableFingerprint(invocationArgs), raw_result_hash: stableFingerprint(raw), disposition,
           pagination, payload: { trace_id: traceId, result_bytes: Buffer.byteLength(serialized) } },

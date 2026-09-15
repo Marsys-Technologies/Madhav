@@ -878,6 +878,37 @@ export function failInquiryForOverlayDrift(contract: InquiryContract): InquiryCo
   }
 }
 
+/**
+ * Fail closed when a previous process durably crossed the dispatch boundary
+ * but crashed before it could persist the result. The action is not replayed:
+ * doing so would silently weaken at-most-once execution.
+ */
+export function failInquiryForAmbiguousDispatch(contract: InquiryContract, itemId: string): InquiryContract {
+  const item = contract.plan_items.find((candidate) => candidate.item_id === itemId)
+  if (!item) return {
+    ...contract,
+    status: 'BLOCKED',
+    status_reasons: unique([...contract.status_reasons, 'ambiguous dispatched action is not present in the contract']),
+  }
+  const affected = new Set(item.obligation_ids)
+  const reason = 'DISPATCH_OUTCOME_AMBIGUOUS_AFTER_PROCESS_LOSS'
+  return {
+    ...contract,
+    obligations: contract.obligations.map((obligation) => affected.has(obligation.obligation_id)
+      ? { ...obligation, disposition: 'failed' as const, evidence_refs: [], gap_reason: reason }
+      : obligation),
+    plan_items: contract.plan_items.map((candidate) => candidate.item_id === itemId
+      ? { ...candidate, state: 'blocked' as const, blocked_reason: reason, observation: null }
+      : candidate),
+    material_frontier: contract.material_frontier.map((frontier) => frontier.scu_id === item.scu_id
+      ? { ...frontier, disposition: 'capped' as const, reason }
+      : frontier),
+    status: 'BLOCKED',
+    status_reasons: unique([...contract.status_reasons, 'dispatch outcome became ambiguous after the at-most-once boundary']),
+    iteration: contract.max_iterations,
+  }
+}
+
 export function buildInquiryClosureReceipt(contract: InquiryContract): InquiryClosureReceipt {
   const normalized = {
     receipt_version: 'inquiry-closure-v1' as const,

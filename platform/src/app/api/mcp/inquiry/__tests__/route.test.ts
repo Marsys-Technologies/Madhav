@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   commitObservation: vi.fn(),
   commitFinalization: vi.fn(),
   reserve: vi.fn(),
+  markDispatched: vi.fn(),
+  failCloseAmbiguous: vi.fn(),
   retrieve: vi.fn(),
   apply: vi.fn(),
   finalize: vi.fn(),
@@ -56,6 +58,8 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
   commitInquiryObservation: mocks.commitObservation,
   commitInquiryFinalization: mocks.commitFinalization,
   reserveInquiryAction: mocks.reserve,
+  markInquiryActionDispatched: mocks.markDispatched,
+  failCloseAmbiguousInquiryAction: mocks.failCloseAmbiguous,
 }))
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
@@ -136,6 +140,9 @@ beforeEach(() => {
   mocks.pagination.mockReturnValue({ semantics: 'offset', exhausted: false, next: 50 })
   mocks.apply.mockImplementation((value: InquiryContract) => ({ ...value, plan_items: value.plan_items.map((item) => ({ ...item, state: 'observed' })), iteration: value.iteration + 1 }))
   mocks.commitObservation.mockResolvedValue('receipt-1')
+  mocks.reserve.mockResolvedValue({ status: 'acquired', reservation_hash: 'reserved:sha256:fixture', recovered: false })
+  mocks.markDispatched.mockResolvedValue(undefined)
+  mocks.failCloseAmbiguous.mockResolvedValue(undefined)
   mocks.overlay.mockResolvedValue({ overlay_version: null, build_id: null })
   mocks.snapshot.mockReturnValue({ content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', scus: [{ scu_id: 'scu.test', bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true, execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'offset' } }] }] })
 })
@@ -192,7 +199,7 @@ describe('raw MCP inquiry route', () => {
     mocks.reserve.mockImplementation((args: { reservation_hash: string }) => {
       if (!stored) throw new Error('missing fixture lifecycle')
       stored.current_jti_hash = args.reservation_hash
-      return Promise.resolve()
+      return Promise.resolve({ status: 'acquired', reservation_hash: args.reservation_hash, recovered: false })
     })
     mocks.commitObservation.mockImplementation((args: {
       next_jti_hash: string; contract: InquiryContract;
@@ -325,13 +332,81 @@ describe('raw MCP inquiry route', () => {
       capability_compatibility_version: 'planner-scu-v1', chart_overlay_version: null, chart_build_id: null,
       authorization_jsonb: value, contract_jsonb: value, status: 'INCOMPLETE', revision: 0, current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
     })
-    mocks.reserve.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE'))
+    mocks.reserve.mockResolvedValueOnce({ status: 'acquired', reservation_hash: 'reserved:sha256:first', recovered: false })
+      .mockRejectedValueOnce(new Error('INQUIRY_TOKEN_REPLAYED_OR_STALE'))
     const [first, second] = await Promise.all([
       POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' })),
       POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' })),
     ])
     expect([first.status, second.status].sort()).toEqual([200, 409])
     expect(mocks.retrieve).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists dispatched before invoking the tool', async () => {
+    primeStoredLifecycle()
+    const order: string[] = []
+    mocks.markDispatched.mockImplementation(async () => { order.push('dispatched') })
+    mocks.retrieve.mockImplementation(async () => {
+      order.push('retrieve')
+      return { results: [{ content: '{"rows":[1]}' }] }
+    })
+    mocks.commitObservation.mockImplementation(async () => {
+      order.push('committed')
+      return 'receipt-1'
+    })
+
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(200)
+    expect(order).toEqual(['dispatched', 'retrieve', 'committed'])
+    expect(mocks.markDispatched).toHaveBeenCalledWith(expect.objectContaining({ plan_item_id: 'item-001' }))
+  })
+
+  it('fails closed without redispatch when a prior dispatch outcome is ambiguous', async () => {
+    const value = primeStoredLifecycle()
+    mocks.get.mockResolvedValueOnce({
+      ...(await mocks.get()),
+      current_jti_hash: 'reserved:sha256:lost-process',
+      contract_jsonb: value,
+    })
+    mocks.reserve.mockResolvedValueOnce({ status: 'ambiguous', reservation_hash: 'reserved:sha256:lost-process' })
+
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: 'INQUIRY_DISPATCH_OUTCOME_AMBIGUOUS',
+      contract: { status: 'BLOCKED' },
+    })
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+    expect(mocks.markDispatched).not.toHaveBeenCalled()
+    expect(mocks.failCloseAmbiguous).toHaveBeenCalledWith(expect.objectContaining({
+      expected_source_jti_hash: 'sha256:current-jti',
+      plan_item_id: 'item-001',
+      contract: expect.objectContaining({ status: 'BLOCKED' }),
+    }))
+  })
+
+  it('leaves a live overlapping dispatch in progress without fail-closing it', async () => {
+    const value = primeStoredLifecycle()
+    mocks.get.mockResolvedValueOnce({
+      ...(await mocks.get()),
+      current_jti_hash: 'reserved:sha256:active-process',
+      contract_jsonb: value,
+    })
+    mocks.reserve.mockResolvedValueOnce({
+      status: 'in_progress',
+      reservation_hash: 'reserved:sha256:active-process',
+      retry_after_seconds: 42,
+    })
+
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      ok: false,
+      error: 'INQUIRY_ACTION_IN_PROGRESS',
+      retry_after_seconds: 42,
+    })
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+    expect(mocks.failCloseAmbiguous).not.toHaveBeenCalled()
   })
 
   it('rejects mutable contract progress not authenticated by the signed token', async () => {
