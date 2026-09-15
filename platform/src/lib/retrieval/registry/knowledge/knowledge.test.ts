@@ -20,7 +20,7 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
     expect(snapshot.census.executable_bindings).toBe(186)
     expect(snapshot.census.unavailable_bindings).toBe(0)
-    expect(snapshot.schema_version).toBe('2.1.0')
+    expect(snapshot.schema_version).toBe('2.2.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(snapshot.semantic_review_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/)
@@ -30,6 +30,30 @@ describe('planner capability knowledge', () => {
     expect(report.passed).toBe(true)
     expect(report.findings.every((finding) => finding.severity === 'warning')).toBe(true)
     expect(report.findings.map((finding) => finding.code)).toContain('BAD_PAGINATION_CONTRACT')
+  })
+
+  it('joins every registry binding to the reviewed full-profile route authority', () => {
+    const routes = estateCensus.details.descriptor_route_contracts
+    expect(routes).toHaveLength(186)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_exposed')).toHaveLength(71)
+    expect(routes.filter((route) => route.public_route_disposition === 'reviewed_not_exposed')).toHaveLength(115)
+    expect(snapshot.census).toMatchObject({
+      reviewed_route_descriptors: 186,
+      reviewed_public_descriptors: 71,
+      reviewed_nonpublic_descriptors: 115,
+    })
+    const bindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
+    const bindingByUri = new Map(bindings.map((binding) => [binding.capability_uri, binding]))
+    expect(bindingByUri.size).toBe(182)
+    expect(routes.filter((route) => !bindingByUri.has(route.capability_uri)).map((route) => route.capability_uri).sort())
+      .toEqual(snapshot.census.exclusions.map((item) => item.capability_uri).sort())
+    for (const route of routes.filter((candidate) => bindingByUri.has(candidate.capability_uri))) {
+      const binding = bindingByUri.get(route.capability_uri)
+      expect(binding, route.capability_uri).toBeDefined()
+      expect(binding?.execution_channels?.includes('mcp_full')).toBe(route.public_route_disposition === 'reviewed_exposed')
+      expect(binding?.public_tool_name ?? null).toBe(route.public_tool_names[0] ?? null)
+      expect(binding?.route_evidence).toContain(route.public_route_evidence[0])
+    }
   })
 
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {

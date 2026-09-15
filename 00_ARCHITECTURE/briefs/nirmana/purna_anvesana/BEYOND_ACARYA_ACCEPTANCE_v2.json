@@ -7,8 +7,8 @@
   "acceptance_version": "beyond-acarya-source-acceptance-v2",
   "corpus_version": "beyond-acarya-inquiry-corpus-v1",
   "temporal_anchor_date": "2026-09-15",
-  "capability_content_hash": "sha256:2f346495a2b0ce5bd139c9faabed5953f83e5c7f72d473f9ef67f861ef931471",
-  "report_hash": "sha256:070a5f2801a0feda4c477683c018e79e12e4c3d4710a3a4936666d55433e7875",
+  "capability_content_hash": "sha256:ae1a53c88ee8e1833662233d359c4306ff3befdb77c6f35e9221582cc14bc298",
+  "report_hash": "sha256:2cc9c2f05664466ae5141aa26e33e04e1ee8963522ebe9dd9b687dbd1dad0474",
   "evidence_kind": "synthetic_source_local",
   "verdict": "ACCEPTED_SOURCE_LOCAL",
   "metrics": {

@@ -1,8 +1,8 @@
 {
-  "schema_version": "2.1.0",
+  "schema_version": "2.2.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-15T06:10:41.000Z",
-  "content_hash": "sha256:2f346495a2b0ce5bd139c9faabed5953f83e5c7f72d473f9ef67f861ef931471",
+  "generated_at": "2026-09-15T06:25:07.000Z",
+  "content_hash": "sha256:ae1a53c88ee8e1833662233d359c4306ff3befdb77c6f35e9221582cc14bc298",
   "source_catalog_fingerprint": "sha256:5c1704b16e28e9b69b5c530ef7ea1bad134cf988bbaeed9e1db42226deca65a9",
   "semantic_review_fingerprint": "sha256:db85af3dee748f127af82bb5a1d0e1aaeec23bbdc77f8a0c329f457096be8b6e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
@@ -133,11 +133,7 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
-          "execution_channels": [
-            "platform_internal",
-            "mcp_full"
-          ],
-          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488",
+          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get",
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -152,6 +148,10 @@
               "mechanism_name ASC"
             ]
           },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
           "public_tool_name": "bodha_mechanisms_get"
         }
       ],
@@ -327,10 +327,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_career | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_career",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_career"
+          "public_tool_name": "assess_career"
         }
       ],
       "source_descriptor_uris": [
@@ -511,10 +513,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_health | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_health",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_health"
+          "public_tool_name": "assess_health"
         }
       ],
       "source_descriptor_uris": [
@@ -695,10 +699,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_marriage | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_marriage",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-DOMAIN/assess_marriage"
+          "public_tool_name": "assess_marriage"
         }
       ],
       "source_descriptor_uris": [
@@ -861,10 +867,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_all | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_list | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_all | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_list",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/all"
+          "public_tool_name": "catalog_assets_all"
         }
       ],
       "source_descriptor_uris": [
@@ -1029,10 +1037,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_l0 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:catalog_assets_l0",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/asset-registry/L0"
+          "public_tool_name": "catalog_assets_l0"
         }
       ],
       "source_descriptor_uris": [
@@ -1194,10 +1204,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_dasha_eligibility | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_dasha_eligibility"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -1344,10 +1354,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_ephemeris_at_t"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -1497,10 +1507,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_muhurta_score"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -1660,10 +1670,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/call_panchanga_service"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -1825,10 +1835,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_priority_ranking | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_priority_ranking_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_priority_ranking_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_priority_ranking"
+          "public_tool_name": "kala_priority_ranking_get"
         }
       ],
       "source_descriptor_uris": [
@@ -2000,10 +2012,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_transit_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/call_transit_search"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -2143,10 +2155,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/channel/chat_dispatch | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/channel/chat_dispatch"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -2291,10 +2303,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/channel/mcp_wiring | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/channel/mcp_wiring"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -2468,10 +2480,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/chart_facts_query | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_chart_facts_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_chart_facts_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/chart_facts_query"
+          "public_tool_name": "ganita_chart_facts_get"
         }
       ],
       "source_descriptor_uris": [
@@ -2630,10 +2644,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/chart_snapshot | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:chart_snapshot | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:chart_snapshot",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/chart_snapshot"
+          "public_tool_name": "chart_snapshot"
         }
       ],
       "source_descriptor_uris": [
@@ -2779,10 +2795,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/classical_attribution_lookup | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/classical_attribution_lookup"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -2938,10 +2954,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/synthesis/compose_large_n | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/synthesis/compose_large_n"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -3087,10 +3103,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/concept_locate | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_concept_locate | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_concept_locate",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/concept_locate"
+          "public_tool_name": "ganita_concept_locate"
         }
       ],
       "source_descriptor_uris": [
@@ -3233,10 +3251,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/native-lifetime"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -3377,10 +3395,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy} | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/ephemeris-cache/year/{yyyy}"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -3530,10 +3548,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/find_verses_about | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/find_verses_about"
+          "public_tool_name": "find_verses_about"
         }
       ],
       "source_descriptor_uris": [
@@ -3700,10 +3720,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_argala | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_argala"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -3866,10 +3886,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_ashtakavarga | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_ashtakavarga"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -4034,10 +4054,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_aspects | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_aspects"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -4210,10 +4230,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_av_transit_gating_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_av_transit_gating_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_av_transit_gating"
+          "public_tool_name": "ganita_av_transit_gating_get"
         }
       ],
       "source_descriptor_uris": [
@@ -4369,10 +4391,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_avasthas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_avasthas"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -4533,10 +4555,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_ayurdaya | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_ayurdaya_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_ayurdaya_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_ayurdaya"
+          "public_tool_name": "ganita_ayurdaya_get"
         }
       ],
       "source_descriptor_uris": [
@@ -4703,10 +4727,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_bhava_bala | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_bhava_bala"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -4862,10 +4886,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_chart_header | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_chart_header"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -5019,10 +5043,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_condition_composite | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_condition_composite"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -5179,10 +5203,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dasha_lord_capability | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p2_dasha_lord.ts:ganita_dasha_lord_capability_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p2_dasha_lord.ts:ganita_dasha_lord_capability_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dasha_lord_capability"
+          "public_tool_name": "ganita_dasha_lord_capability_get"
         }
       ],
       "source_descriptor_uris": [
@@ -5362,10 +5388,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dashas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dashas"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -5529,10 +5555,12 @@
           "pagination": "cursor",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_database_schema | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_database_schema_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_database_schema_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_database_schema"
+          "public_tool_name": "ganita_database_schema_get"
         }
       ],
       "source_descriptor_uris": [
@@ -5697,10 +5725,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dignity | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dignity"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -5865,10 +5893,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dispositors | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dispositors"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -6119,10 +6147,7 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
-          "execution_channels": [
-            "platform_internal"
-          ],
-          "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -6133,7 +6158,10 @@
               "ayanamsha_id",
               "graha"
             ]
-          }
+          },
+          "execution_channels": [
+            "platform_internal"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -6272,10 +6300,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_eclipse_flags | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_eclipse_flags"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -6430,10 +6458,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_graha_yuddha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:get_graha_yuddha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:get_graha_yuddha",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_graha_yuddha"
+          "public_tool_name": "get_graha_yuddha"
         }
       ],
       "source_descriptor_uris": [
@@ -6591,10 +6621,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_karakas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_karakas"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -6751,10 +6781,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_kp_cusps | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_kp_cusps_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_kp_cusps_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_kp_cusps"
+          "public_tool_name": "ganita_kp_cusps_get"
         }
       ],
       "source_descriptor_uris": [
@@ -6912,10 +6944,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_medical_indications | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_medical_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_medical_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_medical_indications"
+          "public_tool_name": "ganita_medical_get"
         }
       ],
       "source_descriptor_uris": [
@@ -7082,10 +7116,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_nakshatra | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_nakshatra"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -7259,10 +7293,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_panchanga | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_panchanga"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -7436,10 +7470,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_positions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_positions_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_positions_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_positions"
+          "public_tool_name": "ganita_positions_get"
         }
       ],
       "source_descriptor_uris": [
@@ -7604,10 +7640,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_prashna_lagna | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_prashna_lagna"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -7776,10 +7812,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sade_sati | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_sade_sati_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_sade_sati_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sade_sati"
+          "public_tool_name": "ganita_sade_sati_get"
         }
       ],
       "source_descriptor_uris": [
@@ -7944,10 +7982,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sensitive_degrees | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_sensitive_degrees_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_sensitive_degrees_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sensitive_degrees"
+          "public_tool_name": "ganita_sensitive_degrees_get"
         }
       ],
       "source_descriptor_uris": [
@@ -8114,10 +8154,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sensitive_points | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_special_lagnas_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_special_lagnas_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_sensitive_points"
+          "public_tool_name": "ganita_special_lagnas_get"
         }
       ],
       "source_descriptor_uris": [
@@ -8288,10 +8330,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_strength | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_strength_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_strength_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_strength"
+          "public_tool_name": "ganita_strength_get"
         }
       ],
       "source_descriptor_uris": [
@@ -8458,10 +8502,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_structural | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_structural"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -8640,10 +8684,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_tajik | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_tajaka_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_tajaka_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_tajik"
+          "public_tool_name": "ganita_tajaka_get"
         }
       ],
       "source_descriptor_uris": [
@@ -8807,10 +8853,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_tara_chandra_bala | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_nakshatra_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_nakshatra_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_tara_chandra_bala"
+          "public_tool_name": "ganita_nakshatra_get"
         }
       ],
       "source_descriptor_uris": [
@@ -8975,10 +9023,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_transit_anchors | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_transit_anchors_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_transit_anchors_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_transit_anchors"
+          "public_tool_name": "ganita_transit_anchors_get"
         }
       ],
       "source_descriptor_uris": [
@@ -9147,10 +9197,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_vastu_directions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_vastu_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_vastu_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_vastu_directions"
+          "public_tool_name": "ganita_vastu_get"
         }
       ],
       "source_descriptor_uris": [
@@ -9317,10 +9369,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_vichara | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_vichara_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_vichara_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_vichara"
+          "public_tool_name": "ganita_vichara_get"
         }
       ],
       "source_descriptor_uris": [
@@ -9491,10 +9545,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_yoga_dosha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_yoga_dosha"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -9655,10 +9709,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/graha_portrait | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:graha_portrait | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:graha_portrait",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/graha_portrait"
+          "public_tool_name": "graha_portrait"
         }
       ],
       "source_descriptor_uris": [
@@ -9804,10 +9860,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://prompt/intent-classify"
+          "public_tool_name": "intent_classify"
         }
       ],
       "source_descriptor_uris": [
@@ -9996,10 +10054,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-JUDGMENT/judgment_query"
+          "public_tool_name": "judgment_query"
         }
       ],
       "source_descriptor_uris": [
@@ -10155,10 +10215,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/lel_intake_checklist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/lel_intake_checklist"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -10298,10 +10358,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_classical_texts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_classical_texts"
+          "public_tool_name": "list_classical_texts"
         }
       ],
       "source_descriptor_uris": [
@@ -10451,10 +10513,12 @@
           "pagination": "cursor",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_entities | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_entities_list | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_entities_list",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_entities"
+          "public_tool_name": "list_entities"
         }
       ],
       "source_descriptor_uris": [
@@ -10612,10 +10676,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_remedies_by_category | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_by_category_list | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_by_category_list",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_remedies_by_category"
+          "public_tool_name": "ref_remedies_by_category_list"
         }
       ],
       "source_descriptor_uris": [
@@ -10772,10 +10838,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_sutravali_rules_by_text | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/list_sutravali_rules_by_text"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -10926,10 +10992,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/maro/mcp_surface | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/maro/mcp_surface"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -11086,10 +11152,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/maro/orchestrate | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/maro/orchestrate"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -11229,10 +11295,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://resource/maro/profiles"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -11415,10 +11481,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-PACT/pact_query | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-PACT/pact_query"
+          "public_tool_name": "pact_query"
         }
       ],
       "source_descriptor_uris": [
@@ -11588,10 +11656,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_activation_waveform | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_activation_waveform"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -11756,10 +11824,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_active_dashas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_active_dashas"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -11909,10 +11977,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_anomaly_flags | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_anomaly_flags"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -12061,10 +12129,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_aspects_at_time | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_aspects_at_time"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -12220,10 +12288,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_attribution | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_attribution"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -12388,10 +12456,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_auspicious_windows | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_auspicious_windows"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -12538,10 +12606,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_avastha_schemes | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_avastha_schemes"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -12692,10 +12760,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_calibration | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:mimamsa_calibration_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:mimamsa_calibration_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_calibration"
+          "public_tool_name": "mimamsa_calibration_get"
         }
       ],
       "source_descriptor_uris": [
@@ -12853,10 +12923,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cdlm_summary | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cdlm_summary"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13012,10 +13082,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_motifs | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_motifs"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13180,10 +13250,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_paths | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_cgm_paths"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13342,10 +13412,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13499,10 +13569,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_class_priors | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_class_priors"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13670,10 +13740,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_classical_texts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_classical_citation_get | platform-mcp/src/tools/register_p1_aliases.ts:ref_vector_search | platform-mcp/src/tools/register_p1_reference.ts:ref_dignity_reference_get | platform-mcp/src/tools/register_p1_reference.ts:ref_nakshatra_get | platform-mcp/src/tools/register_p1_reference.ts:ref_rules_search",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_classical_texts"
+          "public_tool_name": "ref_classical_citation_get"
         }
       ],
       "source_descriptor_uris": [
@@ -13847,10 +13919,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_cleansed_anchors | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_cleansed_anchors"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -13997,10 +14069,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_combustion_orbs | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_combustion_orbs"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14152,10 +14224,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_compendium_index | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_compendium_index"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14320,10 +14392,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_contradictions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_contradictions"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14489,10 +14561,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_convergence_windows | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_convergence_windows"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14658,10 +14730,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14825,10 +14897,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_dasha_dossier | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_dasha_dossier"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -14984,10 +15056,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_dasha_systems | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_dasha_systems_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_dasha_systems_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_dasha_systems"
+          "public_tool_name": "ref_dasha_systems_get"
         }
       ],
       "source_descriptor_uris": [
@@ -15147,10 +15221,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_discoveries | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:bodha_discoveries_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:bodha_discoveries_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_discoveries"
+          "public_tool_name": "bodha_discoveries_get"
         }
       ],
       "source_descriptor_uris": [
@@ -15325,10 +15401,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_domain_reading | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_domain_reading_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_domain_reading_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_domain_reading"
+          "public_tool_name": "bodha_domain_reading_get"
         }
       ],
       "source_descriptor_uris": [
@@ -15479,10 +15557,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_domain_result | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_domain_result"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -15638,10 +15716,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_dosha_catalog | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_doshas_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_doshas_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_dosha_catalog"
+          "public_tool_name": "ref_doshas_get"
         }
       ],
       "source_descriptor_uris": [
@@ -15796,10 +15876,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_falsifiers | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_falsifiers"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -15946,10 +16026,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_formula_constants | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_formula_constants"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -16096,10 +16176,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_graha_dik | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_graha_dik"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -16248,10 +16328,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_graha_naisargika_friendship | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_graha_naisargika_friendship"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -16407,10 +16487,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_insight_embeddings | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_insight_embeddings"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -16577,10 +16657,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_insights | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:mimamsa_insight_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:mimamsa_insight_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_insights"
+          "public_tool_name": "mimamsa_insight_get"
         }
       ],
       "source_descriptor_uris": [
@@ -16743,10 +16825,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_journal | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_journal"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -16904,10 +16986,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_kala_paddhati_profile | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_kala_paddhati_profile"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -17065,10 +17147,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_kota_chakra | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_kota_chakra"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -17243,10 +17325,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_life_arc | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:kala_life_arc_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_synthesis.ts:kala_life_arc_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_life_arc"
+          "public_tool_name": "kala_life_arc_get"
         }
       ],
       "source_descriptor_uris": [
@@ -17412,10 +17496,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_load_bearing | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_load_bearing"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -17580,10 +17664,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_manifestation_grammar | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_manifestation_grammar"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -17751,10 +17835,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_manifestation_sets | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_manifestation_sets"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -17906,10 +17990,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_mantras | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_mantras_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_mantras_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_mantras"
+          "public_tool_name": "ref_mantras_get"
         }
       ],
       "source_descriptor_uris": [
@@ -18054,10 +18140,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_medical_mappings | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_medical_mappings"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -18213,10 +18299,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_mimamsa_discoveries | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_mimamsa_discoveries"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -18381,10 +18467,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_moorti_nirnaya | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_moorti_nirnaya"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -18540,10 +18626,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_motion_state_thresholds | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_motion_state_thresholds"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -18699,10 +18785,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_muhurat | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_muhurat"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -18870,10 +18956,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_muhurta_lattice | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_muhurta_lattice"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -19029,10 +19115,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_nakshatra_medical | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_nakshatra_medical"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -19192,10 +19278,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_obstruction_periods | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_obstruction_periods"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -19355,10 +19441,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_parihara_graph | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_parihara_graph"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -19508,10 +19594,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/query_planet | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_planet_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:ganita_planet_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/query_planet"
+          "public_tool_name": "ganita_planet_get"
         }
       ],
       "source_descriptor_uris": [
@@ -19661,10 +19749,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_planet_position | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_planet_position"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -19865,7 +19953,7 @@
           "execution_channels": [
             "platform_internal"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot#complete-nine-graha-fanout"
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot#complete-nine-graha-fanout | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
         },
         {
           "binding_id": "registry:marsys://tool/L0/query_planet_transit",
@@ -19884,10 +19972,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_planet_transit | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_planet_transit"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20033,10 +20121,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_fructification_rules | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_fructification_rules"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20183,10 +20271,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_lagna_methods | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_lagna_methods"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20331,10 +20419,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_significators | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_significators"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20479,10 +20567,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_special_techniques | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_special_techniques"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20634,10 +20722,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_tajik_yogas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_prashna_tajik_yogas"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -20795,10 +20883,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_pratijna | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_pratijna_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_pratijna_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_pratijna"
+          "public_tool_name": "bodha_pratijna_get"
         }
       ],
       "source_descriptor_uris": [
@@ -20978,10 +21068,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_predictive_anchors | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:phala_predictive_anchors_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:phala_predictive_anchors_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_predictive_anchors"
+          "public_tool_name": "phala_predictive_anchors_get"
         }
       ],
       "source_descriptor_uris": [
@@ -21149,10 +21241,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_projections | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_projections_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_projections_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_projections"
+          "public_tool_name": "kala_projections_get"
         }
       ],
       "source_descriptor_uris": [
@@ -21312,10 +21406,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_prospective_ledger | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:standing_predictions_read | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:standing_predictions_read",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_prospective_ledger"
+          "public_tool_name": "standing_predictions_read"
         }
       ],
       "source_descriptor_uris": [
@@ -21467,10 +21563,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_quality_scorecard | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_quality_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_quality_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_quality_scorecard"
+          "public_tool_name": "bodha_quality_get"
         }
       ],
       "source_descriptor_uris": [
@@ -21637,10 +21735,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_question_lenses | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_question_lenses"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -21805,10 +21903,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_rectification | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:phala_rectification_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_ganita.ts:phala_rectification_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_rectification"
+          "public_tool_name": "phala_rectification_get"
         }
       ],
       "source_descriptor_uris": [
@@ -21980,10 +22080,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_remedies | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_remedies_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_remedies_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_remedies"
+          "public_tool_name": "bodha_remedies_get"
         }
       ],
       "source_descriptor_uris": [
@@ -22140,10 +22242,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedies_by_planet | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_by_planet_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_by_planet_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedies_by_planet"
+          "public_tool_name": "ref_remedies_by_planet_get"
         }
       ],
       "source_descriptor_uris": [
@@ -22294,10 +22398,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedies_for_chart | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_chart_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_chart_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedies_for_chart"
+          "public_tool_name": "ref_remedies_chart_get"
         }
       ],
       "source_descriptor_uris": [
@@ -22465,10 +22571,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedy_corpus | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedies_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_remedy_corpus"
+          "public_tool_name": "ref_remedies_get"
         }
       ],
       "source_descriptor_uris": [
@@ -22631,10 +22739,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_remedy_program | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_remedy_program"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -22797,10 +22905,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_retrograde_periods | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_retrograde_periods"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -22954,10 +23062,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_chart_summary | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_chart_summary"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23122,10 +23230,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_dasha_windowed_prescriptions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_dasha_windowed_prescriptions"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23288,10 +23396,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_dosha_remedy_bundles | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_dosha_remedy_bundles"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23452,10 +23560,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_pattern_remedies | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_pattern_remedies"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23622,10 +23730,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_prescriptions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_prescriptions"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23788,10 +23896,10 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_resonances | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_rm_resonances"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -23947,10 +24055,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_shashtiamsha_deities | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_shashtiamsha_deities"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -24097,10 +24205,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sign_medical | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_sign_medical_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_sign_medical_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sign_medical"
+          "public_tool_name": "ref_sign_medical_get"
         }
       ],
       "source_descriptor_uris": [
@@ -24255,10 +24365,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_signal_families | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L5/query_signal_families"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -24442,10 +24552,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_signals | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_signals_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_signals_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_signals"
+          "public_tool_name": "bodha_signals_get"
         }
       ],
       "source_descriptor_uris": [
@@ -24617,10 +24729,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sky_calendar | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sky_calendar"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -24779,10 +24891,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_spillover_cascades | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L4/query_spillover_cascades"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -24955,10 +25067,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-SPINE/query_spine_bundle | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-SPINE/query_spine_bundle"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -25120,10 +25232,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_sudarshana_varsha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_sudarshana_varsha"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -25289,10 +25401,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sutravali_rules | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sutravali_rules"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -25449,10 +25561,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sutravali_rules_for_planet | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_sutravali_rules_for_planet"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -25606,10 +25718,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_tantric_remedies | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_tantric_remedies_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_tantric_remedies_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_tantric_remedies"
+          "public_tool_name": "ref_tantric_remedies_get"
         }
       ],
       "source_descriptor_uris": [
@@ -25771,10 +25885,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_temporal_view | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_temporal_view"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -25941,10 +26055,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_tithi_pravesha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_tithi_pravesha"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26100,10 +26214,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_av_gates | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_av_gates"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26250,10 +26364,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_engine | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_engine"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26402,10 +26516,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_moorti | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_moorti"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26554,10 +26668,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_vedha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_transit_vedha"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26713,10 +26827,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_triangulation | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_triangulation"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -26899,10 +27013,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_ucd | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_chart_digest_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/query_ucd"
+          "public_tool_name": "bodha_chart_digest_get"
         }
       ],
       "source_descriptor_uris": [
@@ -27049,10 +27165,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vastu_direction_remedials | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vastu_direction_remedials"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -27198,10 +27314,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vastu_directions | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vastu_directions"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -27366,10 +27482,10 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_vedha_gochara | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L3/query_vedha_gochara"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -27531,10 +27647,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vichara_constants | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_vichara_constants"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -27689,10 +27805,12 @@
           "pagination": "offset",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_yoga_catalog | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_yogas_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_reference.ts:ref_yogas_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/query_yoga_catalog"
+          "public_tool_name": "ref_yogas_get"
         }
       ],
       "source_descriptor_uris": [
@@ -27847,10 +27965,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_chapter | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_chapter"
+          "public_tool_name": "read_chapter"
         }
       ],
       "source_descriptor_uris": [
@@ -27995,10 +28115,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_remedy | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedy_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_remedy_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_remedy"
+          "public_tool_name": "ref_remedy_get"
         }
       ],
       "source_descriptor_uris": [
@@ -28142,10 +28264,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_sutravali_rule | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/read_sutravali_rule"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -28289,10 +28411,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/resolve_entity | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_entity_resolve | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ref_entity_resolve",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/resolve_entity"
+          "public_tool_name": "ref_entity_resolve"
         }
       ],
       "source_descriptor_uris": [
@@ -28445,10 +28569,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/router/route | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/router/route"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -28598,10 +28722,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/cross_layer | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/cross_layer"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -28753,10 +28877,10 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/pipeline | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "execution_channels": [
             "platform_internal"
-          ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/synergy/pipeline"
+          ]
         }
       ],
       "source_descriptor_uris": [
@@ -28904,10 +29028,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/tool_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:tool_search | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:tool_search",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L0/tool_search"
+          "public_tool_name": "tool_search"
         }
       ],
       "source_descriptor_uris": [
@@ -29092,10 +29218,12 @@
           "pagination": "none",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/traverse_chart_graph | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_graph_subgraph_get | platform-mcp/src/tools/register_p1_aliases.ts:bodha_graph_traverse_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_graph_subgraph_get | platform-mcp/src/tools/register_p1_aliases.ts:bodha_graph_traverse_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L2/traverse_chart_graph"
+          "public_tool_name": "bodha_graph_subgraph_get"
         }
       ],
       "source_descriptor_uris": [
@@ -29275,10 +29403,12 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_yoga_activation_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_yoga_activation_get",
           "execution_channels": [
-            "platform_internal"
+            "platform_internal",
+            "mcp_full"
           ],
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L-TIMING/yoga_activation_by_dasha"
+          "public_tool_name": "kala_yoga_activation_get"
         }
       ],
       "source_descriptor_uris": [
@@ -29556,7 +29686,7 @@
             "mcp_full"
           ],
           "public_tool_name": "bodha_mechanisms_get",
-          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488"
+          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get"
         },
         {
           "binding_id": "registry:marsys://tool/L-DOMAIN/assess_wealth",
@@ -29575,11 +29705,11 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
+          "route_evidence": "platform-mcp/src/tools/registry_bridge.ts:3504 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth",
           "execution_channels": [
             "platform_internal",
             "mcp_full"
           ],
-          "route_evidence": "platform-mcp/src/tools/registry_bridge.ts:3504",
           "public_tool_name": "assess_wealth"
         }
       ],
@@ -29813,11 +29943,7 @@
           "pagination": "bounded_unverified",
           "pagination_verified": null,
           "executable": true,
-          "execution_channels": [
-            "platform_internal",
-            "mcp_full"
-          ],
-          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1076",
+          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1076 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get",
           "pagination_contract": {
             "request_limit_path": "top_k",
             "effective_maximum": 500,
@@ -29829,6 +29955,10 @@
               "id"
             ]
           },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
           "public_tool_name": "kala_windows_get"
         }
       ],
@@ -30061,7 +30191,7 @@
             "mcp_full"
           ],
           "public_tool_name": "kala_yoga_activation_get",
-          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1402"
+          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1402 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_yoga_activation_get"
         },
         {
           "binding_id": "registry:marsys://tool/L1/get_yoga_firings",
@@ -30085,11 +30215,7 @@
           "pagination": "offset",
           "pagination_verified": true,
           "executable": true,
-          "execution_channels": [
-            "platform_internal",
-            "mcp_full"
-          ],
-          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:970",
+          "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:970 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get",
           "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "offset",
@@ -30105,6 +30231,10 @@
               "id"
             ]
           },
+          "execution_channels": [
+            "platform_internal",
+            "mcp_full"
+          ],
           "public_tool_name": "ganita_yoga_firings_get"
         }
       ],
@@ -34758,8 +34888,11 @@
     "derived_scus": 0,
     "executable_bindings": 186,
     "unavailable_bindings": 0,
-    "publicly_named_bindings": 7,
+    "publicly_named_bindings": 72,
     "reviewed_pagination_bindings": 2,
+    "reviewed_route_descriptors": 186,
+    "reviewed_public_descriptors": 71,
+    "reviewed_nonpublic_descriptors": 115,
     "producer_output_claims": 8,
     "reviewed_output_claims": 7,
     "typed_concepts": 250,

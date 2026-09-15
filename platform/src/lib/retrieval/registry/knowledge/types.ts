@@ -5,7 +5,7 @@
  * one or more executable registry descriptors without collapsing either side.
  */
 
-export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '2.1.0' as const
+export const CAPABILITY_KNOWLEDGE_SCHEMA_VERSION = '2.2.0' as const
 export const CAPABILITY_COMPATIBILITY_VERSION = 'planner-scu-v2' as const
 
 export type SemanticCapabilityKind =
@@ -199,6 +199,9 @@ export interface CapabilityKnowledgeCensus {
   readonly unavailable_bindings: number
   readonly publicly_named_bindings: number
   readonly reviewed_pagination_bindings: number
+  readonly reviewed_route_descriptors: number
+  readonly reviewed_public_descriptors: number
+  readonly reviewed_nonpublic_descriptors: number
   readonly producer_output_claims: number
   readonly reviewed_output_claims: number
   readonly typed_concepts: number

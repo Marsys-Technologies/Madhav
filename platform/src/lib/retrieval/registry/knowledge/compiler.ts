@@ -21,6 +21,31 @@ import { getDescriptorEditorialReview, getReviewedDescriptorNames } from './edit
 import { getProducerSemanticReview } from './producer_editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 
+interface DescriptorRouteContract {
+  readonly capability_uri: string
+  readonly public_route_disposition: 'reviewed_exposed' | 'reviewed_not_exposed'
+  readonly public_tool_names: readonly string[]
+  readonly public_route_evidence: readonly string[]
+}
+
+const DESCRIPTOR_ROUTE_CONTRACTS = (estateCensus.details.descriptor_route_contracts as readonly DescriptorRouteContract[])
+const DESCRIPTOR_ROUTE_BY_URI = new Map(DESCRIPTOR_ROUTE_CONTRACTS.map((contract) => [contract.capability_uri, contract]))
+
+function applyReviewedRouteContract(binding: SemanticCapabilityBinding): SemanticCapabilityBinding {
+  if (binding.kind !== 'registry_capability') return binding
+  const route = DESCRIPTOR_ROUTE_BY_URI.get(binding.capability_uri)
+  if (!route) throw new Error(`MISSING_REVIEWED_ROUTE_CONTRACT:${binding.capability_uri}`)
+  const publicToolName = route.public_tool_names[0]
+  return {
+    ...binding,
+    execution_channels: binding.executable
+      ? route.public_route_disposition === 'reviewed_exposed' ? ['platform_internal', 'mcp_full'] : ['platform_internal']
+      : [],
+    ...(publicToolName ? { public_tool_name: publicToolName } : {}),
+    route_evidence: [binding.route_evidence, ...route.public_route_evidence].filter(Boolean).join(' | '),
+  }
+}
+
 function slug(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
@@ -99,7 +124,7 @@ function primaryBinding(
   details?: SemanticCapabilityDeclaration['primary_binding_details'],
 ): SemanticCapabilityBinding {
   const executable = isDescriptorExecutable(cap)
-  return {
+  return applyReviewedRouteContract({
     binding_id: `registry:${cap.uri}`,
     kind: 'registry_capability',
     relation: 'primary',
@@ -109,11 +134,10 @@ function primaryBinding(
     pagination: paginationFor(cap),
     pagination_verified: null,
     executable,
-    execution_channels: ['platform_internal'],
     route_evidence: `CapabilityDescriptor:${cap.uri}`,
     ...details,
     ...(executable ? {} : { unavailable_reason: 'CapabilityDescriptor has no executable handler or loader.' }),
-  }
+  })
 }
 
 function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclaration {
@@ -196,7 +220,9 @@ function normalizeDeclaration(
         execution_channels: [] as const,
         unavailable_reason: 'Primary binding descriptor was not the declaration host.',
       }
-  const bindings = [primary, ...(declaration.additional_bindings ?? [])].sort((a, b) => a.binding_id.localeCompare(b.binding_id))
+  const bindings = [primary, ...(declaration.additional_bindings ?? [])]
+    .map(applyReviewedRouteContract)
+    .sort((a, b) => a.binding_id.localeCompare(b.binding_id))
   const paginationGap = bindings.some((binding) => binding.pagination !== 'none' && !binding.pagination_verified)
     ? 'Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.'
     : null
@@ -373,6 +399,9 @@ function buildCensus(
     unavailable_bindings: bindings.filter((binding) => !binding.executable).length,
     publicly_named_bindings: bindings.filter((binding) => Boolean(binding.public_tool_name)).length,
     reviewed_pagination_bindings: bindings.filter((binding) => binding.pagination_verified).length,
+    reviewed_route_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.length,
+    reviewed_public_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
+    reviewed_nonpublic_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed').length,
     producer_output_claims: scus.flatMap((scu) => scu.producer_output_claims ?? []).length,
     reviewed_output_claims: scus.flatMap((scu) => scu.producer_output_claims ?? []).filter((claim) => claim.disposition === 'reviewed_output').length,
     typed_concepts: conceptUniverse.length,
