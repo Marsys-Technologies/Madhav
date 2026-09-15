@@ -451,3 +451,24 @@ compatible promises, signed/contrary evidence and exact source context without
 fabrication. Focused 116, full L3 1,525/41-skip/2-expected-failure and reviewer
 81/3-skip checks pass. The measured complete-linkage overhead is recorded as a
 semantic cost, not as a performance improvement.
+
+The resulting immutable source/inventory snapshot is
+`64facb9763d13eece7098b5b24cc03dfb8e3ba81`. Reachable DP-SD-019 authority and
+the exact two-file reviewed surface are bound at `b9018247d`; successor
+`dc6ab4cc5` changes exactly `ka_yojaka`, archives the prior L3 generation and
+retains the 23-member definition plus protected retired `ka_gochara_sweep`.
+Independent fresh-single-ref-clone review PASSes exact child
+`85b4bdaca4f42be14138edc0d06005027e1dc4d5` with zero findings even though the
+side-only strategy, Yojaka-review and routine-delivery review tips are absent.
+No L0/L1/L2/L4/L5 pin or history changes.
+
+The stable-candidate release gate is not green. ESLint exits zero with 591
+inherited warnings, TypeScript passes and full JavaScript passes 11,607 tests
+with 675 skips and 2 todos. The mandatory broad Python command stops during
+collection on the inherited orphan `pipeline.writers.forensic_writer` import.
+A complete collection diagnostic finds eight baseline errors: four imports
+through the retired legacy `pipeline.writers` package, stale `ga_vastu` and
+Kshetra `dhara_null` test/API expectations, absent `networkx` and `asyncpg` in
+the test environment, and an unguarded `DATABASE_URL` read. These files are not
+in the DP-SD-019 delta. The failure blocks PR/release preparation; it does not
+authorize weakening the gate or reopening L0 inside L3.
