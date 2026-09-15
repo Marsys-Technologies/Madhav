@@ -190,7 +190,7 @@ export interface TraceStep {
 }
 
 /**
- * Planning lifecycle events (W2-TRACE-A, UQE-5b). Emitted by manifest_planner
+ * Planning lifecycle events (W2-TRACE-A, UQE-5b). Emitted by pipeline_planner
  * before/after the LLM-first planner runs so the UI can show a planning
  * indicator + materialise the plan as soon as it's available.
  */
@@ -198,7 +198,7 @@ export interface PlanningStartEvent {
   event: 'planning_start'
   query_id: string
   planner_model_id: string
-  manifest_tool_count: number
+  capability_route_count: number
 }
 
 export interface PlanningDoneEvent {
@@ -230,7 +230,7 @@ export interface TraceEvent {
   step?: TraceStep
   // ── planning_start fields (W2-TRACE-A) ─────────────────────────────────────
   planner_model_id?: string
-  manifest_tool_count?: number
+  capability_route_count?: number
   // ── planning_done fields (W2-TRACE-A) ──────────────────────────────────────
   tool_count_planned?: number
   tools_selected?: string[]
