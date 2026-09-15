@@ -1570,7 +1570,9 @@ BEGIN
     JOIN public.build_runs br ON br.id=v_build::uuid AND br.chart_id=i.chart_id
     JOIN public.build_run_assets bra ON bra.run_id=br.id AND bra.asset_id=i.asset_id
     JOIN public.l2_data_plane_input_bind_receipts r
-      USING(chart_id,asset_id,generation_id,partition_key,build_id)
+      ON r.chart_id=i.chart_id AND r.asset_id=i.asset_id
+     AND r.generation_id=i.generation_id AND r.partition_key=i.partition_key
+     AND r.build_id=i.build_id
     WHERE i.chart_id=v_chart::uuid AND i.asset_id=v_asset
       AND i.generation_id=v_generation AND i.partition_key=v_partition
       AND i.build_id=v_build AND g.state='building'
