@@ -130,11 +130,13 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
     }
   })
 
-  it('admits only the ruled L3 import-closure delta and leaves L5 untouched', () => {
-    expect(new Set(Object.values(layerPinRecord.layers.L2.admission.delta_classifications))).toEqual(
+  it('preserves the first ruled successors and leaves L3-L5 untouched', () => {
+    const priorL2 = layerPinRecord.history.L2[1].pin
+    const priorL2Admission = priorL2.admission!
+    expect(new Set(Object.values(priorL2Admission.delta_classifications))).toEqual(
       new Set(['approved_intentional_and_derived_import_change']),
     )
-    expect(layerPinRecord.layers.L2.admission.review_artifacts.map(({ path }) => path)).toEqual([
+    expect(priorL2Admission.review_artifacts.map(({ path }) => path)).toEqual([
       '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md',
       '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md',
     ])
@@ -161,5 +163,59 @@ describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
       writer_inventory_sha256: 'df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc',
     })
     expect(layerPinRecord.history.L5).toEqual([])
+  })
+
+  it('admits only the exact SECURITY CLEAR L1/L2 compatibility closure', () => {
+    const expectedSourceAcceptance = {
+      common_base_commit: '5142109f7f219ea860f859e322646f79d875bee8',
+      integrated_equivalent_commit: 'd22533825613c3d428bd844a5dfdc2c0c283b088',
+      reviewed_source_commit: 'da498ebd980cac87796eceb889c7f1c42cfb952b',
+      schema_version: 'nirmana-analysis-source-acceptance/v1',
+      source_surface_sha256: '59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876',
+    }
+    expect(layerPinRecord.layers.L1.generation_id).toBe('l1:149f8479ac4e:93de3b2c84b7')
+    expect(layerPinRecord.layers.L2.generation_id).toBe('l2:149f8479ac4e:51d3164426ac')
+    expect(layerPinRecord.layers.L1.admission.changed_assets).toEqual([
+      'ga_ayurdaya', 'ga_condition', 'ga_dashas', 'ga_nakshatra', 'ga_panchanga',
+      'ga_positions', 'ga_sade_sati', 'ga_sensitive', 'ga_sensitive_degree',
+      'ga_strength', 'ga_structural', 'ga_tajaka', 'ga_vargas', 'ga_yoga',
+    ])
+    expect(layerPinRecord.layers.L2.admission.changed_assets).toEqual([
+      'bo_arudha', 'bo_bimba', 'bo_grounding', 'bo_karanajala', 'bo_laksana',
+      'bo_laksana_rerank', 'bo_nakshatra_semantic', 'bo_pramana_mapa',
+      'bo_samskara', 'bo_sangati', 'bo_special_lagna', 'bo_sudarshana',
+      'bo_upaya', 'bo_vargottama_dhana',
+    ])
+    expect(layerPinRecord.layers.L1.admission.source_acceptance).toEqual(expectedSourceAcceptance)
+    expect(layerPinRecord.layers.L2.admission.source_acceptance).toEqual(expectedSourceAcceptance)
+    expect(layerPinRecord.layers.L1.admission.review_artifacts).toEqual(
+      layerPinRecord.layers.L2.admission.review_artifacts,
+    )
+    expect(layerPinRecord.layers.L1.admission.review_artifacts[0]).toEqual({
+      commit: '149f8479ac4e22874aabe9a5e5b340fb86bc16fb',
+      decision_binding: 'status: SECURITY_CLEAR_SOURCE_ACCEPTED',
+      path: '00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_0.md',
+      sha256: '94cbe76aff7d1a15d5efd1d3f355a6f49a6af49fafc14edf7b708bb8f454c084',
+    })
+    expect(layerPinRecord.history.L1).toHaveLength(2)
+    expect(layerPinRecord.history.L2).toHaveLength(2)
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L1)).toContain(
+      'l1:d2369b888e76:3e8816fc708a',
+    )
+    expect(Object.keys(NIRMANA_ANALYSIS_RECEIPT_HISTORY.L2)).toContain(
+      'l2:d2369b888e76:ad143c22bd8d',
+    )
+    const priorL1Receipts = NIRMANA_ANALYSIS_RECEIPT_HISTORY.L1[
+      'l1:d2369b888e76:3e8816fc708a'
+    ]
+    const priorL2Receipts = NIRMANA_ANALYSIS_RECEIPT_HISTORY.L2[
+      'l2:d2369b888e76:ad143c22bd8d'
+    ]
+    expect(Object.keys(priorL1Receipts)).toHaveLength(19)
+    expect(Object.keys(priorL2Receipts)).toHaveLength(22)
+    expect(createHash('sha256').update(JSON.stringify(priorL1Receipts)).digest('hex'))
+      .toBe('b3aca5b72855a472ab9cdb819e69f9012ab1eea380aa03eeb2605fb7f3fbaa57')
+    expect(createHash('sha256').update(JSON.stringify(priorL2Receipts)).digest('hex'))
+      .toBe('e3dbe7017b66f003a703d5a3e163941ea425b571c923f70e4238b8155b9d2ee5')
   })
 })

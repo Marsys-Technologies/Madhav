@@ -55,6 +55,7 @@ PINS_VERSION = "nirmana-analysis-layer-pins/v2"
 LEGACY_PINS_VERSION = "nirmana-analysis-layer-pins/v1"
 SUCCESSOR_SCHEMA_VERSION = "nirmana-analysis-layer-successor/v2"
 DEFINITION_SCHEMA_VERSION = "nirmana-analysis-layer-definition/v1"
+SOURCE_ACCEPTANCE_SCHEMA_VERSION = "nirmana-analysis-source-acceptance/v1"
 ALLOWED_DELTA_CLASSIFICATIONS = frozenset(
     {
         "approved_intentional_change",
@@ -135,8 +136,41 @@ EXPECTED_REVIEW_ARTIFACTS = {
 
 AUTHORIZED_SOURCE_COMMITS = {
     "DP-SD-018": {
-        layer: frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"})
-        for layer in ("L0", "L1", "L2", "L3", "L4")
+        "L0": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
+        "L1": frozenset({
+            "d2369b888e760e5b8d693328f00683877cbd5f28",
+            "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+        }),
+        "L2": frozenset({
+            "d2369b888e760e5b8d693328f00683877cbd5f28",
+            "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+        }),
+        "L3": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
+        "L4": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
+    }
+}
+
+# A later compatibility/security source admission must not overwrite the
+# original per-layer acceptance bindings above.  It gets its own immutable,
+# source-specific binding: exact reviewed branch tree, exact integration tree,
+# independently recorded verdict blob and a reproducible proof that every path
+# in the reviewed Lane-S surface has the same Git object in the integration.
+SOURCE_ACCEPTANCE_BINDINGS = {
+    "149f8479ac4e22874aabe9a5e5b340fb86bc16fb": {
+        "schema_version": SOURCE_ACCEPTANCE_SCHEMA_VERSION,
+        "reviewed_source_commit": "da498ebd980cac87796eceb889c7f1c42cfb952b",
+        "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
+        "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
+        "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876",
+        "review_artifacts": {
+            layer: [{
+                "commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_0.md",
+                "sha256": "94cbe76aff7d1a15d5efd1d3f355a6f49a6af49fafc14edf7b708bb8f454c084",
+                "decision_binding": "status: SECURITY_CLEAR_SOURCE_ACCEPTED",
+            }]
+            for layer in ("L1", "L2")
+        },
     }
 }
 
@@ -435,11 +469,125 @@ def validate_authority_binding(decision: str, commit: str) -> None:
     validate_artifact_binding(expected, f"authority {decision}")
 
 
-def validate_review_artifacts(layer: str, artifacts: list[dict[str, str]]) -> None:
-    expected = EXPECTED_REVIEW_ARTIFACTS.get(layer)
+def _source_acceptance_public(binding: dict[str, Any]) -> dict[str, str]:
+    return {
+        key: binding[key]
+        for key in (
+            "schema_version",
+            "reviewed_source_commit",
+            "integrated_equivalent_commit",
+            "common_base_commit",
+            "source_surface_sha256",
+        )
+    }
+
+
+def _source_surface_mapping(
+    common_base_commit: str,
+    reviewed_source_commit: str,
+    integrated_equivalent_commit: str,
+) -> tuple[list[str], str]:
+    for label, commit in (
+        ("source acceptance base", common_base_commit),
+        ("reviewed source", reviewed_source_commit),
+        ("integrated equivalent", integrated_equivalent_commit),
+    ):
+        _validate_sha(commit, label)
+        if not _commit_exists(commit):
+            raise SystemExit(f"{label} commit {commit} does not exist")
+    try:
+        raw_paths = subprocess.run(
+            [
+                "git",
+                "diff",
+                "--name-only",
+                "-z",
+                f"{common_base_commit}..{reviewed_source_commit}",
+            ],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit("cannot derive the reviewed source surface") from exc
+    paths = sorted(
+        path.decode("utf-8")
+        for path in raw_paths.split(b"\0")
+        if path
+    )
+    if not paths:
+        raise SystemExit("reviewed source surface is empty")
+    material = bytearray()
+    for path in paths:
+        try:
+            reviewed_oid = subprocess.run(
+                ["git", "rev-parse", f"{reviewed_source_commit}:{path}"],
+                cwd=REPO_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            integrated_oid = subprocess.run(
+                ["git", "rev-parse", f"{integrated_equivalent_commit}:{path}"],
+                cwd=REPO_ROOT,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        except subprocess.CalledProcessError as exc:
+            raise SystemExit(
+                f"reviewed source path {path} is absent from one bound commit"
+            ) from exc
+        if reviewed_oid != integrated_oid:
+            raise SystemExit(
+                f"integrated source differs from reviewed source at {path}"
+            )
+        material.extend(path.encode("utf-8"))
+        material.extend(b"\0")
+        material.extend(reviewed_oid.encode("ascii"))
+        material.extend(b"\n")
+    return paths, hashlib.sha256(material).hexdigest()
+
+
+def validate_source_acceptance(
+    source_commit: str, source_acceptance: dict[str, str] | None
+) -> None:
+    configured = SOURCE_ACCEPTANCE_BINDINGS.get(source_commit)
+    if configured is None:
+        if source_acceptance is not None:
+            raise SystemExit(
+                f"source commit {source_commit} has an unexpected source-acceptance binding"
+            )
+        return
+    expected = _source_acceptance_public(configured)
+    if source_acceptance != expected:
+        raise SystemExit(
+            f"source commit {source_commit} is missing or has the wrong source-acceptance binding"
+        )
+    _, derived_digest = _source_surface_mapping(
+        expected["common_base_commit"],
+        expected["reviewed_source_commit"],
+        expected["integrated_equivalent_commit"],
+    )
+    if derived_digest != expected["source_surface_sha256"]:
+        raise SystemExit(
+            "reviewed/integrated source-surface digest does not match its immutable binding"
+        )
+
+
+def validate_review_artifacts(
+    layer: str, artifacts: list[dict[str, str]], source_commit: str
+) -> None:
+    source_binding = SOURCE_ACCEPTANCE_BINDINGS.get(source_commit)
+    expected = (
+        source_binding.get("review_artifacts", {}).get(layer)
+        if source_binding is not None
+        else EXPECTED_REVIEW_ARTIFACTS.get(layer)
+    )
     if expected is None or artifacts != expected:
         raise SystemExit(
-            f"{layer} review artifacts do not match the required acceptance artifacts"
+            f"{layer} review artifacts do not match the required acceptance artifacts "
+            f"for source {source_commit}"
         )
     for index, artifact in enumerate(artifacts):
         validate_artifact_binding(artifact, f"{layer} review artifact {index}")
@@ -520,7 +668,7 @@ def admit_successor(
     if not authority_decision.strip() or not reason.strip():
         raise SystemExit("authority decision and reason must be non-empty")
     validate_authority_binding(authority_decision, authority_commit)
-    validate_review_artifacts(layer, review_artifacts)
+    validate_review_artifacts(layer, review_artifacts, source_commit)
     validate_authorized_source(authority_decision, layer, source_commit)
     if _inventory_at_commit(source_commit) != candidate_writer_digests:
         raise SystemExit(
@@ -601,24 +749,31 @@ def admit_successor(
         "writer_inventory_sha256": new_aggregate,
     }
     successor_generation = generation_id(layer, successor_pin)
-    successor_pin.update(
-        {
-            "generation_id": successor_generation,
-            "supersedes_generation_id": predecessor_generation,
-            "admission": {
-                "schema_version": SUCCESSOR_SCHEMA_VERSION,
-                "authority_decision": authority_decision,
-                "authority_commit": authority_commit,
-                "source_commit": source_commit,
-                "review_artifacts": review_artifacts,
-                "reason": reason,
-                "changed_assets": changed_assets,
-                "delta_classifications": {
-                    asset_id: classifications[asset_id] for asset_id in changed_assets
-                },
+    admission = {
+        "generation_id": successor_generation,
+        "supersedes_generation_id": predecessor_generation,
+        "admission": {
+            "schema_version": SUCCESSOR_SCHEMA_VERSION,
+            "authority_decision": authority_decision,
+            "authority_commit": authority_commit,
+            "source_commit": source_commit,
+            "review_artifacts": review_artifacts,
+            "reason": reason,
+            "changed_assets": changed_assets,
+            "delta_classifications": {
+                asset_id: classifications[asset_id] for asset_id in changed_assets
             },
-        }
+        },
+    }
+    source_acceptance_binding = SOURCE_ACCEPTANCE_BINDINGS.get(source_commit)
+    if source_acceptance_binding is not None:
+        admission["admission"]["source_acceptance"] = _source_acceptance_public(
+            source_acceptance_binding
+        )
+    validate_source_acceptance(
+        source_commit, admission["admission"].get("source_acceptance")
     )
+    successor_pin.update(admission)
     history_entry = {
         "generation_id": predecessor_generation,
         "historical_snapshot_commit": historical_snapshot_commit,
@@ -752,7 +907,15 @@ def check(pins: dict[str, Any], writer_digests: dict[str, str]) -> list[str]:
             failures.append(f"{label}: review artifacts are missing")
         else:
             try:
-                validate_review_artifacts(layer, artifacts)
+                validate_review_artifacts(layer, artifacts, source_commit)
+            except SystemExit as exc:
+                failures.append(f"{label}: {exc}")
+        source_acceptance = admission.get("source_acceptance")
+        if source_acceptance is not None and not isinstance(source_acceptance, dict):
+            failures.append(f"{label}: source acceptance binding is malformed")
+        else:
+            try:
+                validate_source_acceptance(source_commit, source_acceptance)
             except SystemExit as exc:
                 failures.append(f"{label}: {exc}")
         if not str(admission.get("reason", "")).strip():

@@ -28,6 +28,20 @@ LEGACY_PINS = json.loads(
     )
 )
 CURRENT_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
+CURRENT_INVENTORY = json.loads(
+    pins_module.WRITER_DIGESTS_PATH.read_text(encoding="utf-8")
+)["writers"]
+ACCEPTED_PINS = json.loads(
+    subprocess.check_output(
+        [
+            "git",
+            "show",
+            "8ebb3737cedfd4fde802f30845d94f8e8a641c33:"
+            "platform/src/generated/nirmana-analysis-layer-pins.json",
+        ],
+        cwd=REPO,
+    )
+)
 BASELINE = pins_module._inventory_at_commit(
     "c558e60d3267ded79d65fd25f50ee926ce27b75a"
 )
@@ -184,14 +198,15 @@ def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss(
     wrong_digest["definition_bindings"]["L3"]["membership_sha256"] = "0" * 64
     assert any(
         "definition membership digest" in failure
-        for failure in pins_module.check(wrong_digest, CANDIDATE)
+        for failure in pins_module.check(wrong_digest, CURRENT_INVENTORY)
     )
 
     overlap = copy.deepcopy(CURRENT_PINS)
     overlap["layers"]["L3"]["non_writer_assets"].append("ka_sangam")
     overlap["layers"]["L3"]["non_writer_assets"].sort()
     assert any(
-        "writer-disjoint" in failure for failure in pins_module.check(overlap, CANDIDATE)
+        "writer-disjoint" in failure
+        for failure in pins_module.check(overlap, CURRENT_INVENTORY)
     )
 
     retired_removed = copy.deepcopy(CURRENT_PINS)
@@ -199,19 +214,19 @@ def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss(
     retired_removed["layers"]["L3"]["receipt_count"] = 22
     assert any(
         "active membership differs from immutable definition" in failure
-        for failure in pins_module.check(retired_removed, CANDIDATE)
+        for failure in pins_module.check(retired_removed, CURRENT_INVENTORY)
     )
 
 
 def test_historical_pin_and_writer_rewrites_are_rejected() -> None:
     rewritten_writers = copy.deepcopy(CURRENT_PINS)
     rewritten_writers["history"]["L2"][0]["writer_digests"]["bo_anveshana"] = "0" * 64
-    failures = pins_module.check(rewritten_writers, CANDIDATE)
+    failures = pins_module.check(rewritten_writers, CURRENT_INVENTORY)
     assert any("immutable historical snapshot" in failure for failure in failures)
 
     rewritten_pin = copy.deepcopy(CURRENT_PINS)
     rewritten_pin["history"]["L2"][0]["pin"]["convergence_commit"] = "0" * 40
-    failures = pins_module.check(rewritten_pin, CANDIDATE)
+    failures = pins_module.check(rewritten_pin, CURRENT_INVENTORY)
     assert any("archived pin differs" in failure for failure in failures)
 
 
@@ -233,7 +248,7 @@ def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) 
 
     def pins_at_commit(commit: str) -> dict:
         if commit == second_snapshot:
-            return CURRENT_PINS
+            return ACCEPTED_PINS
         return real_pins_at_commit(commit)
 
     def commit_exists(commit: str) -> bool:
@@ -248,7 +263,7 @@ def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) 
         frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28", second_source}),
     )
     two_successors = pins_module.admit_successor(
-        CURRENT_PINS,
+        ACCEPTED_PINS,
         layer="L2",
         previous_writer_digests=CANDIDATE,
         candidate_writer_digests=second_inventory,
@@ -298,6 +313,164 @@ def test_check_rejects_wrong_source_stale_generation_and_hash(
     result = copy.deepcopy(CURRENT_PINS)
     mutate(result)
 
-    failures = pins_module.check(result, CANDIDATE)
+    failures = pins_module.check(result, CURRENT_INVENTORY)
 
     assert any(message in failure for failure in failures)
+
+
+EXPECTED_L1_SECURITY_DELTA = [
+    "ga_ayurdaya",
+    "ga_condition",
+    "ga_dashas",
+    "ga_nakshatra",
+    "ga_panchanga",
+    "ga_positions",
+    "ga_sade_sati",
+    "ga_sensitive",
+    "ga_sensitive_degree",
+    "ga_strength",
+    "ga_structural",
+    "ga_tajaka",
+    "ga_vargas",
+    "ga_yoga",
+]
+EXPECTED_L2_SECURITY_DELTA = [
+    "bo_arudha",
+    "bo_bimba",
+    "bo_grounding",
+    "bo_karanajala",
+    "bo_laksana",
+    "bo_laksana_rerank",
+    "bo_nakshatra_semantic",
+    "bo_pramana_mapa",
+    "bo_samskara",
+    "bo_sangati",
+    "bo_special_lagna",
+    "bo_sudarshana",
+    "bo_upaya",
+    "bo_vargottama_dhana",
+]
+SECURITY_SOURCE = "149f8479ac4e22874aabe9a5e5b340fb86bc16fb"
+
+
+def test_current_security_successors_are_exact_and_preserve_prior_bytes() -> None:
+    assert pins_module.check(CURRENT_PINS, CURRENT_INVENTORY) == []
+    for layer, expected_delta in (
+        ("L1", EXPECTED_L1_SECURITY_DELTA),
+        ("L2", EXPECTED_L2_SECURITY_DELTA),
+    ):
+        active = CURRENT_PINS["layers"][layer]
+        prior = ACCEPTED_PINS["layers"][layer]
+        assert active["admission"]["source_commit"] == SECURITY_SOURCE
+        assert active["admission"]["changed_assets"] == expected_delta
+        assert active["admission"]["source_acceptance"] == (
+            pins_module._source_acceptance_public(
+                pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE]
+            )
+        )
+        assert CURRENT_PINS["history"][layer][:-1] == ACCEPTED_PINS["history"][layer]
+        assert CURRENT_PINS["history"][layer][-1]["pin"] == prior
+        assert CURRENT_PINS["history"][layer][-1]["writer_digests"] == (
+            pins_module.layer_writer_slice(CANDIDATE, pins_module.LAYER_PREFIX[layer])
+        )
+        assert active["supersedes_generation_id"] == prior["generation_id"]
+
+    assert CURRENT_PINS["layers"]["L1"]["admission"]["delta_classifications"] == {
+        asset_id: (
+            "approved_intentional_and_derived_import_change"
+            if asset_id in {"ga_condition", "ga_dashas"}
+            else "derived_import_change"
+        )
+        for asset_id in EXPECTED_L1_SECURITY_DELTA
+    }
+    assert set(
+        CURRENT_PINS["layers"]["L2"]["admission"]["delta_classifications"].values()
+    ) == {"derived_import_change"}
+    for layer in ("L0", "L3", "L4", "L5"):
+        assert CURRENT_PINS["layers"][layer] == ACCEPTED_PINS["layers"][layer]
+        assert CURRENT_PINS["history"][layer] == ACCEPTED_PINS["history"][layer]
+
+
+def test_security_source_surface_binding_rederives_exact_equivalence() -> None:
+    binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE]
+    paths, digest = pins_module._source_surface_mapping(
+        binding["common_base_commit"],
+        binding["reviewed_source_commit"],
+        binding["integrated_equivalent_commit"],
+    )
+    assert len(paths) == 23
+    assert digest == binding["source_surface_sha256"]
+
+
+@pytest.mark.parametrize(
+    ("mutate", "message"),
+    [
+        (
+            lambda document: document["layers"]["L1"]["admission"].pop(
+                "source_acceptance"
+            ),
+            "missing or has the wrong source-acceptance binding",
+        ),
+        (
+            lambda document: document["layers"]["L1"]["admission"][
+                "source_acceptance"
+            ].update(reviewed_source_commit="0" * 40),
+            "missing or has the wrong source-acceptance binding",
+        ),
+        (
+            lambda document: document["layers"]["L2"]["admission"][
+                "source_acceptance"
+            ].update(integrated_equivalent_commit="0" * 40),
+            "missing or has the wrong source-acceptance binding",
+        ),
+        (
+            lambda document: document["layers"]["L2"]["admission"].update(
+                review_artifacts=[]
+            ),
+            "required acceptance artifacts",
+        ),
+        (
+            lambda document: document["layers"]["L2"]["admission"][
+                "review_artifacts"
+            ][0].update(sha256="0" * 64),
+            "required acceptance artifacts",
+        ),
+    ],
+)
+def test_security_successor_rejects_omitted_or_wrong_bindings(mutate, message: str) -> None:
+    result = copy.deepcopy(CURRENT_PINS)
+    mutate(result)
+    failures = pins_module.check(result, CURRENT_INVENTORY)
+    assert any(message in failure for failure in failures)
+
+
+def test_security_admission_rejects_wrong_or_omitted_review_artifact() -> None:
+    expected = pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE][
+        "review_artifacts"
+    ]["L1"]
+    classifications = {
+        asset_id: (
+            "approved_intentional_and_derived_import_change"
+            if asset_id in {"ga_condition", "ga_dashas"}
+            else "derived_import_change"
+        )
+        for asset_id in EXPECTED_L1_SECURITY_DELTA
+    }
+    for invalid in ([], copy.deepcopy(pins_module.EXPECTED_REVIEW_ARTIFACTS["L1"])):
+        with pytest.raises(SystemExit, match="required acceptance artifacts"):
+            pins_module.admit_successor(
+                ACCEPTED_PINS,
+                layer="L1",
+                previous_writer_digests=CANDIDATE,
+                candidate_writer_digests=CURRENT_INVENTORY,
+                source_commit=SECURITY_SOURCE,
+                review_artifacts=invalid,
+                authority_decision="DP-SD-018",
+                authority_commit="7f21f27b14a7909424591a530096dc2f5d6e2b13",
+                reason="security fixture",
+                classifications=classifications,
+                historical_snapshot_commit="8ebb3737cedfd4fde802f30845d94f8e8a641c33",
+                definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
+            )
+
+    assert expected == CURRENT_PINS["layers"]["L1"]["admission"]["review_artifacts"]
