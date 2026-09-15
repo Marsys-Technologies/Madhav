@@ -69,8 +69,11 @@
   "writer_verdict": "PASS_WITH_DECLARED_LIMITS",
   "repairs_required_by_this_audit": [],
   "independent_review": {
-    "status": "PENDING",
+    "status": "APPROVED",
     "required_role": "independent_semantic_reviewer",
-    "note": "W7-P2 is not accepted until an independent reviewer evaluates this exact artifact and its pinned source head."
+    "reviewer": "w7_terminal_code_review",
+    "reviewed_head": "b4e9b7454ff09db42f97a06c7b4a1c38653fe662",
+    "high_or_medium_findings": 0,
+    "note": "Independent review recomputed the 24-sample method and all-estate counts, verified both repaired semantic families and confirmed that the pinned semantic source and snapshot blobs are identical through the reviewed head."
   }
 }
