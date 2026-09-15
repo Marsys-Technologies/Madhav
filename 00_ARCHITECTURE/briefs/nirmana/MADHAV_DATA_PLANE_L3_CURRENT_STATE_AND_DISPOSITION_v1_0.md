@@ -10,7 +10,7 @@ accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
 active_packet: L3-RI-01-PRECURSOR-GENERATION-INTEGRATION
-implementation_tip: 3f109869dc2fc31842111a61ebf39ef9b1345fb2
+implementation_tip: 8bda677aa67747e027a2fc2c5609addc2fee63c9
 w0_accepted_source_tip: 00a161195
 coordination_lease: MADHAV-DATA-PLANE-L3-RI01-20260915
 heartbeat_id: l3-k-la-execution-recovery

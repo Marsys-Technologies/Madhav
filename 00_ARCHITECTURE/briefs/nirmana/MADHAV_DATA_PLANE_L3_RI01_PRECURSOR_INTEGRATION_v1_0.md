@@ -5,6 +5,7 @@ status: HELD_ON_RATIFICATION_AND_ROLE_CUTOVER
 observed_at: 2026-09-15T05:49:00+05:30
 strategy_decision: DP-SD-017
 accepted_w0_source_tip: 00a161195
+hardening_commit: 8bda677aa67747e027a2fc2c5609addc2fee63c9
 protected_main_observed: 731e311f0b8f5f84db2f152b93951e1d3d50d89a
 planner_head_observed: fccfbb5ab11eadb33259ff987738068753d12ebc
 coordination_commit: ef132c87dbf483aae0b2c805a61deeb9bee0ba1e
