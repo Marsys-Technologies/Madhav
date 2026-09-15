@@ -1,0 +1,91 @@
+session_open:
+  session_id: MADHAV_DATA_PLANE_L3_RI02_AUTHORIZED_UNBLOCK
+  cowork_thread_name: "Execution — Data Plane · L3-RI-02 Authorized Unblock"
+  agent_name: codex-gpt-5
+  agent_version: codex-gpt-5
+  tool: "Codex"
+  tool_profile: madhav-parity
+  worktree_path: /Users/Dev/.codex/worktrees/c9bd/Madhav
+  step_number_or_layer: L3.RI02
+  predecessor_session: MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_ACCEPTED
+
+  coordination:
+    coordination_ref: origin/campaign-coordination@7eec8577e40778c72c8fdc17c5792646eee791c4
+    lease_id: MADHAV-DATA-PLANE-L3-RI02-20260915
+    lease_status_verified: true
+    lease_verified_at: 2026-09-15T11:55:00+05:30
+    work_order_surface: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded:
+      - .conductor-state.json
+      - .gemini/project_state.md
+      - CLAUDECODE_BRIEF.md (COMPLETE)
+      - 00_ARCHITECTURE/briefs/nirmana/sessions/L3_STATE.md (historical campaign evidence only)
+
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, fingerprint_sha256: 4dcee1be96aa30916a09fe8cf84b1f5b4db41fdd8964a110e79ed624cc9f926f, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, fingerprint_sha256: 61dd9355223378d517c09a59ddcfc7dddddfbdabfa64b0865f9cd55153223e5b, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, fingerprint_sha256: 8e98ad46d7f0ba5ee4a9605f17f8ef21ba6da6d126092f7e0c52d318bc9e6c6e, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, fingerprint_sha256: 8d5ab913a1d508becb38cfffec822d0aa5cd7dfcfe39d26353c20a40bbab92d7, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, fingerprint_sha256: 60beab5b41036baf5dde50ac33604bc2850748cb5d9a4e2c2af90501bdd4e01a, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, fingerprint_sha256: a78f67309611dd483555f52221e2894c65ef87d5c94a36958e1777ee73962533, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, fingerprint_sha256: 8bbdc249686b3c528abb38dc0e6fb66c80214c4ab780ec64efec888a7b1d5223, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, fingerprint_sha256: 8789493e231293613e08ec2294d766f3e88ed2077828f541b0be6e30bee3ca3c, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/NIRMANA_ELEVATION_PLAN_v6_0.md, fingerprint_sha256: 1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/autonomy/CHARTER_v2_0.md, fingerprint_sha256: 6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md, fingerprint_sha256: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/BUILD_GUARANTOR_AUTONOMOUS_MODE_v1_0.md, fingerprint_sha256: 276e34ebcf31c6b1f3e8f663b45baa1d7c9fda82dbc6946cf87db6e6ef289719, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/WORKTREE_ISOLATION_PROTOCOL_v1_0.md, fingerprint_sha256: 45c1dc50ab6fe70bfdd139ddba08606934fc346cdc498a4af00ad409e7b6d6d3, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md, fingerprint_sha256: 2e7fb3f03583c7435fe5ba828edbb8a35b187c7625ba4724a17649c46654a59e, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_EXECUTION_BRIEF_v1_0.md@793972c754b106688097dbc54536c1a9c270a793, fingerprint_sha256: f75ccf28594abee4aa57f599ff6ff2a1e0419936f983c0b908b3b44614cd1df5, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_KALA_STRATEGY_v1_0.md@793972c754b106688097dbc54536c1a9c270a793, fingerprint_sha256: 1cd8ca655e161ac72e31eac6f171da0fba47e41c499a72842f2bce53106bbee3, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_ASTRA_REVIEW_RECORD_v1_0.md@793972c754b106688097dbc54536c1a9c270a793, fingerprint_sha256: 75ed1b1e8de40d5c74a03b91373a7fcfd7c474625048d1ea133bdac78c13bda8, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md@6b6ce9c06ce54fb7c474d97c70257a505bf2ed84, fingerprint_sha256: 4927fb407be0fd0d57629287caea9db545666f25442f84d8dded52537981706d, read_at: 2026-09-15T11:54:28+05:30}
+    - {file: .claude/skills/autonomous-asset-elevation/SKILL.md, fingerprint_sha256: 33699fe81b56b6d89b8fe83fd376049bbb3b2c55d9ff6f2f66b85fa3aeb69f55, read_at: 2026-09-15T11:54:28+05:30}
+
+  canonical_artifact_fingerprint_check:
+    - {canonical_id: NIRMANA_ELEVATION_PLAN, declared_fingerprint: 1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7, observed_fingerprint: 1149de0e11f8ec896d0655cc48c6493d878f46b7e34c04a3077b13aa4ac105b7, match: true}
+    - {canonical_id: NIRMANA_ELEVATION_AUTONOMY_CHARTER, declared_fingerprint: 6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab, observed_fingerprint: 6d6caf34385b64f521cc92bcd4159194d45808f9baf97856ce58585b350f02ab, match: true}
+    - {canonical_id: MADHAV_PRODUCT_DEFINITION, declared_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47, observed_fingerprint: 610c81ea5752292e2402da2d8eeb859c7fbf1fd24be30fb4f5fab2ac490a7b47, match: true}
+
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md (own rows only)
+      - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_EXECUTION_LEDGER_v1_0.md
+      - 00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_* execution evidence, excluding pinned authority bytes
+      - verification_artifacts/madhav_data_plane_l3_*
+      - platform/src/generated/nirmana-analysis-layer-pins.json
+      - platform/src/generated/nirmana-writer-digests.json
+      - platform/scripts/nirmana/*pin* and exact provenance receipt generators/tests
+      - platform/supabase/migrations/1035_data_plane_l1_producer_history.sql (only while proven unapplied)
+      - platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql (only while proven unapplied)
+      - platform/migrations/<fresh_reserved>_data_plane_l3_*.sql
+      - platform/scripts/*data_plane* and exact migration/ownership/deployment tests
+      - .github/workflows/deploy.yml (exact data-plane cutover steps only)
+      - exact runtime/job connection configuration admitted after live discovery
+    must_not_touch:
+      - pinned DP-SD-017 strategy/brief/review bytes and DP-SD-018 amendment bytes
+      - 00_ARCHITECTURE/MADHAV_PRODUCT_DEFINITION_v3_0.md
+      - 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md
+      - 00_ARCHITECTURE/MACRO_PLAN_v2_0.md
+      - 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/autonomy/**
+      - platform/python-sidecar/pipeline/orchestrator/writers/_writer_base.py
+      - platform/python-sidecar/pipeline/orchestrator/writers/ka_gochara_sweep.py
+      - L4/L5 writer behavior, rebuild, freeze, claim issuance or elevation
+      - active Purna Recovery Wave 7 worktree, branches, queue, ledger and migration contents
+      - unrelated roles, secrets, IAM, schemas, objects, services, jobs and campaigns
+
+  mirror_pair_freshness_check: []
+  native_directive_obligations: []
+  red_team_due: true
+  notes: >-
+    DP-SD-018 is a narrow authority and prerequisite amendment to the continuing
+    DP-SD-017 goal. The injected runtime has danger-full-access filesystem/network
+    access and approval policy never. The RI-02 lease authorizes source/local/disposable
+    design and proof only; production changes require a later exact exclusive cutover
+    fence. Heartbeat l3-k-la-execution-recovery was updated in place; no duplicate was
+    created. L4/L5 and protected retired ka_gochara_sweep remain held.

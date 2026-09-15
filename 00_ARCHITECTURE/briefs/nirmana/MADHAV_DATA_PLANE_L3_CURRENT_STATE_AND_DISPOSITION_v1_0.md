@@ -1,20 +1,20 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: W2_SOURCE_ACCEPTED_PROVENANCE_LOCAL_RI01_HELD
-observed_at: 2026-09-15T06:54:00+05:30
-strategy_decision: DP-SD-017
+status: RI02_AUTHORIZED_UNBLOCK_ACTIVE
+observed_at: 2026-09-15T11:55:00+05:30
+strategy_decision: DP-SD-017_PLUS_DP-SD-018
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-W2-FIRST-FRONTIER-SOURCE-01
+active_packet: L3-RI-02-AUTHORIZED-UNBLOCK
 implementation_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 w2_reviewed_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
 w0_accepted_source_tip: 00a161195
-coordination_lease: MADHAV-DATA-PLANE-L3-RI01-20260915
+coordination_lease: MADHAV-DATA-PLANE-L3-RI02-20260915
 heartbeat_id: l3-k-la-execution-recovery
 next_stage_hold: "L4 and L5 remain WAITING_FOR_STRATEGIC_BRIEF."
 ---
@@ -318,12 +318,38 @@ this file, the execution ledger and the exact next eligible action above.
 | consumer value | `NOT_EVALUATED` |
 | empirical predictive performance | excluded and not claimed |
 
-## 8. Exact recovery action
+## 8. Pre-amendment recovery action (superseded by §9)
 
 W0 terminal PASS is recorded at exact source tip `00a161195`; W2 source is
 accepted at exact reviewed tip `47131772b355ae2c67b1f6fb2b90e9fa007e2202`.
-No further bypass packet is opened here. RI-01 remains held before PR/shared
+Before DP-SD-018, no further bypass packet was opened. RI-01 remained held before PR/shared
 apply on reconciliation of protected non-L3 provenance pins, including frozen
 L0, and administrator-owned database role/credential/ownership cutover. No L3
 build is eligible until that precursor is accepted/deployed and compatible
 L0-L2 physical heads exist.
+
+## 9. DP-SD-018 resumption state
+
+DP-SD-018 content `6b6ce9c06ce54fb7c474d97c70257a505bf2ed84` and approval
+`7f21f27b14a7909424591a530096dc2f5d6e2b13` now authorize the two formerly
+external remediation domains without declaring them complete. The full L3 goal
+continues; its platform state remains `blocked` and is treated as a fresh blocker
+audit during this owner-directed resumption, never as permission to mark an
+unfinished objective complete.
+
+Fresh reconciliation preserves `origin/main@731e311f0b8f5f84db2f152b93951e1d3d50d89a`,
+the clean execution checkpoint `5142109f7f219ea860f859e322646f79d875bee8`,
+no open execution-branch PR, and the active Pūrṇa Recovery Wave 7 source-local
+lease. The old W0 and RI-01 leases were closed/superseded; the new remotely
+verified source-design fence is
+`origin/campaign-coordination@7eec8577e40778c72c8fdc17c5792646eee791c4`.
+The existing heartbeat was updated in place for RI-02.
+
+Two disjoint isolated lanes are active: Lane P owns versioned L0/L1/L2 and
+metadata-only L4 provenance supersession; Lane S owns the protected-owner,
+lifecycle API, restricted-login disposable proof and exact release/cutover
+design. Their detailed ownership and non-claims are frozen in
+`MADHAV_DATA_PLANE_L3_RI02_AUTHORIZED_UNBLOCK_v1_0.md`. Production role,
+credential, IAM, migration, deployment, build and data mutations remain held
+under this source-design lease. The next eligible gate is independent exact-tip
+acceptance of both lanes, followed by a separate exclusive cutover lease.
