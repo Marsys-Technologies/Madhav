@@ -157,6 +157,10 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
       DO $$ BEGIN
+        CREATE ROLE purna_inquiry_owner NOLOGIN NOINHERIT;
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+      DO $$ BEGIN
         CREATE ROLE purna_w5_web LOGIN PASSWORD 'purna_w5_web_test_only';
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
@@ -168,6 +172,9 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       RETURNS uuid LANGUAGE sql STABLE AS $$
         SELECT NULLIF(current_setting('app.chart_context', true), '')::uuid
       $$;
+      GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner;
+      GRANT REFERENCES (id) ON TABLE profiles, charts TO purna_inquiry_owner;
+      GRANT purna_inquiry_owner TO CURRENT_USER WITH ADMIN OPTION;
       INSERT INTO profiles(id) VALUES ('${principalA}'), ('${principalB}'), ('${quotaPrincipal}') ON CONFLICT DO NOTHING;
       INSERT INTO charts(id) VALUES ('${chartA}'), ('${chartB}') ON CONFLICT DO NOTHING;
     `)

@@ -101,6 +101,7 @@ describeDisposable('migration 1038 durable managed jobs acceptance', () => {
     adminPool = new Pool({ connectionString: databaseUrl, max: 6 })
     await adminPool.query(`
       DO $$ BEGIN CREATE ROLE role_web_serve NOLOGIN; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+      DO $$ BEGIN CREATE ROLE purna_inquiry_owner NOLOGIN NOINHERIT; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       DO $$ BEGIN CREATE ROLE purna_w7_web LOGIN PASSWORD 'purna_w7_web_test_only'; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       ALTER ROLE purna_w7_web PASSWORD 'purna_w7_web_test_only';
       GRANT role_web_serve TO purna_w7_web;
@@ -120,6 +121,15 @@ describeDisposable('migration 1038 durable managed jobs acceptance', () => {
       CREATE OR REPLACE FUNCTION app_chart_context() RETURNS uuid LANGUAGE sql STABLE AS $$
         SELECT NULLIF(current_setting('app.chart_context', true), '')::uuid
       $$;
+      GRANT USAGE, CREATE ON SCHEMA public TO purna_inquiry_owner;
+      GRANT REFERENCES (id) ON TABLE profiles, charts TO purna_inquiry_owner;
+      GRANT REFERENCES (key_id) ON TABLE mcp_api_keys TO purna_inquiry_owner;
+      GRANT REFERENCES (access_token_hash) ON TABLE mcp_oauth_tokens TO purna_inquiry_owner;
+      GRANT SELECT (key_id, user_uid, revoked_at), UPDATE (revoked_at)
+        ON TABLE mcp_api_keys TO purna_inquiry_owner;
+      GRANT SELECT (access_token_hash, uid, expires_at), UPDATE (expires_at)
+        ON TABLE mcp_oauth_tokens TO purna_inquiry_owner;
+      GRANT purna_inquiry_owner TO CURRENT_USER WITH ADMIN OPTION;
       INSERT INTO profiles(id) VALUES ('${principalA}'),('${principalB}'),('${principalToDelete}') ON CONFLICT DO NOTHING;
       INSERT INTO charts(id) VALUES ('${chartA}'),('${chartToDelete}') ON CONFLICT DO NOTHING;
       INSERT INTO mcp_api_keys(key_id,key_hash,user_uid)

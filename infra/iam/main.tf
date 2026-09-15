@@ -9,7 +9,7 @@
 //   amjis-web-runtime      — Cloud Run service amjis-web
 //   amjis-sidecar-runtime  — Cloud Run service amjis-sidecar
 //   amjis-mcp-runtime      — Cloud Run service amjis-mcp
-//   amjis-builder-runtime  — Build/deploy identity (used by GH Actions WIF)
+//   amjis-builder-runtime  — Dormant legacy build identity (no deploy or WIF authority)
 
 terraform {
   required_version = ">= 1.5.0"
@@ -31,10 +31,44 @@ variable "gcp_region" {
   default = "asia-south1"
 }
 
-variable "github_wif_principal" {
+variable "github_deploy_wif_subject" {
   type        = string
-  description = "Workload identity principal for the github-actions WIF provider (used to grant impersonation on the builder SA)."
-  default     = "principalSet://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/attribute.repository/Abhisek-Mohanty/MadhavStreamC"
+  description = "Exact protected-main GitHub OIDC subject allowed to impersonate the live deploy identity. Repository-wide principalSets are forbidden."
+  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies/Madhav:ref:refs/heads/main"
+}
+
+// Runtime Secret Manager access is deliberately secret-specific. Keep these
+// sets aligned with deploy.yml and every Cloud Run job that reuses a runtime
+// service account; a service-level inventory alone misses those job mounts.
+locals {
+  web_runtime_secret_ids = toset([
+    "firebase-admin-credentials",
+    "amjis-db-password",
+    "nirmana-campaign-control-db-password",
+    "nirmana-evidence-ingress-db-password",
+    "openai-api-key",
+    "GOOGLE_GENERATIVE_AI_API_KEY",
+    "DEEPSEEK_API_KEY",
+    "NVIDIA_NIM_API_KEY",
+    "PYTHON_SIDECAR_API_KEY",
+    "SUPER_ADMIN_EMAIL",
+    "mcpt-scheduler-secret",
+    // Transitional watchdog bridge; removed with fallback after OIDC attestation.
+    "watchdog-secret",
+    "mcp-internal-token",
+    "mcp-canary-key",
+    // brahma-build-pipeline-job also runs as amjis-web-runtime.
+    "amjis-pipeline-db-url",
+  ])
+  sidecar_runtime_secret_ids = toset([
+    "PYTHON_SIDECAR_API_KEY",
+    "GOOGLE_GENERATIVE_AI_API_KEY",
+    "amjis-pipeline-db-url",
+  ])
+  mcp_runtime_secret_ids = toset([
+    "mcp-internal-token",
+    "PYTHON_SIDECAR_API_KEY",
+  ])
 }
 
 provider "google" {
@@ -64,8 +98,8 @@ resource "google_service_account" "amjis_mcp_runtime" {
 
 resource "google_service_account" "amjis_builder_runtime" {
   account_id   = "amjis-builder-runtime"
-  display_name = "amjis build/deploy identity"
-  description  = "Used by GH Actions WIF to push images + deploy revisions. Replaces broad github-actions@ SA."
+  display_name = "amjis legacy build identity"
+  description  = "Retained without WIF, Cloud Run mutation, or runtime actAs authority."
 }
 
 // ── amjis-web-runtime grants ─────────────────────────────────────────────────
@@ -76,10 +110,28 @@ resource "google_project_iam_member" "web_sql_client" {
   member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
+// Phase A of the live cutover deliberately retains the existing broad grant
+// while every EXISTING-secret binding below is added and cold-started. The two
+// new Pūrṇa secrets are forbidden until all broad readers are gone and join
+// this set only in the reviewed Phase B commit. prevent_destroy
+// makes a generic apply fail closed. Remove this resource only in the reviewed
+// Phase B commit after the live verification receipt exists.
 resource "google_project_iam_member" "web_secrets" {
   project = var.gcp_project
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "web_secret_access" {
+  for_each  = local.web_runtime_secret_ids
+  project   = var.gcp_project
+  secret_id = each.value
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
 }
 
 resource "google_project_iam_member" "web_vertex" {
@@ -170,6 +222,18 @@ resource "google_project_iam_member" "sidecar_secrets" {
   project = var.gcp_project
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "sidecar_secret_access" {
+  for_each  = local.sidecar_runtime_secret_ids
+  project   = var.gcp_project
+  secret_id = each.value
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
 }
 
 // ── amjis-mcp-runtime grants ─────────────────────────────────────────────────
@@ -184,6 +248,18 @@ resource "google_project_iam_member" "mcp_secrets" {
   project = var.gcp_project
   role    = "roles/secretmanager.secretAccessor"
   member  = "serviceAccount:${google_service_account.amjis_mcp_runtime.email}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "google_secret_manager_secret_iam_member" "mcp_secret_access" {
+  for_each  = local.mcp_runtime_secret_ids
+  project   = var.gcp_project
+  secret_id = each.value
+  role      = "roles/secretmanager.secretAccessor"
+  member    = "serviceAccount:${google_service_account.amjis_mcp_runtime.email}"
 }
 
 resource "google_project_iam_member" "mcp_gcs" {
@@ -203,42 +279,21 @@ resource "google_cloud_run_v2_service_iam_member" "mcp_invokes_web" {
 
 // ── amjis-builder-runtime grants (deploy identity) ───────────────────────────
 
-resource "google_project_iam_member" "builder_run_admin" {
-  project = var.gcp_project
-  role    = "roles/run.admin"
-  member  = "serviceAccount:${google_service_account.amjis_builder_runtime.email}"
-}
-
 resource "google_project_iam_member" "builder_ar_writer" {
   project = var.gcp_project
   role    = "roles/artifactregistry.writer"
   member  = "serviceAccount:${google_service_account.amjis_builder_runtime.email}"
 }
 
-// Builder must be able to actAs each runtime SA to deploy revisions under it.
-resource "google_service_account_iam_member" "builder_actas_web" {
-  service_account_id = google_service_account.amjis_web_runtime.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.amjis_builder_runtime.email}"
-}
-
-resource "google_service_account_iam_member" "builder_actas_sidecar" {
-  service_account_id = google_service_account.amjis_sidecar_runtime.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.amjis_builder_runtime.email}"
-}
-
-resource "google_service_account_iam_member" "builder_actas_mcp" {
-  service_account_id = google_service_account.amjis_mcp_runtime.name
-  role               = "roles/iam.serviceAccountUser"
-  member             = "serviceAccount:${google_service_account.amjis_builder_runtime.email}"
-}
-
-// WIF principal → impersonate builder SA.
-resource "google_service_account_iam_member" "wif_impersonates_builder" {
-  service_account_id = google_service_account.amjis_builder_runtime.name
+// The live workflow currently deploys as github-actions@, not the legacy
+// builder identity. Bind that administrative trust boundary to the exact
+// protected-main OIDC subject. During the governed live cutover, remove both
+// old repository-wide github-actions@ bindings and the legacy builder's WIF,
+// Run Admin and runtime actAs grants before creating any new secret.
+resource "google_service_account_iam_member" "protected_main_impersonates_github_actions" {
+  service_account_id = "projects/${var.gcp_project}/serviceAccounts/github-actions@${var.gcp_project}.iam.gserviceaccount.com"
   role               = "roles/iam.workloadIdentityUser"
-  member             = var.github_wif_principal
+  member             = var.github_deploy_wif_subject
 }
 
 // ── Pub/Sub: cockpit-events (SSE real-time build events) ─────────────────────

@@ -3,7 +3,7 @@ import 'server-only'
 import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { validateServiceToken } from '@/lib/mcp/service_token'
+import { validateMcpServiceRequest } from '@/lib/mcp/service_token'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
@@ -148,7 +148,7 @@ function authorizedArgs(base: Readonly<Record<string, unknown>>, current: Readon
 }
 
 export async function POST(request: Request) {
-  if (!validateServiceToken(request)) return response({ ok: false, error: 'Unauthorized' }, 401)
+  if (!(await validateMcpServiceRequest(request))) return response({ ok: false, error: 'Unauthorized' }, 401)
   const principalUid = request.headers.get('x-mcp-user')
   const principalKeyId = request.headers.get('x-mcp-key-id')
   if (!principalUid || !principalKeyId) return response({ ok: false, error: 'X-MCP-User and X-MCP-Key-Id headers required' }, 401)

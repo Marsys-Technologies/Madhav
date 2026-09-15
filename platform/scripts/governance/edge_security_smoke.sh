@@ -76,6 +76,11 @@ check "SA: amjis-builder-runtime defined" grep -q 'account_id *= *"amjis-builder
 check "deploy.yml pins amjis-web-runtime"   grep -q "amjis-web-runtime@"     .github/workflows/deploy.yml
 check "deploy.yml pins amjis-sidecar-runtime" grep -q "amjis-sidecar-runtime@" .github/workflows/deploy.yml
 check "deploy.yml pins amjis-mcp-runtime"   grep -q "amjis-mcp-runtime@"     .github/workflows/deploy.yml
+check "phase-A broad grants are fail-closed against premature destroy" sh -c \
+  "test \"$(grep -c 'prevent_destroy = true' infra/iam/main.tf)\" -ge 3"
+check "web secrets are secret-specific" grep -q 'google_secret_manager_secret_iam_member" "web_secret_access' infra/iam/main.tf
+check "pipeline-job secret is included for web runtime" grep -q '"amjis-pipeline-db-url"' infra/iam/main.tf
+check "MCP secrets are secret-specific" grep -q 'google_secret_manager_secret_iam_member" "mcp_secret_access' infra/iam/main.tf
 
 echo
 echo "[3] platform-mcp/src/client.ts — IAM bearer wiring"
@@ -98,7 +103,7 @@ check "platform/cloudbuild-sidecar.yaml removed"   test ! -f platform/cloudbuild
 check "platform/cloudbuild.pipeline.yaml removed"  test ! -f platform/cloudbuild.pipeline.yaml
 check "deploy.yml has deploy-mcp job"              grep -q "deploy-mcp:" .github/workflows/deploy.yml
 check "deploy.yml MCP image points at AR"          grep -q "asia-south1-docker.pkg.dev/madhav-astrology/amjis/amjis-mcp" .github/workflows/deploy.yml
-check "deploy.yml MCP is IAM-gated"                grep -q "no-allow-unauthenticated" .github/workflows/deploy.yml
+check "deploy.yml MCP retains app-level public ingress contract" grep -q -- "--allow-unauthenticated" .github/workflows/deploy.yml
 
 # Non-fatal: warn on :latest pins (rotation tracked in infra/secrets/).
 warn_if ":latest secret pins still present" grep -q ":latest" .github/workflows/deploy.yml

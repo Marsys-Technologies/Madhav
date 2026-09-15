@@ -34,6 +34,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // are observable. `vi.hoisted` is required because `vi.mock` factories run
 // before this file's own top-level statements.
 const timingSafeEqualMock = vi.hoisted(() => vi.fn())
+const verifyOidcTokenMock = vi.hoisted(() => vi.fn())
 
 vi.mock('crypto', async (importOriginal) => {
   const actual = await importOriginal<typeof import('crypto')>()
@@ -43,8 +44,12 @@ vi.mock('crypto', async (importOriginal) => {
     timingSafeEqual: timingSafeEqualMock,
   }
 })
+vi.mock('@/lib/auth/oidc', () => ({ verifyOidcToken: verifyOidcTokenMock }))
 
 const ORIGINAL_ENV = process.env.MCP_INTERNAL_TOKEN
+const ORIGINAL_AUDIENCE = process.env.MCP_CALLER_OIDC_AUDIENCE
+const ORIGINAL_SERVICE_ACCOUNT = process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT
+const ORIGINAL_LOCAL_BYPASS = process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV
 
 function makeRequest(token: string | null): Request {
   const headers = new Headers()
@@ -54,12 +59,20 @@ function makeRequest(token: string | null): Request {
   return new Request('https://example.test/api/mcp/whatever', { headers })
 }
 
+function makeOidcRequest(token: string, bearer?: string): Request {
+  const headers = new Headers({ 'x-mcp-internal-token': token })
+  if (bearer) headers.set('authorization', `Bearer ${bearer}`)
+  return new Request('https://example.test/api/mcp/inquiry', { headers })
+}
+
 describe('validateServiceToken (SF-005 timing-safe comparison)', () => {
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     timingSafeEqualMock.mockClear()
+    verifyOidcTokenMock.mockReset()
+    delete process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV
   })
 
   afterEach(() => {
@@ -69,6 +82,12 @@ describe('validateServiceToken (SF-005 timing-safe comparison)', () => {
     } else {
       process.env.MCP_INTERNAL_TOKEN = ORIGINAL_ENV
     }
+    if (ORIGINAL_AUDIENCE === undefined) delete process.env.MCP_CALLER_OIDC_AUDIENCE
+    else process.env.MCP_CALLER_OIDC_AUDIENCE = ORIGINAL_AUDIENCE
+    if (ORIGINAL_SERVICE_ACCOUNT === undefined) delete process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT
+    else process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT = ORIGINAL_SERVICE_ACCOUNT
+    if (ORIGINAL_LOCAL_BYPASS === undefined) delete process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV
+    else process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = ORIGINAL_LOCAL_BYPASS
     vi.resetModules()
   })
 
@@ -171,5 +190,38 @@ describe('validateServiceToken (SF-005 timing-safe comparison)', () => {
 
     expect(result).toBe(false)
     expect(timingSafeEqualMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('requires an audience and service-account-bound OIDC token as well as the shared token', async () => {
+    process.env.MCP_INTERNAL_TOKEN = 'correct-horse-battery-staple'
+    process.env.MCP_CALLER_OIDC_AUDIENCE = 'https://amjis-web.example.run.app'
+    process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT = 'amjis-mcp-runtime@example.iam.gserviceaccount.com'
+    verifyOidcTokenMock.mockResolvedValue({
+      email: 'amjis-mcp-runtime@example.iam.gserviceaccount.com', sub: 'mcp-runtime',
+    })
+    const { validateMcpServiceRequest } = await import('../service_token')
+
+    await expect(validateMcpServiceRequest(makeOidcRequest(
+      'correct-horse-battery-staple', 'google-id-token',
+    ))).resolves.toBe(true)
+    expect(verifyOidcTokenMock).toHaveBeenCalledWith('google-id-token', {
+      expectedAudience: 'https://amjis-web.example.run.app',
+      expectedServiceAccount: 'amjis-mcp-runtime@example.iam.gserviceaccount.com',
+    })
+  })
+
+  it('fails closed on missing OIDC configuration or a rejected identity', async () => {
+    process.env.MCP_INTERNAL_TOKEN = 'correct-horse-battery-staple'
+    const { validateMcpServiceRequest } = await import('../service_token')
+    await expect(validateMcpServiceRequest(makeOidcRequest(
+      'correct-horse-battery-staple', 'google-id-token',
+    ))).resolves.toBe(false)
+
+    process.env.MCP_CALLER_OIDC_AUDIENCE = 'https://amjis-web.example.run.app'
+    process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT = 'amjis-mcp-runtime@example.iam.gserviceaccount.com'
+    verifyOidcTokenMock.mockResolvedValue(null)
+    await expect(validateMcpServiceRequest(makeOidcRequest(
+      'correct-horse-battery-staple', 'wrong-google-id-token',
+    ))).resolves.toBe(false)
   })
 })

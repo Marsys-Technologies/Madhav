@@ -6,6 +6,34 @@
 
 BEGIN;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles
+     WHERE rolname='purna_inquiry_owner'
+       AND NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper
+       AND NOT rolcreatedb AND NOT rolcreaterole
+       AND NOT rolreplication AND NOT rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require normalized NOLOGIN purna_inquiry_owner';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_auth_members membership
+      JOIN pg_roles owner ON owner.oid=membership.roleid
+      JOIN pg_roles actor ON actor.oid=membership.member
+     WHERE owner.rolname='purna_inquiry_owner'
+       AND actor.rolname=session_user
+       AND membership.admin_option
+  ) THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require direct temporary owner membership with admin option';
+  END IF;
+  IF NOT has_schema_privilege('purna_inquiry_owner', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require temporary owner CREATE on public';
+  END IF;
+END $$;
+
+SET LOCAL ROLE purna_inquiry_owner;
+
 CREATE TABLE IF NOT EXISTS planner_inquiry_action_reservations (
   inquiry_id uuid NOT NULL REFERENCES planner_inquiry_lifecycles(inquiry_id) ON DELETE CASCADE,
   revision integer NOT NULL CHECK (revision >= 0),

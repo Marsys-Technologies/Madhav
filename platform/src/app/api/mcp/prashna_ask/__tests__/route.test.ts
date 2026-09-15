@@ -202,6 +202,7 @@ beforeEach(() => {
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
+  process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
   mockGetToolByName.mockImplementation((name: string) => ({
     name,

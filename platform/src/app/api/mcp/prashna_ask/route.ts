@@ -14,17 +14,10 @@
  * ── Auth (SAME mechanism every other /api/mcp/* route uses) ─────────────────
  * `platform-mcp/src/client.ts` reaches `platform` via a Google-signed OIDC
  * identity token (`GoogleAuth.getIdTokenClient(PLATFORM_URL)`) presented as
- * `Authorization: Bearer <token>`. That token's cryptographic verification is
- * Cloud Run's own IAM gate (`run.invoker` on amjis-web for amjis-mcp-runtime) —
- * infrastructure-level, not application code. The application-level companion
- * check every existing `/api/mcp/*` route layers on top is `validateServiceToken`
- * (X-MCP-Internal-Token shared secret, Layer 1) plus the resolved-principal
- * headers `X-MCP-User` / `X-MCP-Key-Id` (Layer 2). This route reuses exactly that
- * two-layer pattern — see `/api/mcp/primitives/[tool]/route.ts` for the sibling
- * implementation this one was copied from. (`@/lib/auth/oidc.ts`'s
- * `verifyOidcToken` is a DIFFERENT, currently-unused-in-production mechanism for a
- * different caller — Cloud Scheduler — not the platform-mcp→platform path; it is
- * not the "existing OIDC-verification mechanism" for THIS caller.)
+ * `Authorization: Bearer <token>`. Because amjis-web remains publicly invokable,
+ * this route verifies that token in application code against the exact web
+ * audience and amjis-mcp-runtime service account. It also requires the
+ * X-MCP-Internal-Token shared secret and resolved-principal headers.
  *
  * Per-call chart-access authorization reuses `authorizeChartAccess` (same brain
  * `/api/mcp/primitives/[tool]/route.ts` calls for per-chart primitives).
@@ -71,7 +64,7 @@ import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
 // requirement as /api/mcp/primitives/[tool]/route.ts.
 import '@/lib/retrieval/registry/catalog'
-import { validateServiceToken } from '@/lib/mcp/service_token'
+import { validateMcpServiceRequest } from '@/lib/mcp/service_token'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
@@ -178,8 +171,8 @@ const MCP_TURN_PERSISTENCE_CALLER_REQUIRED = {
 }
 
 export async function POST(request: Request) {
-  // ── Layer 1: service-to-service auth (same as every other /api/mcp/* route) ──
-  if (!validateServiceToken(request)) {
+  // ── Layer 1: audience/SA-bound OIDC plus the shared service token ──────────
+  if (!(await validateMcpServiceRequest(request))) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'auth',

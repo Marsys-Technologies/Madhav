@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   snapshot: vi.fn(),
 }))
 
-vi.mock('@/lib/mcp/service_token', () => ({ validateServiceToken: () => true }))
+vi.mock('@/lib/mcp/service_token', () => ({ validateMcpServiceRequest: async () => true }))
 vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolvedValue('guest') }))
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: mocks.authorize }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))

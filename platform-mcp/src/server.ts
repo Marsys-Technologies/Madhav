@@ -746,6 +746,8 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'ok',
     service: 'marsys-mcp',
     version: '1.0.0',
+    deployed_sha: process.env['NIRMANA_DEPLOYED_SHA'] ?? null,
+    revision: process.env['K_REVISION'] ?? null,
     tools: REGISTERED_TOOL_COUNT,
     stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'],
   })

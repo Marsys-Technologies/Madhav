@@ -59,8 +59,15 @@
  * deleted here.
  */
 import { type NextRequest, NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
+import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
+
+const WATCHDOG_OIDC_AUDIENCE = process.env.WATCHDOG_SCHEDULER_OIDC_AUDIENCE
+  ?? 'https://amjis-web-938361928218.asia-south1.run.app'
+const WATCHDOG_SCHEDULER_SERVICE_ACCOUNT = process.env.WATCHDOG_SCHEDULER_SERVICE_ACCOUNT
+  ?? 'amjis-scheduler@madhav-astrology.iam.gserviceaccount.com'
 
 async function publishEvent(event: Record<string, unknown>): Promise<void> {
   if (process.env.PUBSUB_DISABLED || !process.env.GOOGLE_CLOUD_PROJECT) return
@@ -82,16 +89,37 @@ async function publishEvent(event: Record<string, unknown>): Promise<void> {
 
 export const maxDuration = 10
 
+function validLegacyWatchdogHeader(req: NextRequest): boolean {
+  if (process.env.WATCHDOG_LEGACY_FALLBACK_ENABLED !== 'true') return false
+  const expected = process.env.WATCHDOG_SECRET
+  const supplied = req.headers.get('x-watchdog-auth')
+  if (!expected || !supplied) return false
+  const expectedBytes = Buffer.from(expected)
+  const suppliedBytes = Buffer.from(supplied)
+  return expectedBytes.length === suppliedBytes.length
+    && timingSafeEqual(expectedBytes, suppliedBytes)
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // M-2: Warn explicitly when WATCHDOG_SECRET is unset so misconfiguration is visible in logs
-  // rather than silently disabling the stuck-build reaper.
-  if (!process.env.WATCHDOG_SECRET) {
-    console.warn('[watchdog] WATCHDOG_SECRET is not set — watchdog endpoint is effectively disabled (all requests return 401). Set WATCHDOG_SECRET to enable the stuck-build reaper.')
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authorization = req.headers.get('authorization')
+  let authorized = false
+  if (authorization?.startsWith('Bearer ')) {
+    try {
+      authorized = Boolean(await verifyOidcToken(authorization.slice('Bearer '.length), {
+        expectedAudience: WATCHDOG_OIDC_AUDIENCE,
+        expectedServiceAccount: WATCHDOG_SCHEDULER_SERVICE_ACCOUNT,
+      }))
+    } catch {
+      authorized = false
+    }
   }
-  const authHeader = req.headers.get('x-watchdog-auth')
-  if (authHeader !== process.env.WATCHDOG_SECRET) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
+  if (!authorized) authorized = validLegacyWatchdogHeader(req)
+  if (!authorized) {
+    const hadCredential = Boolean(authorization || req.headers.get('x-watchdog-auth'))
+    return NextResponse.json(
+      { error: hadCredential ? 'forbidden' : 'Unauthorized' },
+      { status: hadCredential ? 403 : 401 },
+    )
   }
 
   try {

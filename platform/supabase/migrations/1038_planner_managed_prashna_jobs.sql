@@ -6,6 +6,48 @@
 
 BEGIN;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_roles
+     WHERE rolname='purna_inquiry_owner'
+       AND NOT rolcanlogin AND NOT rolinherit AND NOT rolsuper
+       AND NOT rolcreatedb AND NOT rolcreaterole
+       AND NOT rolreplication AND NOT rolbypassrls
+  ) THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require normalized NOLOGIN purna_inquiry_owner';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_auth_members membership
+      JOIN pg_roles owner ON owner.oid=membership.roleid
+      JOIN pg_roles actor ON actor.oid=membership.member
+     WHERE owner.rolname='purna_inquiry_owner'
+       AND actor.rolname=session_user
+       AND membership.admin_option
+  ) THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require direct temporary owner membership with admin option';
+  END IF;
+  IF NOT has_schema_privilege('purna_inquiry_owner', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'Pūrṇa migrations require temporary owner CREATE on public';
+  END IF;
+  IF NOT has_column_privilege('purna_inquiry_owner', 'public.profiles', 'id', 'REFERENCES')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.charts', 'id', 'REFERENCES')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_api_keys', 'key_id', 'REFERENCES')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_oauth_tokens', 'access_token_hash', 'REFERENCES')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_api_keys', 'key_id', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_api_keys', 'user_uid', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_api_keys', 'revoked_at', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_api_keys', 'revoked_at', 'UPDATE')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_oauth_tokens', 'access_token_hash', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_oauth_tokens', 'uid', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_oauth_tokens', 'expires_at', 'SELECT')
+    OR NOT has_column_privilege('purna_inquiry_owner', 'public.mcp_oauth_tokens', 'expires_at', 'UPDATE') THEN
+    RAISE EXCEPTION 'Pūrṇa managed-job migration requires exact credential-reference and lock privileges';
+  END IF;
+END $$;
+
+SET LOCAL ROLE purna_inquiry_owner;
+
 CREATE TABLE IF NOT EXISTS planner_managed_prashna_jobs (
   job_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   principal_uid text NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,

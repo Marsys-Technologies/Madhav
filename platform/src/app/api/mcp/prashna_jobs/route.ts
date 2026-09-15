@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
-import { validateServiceToken } from '@/lib/mcp/service_token'
+import { validateMcpServiceRequest } from '@/lib/mcp/service_token'
 import { ScopeTupleSchema } from '@/lib/vidhi/scope_classifier'
 import {
   claimManagedPrashnaJob,
@@ -70,7 +70,7 @@ async function entitled(uid: string, chartId: string): Promise<boolean> {
 }
 
 export async function POST(request: Request) {
-  if (!validateServiceToken(request)) return response({ ok: false, error: 'Unauthorized' }, 401)
+  if (!(await validateMcpServiceRequest(request))) return response({ ok: false, error: 'Unauthorized' }, 401)
   const principalUid = request.headers.get('x-mcp-user')
   const principalKeyId = request.headers.get('x-mcp-key-id')
   const principalAuthKind = request.headers.get('x-mcp-auth-kind')

@@ -101,6 +101,8 @@ const NIRMANA_L0_WAVE1_TEXTS_REPLAY_TARGET =
 export interface RunOptions {
   dryRun?: boolean
   target?: string
+  /** Restrict execution and hash checks to an exact reviewed filename set. */
+  only?: Set<string>
   /**
    * Disclosed-residual allowlist (Dvārapāla RULING 73), keyed by filename. Defaults to loading
    * `scripts/ci/migration_hash_disclosed_residuals.json` from disk. Tests pass an explicit map
@@ -666,7 +668,7 @@ export async function runMigrations(
   dirs: string[],
   options: RunOptions = {}
 ): Promise<string[]> {
-  const { dryRun = false, target } = options
+  const { dryRun = false, target, only } = options
   // Defaults to loading scripts/ci/migration_hash_disclosed_residuals.json from disk (real
   // production behavior — main() never passes this explicitly). Tests pass an explicit Map
   // (including `new Map()`) so disclosure behavior is exercised deterministically.
@@ -675,7 +677,29 @@ export async function runMigrations(
 
   await client.query(TRACKER_DDL)
   await client.query(TRACKER_IDENTITY_DDL)
-  const files = collectMigrationFiles(dirs)
+  const allFiles = collectMigrationFiles(dirs)
+  if (only && only.size === 0) throw new Error('--only requires at least one migration filename')
+  const files = only ? allFiles.filter((file) => only.has(file.name)) : allFiles
+  if (only) {
+    const found = new Set(files.map((file) => file.name))
+    const missing = [...only].filter((name) => !found.has(name))
+    if (missing.length > 0) throw new Error(`Requested migration file(s) not found: ${missing.join(', ')}`)
+    const applied = await getApplied(client)
+    const selectedNumbers = files
+      .map((file) => Number.parseInt(file.name.match(/^(\d+)/)?.[1] ?? '', 10))
+      .filter(Number.isFinite)
+    const ceiling = Math.max(...selectedNumbers)
+    const skippedPredecessors = allFiles.filter((file) => {
+      if (only.has(file.name) || applied.has(file.name)) return false
+      const prefix = Number.parseInt(file.name.match(/^(\d+)/)?.[1] ?? '', 10)
+      return Number.isFinite(prefix) && prefix <= ceiling
+    })
+    if (skippedPredecessors.length > 0) {
+      throw new Error(
+        `--only would jump unapplied predecessor migration(s): ${skippedPredecessors.map((file) => file.name).join(', ')}`,
+      )
+    }
+  }
 
   if (dryRun) {
     const applied = await getApplied(client)
@@ -756,11 +780,25 @@ export async function runMigrations(
   return ran
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2)
+export function parseMigrationCliArgs(args: string[]): Pick<RunOptions, 'dryRun' | 'target' | 'only'> {
   const dryRun = args.includes('--dry-run')
   const targetIdx = args.indexOf('--target')
   const target = targetIdx !== -1 ? args[targetIdx + 1] : undefined
+  const onlyIdx = args.indexOf('--only')
+  const onlyValue = onlyIdx !== -1 ? args[onlyIdx + 1] : undefined
+  if (onlyIdx !== -1 && (!onlyValue || onlyValue.startsWith('--')
+    || onlyValue.split(',').every((name) => name.trim().length === 0))) {
+    throw new Error('--only requires a non-empty comma-separated migration filename list')
+  }
+  if (target && onlyValue) throw new Error('--target and --only cannot be combined')
+  const only = onlyValue
+    ? new Set(onlyValue.split(',').map((name) => name.trim()).filter(Boolean))
+    : undefined
+  return { dryRun, target, only }
+}
+
+async function main(): Promise<void> {
+  const { dryRun, target, only } = parseMigrationCliArgs(process.argv.slice(2))
 
   const scriptDir = path.dirname(new URL(import.meta.url).pathname)
   const dirs = [
@@ -771,7 +809,7 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const client = await pool.connect()
   try {
-    const ran = await runMigrations(client, dirs, { dryRun, target })
+    const ran = await runMigrations(client, dirs, { dryRun, target, only })
     if (dryRun) {
       console.log('Dry run — would apply:')
       ran.forEach(name => console.log(`  ${name}`))
