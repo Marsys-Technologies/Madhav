@@ -5,16 +5,16 @@ import layerPinRecord from '../nirmana-analysis-layer-pins.json'
 import {
   NIRMANA_ANALYSIS_LAYERS,
   NIRMANA_ANALYSIS_LAYER_PINS,
+  NIRMANA_ANALYSIS_RECEIPT_HISTORY,
   NIRMANA_ANALYSIS_RECEIPTS,
   assertNirmanaWriterInventoryMatchesConvergence,
   getNirmanaAnalysisReceiptBase,
+  getHistoricalNirmanaAnalysisReceiptBase,
   nirmanaAnalysisReceiptsAvailable,
   type NirmanaAnalysisLayer,
 } from '../nirmana-analysis-receipts'
 import {
   NIRMANA_L0_ANALYSIS_RECEIPTS,
-  NIRMANA_L0_CONVERGENCE_COMMIT,
-  NIRMANA_L0_WRITER_INVENTORY_SHA256,
 } from '../nirmana-l0-analysis-receipts'
 
 const writerDigests = writerDigestInventory.writers as Record<string, string>
@@ -73,8 +73,8 @@ describe('nirmana analysis receipt spine (all layers)', () => {
   })
 })
 
-describe('L0 preservation (adjudication #1715, ruling requirement 3)', () => {
-  it('keeps L0 pinned constants byte-identical to the ratified baseline', () => {
+describe('L0 preservation and versioned supersession (DP-SD-018)', () => {
+  it('keeps the prior L0 receipt bases byte-reconstructable after successor admission', () => {
     // Hardcoded here on purpose: this test is the detector for "no L0 capsule is
     // re-accepted, and no UNRATIFIED re-pin lands silently". Deriving these from
     // the same record the implementation reads would make it assert nothing.
@@ -96,10 +96,26 @@ describe('L0 preservation (adjudication #1715, ruling requirement 3)', () => {
     // ganita_transit_anchors_get consumer). Same discipline: regenerating the
     // inventory changed exactly one entry (bg_vidhi_primitives); all other 35
     // frozen L0 writers (bg_yogas included) are byte-identical to the prior re-pin.
-    expect(NIRMANA_L0_CONVERGENCE_COMMIT).toBe('49bb5c98b864a2cb2fee037cdb7f14f6892a8263')
-    expect(NIRMANA_L0_WRITER_INVENTORY_SHA256)
-      .toBe('5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178')
-    expect(Object.keys(NIRMANA_L0_ANALYSIS_RECEIPTS)).toHaveLength(40)
+    const generation = 'l0:49bb5c98b864:5125cccb6871'
+    const historicalReceipts = NIRMANA_ANALYSIS_RECEIPT_HISTORY.L0[generation]
+    expect(Object.keys(historicalReceipts)).toHaveLength(40)
+    expect(createHash('sha256').update(JSON.stringify(historicalReceipts)).digest('hex'))
+      .toBe('bac97201ca2b3ecc070459b54e83d970c904bef3149f37823f231624a0858d2a')
+    expect(historicalReceipts.bg_prashna_rules).toEqual({
+      schema_version: 'nirmana-asset-analysis-receipt-base/v1',
+      asset_id: 'bg_prashna_rules',
+      layer: 'L0',
+      writer_digest_sha256: '07b6ac8065abbcfb98cc76ea37dc7c32ad7a4f7edcafe8c08ccf35b15c3db6eb',
+      grounding: {
+        convergence_commit: '49bb5c98b864a2cb2fee037cdb7f14f6892a8263',
+        frozen_manifest_source: 'nirmana_elevation_campaign_definitions.manifest',
+        writer_digest_ref: 'platform/src/generated/nirmana-writer-digests.json',
+      },
+    })
+    expect(getHistoricalNirmanaAnalysisReceiptBase('bg_prashna_rules', 'L0', generation))
+      .toEqual(historicalReceipts.bg_prashna_rules)
+    expect(getHistoricalNirmanaAnalysisReceiptBase('ga_positions', 'L0', generation))
+      .toBeUndefined()
   })
 
   it('serves the identical L0 bases through the deprecated shim and the generic module', () => {
@@ -112,5 +128,21 @@ describe('L0 preservation (adjudication #1715, ruling requirement 3)', () => {
       expect(base).toBeDefined()
       expect(base?.writer_digest_sha256).toBeNull()
     }
+  })
+
+  it('admits only the ruled L3 import-closure delta and leaves L5 untouched', () => {
+    expect(layerPinRecord.layers.L3.admission.changed_assets).toEqual(['ka_sangam'])
+    expect(layerPinRecord.layers.L3.admission.delta_classifications).toEqual({
+      ka_sangam: 'derived_import_change',
+    })
+    expect(layerPinRecord.history.L3).toHaveLength(1)
+    expect(layerPinRecord.layers.L5).toEqual({
+      asset_prefix: 'mi_',
+      convergence_commit: 'fd4c102e3ce5b4f23782bdce12c84b84a4fe9ba5',
+      non_writer_assets: ['lel_events'],
+      receipt_count: 15,
+      writer_inventory_sha256: 'df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc',
+    })
+    expect(layerPinRecord.history.L5).toEqual([])
   })
 })

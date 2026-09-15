@@ -79,9 +79,25 @@ interface LayerPin {
   writer_inventory_sha256: string
   receipt_count: number
   non_writer_assets: readonly string[]
+  generation_id?: string
+  supersedes_generation_id?: string
 }
 
-const layerPins = layerPinRecord.layers as Record<NirmanaAnalysisLayer, LayerPin>
+interface LayerHistoryEntry {
+  generation_id: string
+  historical_snapshot_commit: string
+  superseded_by_generation_id: string
+  pin: LayerPin
+  writer_digests: Readonly<Record<string, string>>
+}
+
+interface LayerPinRecord {
+  layers: Record<NirmanaAnalysisLayer, LayerPin>
+  history?: Partial<Record<NirmanaAnalysisLayer, readonly LayerHistoryEntry[]>>
+}
+
+const typedLayerPinRecord = layerPinRecord as unknown as LayerPinRecord
+const layerPins = typedLayerPinRecord.layers
 
 export const NIRMANA_ANALYSIS_LAYER_PINS: Readonly<Record<NirmanaAnalysisLayer, Readonly<LayerPin>>> =
   Object.freeze(Object.fromEntries(
@@ -97,6 +113,14 @@ export function assertNirmanaWriterInventoryMatchesConvergence(
   inventory: unknown,
 ): asserts inventory is Record<string, string> {
   const pin = NIRMANA_ANALYSIS_LAYER_PINS[layer]
+  assertInventoryMatchesPin(layer, pin, inventory)
+}
+
+function assertInventoryMatchesPin(
+  layer: NirmanaAnalysisLayer,
+  pin: LayerPin,
+  inventory: unknown,
+): asserts inventory is Record<string, string> {
   const drift = new Error(`Nirmana ${layer} writer inventory does not match the pinned convergence inventory.`)
   if (inventory === null || typeof inventory !== 'object' || Array.isArray(inventory)) throw drift
   const layerInventory = Object.fromEntries(Object.entries(inventory)
@@ -124,10 +148,18 @@ function resolveLayerInventory(layer: NirmanaAnalysisLayer): Record<string, stri
   }
 }
 
-function buildLayerReceipts(layer: NirmanaAnalysisLayer): Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>> {
-  const pin = NIRMANA_ANALYSIS_LAYER_PINS[layer]
-  const inventory = resolveLayerInventory(layer)
-  if (inventory === null) return Object.freeze({})
+function buildReceiptsForPin(
+  layer: NirmanaAnalysisLayer,
+  pin: LayerPin,
+  inventoryCandidate: unknown,
+): Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>> {
+  let inventory: Record<string, string>
+  try {
+    assertInventoryMatchesPin(layer, pin, inventoryCandidate)
+    inventory = inventoryCandidate
+  } catch {
+    return Object.freeze({})
+  }
   const assetIds = [
     ...Object.keys(inventory).filter(
       (assetId) => assetId.startsWith(pin.asset_prefix) && !NIRMANA_SUPPORTING_WRITERS.has(assetId),
@@ -150,10 +182,42 @@ function buildLayerReceipts(layer: NirmanaAnalysisLayer): Readonly<Record<string
   } satisfies NirmanaAnalysisReceiptBase)])))
 }
 
+function buildLayerReceipts(layer: NirmanaAnalysisLayer): Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>> {
+  const pin = NIRMANA_ANALYSIS_LAYER_PINS[layer]
+  const inventory = resolveLayerInventory(layer)
+  return buildReceiptsForPin(layer, pin, inventory)
+}
+
 export const NIRMANA_ANALYSIS_RECEIPTS: Readonly<Record<NirmanaAnalysisLayer, Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>>>> =
   Object.freeze(Object.fromEntries(
     NIRMANA_ANALYSIS_LAYERS.map((layer) => [layer, buildLayerReceipts(layer)]),
   )) as Readonly<Record<NirmanaAnalysisLayer, Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>>>>
+
+/**
+ * Immutable predecessor receipt bases, keyed by their explicit generation.
+ *
+ * These are rebuilt only from the archived pin and archived per-layer writer
+ * snapshot.  Mutable current inventory is deliberately not consulted, which
+ * keeps a superseded receipt byte-reconstructable after later source changes.
+ */
+export const NIRMANA_ANALYSIS_RECEIPT_HISTORY: Readonly<
+  Record<
+    NirmanaAnalysisLayer,
+    Readonly<Record<string, Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>>>>
+  >
+> = Object.freeze(Object.fromEntries(NIRMANA_ANALYSIS_LAYERS.map((layer) => {
+  const entries = typedLayerPinRecord.history?.[layer] ?? []
+  const generations = Object.fromEntries(entries.map((entry) => [
+    entry.generation_id,
+    buildReceiptsForPin(layer, entry.pin, entry.writer_digests),
+  ]))
+  return [layer, Object.freeze(generations)]
+}))) as Readonly<
+  Record<
+    NirmanaAnalysisLayer,
+    Readonly<Record<string, Readonly<Record<string, Readonly<NirmanaAnalysisReceiptBase>>>>>
+  >
+>
 
 export function nirmanaAnalysisReceiptsAvailable(layer: NirmanaAnalysisLayer): boolean {
   return Object.keys(NIRMANA_ANALYSIS_RECEIPTS[layer]).length > 0
@@ -171,4 +235,13 @@ export function getNirmanaAnalysisReceiptBase(
   layer: NirmanaAnalysisLayer,
 ): Readonly<NirmanaAnalysisReceiptBase> | undefined {
   return NIRMANA_ANALYSIS_RECEIPTS[layer]?.[assetId]
+}
+
+/** Resolve an immutable superseded base by explicit generation and layer. */
+export function getHistoricalNirmanaAnalysisReceiptBase(
+  assetId: string,
+  layer: NirmanaAnalysisLayer,
+  generationId: string,
+): Readonly<NirmanaAnalysisReceiptBase> | undefined {
+  return NIRMANA_ANALYSIS_RECEIPT_HISTORY[layer]?.[generationId]?.[assetId]
 }
