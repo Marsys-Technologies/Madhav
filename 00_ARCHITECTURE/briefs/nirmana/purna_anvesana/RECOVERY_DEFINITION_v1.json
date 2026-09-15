@@ -1,0 +1,133 @@
+{
+  "schema_version": "madhav-purna-anvesana/recovery-definition/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "recovery_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
+  "definition_version": "1.0.0",
+  "status": "FROZEN_FOR_SOURCE_LOCAL_EXECUTION",
+  "created_at": "2026-09-15T11:05:00+05:30",
+  "immutable_base": "b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
+  "branch": "codex/purna-anvesana-wave7",
+  "authority": {
+    "decision_id": "CCD-011",
+    "lease_id": "MADHAV-PURNA-ANVESANA-W7-20260915",
+    "coordination_commit": "9cd76037021b502cc35330074e3b9bc229b02e2a",
+    "allowed": [
+      "inspect_design_implement_test_document_commit_push",
+      "open_focused_or_stacked_pull_requests",
+      "exercise_migrations_and_runtime_paths_only_in_local_or_disposable_environments",
+      "request_independent_read_only_reviews",
+      "dispatch_non_mutating_ci_on_exact_branch_heads"
+    ],
+    "prohibited": [
+      "merge_or_deploy",
+      "apply_shared_or_production_migrations",
+      "mutate_shared_or_production_data_build_runtime_traffic_or_scheduler",
+      "change_credentials_secrets_signing_keys_or_infrastructure",
+      "retire_assets_or_ratify_doctrine",
+      "change_frozen_writerbase_or_orchestrator_contract",
+      "mutate_foreign_campaign_or_predecessor_state",
+      "claim_expert_empirical_user_production_or_deployment_acceptance"
+    ],
+    "terminal_ceiling": "SOURCE_LOCAL_ACCEPTED"
+  },
+  "supersession": {
+    "preserved_history": [
+      "CAMPAIGN_DEFINITION.json",
+      "EVENTS.jsonl events PA-E0001 through PA-E0043",
+      "BEYOND_ACARYA_ACCEPTANCE_v1.json negative verdict",
+      "TERMINAL_QUARANTINE_v1.json W6 terminal snapshot"
+    ],
+    "superseded_interpretation": "W6 incorrectly treated ordinary source, design, test, local and disposable remediation as requiring new external authority.",
+    "rule": "Append new evidence; never rewrite the W6 negative result or its terminal snapshot."
+  },
+  "frozen_acceptance": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v1.json",
+    "corpus_policy": "UNCHANGED_DENOMINATOR_AND_EXPECTATIONS",
+    "route_obligations": 34,
+    "starting_coverage": 30,
+    "required_coverage": 34,
+    "required_verdict": "ACCEPTED_SOURCE_LOCAL",
+    "no_weakening": true
+  },
+  "residual_partition_rule": {
+    "A_source_local_close_now": ["PA-R02", "PA-R03", "PA-R04", "PA-R05", "PA-R11", "PA-R12"],
+    "B_local_disposable_and_external_remainder": ["PA-R01", "PA-R06", "PA-R07", "PA-R13"],
+    "C_external_only": ["PA-R08", "PA-R09"],
+    "cross_governance_separate_but_diagnose": ["PA-R10"],
+    "interpretation": "Every residual receives source-local closure evidence where possible and a separate explicit external remainder; no residual is left wholly quarantined merely because its final environment-bound proof is external."
+  },
+  "packets": [
+    {
+      "id": "W7-P0",
+      "title": "Governed recovery, live stocktake, residual partition and CI diagnosis",
+      "depends_on": [],
+      "writer": "root",
+      "reviewer": "independent_governance_reviewer",
+      "tests": ["session_open_validator", "immutable_base", "remote_lease", "pr_stack_state", "ci_trigger_root_cause"],
+      "status": "IN_PROGRESS"
+    },
+    {
+      "id": "W7-P1",
+      "title": "Deterministic receipted transit argument derivation and clarification",
+      "depends_on": ["W7-P0"],
+      "writer": "root",
+      "reviewer": "independent_compiler_authorization_reviewer",
+      "tests": ["argument_derivation", "clarification_fail_closed", "authorization_hash_binding", "unchanged_34_route_denominator"],
+      "status": "QUEUED"
+    },
+    {
+      "id": "W7-P2",
+      "title": "Six-layer adversarial SCU semantic-quality audit and repair",
+      "depends_on": ["W7-P0"],
+      "writer": "root",
+      "reviewer": "independent_semantic_reviewer",
+      "tests": ["all_six_layers", "stratified_manual_audit", "source_link_truth", "specificity_and_non_stub_quality", "graph_and_concept_integrity"],
+      "status": "QUEUED"
+    },
+    {
+      "id": "W7-P3",
+      "title": "Channel, pagination, compatibility and overlay source contracts",
+      "depends_on": ["W7-P1", "W7-P2"],
+      "writer": "root",
+      "reviewer": "independent_route_compatibility_reviewer",
+      "tests": ["full_intended_channel_denominator", "pagination_first_middle_last_exhaustion", "semantic_graph_consumer_migration", "overlay_schema_local_replay"],
+      "status": "QUEUED"
+    },
+    {
+      "id": "W7-P4",
+      "title": "Restart-safe lifecycle, durable managed jobs and disposable migration/security proof",
+      "depends_on": ["W7-P1"],
+      "writer": "root",
+      "reviewer": "independent_lifecycle_security_migration_reviewer",
+      "tests": ["crash_after_reservation", "cross_instance_resume", "principal_bound_durable_jobs", "migration_1033_apply_reapply_rollback", "signing_key_configuration_fail_closed"],
+      "status": "QUEUED"
+    },
+    {
+      "id": "W7-P5",
+      "title": "External-action runbooks and completion-authority packet",
+      "depends_on": ["W7-P3", "W7-P4"],
+      "writer": "root",
+      "reviewer": "independent_release_acceptance_reviewer",
+      "tests": ["exact_commands_and_expected_receipts", "no_external_action_performed", "external_only_remainder_minimized"],
+      "status": "QUEUED"
+    },
+    {
+      "id": "W7-P6",
+      "title": "Integrated source-local acceptance, exact-head CI, focused PR and terminal review",
+      "depends_on": ["W7-P3", "W7-P4", "W7-P5"],
+      "writer": "root",
+      "reviewer": "independent_terminal_reviewers",
+      "tests": ["unchanged_beyond_acarya_34_of_34", "full_unit", "typescript", "lint", "codegen", "golden_routes", "governance", "exact_head_ci"],
+      "status": "QUEUED"
+    }
+  ],
+  "delivery": {
+    "stack_base": "codex/purna-anvesana-wave6@b48a6997b12ebe591bc5e62b7b60ddb295ee352b",
+    "focused_prs_required": true,
+    "pr_2597_policy": "FROZEN_UNCHANGED",
+    "predecessor_branches_policy": "IMMUTABLE",
+    "one_writer_per_surface": true,
+    "independent_review_required": true,
+    "ci_diagnosis": "Stacked PR bases are excluded by pull_request branch filters; exact-head workflow_dispatch or a reviewed trigger correction supplies CI evidence without rewriting W6."
+  }
+}

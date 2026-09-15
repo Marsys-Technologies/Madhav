@@ -5913,13 +5913,15 @@ block (post-rebuild era), and proceeds.
 
 ## §2 — Canonical state block
 
-> 🟡 **PŪRṆA ANVEṢAṆA — SOURCE SCOPE COMPLETE WITH AUTHORITY-BOUND REMAINDER (2026-09-15).** FC0 is frozen at
-> `codex/planner-knowledge-inquiry@fccfbb5ab`; PR #2597 is unchanged. The independent, append-only
-> campaign record is `00_ARCHITECTURE/briefs/nirmana/purna_anvesana/`. W6 retains the negative
-> `NOT_ACCEPTED_SOURCE_LOCAL` verdict at 30/34 frozen route obligations, completes all source-scope
-> packets, and quarantines 13 residuals with owners, triggers and authority gates. PR #2604 is the
-> final open stacked review surface. No merge, deployment, current production rows, user acceptance,
-> empirical acceptance or health is claimed.
+> 🔵 **PŪRṆA ANVEṢAṆA — RECOVERY WAVE 7 ACTIVE (2026-09-15).** Recovery execution resumed from
+> immutable W6 head `b48a6997b12ebe591bc5e62b7b60ddb295ee352b` under CCD-011 and remote lease
+> `MADHAV-PURNA-ANVESANA-W7-20260915@9cd760370`. W6's `NOT_ACCEPTED_SOURCE_LOCAL` 30/34 result remains
+> preserved as historical evidence. The new frozen recovery definition corrects the terminal
+> interpretation that ordinary source/local/disposable remediation required external authority,
+> and opens seven packets to close those portions of PA-R01–PA-R13, earn the unchanged 34/34
+> denominator, audit all six semantic layers, and prepare one external-only authority packet.
+> PR #2597 and all W0–W6 branches remain unchanged. No merge, deployment, shared/production mutation,
+> credential/infrastructure action, expert/empirical acceptance, production health or completion is claimed.
 
 > **PRODUCT STRATEGY — adopted target, documentation-only (2026-09-12).**
 > [Madhav Product Definition v3.0](MADHAV_PRODUCT_DEFINITION_v3_0.md) is the final product

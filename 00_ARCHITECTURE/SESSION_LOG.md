@@ -41321,3 +41321,98 @@ session_close:
   unblocks: []
   handoff_notes: "Campaign source scope is complete. Do not resume any quarantined residual without separate authority; do not infer merge, deployment, production state, user acceptance or empirical value from the open PR stack or local evidence."
 ```
+
+---
+
+## MADHAV-PURNA-ANVESANA-W7-20260915 — 2026-09-15
+
+```yaml
+session_open:
+  session_id: MADHAV-PURNA-ANVESANA-W7-20260915
+  cowork_thread_name: "Madhav — Purna Anvesana Recovery Wave 7"
+  agent_name: codex
+  agent_version: gpt-5
+  tool: Codex
+  tool_profile: madhav-safe
+  worktree_path: /Users/Dev/.codex/worktrees/purna-anvesana-wave7
+  step_number_or_layer: "Purna Anvesana Recovery Wave 7 — source-local completion"
+  predecessor_session: MADHAV-PURNA-ANVESANA-W6-20260915
+  coordination:
+    coordination_ref: origin/campaign-coordination
+    lease_id: MADHAV-PURNA-ANVESANA-W7-20260915
+    lease_status_verified: true
+    lease_verified_at: 2026-09-15T11:05:00+05:30
+    coordination_commit: 9cd76037021b502cc35330074e3b9bc229b02e2a
+    work_order_surface: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md
+  cross_tool_state_read:
+    cross_cutting_decision_register: true
+    stale_surfaces_disregarded: [.conductor-state.json, .gemini/project_state.md, "CLAUDECODE_BRIEF.md (COMPLETE)", "99_ARCHIVE/MARSYS_JIS_BOOTSTRAP_HANDOFF.md (SUPERSEDED)"]
+  mandatory_reading_confirmation:
+    - {file: CLAUDE.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/CAPABILITY_MANIFEST.json, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/MACRO_PLAN_v2_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/GOVERNANCE_INTEGRITY_PROTOCOL_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_OPEN_TEMPLATE_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/SESSION_CLOSE_TEMPLATE_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/CURRENT_STATE_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/CROSS_CUTTING_DECISION_REGISTER_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/GROUNDING_AUDIT_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/NATIVE_DIRECTIVES_FOR_REVISION_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/ONGOING_HYGIENE_POLICIES_v1_0.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_STATE.md, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/TERMINAL_QUARANTINE_v1.json, read_at: 2026-09-15T11:05:00+05:30}
+    - {file: 00_ARCHITECTURE/briefs/CAMPAIGN_COORDINATION.md, read_at: 2026-09-15T11:05:00+05:30}
+  canonical_artifact_fingerprint_check: []
+  declared_scope:
+    may_touch:
+      - 00_ARCHITECTURE/CAPABILITY_MANIFEST.json
+      - 00_ARCHITECTURE/CURRENT_STATE_v1_0.md
+      - 00_ARCHITECTURE/SESSION_LOG.md
+      - 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/**
+      - .github/workflows/**
+      - platform-mcp/**
+      - platform/migrations/**
+      - platform/scripts/**
+      - platform/src/**
+      - platform/tests/**
+    must_not_touch:
+      - origin/main and protected or release refs
+      - codex/purna-anvesana-wave6 and all predecessor branch histories or content
+      - PR 2597 branch history or content
+      - production or shared database, build, deployment, traffic, scheduler, credentials, secrets, signing keys, or infrastructure
+      - shared or production migration application
+      - migrations 1035 and 1036 owned by Data Plane L3 RI-01
+      - frozen WriterBase implementation or orchestrator contract
+      - foreign campaign branches, worktrees, queues, ledgers, runtime state, or owned application files
+      - doctrine ratification, asset retirement, destructive cleanup, expert acceptance, or empirical evaluation
+      - production health, deployment, user acceptance, empirical value, or FULLY_COMPLETE claims
+  mirror_pair_freshness_check: []
+  native_directive_obligations:
+    - directive_id: ND.2
+      obligation_summary: "No MP revision or health-crisis/mental-health serving change occurs in Recovery Wave 7."
+      acknowledged: true
+  red_team_due: true
+  notes: "Recovery Wave 7 begins at immutable W6 head b48a6997 and supersedes only the erroneous terminal interpretation that ordinary source work required external authority. The W6 negative evidence remains immutable history. Terminal ceiling is SOURCE_LOCAL_ACCEPTED; external merge, deploy, shared migration, key, trace, expert and empirical actions remain unrun."
+```
+
+### Opening objective
+
+Execute the frozen seven-packet recovery definition. First close deterministic transit argument
+derivation against the unchanged 34-route denominator and audit the six-layer semantic estate;
+then close channel, pagination, compatibility, overlay, restart recovery, durable managed-job and
+disposable migration/security source work. Finish with exact-head CI, focused stacked delivery,
+independent reviews and one authority packet containing only genuinely external actions.
+
+### Opening stocktake
+
+The immutable base and remote W6 branch both resolve to `b48a6997b12ebe591bc5e62b7b60ddb295ee352b`.
+PRs #2597–#2604 are open, clean and mergeable. #2597 has protected CI evidence; #2598–#2604 have
+no check runs because the repository workflows filter `pull_request` by the target branch and omit
+the stacked `codex/purna-anvesana-*` bases. This is a trigger-topology block, not a test failure.
+Exact-head evidence will be produced by reviewed workflow dispatch or a focused trigger correction,
+without modifying any W0–W6 branch. Remote coordination lease `MADHAV-PURNA-ANVESANA-W7-20260915`
+is verified at `9cd76037021b502cc35330074e3b9bc229b02e2a` and explicitly coexists with Data Plane L3 while
+excluding its files and migrations 1035/1036.

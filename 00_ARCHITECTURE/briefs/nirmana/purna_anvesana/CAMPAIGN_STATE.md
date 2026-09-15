@@ -1,13 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.12.0
-status: SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER
+version: 0.13.0
+status: ACTIVE_COMPLETION_EXECUTION
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
+recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0043
-last_updated: 2026-09-15T01:34:00+05:30
+last_event: PA-E0045
+last_updated: 2026-09-15T11:05:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -19,18 +20,26 @@ layer state, queue or authority.
 
 ## Current position
 
-- Wave: all declared packets are source-scope complete; the authority-bound remainder is quarantined.
-- Branch: `codex/purna-anvesana-wave6`, stacked on governed Wave 5 close `4f2d9c97a`.
+- Wave: Recovery Wave 7 is active. W6's negative verdict and terminal snapshot remain immutable
+  history, but their blanket quarantine of ordinary source/local/disposable remediation is superseded.
+- Branch: `codex/purna-anvesana-wave7`, based exactly on immutable W6 head
+  `b48a6997b12ebe591bc5e62b7b60ddb295ee352b`.
 - PR #2597: frozen unchanged; it remains a source/review candidate, not merged or deployed proof.
 - PR #2601: open, stacked on PR #2600; neither PR is merge or deployment proof.
 - PR #2602: open, stacked on PR #2601; none of the stacked PRs is merge or deployment proof.
 - PR #2603: open, stacked on PR #2602; none of the stacked PRs is merge or deployment proof.
 - PR #2604: open, stacked on PR #2603; it is a review surface, not merge or deployment proof.
-- Lease: `MADHAV-PURNA-ANVESANA-W6-20260915`; released and verified at remote coordination commit
-  `2c4a99481a3894d7cbad98357557b102b28aeeea`.
+- Lease: `MADHAV-PURNA-ANVESANA-W7-20260915`; active and verified at remote coordination commit
+  `9cd76037021b502cc35330074e3b9bc229b02e2a`.
 - Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
   deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
   doctrine ratification and production/empirical acceptance claims are prohibited.
+
+Recovery packets and the A/B/C residual split are frozen in `RECOVERY_DEFINITION_v1.json`.
+The unchanged Beyond-Ācārya denominator remains 34 route obligations; acceptance cannot be earned
+by changing its corpus or expectations. The W7 terminal ceiling is `SOURCE_LOCAL_ACCEPTED`, and
+only genuinely external merge/deploy/shared-migration/key/deployed-trace/expert/empirical actions
+may remain in the final completion-authority packet.
 
 ## Wave 0 finding that blocked execution
 
