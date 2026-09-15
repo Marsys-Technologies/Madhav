@@ -32,6 +32,7 @@ changelog:
   - "1.0 update 2026-09-15: Pins the independently reviewed DP-SD-017 strategy, execution brief and evidence record to immutable content commit 793972c754b106688097dbc54536c1a9c270a793; dispatch to the permanent execution task is the next action."
   - "1.0 update 2026-09-15: Records successful L3 kickoff dispatch to Execution — Data Plane with content pin 793972c754b106688097dbc54536c1a9c270a793 and approval pin 04a9ab33effa23e5e9b4e89772330ae264498a9b. At 02:50 IST the execution task is active with its kickoff turn in progress; goal and heartbeat activation remain execution-owned and unverified here. Dispatch is not implementation or acceptance."
   - "1.0 update 2026-09-15: Native authorizes DP-SD-018, a bounded L3 unblock/resume amendment: acting per-layer provenance adjudication and truthful frozen-L0 supersession, narrowly scoped protected-owner/lifecycle API and DBA credential/deployment cutover, then automatic continuation through the existing full L3 goal. Independent exact-draft review and immutable dispatch pins are recorded separately; no blocker is declared resolved by authorization."
+  - "1.0 update 2026-09-15: Pins the independently approved DP-SD-018 unblock/resume amendment at immutable content commit 6b6ce9c06ce54fb7c474d97c70257a505bf2ed84; resumption dispatch is the next action."
 ---
 
 # Madhav data-plane strategic ledger
@@ -262,5 +263,7 @@ remain separate statuses.
 | Goal | Continue the existing full DP-SD-017 L3 goal; DP-SD-018 is an authorized prerequisite, not a producer-only replacement goal or a new layer. No token budget. |
 | First packet | `L3-RI-02-AUTHORIZED-UNBLOCK`: reconcile state/authority, assign independent provenance and security lanes, then execute the non-circular release/cutover/W1 path. |
 | Independent handoff review | Source challenge identified the narrative L0-hash discrepancy, hardcoded L0 generator admission, invoker-default lifecycle API, and circular pre-PR cutover gate; all addressed. Reviewer `l3_data_dag_astra` approved the complete draft SHA-256 `4c2588a725c09349cef8cc3a1dd15909d552a7f006faa5c8454b9bf0cd4d2db5` with no blocking changes. Only status/review recording followed. |
-| Immutable content / approval / dispatch | Independent exact-draft review passed; content/approval pin and dispatch next. No resumed-execution claim yet. |
+| Immutable approved amendment content | 6b6ce9c06ce54fb7c474d97c70257a505bf2ed84; exactly the new amendment and this strategic-ledger authority record changed. The original DP-SD-017 documents and acceptance history remain untouched. |
+| Approval-record binding | This commit records native DP-SD-018 approval of the exact content pin above after independent review; its immutable commit ID is supplied separately in the dispatch message. |
+| Dispatch | NOT_DISPATCHED at this approval pin; task resumption will be recorded only after message-tool confirmation. |
 | Scope guard | Original history and retired sweep remain protected; no blanket provenance repin, branch-protection bypass, broad IAM, unrelated credential rotation, L4/L5 elevation or empirical claim. |
