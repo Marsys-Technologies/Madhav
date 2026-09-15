@@ -51,6 +51,7 @@ CANDIDATE = pins_module._inventory_at_commit(
 PRE_DP019_INVENTORY = pins_module._inventory_at_commit(
     "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f"
 )
+KSHETRA_SOURCE = "87cc8c9baf894c615e167672c6c7af57a15cf71c"
 L2_CHANGED = sorted(
     asset_id
     for asset_id in set(BASELINE) | set(CANDIDATE)
@@ -448,6 +449,23 @@ def test_dp019_source_surface_binding_rederives_exact_equivalence() -> None:
         "platform/python-sidecar/tests/l3/test_ka_yojaka_multidomain.py",
     ]
     assert digest == binding["source_surface_sha256"]
+
+
+def test_kshetra_source_surface_binding_rederives_exact_equivalence() -> None:
+    binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[KSHETRA_SOURCE]
+    paths, digest = pins_module._source_surface_mapping(
+        binding["reviewed_surface"],
+        binding["integrated_equivalent_commit"],
+    )
+    assert paths == [
+        "platform/python-sidecar/services/ka_kshetra/dhara_null.py",
+        "platform/python-sidecar/services/ka_kshetra/dhara_null_vec.py",
+        "platform/python-sidecar/services/ka_kshetra/layer1.py",
+        "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null.py",
+        "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null_vectorized.py",
+        "platform/python-sidecar/services/ka_kshetra/tests/test_stage1_symbolization.py",
+    ]
+    assert digest == "8eb4cce85bdc32434cad92d649837a1fcb80e63e941efedc9838c6e5e8c62cbe"
 
 
 @pytest.mark.parametrize(

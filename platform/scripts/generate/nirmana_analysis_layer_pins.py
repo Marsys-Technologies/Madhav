@@ -176,7 +176,10 @@ AUTHORIZED_SOURCE_COMMITS = {
         "L4": frozenset({"d2369b888e760e5b8d693328f00683877cbd5f28"}),
     },
     "DP-SD-019": {
-        "L3": frozenset({"64facb9763d13eece7098b5b24cc03dfb8e3ba81"}),
+        "L3": frozenset({
+            "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+            "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+        }),
     },
 }
 
@@ -248,6 +251,47 @@ SOURCE_ACCEPTANCE_BINDINGS = {
                 "commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
                 "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md",
                 "sha256": "a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
+            }],
+        },
+    },
+    "87cc8c9baf894c615e167672c6c7af57a15cf71c": {
+        "schema_version": SOURCE_ACCEPTANCE_SCHEMA_VERSION,
+        "reviewed_source_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+        "integrated_equivalent_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+        "common_base_commit": "6c1a65e23be6176322d7a9ab78e0c291feeec700",
+        "source_surface_sha256": "8eb4cce85bdc32434cad92d649837a1fcb80e63e941efedc9838c6e5e8c62cbe",
+        "reviewed_surface": [
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/dhara_null.py",
+                "blob_oid": "786fa0644d733005a6c9cbfd016915232822563b",
+            },
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/dhara_null_vec.py",
+                "blob_oid": "ebaa7014a49f035770495b72eb1a6701c4f25520",
+            },
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/layer1.py",
+                "blob_oid": "b4affc3ea1bb74c44fbb0edbbc31ef483e12a95a",
+            },
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null.py",
+                "blob_oid": "ea1dd0d6b230f18954b10a824fbc18846fcec712",
+            },
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null_vectorized.py",
+                "blob_oid": "ce70ca1253c3ef2addb146db5b968be07c3a7616",
+            },
+            {
+                "path": "platform/python-sidecar/services/ka_kshetra/tests/test_stage1_symbolization.py",
+                "blob_oid": "1b0277fe9ddb4259a575df80c9dcabfd1e5bc6cf",
+            },
+        ],
+        "review_artifacts": {
+            "L3": [{
+                "commit": "58b7d455d803c54238bdae050c1770f9f514d21e",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md",
+                "sha256": "687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d",
                 "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
             }],
         },
