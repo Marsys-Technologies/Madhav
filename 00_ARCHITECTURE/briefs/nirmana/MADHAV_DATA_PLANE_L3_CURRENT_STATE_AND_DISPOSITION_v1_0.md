@@ -342,7 +342,7 @@ the clean execution checkpoint `5142109f7f219ea860f859e322646f79d875bee8`,
 no open execution-branch PR, and the active Pūrṇa Recovery Wave 7 source-local
 lease. The old W0 and RI-01 leases were closed/superseded; the new remotely
 verified source-design fence is
-`origin/campaign-coordination@7eec8577e40778c72c8fdc17c5792646eee791c4`.
+`origin/campaign-coordination@754aa9ffe24a0865378c8c9cd148847abfec2b02`.
 The existing heartbeat was updated in place for RI-02.
 
 Lane P provenance supersession is independently accepted at exact tip
@@ -360,3 +360,13 @@ Production role, credential, IAM, migration, deployment, build and data
 mutations remain held under this source-design lease. The next eligible gate is
 independent exact-tip acceptance of corrected Lane S and integrated review,
 followed by a separate exclusive cutover lease.
+
+The first reconstructed Lane S correction through exact tip `add01c4ed` is also
+rejected. Independent review found a CRITICAL transaction-ordering window where
+ownership/DML grants could commit before mutation guards, plus residual old-row
+and shared-table ownership, effective IAM/literal credential, restore-evidence,
+role-topology, catalog-completeness and dispatcher rollback gaps. The source
+lease elapsed during this review; mutation was paused and the unchanged scope
+was renewed at coordination pin `754aa9ffe` through 2026-09-16 02:00 IST before
+the next correction. No rejected Lane S commit is integrated or production
+eligible.

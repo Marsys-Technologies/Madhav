@@ -11,7 +11,7 @@ owner_task: "Execution — Data Plane / 01a0998a-8240-7631-97ce-36c6d4734fde"
 integration_branch: codex/madhav-data-plane-execution
 integration_checkpoint: 5142109f7f219ea860f859e322646f79d875bee8
 coordination_lease: MADHAV-DATA-PLANE-L3-RI02-20260915
-coordination_pin: 7eec8577e40778c72c8fdc17c5792646eee791c4
+coordination_pin: 754aa9ffe24a0865378c8c9cd148847abfec2b02
 delivery_claim: NONE
 ---
 
@@ -45,7 +45,7 @@ outside scope.
 | Existing heartbeat | `l3-k-la-execution-recovery`, ACTIVE, 15-minute task heartbeat | Updated in place for DP-SD-018/RI-02; no duplicate. |
 | Pūrṇa recovery | `MADHAV-PURNA-ANVESANA-W7-20260915` ACTIVE through 23:30 IST; source-local ceiling; explicitly excludes migrations 1035/1036 | Preserved as a foreign active owner. |
 | Prior Data Plane leases | W0 expired after accepted source work; RI-01 expired at 11:30 IST | Closed/superseded on the live coordination branch. |
-| Current RI-02 lease | `MADHAV-DATA-PLANE-L3-RI02-20260915`, remote pin `7eec8577e40778c72c8fdc17c5792646eee791c4`, through 18:00 IST | Source/local/disposable work only; not a production lock. |
+| Current RI-02 lease | `MADHAV-DATA-PLANE-L3-RI02-20260915`, renewed remote pin `754aa9ffe24a0865378c8c9cd148847abfec2b02`, through 2026-09-16 02:00 IST | Source/local/disposable work only; not a production lock. The prior 18:00 fence elapsed during independent review; mutation was paused and the unchanged scope was renewed before further correction. |
 | Session handshake | `verification_artifacts/madhav_data_plane_l3_ri02_session_open.yaml` | Validator: 0 violations. |
 | Local DB credentials | `DATABASE_URL` and `DBURL` absent | No local live-DB claim. |
 | Cloud target | Project `madhav-astrology`; Cloud SQL `amjis-postgres`; region `asia-south1`; PostgreSQL 15; RUNNABLE | Matches DP-SD-018 target, but no write was made. |
@@ -175,3 +175,14 @@ semantic-status false-green paths. Source review also found fail-open secret
 isolation, unsafe deployment ordering and incomplete migration identity
 attestation. Correction under RI02-R-003 is active. Therefore both-lane source
 acceptance, release-candidate freeze and production cutover remain ineligible.
+
+The first reconstructed correction chain through
+`add01c4edf47100d29f083b1ed802bc08545e74f` remains rejected. Independent review
+found a CRITICAL non-atomic cutover window plus HIGH residuals in UPDATE old-row
+ownership, shared-table producer binding, effective/custom IAM permission
+evaluation, all-region literal credential detection, backup/restore evidence and
+complete role topology; MED residuals remain in catalog completeness and
+fail-closed dispatcher rollback. Exact SQL identity, empty-head rejection and
+mandatory L2 input binding are closed. A second bounded correction is active
+under renewed fence `754aa9ffe`; no part of the rejected tip is integrated or
+eligible for production.
