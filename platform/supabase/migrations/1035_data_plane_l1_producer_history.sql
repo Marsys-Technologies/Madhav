@@ -2137,6 +2137,37 @@ GRANT EXECUTE ON FUNCTION public.rollback_l1_data_plane_generation(
   UUID, TEXT, TEXT
 ) TO data_plane_migrator;
 
+-- The owner preflight commits these relations SELECT-only for the builder.
+-- Publish DML only after the complete guard/capture surface exists in this
+-- transaction, so no committed intermediate state permits unguarded writes.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+  public.chart_facts,public.chart_dashas,public.chart_divisionals,
+  public.ga_condition_composite,public.ga_yoga_firings,public.chart_vichara,
+  public.ga_transit_anchors,public.l1_tajik_varsha_year_lords,public.ga_medical,
+  public.ga_vastu_planet_direction_map,public.ga_prashna_lagna,
+  public.ga_prashna_judgment
+TO data_plane_builder;
+
+DO $l1_builder_sequence_acl$
+DECLARE v_sequence regclass;
+BEGIN
+  FOR v_sequence IN
+    SELECT DISTINCT seq.oid::regclass
+    FROM pg_class tab JOIN pg_namespace ns ON ns.oid=tab.relnamespace
+    JOIN pg_depend dep ON dep.refobjid=tab.oid AND dep.refclassid='pg_class'::regclass
+      AND dep.classid='pg_class'::regclass AND dep.deptype IN ('a','i')
+    JOIN pg_class seq ON seq.oid=dep.objid AND seq.relkind='S'
+    WHERE ns.nspname='public' AND tab.relname IN (
+      'chart_facts','chart_dashas','chart_divisionals','ga_condition_composite',
+      'ga_yoga_firings','chart_vichara','ga_transit_anchors','l1_tajik_varsha_year_lords',
+      'ga_medical','ga_vastu_planet_direction_map','ga_prashna_lagna','ga_prashna_judgment'
+    )
+  LOOP
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO data_plane_builder', v_sequence);
+  END LOOP;
+END
+$l1_builder_sequence_acl$;
+
 COMMENT ON TABLE public.l1_data_plane_row_snapshots IS
   'Append-only exact L1 producer rows. Active-table replacement never deletes a prior compatible generation.';
 COMMENT ON TABLE public.l1_data_plane_fact_snapshots IS

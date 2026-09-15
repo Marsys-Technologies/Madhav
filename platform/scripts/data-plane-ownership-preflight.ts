@@ -209,12 +209,12 @@ async function transferTables(client: PoolClient, owner: string, tables: readonl
     `, [table])
     await client.query(`SET LOCAL ROLE ${qi(owner)}`)
     await revokeAllRelationGrantees(client, 'TABLE', table, owner)
-    await client.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.${qi(table)} TO data_plane_builder`)
-    await client.query(`GRANT SELECT ON TABLE public.${qi(table)} TO amjis_app, data_plane_verifier, data_plane_migrator${owner === 'data_plane_l1_owner' ? ', data_plane_l2_owner' : ''}`)
+    // Commit the ownership stage deny-by-default. Builder DML is published only
+    // by the guarded layer migration, after its admission triggers exist.
+    await client.query(`GRANT SELECT ON TABLE public.${qi(table)} TO data_plane_builder, amjis_app, data_plane_verifier, data_plane_migrator${owner === 'data_plane_l1_owner' ? ', data_plane_l2_owner' : ''}`)
     for (const { sequence_name: sequence } of sequences.rows) {
       await revokeAllRelationGrantees(client, 'SEQUENCE', sequence, owner)
-      await client.query(`GRANT USAGE, SELECT ON SEQUENCE public.${qi(sequence)} TO data_plane_builder`)
-      await client.query(`GRANT SELECT ON SEQUENCE public.${qi(sequence)} TO data_plane_verifier, data_plane_migrator, amjis_app`)
+      await client.query(`GRANT SELECT ON SEQUENCE public.${qi(sequence)} TO data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app`)
     }
     await client.query('SET LOCAL ROLE amjis_app')
   }

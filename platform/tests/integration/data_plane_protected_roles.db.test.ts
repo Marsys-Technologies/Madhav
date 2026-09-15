@@ -26,8 +26,10 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
   let verifier: Pool
 
   beforeAll(async () => {
-    await runDataPlaneOwnershipPreflight(adminUrl)
-    await attestDataPlaneMigrations(roleUrl('data_plane_migrator'))
+    if (await readDataPlaneOwnershipStatus(adminUrl) === 'unmarked') {
+      await runDataPlaneOwnershipPreflight(adminUrl)
+      await attestDataPlaneMigrations(roleUrl('data_plane_migrator'))
+    }
     admin = new Pool({ connectionString: adminUrl })
     builder = new Pool({ connectionString: roleUrl('data_plane_builder') })
     migrator = new Pool({ connectionString: roleUrl('data_plane_migrator') })
@@ -297,5 +299,34 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
       await client.query('ROLLBACK')
       expect((await verifier.query(`SELECT count(*)::int AS n FROM l1_data_plane_generations WHERE generation_id=$1`, [generation])).rows[0].n).toBe(0)
     } finally { client.release() }
+  })
+
+  it('commits the ownership-only stage with builder DML denied on every protected table', async () => {
+    await admin.query(`DELETE FROM public._migrations_applied
+      WHERE filename IN ('1035_data_plane_l1_producer_history.sql','1036_data_plane_l2_producer_generations.sql')`)
+    await runDataPlaneOwnershipPreflight(adminUrl)
+    try {
+      const privileges = await admin.query<{ relname: string; writable: boolean }>(`
+        SELECT c.relname,has_table_privilege('data_plane_builder',c.oid,'INSERT,UPDATE,DELETE') writable
+        FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relname=ANY($1::text[])
+      `, [[...L1_ACTIVE_TABLES, ...L2_ACTIVE_TABLES]])
+      expect(privileges.rows).toHaveLength(L1_ACTIVE_TABLES.length + L2_ACTIVE_TABLES.length)
+      expect(privileges.rows.some((row) => row.writable)).toBe(false)
+      await expect(builder.query(
+        `INSERT INTO chart_facts(fact_id,chart_id,fact_category,fact_subject,fact_key)
+         VALUES($1,$2,'fixture','fixture','fixture')`, [randomUUID(), chart],
+      )).rejects.toThrow(/permission denied/)
+    } finally {
+      await admin.query(`
+        ALTER TABLE public.l1_data_plane_function_attestations DISABLE TRIGGER USER;
+        ALTER TABLE public.l1_data_plane_policy_attestations DISABLE TRIGGER USER;
+        ALTER TABLE public.l2_data_plane_function_attestations DISABLE TRIGGER USER;
+        ALTER TABLE public.l2_data_plane_policy_attestations DISABLE TRIGGER USER;
+        DELETE FROM public._migrations_applied
+        WHERE filename IN ('1035_data_plane_l1_producer_history.sql','1036_data_plane_l2_producer_generations.sql')
+      `)
+      await attestDataPlaneMigrations(roleUrl('data_plane_migrator'))
+    }
   })
 })

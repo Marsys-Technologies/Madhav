@@ -1861,6 +1861,47 @@ GRANT EXECUTE ON FUNCTION public.rollback_l2_data_plane_generation(
   UUID, TEXT, TEXT
 ) TO data_plane_migrator;
 
+-- Publish builder DML only after every L2 admission/capture trigger exists.
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE
+  public.bodha_msr_signals,public.bodha_cgm_nodes,public.bodha_cgm_edges,
+  public.bodha_contradictions,public.bodha_cgm_paths,public.bodha_cgm_motifs,
+  public.bodha_cgm_sub_graphs,public.bodha_cgm_chart_topology_summary,
+  public.bodha_mechanisms,public.bodha_cdlm_cells,public.bodha_convergence,
+  public.bodha_triangulation,public.bodha_cdlm_chart_summary,
+  public.bodha_cdlm_domain_rollups,public.bodha_cdlm_pattern_clusters,
+  public.bodha_pratijna,public.bodha_rm_resonances,public.bodha_rm_remedy_prescriptions,
+  public.bodha_rm_dasha_windowed_prescriptions,public.bodha_rm_chart_summary,
+  public.bodha_rm_dosha_remedy_bundles,public.bodha_rm_pattern_remedies,
+  public.bodha_signal_embeddings,public.bodha_discoveries,public.bodha_anomalies,
+  public.bodha_question_lenses,public.bodha_chart_gestalt,
+  public.synthesis_quality_scorecard,public.bodha_grounding_matches
+TO data_plane_builder;
+
+DO $l2_builder_sequence_acl$
+DECLARE v_sequence regclass;
+BEGIN
+  FOR v_sequence IN
+    SELECT DISTINCT seq.oid::regclass
+    FROM pg_class tab JOIN pg_namespace ns ON ns.oid=tab.relnamespace
+    JOIN pg_depend dep ON dep.refobjid=tab.oid AND dep.refclassid='pg_class'::regclass
+      AND dep.classid='pg_class'::regclass AND dep.deptype IN ('a','i')
+    JOIN pg_class seq ON seq.oid=dep.objid AND seq.relkind='S'
+    WHERE ns.nspname='public' AND tab.relname IN (
+      'bodha_msr_signals','bodha_cgm_nodes','bodha_cgm_edges','bodha_contradictions',
+      'bodha_cgm_paths','bodha_cgm_motifs','bodha_cgm_sub_graphs','bodha_cgm_chart_topology_summary',
+      'bodha_mechanisms','bodha_cdlm_cells','bodha_convergence','bodha_triangulation',
+      'bodha_cdlm_chart_summary','bodha_cdlm_domain_rollups','bodha_cdlm_pattern_clusters',
+      'bodha_pratijna','bodha_rm_resonances','bodha_rm_remedy_prescriptions',
+      'bodha_rm_dasha_windowed_prescriptions','bodha_rm_chart_summary','bodha_rm_dosha_remedy_bundles',
+      'bodha_rm_pattern_remedies','bodha_signal_embeddings','bodha_discoveries','bodha_anomalies',
+      'bodha_question_lenses','bodha_chart_gestalt','synthesis_quality_scorecard','bodha_grounding_matches'
+    )
+  LOOP
+    EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO data_plane_builder', v_sequence);
+  END LOOP;
+END
+$l2_builder_sequence_acl$;
+
 COMMENT ON TABLE public.data_plane_l2_producer_generations IS
   'DP-SD-015 exact upstream context and immutable L2 producer generations; no L3 activation authority.';
 

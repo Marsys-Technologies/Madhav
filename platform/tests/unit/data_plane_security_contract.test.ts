@@ -139,6 +139,18 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
     expect(preflight).toContain("revokeAllRelationGrantees(client, 'SEQUENCE'")
     expect(preflight).toContain('revokeAllPublicSchemaGrantees(client)')
     expect(preflight).toContain('revokeAllDefaultPrivilegeGrantees(client')
+    const transfer = preflight.slice(preflight.indexOf('async function transferTables'), preflight.indexOf('export async function runDataPlaneOwnershipPreflight'))
+    expect(transfer).not.toMatch(/GRANT SELECT, INSERT, UPDATE, DELETE/)
+  })
+  it('publishes builder DML only after protected guards are installed', () => {
+    for (const file of ['1035_data_plane_l1_producer_history.sql', '1036_data_plane_l2_producer_generations.sql']) {
+      const sql = readFileSync(resolve(__dirname, '../../supabase/migrations', file), 'utf8')
+      const guard = Math.max(sql.lastIndexOf('install_active_guards'), sql.lastIndexOf('install_capture_trigger'))
+      const grant = sql.lastIndexOf('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE')
+      expect(guard).toBeGreaterThan(0)
+      expect(grant).toBeGreaterThan(guard)
+      expect(sql.indexOf('COMMIT;', grant)).toBeGreaterThan(grant)
+    }
   })
 })
 
