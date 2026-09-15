@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.19.0
-status: LIVE_WRAPUP_SOURCE_REPAIR
+version: 0.20.0
+status: LIVE_WRAPUP_IMPLEMENTATION_SEALED
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0078
-last_updated: 2026-09-16T00:58:00+05:30
+last_event: PA-E0079
+last_updated: 2026-09-16T02:41:04+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -20,18 +20,25 @@ layer state, queue or authority.
 
 ## Current position
 
-- Live wrap-up: aggregate PR #2606 at initial head `466179c6d` passed protected CI, then independent
-  review correctly refuted release readiness with one deployment-order and five security findings.
-  The source repair uses an exact-web-revision barrier before MCP promotion, a dedicated fail-closed
-  inquiry database pool, hardened definer search path, removal of the MCP canary runtime mount, and
-  Secret Manager-backed watchdog deployment. Disposable PostgreSQL 15 acceptance passes 10/10 for
-  each of migrations 1033 and 1038; the refreshed source gate passes TypeScript, 115 inquiry tests
-  and 52 MCP tests. A repair commit, exact-head CI and independent re-review remain mandatory.
-- Shared-operation gate: Data Plane still holds the conflicting source-only lease observed at open.
-  No production/shared mutation has occurred. The database login, two new secrets, secret-specific
-  runtime IAM, project-wide IAM removal, migration, merge and deployment stay serialized behind a
-  fresh operation-specific exclusive lease and the preflight in
-  `LIVE_SECURITY_REMEDIATION_PLAN_v1.json`.
+- Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
+  independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
+  establishes protected database ownership with mandatory bootstrap cleanup, provides candidate-
+  bound web/MCP readiness, removes the stale MCP canary mount, bridges watchdog authentication to
+  pinned Scheduler OIDC, and replaces direct-only secret reasoning with a transitive deploy/actAs
+  trust boundary. The source gate passes lint with 0 errors, TypeScript, 1,109/1,109 executed test
+  files and 11,798 tests; the final MCP protected subset passes 27/27. A production-compatible
+  PostgreSQL 15 replay applies the five selected migrations, reaches `marked`, replays idempotently,
+  and passes the real serving-login RLS canary 3/3. Exact metadata-head CI and independent terminal
+  review remain mandatory before merge.
+- Shared-operation gate: no production/shared mutation occurred during repair. Live IAM must first
+  bind `github-actions@` to the exact protected-main subject and remove repository-wide/legacy
+  conductor, builder and default-compute deploy/actAs paths; the named human Owner remains the
+  explicit break-glass administrator, while Google/App Engine legacy Editor service accounts require
+  attached-resource audit and narrowing. Secret-specific runtime cutover, new secrets, database
+  bootstrap, migration, deployment and traffic remain serialized behind a fresh operation-specific
+  exclusive lease and every fail-closed gate in `LIVE_SECURITY_REMEDIATION_PLAN_v1.json`.
+
+- Live branch: `codex/purna-anvesana-live-wrapup`; aggregate PR: #2606.
 
 - Wave: Recovery Wave 7 has reached a source/local candidate. W6's negative verdict and terminal
   snapshot remain immutable history; Wave 7 supersedes only their blanket quarantine of ordinary
@@ -49,9 +56,10 @@ layer state, queue or authority.
   The narrow corrective lease `MADHAV-PURNA-ANVESANA-W7-CORRECTION-20260915` was expanded at
   `610a400a3fd677efa49bde1d93698b314871760d`, then released and remotely verified at
   `80d47c44d38d2f903c844dc674714faa679c2478` after exact pre-release head `b32974cbe` was approved.
-- Authority: CCD-011. Source/local/disposable work and focused/stacked PRs are allowed. Merge,
-  deployment, shared/production migration or mutation, credentials/infrastructure, retirement,
-  doctrine ratification and production/empirical acceptance claims are prohibited.
+- Authority: CCD-012 permits the governed live wrap-up but does not bypass serialization. Source,
+  local and disposable repair is complete at the sealed implementation head. Merge requires the
+  exact metadata-head protected checks and independent terminal approval; IAM, secrets, database,
+  deployment and traffic changes additionally require a fresh operation-specific exclusive lease.
 
 Recovery packets and the A/B/C residual split are frozen in `RECOVERY_DEFINITION_v1.json`.
 The unchanged Beyond-Ācārya denominator remains 34 route obligations; acceptance cannot be earned
