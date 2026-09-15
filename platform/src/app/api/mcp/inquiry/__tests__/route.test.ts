@@ -297,6 +297,109 @@ describe('raw MCP inquiry route', () => {
     expect(await response.json()).toMatchObject({ next_action_ids: ['item-001'], pagination: { next: 50 } })
   })
 
+  it.each([
+    ['first', false, 'middle'],
+    ['middle', false, 'final'],
+    ['final', true, null],
+  ] as const)('authorizes a nested pagination path for the %s page without changing sibling arguments', async (cursor, exhausted, next) => {
+    const base = contract()
+    const authorized: InquiryContract = {
+      ...base,
+      plan_items: base.plan_items.map((item) => ({
+        ...item,
+        args: { filters: { cursor: 'authorized', limit: 25 }, region: 'all' },
+      })),
+    }
+    const current: InquiryContract = {
+      ...authorized,
+      plan_items: authorized.plan_items.map((item) => ({
+        ...item,
+        args: { filters: { cursor, limit: 25 }, region: 'all' },
+      })),
+    }
+    mocks.verify.mockReturnValue({
+      sub: 'user-1:key-1', inquiry_id: 'inquiry-1', chart_id: chartId,
+      contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      overlay_version: null, chart_build_id: null, contract_state_hash: stateHash(current),
+      revision: 0, allowed_transition: 'execute', next_action_ids: ['item-001'],
+      jti: 'current-jti', exp: 2_000_000_000,
+    })
+    mocks.get.mockResolvedValue({
+      inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
+      semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+      chart_overlay_version: null, chart_build_id: null,
+      authorization_jsonb: authorized, contract_jsonb: current, status: 'INCOMPLETE', revision: 0,
+      current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
+    })
+    mocks.snapshot.mockReturnValue({
+      content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      scus: [{ scu_id: 'scu.test', bindings: [{
+        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true,
+        execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'filters.cursor' },
+      }] }],
+    })
+    mocks.pagination.mockReturnValue({ semantics: 'cursor', exhausted, next })
+
+    const result = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+
+    expect(result.status).toBe(200)
+    expect(mocks.retrieve).toHaveBeenCalledWith(
+      'marsys://tool/L1/test',
+      expect.any(Object),
+      { filters: { cursor, limit: 25 }, region: 'all' },
+    )
+  })
+
+  it('rejects a sibling mutation beside an otherwise authorized nested pagination value', async () => {
+    const base = contract()
+    const authorized: InquiryContract = {
+      ...base,
+      plan_items: base.plan_items.map((item) => ({
+        ...item,
+        args: { filters: { cursor: 'authorized', limit: 25 }, region: 'all' },
+      })),
+    }
+    const forged: InquiryContract = {
+      ...authorized,
+      plan_items: authorized.plan_items.map((item) => ({
+        ...item,
+        args: { filters: { cursor: 'middle', limit: 500 }, region: 'all' },
+      })),
+    }
+    mocks.verify.mockReturnValue({
+      sub: 'user-1:key-1', inquiry_id: 'inquiry-1', chart_id: chartId,
+      contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      catalog_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      overlay_version: null, chart_build_id: null, contract_state_hash: stateHash(forged),
+      revision: 0, allowed_transition: 'execute', next_action_ids: ['item-001'],
+      jti: 'current-jti', exp: 2_000_000_000,
+    })
+    mocks.get.mockResolvedValue({
+      inquiry_id: 'inquiry-1', principal_uid: 'user-1', chart_id: chartId,
+      semantic_contract_hash: 'sha256:contract', execution_plan_hash: 'sha256:plan',
+      capability_content_hash: 'sha256:catalog', capability_compatibility_version: 'planner-scu-v1',
+      chart_overlay_version: null, chart_build_id: null,
+      authorization_jsonb: authorized, contract_jsonb: forged, status: 'INCOMPLETE', revision: 0,
+      current_jti_hash: 'sha256:current-jti', expires_at: '2099-01-01T00:00:00Z',
+    })
+    mocks.snapshot.mockReturnValue({
+      content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      scus: [{ scu_id: 'scu.test', bindings: [{
+        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true,
+        execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'filters.cursor' },
+      }] }],
+    })
+
+    const result = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+
+    expect(result.status).toBe(409)
+    expect(await result.json()).toEqual({ ok: false, error: 'INQUIRY_ARGS_NOT_AUTHORIZED' })
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
+  })
+
   it('issues a finalization transition when every plan item is blocked', async () => {
     mocks.compile.mockImplementationOnce(() => ({ ...contract(), plan_items: [] }))
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))

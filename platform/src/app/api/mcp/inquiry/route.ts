@@ -89,15 +89,62 @@ function nextReady(contract: InquiryContract): string[] {
 
 function response(data: Record<string, unknown>, status = 200) { return NextResponse.json(data, { status }) }
 
+const FORBIDDEN_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
+
+function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function removeGuardedPath(value: Readonly<Record<string, unknown>>, path: readonly string[]): Record<string, unknown> | null {
+  const [key, ...rest] = path
+  const output: Record<string, unknown> = { ...value }
+  if (!Object.prototype.hasOwnProperty.call(value, key)) return output
+  if (rest.length === 0) {
+    delete output[key]
+    return output
+  }
+  const child = value[key]
+  if (!isRecord(child)) return null
+  const withoutChildPath = removeGuardedPath(child, rest)
+  if (!withoutChildPath) return null
+  if (Object.keys(withoutChildPath).length === 0) delete output[key]
+  else output[key] = withoutChildPath
+  return output
+}
+
+function readGuardedPath(value: Readonly<Record<string, unknown>>, path: readonly string[]): { found: boolean; value?: unknown } | null {
+  let cursor: unknown = value
+  for (const segment of path) {
+    if (!isRecord(cursor)) return null
+    if (!Object.prototype.hasOwnProperty.call(cursor, segment)) return { found: false }
+    cursor = cursor[segment]
+  }
+  return { found: true, value: cursor }
+}
+
+function writeGuardedPath(base: Readonly<Record<string, unknown>>, path: readonly string[], value: unknown): Record<string, unknown> | null {
+  const [key, ...rest] = path
+  if (rest.length === 0) return { ...base, [key]: value }
+  const existing = base[key]
+  if (existing !== undefined && !isRecord(existing)) return null
+  const child = writeGuardedPath(isRecord(existing) ? existing : {}, rest, value)
+  return child ? { ...base, [key]: child } : null
+}
+
 function authorizedArgs(base: Readonly<Record<string, unknown>>, current: Readonly<Record<string, unknown>>, positionPath?: string): Record<string, unknown> | null {
-  const positionKey = positionPath?.split('.').at(-1)
-  const permittedKeys = new Set([...Object.keys(base), ...(positionKey ? [positionKey] : [])])
-  if (Object.keys(current).some((key) => !permittedKeys.has(key))) return null
-  const withoutPosition = (value: Readonly<Record<string, unknown>>) => Object.fromEntries(
-    Object.entries(value).filter(([key]) => key !== positionKey),
-  )
-  if (stableFingerprint(withoutPosition(base)) !== stableFingerprint(withoutPosition(current))) return null
-  return { ...base, ...(positionKey && current[positionKey] !== undefined ? { [positionKey]: current[positionKey] } : {}) }
+  if (!positionPath) {
+    return stableFingerprint(base) === stableFingerprint(current) ? { ...base } : null
+  }
+  const path = positionPath.split('.')
+  if (path.some((segment) => !segment || FORBIDDEN_PATH_SEGMENTS.has(segment))) return null
+  const baseWithoutPosition = removeGuardedPath(base, path)
+  const currentWithoutPosition = removeGuardedPath(current, path)
+  if (!baseWithoutPosition || !currentWithoutPosition
+    || stableFingerprint(baseWithoutPosition) !== stableFingerprint(currentWithoutPosition)) return null
+  const position = readGuardedPath(current, path)
+  if (!position) return null
+  if (!position.found || position.value === undefined) return { ...base }
+  return writeGuardedPath(base, path, position.value)
 }
 
 export async function POST(request: Request) {

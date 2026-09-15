@@ -213,9 +213,12 @@ export class QosDispatchQueue {
 
   private selectNext(availableUnits: number): QueuedTask<unknown> | undefined {
     // Guarantee 1 (priority bound): a background task starved past the bound is
-    // force-promoted ahead of everything, including fresh interactive work.
-    const starvedIdx = this.backgroundQueue.findIndex(t => t.skipCount >= this.maxBackgroundSkips && t.units <= availableUnits)
+    // force-promoted ahead of everything, including fresh interactive work. If
+    // the oldest starved task does not fit yet, stop admitting smaller work so
+    // capacity drains until its atomic reservation can be satisfied.
+    const starvedIdx = this.backgroundQueue.findIndex(t => t.skipCount >= this.maxBackgroundSkips)
     if (starvedIdx !== -1) {
+      if (this.backgroundQueue[starvedIdx].units > availableUnits) return undefined
       const [t] = this.backgroundQueue.splice(starvedIdx, 1)
       this.lastBackgroundPrincipal = t.principalId
       // A forced promotion resets the weighted-round-robin cycle so it starts
@@ -229,7 +232,14 @@ export class QosDispatchQueue {
     const backgroundFits = this.backgroundQueue.some((task) => task.units <= availableUnits)
     if (!interactiveFits && !backgroundFits) return undefined
     if (!interactiveFits) return this.dequeueFairShare(this.backgroundQueue, false, availableUnits)
-    if (!backgroundFits) return this.dequeueFairShare(this.interactiveQueue, true, availableUnits)
+    if (!backgroundFits) {
+      // A waiting weighted background task is still skipped when a smaller
+      // interactive task fits. Count that dispatch even though the background
+      // task cannot fit the current fragment of capacity; otherwise repeated
+      // small refills can keep it below the promotion threshold forever.
+      for (const t of this.backgroundQueue) t.skipCount++
+      return this.dequeueFairShare(this.interactiveQueue, true, availableUnits)
+    }
 
     // Weighted round robin between the two non-empty lanes: dispatch up to
     // `interactiveWeight` interactive tasks, then up to `backgroundWeight`

@@ -165,6 +165,57 @@ describe('QosDispatchQueue — fairness bound (no starvation)', () => {
     expect(backgroundDispatchedAtInteractiveCount).toBeLessThanOrEqual(MAX_SKIPS)
     expect(backgroundDispatchedAtInteractiveCount).toBeGreaterThanOrEqual(0)
   })
+
+  it('reserves capacity for a starved weighted background task under sustained smaller interactive work', async () => {
+    const queue = new QosDispatchQueue({ concurrency: 10, maxBackgroundSkips: 2, interactiveWeight: 1000 })
+    const gates = Array.from({ length: 20 }, () => deferred<void>())
+    let interactiveStarted = 0
+    let backgroundStarted = false
+    let interactiveStartedAtBackground = -1
+
+    const interactiveTasks = gates.slice(0, 10).map((gate, index) => queue.submit({
+      principalId: `interactive-${index}`,
+      priorityClass: 'interactive',
+      run: async () => {
+        interactiveStarted++
+        await gate.promise
+      },
+    }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(queue.stats().inFlight).toBe(10)
+
+    const background = queue.submit({
+      principalId: 'transit-aggregate',
+      priorityClass: 'background',
+      units: 9,
+      run: async () => {
+        backgroundStarted = true
+        interactiveStartedAtBackground = interactiveStarted
+      },
+    })
+    interactiveTasks.push(...gates.slice(10).map((gate, index) => queue.submit({
+      principalId: `interactive-refill-${index}`,
+      priorityClass: 'interactive',
+      run: async () => {
+        interactiveStarted++
+        await gate.promise
+      },
+    })))
+
+    // Permit enough completions to make nine units available. Once two smaller
+    // refills have skipped the weighted task, later refills must stop so capacity
+    // can drain and the starved task can start.
+    for (const gate of gates.slice(0, 11)) {
+      gate.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(backgroundStarted).toBe(true)
+    expect(interactiveStartedAtBackground).toBeLessThanOrEqual(12)
+
+    for (const gate of gates.slice(11)) gate.resolve()
+    await Promise.all([background, ...interactiveTasks])
+  })
 })
 
 describe('QosDispatchQueue — per-principal fairness', () => {
