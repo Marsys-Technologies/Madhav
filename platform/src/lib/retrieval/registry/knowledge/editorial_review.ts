@@ -213,7 +213,7 @@ const MEMBERS: Readonly<Record<keyof typeof FAMILIES, readonly string[]>> = {
     'query_activation_waveform', 'query_active_dashas', 'query_cleansed_anchors',
     'query_convergence_windows', 'query_dasha_dossier', 'query_dasha_systems',
     'query_kala_paddhati_profile', 'query_kota_chakra', 'query_life_arc',
-    'query_moorti_nirnaya', 'query_obstruction_periods', 'query_planet_transit',
+    'query_current_transit_snapshot', 'query_moorti_nirnaya', 'query_obstruction_periods', 'query_planet_transit',
     'query_predictive_anchors', 'query_projections', 'query_prospective_ledger',
     'query_retrograde_periods', 'query_sky_calendar', 'query_sudarshana_varsha',
     'query_temporal_view', 'query_tithi_pravesha', 'query_transit_engine',

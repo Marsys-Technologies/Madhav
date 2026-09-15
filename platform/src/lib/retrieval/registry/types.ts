@@ -588,6 +588,9 @@ interface D1Fields {
     deepseek?: Record<string, unknown>
   }
   required_inputs?: string[]
+  mutation?: boolean
+  data_source?: 'stored' | 'computed' | 'hybrid'
+  semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
 }
 
 /** Narrowed descriptor for capabilities with primitive_type = 'tool' */

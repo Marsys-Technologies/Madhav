@@ -111,7 +111,7 @@ const downSql = documentedDownSql(migrationSql)
 
 function lifecycleContract(): InquiryContract {
   return {
-    contract_version: '1.2.0', compiler_version: '2.0.0',
+    contract_version: '1.3.0', compiler_version: '2.0.0',
     contract_id: 'sha256:contract-c', semantic_contract_hash: 'sha256:semantic-c',
     execution_plan_hash: 'sha256:execution-c', chart_id: chartA,
     execution_channel: 'mcp_full', question: 'disposable lifecycle proof',

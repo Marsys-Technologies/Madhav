@@ -18,7 +18,7 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.runtime_descriptors).toBe(catalog.length)
     expect(snapshot.census.addressable_descriptors + snapshot.census.excluded_descriptors).toBe(catalog.length)
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
-    expect(snapshot.census.executable_bindings).toBe(185)
+    expect(snapshot.census.executable_bindings).toBe(187)
     expect(snapshot.census.unavailable_bindings).toBe(0)
     expect(snapshot.schema_version).toBe('2.0.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
@@ -53,7 +53,7 @@ describe('planner capability knowledge', () => {
         editorial_sources?: readonly { source_ref: string; source_fields: readonly string[] }[]
       })[]
     }
-    expect(enriched.census.editorial_scus).toBe(182)
+    expect(enriched.census.editorial_scus).toBe(183)
     expect(enriched.census.derived_scus).toBe(0)
     expect(enriched.scus.every((scu) => scu.editorial)).toBe(true)
     expect(enriched.scus.every((scu) => ['authored_declaration', 'descriptor_metadata_review'].includes(scu.editorial_method ?? ''))).toBe(true)
@@ -439,9 +439,11 @@ describe('planner capability knowledge', () => {
   it('normalizes legacy flat and JSON Schema input dialects without losing required fields', () => {
     const transit = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_planet_transit')
     expect(transit?.inputs).toEqual(expect.arrayContaining(['planet', 'start_date', 'end_date']))
-    expect(transit?.bindings[0]?.input_contract).toMatchObject({
+    expect(transit?.bindings.find((binding) => binding.relation === 'primary')?.input_contract).toMatchObject({
       planet: 'string:required', start_date: 'string:required', end_date: 'string:required',
     })
+    expect(transit?.bindings.find((binding) => binding.binding_id === 'registry:marsys://tool/L0/query_current_transit_snapshot')?.input_contract)
+      .toEqual({ as_of_date: 'string:required' })
     expect(transit?.bindings[0]?.input_contract).not.toHaveProperty('properties')
   })
 

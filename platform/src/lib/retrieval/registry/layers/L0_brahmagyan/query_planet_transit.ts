@@ -94,6 +94,48 @@ export const queryPlanetTransitCapability: ToolCapability = {
     },
     result_max_kb: 50,
   },
+  semantic_capabilities: [{
+    scu_id: 'scu.catalog.query_planet_transit',
+    version: 2,
+    label: 'Planet transit evidence',
+    description:
+      'Dated planetary transit evidence. Explicit planet/window queries retain the strict scalar ' +
+      'binding; current-state inquiry planning uses the reviewed complete nine-graha snapshot binding.',
+    kind: 'temporal',
+    domains: ['timing'],
+    concepts: ['activation_timing', 'query_planet_transit', 'temporal_sequence', 'timing_window'],
+    intents: ['sequence', 'time'],
+    horizons: ['current', 'future', 'historical', 'multi_year'],
+    scope: 'global',
+    inputs: ['as_of_date', 'end_date', 'planet', 'sign_number', 'start_date'],
+    outputs: ['accounted_components', 'component_receipts', 'components', 'count', 'missing_planets', 'ok', 'planet', 'rows'],
+    primary_binding_uri: 'marsys://tool/L0/query_planet_transit',
+    additional_bindings: [{
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      kind: 'registry_capability',
+      relation: 'provides',
+      capability_uri: 'marsys://tool/L0/query_current_transit_snapshot',
+      input_contract: { as_of_date: 'string:required' },
+      output_contract: { structured_content: 'declared' },
+      pagination: 'none',
+      pagination_verified: true,
+      result_collection_verified: true,
+      pagination_contract: {
+        result_collection_path: 'components',
+        deterministic_order: ['canonical_graha_order'],
+      },
+      executable: true,
+      execution_channels: ['platform_internal'],
+      route_evidence: 'CapabilityDescriptor:marsys://tool/L0/query_current_transit_snapshot#complete-nine-graha-fanout',
+    }],
+    edges: [],
+    provenance_requirements: ['computed_at', 'engine_version'],
+    freshness_policy: 'Current-state planning requires an explicit receipted date and all nine canonical component outcomes.',
+    entitlement: 'native',
+    safety_notes: ['Read-only computed evidence. Partial aggregate results are failures and cannot close a transit obligation.'],
+    known_gaps: ['The scalar date-window binding is capped at 5,000 rows and is not exhaustion-proven.'],
+    editorial: true,
+  }],
   async handler(args: Record<string, unknown>, _ctx?: unknown) {
     const planet = args['planet'] as string
     const start_date = args['start_date'] as string

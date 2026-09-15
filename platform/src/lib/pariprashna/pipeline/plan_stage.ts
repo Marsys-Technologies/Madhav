@@ -329,6 +329,7 @@ export async function runPlanStage(args: {
     ? await (async () => {
         const snapshot = assertPinnedCapabilityKnowledgeCurrent()
         const overlay = await loadChartCapabilityOverlay(snapshot, chartId)
+        const temporalAnchorDate = new Date().toISOString().slice(0, 10)
         const contract = compileInquiryContract({
           snapshot,
           overlay,
@@ -337,6 +338,7 @@ export async function runPlanStage(args: {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          temporal_anchor_date: temporalAnchorDate,
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)

@@ -50,6 +50,7 @@ const BodySchema = z.discriminatedUnion('action', [
     action: z.literal('start'), chart_id: z.string().uuid(),
     question: z.string().trim().min(1).max(4000), scope_tuple: z.unknown(),
     ai_proposal: AiProposalSchema.optional(),
+    temporal_anchor_date: z.string().max(32).optional(),
   }).strict(),
   z.object({
     action: z.literal('execute'), lifecycle_token: z.string().min(1).max(16384),
@@ -116,6 +117,7 @@ export async function POST(request: Request) {
       const contract = compileInquiryContract({
         snapshot, overlay, chart_id: body.chart_id, question: body.question,
         scope_tuple: scope, ai_proposal: body.ai_proposal, execution_channel: 'mcp_full',
+        temporal_anchor_date: body.temporal_anchor_date,
       })
       const inquiryId = randomUUID()
       const ready = nextReady(contract)

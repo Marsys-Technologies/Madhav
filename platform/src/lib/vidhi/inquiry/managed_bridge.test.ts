@@ -50,4 +50,25 @@ describe('managed Inquiry Contract bridge', () => {
     ))).toBe(true)
     expect(plan.tool_calls.some((candidate) => candidate.tool_name === 'query_classical_texts')).toBe(false)
   })
+
+  it('adopts the aggregate transit binding without duplicate-tool collapse', () => {
+    const plan = managedPlan()
+    const contract = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-1',
+      question: 'wealth transit timing',
+      scope_tuple: scope,
+      execution_channel: 'platform_internal',
+      temporal_anchor_date: '2026-09-15',
+    })
+
+    const authorized = adoptInquiryPlanItems(plan, contract)
+    const transitItems = contract.plan_items.filter((item) => item.scu_id === 'scu.catalog.query_planet_transit')
+    const transitCalls = plan.tool_calls.filter((item) => resolveToolUri(item.tool_name) === 'marsys://tool/L0/query_current_transit_snapshot')
+
+    expect(transitItems).toHaveLength(1)
+    expect(transitCalls).toHaveLength(1)
+    expect(transitCalls[0]?.params).toEqual(transitItems[0]?.args)
+    expect(authorized.filter((item) => resolveToolUri(item) === 'marsys://tool/L0/query_current_transit_snapshot')).toHaveLength(1)
+  })
 })

@@ -521,6 +521,7 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+  const nowContextDate = new Date().toISOString().slice(0, 10)
   let inquirySnapshot: CapabilityKnowledgeSnapshot | null = null
   const initialInquiryContract = plan.scope_tuple
     ? await (async () => {
@@ -534,6 +535,7 @@ export async function POST(request: Request) {
           scope_tuple: plan.scope_tuple!,
           ai_proposal: managedPlanToAiInquiryProposal(plan),
           execution_channel: 'platform_internal',
+          temporal_anchor_date: nowContextDate,
         })
         const adopted = adoptInquiryPlanItems(plan, contract)
         toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
@@ -866,7 +868,6 @@ export async function POST(request: Request) {
       // (+ the same as-of date) to anchor the model's notion of "now"; fetching it
       // after synthesis returned meant the reading was built with no temporal anchor
       // at all and reasoned from stale training-data assumptions instead.
-      const nowContextDate = new Date().toISOString().slice(0, 10)
       const { header: chartHeader, flags: chartHeaderFlags } = await fetchChartHeaderResolution(
         chartId ?? '',
         undefined,

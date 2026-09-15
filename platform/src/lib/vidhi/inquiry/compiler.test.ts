@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { compileChartCapabilityOverlay } from '../../retrieval/registry/knowledge/overlay'
+import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { applyInquiryObservations, buildInquiryClosureReceipt, compileInquiryContract, failInquiryForOverlayDrift, finalizeInquiryContract, inquiryAuthorizationHashes, recordInquiryExecution, validateInquiryContract } from './compiler'
 import type { ScopeTuple } from '../types'
 
@@ -129,14 +130,87 @@ describe('versioned inquiry compiler', () => {
     expect(finalizeInquiryContract(contract).status).not.toBe('COMPLETE')
   })
 
-  it('blocks unresolved required JSON Schema arguments and internal-only raw MCP bindings', () => {
+  it('requires an explicit temporal anchor and emits a structured transit clarification', () => {
     const internal = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth transit timing', scope_tuple: wealthScope })
     const transit = internal.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')
     expect(transit).toMatchObject({ state: 'blocked', binding_id: null })
-    expect(transit?.blocked_reason).toContain('planet')
+    expect(transit?.blocked_reason).toContain('temporal_anchor_date')
+    expect(transit?.argument_resolution).toMatchObject({
+      resolution_version: 'inquiry-argument-resolution-v1',
+      strategy: 'all_graha_single_day_transit',
+      status: 'clarification_required',
+      clarification: {
+        code: 'TEMPORAL_ANCHOR_REQUIRED',
+        required_inputs: ['temporal_anchor_date'],
+      },
+    })
+
+    const invalid = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-02-30',
+    })
+    expect(invalid.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')?.argument_resolution)
+      .toMatchObject({ clarification: { code: 'TEMPORAL_ANCHOR_INVALID' } })
 
     const raw = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth varga', scope_tuple: wealthScope, execution_channel: 'mcp_full' })
     expect(raw.plan_items.find((item) => item.scu_id === 'scu.catalog.get_divisionals')).toMatchObject({ state: 'blocked', binding_id: null })
+  })
+
+  it('derives one receipted aggregate binding with immutable nine-graha component arguments', () => {
+    const first = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const second = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const transitItems = first.plan_items.filter((item) => item.scu_id === 'scu.catalog.query_planet_transit')
+
+    expect(transitItems).toHaveLength(1)
+    expect(transitItems[0]).toMatchObject({
+      state: 'ready',
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      args: { as_of_date: '2026-09-15' },
+      argument_resolution: {
+        status: 'resolved',
+        component_arguments: [
+          { planet: 'Sun', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Moon', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Mars', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Mercury', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Jupiter', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Venus', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Saturn', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Rahu', start_date: '2026-09-15', end_date: '2026-09-15' },
+          { planet: 'Ketu', start_date: '2026-09-15', end_date: '2026-09-15' },
+        ],
+      },
+    })
+    expect(transitItems[0]?.argument_resolution?.component_arguments.every((item) => item.args_hash.startsWith('sha256:'))).toBe(true)
+    expect(transitItems[0]?.argument_resolution?.resolution_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
+    expect(first.execution_plan_hash).toBe(second.execution_plan_hash)
+    expect(inquiryAuthorizationHashes(first).execution_plan_hash).toBe(first.execution_plan_hash)
+
+    const later = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-16',
+    })
+    expect(later.semantic_contract_hash).toBe(first.semantic_contract_hash)
+    expect(later.execution_plan_hash).not.toBe(first.execution_plan_hash)
+    expect(later.contract_id).not.toBe(first.contract_id)
   })
 
   it('does not authorize a binding that the chart/build overlay leaves dark', () => {
@@ -187,7 +261,13 @@ describe('versioned inquiry compiler', () => {
   })
 
   it('reaches COMPLETE only after every required obligation has evidence and frontier is closed', () => {
-    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Complete wealth outlook',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
     const observations = initial.plan_items.map((item) => ({ item_id: item.item_id, disposition: 'served' as const, evidence_refs: [`receipt:${item.item_id}`] }))
     const observed = applyInquiryObservations(initial, observations)
     expect(validateInquiryContract(observed).valid).toBe(true)
@@ -273,13 +353,34 @@ describe('versioned inquiry compiler', () => {
     expect(receipt.omission_challenge_hash).toBe(initial.omission_challenge?.challenge_hash)
   })
 
-  it('rejects forged normalization, traversal, challenge, and budget receipts', () => {
-    const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
+  it('rejects forged normalization, traversal, challenge, budget, and argument-resolution receipts', () => {
+    const initial = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'Complete wealth outlook',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const transitIndex = initial.plan_items.findIndex((item) => item.scu_id === 'scu.catalog.query_planet_transit')
+    const forgedTransitItems = initial.plan_items.map((item, index) => index === transitIndex
+      ? { ...item, argument_resolution: { ...item.argument_resolution!, resolution_hash: 'sha256:forged' } }
+      : item)
+    const nonCanonicalTransitItems = initial.plan_items.map((item, index) => {
+      if (index !== transitIndex) return item
+      const componentArguments = item.argument_resolution!.component_arguments.map((component, componentIndex) => componentIndex === 0
+        ? { ...component, planet: 'Pluto', args_hash: stableFingerprint({ planet: 'Pluto', start_date: component.start_date, end_date: component.end_date }) }
+        : component)
+      const resolution = { ...item.argument_resolution!, component_arguments: componentArguments }
+      const { resolution_hash: _oldHash, ...withoutHash } = resolution
+      return { ...item, argument_resolution: { ...withoutHash, resolution_hash: stableFingerprint(withoutHash) } }
+    })
     const forgeries = [
       { ...initial, scope_normalization: { ...initial.scope_normalization!, normalized_scope_hash: 'sha256:forged' } },
       { ...initial, graph_traversal: { ...initial.graph_traversal!, traversal_hash: 'sha256:forged' } },
       { ...initial, omission_challenge: { ...initial.omission_challenge!, challenge_hash: 'sha256:forged' } },
       { ...initial, planning_budget: { ...initial.planning_budget!, budget_hash: 'sha256:forged' } },
+      { ...initial, plan_items: forgedTransitItems },
+      { ...initial, plan_items: nonCanonicalTransitItems },
     ]
     for (const forged of forgeries) expect(validateInquiryContract(forged).valid).toBe(false)
   })

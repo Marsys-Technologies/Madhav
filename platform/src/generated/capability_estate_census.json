@@ -6,14 +6,14 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "bb9e7600dec460623ce4a76641ebc1406f23a24d75ae48d2e8ba3b98fb0c7151",
+  "content_sha256": "dbe80a76a3b8ee529a69cf0c7d79fc641e4717c1698b89c0d42a8ddf4e3fe7ea",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
         "reviewed_exposed": 71,
-        "reviewed_not_exposed": 114
+        "reviewed_not_exposed": 115
       },
-      "denominator": 185,
+      "denominator": 186,
       "descriptor_content_untyped": 181,
       "exhaustible_paginated": 1,
       "full_profile_allowlist_enforced": true,
@@ -22,7 +22,7 @@
     "planner_addressable_descriptors": {
       "excluded": 3,
       "policy": "live descriptor has a callable handler/loader and calibration_context_only is not true; public dispatchability is reported separately",
-      "total": 182
+      "total": 183
     },
     "producer_assets": {
       "active": 128,
@@ -68,11 +68,11 @@
     },
     "public_registrar_resolution": {
       "ambiguous": 0,
-      "descriptor_denominator": 185,
+      "descriptor_denominator": 186,
       "literal_public_names": 129,
       "method": "authored fail-closed full-profile route authority joined to source-evidenced URI bindings; absent dedicated descriptor routes are explicit reviewed_not_exposed dispositions",
       "name_only_unverified": 0,
-      "not_exposed": 114,
+      "not_exposed": 115,
       "resolved_including_ambiguous": 71,
       "unambiguous_uri_bindings": 70,
       "unresolved": 0,
@@ -90,12 +90,12 @@
     },
     "runtime_descriptors": {
       "by_data_source": {
-        "computed": 20,
+        "computed": 21,
         "hybrid": 1,
         "stored": 164
       },
       "by_layer": {
-        "L0": 66,
+        "L0": 67,
         "L1": 40,
         "L2": 32,
         "L3": 21,
@@ -103,16 +103,16 @@
         "L5": 15
       },
       "by_scope": {
-        "global": 72,
+        "global": 73,
         "per_chart": 113
       },
-      "callable": 185,
-      "output_schema_declared": 4,
+      "callable": 186,
+      "output_schema_declared": 5,
       "paginated_declared": 96,
       "prompts": 1,
       "resources": 5,
-      "tools": 179,
-      "total": 185
+      "tools": 180,
+      "total": 186
     }
   },
   "details": {
@@ -1562,6 +1562,78 @@
           "blocker": "response collection and exhaustion paths are not source-reviewed",
           "declared": "bounded_without_position",
           "disposition": "non_exhaustible"
+        },
+        "planner_disposition": "addressable",
+        "planner_reason": null,
+        "public_route_disposition": "reviewed_not_exposed",
+        "public_route_evidence": [
+          "platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed"
+        ],
+        "public_routes": [],
+        "public_tool_names": []
+      },
+      {
+        "capability_uri": "marsys://tool/L0/query_current_transit_snapshot",
+        "descriptor_name": "query_current_transit_snapshot",
+        "descriptor_type": "tool",
+        "empty_reason_declared": true,
+        "empty_result_state": "declared",
+        "full_profile_enforcement": "enforced",
+        "input_contract": {
+          "additionalProperties": false,
+          "properties": {
+            "as_of_date": {
+              "description": "Explicit current-state anchor in YYYY-MM-DD format (1900-01-01 through 2150-12-31).",
+              "type": "string"
+            }
+          },
+          "required": [
+            "as_of_date"
+          ],
+          "type": "object"
+        },
+        "internal_route": "handler",
+        "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
+          "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts"
+        ],
+        "output_contract": {
+          "properties": {
+            "accounted_components": {
+              "type": "number"
+            },
+            "aggregate_hash": {
+              "type": "string"
+            },
+            "as_of_date": {
+              "type": "string"
+            },
+            "complete": {
+              "type": "boolean"
+            },
+            "component_receipts": {
+              "description": "Per-planet immutable argument and result receipts.",
+              "type": "array"
+            },
+            "components": {
+              "description": "Canonical planet results with scalar rows.",
+              "type": "array"
+            },
+            "expected_components": {
+              "type": "number"
+            },
+            "missing_planets": {
+              "type": "array"
+            },
+            "ok": {
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        },
+        "output_contract_state": "declared",
+        "pagination": {
+          "disposition": "not_paginated"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -20574,7 +20646,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-14T13:52:38.000Z",
+  "generated_at": "2026-09-14T15:25:20.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20596,7 +20668,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "c391e22ffa344988900281d229c62df80e6381874a0dbfabe8503d1a444b4518"
+        "sha256": "3e285d2728d1482a5cdb1dcf8d58c638b55440e1fd12e2f49c519e9617e6c941"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21163,7 +21235,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 195,
+        "member_count": 198,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21195,7 +21267,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "493a39c8b1ab7ea10e90fccf921154a3b74a3e9a8f2a8631bd24c25ac718ecea"
+            "sha256": "eb7683e2e0131a21eb557a14417fd43aa5ccdf966e0430f8c9b8ab19b172c44f"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
+            "sha256": "5c50b2d6fda67c90bcfa1db7f2764fa5bd2e1152694431f2f6b4bb32f95d5c30"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21215,7 +21291,11 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/planner_projection.ts",
-            "sha256": "b7d7f8a06b0591619c131e5478071dbf0aeb86a42d7ab845f673cd1bc79db628"
+            "sha256": "2b41633cfbcd7c0c865aec956b64011747db3bb4981f6852d617d54ca1b41eca"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts",
+            "sha256": "91ae4b583645f1ea235db395953413be1a307f3850a334b1398dcc0102736769"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/query.ts",
@@ -21231,7 +21311,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "0e7569d7fdc7ae42852b3e76030eeed2b102b80f0b9f81a02b6d2ac568ce8a52"
+            "sha256": "733adeb64ab83b1eb3c557f2e94bda020fa82b5c04a333b887bef4ece25e09e4"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21259,7 +21339,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/index.ts",
-            "sha256": "34a21e3da8f36ebaa386f57601769fd37733a9afc5a4ac73fe350bea60ce2c9e"
+            "sha256": "9936c60ddb7667b772eda1ef2dd64c2489133f23fbcb838a35315934bf8db3f8"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/intent_classify.ts",
@@ -21292,6 +21372,10 @@
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
             "sha256": "3fa81ee07629dc93273316f305e9136a558bef8332f898d745802769a5690d91"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_current_transit_snapshot.ts",
+            "sha256": "b2d30a022d3ed2dd363250f326e0d4d6310b9a55fe59c53ac3333eb47b02af21"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dasha_systems.ts",
@@ -21339,7 +21423,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "6e1a684b7655154dfa16a09080958b4c28371a21584a2ff70ec8b8b0f88b9d9c"
+            "sha256": "a7916c483c5197428f0a8ab7f0457905ade9b2a3243485f555b13facdb885f82"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -21919,7 +22003,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/types.ts",
-            "sha256": "45df8632d51a5641e0a6b1a35e1868b44a7ceab26631f7de46f48545927f8ca3"
+            "sha256": "9f67c0cdb8e69603a2276e23025dac3b0ffaf0d6b0c7b6c80a4d36cf4f77a0ee"
           },
           {
             "path": "platform/src/lib/retrieval/synthesis/capability.ts",
@@ -21947,7 +22031,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "69a3e88874b39574920947463219d4c309293a59f16d639af2c1c08a18c22b4e"
+        "sha256": "c84ba0bb84425d8e6753756f9f8c98b24ec81181da80375f5decc7a879a8a05c"
       },
       {
         "id": "service_effect_contracts",
@@ -21972,5 +22056,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "4cf83d51289372795813c50c73974e3fc78c1562"
+  "source_revision": "943d3cd8bcefb57f6853da85a11e10200f973766"
 }
