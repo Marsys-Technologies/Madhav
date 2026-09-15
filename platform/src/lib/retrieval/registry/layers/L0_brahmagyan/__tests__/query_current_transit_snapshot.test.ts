@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { queryPlanetTransitCapability } from '../query_planet_transit'
 import { CANONICAL_TRANSIT_PLANETS, queryCurrentTransitSnapshotCapability } from '../query_current_transit_snapshot'
+import { getToolByName } from '../../../tool_name_bridge'
+import { getCatalog } from '../../../catalog'
 
 describe('query_current_transit_snapshot aggregate capability', () => {
   beforeEach(() => vi.restoreAllMocks())
+
+  it('declares the exact nine-unit fan-out weight for atomic broker admission', () => {
+    getCatalog()
+    expect(queryCurrentTransitSnapshotCapability.dispatch_units).toBe(9)
+    expect(getToolByName('query_current_transit_snapshot')?.dispatch_units).toBe(9)
+  })
 
   it('executes the strict scalar binding once per canonical graha and receipts every component', async () => {
     const handler = vi.spyOn(queryPlanetTransitCapability, 'handler').mockImplementation(async (args) => ({

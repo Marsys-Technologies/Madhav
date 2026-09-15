@@ -460,6 +460,51 @@ describe('versioned inquiry compiler', () => {
     })
   })
 
+  it('requires transit receipts for overlay-blocked and clarification-blocked internal plans', () => {
+    const darkOverlay = compileChartCapabilityOverlay({ snapshot, chart_id: 'chart-fixture', build_id: 'build-dark', evidence: [], generated_at: '2026-09-13T00:00:00.000Z' })
+    const resolvedBlocked = compileInquiryContract({
+      snapshot,
+      overlay: darkOverlay,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      temporal_anchor_date: '2026-09-15',
+    })
+    const clarificationBlocked = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+    })
+    for (const original of [resolvedBlocked, clarificationBlocked]) {
+      const stripped = withRecomputedAuthorization({
+        ...original,
+        plan_items: original.plan_items.map((item) => {
+          if (item.scu_id !== 'scu.catalog.query_planet_transit') return item
+          const { argument_resolution: _removed, ...withoutReceipt } = item
+          return withoutReceipt
+        }),
+      })
+      expect(validateInquiryContract(stripped)).toMatchObject({
+        valid: false,
+        errors: expect.arrayContaining([expect.stringContaining('internal transit plan lacks an argument resolution receipt')]),
+      })
+    }
+
+    const receipt = clarificationBlocked.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')!.argument_resolution!
+    const nonTransit = clarificationBlocked.plan_items.find((item) => item.scu_id !== 'scu.catalog.query_planet_transit' && item.state === 'blocked')!
+    const transplanted = withRecomputedAuthorization({
+      ...clarificationBlocked,
+      plan_items: clarificationBlocked.plan_items.map((item) => item.item_id === nonTransit.item_id
+        ? { ...item, argument_resolution: receipt }
+        : item),
+    })
+    expect(validateInquiryContract(transplanted)).toMatchObject({
+      valid: false,
+      errors: expect.arrayContaining([expect.stringContaining('carries a transit argument receipt outside the internal transit plan')]),
+    })
+  })
+
   it('never treats a required failed observation as complete', () => {
     const initial = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'Complete wealth outlook', scope_tuple: wealthScope })
     const observations = initial.plan_items.map((item, index) => index === 0

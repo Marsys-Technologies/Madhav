@@ -299,6 +299,9 @@ interface CapabilityDescriptorBase {
    */
   mutation?: boolean
 
+  /** Atomic broker/QoS capacity consumed by one dispatch (fan-out defaults to 1). */
+  dispatch_units?: number
+
   /**
    * Which generated surfaces serve this capability (plan §3 R-1.1 + R-4's four
    * projections). Absent = not yet classified (v1; classification is W2's
@@ -596,6 +599,7 @@ interface D1Fields {
   }
   required_inputs?: string[]
   mutation?: boolean
+  dispatch_units?: number
   data_source?: 'stored' | 'computed' | 'hybrid'
   semantic_capabilities?: readonly import('./knowledge/types').SemanticCapabilityDeclaration[]
 }

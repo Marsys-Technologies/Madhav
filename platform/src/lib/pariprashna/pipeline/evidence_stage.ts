@@ -109,6 +109,7 @@ export async function runEvidenceStage(args: {
         const result = await getSharedQosDispatchQueue().submit({
           principalId: userUid,
           priorityClass: 'interactive',
+          units: t.dispatch_units ?? 1,
           run: () => executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName)),
         })
         const ms = Date.now() - toolStart

@@ -18,6 +18,13 @@ describe('CostCapTracker', () => {
     expect(result.reason).toBe('call_count_cap')
   })
 
+  it('reserves weighted fan-out atomically and starts none when capacity is insufficient', () => {
+    const tracker = new CostCapTracker({ maxCalls: 10, maxWallClockMs: 120_000 })
+    expect(tracker.checkAndRecordCall(2)).toMatchObject({ stopped: false, callsMade: 2 })
+    expect(tracker.checkAndRecordCall(9)).toMatchObject({ stopped: true, reason: 'call_count_cap', callsMade: 2 })
+    expect(tracker.checkAndRecordCall(8)).toMatchObject({ stopped: false, callsMade: 10 })
+  })
+
   it('stops on wall-clock cap independent of call count', () => {
     vi.useFakeTimers()
     const tracker = new CostCapTracker({ maxCalls: 10, maxWallClockMs: 1000 })
@@ -43,7 +50,7 @@ describe('resolveCostCapsForEntitlement', () => {
 
   it('returns a distinct cap set for the elevated platform entitlement tier (super_admin)', () => {
     const caps = resolveCostCapsForEntitlement('super_admin')
-    expect(caps).toEqual({ maxCalls: 25, maxWallClockMs: 300_000 })
+    expect(caps).toEqual({ maxCalls: 64, maxWallClockMs: 300_000 })
   })
 
   it('falls back to defaults for an unrecognized entitlement string', () => {

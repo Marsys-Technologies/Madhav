@@ -79,6 +79,9 @@ export const queryCurrentTransitSnapshotCapability: ToolCapability = {
   emits_references: false,
   lel_capable: false,
   data_source: 'computed',
+  // One aggregate dispatch fans out to exactly nine scalar sidecar calls. Brokers
+  // must reserve this weight atomically before the handler can start any component.
+  dispatch_units: CANONICAL_TRANSIT_PLANETS.length,
   llm_hints: {
     agentic: { cost_class: 'medium', always_prefetch: false, latency_ms_p50: 150 },
     bulk_context: { pre_fetch_priority: 75, always_include: false, result_size_kb_p50: 12 },

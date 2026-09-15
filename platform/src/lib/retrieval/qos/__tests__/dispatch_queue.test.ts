@@ -47,6 +47,36 @@ describe('QosDispatchQueue — concurrency bound', () => {
     expect(maxObservedInFlight).toBeLessThanOrEqual(3)
     expect(maxObservedInFlight).toBeGreaterThan(0)
   })
+
+  it('accounts fan-out weight atomically so concurrent work never exceeds capacity', async () => {
+    const queue = new QosDispatchQueue({ concurrency: 10 })
+    const firstGate = deferred<void>()
+    const secondGate = deferred<void>()
+    let weightedInFlight = 0
+    let maxWeightedInFlight = 0
+    const submitAggregate = (gate: ReturnType<typeof deferred<void>>) => queue.submit({
+      principalId: 'aggregate',
+      units: 9,
+      run: async () => {
+        weightedInFlight += 9
+        maxWeightedInFlight = Math.max(maxWeightedInFlight, weightedInFlight)
+        await gate.promise
+        weightedInFlight -= 9
+      },
+    })
+    const first = submitAggregate(firstGate)
+    const second = submitAggregate(secondGate)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(queue.stats().inFlight).toBe(9)
+    expect(weightedInFlight).toBe(9)
+    firstGate.resolve()
+    await first
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(weightedInFlight).toBe(9)
+    secondGate.resolve()
+    await second
+    expect(maxWeightedInFlight).toBe(9)
+  })
 })
 
 describe('QosDispatchQueue — priority ordering (interactive > background)', () => {

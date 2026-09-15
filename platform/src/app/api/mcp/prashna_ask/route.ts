@@ -738,7 +738,7 @@ export async function POST(request: Request) {
           continue
         }
 
-        const check = tracker.checkAndRecordCall()
+        const check = tracker.checkAndRecordCall(tool.dispatch_units)
         if (check.stopped) {
           costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
           judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
@@ -825,7 +825,7 @@ export async function POST(request: Request) {
           const tool = toolName ? getToolByName(toolName) : undefined
           const binding = bindingForInquiryItem(inquirySnapshot, inquiryContract, item.item_id)
           if (!toolName || !tool || !binding) break
-          const check = tracker.checkAndRecordCall()
+          const check = tracker.checkAndRecordCall(tool.dispatch_units)
           if (check.stopped) {
             costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
             judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')

@@ -57,6 +57,8 @@ export interface QosTaskSubmission<T> {
   /** Defaults to 'interactive' — the safe default for the live consult path;
    *  callers doing bulk/scheduled/async work must opt IN to 'background'. */
   priorityClass?: QosPriorityClass
+  /** Atomic concurrency weight. Fan-out work must reserve every backend unit before starting. */
+  units?: number
   /** The actual async work. Not started until the queue admits it. */
   run: () => Promise<T>
 }
@@ -93,6 +95,7 @@ export class QueueSaturatedError extends Error {
 interface QueuedTask<T> {
   principalId: string
   priorityClass: QosPriorityClass
+  units: number
   run: () => Promise<T>
   resolve: (v: T) => void
   reject: (e: unknown) => void
@@ -155,6 +158,10 @@ export class QosDispatchQueue {
    *  dispatched and run — never silently drops or thins a task's result. */
   submit<T>(task: QosTaskSubmission<T>): Promise<T> {
     const priorityClass = task.priorityClass ?? 'interactive'
+    const units = task.units ?? 1
+    if (!Number.isSafeInteger(units) || units < 1 || units > this.concurrency) {
+      return Promise.reject(new Error(`QOS_INVALID_DISPATCH_UNITS:${units}`))
+    }
     const lane = priorityClass === 'background' ? this.backgroundQueue : this.interactiveQueue
     if (this.maxQueueDepth !== undefined && lane.length >= this.maxQueueDepth) {
       return Promise.reject(new QueueSaturatedError(priorityClass, lane.length))
@@ -163,6 +170,7 @@ export class QosDispatchQueue {
       const queued: QueuedTask<T> = {
         principalId: task.principalId,
         priorityClass,
+        units,
         run: task.run,
         resolve,
         reject,
@@ -184,18 +192,18 @@ export class QosDispatchQueue {
 
   private pump(): void {
     while (this.inFlight < this.concurrency) {
-      const next = this.selectNext()
+      const next = this.selectNext(this.concurrency - this.inFlight)
       if (!next) break
-      this.inFlight++
+      this.inFlight += next.units
       next
         .run()
         .then(
           v => {
-            this.inFlight--
+            this.inFlight -= next.units
             next.resolve(v)
           },
           e => {
-            this.inFlight--
+            this.inFlight -= next.units
             next.reject(e)
           }
         )
@@ -203,10 +211,10 @@ export class QosDispatchQueue {
     }
   }
 
-  private selectNext(): QueuedTask<unknown> | undefined {
+  private selectNext(availableUnits: number): QueuedTask<unknown> | undefined {
     // Guarantee 1 (priority bound): a background task starved past the bound is
     // force-promoted ahead of everything, including fresh interactive work.
-    const starvedIdx = this.backgroundQueue.findIndex(t => t.skipCount >= this.maxBackgroundSkips)
+    const starvedIdx = this.backgroundQueue.findIndex(t => t.skipCount >= this.maxBackgroundSkips && t.units <= availableUnits)
     if (starvedIdx !== -1) {
       const [t] = this.backgroundQueue.splice(starvedIdx, 1)
       this.lastBackgroundPrincipal = t.principalId
@@ -217,9 +225,11 @@ export class QosDispatchQueue {
       return t
     }
 
-    if (this.interactiveQueue.length === 0 && this.backgroundQueue.length === 0) return undefined
-    if (this.interactiveQueue.length === 0) return this.dequeueFairShare(this.backgroundQueue, false)
-    if (this.backgroundQueue.length === 0) return this.dequeueFairShare(this.interactiveQueue, true)
+    const interactiveFits = this.interactiveQueue.some((task) => task.units <= availableUnits)
+    const backgroundFits = this.backgroundQueue.some((task) => task.units <= availableUnits)
+    if (!interactiveFits && !backgroundFits) return undefined
+    if (!interactiveFits) return this.dequeueFairShare(this.backgroundQueue, false, availableUnits)
+    if (!backgroundFits) return this.dequeueFairShare(this.interactiveQueue, true, availableUnits)
 
     // Weighted round robin between the two non-empty lanes: dispatch up to
     // `interactiveWeight` interactive tasks, then up to `backgroundWeight`
@@ -231,12 +241,12 @@ export class QosDispatchQueue {
       } else {
         this.wrrPhaseCount++
         for (const t of this.backgroundQueue) t.skipCount++
-        return this.dequeueFairShare(this.interactiveQueue, true)
+        return this.dequeueFairShare(this.interactiveQueue, true, availableUnits)
       }
     }
     // wrrPhase === 'background' here (either already was, or just switched above).
     this.wrrPhaseCount++
-    const dispatched = this.dequeueFairShare(this.backgroundQueue, false)
+    const dispatched = this.dequeueFairShare(this.backgroundQueue, false, availableUnits)
     if (this.wrrPhaseCount >= this.backgroundWeight) {
       this.wrrPhase = 'interactive'
       this.wrrPhaseCount = 0
@@ -247,11 +257,12 @@ export class QosDispatchQueue {
   /** Guarantee 2 (per-principal bound): avoid repeating the immediately-prior
    *  dispatched principal in this lane whenever a different principal has work
    *  waiting, without needing a full round-robin index over a mutating array. */
-  private dequeueFairShare(lane: QueuedTask<unknown>[], isInteractive: boolean): QueuedTask<unknown> | undefined {
+  private dequeueFairShare(lane: QueuedTask<unknown>[], isInteractive: boolean, availableUnits: number): QueuedTask<unknown> | undefined {
     if (lane.length === 0) return undefined
     const last = isInteractive ? this.lastInteractivePrincipal : this.lastBackgroundPrincipal
-    let idx = lane.findIndex(t => t.principalId !== last)
-    if (idx === -1) idx = 0
+    let idx = lane.findIndex(t => t.units <= availableUnits && t.principalId !== last)
+    if (idx === -1) idx = lane.findIndex(t => t.units <= availableUnits)
+    if (idx === -1) return undefined
     const [task] = lane.splice(idx, 1)
     if (isInteractive) this.lastInteractivePrincipal = task.principalId
     else this.lastBackgroundPrincipal = task.principalId

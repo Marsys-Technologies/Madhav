@@ -791,6 +791,13 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
   }
   for (const item of contract.plan_items) {
     const receipt = item.argument_resolution
+    const requiresTransitReceipt = contract.execution_channel === 'platform_internal' && item.scu_id === TRANSIT_SCU_ID
+    if (requiresTransitReceipt && !receipt) {
+      errors.push(`plan item ${item.item_id} internal transit plan lacks an argument resolution receipt`)
+    }
+    if (!requiresTransitReceipt && receipt) {
+      errors.push(`plan item ${item.item_id} carries a transit argument receipt outside the internal transit plan`)
+    }
     if (item.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID && receipt?.status !== 'resolved') {
       errors.push(`plan item ${item.item_id} aggregate transit binding lacks a resolved argument receipt`)
     }

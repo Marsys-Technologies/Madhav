@@ -20,7 +20,7 @@ describe('planner capability knowledge', () => {
     expect(snapshot.census.semantic_capabilities).toBe(snapshot.scus.length)
     expect(snapshot.census.executable_bindings).toBe(186)
     expect(snapshot.census.unavailable_bindings).toBe(0)
-    expect(snapshot.schema_version).toBe('2.2.0')
+    expect(snapshot.schema_version).toBe('2.3.0')
     expect(snapshot.compatibility_version).toBe('planner-scu-v2')
     expect(snapshot.content_hash).toMatch(/^sha256:[a-f0-9]{64}$/)
     expect(snapshot.semantic_review_fingerprint).toMatch(/^sha256:[a-f0-9]{64}$/)
@@ -54,6 +54,25 @@ describe('planner capability knowledge', () => {
       expect(binding?.public_tool_name ?? null).toBe(route.public_tool_names[0] ?? null)
       expect(binding?.route_evidence).toContain(route.public_route_evidence[0])
     }
+  })
+
+  it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
+    const routes = estateCensus.details.descriptor_route_contracts
+    expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(96)
+    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(1)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(95)
+    expect(snapshot.census).toMatchObject({
+      reviewed_pagination_dispositions: 186,
+      reviewed_paginated_descriptors: 96,
+      exhaustible_reviewed_descriptors: 1,
+      non_exhaustible_descriptors: 95,
+    })
+    const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
+    expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
+    expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
+    const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(96)
   })
 
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {

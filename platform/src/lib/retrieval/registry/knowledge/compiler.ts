@@ -26,6 +26,10 @@ interface DescriptorRouteContract {
   readonly public_route_disposition: 'reviewed_exposed' | 'reviewed_not_exposed'
   readonly public_tool_names: readonly string[]
   readonly public_route_evidence: readonly string[]
+  readonly pagination: {
+    readonly disposition: 'not_paginated' | 'exhaustible_reviewed' | 'non_exhaustible'
+    readonly blocker?: string
+  }
 }
 
 const DESCRIPTOR_ROUTE_CONTRACTS = (estateCensus.details.descriptor_route_contracts as readonly DescriptorRouteContract[])
@@ -38,6 +42,14 @@ function applyReviewedRouteContract(binding: SemanticCapabilityBinding): Semanti
   const publicToolName = route.public_tool_names[0]
   return {
     ...binding,
+    pagination_verified: route.pagination.disposition === 'exhaustible_reviewed'
+      ? binding.pagination_verified === true
+      : route.pagination.disposition === 'non_exhaustible' ? false : binding.pagination_verified,
+    pagination_review: {
+      disposition: route.pagination.disposition,
+      source_ref: `platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:${binding.capability_uri}`,
+      ...(route.pagination.blocker ? { blocker: route.pagination.blocker } : {}),
+    },
     execution_channels: binding.executable
       ? route.public_route_disposition === 'reviewed_exposed' ? ['platform_internal', 'mcp_full'] : ['platform_internal']
       : [],
@@ -399,6 +411,10 @@ function buildCensus(
     unavailable_bindings: bindings.filter((binding) => !binding.executable).length,
     publicly_named_bindings: bindings.filter((binding) => Boolean(binding.public_tool_name)).length,
     reviewed_pagination_bindings: bindings.filter((binding) => binding.pagination_verified).length,
+    reviewed_pagination_dispositions: DESCRIPTOR_ROUTE_CONTRACTS.length,
+    reviewed_paginated_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition !== 'not_paginated').length,
+    exhaustible_reviewed_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition === 'exhaustible_reviewed').length,
+    non_exhaustible_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.pagination.disposition === 'non_exhaustible').length,
     reviewed_route_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.length,
     reviewed_public_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_exposed').length,
     reviewed_nonpublic_descriptors: DESCRIPTOR_ROUTE_CONTRACTS.filter((contract) => contract.public_route_disposition === 'reviewed_not_exposed').length,
