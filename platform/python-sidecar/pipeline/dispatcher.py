@@ -15,6 +15,7 @@ import logging
 from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Set
+from ga_writers._idempotency import authorize_chart_fact_delete
 
 logger = logging.getLogger(__name__)
 
@@ -209,18 +210,25 @@ def rebuild_asset(asset_id: str, chart_id: str, build_id: str, conn) -> None:
     for tgt in targets:
         prefix = prefix_map.get(tgt)
         if prefix:
+            # The protected chart_facts owner requires an exact deletion receipt.
+            # Authorization is deliberately outside the cursor-compatibility retry:
+            # an authorization failure must abort the rebuild, never fall through to
+            # an unreceipted DELETE. This does not alter dependency traversal or
+            # enqueue behavior; it only admits the pre-existing scoped cleanup.
+            authorize_chart_fact_delete(
+                conn, chart_id, fact_category_patterns=[prefix + '%'],
+            )
             try:
                 cur = conn.cursor()
                 cur.execute(
-                    "DELETE FROM chart_facts WHERE chart_id=%s AND ayanamsha_id IS NOT DISTINCT FROM ayanamsha_id "
-                    "AND category LIKE %s",
+                    "DELETE FROM chart_facts WHERE chart_id=%s AND fact_category LIKE %s",
                     (chart_id, prefix + '%')
                 )
                 deleted = cur.rowcount
             except Exception:
                 try:
                     cur = conn.execute(
-                        "DELETE FROM chart_facts WHERE chart_id=%s AND category LIKE %s",
+                        "DELETE FROM chart_facts WHERE chart_id=%s AND fact_category LIKE %s",
                         (chart_id, prefix + '%')
                     )
                     deleted = cur.rowcount if hasattr(cur, 'rowcount') else 0

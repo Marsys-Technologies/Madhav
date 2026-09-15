@@ -14,6 +14,8 @@ writer's INSERT, and assert the store holds the single-run count.
 import sys
 import pathlib
 
+import pytest
+
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from ga_writers._idempotency import (  # noqa: E402
@@ -37,9 +39,13 @@ class FakeConn:
     def __init__(self, table, rows=None):
         self.table = table
         self.rows = list(rows or [])
+        self.authorizations = []
 
     def execute(self, sql, params):
         sql = " ".join(sql.split())
+        if sql.startswith("SELECT public.authorize_l1_chart_facts_delete("):
+            self.authorizations.append(tuple(params))
+            return _Cursor(1)
         assert sql.startswith(f"DELETE FROM {self.table} WHERE chart_id = %s"), sql
         chart_id = params[0]
         if "AND " not in sql:  # whole-chart delete (clear_table_for_chart)
@@ -107,6 +113,13 @@ def test_chart_facts_double_run_replaces_not_accretes():
     _run_facts_build(conn, _facts("build-2"))   # fresh build_id
     assert conn.count(CID) == single            # replaced, not 16
     assert {r["build_id"] for r in conn.rows} == {"build-2"}
+    assert len(conn.authorizations) == 2
+    assert conn.authorizations[-1] == (
+        CID,
+        ["sade_sati_cycle", "sade_sati_phase"],
+        AYANAMSHAS,
+        None,
+    )
 
 
 def test_chart_facts_without_helper_would_double():
@@ -238,3 +251,76 @@ def test_helpers_noop_on_empty():
     assert replace_prior_chart_facts(conn, []) == 0
     assert replace_prior_chart_dashas(conn, []) == 0
     assert replace_prior_chart_divisionals(conn, []) == 0
+
+
+class _DispatcherCursor:
+    def __init__(self, conn):
+        self.conn = conn
+        self.rowcount = 0
+
+    def execute(self, sql, params=None):
+        compact = " ".join(sql.split())
+        self.conn.statements.append((compact, params))
+        if compact.startswith("SELECT asset_id, depends_on FROM build_dependencies"):
+            self._rows = [("ga_positions", [])]
+        elif compact.startswith("SELECT asset_id, category_prefix FROM build_dependencies"):
+            self._rows = [("ga_positions", "graha_position")]
+        else:
+            self._rows = []
+            self.rowcount = 1
+        return self
+
+    def fetchall(self):
+        return self._rows
+
+
+class _DispatcherConn:
+    def __init__(self):
+        self.statements = []
+
+    def cursor(self):
+        return _DispatcherCursor(self)
+
+    def execute(self, sql, params=None):
+        compact = " ".join(sql.split())
+        self.statements.append((compact, params))
+        if compact.startswith("SELECT public.authorize_l1_chart_facts_delete("):
+            return _Cursor(1)
+        return _DispatcherCursor(self).execute(sql, params)
+
+
+def test_dispatcher_rebuild_authorizes_existing_fact_prefix_without_semantic_drift():
+    from pipeline import dispatcher
+
+    dispatcher.reset_dep_graph()
+    conn = _DispatcherConn()
+    dispatcher.rebuild_asset("ga_positions", CID, "build-1", conn)
+    statements = conn.statements
+    auth_index = next(
+        i for i, (sql, _) in enumerate(statements)
+        if sql.startswith("SELECT public.authorize_l1_chart_facts_delete(")
+    )
+    delete_index = next(
+        i for i, (sql, _) in enumerate(statements)
+        if sql.startswith("DELETE FROM chart_facts")
+    )
+    assert auth_index < delete_index
+    assert statements[auth_index][1] == [CID, None, None, ["graha_position%"]]
+    assert "fact_category LIKE %s" in statements[delete_index][0]
+    assert " category LIKE %s" not in statements[delete_index][0]
+
+
+def test_dispatcher_rebuild_never_falls_through_after_authorization_failure(monkeypatch):
+    from pipeline import dispatcher
+
+    dispatcher.reset_dep_graph()
+    conn = _DispatcherConn()
+
+    def reject(*args, **kwargs):
+        raise PermissionError("protected deletion not admitted")
+
+    monkeypatch.setattr(dispatcher, "authorize_chart_fact_delete", reject)
+    with pytest.raises(PermissionError, match="not admitted"):
+        dispatcher.rebuild_asset("ga_positions", CID, "build-1", conn)
+    assert not any(sql.startswith("DELETE FROM chart_facts") for sql, _ in conn.statements)
+    assert not any(sql.startswith("DELETE FROM build_checkpoints") for sql, _ in conn.statements)

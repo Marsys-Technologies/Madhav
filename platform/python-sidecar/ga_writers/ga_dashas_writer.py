@@ -75,7 +75,7 @@ assert _SCOPE_CAP_SENTINEL_ENTRY is not None, (
     "ga_dashas_writer.py's scope-cap sentinel rows have nothing to reference"
 )
 SCOPE_CAP_SENTINEL: str = _SCOPE_CAP_SENTINEL_ENTRY.status
-from ga_writers._idempotency import replace_prior_chart_dashas
+from ga_writers._idempotency import authorize_chart_fact_delete, replace_prior_chart_dashas
 from ga_writers._telemetry import update_asset_throughput
 from ga_writers._vimshottari_independent_verifier import (
     compare_row as _iv_compare_row,
@@ -3435,6 +3435,9 @@ def write_dasha_scope_cap_sentinels(chart_id: str, build_id: str, *, conn: Any =
             "dasha_scope_cap_fact", chart_id, "PRANA_DASHA", "level_5_not_computed",
         )
         with sc_conn.cursor() as cur:
+            authorize_chart_fact_delete(
+                sc_conn, chart_id, ["dasha_scope_cap"], ["INVARIANT"],
+            )
             cur.execute(
                 """
                 DELETE FROM chart_facts

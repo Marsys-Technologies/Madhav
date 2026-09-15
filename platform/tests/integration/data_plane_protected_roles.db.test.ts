@@ -34,8 +34,38 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
       VALUES($1,'fixture','2000-01-01','12:00','fixture',20,85,'Asia/Kolkata','sripathi','fixture','fixture','natal') ON CONFLICT DO NOTHING`, [chart])
     await admin.query(`INSERT INTO asset_registry(asset_id,layer,sort_order,sanskrit_name,english_name,english_description,storage_type,target_table,scope,depends_on,catalog_status)
       VALUES('ga_positions','ganita',1,'ga','ga','fixture','postgres_table','chart_facts','per_chart',ARRAY[]::text[],'CURRENT'),
-            ('bo_test','bodha',2,'bo','bo','fixture','postgres_table','bodha_msr_signals','per_chart',ARRAY['ga_positions'],'CURRENT')
+            ('bo_laksana','bodha',2,'bo','bo','fixture','postgres_table','bodha_msr_signals','per_chart',ARRAY['ga_positions'],'CURRENT')
       ON CONFLICT(asset_id) DO UPDATE SET depends_on=EXCLUDED.depends_on`)
+    await admin.query(`UPDATE asset_registry SET target_floor=1 WHERE asset_id='ga_positions'`)
+  })
+
+  it('rejects protected L1/L2 mutations when no lifecycle context was admitted', async () => {
+    await expect(builder.query(
+      `INSERT INTO chart_facts(fact_id,chart_id,fact_category,fact_subject,fact_key) VALUES($1,$2,'fixture','fixture','fixture')`,
+      [randomUUID(), chart],
+    )).rejects.toThrow(/no admitted transaction context/)
+    await expect(builder.query(
+      `INSERT INTO bodha_msr_signals(signal_id,chart_id) VALUES($1,$2)`, [randomUUID(), chart],
+    )).rejects.toThrow(/no admitted transaction context/)
+  })
+
+  it('rejects an undeclared empty L1 head and rolls the receipt back atomically', async () => {
+    const generation = randomUUID()
+    const client = await builder.connect()
+    try {
+      await client.query('BEGIN')
+      await client.query(`INSERT INTO build_runs(id,chart_id,scope,action,state,plan,triggered_by) VALUES($1,$2,'asset','build','running','{}','test')`, [generation, chart])
+      await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'ga_positions',1,'building')`, [generation])
+      for (const [key, value] of Object.entries({
+        'madhav.l1_asset_id': 'ga_positions', 'madhav.l1_chart_id': chart,
+        'madhav.l1_generation_id': generation, 'madhav.l1_partition_key': 'empty',
+        'madhav.l1_contract_version': 'l1.data-plane.contract.1.0',
+      })) await client.query('SELECT set_config($1,$2,true)', [key, value])
+      await client.query(`SELECT open_l1_data_plane_generation($1,'ga_positions',$2,'empty',1,NULL,'l1.data-plane.contract.1.0','l0.semantic.2026-09-13.1','665096a74a59ea7e0e50ce98fc685899b89f325aca0d91c214f0040e4d259dd1','l0-resource-config-g1','d516aecff9d4e05d929dc7fd71a113fd5c53d1f6ea1eb2582caafd3a339c279a')`, [chart, generation])
+      await expect(client.query(`SELECT complete_l1_data_plane_partition($1,'ga_positions',$2,'empty',0)`, [chart, generation])).rejects.toThrow(/undeclared empty/)
+      await client.query('ROLLBACK')
+      expect((await verifier.query(`SELECT count(*)::int AS n FROM l1_data_plane_generations WHERE generation_id=$1`, [generation])).rows[0].n).toBe(0)
+    } finally { client.release() }
   })
 
   it('opens, populates, captures, completes, replays, selects and rolls back L1', async () => {
@@ -86,14 +116,14 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
       await client.query(`UPDATE build_run_assets SET state='complete' WHERE run_id=$1`, [l1Build])
       await client.query(`UPDATE build_runs SET state='completed' WHERE id=$1`, [l1Build])
       await client.query(`INSERT INTO build_runs(id,chart_id,scope,action,state,plan,triggered_by) VALUES($1,$2,'asset','build','running','{}','test')`, [build, chart])
-      await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'bo_test',1,'building')`, [build])
+      await client.query(`INSERT INTO build_run_assets(run_id,asset_id,position,state) VALUES($1,'bo_laksana',1,'building')`, [build])
       for (const [key, value] of Object.entries({
-        'madhav.l2_asset_id': 'bo_test', 'madhav.l2_chart_id': chart,
+        'madhav.l2_asset_id': 'bo_laksana', 'madhav.l2_chart_id': chart,
         'madhav.l2_generation_id': 'l2-fixture-generation', 'madhav.l2_partition_key': 'ayanamsha:lahiri',
         'madhav.l2_build_id': build, 'madhav.l2_contract_version': 'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0',
       })) await client.query('SELECT set_config($1,$2,true)', [key, value])
       await client.query('SELECT bind_l2_exact_inputs($1,$2)', [chart, JSON.stringify(vector)])
-      await client.query(`SELECT open_l2_data_plane_generation($1,'bo_test','l2-fixture-generation','ayanamsha:lahiri',1,$2,NULL,
+      await client.query(`SELECT open_l2_data_plane_generation($1,'bo_laksana','l2-fixture-generation','ayanamsha:lahiri',1,$2,NULL,
         'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0',$3,$4,$5,'data_plane_builder')`,
       [chart, build, '1'.repeat(64), context, JSON.stringify(vector)])
       await client.query(`INSERT INTO public.bodha_msr_signals(signal_id,chart_id,ayanamsha_id,build_id,signal_type_id,signal_type_class,
@@ -102,12 +132,12 @@ describe.skipIf(!adminUrl)('DP-SD-018 direct restricted logins — disposable Po
         verification_pass_status,citation_ref,citation_human,computed_at,engine_version)
         VALUES($1,$2,'lahiri',$3,'fixture','fixture','fixture','fixture','ga_positions','fixture','{}',ARRAY['fixture'],1,1,1,
         'fixture',ARRAY['fixture'],'{}','fixture','single','fixture','fixture',now(),'fixture')`, [randomUUID(), chart, build])
-      await client.query(`SELECT complete_l2_data_plane_partition($1,'bo_test','l2-fixture-generation','ayanamsha:lahiri',$2,1,0,0)`, [chart, build])
+      await client.query(`SELECT complete_l2_data_plane_partition($1,'bo_laksana','l2-fixture-generation','ayanamsha:lahiri',$2,1,0,0)`, [chart, build])
       await client.query(`UPDATE build_run_assets SET state='complete' WHERE run_id=$1`, [build])
       await client.query(`UPDATE build_runs SET state='completed' WHERE id=$1`, [build])
       await client.query('COMMIT')
-      expect((await verifier.query(`SELECT count(*)::int AS n FROM select_l2_data_plane_generation($1,'bo_test','l2-fixture-generation')`, [chart])).rows[0].n).toBe(1)
-      await expect(migrator.query(`SELECT rollback_l2_data_plane_generation($1,'bo_test','l2-fixture-generation')`, [chart])).resolves.toBeDefined()
+      expect((await verifier.query(`SELECT count(*)::int AS n FROM select_l2_data_plane_generation($1,'bo_laksana','l2-fixture-generation')`, [chart])).rows[0].n).toBe(1)
+      await expect(migrator.query(`SELECT rollback_l2_data_plane_generation($1,'bo_laksana','l2-fixture-generation')`, [chart])).resolves.toBeDefined()
     } finally { client.release() }
   })
 

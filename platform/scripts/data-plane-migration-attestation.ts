@@ -32,15 +32,20 @@ export async function attestDataPlaneMigrations(databaseUrl = process.env.DATA_P
     if (actor.rows[0]?.session_user !== 'data_plane_migrator' || actor.rows[0]?.current_user !== 'data_plane_migrator') {
       throw new Error('Protected migrations require direct data_plane_migrator authentication.')
     }
-    const rows = await client.query<{ filename: string; sha256: string }>(
-      'SELECT filename, sha256 FROM public._migrations_applied WHERE filename=ANY($1::text[])',
+    const rows = await client.query<{ filename: string; sha256: string | null; sql_identity: string | null; copies: string }>(
+      `SELECT filename, min(sha256) AS sha256, min(sql_identity) AS sql_identity,
+              count(*)::text AS copies
+       FROM public._migrations_applied WHERE filename=ANY($1::text[])
+       GROUP BY filename`,
       [migrations.map((m) => m.filename)],
     )
     if (rows.rowCount !== 0 && rows.rowCount !== migrations.length) throw new Error('Partial protected migration marker state; manual DBA recovery required.')
     if (rows.rowCount === migrations.length) {
       for (const migration of migrations) {
-        if (rows.rows.find((row) => row.filename === migration.filename)?.sha256 !== migration.sha256) {
-          throw new Error(`${migration.filename} is recorded with a different digest.`)
+        const row = rows.rows.find((candidate) => candidate.filename === migration.filename)
+        if (!row || row.copies !== '1' || !row.sha256 || !row.sql_identity
+            || row.sha256 !== migration.sha256 || row.sql_identity !== migration.identity) {
+          throw new Error(`${migration.filename} has a missing, duplicate, or mismatched protected identity.`)
         }
       }
       await readDataPlaneOwnershipStatus(databaseUrl)

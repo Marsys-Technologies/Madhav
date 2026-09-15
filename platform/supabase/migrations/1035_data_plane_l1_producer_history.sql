@@ -757,11 +757,6 @@ DECLARE
   v_epistemic TEXT;
   v_yoga_rule JSONB;
 BEGIN
-  -- Compatibility: direct legacy SQL/CLI paths remain usable but do not claim
-  -- a governed runtime generation unless the adapter opened one explicitly.
-  IF v_asset IS NULL OR v_asset = '' THEN
-    RETURN NEW;
-  END IF;
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'L1 governed capture requires direct data_plane_builder authentication';
   END IF;
@@ -1320,6 +1315,7 @@ SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_existing_rows INTEGER;
+  v_observed_rows INTEGER;
   v_completed INTEGER;
   v_expected INTEGER;
   v_declared INTEGER;
@@ -1359,6 +1355,38 @@ BEGIN
     PERFORM public.capture_l1_data_plane_dasha_partition(
       p_chart_id, p_generation_id, p_partition_key, p_rows_inserted
     );
+  END IF;
+  IF p_asset_id = 'ga_dashas' AND p_partition_key <> '__concurrency_post_pass__' THEN
+    SELECT count(*) INTO v_observed_rows
+    FROM (
+      SELECT DISTINCT ON ((s.source_row).dasha_row_id) (s.source_row).dasha_row_id
+      FROM public.l1_data_plane_dasha_snapshots s
+      WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
+        AND s.generation_id = p_generation_id
+        AND s.partition_key = p_partition_key
+      ORDER BY (s.source_row).dasha_row_id, s.captured_at DESC, s.dasha_snapshot_id DESC
+    ) captured;
+  ELSE
+    SELECT count(*) INTO v_observed_rows
+    FROM (
+      SELECT DISTINCT ON (s.source_table, s.row_identity)
+        s.source_table, s.row_identity
+      FROM public.l1_data_plane_row_snapshots s
+      WHERE s.chart_id = p_chart_id AND s.asset_id = p_asset_id
+        AND s.generation_id = p_generation_id
+        AND s.partition_key = p_partition_key
+      ORDER BY s.source_table, s.row_identity, s.captured_at DESC, s.snapshot_id DESC
+    ) captured;
+  END IF;
+  IF v_observed_rows <> p_rows_inserted THEN
+    RAISE EXCEPTION 'L1 partition % reported % rows but protected capture contains %',
+      p_partition_key, p_rows_inserted, v_observed_rows;
+  END IF;
+  IF v_observed_rows = 0 AND NOT EXISTS (
+    SELECT 1 FROM public.asset_registry
+    WHERE asset_id = p_asset_id AND target_floor = 0
+  ) THEN
+    RAISE EXCEPTION 'L1 partition % has undeclared empty output', p_partition_key;
   END IF;
   INSERT INTO public.l1_data_plane_generation_partitions (
     chart_id, asset_id, generation_id, partition_key, rows_inserted
@@ -1663,10 +1691,155 @@ JOIN public.l1_data_plane_configuration_snapshots c
 ORDER BY c.chart_id, c.asset_id, c.configuration_id, c.source_rule_id,
          c.captured_at DESC, c.configuration_snapshot_id DESC;
 
+-- Every mutation is admitted before it touches an active producer table.  The
+-- capture trigger then records INSERT/UPDATE output.  DELETE remains allowed
+-- only inside the same opened chart/asset/generation/partition transaction;
+-- the builder has neither TRUNCATE nor trigger-disable authority.
+CREATE OR REPLACE FUNCTION public.authorize_l1_chart_facts_delete(
+  p_chart_id uuid,
+  p_fact_categories text[],
+  p_ayanamsha_ids text[] DEFAULT NULL,
+  p_fact_category_patterns text[] DEFAULT NULL
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  v_asset text := current_setting('madhav.l1_asset_id', true);
+  v_generation text := current_setting('madhav.l1_generation_id', true);
+  v_partition text := current_setting('madhav.l1_partition_key', true);
+BEGIN
+  IF session_user<>'data_plane_builder'
+     OR (COALESCE(cardinality(p_fact_categories),0)=0 AND COALESCE(cardinality(p_fact_category_patterns),0)=0)
+     OR current_setting('madhav.l1_chart_id',true) IS DISTINCT FROM p_chart_id::text
+     OR NOT EXISTS (
+       SELECT 1 FROM public.l1_data_plane_partition_contexts p
+       JOIN public.l1_data_plane_generations g USING(chart_id,asset_id,generation_id)
+       WHERE p.chart_id=p_chart_id AND p.asset_id=v_asset
+         AND p.generation_id=v_generation AND p.partition_key=v_partition
+         AND g.status='building'
+     ) THEN
+    RAISE EXCEPTION 'L1 chart_facts deletion authorization is outside admitted context';
+  END IF;
+  DROP TABLE IF EXISTS pg_temp.l1_data_plane_chart_facts_delete_receipt;
+  CREATE TEMP TABLE l1_data_plane_chart_facts_delete_receipt (
+    chart_id uuid NOT NULL,
+    fact_id text PRIMARY KEY
+  ) ON COMMIT DROP;
+  INSERT INTO pg_temp.l1_data_plane_chart_facts_delete_receipt(chart_id,fact_id)
+  SELECT cf.chart_id,cf.fact_id::text FROM public.chart_facts cf
+  WHERE cf.chart_id=p_chart_id
+    AND (cf.fact_category=ANY(COALESCE(p_fact_categories,ARRAY[]::text[]))
+      OR EXISTS (SELECT 1 FROM unnest(COALESCE(p_fact_category_patterns,ARRAY[]::text[])) pattern
+                 WHERE cf.fact_category LIKE pattern))
+    AND (p_ayanamsha_ids IS NULL OR cf.ayanamsha_id=ANY(p_ayanamsha_ids));
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.l1_data_plane_guard_active_mutation()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  v_asset text := current_setting('madhav.l1_asset_id', true);
+  v_chart text := current_setting('madhav.l1_chart_id', true);
+  v_generation text := current_setting('madhav.l1_generation_id', true);
+  v_partition text := current_setting('madhav.l1_partition_key', true);
+  v_row jsonb := CASE WHEN TG_OP = 'DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+  v_expected_asset text;
+BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'protected L1 % requires direct data_plane_builder authentication', TG_OP;
+  END IF;
+  IF v_asset IS NULL OR v_asset = '' OR v_chart IS NULL OR v_generation IS NULL OR v_partition IS NULL THEN
+    RAISE EXCEPTION 'protected L1 % has no admitted transaction context', TG_OP;
+  END IF;
+  IF COALESCE(v_row->>'chart_id', '') <> v_chart THEN
+    RAISE EXCEPTION 'protected L1 % row chart does not match admitted chart', TG_OP;
+  END IF;
+  SELECT CASE TG_TABLE_NAME
+    WHEN 'chart_dashas' THEN 'ga_dashas'
+    WHEN 'chart_divisionals' THEN 'ga_vargas'
+    WHEN 'ga_condition_composite' THEN 'ga_condition'
+    WHEN 'ga_yoga_firings' THEN 'ga_yoga'
+    WHEN 'chart_vichara' THEN 'ga_vichara'
+    WHEN 'ga_transit_anchors' THEN 'ga_transit_anchors'
+    WHEN 'l1_tajik_varsha_year_lords' THEN 'ga_tajaka'
+    WHEN 'ga_medical' THEN 'ga_medical'
+    WHEN 'ga_vastu_planet_direction_map' THEN 'ga_vastu'
+    WHEN 'ga_prashna_lagna' THEN 'ga_prashna'
+    WHEN 'ga_prashna_judgment' THEN 'ga_prashna'
+    ELSE NULL END INTO v_expected_asset;
+  IF TG_TABLE_NAME = 'chart_facts' THEN
+    IF v_asset NOT IN (
+      'ga_positions','ga_dashas','ga_nakshatra','ga_panchanga','ga_sensitive',
+      'ga_sensitive_degree','ga_strength','ga_structural','ga_condition',
+      'ga_sade_sati','ga_ayurdaya'
+    ) OR EXISTS (
+      SELECT 1 FROM public.fact_category_ownership fco
+      WHERE fco.fact_category = v_row->>'fact_category'
+        AND fco.owning_asset_id <> v_asset
+    ) THEN
+      RAISE EXCEPTION 'L1 asset % cannot mutate chart_facts category %',
+        v_asset, v_row->>'fact_category';
+    END IF;
+    IF TG_OP='DELETE' AND NOT (
+      EXISTS (
+        SELECT 1 FROM pg_class c
+        WHERE c.oid=to_regclass('pg_temp.l1_data_plane_chart_facts_delete_receipt')
+          AND pg_get_userbyid(c.relowner)=current_user
+      ) AND EXISTS (
+        SELECT 1 FROM pg_temp.l1_data_plane_chart_facts_delete_receipt r
+        WHERE r.chart_id=v_chart::uuid AND r.fact_id=v_row->>'fact_id'
+      )
+    ) THEN
+      RAISE EXCEPTION 'L1 chart_facts deletion lacks an exact protected-owner scope receipt';
+    END IF;
+  ELSIF v_expected_asset IS DISTINCT FROM v_asset THEN
+    RAISE EXCEPTION 'L1 asset % cannot mutate protected table %', v_asset, TG_TABLE_NAME;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.l1_data_plane_partition_contexts p
+    JOIN public.l1_data_plane_generations g USING (chart_id, asset_id, generation_id)
+    JOIN public.build_runs br ON br.id = v_generation::uuid AND br.chart_id = p.chart_id
+    JOIN public.build_run_assets bra ON bra.run_id = br.id AND bra.asset_id = p.asset_id
+    WHERE p.chart_id = v_chart::uuid AND p.asset_id = v_asset
+      AND p.generation_id = v_generation AND p.partition_key = v_partition
+      AND g.status = 'building' AND br.state = 'running' AND bra.state = 'building'
+  ) THEN
+    RAISE EXCEPTION 'protected L1 % is outside an active admitted generation', TG_OP;
+  END IF;
+  RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.l1_data_plane_install_active_guards(
+  p_table text,
+  p_capture_args text[] DEFAULT NULL
+) RETURNS void
+LANGUAGE plpgsql
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE v_args text;
+BEGIN
+  EXECUTE format('DROP TRIGGER IF EXISTS l1_data_plane_mutation_guard ON public.%I', p_table);
+  EXECUTE format('CREATE TRIGGER l1_data_plane_mutation_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_guard_active_mutation()', p_table);
+  IF p_capture_args IS NOT NULL THEN
+    SELECT string_agg(quote_literal(value), ',') INTO v_args FROM unnest(p_capture_args) value;
+    EXECUTE format('DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.%I', p_table);
+    EXECUTE format('CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.%I FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(%s)', p_table, v_args);
+  END IF;
+END;
+$$;
+
 -- One trigger per active output table. The transaction-local asset id keeps
 -- shared chart_facts rows owned by the writer that emitted them.
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_facts;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.chart_facts
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_facts
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row('fact_id');
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_dashas;
@@ -1674,62 +1847,130 @@ DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_dashas;
 -- set-based capture per dasha partition so COPY retains its bulk behavior.
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_divisionals;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.chart_divisionals
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_divisionals
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','graha','ayanamsha_id','varga','fact_category','fact_key'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_condition_composite;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_condition_composite
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_condition_composite
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','graha'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_yoga_firings;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_yoga_firings
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_yoga_firings
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','yoga_canonical_id'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.chart_vichara;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.chart_vichara
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.chart_vichara
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','vichara_family','subject','target','domain','varga_id','formula_version'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_transit_anchors;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_transit_anchors
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_transit_anchors
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','graha'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.l1_tajik_varsha_year_lords;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.l1_tajik_varsha_year_lords
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.l1_tajik_varsha_year_lords
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row('varsha_id');
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_medical;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_medical
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_medical
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','graha'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_vastu_planet_direction_map;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_vastu_planet_direction_map
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_vastu_planet_direction_map
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','graha'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_prashna_lagna;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_prashna_lagna
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_prashna_lagna
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id','lagna_method'
 );
 
 DROP TRIGGER IF EXISTS l1_data_plane_capture ON public.ga_prashna_judgment;
-CREATE TRIGGER l1_data_plane_capture AFTER INSERT ON public.ga_prashna_judgment
+CREATE TRIGGER l1_data_plane_capture AFTER INSERT OR UPDATE ON public.ga_prashna_judgment
 FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_capture_row(
   'chart_id','ayanamsha_id'
 );
+
+SELECT public.l1_data_plane_install_active_guards('chart_facts');
+SELECT public.l1_data_plane_install_active_guards('chart_dashas');
+SELECT public.l1_data_plane_install_active_guards('chart_divisionals');
+SELECT public.l1_data_plane_install_active_guards('ga_condition_composite');
+SELECT public.l1_data_plane_install_active_guards('ga_yoga_firings');
+SELECT public.l1_data_plane_install_active_guards('chart_vichara');
+SELECT public.l1_data_plane_install_active_guards('ga_transit_anchors');
+SELECT public.l1_data_plane_install_active_guards('l1_tajik_varsha_year_lords');
+SELECT public.l1_data_plane_install_active_guards('ga_medical');
+SELECT public.l1_data_plane_install_active_guards('ga_vastu_planet_direction_map');
+SELECT public.l1_data_plane_install_active_guards('ga_prashna_lagna');
+SELECT public.l1_data_plane_install_active_guards('ga_prashna_judgment');
+
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_function_attestations (
+  function_signature text PRIMARY KEY,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  owner_name text NOT NULL,
+  security_definer boolean NOT NULL,
+  config text[]
+);
+INSERT INTO public.l1_data_plane_function_attestations(function_signature, definition_digest, owner_name, security_definer, config)
+SELECT p.oid::regprocedure::text,
+       encode(digest(pg_get_functiondef(p.oid), 'sha256'), 'hex'),
+       pg_get_userbyid(p.proowner),p.prosecdef,p.proconfig
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND p.proname LIKE 'l1_data_plane_%'
+   OR (n.nspname='public' AND p.proname IN (
+     'open_l1_data_plane_generation','capture_l1_data_plane_dasha_partition',
+     'authorize_l1_chart_facts_delete',
+     'complete_l1_data_plane_partition','select_l1_data_plane_generation',
+     'rollback_l1_data_plane_generation'
+   ))
+ON CONFLICT (function_signature) DO UPDATE
+SET definition_digest=EXCLUDED.definition_digest,owner_name=EXCLUDED.owner_name,
+    security_definer=EXCLUDED.security_definer,config=EXCLUDED.config;
+DROP TRIGGER IF EXISTS l1_data_plane_function_attestations_immutable
+  ON public.l1_data_plane_function_attestations;
+CREATE TRIGGER l1_data_plane_function_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_function_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
+
+CREATE TABLE IF NOT EXISTS public.l1_data_plane_policy_attestations (
+  table_name text NOT NULL,
+  policy_name text NOT NULL,
+  command text NOT NULL,
+  permissive boolean NOT NULL,
+  role_oids oid[] NOT NULL,
+  using_expression text,
+  check_expression text,
+  PRIMARY KEY(table_name, policy_name)
+);
+INSERT INTO public.l1_data_plane_policy_attestations
+SELECT c.relname,p.polname,p.polcmd,p.polpermissive,p.polroles,
+       pg_get_expr(p.polqual,p.polrelid),pg_get_expr(p.polwithcheck,p.polrelid)
+FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN (
+  'chart_facts','chart_dashas','chart_divisionals','ga_condition_composite',
+  'ga_yoga_firings','chart_vichara','ga_transit_anchors','l1_tajik_varsha_year_lords',
+  'ga_medical','ga_vastu_planet_direction_map','ga_prashna_lagna','ga_prashna_judgment'
+) ON CONFLICT (table_name,policy_name) DO UPDATE SET
+  command=EXCLUDED.command,permissive=EXCLUDED.permissive,role_oids=EXCLUDED.role_oids,
+  using_expression=EXCLUDED.using_expression,check_expression=EXCLUDED.check_expression;
+DROP TRIGGER IF EXISTS l1_data_plane_policy_attestations_immutable ON public.l1_data_plane_policy_attestations;
+CREATE TRIGGER l1_data_plane_policy_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l1_data_plane_policy_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l1_data_plane_reject_immutable_change();
 
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l1_owner.
@@ -1760,6 +2001,8 @@ REVOKE ALL ON TABLE
   public.l1_data_plane_fact_snapshots,
   public.l1_data_plane_dasha_snapshots,
   public.l1_data_plane_configuration_snapshots,
+  public.l1_data_plane_function_attestations,
+  public.l1_data_plane_policy_attestations,
   public.l1_data_plane_generation_heads,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
@@ -1777,6 +2020,8 @@ GRANT SELECT ON TABLE
   public.l1_data_plane_fact_snapshots,
   public.l1_data_plane_dasha_snapshots,
   public.l1_data_plane_configuration_snapshots,
+  public.l1_data_plane_function_attestations,
+  public.l1_data_plane_policy_attestations,
   public.l1_data_plane_current_rows,
   public.l1_data_plane_current_dashas,
   public.l1_data_plane_current_facts,
@@ -1800,6 +2045,7 @@ BEGIN
         p.proname LIKE 'l1_data_plane_%'
         OR p.proname IN (
           'open_l1_data_plane_generation',
+          'authorize_l1_chart_facts_delete',
           'capture_l1_data_plane_dasha_partition',
           'complete_l1_data_plane_partition',
           'select_l1_data_plane_generation',
@@ -1818,6 +2064,9 @@ $l1_function_acl$;
 
 GRANT EXECUTE ON FUNCTION public.open_l1_data_plane_generation(
   UUID, TEXT, TEXT, TEXT, INTEGER, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT
+) TO data_plane_builder;
+GRANT EXECUTE ON FUNCTION public.authorize_l1_chart_facts_delete(
+  UUID, TEXT[], TEXT[], TEXT[]
 ) TO data_plane_builder;
 GRANT EXECUTE ON FUNCTION public.capture_l1_data_plane_dasha_partition(
   UUID, TEXT, TEXT, INTEGER

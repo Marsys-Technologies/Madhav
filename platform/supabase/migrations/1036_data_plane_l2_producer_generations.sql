@@ -188,6 +188,21 @@ CREATE TABLE IF NOT EXISTS public.l2_data_plane_run_intents (
     ) ON DELETE RESTRICT
 );
 
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_input_bind_receipts (
+  chart_id uuid NOT NULL,
+  asset_id text NOT NULL,
+  generation_id text NOT NULL,
+  partition_key text NOT NULL,
+  build_id text NOT NULL,
+  dependency_vector_digest text NOT NULL CHECK (dependency_vector_digest ~ '^[0-9a-f]{64}$'),
+  bound_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+  PRIMARY KEY (chart_id, asset_id, generation_id, partition_key, build_id),
+  FOREIGN KEY (chart_id, asset_id, generation_id, partition_key, build_id)
+    REFERENCES public.l2_data_plane_run_intents(
+      chart_id, asset_id, generation_id, partition_key, build_id
+    ) ON DELETE RESTRICT
+);
+
 CREATE TABLE IF NOT EXISTS public.l2_data_plane_row_snapshots (
   snapshot_id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   chart_id                    uuid NOT NULL,
@@ -403,6 +418,12 @@ DROP TRIGGER IF EXISTS l2_data_plane_run_intents_immutable
   ON public.l2_data_plane_run_intents;
 CREATE TRIGGER l2_data_plane_run_intents_immutable
 BEFORE UPDATE OR DELETE ON public.l2_data_plane_run_intents
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
+DROP TRIGGER IF EXISTS l2_data_plane_bind_receipts_immutable
+  ON public.l2_data_plane_input_bind_receipts;
+CREATE TRIGGER l2_data_plane_bind_receipts_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_input_bind_receipts
 FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
 
 DROP TRIGGER IF EXISTS l2_data_plane_snapshots_immutable
@@ -633,6 +654,9 @@ DECLARE
   v_fk record;
   v_exists boolean;
 BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L2 MSR delete authorization requires direct data_plane_builder authentication';
+  END IF;
   -- Parent FOR UPDATE conflicts with the KEY SHARE lock acquired by a foreign-
   -- key insert. Holding the exact replacement scope through the later DELETE
   -- closes the check/delete race for CASCADE, SET NULL and future FK actions.
@@ -686,6 +710,18 @@ BEGIN
         v_fk.schema_name, v_fk.table_name;
     END IF;
   END LOOP;
+  DROP TABLE IF EXISTS pg_temp.l2_data_plane_msr_delete_receipt;
+  CREATE TEMP TABLE l2_data_plane_msr_delete_receipt (
+    chart_id uuid NOT NULL,
+    signal_id uuid PRIMARY KEY
+  ) ON COMMIT DROP;
+  INSERT INTO pg_temp.l2_data_plane_msr_delete_receipt(chart_id, signal_id)
+  SELECT s.chart_id, s.signal_id
+  FROM public.bodha_msr_signals s
+  WHERE s.chart_id = p_chart_id
+    AND (p_ayanamsha_ids IS NULL OR s.ayanamsha_id = ANY(p_ayanamsha_ids))
+    AND (p_signal_type_ids IS NULL OR s.signal_type_id = ANY(p_signal_type_ids))
+    AND (p_signal_type_classes IS NULL OR s.signal_type_class = ANY(p_signal_type_classes));
 END;
 $$;
 
@@ -704,7 +740,43 @@ SET search_path = pg_catalog, public, pg_temp
 AS $$
 DECLARE
   v_table text;
+  v_vector_digest text;
 BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'L2 input binding requires direct data_plane_builder authentication';
+  END IF;
+  IF jsonb_typeof(p_dependency_vector) <> 'array'
+     OR jsonb_array_length(p_dependency_vector) = 0
+     OR EXISTS (
+       SELECT 1 FROM jsonb_array_elements(p_dependency_vector) d
+       GROUP BY d->>'layer', d->>'asset_id'
+       HAVING count(*) <> 1
+     ) THEN
+    RAISE EXCEPTION 'L2 input binding requires a non-empty unique dependency vector';
+  END IF;
+  IF (SELECT count(*) FROM jsonb_array_elements(p_dependency_vector)) <>
+     (SELECT count(*) FROM jsonb_array_elements(p_dependency_vector) d
+       WHERE EXISTS (
+         SELECT 1 FROM public.l1_data_plane_generation_heads h
+         WHERE d->>'layer'='L1' AND h.chart_id=p_chart_id
+           AND h.asset_id=d->>'asset_id' AND h.current_generation_id=d->>'generation_id'
+       ) OR EXISTS (
+         SELECT 1 FROM public.l2_data_plane_generation_heads h
+         WHERE d->>'layer'='L2' AND h.chart_id=p_chart_id
+           AND h.asset_id=d->>'asset_id' AND h.current_generation_id=d->>'generation_id'
+       )) THEN
+    RAISE EXCEPTION 'L2 input vector does not match every selected protected head';
+  END IF;
+  PERFORM 1 FROM public.l1_data_plane_generation_heads h
+    JOIN jsonb_array_elements(p_dependency_vector) d
+      ON d->>'layer'='L1' AND d->>'asset_id'=h.asset_id
+     AND d->>'generation_id'=h.current_generation_id
+    WHERE h.chart_id=p_chart_id FOR SHARE OF h;
+  PERFORM 1 FROM public.l2_data_plane_generation_heads h
+    JOIN jsonb_array_elements(p_dependency_vector) d
+      ON d->>'layer'='L2' AND d->>'asset_id'=h.asset_id
+     AND d->>'generation_id'=h.current_generation_id
+    WHERE h.chart_id=p_chart_id FOR SHARE OF h;
   FOR v_table IN
     SELECT DISTINCT c.relname
     FROM pg_trigger t
@@ -754,7 +826,7 @@ BEGIN
     ORDER BY source_table
   LOOP
     IF to_regclass('public.' || v_table) IS NULL THEN
-      CONTINUE;
+      RAISE EXCEPTION 'protected L2 input relation public.% is absent', v_table;
     END IF;
     EXECUTE format('DROP TABLE IF EXISTS pg_temp.%I', v_table);
     EXECUTE format(
@@ -774,6 +846,16 @@ BEGIN
       v_table, v_table, p_dependency_vector::text, p_chart_id::text, v_table
     );
   END LOOP;
+  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');
+  DROP TABLE IF EXISTS pg_temp.l2_data_plane_bind_receipt;
+  CREATE TEMP TABLE l2_data_plane_bind_receipt (
+    chart_id uuid PRIMARY KEY,
+    dependency_vector_digest text NOT NULL,
+    manifest_count integer NOT NULL
+  ) ON COMMIT DROP;
+  INSERT INTO pg_temp.l2_data_plane_bind_receipt
+  SELECT p_chart_id, v_vector_digest,
+         (SELECT count(DISTINCT source_table) FROM public.l2_data_plane_asset_outputs);
 END;
 $$;
 
@@ -801,6 +883,8 @@ DECLARE
   v_digest text;
   v_generation_context jsonb;
   v_declared integer;
+  v_vector_digest text;
+  v_receipt_owner text;
 BEGIN
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'L2 generation open requires direct data_plane_builder authentication';
@@ -836,6 +920,20 @@ BEGIN
   IF p_contract_version <> 'MADHAV_DATA_PLANE_L2_BODHA_CONTRACT/2.0'
      OR p_source_digest !~ '^[0-9a-f]{64}$' THEN
     RAISE EXCEPTION 'invalid L2 producer contract or source digest';
+  END IF;
+  v_vector_digest := encode(digest(p_dependency_vector::text, 'sha256'), 'hex');
+  IF to_regclass('pg_temp.l2_data_plane_bind_receipt') IS NULL THEN
+    RAISE EXCEPTION 'L2 generation open requires an exact-input bind receipt';
+  END IF;
+  SELECT pg_get_userbyid(relowner) INTO v_receipt_owner
+  FROM pg_class WHERE oid = to_regclass('pg_temp.l2_data_plane_bind_receipt');
+  IF v_receipt_owner <> current_user OR NOT EXISTS (
+    SELECT 1 FROM pg_temp.l2_data_plane_bind_receipt
+    WHERE chart_id = p_chart_id
+      AND dependency_vector_digest = v_vector_digest
+      AND manifest_count = (SELECT count(DISTINCT source_table) FROM public.l2_data_plane_asset_outputs)
+  ) THEN
+    RAISE EXCEPTION 'L2 exact-input bind receipt is missing, forged, or mismatched';
   END IF;
   IF p_calculation_context->>'chart_id' IS DISTINCT FROM p_chart_id::text
      OR p_calculation_context->>'generation_context_id' IS NULL
@@ -990,6 +1088,21 @@ BEGIN
   ) VALUES (
     p_chart_id, p_asset_id, p_generation_id, p_partition_key, p_build_id
   ) ON CONFLICT DO NOTHING;
+  INSERT INTO public.l2_data_plane_input_bind_receipts (
+    chart_id, asset_id, generation_id, partition_key, build_id,
+    dependency_vector_digest
+  ) VALUES (
+    p_chart_id, p_asset_id, p_generation_id, p_partition_key, p_build_id,
+    v_vector_digest
+  ) ON CONFLICT DO NOTHING;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l2_data_plane_input_bind_receipts
+    WHERE chart_id=p_chart_id AND asset_id=p_asset_id
+      AND generation_id=p_generation_id AND partition_key=p_partition_key
+      AND build_id=p_build_id AND dependency_vector_digest=v_vector_digest
+  ) THEN
+    RAISE EXCEPTION 'L2 generation was reopened with a different bind receipt';
+  END IF;
 END;
 $$;
 
@@ -1014,9 +1127,6 @@ DECLARE
   v_digest text;
   v_existing_digest text;
 BEGIN
-  IF v_asset IS NULL OR v_asset = '' THEN
-    RETURN NEW;
-  END IF;
   IF session_user <> 'data_plane_builder' THEN
     RAISE EXCEPTION 'L2 governed capture requires direct data_plane_builder authentication';
   END IF;
@@ -1201,6 +1311,16 @@ BEGIN
   WHERE chart_id = p_chart_id AND asset_id = p_asset_id
     AND generation_id = p_generation_id AND partition_key = p_partition_key
     AND build_id = p_build_id;
+  IF v_observed_row_count <> p_rows_inserted + p_rows_updated THEN
+    RAISE EXCEPTION 'L2 partition % reported % inserts + % updates but protected capture contains % rows',
+      p_partition_key, p_rows_inserted, p_rows_updated, v_observed_row_count;
+  END IF;
+  IF v_observed_row_count = 0 AND NOT EXISTS (
+    SELECT 1 FROM public.asset_registry
+    WHERE asset_id = p_asset_id AND target_floor = 0
+  ) THEN
+    RAISE EXCEPTION 'L2 partition % has undeclared empty output', p_partition_key;
+  END IF;
 
   INSERT INTO public.l2_data_plane_generation_partitions (
     chart_id, asset_id, generation_id, partition_key,
@@ -1384,6 +1504,86 @@ WHERE public.l2_data_plane_generation_is_compatible(
 ORDER BY s.chart_id, s.asset_id, s.source_table, s.row_identity,
          s.captured_at DESC, s.snapshot_id DESC;
 
+CREATE OR REPLACE FUNCTION public.l2_data_plane_guard_active_mutation()
+RETURNS trigger LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = pg_catalog, public, pg_temp
+AS $$
+DECLARE
+  v_asset text := current_setting('madhav.l2_asset_id', true);
+  v_chart text := current_setting('madhav.l2_chart_id', true);
+  v_generation text := current_setting('madhav.l2_generation_id', true);
+  v_partition text := current_setting('madhav.l2_partition_key', true);
+  v_build text := current_setting('madhav.l2_build_id', true);
+  v_row jsonb := CASE WHEN TG_OP='DELETE' THEN to_jsonb(OLD) ELSE to_jsonb(NEW) END;
+BEGIN
+  IF session_user <> 'data_plane_builder' THEN
+    RAISE EXCEPTION 'protected L2 % requires direct data_plane_builder authentication', TG_OP;
+  END IF;
+  IF v_asset IS NULL OR v_asset='' OR v_chart IS NULL OR v_generation IS NULL
+     OR v_partition IS NULL OR v_build IS NULL THEN
+    RAISE EXCEPTION 'protected L2 % has no admitted transaction context', TG_OP;
+  END IF;
+  IF COALESCE(v_row->>'chart_id','') <> v_chart THEN
+    RAISE EXCEPTION 'protected L2 % row chart does not match admitted chart', TG_OP;
+  END IF;
+  IF TG_OP='DELETE' AND TG_TABLE_NAME='bodha_msr_signals' AND NOT (
+    EXISTS (
+      SELECT 1 FROM pg_class c
+      WHERE c.oid=to_regclass('pg_temp.l2_data_plane_msr_delete_receipt')
+        AND pg_get_userbyid(c.relowner)=current_user
+    ) AND EXISTS (
+      SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
+      WHERE r.chart_id=v_chart::uuid AND r.signal_id=(v_row->>'signal_id')::uuid
+    )
+  ) THEN
+    RAISE EXCEPTION 'L2 MSR deletion lacks an exact protected-owner scope receipt';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.l2_data_plane_asset_outputs
+    WHERE asset_id=v_asset AND source_table=TG_TABLE_NAME
+  ) AND NOT (
+    TG_OP='DELETE'
+    AND TG_TABLE_NAME IN ('bodha_signal_embeddings','bodha_contradictions')
+    AND EXISTS (
+      SELECT 1 FROM pg_class c
+      WHERE c.oid=to_regclass('pg_temp.l2_data_plane_msr_delete_receipt')
+        AND pg_get_userbyid(c.relowner)=current_user
+    )
+    AND (
+      (TG_TABLE_NAME='bodha_signal_embeddings' AND EXISTS (
+        SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
+        WHERE r.chart_id=v_chart::uuid AND r.signal_id=(v_row->>'signal_id')::uuid
+      ))
+      OR
+      (TG_TABLE_NAME='bodha_contradictions' AND EXISTS (
+        SELECT 1 FROM pg_temp.l2_data_plane_msr_delete_receipt r
+        WHERE r.chart_id=v_chart::uuid
+          AND r.signal_id IN ((v_row->>'signal_a_id')::uuid,(v_row->>'signal_b_id')::uuid)
+      ))
+    )
+  ) THEN
+    RAISE EXCEPTION 'L2 asset % cannot mutate protected table %', v_asset, TG_TABLE_NAME;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM public.l2_data_plane_run_intents i
+    JOIN public.data_plane_l2_producer_generations g USING(chart_id,asset_id,generation_id)
+    JOIN public.build_runs br ON br.id=v_build::uuid AND br.chart_id=i.chart_id
+    JOIN public.build_run_assets bra ON bra.run_id=br.id AND bra.asset_id=i.asset_id
+    JOIN public.l2_data_plane_input_bind_receipts r
+      USING(chart_id,asset_id,generation_id,partition_key,build_id)
+    WHERE i.chart_id=v_chart::uuid AND i.asset_id=v_asset
+      AND i.generation_id=v_generation AND i.partition_key=v_partition
+      AND i.build_id=v_build AND g.state='building'
+      AND br.state='running' AND bra.state='building'
+  ) THEN
+    RAISE EXCEPTION 'protected L2 % is outside an active admitted generation', TG_OP;
+  END IF;
+  RETURN CASE WHEN TG_OP='DELETE' THEN OLD ELSE NEW END;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.l2_data_plane_install_capture_trigger(
   p_table text,
   p_identity_columns text[]
@@ -1397,6 +1597,12 @@ BEGIN
   SELECT string_agg(quote_literal(value), ',') INTO v_args
   FROM unnest(p_identity_columns) value;
   EXECUTE format('DROP TRIGGER IF EXISTS l2_data_plane_capture ON public.%I', p_table);
+  EXECUTE format('DROP TRIGGER IF EXISTS l2_data_plane_mutation_guard ON public.%I', p_table);
+  EXECUTE format(
+    'CREATE TRIGGER l2_data_plane_mutation_guard BEFORE INSERT OR UPDATE OR DELETE ON public.%I '
+    'FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_guard_active_mutation()',
+    p_table
+  );
   EXECUTE format(
     'CREATE TRIGGER l2_data_plane_capture AFTER INSERT OR UPDATE ON public.%I '
     'FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_capture_row(%s)',
@@ -1435,6 +1641,66 @@ SELECT public.l2_data_plane_install_capture_trigger('bodha_chart_gestalt', ARRAY
 SELECT public.l2_data_plane_install_capture_trigger('synthesis_quality_scorecard', ARRAY['scorecard_id']);
 SELECT public.l2_data_plane_install_capture_trigger('bodha_grounding_matches', ARRAY['match_id']);
 
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_function_attestations (
+  function_signature text PRIMARY KEY,
+  definition_digest text NOT NULL CHECK (definition_digest ~ '^[0-9a-f]{64}$'),
+  owner_name text NOT NULL,
+  security_definer boolean NOT NULL,
+  config text[]
+);
+INSERT INTO public.l2_data_plane_function_attestations(function_signature, definition_digest, owner_name, security_definer, config)
+SELECT p.oid::regprocedure::text,
+       encode(digest(pg_get_functiondef(p.oid), 'sha256'), 'hex'),
+       pg_get_userbyid(p.proowner),p.prosecdef,p.proconfig
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND (
+  p.proname LIKE 'l2_data_plane_%' OR p.proname IN (
+    'assert_l2_msr_delete_safe','bind_l2_exact_inputs',
+    'open_l2_data_plane_generation','complete_l2_data_plane_partition',
+    'select_l2_data_plane_generation','rollback_l2_data_plane_generation'
+  )
+)
+ON CONFLICT (function_signature) DO UPDATE
+SET definition_digest=EXCLUDED.definition_digest,owner_name=EXCLUDED.owner_name,
+    security_definer=EXCLUDED.security_definer,config=EXCLUDED.config;
+DROP TRIGGER IF EXISTS l2_data_plane_function_attestations_immutable
+  ON public.l2_data_plane_function_attestations;
+CREATE TRIGGER l2_data_plane_function_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_function_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
+CREATE TABLE IF NOT EXISTS public.l2_data_plane_policy_attestations (
+  table_name text NOT NULL,
+  policy_name text NOT NULL,
+  command text NOT NULL,
+  permissive boolean NOT NULL,
+  role_oids oid[] NOT NULL,
+  using_expression text,
+  check_expression text,
+  PRIMARY KEY(table_name, policy_name)
+);
+INSERT INTO public.l2_data_plane_policy_attestations
+SELECT c.relname,p.polname,p.polcmd,p.polpermissive,p.polroles,
+       pg_get_expr(p.polqual,p.polrelid),pg_get_expr(p.polwithcheck,p.polrelid)
+FROM pg_policy p JOIN pg_class c ON c.oid=p.polrelid
+JOIN pg_namespace n ON n.oid=c.relnamespace
+WHERE n.nspname='public' AND c.relname IN (
+  'bodha_msr_signals','bodha_cgm_nodes','bodha_cgm_edges','bodha_contradictions',
+  'bodha_cgm_paths','bodha_cgm_motifs','bodha_cgm_sub_graphs','bodha_cgm_chart_topology_summary',
+  'bodha_mechanisms','bodha_cdlm_cells','bodha_convergence','bodha_triangulation',
+  'bodha_cdlm_chart_summary','bodha_cdlm_domain_rollups','bodha_cdlm_pattern_clusters',
+  'bodha_pratijna','bodha_rm_resonances','bodha_rm_remedy_prescriptions',
+  'bodha_rm_dasha_windowed_prescriptions','bodha_rm_chart_summary','bodha_rm_dosha_remedy_bundles',
+  'bodha_rm_pattern_remedies','bodha_signal_embeddings','bodha_discoveries','bodha_anomalies',
+  'bodha_question_lenses','bodha_chart_gestalt','synthesis_quality_scorecard','bodha_grounding_matches'
+) ON CONFLICT (table_name,policy_name) DO UPDATE SET
+  command=EXCLUDED.command,permissive=EXCLUDED.permissive,role_oids=EXCLUDED.role_oids,
+  using_expression=EXCLUDED.using_expression,check_expression=EXCLUDED.check_expression;
+DROP TRIGGER IF EXISTS l2_data_plane_policy_attestations_immutable ON public.l2_data_plane_policy_attestations;
+CREATE TRIGGER l2_data_plane_policy_attestations_immutable
+BEFORE UPDATE OR DELETE ON public.l2_data_plane_policy_attestations
+FOR EACH ROW EXECUTE FUNCTION public.l2_data_plane_reject_immutable_change();
+
 -- DP-SD-018 protected-owner boundary. This file is applied only by the
 -- deployment-only attestation runner after SET LOCAL ROLE data_plane_l2_owner.
 DO $l2_role_preflight$
@@ -1463,9 +1729,12 @@ REVOKE ALL ON TABLE
   public.l2_data_plane_run_rows,
   public.l2_data_plane_partition_contexts,
   public.l2_data_plane_run_intents,
+  public.l2_data_plane_input_bind_receipts,
   public.l2_data_plane_row_snapshots,
   public.l2_data_plane_generation_heads,
   public.l2_data_plane_asset_outputs,
+  public.l2_data_plane_function_attestations,
+  public.l2_data_plane_policy_attestations,
   public.l2_data_plane_current_rows
 FROM PUBLIC, role_orchestrator, data_plane_builder, data_plane_verifier,
      data_plane_migrator, amjis_app;
@@ -1478,8 +1747,11 @@ GRANT SELECT ON TABLE
   public.l2_data_plane_generation_runs,
   public.l2_data_plane_partition_contexts,
   public.l2_data_plane_run_intents,
+  public.l2_data_plane_input_bind_receipts,
   public.l2_data_plane_row_snapshots,
   public.l2_data_plane_asset_outputs,
+  public.l2_data_plane_function_attestations,
+  public.l2_data_plane_policy_attestations,
   public.l2_data_plane_current_rows
 TO data_plane_builder, data_plane_verifier, data_plane_migrator, amjis_app;
 

@@ -1190,6 +1190,8 @@ def _insert_per_varga_avastha_rows(conn: Any, rows: list[dict]) -> None:
     ayanamshas = sorted({r["ayanamsha_id"] for r in rows})
     chart_ids  = sorted({r["chart_id"] for r in rows})
     for cid in chart_ids:
+        from ga_writers._idempotency import authorize_chart_fact_delete
+        authorize_chart_fact_delete(conn, cid, cats, ayanamshas)
         conn.execute(
             "DELETE FROM chart_facts WHERE chart_id = %s AND fact_category = ANY(%s) AND ayanamsha_id = ANY(%s)",
             [cid, cats, ayanamshas],

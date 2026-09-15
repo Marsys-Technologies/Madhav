@@ -85,6 +85,13 @@ async function assertRoles(client: PoolClient): Promise<void> {
           RAISE EXCEPTION 'login role % is not normalized', r;
         END IF;
       END LOOP;
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname LIKE 'data\\_plane\\_%' ESCAPE '\\'
+        AND rolname <> ALL(ARRAY[
+          'data_plane_migrator','data_plane_builder','data_plane_verifier',
+          'data_plane_schema_owner','data_plane_l1_owner','data_plane_l2_owner'
+        ])) THEN
+        RAISE EXCEPTION 'unknown data-plane principal collision';
+      END IF;
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='data_plane_schema_owner') THEN
         CREATE ROLE data_plane_schema_owner NOLOGIN NOINHERIT;
       END IF;
@@ -179,7 +186,7 @@ export async function runDataPlaneOwnershipPreflight(databaseUrl = process.env[A
     await client.query(`
       DO $$ BEGIN EXECUTE format('REVOKE CREATE ON DATABASE %I FROM amjis_app, data_plane_schema_owner', current_database()); END $$;
       SET LOCAL ROLE data_plane_schema_owner;
-      REVOKE CREATE ON SCHEMA public FROM PUBLIC, role_orchestrator, amjis_app, data_plane_builder, data_plane_verifier, data_plane_migrator;
+      REVOKE ALL ON SCHEMA public FROM PUBLIC, role_orchestrator, amjis_app, data_plane_builder, data_plane_verifier, data_plane_migrator, data_plane_l1_owner, data_plane_l2_owner;
       GRANT USAGE ON SCHEMA public TO data_plane_schema_owner, data_plane_l1_owner, data_plane_l2_owner, data_plane_migrator, data_plane_builder, data_plane_verifier, amjis_app;
       GRANT CREATE ON SCHEMA public TO data_plane_l1_owner, data_plane_l2_owner;
       RESET ROLE;
