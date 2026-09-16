@@ -17,7 +17,9 @@ The live deploy identity is `github-actions@madhav-astrology.iam.gserviceaccount
 binds it only to two exact `Marsys-Technologies/Madhav` OIDC subjects: protected `main` for routine
 deploy jobs, and the protected `data-plane-production-cutover` environment for its one-time
 bootstrap job. GitHub uses an environment subject in place of the ref subject when a job enters an
-environment, so both narrow bindings are required. The three runtime SAs are attached to the
+environment, so both narrow bindings are required. Its read-only Logging Viewer grant lets the
+cutover verifier bind a Cloud SQL restore operation to its exact backup through Admin Activity
+audit evidence; Cloud SQL's operation response omits that source-backup field. The three runtime SAs are attached to the
 corresponding Cloud Run revisions via `--service-account=`. The legacy builder is deliberately
 unable to deploy or act as a runtime. This replaces the prior pattern where every service ran under
 the project default compute SA (`<project_number>-compute@developer.gserviceaccount.com`).
