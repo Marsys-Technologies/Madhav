@@ -687,6 +687,13 @@ export function inspectCapabilityKnowledge(
         }
       }
     }
+    const contractCounts = new Map<string, number>()
+    for (const contract of contracts ?? []) if (isRecord(contract) && typeof contract.binding_id === 'string') {
+      contractCounts.set(contract.binding_id, (contractCounts.get(contract.binding_id) ?? 0) + 1)
+    }
+    for (const [bindingId, count] of contractCounts) if (count > 1) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${bindingId}`, detail: 'A binding may have only one availability contract; duplicate contracts are ambiguous.' })
+    }
     for (const claim of scu.producer_output_claims ?? []) {
       if (claim.disposition === 'reviewed_output' && !/^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? '')) {
         findings.push({ code: 'BAD_PRODUCER_OUTPUT_CLAIM', severity: 'error', subject: `${scu.scu_id}:${claim.asset_id}`, detail: 'A reviewed output claim must pin one exact SHA-256 output-digest specification.' })

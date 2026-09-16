@@ -114,14 +114,16 @@ function producerOutputRequirement(requirement: AvailabilityRequirement): requir
 function contractForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
-): BindingAvailabilityContract | undefined {
-  return scu.availability_contracts?.find((contract) => contract.binding_id === binding.binding_id)
+): BindingAvailabilityContract | null | undefined {
+  const matches = scu.availability_contracts?.filter((contract) => contract.binding_id === binding.binding_id) ?? []
+  return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
 }
 
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
+    if (contract === null) return []
     if (contract) return contract.requirements.filter(producerOutputRequirement).map((requirement) => requirement.asset_id)
     return (scu.producer_output_claims ?? []).filter((claim) => claim.disposition === 'reviewed_output').map((claim) => claim.asset_id)
   })))].sort()
@@ -149,6 +151,12 @@ function evidenceForBinding(
   activeBuildId: string | null,
 ): BindingEvidence {
   const contract = contractForBinding(scu, binding)
+  if (contract === null) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: ['Duplicate binding availability contracts prevent a safe evidence selection.'],
+  }
   if (contract) {
     const producerRequirements = contract.requirements.filter(producerOutputRequirement)
     const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement))

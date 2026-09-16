@@ -36,4 +36,25 @@ describe('binding availability contracts', () => {
       severity: 'error',
     }))
   })
+
+  it('rejects duplicate contracts for the same binding', () => {
+    const requirement = {
+      kind: 'producer_output' as const,
+      asset_id: reviewedClaim.asset_id,
+      spec_sha256: reviewedClaim.output_digest_spec_sha256!,
+      scope: 'chart_build' as const,
+      source_ref: 'fixture',
+    }
+    const report = inspectCapabilityKnowledge(catalog, withContracts([
+      { binding_id: knownBindingId, requirements: [requirement] },
+      { binding_id: knownBindingId, requirements: [requirement] },
+    ]))
+
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      severity: 'error',
+      subject: `${source.scu_id}:${knownBindingId}`,
+      detail: expect.stringContaining('duplicate'),
+    }))
+  })
 })

@@ -46,6 +46,23 @@ const bindingContractSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const duplicateBindingContractSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    availability_contracts: [
+      {
+        binding_id: 'registry:marsys://tool/L1/test',
+        requirements: [{ kind: 'producer_output', asset_id: 'ga_primary', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:primary' }],
+      },
+      {
+        binding_id: 'registry:marsys://tool/L1/test',
+        requirements: [{ kind: 'producer_output', asset_id: 'ga_alternate', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:alternate' }],
+      },
+    ],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
   return {
     active_build_id: 'build-1', active_build_status: 'completed',
@@ -60,6 +77,13 @@ beforeEach(() => {
 })
 
 describe('chart capability overlay loader', () => {
+  it('fails closed when duplicate contracts name one binding with different producer assets', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary')] })
+
+    expect((await loadChartCapabilityOverlay(duplicateBindingContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({ state: 'dark', available_binding_ids: [] })
+  })
+
   it('exposes executable bindings only from their own exact producer receipts', async () => {
     mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_alternate')] })
 
