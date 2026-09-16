@@ -3,6 +3,8 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
+const purnaPostflight = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-postflight.ts'), 'utf8')
+const purnaStatus = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-status.ts'), 'utf8')
 
 describe('Nirmana ownership deployment attestation', () => {
   it('starts and health-checks both migration proxy listeners', () => {
@@ -54,5 +56,26 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(purnaMigrationIndex).toBeGreaterThan(purnaPreflightIndex)
     expect(purnaPostflightIndex).toBeGreaterThan(purnaMigrationIndex)
     expect(nirmanaMarkerIndex).toBeGreaterThan(purnaPostflightIndex)
+  })
+
+  it('converts the watchdog credential from a literal to a secret without serializing comments as variables', () => {
+    const deployWeb = workflow.match(/- name: Deploy web to Cloud Run \(no traffic\)[\s\S]*?(?=\n      - name: Resolve web candidate URL)/)?.[0]
+    const envVars = deployWeb?.match(/          env_vars: \|\n([\s\S]*?)(?=          secrets: \|)/)?.[1]
+
+    expect(deployWeb).toContain('--remove-env-vars=WATCHDOG_SECRET')
+    expect(deployWeb).toContain('WATCHDOG_SECRET=watchdog-secret:1')
+    expect(envVars).not.toMatch(/^\s*#/m)
+    expect(envVars).not.toContain('WATCHDOG_SECRET=')
+  })
+
+  it('removes one-shot bootstrap ACL dependencies before final marked attestation', () => {
+    expect(purnaPostflight).toContain('GRANT amjis_app TO purna_inquiry_bootstrap')
+    expect(purnaPostflight).toContain('REVOKE SELECT ON TABLE public._migrations_applied FROM purna_inquiry_bootstrap')
+    expect(purnaPostflight).toContain('REVOKE USAGE ON SCHEMA public FROM purna_inquiry_bootstrap')
+    expect(purnaPostflight).toContain("dependency.deptype='a'")
+    expect(purnaPostflight).toContain('final.bootstrap_acl_dependencies !== 0')
+    expect(purnaStatus).toContain("dependency.deptype='a'")
+    expect(purnaStatus).toContain("return 'rearm_required'")
+    expect(purnaStatus).toContain('row.bootstrap_acl_dependencies !== 0')
   })
 })

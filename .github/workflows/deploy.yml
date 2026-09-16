@@ -582,7 +582,7 @@ jobs:
       - name: Require Pūrṇa bootstrap provisioning or rearm
         if: steps.purna-ownership.outputs.state == 'rearm_required'
         run: |
-          echo "::error::Pūrṇa migrations are unmarked and the one-shot bootstrap is absent or disabled. Provision/rearm the exact bootstrap login and rerun."
+          echo "::error::Pūrṇa ownership requires the disabled one-shot bootstrap to be explicitly rearmed with a fresh credential and its sole cloudsqlsuperuser edge before cleanup can resume."
           exit 1
 
       - name: Run general database migrations
@@ -739,9 +739,17 @@ jobs:
             --tag=${{ steps.web-candidate.outputs.tag }}
             --min-instances=1
             --timeout=360s
+            --remove-env-vars=WATCHDOG_SECRET
           # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
           # its secret is provisioned before merge and never falls back to DB_USER.
           # The signing ring is likewise dedicated and mounted only in web.
+          # WATCHDOG_SECRET began life as a literal environment variable. The
+          # removal flag above lets Cloud Run remount it from Secret Manager.
+          # NIRMANA_EVIDENCE_INGRESS_DB_USER is the distinct Cloud SQL principal
+          # for server-reconstructed evidence and fails those writes closed when
+          # its separate secret is absent. The watchdog fallback remains only for
+          # the Scheduler OIDC transition. NEXT_PUBLIC_FIREBASE_* values stay out
+          # of this runtime list because they are baked into the image at build.
           env_vars: |
             NODE_ENV=production
             NIRMANA_DEPLOYED_SHA=${{ env.DEPLOY_SHA }}
@@ -750,12 +758,6 @@ jobs:
             DB_NAME=amjis
             DB_INQUIRY_USER=amjis_inquiry_serve
             NIRMANA_CAMPAIGN_CONTROL_DB_USER=nirmana_campaign_control_writer
-            # Server-reconstructed evidence (probe_accepted, integrity_verified,
-            # asset_frozen, stage_transition_accepted, foundation_lane_accepted)
-            # uses this distinct Cloud-SQL principal instead. Its absent secret
-            # fails those writes closed the same way -- this was missing from
-            # the serving revision from when the ingress writer role and its
-            # secret were first provisioned (2026-08-27) until this line.
             NIRMANA_EVIDENCE_INGRESS_DB_USER=nirmana_evidence_ingress_writer
             GCP_PROJECT=madhav-astrology
             GOOGLE_CLOUD_PROJECT=madhav-astrology
@@ -767,8 +769,6 @@ jobs:
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
             WATCHDOG_SCHEDULER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
             WATCHDOG_SCHEDULER_SERVICE_ACCOUNT=amjis-scheduler@madhav-astrology.iam.gserviceaccount.com
-            # Transitional bridge only: keep the current Scheduler invocation
-            # working until its OIDC configuration is triggered and attested.
             WATCHDOG_LEGACY_FALLBACK_ENABLED=true
             MCP_CALLER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
             MCP_CALLER_OIDC_SERVICE_ACCOUNT=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com
@@ -784,11 +784,6 @@ jobs:
             MARSYS_FLAG_BUILD_TRIGGER_ENABLED=true
             MARSYS_FLAG_OBSERVATORY_ENABLED=true
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID=inquiry-v1
-            # NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.
-            # These are NEXT_PUBLIC_ flags baked into the bundle at build time (see
-            # build-args above). Cloud Run env_vars are never read by Next.js at
-            # runtime — setting them here has zero effect and misleadingly implies
-            # that rotating them without a full rebuild would take effect.
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3

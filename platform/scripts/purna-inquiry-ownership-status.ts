@@ -42,6 +42,7 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
       bootstrap_disabled: boolean
       bootstrap_armed: boolean
       bootstrap_memberships: number
+      bootstrap_acl_dependencies: number
     }>(`
       SELECT
         EXISTS (SELECT 1 FROM public._migrations_applied WHERE filename=$1) AS marker,
@@ -89,7 +90,11 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
           AND NOT EXISTS (SELECT 1 FROM pg_auth_members membership
                 WHERE membership.roleid=r.oid)) AS bootstrap_armed,
         (SELECT count(*)::int FROM pg_auth_members m JOIN pg_roles r
-          ON r.oid=m.roleid OR r.oid=m.member WHERE r.rolname='purna_inquiry_bootstrap') AS bootstrap_memberships
+          ON r.oid=m.roleid OR r.oid=m.member WHERE r.rolname='purna_inquiry_bootstrap') AS bootstrap_memberships,
+        (SELECT count(*)::int FROM pg_shdepend dependency
+          JOIN pg_roles role ON role.oid=dependency.refobjid
+          WHERE role.rolname='purna_inquiry_bootstrap'
+            AND dependency.deptype='a') AS bootstrap_acl_dependencies
     `, [MARKER, TABLES, FUNCTIONS])
     const row = result.rows[0]
     if (!row) return 'invalid'
@@ -109,7 +114,16 @@ export async function purnaOwnershipState(databaseUrl = process.env.DATABASE_URL
       && row.functions_total === FUNCTIONS.length && row.functions_owned === FUNCTIONS.length
       && row.owner_normalized && row.owner_memberships === 0 && row.serving_normalized
     if (!objectsProtected) return 'invalid'
-    return row.owner_can_create_public || !row.bootstrap_disabled || row.bootstrap_memberships !== 0
+    // A prior cleanup may have disabled/password-nulled the one-shot login and
+    // removed every membership while leaving direct detector ACLs behind. That
+    // actor cannot authenticate or SET ROLE, so it must be explicitly rearmed
+    // before postflight can remove the residue.
+    if (row.bootstrap_disabled && row.bootstrap_memberships === 0
+      && !row.owner_can_create_public && row.bootstrap_acl_dependencies !== 0) {
+      return 'rearm_required'
+    }
+    return row.owner_can_create_public || !row.bootstrap_disabled
+      || row.bootstrap_memberships !== 0 || row.bootstrap_acl_dependencies !== 0
       ? 'cleanup_required'
       : 'marked'
   } finally {
