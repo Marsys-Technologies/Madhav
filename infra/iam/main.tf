@@ -137,6 +137,16 @@ resource "google_project_iam_member" "github_actions_security_reviewer" {
   member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
 }
 
+// The protected cutover verifier reads the immutable Admin Activity entry for
+// the named Cloud SQL restore operation because operations.describe omits the
+// source backup identifier. This role is read-only and does not expose Data
+// Access logs.
+resource "google_project_iam_member" "github_actions_logging_viewer" {
+  project = var.gcp_project
+  role    = "roles/logging.viewer"
+  member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
 // Firebase custom-token signing is self-only. A project-wide Token Creator
 // grant would also allow this SDK identity to impersonate the data-plane builder.
 resource "google_service_account_iam_member" "firebase_admin_self_token_creator" {

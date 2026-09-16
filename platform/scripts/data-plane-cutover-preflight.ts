@@ -35,6 +35,19 @@ interface GitHubEnvironment {
 }
 interface GitHubWorkflowRun { id?: number; head_sha?: string; repository?: { full_name?: string } }
 interface CloudSqlInstanceIdentity { name?: string; connectionName?: string; state?: string }
+interface CloudSqlRestoreAuditEntry {
+  operation?: { id?: string; first?: boolean; last?: boolean; producer?: string }
+  protoPayload?: {
+    serviceName?: string; methodName?: string; resourceName?: string
+    authorizationInfo?: Array<{ granted?: boolean; permission?: string; resource?: string }>
+    request?: {
+      project?: string; instance?: string
+      body?: { restoreBackupContext?: { backupRunId?: string; instanceId?: string } }
+    }
+    response?: { name?: string; operationType?: string; targetId?: string }
+    status?: { message?: string }
+  }
+}
 
 export const DATA_PLANE_CUTOVER_AUTHORITY = 'DP-SD-020'
 export const DATA_PLANE_CUTOVER_EXECUTION_MODE = 'native_authorized_automated_cutover'
@@ -155,6 +168,46 @@ export function assertValidationConnectorBinding(
   })
 }
 
+export function assertRestoreAuditBinding(
+  entries: CloudSqlRestoreAuditEntry[],
+  binding: {
+    project: string; operationId: string; backupId: string
+    sourceInstance: string; validationInstance: string
+  },
+): void {
+  const resourceName = `projects/${binding.project}/instances/${binding.validationInstance}`
+  const request = entries.find((entry) => entry.operation?.id === binding.operationId
+    && entry.operation.first === true
+    && entry.operation.producer === 'cloudsql.googleapis.com')
+  const completion = entries.find((entry) => entry.operation?.id === binding.operationId
+    && entry.operation.last === true
+    && entry.operation.producer === 'cloudsql.googleapis.com')
+  const requestPayload = request?.protoPayload
+  const restoreContext = requestPayload?.request?.body?.restoreBackupContext
+  const authorized = requestPayload?.authorizationInfo?.some((authorization) =>
+    authorization.granted === true
+      && authorization.permission === 'cloudsql.instances.restoreBackup'
+      && authorization.resource === resourceName)
+  if (requestPayload?.serviceName !== 'cloudsql.googleapis.com'
+      || requestPayload.methodName !== 'cloudsql.instances.restoreBackup'
+      || requestPayload.resourceName !== resourceName
+      || requestPayload.request?.project !== binding.project
+      || requestPayload.request.instance !== binding.validationInstance
+      || restoreContext?.backupRunId !== binding.backupId
+      || restoreContext.instanceId !== binding.sourceInstance
+      || requestPayload.response?.name !== binding.operationId
+      || requestPayload.response.operationType !== 'RESTORE_VOLUME'
+      || requestPayload.response.targetId !== binding.validationInstance
+      || requestPayload.status?.message !== 'OK'
+      || !authorized
+      || completion?.protoPayload?.serviceName !== 'cloudsql.googleapis.com'
+      || completion.protoPayload.methodName !== 'cloudsql.instances.restoreBackup'
+      || completion.protoPayload.resourceName !== resourceName
+      || completion.protoPayload.status?.message !== 'OK') {
+    throw new Error('Cloud Audit evidence does not bind the exact backup restore request and successful completion.')
+  }
+}
+
 function githubApi<T>(path: string): T {
   requireValue('GH_TOKEN')
   return JSON.parse(execFileSync('gh', ['api', path], {
@@ -204,17 +257,24 @@ export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Pr
     '--project', project, '--format=json',
   ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as {
     name?: string; status?: string; operationType?: string; targetId?: string; endTime?: string
-    backupContext?: { backupId?: string | number }
   }
   const restoreCompleted = Date.parse(restore.endTime ?? '')
   if (restore.name !== receipt.restoreOperationId || restore.status !== 'DONE'
       || restore.targetId !== validationInstance || restore.targetId === 'amjis-postgres'
       || !/^RESTORE(?:_|$)/.test(restore.operationType ?? '')
-      || String(restore.backupContext?.backupId ?? '') !== receipt.backupId
       || !Number.isFinite(restoreCompleted) || restoreCompleted < backupCompleted
       || restoreCompleted > Date.parse(receipt.expiresAt)) {
     throw new Error('Named restore does not prove the pinned backup on the isolated validation instance.')
   }
+  const restoreAudit = JSON.parse(execFileSync('gcloud', [
+    'logging', 'read',
+    `operation.id="${receipt.restoreOperationId}" AND logName="projects/${project}/logs/cloudaudit.googleapis.com%2Factivity"`,
+    '--project', project, '--limit=10', '--format=json',
+  ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as CloudSqlRestoreAuditEntry[]
+  assertRestoreAuditBinding(restoreAudit, {
+    project, operationId: receipt.restoreOperationId, backupId: receipt.backupId,
+    sourceInstance: 'amjis-postgres', validationInstance,
+  })
   const instance = JSON.parse(execFileSync('gcloud', [
     'sql', 'instances', 'describe', validationInstance, '--project', project, '--format=json',
   ], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })) as CloudSqlInstanceIdentity

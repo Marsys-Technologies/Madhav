@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
@@ -617,5 +617,53 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(preflight).not.toContain('/approvals')
     expect(preflight).not.toContain('approvedBy')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
+  })
+
+  it('binds the restore operation to the exact backup through Cloud Audit Logs', () => {
+    const operationId = '81fa436f-115b-4f27-82c8-93800000002f'
+    const auditEntries = [
+      {
+        operation: { id: operationId, first: true, producer: 'cloudsql.googleapis.com' },
+        protoPayload: {
+          serviceName: 'cloudsql.googleapis.com',
+          methodName: 'cloudsql.instances.restoreBackup',
+          resourceName: 'projects/madhav-astrology/instances/amjis-ri02-validation-c720f1832',
+          authorizationInfo: [{
+            granted: true, permission: 'cloudsql.instances.restoreBackup',
+            resource: 'projects/madhav-astrology/instances/amjis-ri02-validation-c720f1832',
+          }],
+          request: {
+            '@type': 'type.googleapis.com/google.cloud.sql.v1beta4.SqlInstancesRestoreBackupRequest',
+            project: 'madhav-astrology',
+            instance: 'amjis-ri02-validation-c720f1832',
+            body: { restoreBackupContext: { backupRunId: '1789559207984', instanceId: 'amjis-postgres' } },
+          },
+          response: { name: operationId, operationType: 'RESTORE_VOLUME', targetId: 'amjis-ri02-validation-c720f1832' },
+          status: { message: 'OK' },
+        },
+      },
+      {
+        operation: { id: operationId, last: true, producer: 'cloudsql.googleapis.com' },
+        protoPayload: {
+          serviceName: 'cloudsql.googleapis.com',
+          methodName: 'cloudsql.instances.restoreBackup',
+          resourceName: 'projects/madhav-astrology/instances/amjis-ri02-validation-c720f1832',
+          status: { message: 'OK' },
+        },
+      },
+    ]
+    const binding = {
+      project: 'madhav-astrology', operationId, backupId: '1789559207984',
+      sourceInstance: 'amjis-postgres', validationInstance: 'amjis-ri02-validation-c720f1832',
+    }
+    expect(() => assertRestoreAuditBinding(auditEntries, binding)).not.toThrow()
+    expect(() => assertRestoreAuditBinding(auditEntries, { ...binding, backupId: '1789559207985' }))
+      .toThrow(/does not bind the exact backup restore/)
+    const unauthorizedEntries = structuredClone(auditEntries)
+    unauthorizedEntries[0]!.protoPayload!.authorizationInfo![0]!.granted = false
+    expect(() => assertRestoreAuditBinding(unauthorizedEntries, binding))
+      .toThrow(/does not bind the exact backup restore/)
+    expect(() => assertRestoreAuditBinding(auditEntries.slice(0, 1), binding))
+      .toThrow(/does not bind the exact backup restore/)
   })
 })
