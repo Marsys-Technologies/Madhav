@@ -657,3 +657,45 @@ exactly that builder as accessor. GitHub Actions actAs grants for web, sidecar
 and MCP plus Firebase self-signing are now codified as resource-level Terraform
 bindings. No build-job rebind, database credential, migration, deployment or
 physical data mutation has occurred.
+
+Exact-tip review of `c720f1832` found a P1 workflow deadlock: strict isolation
+required the build job's final binding before the workflow's only rebind step,
+which was itself downstream of the migration barrier. The corrected sequence
+uses an explicit pre-transition mode that permits only the exact observed legacy
+job binding or the exact target binding while enforcing every other gate. After
+the protected cutover succeeds, the same bootstrap job immediately rebinds the
+named job and reruns strict isolation. Workflow tests bind strict verification
+after the rebind and before semantic postflight/routine delivery. This is an
+ordering repair; the final-state requirement is unchanged.
+
+The finalization path is also restartable. Every deployment now performs a
+read-only strict runtime-isolation inspection and emits either `strict` or
+`repair_required`. A database already carrying the protected ownership marker
+but still reporting `repair_required` re-enters the protected bootstrap job,
+idempotently rebinds the named build job, reruns strict isolation, and
+re-attests the database state. Routine migration remains unavailable until the
+strict detector passes. This closes the interruption window between database
+cutover and runtime rebinding without introducing a second mutable marker.
+
+The command parser now treats only shell-variable-shaped `NAME=value`
+arguments as assignments, but it deliberately continues to reject embedded
+credential-shaped flags. Completed denial-probe jobs must be retired by their
+owning campaign rather than hidden from the strict current-runtime inventory.
+The three bounded Pūrṇa denial probes were subsequently retired by that owning
+campaign after their successful denial executions were confirmed. Secret grant
+validation now excludes only revisions whose Cloud Run `Active` condition is
+explicitly `False`: those immutable revisions cannot start or receive traffic,
+and retaining obsolete grants for them would enlarge access. Their definitions
+remain in the exhaustive scan for any data-plane builder or deployment-only
+DBA/migrator identity or credential.
+
+Live pre-transition isolation then passed against the complete current estate
+(three services, three remaining jobs, and the exhaustive retained revision
+inventory). Fresh rollback evidence is also physical rather than inferred:
+Cloud SQL backup `1789559207984` completed `SUCCESSFUL`; restore operation
+`81fa436f-115b-4f27-82c8-93800000002f` completed `DONE` on isolated instance
+`amjis-ri02-validation-c720f1832`. Authenticated validation through the exact
+instance proxy observed protected ownership `unmarked`, PostgreSQL server
+version `150019`, and `public.build_runs`. This proves the restore artifact and
+pre-cutover source state only; it is not production cutover or deployment
+acceptance.

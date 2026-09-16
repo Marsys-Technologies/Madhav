@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -124,6 +124,15 @@ describe('DP-SD-018 GCP credential isolation', () => {
       .toThrow(/outside the one named build job/)
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'job', name: 'brahma-build-pipeline-job', definition: { secretKeyRef: { name: 'data-plane-builder-db-url' }, serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
       .not.toThrow()
+    const legacy = [{ kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: {
+      secretKeyRef: { name: 'amjis-pipeline-db-url' },
+      serviceAccount: 'amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com',
+    } }]
+    expect(() => assertEffectiveIsolation([], policy, legacy)).toThrow(/lacks the exact builder/)
+    expect(() => assertEffectiveIsolation([], policy, legacy, {}, '', '', 'pre_transition')).not.toThrow()
+    expect(() => assertEffectiveIsolation([], policy, [{
+      ...legacy[0], definition: { ...legacy[0].definition, secretKeyRef: { name: 'rogue-db-url' } },
+    }], {}, '', '', 'pre_transition')).toThrow(/neither the exact legacy binding/)
   })
   it('requires exactly one deployer impersonation grant and searches project ancestry', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
@@ -148,6 +157,16 @@ describe('DP-SD-018 GCP credential isolation', () => {
       'github_actions_acts_as_mcp_runtime',
       'firebase_admin_self_token_creator',
     ]) expect(iamTerraform).toContain(`resource "google_service_account_iam_member" "${resource}"`)
+  })
+  it('requires secret grants for runnable surfaces but not explicitly retired revisions', () => {
+    expect(requiresRuntimeSecretGrant({ kind: 'service', name: 'current', definition: {} })).toBe(true)
+    expect(requiresRuntimeSecretGrant({ kind: 'revision', name: 'active', definition: {
+      status: { conditions: [{ type: 'Active', status: 'True' }] },
+    } })).toBe(true)
+    expect(requiresRuntimeSecretGrant({ kind: 'revision', name: 'unknown', definition: {} })).toBe(true)
+    expect(requiresRuntimeSecretGrant({ kind: 'revision', name: 'retired', definition: {
+      status: { conditions: [{ type: 'Active', status: 'False', reason: 'Retired' }] },
+    } })).toBe(false)
   })
   it('rejects builder identity or deployment-only secrets on every other surface', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
@@ -223,6 +242,12 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
       args: ['--token', 'opaque'], env: [{ name: 'SAFE_NAME', value: 'ordinary' }],
     }] } } } })).toThrow(/--token/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
+      args: ['-c', 'gcloud secrets versions access latest --secret=canary-key --project=madhav-astrology >/dev/null 2>&1 && exit 42 || exit 0'],
+    }] } } } })).toThrow(/literal credential/)
+    expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{
+      args: ['-c', 'gcloud secrets versions access latest --secret=canary-key --project=madhav-astrology && curl example.invalid'],
+    }] } } } })).toThrow(/literal credential/)
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: {
       volumes: [{ clientSecret: 12345 }],
     } } } })).toThrow(/clientSecret/)
@@ -340,7 +365,7 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
 
 describe('DP-SD-018 deployment ordering', () => {
   it('gates IAM before DBA/migrator use and routes the build job to the dedicated credential', () => {
-    expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('Execute Native-authorized automated cutover under backup'))
+    expect(workflow.indexOf('Verify data-plane pre-transition isolation before privileged access')).toBeLessThan(workflow.indexOf('Execute Native-authorized automated cutover under backup'))
     expect(workflow.indexOf('Execute Native-authorized automated cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
     expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
@@ -362,19 +387,26 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(state.environment).toBeUndefined()
     expect(state.outputs).toEqual({
       data_plane: '${{ steps.data-plane-ownership.outputs.state }}',
+      data_plane_isolation: '${{ steps.data-plane-isolation.outputs.state }}',
       nirmana: '${{ steps.nirmana-ownership.outputs.state }}',
       purna: '${{ steps.purna-ownership.outputs.state }}',
     })
     expect(state.steps?.map((step) => step.name)).toEqual(expect.arrayContaining([
       'Inspect protected data-plane ownership state',
+      'Inspect protected data-plane runtime isolation',
       'Inspect Nirmana evidence ownership handoff marker',
       'Inspect Pūrṇa inquiry protected-owner handoff',
     ]))
+    const isolationInspection = state.steps?.find((step) => step.name === 'Inspect protected data-plane runtime isolation')
+    expect(isolationInspection?.run).toContain('state=repair_required')
+    expect(isolationInspection?.run).toContain('data-plane-secret-isolation-preflight.ts')
+    expect(isolationInspection?.env?.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
 
     expect(bootstrap.needs).toEqual(['changes', 'migration-state'])
     expect(bootstrap.environment).toBe('data-plane-production-cutover')
     expect(bootstrap.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
     expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane == 'unmarked'")
+    expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane_isolation != 'strict'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.nirmana == 'unmarked'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.purna != 'marked'")
     expect(Object.entries(workflowJobs).filter(([, job]) => job.environment === 'data-plane-production-cutover').map(([name]) => name))
@@ -395,6 +427,9 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(migrate.if).not.toContain('needs.changes.outputs.')
     const routineStepNames = migrate.steps?.map((step) => step.name) ?? []
     const bootstrapRefresh = bootstrap.steps?.find((step) => step.name === 'Refresh protected bootstrap state under the exclusive lock')
+    const bootstrapStepNames = bootstrap.steps?.map((step) => step.name) ?? []
+    const transitionIndex = bootstrapStepNames.indexOf('Bind named build job to dedicated data-plane credential')
+    const strictIndex = bootstrapStepNames.indexOf('Verify strict data-plane isolation after build-job rebind')
     expect(bootstrapRefresh?.run).toContain('PRIOR_DATA_PLANE_STATE')
     expect(bootstrapRefresh?.run).toContain('PRIOR_NIRMANA_STATE')
     expect(bootstrapRefresh?.run).toContain('PRIOR_PURNA_STATE')
@@ -402,6 +437,11 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(bootstrapRefresh?.run).toContain('nirmana-evidence-ownership-status.ts')
     expect(bootstrapRefresh?.run).toContain('purna-inquiry-ownership-status.ts')
     expect(bootstrapRefresh?.run).toContain('state regressed after the initial inspection')
+    expect(transitionIndex).toBeGreaterThan(bootstrapStepNames.indexOf('Execute Native-authorized automated cutover under backup, restore, lease and quiescence'))
+    expect(strictIndex).toBeGreaterThan(transitionIndex)
+    expect(bootstrap.steps?.[strictIndex]?.run).toContain('data-plane-secret-isolation-preflight.ts')
+    expect(bootstrap.steps?.[strictIndex]?.env?.DATA_PLANE_SECRET_ISOLATION_MODE).toBe('strict')
+    expect(bootstrap.steps?.[transitionIndex]?.if).toContain("needs.migration-state.outputs.data_plane_isolation != 'strict'")
     for (const stepName of [
       'Execute Native-authorized automated cutover under backup, restore, lease and quiescence',
       'One-shot Nirmana evidence ownership preflight',
@@ -441,9 +481,16 @@ describe('DP-SD-018 deployment ordering', () => {
       'needs.changes.result': 'success',
       'needs.migration-state.result': 'success',
     }
-    const scenario = (dataPlane: string, nirmana: string, purna: string, bootstrapResult: string) => ({
+    const scenario = (
+      dataPlane: string,
+      nirmana: string,
+      purna: string,
+      bootstrapResult: string,
+      isolation = 'strict',
+    ) => ({
       ...base,
       'needs.migration-state.outputs.data_plane': dataPlane,
+      'needs.migration-state.outputs.data_plane_isolation': isolation,
       'needs.migration-state.outputs.nirmana': nirmana,
       'needs.migration-state.outputs.purna': purna,
       'needs.privileged-bootstrap.result': bootstrapResult,
@@ -457,6 +504,9 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'unmarked', 'marked', 'success'))).toBe(true)
     expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'armed', 'skipped'))).toBe(true)
     expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'armed', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'success', 'repair_required'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped', 'repair_required'))).toBe(false)
 
     for (const result of ['failure', 'cancelled', 'skipped']) {
       expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'marked', result))).toBe(false)

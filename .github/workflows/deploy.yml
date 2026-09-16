@@ -390,6 +390,7 @@ jobs:
       id-token: write
     outputs:
       data_plane: ${{ steps.data-plane-ownership.outputs.state }}
+      data_plane_isolation: ${{ steps.data-plane-isolation.outputs.state }}
       nirmana: ${{ steps.nirmana-ownership.outputs.state }}
       purna: ${{ steps.purna-ownership.outputs.state }}
 
@@ -473,6 +474,25 @@ jobs:
           fi
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
+      # This read-only strict check is also the durable restart detector. If a
+      # prior run committed the DB cutover but failed during job rebind/final
+      # verification, the next run emits repair_required and re-enters the
+      # protected finalization path instead of skipping to routine deploy.
+      - name: Inspect protected data-plane runtime isolation
+        id: data-plane-isolation
+        env:
+          GOOGLE_CLOUD_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+          DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
+          DATA_PLANE_SECRET_ISOLATION_MODE: strict
+        run: |
+          if (cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts); then
+            echo "state=strict" >> "$GITHUB_OUTPUT"
+          else
+            echo "state=repair_required" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Inspect Nirmana evidence ownership handoff marker
         id: nirmana-ownership
         env:
@@ -515,6 +535,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
       (
         needs.migration-state.outputs.data_plane == 'unmarked' ||
+        needs.migration-state.outputs.data_plane_isolation != 'strict' ||
         needs.migration-state.outputs.nirmana == 'unmarked' ||
         needs.migration-state.outputs.purna != 'marked'
       )
@@ -768,13 +789,14 @@ jobs:
           echo "::error::Pūrṇa ownership requires the disabled one-shot bootstrap to be explicitly rearmed with a fresh credential and its sole cloudsqlsuperuser edge before cleanup can resume."
           exit 1
 
-      - name: Verify data-plane secret and runtime isolation before privileged access
-        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+      - name: Verify data-plane pre-transition isolation before privileged access
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
         env:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
           GCP_REGION: ${{ env.GCP_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
           DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
+          DATA_PLANE_SECRET_ISOLATION_MODE: pre_transition
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence
@@ -813,8 +835,28 @@ jobs:
           cd platform
           npx tsx scripts/data-plane-protected-cutover.ts
 
+      - name: Bind named build job to dedicated data-plane credential
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
+        run: |
+          gcloud run jobs update brahma-build-pipeline-job \
+            --project=madhav-astrology \
+            --region="$GCP_REGION" \
+            --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
+            --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
+            --quiet
+
+      - name: Verify strict data-plane isolation after build-job rebind
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
+        env:
+          GOOGLE_CLOUD_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+          DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
+          DATA_PLANE_SECRET_ISOLATION_MODE: strict
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
       - name: Re-attest protected data-plane semantic state with deployment-only migrator
-        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked' || needs.migration-state.outputs.data_plane_isolation != 'strict'
         env:
           DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
@@ -834,6 +876,7 @@ jobs:
       (
         (
           needs.migration-state.outputs.data_plane == 'marked' &&
+          needs.migration-state.outputs.data_plane_isolation == 'strict' &&
           needs.migration-state.outputs.nirmana == 'marked' &&
           needs.migration-state.outputs.purna == 'marked' &&
           needs.privileged-bootstrap.result == 'skipped'
@@ -841,6 +884,7 @@ jobs:
         (
           (
             needs.migration-state.outputs.data_plane == 'unmarked' ||
+            needs.migration-state.outputs.data_plane_isolation != 'strict' ||
             needs.migration-state.outputs.nirmana == 'unmarked' ||
             needs.migration-state.outputs.purna != 'marked'
           ) &&

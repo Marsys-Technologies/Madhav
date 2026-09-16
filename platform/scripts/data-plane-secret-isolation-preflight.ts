@@ -11,8 +11,9 @@ interface ServiceAccount { disabled?: boolean }
 interface CloudRunEntry { metadata?: { name?: string; labels?: Record<string, string> }; location?: string }
 interface EffectivePolicy { resource?: string; policy?: IamPolicy }
 interface ResourceAncestor { type?: string; id?: string }
-type CloudRunSurface = { kind: 'service' | 'revision' | 'job'; name: string; definition: unknown }
+export type CloudRunSurface = { kind: 'service' | 'revision' | 'job'; name: string; definition: unknown }
 type RolePermissions = Record<string, string[]>
+type SecretIsolationMode = 'pre_transition' | 'strict'
 
 const IMPERSONATION_ROLES = [
   'roles/iam.serviceAccountUser',
@@ -224,7 +225,7 @@ function assertArgsSurface(value: unknown, surface: string): void {
     throw new Error(`Cloud Run ${surface} surface is not an exact string array.`)
   }
   for (const argument of value as string[]) {
-    const assignment = argument.match(/^([^=]+)=(.*)$/s)
+    const assignment = argument.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/s)
     const flagName = argument.match(/^-{1,2}([^=]+)(?:=.*)?$/s)?.[1]
     if ((flagName && isSensitiveCredentialName(flagName))
         || (assignment && isSensitiveCredentialName(assignment[1]))) {
@@ -397,6 +398,7 @@ export function assertEffectiveIsolation(
   resolved: RolePermissions = {},
   controlPlaneAdminPrincipal = '',
   projectNumber = '',
+  mode: SecretIsolationMode = 'strict',
 ): void {
   for (const hit of effective) {
     const accessors = (hit.policy?.bindings ?? [])
@@ -451,6 +453,12 @@ export function assertEffectiveIsolation(
       throw new Error(`Deployment-only DBA/migrator credential is mounted on Cloud Run ${surface.kind}/${surface.name}.`)
     }
     const hasBuilderSecret = inventory.secrets.includes(BUILDER_SECRET)
+    const isBuildJob = surface.kind === 'job' && surface.name === 'brahma-build-pipeline-job'
+    const exactTargetBinding = isBuildJob && hasBuilderSecret
+      && inventory.serviceAccount === BUILDER_SERVICE_ACCOUNT
+    const exactLegacyBinding = isBuildJob
+      && inventory.serviceAccount === `amjis-web-runtime@${project}.iam.gserviceaccount.com`
+      && inventory.secrets.length === 1 && inventory.secrets[0] === 'amjis-pipeline-db-url'
     if (hasBuilderSecret && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job'
         || inventory.serviceAccount !== BUILDER_SERVICE_ACCOUNT)) {
       throw new Error(`Builder credential is mounted outside the one named build job (${surface.kind}/${surface.name}).`)
@@ -459,9 +467,11 @@ export function assertEffectiveIsolation(
         && (surface.kind !== 'job' || surface.name !== 'brahma-build-pipeline-job')) {
       throw new Error(`Builder identity is used outside the one named build job (${surface.kind}/${surface.name}).`)
     }
-    if (surface.kind === 'job' && surface.name === 'brahma-build-pipeline-job'
-        && (!hasBuilderSecret || inventory.serviceAccount !== BUILDER_SERVICE_ACCOUNT)) {
+    if (isBuildJob && mode === 'strict' && !exactTargetBinding) {
       throw new Error('Named build job lacks the exact builder identity and secret binding.')
+    }
+    if (isBuildJob && mode === 'pre_transition' && !exactTargetBinding && !exactLegacyBinding) {
+      throw new Error('Named build job is neither the exact legacy binding nor the exact builder target binding.')
     }
   }
   if (surfaces.filter((surface) => surface.kind === 'job' && surface.name === 'brahma-build-pipeline-job').length !== 1) {
@@ -469,7 +479,23 @@ export function assertEffectiveIsolation(
   }
 }
 
+export function requiresRuntimeSecretGrant(surface: CloudRunSurface): boolean {
+  if (surface.kind !== 'revision') return true
+  if (!surface.definition || typeof surface.definition !== 'object' || Array.isArray(surface.definition)) return true
+  const status = (surface.definition as Record<string, unknown>).status
+  if (!status || typeof status !== 'object' || Array.isArray(status)) return true
+  const conditions = (status as Record<string, unknown>).conditions
+  if (!Array.isArray(conditions)) return true
+  const active = conditions.find((condition) => condition && typeof condition === 'object'
+    && !Array.isArray(condition) && (condition as Record<string, unknown>).type === 'Active')
+  return !(active && (active as Record<string, unknown>).status === 'False')
+}
+
 export function runDataPlaneSecretIsolationPreflight(): void {
+  const mode = process.env.DATA_PLANE_SECRET_ISOLATION_MODE?.trim() || 'strict'
+  if (!['pre_transition','strict'].includes(mode)) {
+    throw new Error('DATA_PLANE_SECRET_ISOLATION_MODE must be pre_transition or strict.')
+  }
   const controlPlaneAdminPrincipal = process.env.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL?.trim() ?? ''
   if (!/^user:[^@\s]+@[^@\s]+$/.test(controlPlaneAdminPrincipal)) {
     throw new Error('DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL must name the exact human user principal that owns the project control plane.')
@@ -521,9 +547,15 @@ export function runDataPlaneSecretIsolationPreflight(): void {
   }
   assertEffectiveIsolation(
     effective, serviceAccountPolicy, surfaces, resolved, controlPlaneAdminPrincipal, projectNumber,
+    mode as SecretIsolationMode,
   )
   const checked = new Set<string>()
   for (const surface of surfaces) {
+    // Retired immutable revisions cannot start or receive traffic, so retaining
+    // their former runtime grants would increase access rather than prove
+    // isolation. Their specs are still scanned above for all data-plane
+    // builder and deployment-only DBA/migrator identities and credentials.
+    if (!requiresRuntimeSecretGrant(surface)) continue
     const inventory = extractRunIdentityAndSecrets(surface.definition)
     for (const secretName of inventory.secrets) {
       const key = `${inventory.serviceAccount}:${secretName}`
