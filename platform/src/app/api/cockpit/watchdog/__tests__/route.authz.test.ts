@@ -65,20 +65,12 @@ describe('POST /api/cockpit/watchdog — audience and service-account-bound OIDC
     expect(mockQuery).toHaveBeenCalled()
   })
 
-  it('keeps the legacy scheduler alive only while the explicit bridge is enabled', async () => {
+  it('rejects the retired legacy scheduler header even when the old bridge variables exist', async () => {
     process.env.WATCHDOG_LEGACY_FALLBACK_ENABLED = 'true'
     process.env.WATCHDOG_SECRET = 'transition-secret'
     const res = await POST(makeReq(undefined, 'transition-secret'))
-    expect(res.status).toBe(200)
+    expect(res.status).toBe(403)
     expect(mockVerifyOidcToken).not.toHaveBeenCalled()
-    expect(mockQuery).toHaveBeenCalled()
-  })
-
-  it('rejects the legacy header when the bridge is disabled or mismatched', async () => {
-    process.env.WATCHDOG_SECRET = 'transition-secret'
-    expect((await POST(makeReq(undefined, 'transition-secret'))).status).toBe(403)
-    process.env.WATCHDOG_LEGACY_FALLBACK_ENABLED = 'true'
-    expect((await POST(makeReq(undefined, 'wrong-secret'))).status).toBe(403)
     expect(mockQuery).not.toHaveBeenCalled()
   })
 })

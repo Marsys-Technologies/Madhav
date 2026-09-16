@@ -76,8 +76,8 @@ check "SA: amjis-builder-runtime defined" grep -q 'account_id *= *"amjis-builder
 check "deploy.yml pins amjis-web-runtime"   grep -q "amjis-web-runtime@"     .github/workflows/deploy.yml
 check "deploy.yml pins amjis-sidecar-runtime" grep -q "amjis-sidecar-runtime@" .github/workflows/deploy.yml
 check "deploy.yml pins amjis-mcp-runtime"   grep -q "amjis-mcp-runtime@"     .github/workflows/deploy.yml
-check "phase-A broad grants are fail-closed against premature destroy" sh -c \
-  "test \"$(grep -c 'prevent_destroy = true' infra/iam/main.tf)\" -ge 3"
+check "project-wide runtime secret grants are retired" sh -c \
+  "! grep -Eq 'resource \"google_project_iam_member\" \"(web|sidecar|mcp)_secrets\"' infra/iam/main.tf"
 check "web secrets are secret-specific" grep -q 'google_secret_manager_secret_iam_member" "web_secret_access' infra/iam/main.tf
 check "pipeline-job secret is included for web runtime" grep -q '"amjis-pipeline-db-url"' infra/iam/main.tf
 check "MCP secrets are secret-specific" grep -q 'google_secret_manager_secret_iam_member" "mcp_secret_access' infra/iam/main.tf

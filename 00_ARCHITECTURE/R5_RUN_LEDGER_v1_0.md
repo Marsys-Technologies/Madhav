@@ -126,7 +126,7 @@ prior wave audits (`probe-service-account` principal, e.g. `mcp_prod_f021rbPR` "
 eight §14 probes below were run through this credential.
 
 **Credential value (full_key), for continuity into W0a — treat as a live secret, not for citation
-outside this ledger:** `mcp_prod_tDO7obNwPFwlwlQDkzl50HAAusDmNu0jBbm4rqDx`
+outside this ledger:** REDACTED. Plaintext credentials must remain in Secret Manager; the historically committed value was rotated during the Pūrṇa production cutover.
 
 ### P0-iii — p50/p95 baseline (live, [verify-against: prod], post-redeploy)
 

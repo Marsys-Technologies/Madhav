@@ -58,12 +58,14 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(nirmanaMarkerIndex).toBeGreaterThan(purnaPostflightIndex)
   })
 
-  it('converts the watchdog credential from a literal to a secret without serializing comments as variables', () => {
+  it('retires the watchdog secret bridge and explicitly removes serialized comment variables', () => {
     const deployWeb = workflow.match(/- name: Deploy web to Cloud Run \(no traffic\)[\s\S]*?(?=\n      - name: Resolve web candidate URL)/)?.[0]
     const envVars = deployWeb?.match(/          env_vars: \|\n([\s\S]*?)(?=          secrets: \|)/)?.[1]
 
-    expect(deployWeb).toContain('--remove-env-vars=WATCHDOG_SECRET')
-    expect(deployWeb).toContain('WATCHDOG_SECRET=watchdog-secret:1')
+    expect(deployWeb).toContain('--remove-secrets=WATCHDOG_SECRET')
+    expect(deployWeb).toContain('--remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability')
+    expect(deployWeb).not.toContain('WATCHDOG_SECRET=watchdog-secret:1')
+    expect(envVars).not.toContain('WATCHDOG_LEGACY_FALLBACK_ENABLED=')
     expect(envVars).not.toMatch(/^\s*#/m)
     expect(envVars).not.toContain('WATCHDOG_SECRET=')
   })
