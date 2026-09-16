@@ -68,6 +68,15 @@ describe('Nirmana ownership deployment attestation', () => {
     expect(envVars).not.toContain('WATCHDOG_SECRET=')
   })
 
+  it('pins newline-free Pūrṇa serving and lifecycle secret versions', () => {
+    const deployWeb = workflow.match(/- name: Deploy web to Cloud Run \(no traffic\)[\s\S]*?(?=\n      - name: Resolve web candidate URL)/)?.[0]
+
+    expect(deployWeb).toContain('DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:2')
+    expect(deployWeb).toContain('INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2')
+    expect(deployWeb).not.toContain('DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:1')
+    expect(deployWeb).not.toContain('INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1')
+  })
+
   it('removes one-shot bootstrap ACL dependencies before final marked attestation', () => {
     expect(purnaPostflight).toContain('GRANT amjis_app TO purna_inquiry_bootstrap')
     expect(purnaPostflight).toContain('REVOKE SELECT ON TABLE public._migrations_applied FROM purna_inquiry_bootstrap')
