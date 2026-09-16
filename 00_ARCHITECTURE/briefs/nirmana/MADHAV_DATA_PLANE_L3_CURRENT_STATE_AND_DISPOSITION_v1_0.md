@@ -1,15 +1,15 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: DP_SD_019_SOURCE_RELEASE_GATE_GREEN_LIVE_CUTOVER_HELD
-observed_at: 2026-09-16T03:44:00+05:30
-strategy_decision: DP-SD-017_PLUS_DP-SD-018
+status: DP_SD_020_AUTOMATED_CUTOVER_SOURCE_AMENDMENT_IN_PROGRESS
+observed_at: 2026-09-16T16:26:52+05:30
+strategy_decision: DP-SD-017_PLUS_DP-SD-018_PLUS_DP-SD-019_PLUS_DP-SD-020
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-DP-SD-019-SOURCE-GATE-GREEN
+active_packet: L3-DP-SD-020-AUTOMATED-CUTOVER-AUTHORITY
 implementation_tip: 876fbb69671a74ee1905681fc38d8f4f3e97dba7
 w2_reviewed_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
@@ -552,3 +552,32 @@ consumer value or empirical outcome acceptance. No production role, credential,
 IAM, database, migration, build, deploy, data, L0, L4 or L5 mutation occurred.
 L3 terminal acceptance therefore remains 0/22, and live cutover still requires
 the separate exclusive authority and external prerequisites already recorded.
+
+## 11. DP-SD-020 Native-authorized automated cutover amendment
+
+The Native has removed only the requirement for a separate person to approve
+the GitHub production-cutover environment and instructed the automated plan to
+continue beyond that point when complete. The amendment is recorded in
+`MADHAV_DATA_PLANE_L3_AUTOMATED_CUTOVER_AUTHORITY_AMENDMENT_v1_0.md` and remains
+owned by this permanent Execution — Data Plane task. Pūrṇa Anveṣaṇa is a
+downstream consumer and does not own or duplicate the Data Plane cutover.
+
+The replacement source contract requires the named environment to exist with
+no `required_reviewers` rule and with the exact protected-branch-only policy. It
+authenticates the repository, workflow run and immutable deploy SHA, and binds
+the restore receipt to `DP-SD-020` plus
+`native_authorized_automated_cutover`. It does not call the GitHub approvals
+endpoint or accept an `approvedBy` surrogate.
+
+All non-human gates remain unchanged: source checks and technical/security
+review, dedicated least-privilege identity and secret, fresh backup and exact
+isolated restore, expiring receipt, unique lease, refreshed state, quiescence,
+protected ownership and migration attestation, rollback, postflight, canaries
+and routine-delivery barriers. The exclusive coordination lease is recorded at
+`85b25bac593dc932415dc38207db94720031e033`.
+
+At 2026-09-16T16:26:52+05:30, pull request `#2615` was clean at source base
+`113ccc37eb93f02416907fee75b52958792eae7a`; the environment, dedicated builder
+service account and builder secret were absent. This is a source amendment in
+progress, not evidence of protected integration, deployment, live mutation,
+physical generation, consumer use, L3 acceptance, or L4/L5 authority.

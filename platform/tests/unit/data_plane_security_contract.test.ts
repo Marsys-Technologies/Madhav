@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, assertGitHubDeploymentReviewEvidence, assertValidationConnectorBinding, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
@@ -256,8 +256,8 @@ describe('DP-SD-018 lifecycle SQL contract', () => {
 
 describe('DP-SD-018 deployment ordering', () => {
   it('gates IAM before DBA/migrator use and routes the build job to the dedicated credential', () => {
-    expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('Execute protected cutover under backup'))
-    expect(workflow.indexOf('Execute protected cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
+    expect(workflow.indexOf('Verify data-plane secret and runtime isolation')).toBeLessThan(workflow.indexOf('Execute Native-authorized automated cutover under backup'))
+    expect(workflow.indexOf('Execute Native-authorized automated cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
     expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
     expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
@@ -318,7 +318,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(bootstrapRefresh?.run).toContain('purna-inquiry-ownership-status.ts')
     expect(bootstrapRefresh?.run).toContain('state regressed after the initial inspection')
     for (const stepName of [
-      'Execute protected cutover under backup, restore, lease, quiescence and independent approval',
+      'Execute Native-authorized automated cutover under backup, restore, lease and quiescence',
       'One-shot Nirmana evidence ownership preflight',
       'Attest Nirmana ownership handoff as deployment-only migrator',
     ]) {
@@ -390,44 +390,48 @@ describe('DP-SD-018 deployment ordering', () => {
   it('requires exact backup and successful-restore identifiers as one receipt', () => {
     const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-cutover-preflight.ts'), 'utf8')
     const receipt = parseBackupRestoreReceipt(JSON.stringify({
+      authorityDecision: DATA_PLANE_CUTOVER_AUTHORITY,
       backupId: '123', restoreOperationId: 'restore-op-456', validationInstance: 'amjis-ri02-validation',
       sourceCommit: 'a'.repeat(40), leaseId: '11111111-1111-4111-8111-111111111111',
-      approvedBy: 'independent-reviewer', expiresAt: '2026-09-16T00:00:00.000Z',
+      executionMode: DATA_PLANE_CUTOVER_EXECUTION_MODE, expiresAt: '2026-09-16T00:00:00.000Z',
       repository: 'owner/repo', workflowRunId: '123456', environment: 'data-plane-production-cutover',
     }))
     expect(receipt.backupId).toBe('123')
     expect(() => parseBackupRestoreReceipt('123')).toThrow(/receipt/)
     expect(() => assertBackupReceiptBinding(receipt, {
       validationInstance: 'amjis-postgres', sourceCommit: 'a'.repeat(40),
-      leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+      leaseId: receipt.leaseId, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, environment: receipt.environment,
     }, new Date('2026-09-15T12:00:00.000Z'))).toThrow(/isolated instance/)
     expect(() => assertBackupReceiptBinding(receipt, {
       validationInstance: receipt.validationInstance, sourceCommit: receipt.sourceCommit,
-      leaseId: receipt.leaseId, approvedBy: receipt.approvedBy,
+      leaseId: receipt.leaseId, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, environment: receipt.environment,
     }, new Date('2026-09-15T12:00:00.000Z'))).not.toThrow()
     const protectedEnvironment = {
       name: receipt.environment,
-      protection_rules: [{ type: 'required_reviewers', prevent_self_review: true, reviewers: [{}] }],
+      protection_rules: [],
       deployment_branch_policy: { protected_branches: true, custom_branch_policies: false },
     }
-    const reviews = [{ state: 'approved', environments: [{ name: receipt.environment }], user: { login: receipt.approvedBy } }]
     const workflowRun = { id: Number(receipt.workflowRunId), head_sha: receipt.sourceCommit, repository: { full_name: receipt.repository } }
-    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, workflowRun, {
-      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+    expect(() => assertGitHubAutomatedCutoverEvidence(protectedEnvironment, workflowRun, {
+      environment: receipt.environment, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
     })).not.toThrow()
-    expect(() => assertGitHubDeploymentReviewEvidence({ ...protectedEnvironment, protection_rules: [] }, reviews, workflowRun, {
-      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+    expect(() => assertGitHubAutomatedCutoverEvidence({ ...protectedEnvironment, protection_rules: [{ type: 'required_reviewers', prevent_self_review: true, reviewers: [{}] }] }, workflowRun, {
+      environment: receipt.environment, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
-    })).toThrow(/lacks exact required-reviewer/)
-    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, workflowRun, {
-      environment: receipt.environment, actor: receipt.approvedBy, approvedBy: receipt.approvedBy,
+    })).toThrow(/must not depend on a human/)
+    expect(() => assertGitHubAutomatedCutoverEvidence(protectedEnvironment, workflowRun, {
+      environment: receipt.environment, authorityDecision: 'DP-SD-019', executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
-    })).toThrow(/not the one authenticated independent/)
-    expect(() => assertGitHubDeploymentReviewEvidence(protectedEnvironment, reviews, { ...workflowRun, head_sha: 'b'.repeat(40) }, {
-      environment: receipt.environment, actor: 'deploying-actor', approvedBy: receipt.approvedBy,
+    })).toThrow(/exact Native-authorized/)
+    expect(() => assertGitHubAutomatedCutoverEvidence({ ...protectedEnvironment, deployment_branch_policy: { protected_branches: false, custom_branch_policies: true } }, workflowRun, {
+      environment: receipt.environment, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
+      repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
+    })).toThrow(/only protected branches/)
+    expect(() => assertGitHubAutomatedCutoverEvidence(protectedEnvironment, { ...workflowRun, head_sha: 'b'.repeat(40) }, {
+      environment: receipt.environment, authorityDecision: receipt.authorityDecision, executionMode: receipt.executionMode,
       repository: receipt.repository, workflowRunId: receipt.workflowRunId, sourceCommit: receipt.sourceCommit,
     })).toThrow(/workflow run does not match/)
     const instance = { name: receipt.validationInstance, state: 'RUNNABLE', connectionName: `madhav-astrology:asia-south1:${receipt.validationInstance}` }
@@ -460,6 +464,8 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(preflight).toContain('new Pool(validationPoolConfig)')
     expect(workflow).toContain('DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME')
     expect(workflow).toContain('GH_TOKEN: ${{ github.token }}')
+    expect(preflight).not.toContain('/approvals')
+    expect(preflight).not.toContain('approvedBy')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
   })
 })

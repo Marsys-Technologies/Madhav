@@ -1,4 +1,4 @@
-/** Fail-closed release evidence gate for the one-shot DP-SD-018 cutover. */
+/** Fail-closed release evidence gate for the one-shot DP-SD-018/DP-SD-020 cutover. */
 import { execFileSync } from 'node:child_process'
 import { Pool, type PoolConfig } from 'pg'
 import { parse as parsePgConnectionString } from 'pg-connection-string'
@@ -11,12 +11,13 @@ function requireValue(name: string): string {
 }
 
 export interface BackupRestoreReceipt {
+  authorityDecision: string
   backupId: string
+  executionMode: string
   restoreOperationId: string
   validationInstance: string
   sourceCommit: string
   leaseId: string
-  approvedBy: string
   expiresAt: string
   repository: string
   workflowRunId: string
@@ -32,13 +33,11 @@ interface GitHubEnvironment {
   }>
   deployment_branch_policy?: { protected_branches?: boolean; custom_branch_policies?: boolean } | null
 }
-interface GitHubReview {
-  state?: string
-  environments?: Array<{ name?: string }>
-  user?: { login?: string }
-}
 interface GitHubWorkflowRun { id?: number; head_sha?: string; repository?: { full_name?: string } }
 interface CloudSqlInstanceIdentity { name?: string; connectionName?: string; state?: string }
+
+export const DATA_PLANE_CUTOVER_AUTHORITY = 'DP-SD-020'
+export const DATA_PLANE_CUTOVER_EXECUTION_MODE = 'native_authorized_automated_cutover'
 
 export function parseBackupRestoreReceipt(value: string): BackupRestoreReceipt {
   let parsed: unknown
@@ -47,7 +46,7 @@ export function parseBackupRestoreReceipt(value: string): BackupRestoreReceipt {
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Backup/restore receipt must be an object.')
   const receipt = parsed as Record<string, unknown>
   const expectedKeys = [
-    'approvedBy','backupId','environment','expiresAt','leaseId','repository',
+    'authorityDecision','backupId','environment','executionMode','expiresAt','leaseId','repository',
     'restoreOperationId','sourceCommit','validationInstance','workflowRunId',
   ]
   if (Object.keys(receipt).sort().join(',') !== expectedKeys.join(',')
@@ -60,7 +59,8 @@ export function parseBackupRestoreReceipt(value: string): BackupRestoreReceipt {
 export function assertBackupReceiptBinding(
   receipt: BackupRestoreReceipt,
   binding: {
-    validationInstance: string; sourceCommit: string; leaseId: string; approvedBy: string
+    validationInstance: string; sourceCommit: string; leaseId: string
+    authorityDecision: string; executionMode: string
     repository: string; workflowRunId: string; environment: string
   },
   now = new Date(),
@@ -70,10 +70,11 @@ export function assertBackupReceiptBinding(
       || !/^[0-9a-f]{40}$/.test(receipt.sourceCommit) || !/^[0-9a-f-]{36}$/i.test(receipt.leaseId)
       || receipt.validationInstance === 'amjis-postgres'
       || receipt.validationInstance !== binding.validationInstance || receipt.sourceCommit !== binding.sourceCommit
-      || receipt.leaseId !== binding.leaseId || receipt.approvedBy !== binding.approvedBy
+      || receipt.leaseId !== binding.leaseId || receipt.authorityDecision !== binding.authorityDecision
+      || receipt.executionMode !== binding.executionMode
       || receipt.repository !== binding.repository || receipt.workflowRunId !== binding.workflowRunId
       || receipt.environment !== binding.environment || !/^\d+$/.test(receipt.workflowRunId)) {
-    throw new Error('Backup/restore receipt is not bound to this commit, lease, deployment review, and isolated instance.')
+    throw new Error('Backup/restore receipt is not bound to this commit, lease, DP-SD-020 authority, automated execution mode, and isolated instance.')
   }
   const expiry = Date.parse(receipt.expiresAt)
   if (!Number.isFinite(expiry) || expiry <= now.getTime() || expiry > now.getTime() + 48 * 60 * 60 * 1000) {
@@ -81,12 +82,11 @@ export function assertBackupReceiptBinding(
   }
 }
 
-export function assertGitHubDeploymentReviewEvidence(
+export function assertGitHubAutomatedCutoverEvidence(
   environment: GitHubEnvironment,
-  reviews: GitHubReview[],
   workflowRun: GitHubWorkflowRun,
   binding: {
-    environment: string; actor: string; approvedBy: string
+    environment: string; authorityDecision: string; executionMode: string
     repository: string; workflowRunId: string; sourceCommit: string
   },
 ): void {
@@ -100,19 +100,16 @@ export function assertGitHubDeploymentReviewEvidence(
   }
   const reviewerRule = (environment.protection_rules ?? [])
     .filter((rule) => rule.type === 'required_reviewers')
-  if (reviewerRule.length !== 1 || reviewerRule[0]?.prevent_self_review !== true
-      || (reviewerRule[0]?.reviewers ?? []).length < 1) {
-    throw new Error('Cutover environment lacks exact required-reviewer and no-self-review protection.')
+  if (reviewerRule.length !== 0) {
+    throw new Error('DP-SD-020 automated cutover environment must not depend on a human required-reviewer rule.')
   }
   const branch = environment.deployment_branch_policy
   if (!branch || branch.protected_branches !== true || branch.custom_branch_policies !== false) {
     throw new Error('Cutover environment must permit only protected branches.')
   }
-  const approvals = reviews.filter((review) => review.state === 'approved'
-    && (review.environments ?? []).some((candidate) => candidate.name === binding.environment)
-    && review.user?.login === binding.approvedBy)
-  if (binding.approvedBy === binding.actor || approvals.length !== 1) {
-    throw new Error('Receipt approver is not the one authenticated independent GitHub deployment reviewer.')
+  if (binding.authorityDecision !== DATA_PLANE_CUTOVER_AUTHORITY
+      || binding.executionMode !== DATA_PLANE_CUTOVER_EXECUTION_MODE) {
+    throw new Error('Cutover receipt does not carry the exact Native-authorized DP-SD-020 automated execution binding.')
   }
 }
 
@@ -168,27 +165,27 @@ function githubApi<T>(path: string): T {
 export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Promise<T> {
   const receipt = parseBackupRestoreReceipt(requireValue('DATA_PLANE_BACKUP_RESTORE_ID'))
   const lease = requireValue('DATA_PLANE_CUTOVER_LEASE')
-  const actor = requireValue('GITHUB_ACTOR')
   const repository = requireValue('GITHUB_REPOSITORY')
   const workflowRunId = requireValue('GITHUB_RUN_ID')
   const environmentName = requireValue('DATA_PLANE_CUTOVER_ENVIRONMENT')
   const sourceCommit = requireValue('DEPLOY_SHA')
   const encodedEnvironment = encodeURIComponent(environmentName)
   const environment = githubApi<GitHubEnvironment>(`repos/${repository}/environments/${encodedEnvironment}`)
-  const reviews = githubApi<GitHubReview[]>(`repos/${repository}/actions/runs/${workflowRunId}/approvals`)
   const workflowRun = githubApi<GitHubWorkflowRun>(`repos/${repository}/actions/runs/${workflowRunId}`)
-  assertGitHubDeploymentReviewEvidence(environment, reviews, workflowRun, {
-    environment: environmentName, actor, approvedBy: receipt.approvedBy,
+  assertGitHubAutomatedCutoverEvidence(environment, workflowRun, {
+    environment: environmentName, authorityDecision: receipt.authorityDecision,
+    executionMode: receipt.executionMode,
     repository,workflowRunId,sourceCommit,
   })
-  const approver = receipt.approvedBy
   const validationInstance = requireValue('DATA_PLANE_RESTORE_VALIDATION_INSTANCE')
   const validationDatabaseUrl = requireValue('DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL')
   const validationConnectionName = requireValue('DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME')
   const validationProxyPort = requireValue('DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT')
   if (!/^[0-9a-f-]{36}$/i.test(lease)) throw new Error('DATA_PLANE_CUTOVER_LEASE must be an exact UUID lease receipt.')
   assertBackupReceiptBinding(receipt, {
-    validationInstance,sourceCommit,leaseId: lease,approvedBy: approver,
+    validationInstance,sourceCommit,leaseId: lease,
+    authorityDecision: DATA_PLANE_CUTOVER_AUTHORITY,
+    executionMode: DATA_PLANE_CUTOVER_EXECUTION_MODE,
     repository,workflowRunId,environment: environmentName,
   })
   const project = process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'

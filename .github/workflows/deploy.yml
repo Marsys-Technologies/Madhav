@@ -505,9 +505,9 @@ jobs:
           esac
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
-  # DP-SD-019: bootstrap-only credentials and authenticated environment
-  # approval exist only on this job. When all protected states are established,
-  # GitHub skips the entire job before requesting environment approval.
+  # DP-SD-019/020: bootstrap-only credentials and the authenticated,
+  # protected-branch-only environment exist only on this job. When all protected
+  # states are established, GitHub skips the entire one-time bootstrap job.
   privileged-bootstrap:
     name: One-time Protected DB Bootstrap
     needs: [changes, migration-state]
@@ -776,7 +776,7 @@ jobs:
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
-      - name: Execute protected cutover under backup, restore, lease, quiescence and independent approval
+      - name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence
         if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}

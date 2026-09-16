@@ -34,7 +34,7 @@ describe('Nirmana ownership deployment attestation', () => {
     const prodProxy = bootstrap.steps.find((step) => step.name === 'Start Cloud SQL Auth Proxy')
     const adminProxy = bootstrap.steps.find((step) => step.name === 'Start one-shot Pūrṇa admin proxy')
     const release = bootstrap.steps.find((step) => step.name === 'Release one-shot Pūrṇa admin proxy port')
-    const cutover = bootstrap.steps.find((step) => step.name === 'Execute protected cutover under backup, restore, lease, quiescence and independent approval')
+    const cutover = bootstrap.steps.find((step) => step.name === 'Execute Native-authorized automated cutover under backup, restore, lease and quiescence')
 
     expect(prodProxy?.run).toContain('--port 5432')
     expect(prodProxy?.run).toContain('proxy_5432_pid=$!')
@@ -81,7 +81,7 @@ describe('Nirmana ownership deployment attestation', () => {
     const purnaPostflightIndex = workflow.indexOf('- name: Close and attest Pūrṇa protected-owner handoff')
     const purnaReleaseIndex = workflow.indexOf('- name: Release one-shot Pūrṇa admin proxy port')
     const nirmanaMarkerIndex = workflow.indexOf('- name: Attest Nirmana ownership handoff as deployment-only migrator')
-    const dataPlaneCutoverIndex = workflow.indexOf('- name: Execute protected cutover under backup, restore, lease, quiescence and independent approval')
+    const dataPlaneCutoverIndex = workflow.indexOf('- name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence')
 
     expect(preflight?.if).toBe("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
     expect(marker?.run).toContain('npx tsx scripts/nirmana-evidence-ownership-marker.ts')

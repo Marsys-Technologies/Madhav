@@ -14,6 +14,7 @@ role: >
   adopted planning-basis and proposal state without granting implementation,
   campaign, merge or deployment authority except through a separately approved brief.
 changelog:
+  - "1.0 update 2026-09-16: Records DP-SD-020 Native authority to remove only the separate human GitHub environment reviewer dependency and replace it with exact automated authority/run/source binding while retaining every technical, security, rollback and delivery gate."
   - "1.0 update 2026-09-15: Approves DP-SD-019 in-place execution-focus amendment following the velocity audit: retain the full L3 goal and current repair, isolate privileged bootstrap from routine delivery, restore independent asset/value work, and strengthen durable recovery and proportional validation. Dispatch evidence is recorded in section 11."
   - "1.0 update 2026-09-13: Links the native-authorized planner capability-knowledge and Inquiry Contract branch candidate as DP-P8a; implementation is local/reviewable only, not adopted, merged, migrated, deployed or production-verified."
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
@@ -283,3 +284,15 @@ remain separate statuses.
 | Destination | `Execution — Data Plane`, `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`; preserve `codex/madhav-data-plane-execution` and its existing worktree. |
 | Goal and authority | Retain full DP-SD-017 L3 completion and DP-SD-018 prerequisite authority. Narrowly authorize bootstrap/routine-workflow separation and operating corrections; no protection bypass or new layer scope. |
 | Content pin and dispatch | Strategy content is pinned at `16590cc49f720e4200a8d9b6cad3f52b68e21792`, content SHA-256 `5fa92c6a5df2f5dda0e9d2041ba599b4c733775c1d438c786831fbd24c6ed48c`; consumed on the permanent execution branch by `d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f`. The existing task and heartbeat were updated in place; this records delivery and consumption only, not implementation or scheduled-wake proof. |
+
+## 12. L3 automated cutover authority — DP-SD-020
+
+| Control | Binding |
+|---|---|
+| Native decision | A separate person is not required to review this cutover; plan it as automated and, when complete, move beyond it. |
+| Approved amendment | [Automated cutover authority amendment](MADHAV_DATA_PLANE_L3_AUTOMATED_CUTOVER_AUTHORITY_AMENDMENT_v1_0.md), version 1.0. |
+| Narrow supersession | Remove only the GitHub `required_reviewers`, `prevent_self_review`, human approval-history and `approvedBy` prerequisites. The named environment remains mandatory and protected-branch-only. |
+| Preserved gates | Exact source/run/repository binding, CI, independent technical/security verification, dedicated least-privilege builder identity and secret, fresh backup plus isolated restore, expiring receipt, exclusive lease, quiescence, protected ownership, atomic migrations, postflight, rollback, canary and routine barrier. |
+| Destination | Existing `Execution — Data Plane` task `01a0998a-8240-7631-97ce-36c6d4734fde`; no new execution task and no transfer of Data Plane cutover ownership to Pūrṇa Anveṣaṇa. |
+| Current observation | Source base `113ccc37eb93f02416907fee75b52958792eae7a`; exclusive coordination lease commit `85b25bac593dc932415dc38207db94720031e033`. At observation time the GitHub environment, builder service account and builder secret were absent. |
+| Non-claim | This decision and its source amendment are not a merge, deployment, IAM/DB mutation, backup/restore result, cutover, physical L3 build, consumer-value proof, acceptance, or L4/L5 authority. |
