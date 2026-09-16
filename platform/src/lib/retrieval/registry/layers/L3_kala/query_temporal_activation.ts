@@ -20,6 +20,7 @@ import {
   loadBhavishyaDataQualification,
   type BhavishyaDataQualification,
 } from './query_projections'
+import { TEMPORAL_SCUS } from '../../knowledge/editorial'
 
 type ForwardWindowState =
   | 'not_needed'
@@ -46,6 +47,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
   type:  'tool',
   layer: 'L3',
   name:  'query_temporal_activation',
+  semantic_capabilities: TEMPORAL_SCUS,
 
   description: [
     'Returns temporal activation windows and predicate conditions for a chart.',

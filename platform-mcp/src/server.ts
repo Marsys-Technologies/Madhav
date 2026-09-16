@@ -17,6 +17,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
+import { createHash } from 'node:crypto'
 import express from 'express'
 import cookieParser from 'cookie-parser'
 import type { Request, Response } from 'express'
@@ -144,6 +145,7 @@ import { registerResources } from './resources/index.js'
 import { registerPrompts } from './prompts/index.js'
 // D-2 Lane V-2 — Vidhi Engine plan_retrieval meta-tool (+ capability-version staleness kill)
 import { registerVidhiPlanTool } from './tools/register_vidhi_plan.js'
+import { registerInquiryLifecycleTools } from './tools/register_inquiry_lifecycle.js'
 // Elevation Campaign v2.1 · Stream γ (PŪRṆA) · Lane Ω5 — dossier: gather-then-compose paging
 // engine with a structural synthesis gate (NATIVE-RULED-001, scoped server.ts exception —
 // registerDossierTool itself lives in tools/dossier.ts, γ's own file; this import+registration
@@ -314,7 +316,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
       // Role defaults to 'guest'; super_admin role requires Bearer key with profile lookup.
       principal = {
         user_uid: oauthRecord.uid,
-        key_id: 'oauth:' + token.slice(0, 8),
+        key_id: 'oauth_sha256:' + createHash('sha256').update(token).digest('hex'),
         role: 'guest',
       } satisfies Principal
       authKind = 'oauth'
@@ -419,7 +421,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // RC-14 breaking flip (MCP_TOOL_NAMING_STANDARD §4 Phase-3): remove the 43 legacy
   // P1 short names from the MCP surface so ONLY the canonical `layer_noun_verb` faces
   // resolve. Applied FIRST (before prashna + the profile gate) and UNCONDITIONALLY
-  // for every profile — unlike applyProfileGate, which is a no-op for `full`. Web
+  // for every profile; applyProfileGate independently enforces each reviewed profile. Web
   // replay of old persisted names is unaffected (tool_name_bridge, a different door).
   // See lib/deprecated_tool_gate.ts.
   const deprecatedGate = applyDeprecatedToolGate(server as unknown as ToolRegisteringServer)
@@ -450,11 +452,9 @@ app.post('/mcp', async (req: Request, res: Response) => {
   // profile gate, for the same reason: it is not part of the retrieval-registry
   // catalog the generated MCP_SURFACE_PROFILES manifest is built from, so
   // registering it after the gate would silently block it for 'compact' too.
-  // Polling is harmless for every profile (including 'consult', which could
-  // never have produced a job_id in the first place — it just gets the honest
-  // "unknown or expired job_id" error), so no handler-level profile gate here.
-  registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer)
-
+  // The handler binds every lookup to the originating user+key and re-checks
+  // chart authorization, so a leaked job id grants nothing.
+  registerPrashnaStatusTool(server as unknown as import('./tools/register_prashna_status.js').PrashnaStatusRegisteringServer, principal)
   // EL-13 — mcp_server_info, registered BEFORE applyProfileGate for the same reason as
   // prashna_ask/prashna_status: catalog-staleness detection must be reachable under every MCP
   // surface profile (full/compact/consult), not just whichever ones the generated
@@ -462,6 +462,11 @@ app.post('/mcp', async (req: Request, res: Response) => {
   registerServerInfoTool(server)
 
   const profileGate = applyProfileGate(server as unknown as ToolRegisteringServer, mcpProfile)
+
+  // Pūrṇa Anveṣaṇā W1: full-only lifecycle routes are registered after the profile
+  // gate. They are part of the reviewed full authority and have no callable path in
+  // compact/consult; handler checks remain defense in depth.
+  registerInquiryLifecycleTools(server as unknown as import('./tools/register_inquiry_lifecycle.js').InquiryRegisteringServer, principal, mcpProfile)
 
   // L0 Brahmagyan tools (L0FR Stream A pattern-validation capabilities)
   registerL0BrahmagyanTools(server)
@@ -741,6 +746,8 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'ok',
     service: 'marsys-mcp',
     version: '1.0.0',
+    deployed_sha: process.env['NIRMANA_DEPLOYED_SHA'] ?? null,
+    revision: process.env['K_REVISION'] ?? null,
     tools: REGISTERED_TOOL_COUNT,
     stream_g_capabilities: ['compute_natal_positions', 'query_dasha_periods', 'query_special_lagnas'],
   })

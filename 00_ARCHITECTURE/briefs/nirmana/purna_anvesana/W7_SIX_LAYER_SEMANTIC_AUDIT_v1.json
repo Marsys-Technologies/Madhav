@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "audit_id": "MADHAV-PURNA-ANVESANA-W7-P2-SEMANTIC-AUDIT",
+  "audited_source_head": "3dacc5735",
+  "capability_knowledge_content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
+  "evidence_ceiling": "SOURCE_LOCAL_STRUCTURAL_AND_MANUAL_SEMANTIC_REVIEW",
+  "explicit_exclusions": [
+    "No doctrine or classical correctness ratification.",
+    "No production population, deployment, runtime health, expert-domain acceptance or empirical answer-quality claim.",
+    "Manual review establishes source-local specificity and internal semantic coherence only."
+  ],
+  "method": {
+    "population": "All 182 planner-addressable SCUs in the pinned capability knowledge snapshot.",
+    "automated_census": "Checked every SCU for editorial status, non-empty descriptions/domains/concepts/intents/outputs, resolvable editorial references, descriptor/declaration URI membership, bound concepts, valid edge endpoints and non-empty edge source references.",
+    "manual_sample": "Within each L0-L5 stratum, sort by scu_id and inspect positions 0, floor(n/3), floor(2n/3), and n-1. This yields 24 deterministic samples and includes catalog-derived and authored semantic declarations.",
+    "manual_questions": [
+      "Does the description identify the capability's actual evidence or operation rather than repeat its label?",
+      "Do domains, concepts, intents and outputs cohere with that description and layer responsibility?",
+      "Do limitations, pagination gaps and safety boundaries remain explicit where material?",
+      "Does the graph state cite authored evidence or explicitly disposition isolation without inventing an edge?"
+    ]
+  },
+  "automated_results": {
+    "layer_populations": { "L0": 54, "L1": 40, "L2": 24, "L3": 20, "L4": 11, "L5": 11 },
+    "editorial_scus": 182,
+    "descriptor_derived_stubs": 0,
+    "empty_required_semantic_fields": 0,
+    "editorial_source_refs_checked": 358,
+    "unresolved_editorial_source_refs": 0,
+    "typed_concepts": 257,
+    "unbound_concept_uses": 0,
+    "semantic_edges": 53,
+    "invalid_edge_endpoints_or_sources": 0,
+    "connected_scus": 26,
+    "isolated_scus_with_explicit_disposition": 156,
+    "verdict": "PASS"
+  },
+  "manual_samples": [
+    { "layer": "L0", "scu_id": "scu.catalog.call_panchanga_service", "verdict": "PASS", "note": "Separates arbitrary-date Panchanga computation from natal chart Panchanga; inputs, 31-day range bound, defaults and calendar/election use are specific." },
+    { "layer": "L0", "scu_id": "scu.catalog.query_mantras", "verdict": "PASS", "note": "Names the remedy corpus, returned Sanskrit/transliteration/source fields, optional graha filter and grounded-remedy purpose." },
+    { "layer": "L0", "scu_id": "scu.catalog.query_sign_medical", "verdict": "PASS", "note": "Names the 12-row Kalapurusha mapping and preserves the non-diagnostic health boundary." },
+    { "layer": "L0", "scu_id": "scu.catalog.tool_search", "verdict": "PASS", "note": "Distinguishes lexical catalog discovery from semantic search and keeps zero-overlap results honestly empty; non-exhaustible gap remains visible." },
+
+    { "layer": "L1", "scu_id": "scu.catalog.chart_facts_query", "verdict": "PASS", "note": "Specifies EAV and pivoted shapes, chart addressing facets, ayanamsha behavior, reference emission and pagination semantics." },
+    { "layer": "L1", "scu_id": "scu.catalog.get_dashas", "verdict": "PASS", "note": "Enumerates built dasha systems, levels, temporal facets, canonical ayanamsha and bounded retrieval behavior." },
+    { "layer": "L1", "scu_id": "scu.catalog.get_prashna_lagna", "verdict": "PASS", "note": "Correctly scopes chart_id to the horary chart, distinguishes methods and describes bounded formation evidence." },
+    { "layer": "L1", "scu_id": "scu.yoga.firing_and_cancellation", "verdict": "PASS", "note": "Authored semantic declaration is concise but materially specific: catalog membership is separated from firing, strength and bhanga." },
+
+    { "layer": "L2", "scu_id": "scu.bodha.mechanism.network", "verdict": "PASS", "note": "Authored declaration identifies named, valenced mechanisms and the grounded member graph; its D1-only and ordering gaps remain explicit." },
+    { "layer": "L2", "scu_id": "scu.catalog.query_discoveries", "verdict": "PASS", "note": "Defines ranked discovery evidence, duplicate-family behavior, depth contrast and bounded result limitations rather than promising generic insight." },
+    { "layer": "L2", "scu_id": "scu.catalog.query_rm_dosha_remedy_bundles", "verdict": "PASS", "note": "Connects dosha evidence to remedy bundles and applicability/grounding outputs without collapsing assessment into prescription." },
+    { "layer": "L2", "scu_id": "scu.catalog.traverse_chart_graph", "verdict": "PASS", "note": "Names graph traversal inputs, bounds and evidence references; relationship explanation remains distinct from inferred missing links." },
+
+    { "layer": "L3", "scu_id": "scu.catalog.call_dasha_eligibility", "verdict": "PASS", "note": "Describes eligibility computation as a timing constraint with sequence/window outputs rather than an outcome claim." },
+    { "layer": "L3", "scu_id": "scu.catalog.query_active_dashas", "verdict": "PASS", "note": "Specifies dated active-period retrieval and its timing evidence shape, with bounded pagination limitations retained." },
+    { "layer": "L3", "scu_id": "scu.catalog.query_obstruction_periods", "verdict": "PASS", "note": "Scopes obstruction periods to temporal evidence and preserves source references and non-exhaustive retrieval disclosure." },
+    { "layer": "L3", "scu_id": "scu.kala.temporal_activation", "verdict": "PASS", "note": "Authored declaration binds activation windows, predicates and drill paths; top-k and pagination incompleteness are explicit." },
+
+    { "layer": "L4", "scu_id": "scu.catalog.query_anomaly_flags", "verdict": "PASS", "note": "Names anomaly type, severity, expected/observed fields and leakage class while explicitly limiting use to evidence-quality calibration." },
+    { "layer": "L4", "scu_id": "scu.catalog.query_domain_result", "verdict": "PASS", "note": "Explains the intentional 13-domain sparse shape and reconciliation fields; avoids treating row count as missing coverage." },
+    { "layer": "L4", "scu_id": "scu.catalog.query_prospective_ledger", "verdict": "PASS", "note": "Uses a dedicated evidence-quality and timing family for explicitly filed predictions, mandatory falsifiers, source provenance, confidence and lifecycle state; states that this read surface never files or calibrates predictions." },
+    { "layer": "L4", "scu_id": "scu.catalog.query_spillover_cascades", "verdict": "PASS", "note": "Defines cross-domain A-to-B-to-C propagation, conflict chains and mitigation routing with anchor references." },
+
+    { "layer": "L5", "scu_id": "scu.catalog.lel_intake_checklist", "verdict": "PASS", "note": "Strong fail-closed boundary: structures and validates native-authored events but never invents, defaults or writes event content." },
+    { "layer": "L5", "scu_id": "scu.catalog.query_insight_embeddings", "verdict": "PASS", "note": "Separates embedding provenance/nearest-neighbor lookup from unsupported live text embedding and never exposes raw vectors." },
+    { "layer": "L5", "scu_id": "scu.catalog.query_manifestation_grammar", "verdict": "PASS", "note": "Specifies propensity evidence, prior comparison and lived-reality calibration while retaining evidence references." },
+    { "layer": "L5", "scu_id": "scu.catalog.query_signal_families", "verdict": "PASS", "note": "Uses a dedicated evidence-quality registry family for global signal-family priors, evidence tiers, negative-control classes and calibration status without treating the registry as chart or relational evidence." }
+  ],
+  "writer_verdict": "PASS_WITH_DECLARED_LIMITS",
+  "repairs_required_by_this_audit": [],
+  "independent_review": {
+    "status": "APPROVED",
+    "required_role": "independent_semantic_reviewer",
+    "reviewer": "w7_terminal_code_review",
+    "reviewed_head": "b4e9b7454ff09db42f97a06c7b4a1c38653fe662",
+    "high_or_medium_findings": 0,
+    "note": "Independent review recomputed the 24-sample method and all-estate counts, verified both repaired semantic families and confirmed that the pinned semantic source and snapshot blobs are identical through the reviewed head."
+  }
+}

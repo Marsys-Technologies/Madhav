@@ -1,0 +1,45 @@
+{
+  "schema_version": "purna-anvesana-disposable-evidence/v1",
+  "observed_at": "2026-09-14T13:50:00Z",
+  "environment": {
+    "scope": "disposable_local_only",
+    "database": "PostgreSQL 16.15",
+    "image": "postgres:16-alpine",
+    "image_digest": "sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685"
+  },
+  "migration_1034": {
+    "applied": true,
+    "inserted_current_specs": 6,
+    "missing_declared_columns": 0,
+    "nullable_key_columns": 0,
+    "missing_exact_unique_keys": 0,
+    "asset_ids": [
+      "bg_gochara_citation_resolution",
+      "bg_nakshatra_medical",
+      "bg_sign_medical",
+      "bg_transit_engine",
+      "ka_avadhi",
+      "ka_kalasutra"
+    ]
+  },
+  "service_effects": {
+    "mi_seva": {
+      "required_relations_present": 4,
+      "rows_inserted": 0
+    },
+    "mi_abhilekha": {
+      "first_run_updated": 2,
+      "repeat_run_updated": 0,
+      "cross_chart_same_prediction_id_isolated": true,
+      "non_pending_row_unchanged": true,
+      "unlinked_journal_row_unchanged": true,
+      "non_confirming_answer_semantics": "observed_denied_unratified"
+    }
+  },
+  "claims_excluded": [
+    "shared_database_apply",
+    "production_database_apply",
+    "deployment",
+    "product_ratification_of_non_confirming_answer_semantics"
+  ]
+}

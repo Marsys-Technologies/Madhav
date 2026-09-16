@@ -1,0 +1,165 @@
+{
+  "schema_version": "madhav-purna-anvesana/campaign-definition/v1",
+  "campaign_id": "madhav-purna-anvesana",
+  "definition_version": "0.1.0",
+  "status": "ACTIVE_SOURCE_SCOPE",
+  "created_at": "2026-09-14T17:56:00+05:30",
+  "authority": {
+    "decision_id": "CCD-011",
+    "lease_id": "MADHAV-PURNA-ANVESANA-20260914",
+    "allowed": [
+      "inspect",
+      "design",
+      "implement",
+      "test",
+      "document",
+      "commit",
+      "push",
+      "open_focused_or_stacked_pull_requests",
+      "create_isolated_worktrees_and_branches",
+      "exercise_migration_1033_and_cross_door_paths_in_local_or_disposable_environments"
+    ],
+    "prohibited": [
+      "merge",
+      "deploy",
+      "apply_shared_or_production_migrations",
+      "mutate_production_or_shared_data_or_runtime",
+      "change_credentials_secrets_or_infrastructure",
+      "retire_assets",
+      "ratify_or_change_doctrine",
+      "change_frozen_writerbase_or_orchestrator_contract",
+      "mutate_foreign_campaign_worktrees_branches_ledgers_or_state",
+      "claim_production_deployment_empirical_or_user_acceptance_from_source_ci_pr_local_or_disposable_evidence"
+    ],
+    "terminal_contract": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER"
+  },
+  "foundation_candidate_0": {
+    "branch": "codex/planner-knowledge-inquiry",
+    "commit": "fccfbb5ab11eadb33259ff987738068753d12ebc",
+    "pull_request": 2597,
+    "pull_request_policy": "freeze_unchanged",
+    "protected_check_checkpoint": "daa813f9a5f78a31b791f3e73aa035c2ad7fbbe1",
+    "knowledge_snapshot_content_hash": "sha256:5a2c37b7fefa30cd18769baa2138933eadf628187564dc38b41cff99cf65dd11",
+    "estate_census_content_hash": "sha256:d5c939250ab152ce25ca57ec3dd912a4e506527d1f193293c0868028004ddc9c",
+    "qualification": "source_and_review_candidate_only"
+  },
+  "denominator_policy": {
+    "required_labels": [
+      "portfolio_identity",
+      "formal_frozen_receipt",
+      "current_source_active",
+      "deployed_current"
+    ],
+    "no_cross_denominator_inference": true,
+    "sets": {
+      "portfolio_identity": {
+        "count": 129,
+        "source": "platform/scripts/seed/asset_registry_seed.ts"
+      },
+      "formal_frozen_receipt": {
+        "count": 128,
+        "membership_rule": "portfolio_identity minus supporting bo_grounding; includes retained ka_gochara_sweep",
+        "layer_counts": {"brahmagyan": 40, "ganita": 19, "bodha": 22, "kala": 23, "phala": 9, "mimamsa": 15}
+      },
+      "current_source_active": {
+        "count": 128,
+        "membership_rule": "portfolio_identity minus retired ka_gochara_sweep; includes supporting bo_grounding",
+        "layer_counts": {"brahmagyan": 40, "ganita": 19, "bodha": 23, "kala": 22, "phala": 9, "mimamsa": 15}
+      },
+      "deployed_current": {
+        "count": null,
+        "status": "UNRESOLVED_NO_LIVE_READ_AUTHORIZED_OR_REQUIRED_IN_WAVE_0"
+      }
+    },
+    "static_any_output_spec": {
+      "method": "distinct asset IDs in static INSERT statements targeting asset_output_digest_specs across platform/migrations and platform/supabase/migrations",
+      "current_source_active": {"covered": 111, "denominator": 128, "gaps": 17},
+      "formal_frozen_receipt": {"covered": 110, "denominator": 128, "gaps": 18},
+      "portfolio_identity": {"covered": 111, "denominator": 129, "gaps": 18},
+      "deployed_current": "UNRESOLVED_REQUIRES_ORDERED_MIGRATION_REPLAY_OR_READ_ONLY_LIVE_QUERY",
+      "active_gap_ids": [
+        "bg_ephemeris_engine",
+        "bg_gochara_citation_resolution",
+        "bg_nakshatra_medical",
+        "bg_panchanga",
+        "bg_sign_medical",
+        "bg_transit_engine",
+        "ka_avadhi",
+        "ka_dasha_kala",
+        "ka_gochara_v3_century_materialize",
+        "ka_graha_sancara",
+        "ka_kalasutra",
+        "ka_muhurta_seva",
+        "ka_tulana",
+        "ka_vighnakara",
+        "lel_events",
+        "mi_abhilekha",
+        "mi_seva"
+      ]
+    },
+    "runtime_descriptors": {"total": 185, "planner_addressable": 182, "excluded": 3, "paginated_declared": 96, "output_schema_declared": 4},
+    "public_registrar": {"verified": 59, "ambiguous": 3, "unresolved": 123},
+    "knowledge_snapshot": {
+      "scus": 182,
+      "editorial_scus": 5,
+      "descriptor_derived_stubs": 177,
+      "bindings": 185,
+      "executable_bindings": 179,
+      "unavailable_bindings": 6,
+      "publicly_named_bindings": 7,
+      "publicly_named_scus": 5,
+      "reviewed_pagination_bindings": 1,
+      "explicit_unique_producer_links": 8,
+      "reviewed_hash_producer_links": 7
+    },
+    "semantic_graph": {
+      "scu_nodes": 182,
+      "edges": 53,
+      "edge_relations": {"enables": 39, "requires": 8, "related": 3, "contradicts": 2, "provides": 1},
+      "incident_nodes": 26,
+      "isolated_nodes": 156,
+      "inline_concept_tokens": 219,
+      "typed_concept_universe": "ABSENT",
+      "unbound_concepts": "UNMEASURABLE_UNTIL_TYPED_CONCEPT_UNIVERSE_AND_BINDINGS_EXIST"
+    }
+  },
+  "fc0_residual_mapping": {
+    "source": "00_ARCHITECTURE/briefs/nirmana/MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md#15",
+    "R1": ["W2-P1", "W2-P2"],
+    "R2": ["W0-P2", "W1-P1"],
+    "R3": ["W1-P1"],
+    "R4": ["W1-P2"],
+    "R5": ["W1-P2", "W3-P2"],
+    "R6": ["W1-P1", "W5-P1"],
+    "R7": ["W2-P2", "W3-P1"],
+    "R8": ["W5-P2"],
+    "R9": ["W3-P2", "W4-P1"],
+    "R10": ["W5-P1", "W6-P2"],
+    "R11": ["W4-P1", "W6-P2"],
+    "R12": ["W6-P1", "W6-P2"]
+  },
+  "delivery": {
+    "stack_base": "codex/planner-knowledge-inquiry@fccfbb5ab11eadb33259ff987738068753d12ebc",
+    "wave0_branch": "codex/purna-anvesana-wave0",
+    "default_mode": "stacked_pull_requests",
+    "one_writer_per_packet": true,
+    "independent_reviewer_required": true,
+    "fc0_head_movement_policy": "regenerate_and_revalidate_all_descendants_before_advancing"
+  },
+  "packets": [
+    {"id":"W0-P1","title":"Authority, control-plane bootstrap and FC0 freeze","depends_on":[],"writer":"root","reviewer":"wave0_control_plane","tests":["session_open_validator","remote_lease_verification","definition_json_parse"],"delivery":"wave0_stack","status":"IN_PROGRESS"},
+    {"id":"W0-P2","title":"Reproducible denominator correction and freeze","depends_on":["W0-P1"],"writer":"root","reviewer":"wave0_denominator","tests":["focused_census_test","census_codegen_check","cross_denominator_invariants"],"delivery":"wave0_stack","status":"IN_PROGRESS"},
+    {"id":"W0-P3","title":"Reviewable delivery decomposition and packet DAG","depends_on":["W0-P1","W0-P2"],"writer":"root","reviewer":"wave0_pr_decomposition","tests":["git_ancestry_reproduction","packet_dependency_validation","no_pr_2597_head_change"],"delivery":"wave0_stack","status":"BLOCKED_BY_W0_P2"},
+    {"id":"W1-P1","title":"Every active producer exact output contract and current-row disposition","depends_on":["W0-P3"],"writer":"unassigned","reviewer":"independent_output_contract_reviewer","tests":["active_128_identity_coverage","ordered_migration_replay_or_disposable_db_current_rows","zero_unexplained_output_contract_gaps"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W1-P2","title":"Route, provenance, pagination, dark-state and public-door bindings","depends_on":["W0-P3"],"writer":"unassigned","reviewer":"independent_route_reviewer","tests":["descriptor_185_disposition","public_route_binding","pagination_exhaustion","dark_by_default"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W2-P1","title":"Editorial source-linked SCU replacement","depends_on":["W1-P1","W1-P2"],"writer":"unassigned","reviewer":"independent_semantic_reviewer","tests":["zero_descriptor_derived_stubs","source_link_integrity","producer_semantic_bindings"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W2-P2","title":"Typed graph, concept bindings and change-sync gates","depends_on":["W2-P1"],"writer":"unassigned","reviewer":"independent_graph_reviewer","tests":["zero_isolated_or_dispositioned_scus","zero_unbound_or_dispositioned_concepts","typed_edge_validation","change_sync_drift"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W3-P1","title":"Normalized intent, ontology/graph traversal and deterministic floors","depends_on":["W2-P2"],"writer":"unassigned","reviewer":"independent_planner_reviewer","tests":["intent_normalization","ontology_traversal","deterministic_floor_replay","fail_closed_planning"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W3-P2","title":"Independent omission challenger, widening and frontier closure","depends_on":["W3-P1"],"writer":"unassigned","reviewer":"independent_omission_reviewer","tests":["known_miss_replay","adjacent_chain_discovery","capped_frontier_block","budget_receipts"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W4-P1","title":"Iterative evidence loop and response accountability","depends_on":["W3-P2"],"writer":"unassigned","reviewer":"independent_response_accountability_reviewer","tests":["fact_register_completeness","mandatory_fact_delivery","continuation_closure","response_coverage_receipt"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W5-P1","title":"Disposable migration 1033, RLS, lifecycle, overlay and replay proof","depends_on":["W4-P1"],"writer":"unassigned","reviewer":"migration_guard_and_security_reviewer","tests":["disposable_migration_up_down","rls_subject_isolation","append_only_receipts","cas_and_replay","overlay_fail_closed"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W5-P2","title":"Portal, managed MCP and raw MCP parity/failure proof","depends_on":["W5-P1"],"writer":"unassigned","reviewer":"independent_parity_reviewer","tests":["three_door_equivalence","principal_token_binding","pagination_continuation","failure_state_parity"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W6-P1","title":"Versioned Beyond-Acarya acceptance and adversarial metrics","depends_on":["W5-P2"],"writer":"unassigned","reviewer":"independent_acceptance_reviewer","tests":["novel_combination_suite","omission_rate","route_coverage","semantic_edge_coverage","long_inquiry_closure","abstention_quality"],"delivery":"focused_stack","status":"QUEUED"},
+    {"id":"W6-P2","title":"Source-scope close and authority-bound quarantine","depends_on":["W6-P1"],"writer":"root","reviewer":"independent_terminal_reviewer","tests":["all_packet_evidence","residual_owner_trigger","no_production_claim","lease_release"],"delivery":"source_scope_close","status":"QUEUED"}
+  ]
+}

@@ -222,18 +222,18 @@ notes: "Resonance Map — 35 elements (RM.31–RM.35 added at v2.2 via VARGA-ETL
 ```yaml
 canonical_id: CGM
 path: 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md
-version: "9.0"
+version: "9.1"
 status: CURRENT
-fingerprint_sha256: ROTATED_Madhav_M2A_Exec_6_2026-04-26_frontmatter-amendment-manifest-pointer
+fingerprint_sha256: 1122d9d2f1beb7a71ccc36cbfce1565f3c7c6f519ca4e6ae504be2cb9dc3b45a
 mirror_obligations:
   claude_side: 025_HOLISTIC_SYNTHESIS/CGM_v9_0.md
   gemini_side: null
   mirror_mode: claude_only
   authoritative_side: claude
   asymmetries: "CGM is Claude-authored. Gemini-side .geminirules L2.5 path block updated to CGM_v9_0 at Madhav_M2A_Exec_5. Gemini-side project_state.md updated to reflect edge_count_reconciled:22 at Madhav_M2A_Exec_6."
-last_verified_session: Madhav_M2A_Exec_6
-last_verified_on: 2026-04-26
-notes: "Chart Graph Model — 234 YAML node blocks rebuilt on FORENSIC_v8_0 at B.3.5 (2026-04-26, Madhav_M2A_Exec_5). 8-karaka canonical (GAP.13 resolved). All nodes P1-clean; stop-condition verified chunk_count=234=node_count. CGM_v2_0.md SUPERSEDED; archive copy at 99_ARCHIVE/CGM_v2_0.md. Amended in-place 2026-04-26 at Madhav_M2A_Exec_6: reconciled_edges_manifest pointer added (035_DISCOVERY_LAYER/cgm_edges_manifest_v1_0.json), edge_count_reconciled:22; no node content changed; fingerprint rotates."
+last_verified_session: MADHAV-DATA-PLANE-L3-DP019-INTEGRATION-20260916
+last_verified_on: 2026-09-16
+notes: "Chart Graph Model — 284 YAML node blocks on FORENSIC_v8_0. v9.1 added 50 DVS nodes for D24/D30/D40/D45/D60 and nine divisional-transition edges per the source changelog; the canonical path remains CGM_v9_0.md. 8-karaka canonical (GAP.13 resolved). CGM_v2_0.md is SUPERSEDED with its archive copy at 99_ARCHIVE/CGM_v2_0.md. Fingerprint and version were reconciled to the current canonical artifact during DP019 integration."
 ```
 
 ### Architecture & Governance

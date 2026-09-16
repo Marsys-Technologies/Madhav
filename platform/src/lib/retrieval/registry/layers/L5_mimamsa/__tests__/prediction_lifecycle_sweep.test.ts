@@ -12,6 +12,15 @@ import { checkCapability } from '../../../chart_agnostic_gate'
 import type { CapabilityDescriptor } from '../../../types'
 
 const CHART_A = '11111111-aaaa-4aaa-aaaa-aaaaaaaaaaaa'
+const APPLY_CONTEXT = {
+  chart_id: CHART_A,
+  mutation_authorization: {
+    receipt_id: 'authz:lifecycle-sweep:test',
+    capability_uri: 'marsys://tool/L5/prediction_lifecycle_sweep',
+    chart_id: CHART_A,
+    action: 'apply' as const,
+  },
+}
 
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/lel/prospective_ledger', () => ({
@@ -28,6 +37,8 @@ describe('prediction_lifecycle_sweep — descriptor shape', () => {
     expect(predictionLifecycleSweepCapability.scope).toBe('per_chart')
     expect(predictionLifecycleSweepCapability.required_inputs).toContain('chart_id')
     expect(predictionLifecycleSweepCapability.lel_capable).toBe(true)
+    expect(predictionLifecycleSweepCapability.mutation).toBe(true)
+    expect(predictionLifecycleSweepCapability.annotations).toMatchObject({ read_only: false, idempotent: false })
     // F-R7's calibration_context_only is for outcome/LEL-READ context-supply tools; this tool
     // performs a lifecycle SWEEP/mutation, not a context read, so it deliberately does not carry it.
     expect(predictionLifecycleSweepCapability.calibration_context_only).toBeUndefined()
@@ -88,11 +99,23 @@ describe('prediction_lifecycle_sweep — mimamsa_predictions half', () => {
       { match: /FROM life_events/, rows: [] },
       { match: /UPDATE mimamsa_predictions/, rows: [] },
     ])
-    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'mimamsa_predictions', dry_run: false }, {})
+    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'mimamsa_predictions', dry_run: false }, APPLY_CONTEXT)
     const content = result.content as { mimamsa_predictions: { expired_written: number } }
     expect(content.mimamsa_predictions.expired_written).toBe(1)
     const calls = vi.mocked(mockQuery).mock.calls
     expect(calls.some(c => /UPDATE mimamsa_predictions/i.test(String(c[0])))).toBe(true)
+  })
+
+  it('rejects apply mode without a server-injected authorization receipt and performs no writes', async () => {
+    mockDb([])
+    const result = await predictionLifecycleSweepCapability.handler(
+      { chart_id: CHART_A, table: 'mimamsa_predictions', dry_run: false },
+      { chart_id: CHART_A },
+    )
+    expect(result).toMatchObject({ is_error: true })
+    expect(String(result.content)).toContain('MUTATION_AUTHORIZATION_REQUIRED')
+    expect(mockQuery).not.toHaveBeenCalled()
+    expect(mockMatchFn).not.toHaveBeenCalled()
   })
 
   it('never auto-writes confirmed/denied when a candidate LEL match exists — reports only', async () => {
@@ -101,7 +124,7 @@ describe('prediction_lifecycle_sweep — mimamsa_predictions half', () => {
       { match: /FROM brahma_event_ontology WHERE domain/, rows: [{ domain: 'spirituality', lel_category: 'spiritual' }] },
       { match: /FROM life_events/, rows: [{ event_id: 'ev1', event_date: '2023-01-01', domain: 'spiritual/foo', shape: 'point', date_confidence: 'exact', interval_start: null, interval_end: null, milestone_label: null }] },
     ])
-    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'mimamsa_predictions', dry_run: false }, {})
+    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'mimamsa_predictions', dry_run: false }, APPLY_CONTEXT)
     const content = result.content as { mimamsa_predictions: { rows: Array<{ disposition: string }>, expired_written: number } }
     expect(content.mimamsa_predictions.rows[0]!.disposition).toBe('candidate_match_found_no_auto_write')
     expect(content.mimamsa_predictions.expired_written).toBe(0)
@@ -142,7 +165,7 @@ describe('prediction_lifecycle_sweep — brahma_prospective_ledger half', () => 
       { match: /FROM brahma_event_ontology WHERE event_class_id/, rows: [{ event_class_id: 'major_gain', lel_category: 'finance' }] },
       { match: /FROM life_events/, rows: [{ event_id: 'ev-2011', event_date: '2011-02-20', domain: 'finance/windfall', shape: 'point', date_confidence: 'exact', interval_start: null, interval_end: null, milestone_label: null }] },
     ])
-    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'brahma_prospective_ledger', dry_run: false }, {})
+    const result = await predictionLifecycleSweepCapability.handler({ chart_id: CHART_A, table: 'brahma_prospective_ledger', dry_run: false }, APPLY_CONTEXT)
     const content = result.content as { brahma_prospective_ledger: { matched_applied: number; rows: Array<{ disposition: string }> } }
     expect(mockMatchFn).toHaveBeenCalledTimes(1)
     expect(content.brahma_prospective_ledger.rows[0]!.disposition).toBe('matched_via_existing_hook')

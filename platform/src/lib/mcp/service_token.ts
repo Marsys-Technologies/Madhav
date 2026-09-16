@@ -16,6 +16,7 @@
 
 import 'server-only'
 import { constantTimeEquals } from '@/lib/mcp/constant_time'
+import { verifyOidcToken } from '@/lib/auth/oidc'
 
 /**
  * Validate the X-MCP-Internal-Token header against MCP_INTERNAL_TOKEN.
@@ -38,4 +39,32 @@ export function validateServiceToken(req: Request): boolean {
   }
   if (token === null) return false
   return constantTimeEquals(token, expected)
+}
+
+/**
+ * Pūrṇa's internal MCP routes require both the rotated shared service secret and
+ * a Google-signed identity token bound to the web service and MCP runtime SA.
+ * The explicit local-only escape hatch keeps non-GCP development possible; it
+ * is ignored in production and is never set by the deployment workflow.
+ */
+export async function validateMcpServiceRequest(req: Request): Promise<boolean> {
+  if (!validateServiceToken(req)) return false
+  if (process.env.NODE_ENV !== 'production'
+      && process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV === 'true') return true
+
+  const expectedAudience = process.env.MCP_CALLER_OIDC_AUDIENCE
+  const expectedServiceAccount = process.env.MCP_CALLER_OIDC_SERVICE_ACCOUNT
+  const authorization = req.headers.get('authorization')
+  if (!expectedAudience || !expectedServiceAccount || !authorization?.startsWith('Bearer ')) {
+    return false
+  }
+
+  try {
+    return Boolean(await verifyOidcToken(authorization.slice('Bearer '.length), {
+      expectedAudience,
+      expectedServiceAccount,
+    }))
+  } catch {
+    return false
+  }
 }

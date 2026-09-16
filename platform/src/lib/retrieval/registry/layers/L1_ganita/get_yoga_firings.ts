@@ -31,6 +31,7 @@
  */
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
+import { YOGA_SCUS } from '../../knowledge/editorial'
 
 const MAX_LIMIT = 50
 
@@ -95,6 +96,7 @@ export const getYogaFiringsCapability: CapabilityDescriptor = {
   type:  'tool',
   layer: 'L1',
   name:  'get_yoga_firings',
+  semantic_capabilities: YOGA_SCUS,
 
   description: [
     'Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings.',

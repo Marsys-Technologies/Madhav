@@ -142,7 +142,10 @@ const INTERNAL_INTROSPECTION_URIS: ReadonlySet<CapabilityUri> = new Set([
 /**
  * A-04 mutation class: capabilities whose handler performs a write (DB
  * INSERT/UPDATE/DELETE, or dispatches to a write-capable side effect).
- * MECHANICAL FINDING (2026-07-20): empty. A repo-wide
+ * The table was empty at the 2026-07-20 mechanical scan. EL-58 later added
+ * `prediction_lifecycle_sweep`, whose apply mode executes a direct UPDATE and
+ * an imported write hook; it must never inherit read-only/idempotent metadata.
+ * The remaining historical note explains the original boundary. A repo-wide
  * `grep -rliE "INSERT INTO|UPDATE [a-z_]+ SET|DELETE FROM"` over
  * `src/lib/retrieval/registry/layers/**` and `src/lib/retrieval/synthesis/**`
  * returned zero hits. The genuine write-capable surface in this codebase
@@ -159,7 +162,9 @@ const INTERNAL_INTROSPECTION_URIS: ReadonlySet<CapabilityUri> = new Set([
  * surface is folded into the registry (a later wave's job, per A-04's own
  * "sidecar-served tools are pulled into the registry" framing).
  */
-const MUTATION_URIS: ReadonlySet<CapabilityUri> = new Set([])
+const MUTATION_URIS: ReadonlySet<CapabilityUri> = new Set([
+  'marsys://tool/L5/prediction_lifecycle_sweep',
+])
 
 /**
  * F-R7 `calibration_context_only`: outcome/LEL-read tools whose role is
@@ -340,11 +345,8 @@ const ASSESS_FAMILY_RANK: ReadonlyMap<CapabilityUri, { family_rank: number; rank
 function deriveAnnotations(cap: CapabilityDescriptor): NonNullable<CapabilityDescriptor['annotations']> {
   // MUST key off mutation, not assert read-only unconditionally — a write-capable
   // capability (mutation: true) can never be silently stamped read_only: true here.
-  // Today MUTATION_URIS is empty (verified: zero SQL writes anywhere in the registry
-  // layer tree — the real write surface lives entirely outside the registry, in
-  // /api/mcp/writes/[action]/route.ts) so this branch is currently unreached in
-  // practice, but the coupling must hold structurally for the day a write-dispatcher
-  // route is folded into the registry (this module's own header anticipates that).
+  // The branch is live for prediction_lifecycle_sweep and remains the structural
+  // guard for any future write-capable registry descriptor.
   if (deriveMutation(cap)) {
     return { read_only: false, idempotent: false, destructive: false, open_world: false }
   }

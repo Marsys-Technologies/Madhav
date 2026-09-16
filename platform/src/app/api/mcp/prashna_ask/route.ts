@@ -14,17 +14,10 @@
  * ── Auth (SAME mechanism every other /api/mcp/* route uses) ─────────────────
  * `platform-mcp/src/client.ts` reaches `platform` via a Google-signed OIDC
  * identity token (`GoogleAuth.getIdTokenClient(PLATFORM_URL)`) presented as
- * `Authorization: Bearer <token>`. That token's cryptographic verification is
- * Cloud Run's own IAM gate (`run.invoker` on amjis-web for amjis-mcp-runtime) —
- * infrastructure-level, not application code. The application-level companion
- * check every existing `/api/mcp/*` route layers on top is `validateServiceToken`
- * (X-MCP-Internal-Token shared secret, Layer 1) plus the resolved-principal
- * headers `X-MCP-User` / `X-MCP-Key-Id` (Layer 2). This route reuses exactly that
- * two-layer pattern — see `/api/mcp/primitives/[tool]/route.ts` for the sibling
- * implementation this one was copied from. (`@/lib/auth/oidc.ts`'s
- * `verifyOidcToken` is a DIFFERENT, currently-unused-in-production mechanism for a
- * different caller — Cloud Scheduler — not the platform-mcp→platform path; it is
- * not the "existing OIDC-verification mechanism" for THIS caller.)
+ * `Authorization: Bearer <token>`. Because amjis-web remains publicly invokable,
+ * this route verifies that token in application code against the exact web
+ * audience and amjis-mcp-runtime service account. It also requires the
+ * X-MCP-Internal-Token shared secret and resolved-principal headers.
  *
  * Per-call chart-access authorization reuses `authorizeChartAccess` (same brain
  * `/api/mcp/primitives/[tool]/route.ts` calls for per-chart primitives).
@@ -71,7 +64,7 @@ import { NextResponse } from 'next/server'
 // Trigger capability registration for all layers (L0–L5) at module load — same
 // requirement as /api/mcp/primitives/[tool]/route.ts.
 import '@/lib/retrieval/registry/catalog'
-import { validateServiceToken } from '@/lib/mcp/service_token'
+import { validateMcpServiceRequest } from '@/lib/mcp/service_token'
 import { resolveMcpPrincipalRole } from '@/lib/mcp/auth'
 import { authorizeChartAccess } from '@/lib/auth/authorizeChartAccess'
 import { query } from '@/lib/db/client'
@@ -88,7 +81,10 @@ import { filterLeakedCapabilities } from '@/lib/pipeline/no_leakage_filter'
 import { assertNoCalibrationLeak } from '@/lib/pariprashna/no_leakage/calibration_leak_guard'
 import { CostCapTracker, resolveCostCapsForEntitlement } from '@/lib/pipeline/cost_caps'
 import { enforceTurnLimits } from '@/lib/limits'
-import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getToolByName, resolveToolUri } from '@/lib/retrieval/registry/tool_name_bridge'
+import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay, type CapabilityKnowledgeSnapshot } from '@/lib/retrieval/registry/knowledge'
+import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
+import { adoptInquiryPlanItems, bindingForInquiryItem, buildInquiryClosureReceipt, buildInquiryDoorParityProjection, buildStructuredResponseAccountability, classifyInquiryResult, compileInquiryContract, deriveInquiryPaginationReceipt, failInquiryForOverlayDrift, finalizeInquiryContract, managedPlanToAiInquiryProposal, recordInquiryExecution, semanticInquiryResultCount, type InquiryContract } from '@/lib/vidhi/inquiry'
 import { DEFAULT_STACK_ID } from '@/lib/models/registry'
 import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { fetchChartHeaderResolution } from '@/lib/retrieval/chart_header'
@@ -115,27 +111,36 @@ interface PrashnaAskRequestBody {
   scope_tuple?: unknown
 }
 
+const PRASHNA_RESPONSE_FORMATS = ['digest', 'summary', 'standard', 'narrative', 'full'] as const
+type PrashnaResponseFormat = typeof PRASHNA_RESPONSE_FORMATS[number]
+
+// Managed jobs persist at most 2 MiB. Keep raw evidence well below that limit
+// because the final envelope also carries synthesis, receipts, and duplicated
+// accountability projections. The final serialized guard is the last line of
+// defence; this source budget prevents unbounded accumulation before it.
+const MAX_TERMINAL_TOOL_RESULTS_BYTES = 1024 * 1024
+const MAX_MANAGED_FINAL_EVENT_BYTES = 1800 * 1024
+
 interface ToolDispatchOutcome {
   tool_name: string
   status: 'done' | 'error'
   result_count: number
+  /** `result_count` counts compatibility-adapter items, not semantic rows. */
+  result_count_semantics: 'adapter_items'
+  /** Null unless a reviewed semantic collection path makes a row count honest. */
+  semantic_result_count: number | null
   latency_ms: number
 }
 
 /**
- * P2-B-004 / E-119 (Paripraśna Experience Assurance) — durable-record gap.
+ * P2-B-004 / E-119 (Paripraśna Experience Assurance) — persistence handoff.
  *
  * This route assembles a full reading envelope (`reading`, `judgment_flags`,
  * `completeness`) and streams it as the `final` NDJSON event / a terminal
- * `NextResponse.json`, but nothing durable is ever written for the turn:
- * `platform-mcp`'s `JobRegistry` (`platform-mcp/src/lib/job_registry.ts`) is a
- * `Map<string, Job>` held IN-MEMORY ONLY (comment there: "Jobs are held in
- * memory only — they do not survive a process restart"), 15-minute TTL,
- * actively evicted; no `job_id` column exists in any migration. The one
- * durable row per turn (`pariprashna_safety_decisions`, written by
- * `recordDecision`/`appendSafetyDecision`) is pre-dispatch safety
- * classification only — no `reading`, `judgment_flags`, or `completeness`
- * column.
+ * `NextResponse.json`, but this engine endpoint deliberately does not write the
+ * terminal envelope itself. The managed MCP caller owns the durable job lease
+ * and commits the full result to `planner_managed_prashna_jobs`; a direct
+ * internal caller receives the explicit handoff obligation below.
  *
  * Investigation for this finding also assessed reusing the Portal door's
  * opt-in `stream_capture.ts` sink (`pariprashna_stream_capture` table): that
@@ -150,25 +155,24 @@ interface ToolDispatchOutcome {
  * (BRIEF_PB-2 §G-1) assumes real portal SSE frames replayed against
  * `message_parts` — a table this route never writes at all. That is a new
  * capture mechanism wearing an old one's name, not the "few lines of reuse"
- * bar this finding's smaller path requires — so this route takes the smaller,
- * honest fallback instead: every terminal envelope discloses the gap via this
- * field, per CLAUDE.md §N.7 item 6 ("an honest null beats an invented
- * judgment") rather than silently implying persistence through omission.
+ * bar this finding's smaller path requires. The managed-job table is therefore
+ * a distinct principal-bound retention contract, not a forged Portal capture.
  *
- * `status: 'none'` is the only value ever produced today. If a durable sink is
- * added for this door later, this must flip to a real status backed by an
- * actual write that runs — never a broadcast "durable" with no detector
- * behind it (§N.8 Earned-Signal Principle).
+ * This engine endpoint still performs no durable terminal write itself. Its
+ * authenticated managed caller now commits the full result to
+ * `planner_managed_prashna_jobs` before reporting `persistence:managed_job`.
+ * Returning `caller_required` here keeps direct/internal invocations honest:
+ * they have no durable terminal receipt until their caller completes that handoff.
  */
-const MCP_TURN_PERSISTENCE_NONE = {
-  status: 'none' as const,
+const MCP_TURN_PERSISTENCE_CALLER_REQUIRED = {
+  status: 'caller_required' as const,
   detail:
-    'This MCP-door turn (reading, judgment_flags, completeness) is not durably persisted anywhere: platform-mcp\'s JobRegistry is in-memory only (15-minute TTL, does not survive a process restart), and no message_parts row is ever written for this door. Only the pre-dispatch safety classification is written durably, to pariprashna_safety_decisions. See P2-B-004 / E-119.',
+    'This engine endpoint does not persist its terminal result. The authenticated managed caller must commit the full envelope to planner_managed_prashna_jobs before reporting durable completion.',
 }
 
 export async function POST(request: Request) {
-  // ── Layer 1: service-to-service auth (same as every other /api/mcp/* route) ──
-  if (!validateServiceToken(request)) {
+  // ── Layer 1: audience/SA-bound OIDC plus the shared service token ──────────
+  if (!(await validateMcpServiceRequest(request))) {
     return NextResponse.json(
       buildErrorEnvelope({
         error_class: 'auth',
@@ -214,6 +218,17 @@ export async function POST(request: Request) {
       { status: 400 },
     )
   }
+  const rawResponseFormat = body.response_format ?? 'standard'
+  if (!PRASHNA_RESPONSE_FORMATS.includes(rawResponseFormat as PrashnaResponseFormat)) {
+    return NextResponse.json(
+      buildErrorEnvelope({
+        error_class: 'validation',
+        message: `response_format must be one of: ${PRASHNA_RESPONSE_FORMATS.join(', ')}`,
+      }),
+      { status: 400 },
+    )
+  }
+  const responseFormat = rawResponseFormat as PrashnaResponseFormat
 
   // A malformed scope_tuple is a caller bug worth surfacing (400), not something
   // to silently drop back to text-only classification — the whole point of this
@@ -386,7 +401,7 @@ export async function POST(request: Request) {
         empty_result_tools: [],
         cap_tripped: null,
       },
-      persistence: MCP_TURN_PERSISTENCE_NONE,
+      persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
       // V3-E-049: the FK fields an auditor follows to `pariprashna_safety_decisions`
       // (and, when a review was opened, `pariprashna_safety_reviews`). The full
       // `SafetyDecision` object is already in scope from `classifyTurnSafety` above
@@ -480,9 +495,13 @@ export async function POST(request: Request) {
   // ── toolsAuthorized derivation + B.11/dasha floor adoption (identical sequence
   // to consult/route.ts) ───────────────────────────────────────────────────────
   const toolsAuthorized = Array.from(new Set(plan.tool_calls.map((tc) => tc.tool_name)))
+  let compiledFloorFailed = false
+  let unmappedFloorItems = 0
 
   if (plan.scope_tuple) {
     const compiledFloor = compileFloorForPlan(plan.scope_tuple, chartId)
+    compiledFloorFailed = compiledFloor.compileFailed
+    unmappedFloorItems = compiledFloor.unmappedPrimitives.length
     for (const tc of compiledFloor.toolCalls) {
       if (!toolsAuthorized.includes(tc.tool_name)) {
         plan.tool_calls.push(tc)
@@ -510,6 +529,28 @@ export async function POST(request: Request) {
   }
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
+  const nowContextDate = new Date().toISOString().slice(0, 10)
+  let inquirySnapshot: CapabilityKnowledgeSnapshot | null = null
+  const initialInquiryContract = plan.scope_tuple
+    ? await (async () => {
+        inquirySnapshot = assertPinnedCapabilityKnowledgeCurrent()
+        const overlay = await loadChartCapabilityOverlay(inquirySnapshot, chartId)
+        const contract = compileInquiryContract({
+          snapshot: inquirySnapshot,
+          overlay,
+          chart_id: chartId,
+          question,
+          scope_tuple: plan.scope_tuple!,
+          ai_proposal: managedPlanToAiInquiryProposal(plan),
+          execution_channel: 'platform_internal',
+          temporal_anchor_date: nowContextDate,
+          temporal_anchor_source: 'request_context_clock',
+        })
+        const adopted = adoptInquiryPlanItems(plan, contract)
+        toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
+        return contract
+      })()
+    : null
 
   // ── PPR-12 PLAN-TIME ENFORCEMENT (G1-A hardening round, C-3) ────────────────
   //
@@ -553,7 +594,7 @@ export async function POST(request: Request) {
           empty_result_tools: [],
           cap_tripped: null,
         },
-        persistence: MCP_TURN_PERSISTENCE_NONE,
+        persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
         // V3-E-049: same FK-field addition as the pre-plan safety_withheld branch
         // above — `postPlanSafety` is already in scope from `reclassifyAfterPlan`.
         safety_decision: {
@@ -675,6 +716,24 @@ export async function POST(request: Request) {
       let costCapTripped: { reason: string; judgmentFlag: string } | null = null
       let unservedTools: string[] = []
       const unresolvedTools: string[] = []
+      let retainedToolResultBytes = 2 // JSON array delimiters
+
+      const retainToolResult = (
+        toolName: string,
+        bundle: import('@/lib/retrieval/shared_types').ToolBundle,
+      ): boolean => {
+        const entry = { tool_name: toolName, bundle }
+        const entryBytes = Buffer.byteLength(JSON.stringify(entry)) + (toolResults.length > 0 ? 1 : 0)
+        if (retainedToolResultBytes + entryBytes > MAX_TERMINAL_TOOL_RESULTS_BYTES) {
+          const judgmentFlag = 'terminal_result_budget_exceeded'
+          costCapTripped = { reason: 'terminal_result_budget', judgmentFlag }
+          if (!judgmentFlags.includes(judgmentFlag)) judgmentFlags.push(judgmentFlag)
+          return false
+        }
+        retainedToolResultBytes += entryBytes
+        toolResults.push(entry)
+        return true
+      }
 
       const emitProgress = (lastTool: string): void => {
         controller.enqueue(
@@ -705,7 +764,7 @@ export async function POST(request: Request) {
           continue
         }
 
-        const check = tracker.checkAndRecordCall()
+        const check = tracker.checkAndRecordCall(tool.dispatch_units)
         if (check.stopped) {
           costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
           judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
@@ -714,16 +773,24 @@ export async function POST(request: Request) {
         }
 
         const toolStart = Date.now()
+        let terminalResultBudgetStopped = false
         try {
           const bundle = await tool.retrieve(queryPlanLike, paramsByTool.get(toolName))
-          toolResults.push({ tool_name: toolName, bundle })
-          toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, latency_ms: Date.now() - toolStart })
+          const capabilityUri = resolveToolUri(toolName)
+          const contractItem = initialInquiryContract?.plan_items.find((item) => item.binding_id === `registry:${capabilityUri}`)
+          const binding = contractItem && inquirySnapshot ? bindingForInquiryItem(inquirySnapshot, initialInquiryContract!, contractItem.item_id) : undefined
+          toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - toolStart })
+          if (!retainToolResult(toolName, bundle)) {
+            unservedTools = dispatchableTools.slice(i)
+            terminalResultBudgetStopped = true
+          }
         } catch (err) {
-          toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, latency_ms: Date.now() - toolStart })
+          toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - toolStart })
           console.error(`[mcp:prashna_ask] tool dispatch failed for ${toolName}`, err instanceof Error ? err.message : String(err))
         }
 
         emitProgress(toolName)
+        if (terminalResultBudgetStopped) break
       }
 
       if (leakedTools.length > 0) {
@@ -743,10 +810,95 @@ export async function POST(request: Request) {
       // visibly disclosed, not left for a caller to notice by reading every row of
       // tools_dispatched themselves.
       const emptyResultTools = toolEventLog
-        .filter((t) => t.status === 'done' && t.result_count === 0)
+        .filter((t) => t.status === 'done' && (t.semantic_result_count === 0
+          || (!initialInquiryContract && t.result_count === 0)))
         .map((t) => t.tool_name)
       if (emptyResultTools.length > 0) {
         judgmentFlags.push('empty_tool_results')
+      }
+
+      let inquiryContract: InquiryContract | null = initialInquiryContract
+      if (inquiryContract && inquirySnapshot) {
+        const bundleByTool = new Map(toolResults.map((result) => [result.tool_name, result.bundle]))
+        const eventByUri = new Map(toolEventLog.flatMap((event) => {
+          const uri = resolveToolUri(event.tool_name)
+          return uri ? [[uri, { event, bundle: bundleByTool.get(event.tool_name) }] as const] : []
+        }))
+        for (const item of [...inquiryContract.plan_items]) {
+          const capabilityUri = item.binding_id?.replace(/^registry:/, '')
+          const observed = capabilityUri ? eventByUri.get(capabilityUri) : undefined
+          if (!observed) continue
+          const binding = bindingForInquiryItem(inquirySnapshot, inquiryContract, item.item_id)
+          if (observed.event.status === 'error' || !observed.bundle) {
+            inquiryContract = recordInquiryExecution(inquiryContract, {
+              item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+              pagination: { semantics: binding?.pagination ?? 'none', exhausted: true, next: null },
+              request_position_path: binding?.pagination_contract?.request_position_path,
+            })
+            continue
+          }
+          const disposition = classifyInquiryResult(binding, observed.bundle)
+          const pagination = deriveInquiryPaginationReceipt(binding, observed.bundle, item.args)
+          inquiryContract = recordInquiryExecution(inquiryContract, {
+            item_id: item.item_id, disposition,
+            evidence_refs: [`retrieval:${observed.event.tool_name}:${stableFingerprint(observed.bundle)}`],
+            ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+            pagination, request_position_path: binding?.pagination_contract?.request_position_path,
+          })
+        }
+
+        while (inquiryContract.iteration < inquiryContract.max_iterations) {
+          const item = inquiryContract.plan_items.find((candidate) => candidate.state === 'ready'
+            && candidate.observation !== null && candidate.binding_id?.startsWith('registry:'))
+          if (!item?.binding_id) break
+          const capabilityUri = item.binding_id.slice('registry:'.length)
+          const toolName = dispatchableTools.find((name) => resolveToolUri(name) === capabilityUri)
+          const tool = toolName ? getToolByName(toolName) : undefined
+          const binding = bindingForInquiryItem(inquirySnapshot, inquiryContract, item.item_id)
+          if (!toolName || !tool || !binding) break
+          const check = tracker.checkAndRecordCall(tool.dispatch_units)
+          if (check.stopped) {
+            costCapTripped = { reason: check.reason ?? 'unknown_cap', judgmentFlag: check.judgmentFlag ?? 'cost_cap_exceeded' }
+            judgmentFlags.push(check.judgmentFlag ?? 'cost_cap_exceeded')
+            break
+          }
+          const started = Date.now()
+          let terminalResultBudgetStopped = false
+          try {
+            const bundle = await tool.retrieve(queryPlanLike, item.args)
+            const disposition = classifyInquiryResult(binding, bundle)
+            toolEventLog.push({ tool_name: toolName, status: 'done', result_count: bundle.results.length, result_count_semantics: 'adapter_items', semantic_result_count: semanticInquiryResultCount(binding, bundle), latency_ms: Date.now() - started })
+            if (!retainToolResult(toolName, bundle)) {
+              if (!unservedTools.includes(toolName)) unservedTools.push(toolName)
+              terminalResultBudgetStopped = true
+            } else {
+              const pagination = deriveInquiryPaginationReceipt(binding, bundle, item.args)
+              inquiryContract = recordInquiryExecution(inquiryContract, {
+                item_id: item.item_id, disposition,
+                evidence_refs: [`retrieval:${toolName}:${stableFingerprint(bundle)}`],
+                ...(disposition === 'failed' ? { gap_reason: 'tool_failure_envelope' } : {}),
+                pagination, request_position_path: binding.pagination_contract?.request_position_path,
+              })
+            }
+          } catch (error) {
+            console.error(`[mcp:prashna_ask] inquiry continuation failed for ${toolName}`, error)
+            toolEventLog.push({ tool_name: toolName, status: 'error', result_count: 0, result_count_semantics: 'adapter_items', semantic_result_count: null, latency_ms: Date.now() - started })
+            inquiryContract = recordInquiryExecution(inquiryContract, {
+              item_id: item.item_id, disposition: 'failed', evidence_refs: [], gap_reason: 'dispatch_error',
+              pagination: { semantics: binding.pagination, exhausted: true, next: null },
+              request_position_path: binding.pagination_contract?.request_position_path,
+            })
+          }
+          if (terminalResultBudgetStopped) break
+        }
+        const currentOverlay = await loadChartCapabilityOverlay(inquirySnapshot, inquiryContract.chart_id)
+        if (currentOverlay.overlay_version !== inquiryContract.chart_availability_version
+          || currentOverlay.build_id !== inquiryContract.chart_build_id) {
+          judgmentFlags.push('capability_overlay_changed_during_inquiry')
+          inquiryContract = failInquiryForOverlayDrift(inquiryContract)
+        } else {
+          inquiryContract = finalizeInquiryContract(inquiryContract)
+        }
       }
 
       // W6.3 fix-cycle (native-directed, live trace d08d823a): chart_header must be
@@ -754,7 +906,6 @@ export async function POST(request: Request) {
       // (+ the same as-of date) to anchor the model's notion of "now"; fetching it
       // after synthesis returned meant the reading was built with no temporal anchor
       // at all and reasoned from stale training-data assumptions instead.
-      const nowContextDate = new Date().toISOString().slice(0, 10)
       const { header: chartHeader, flags: chartHeaderFlags } = await fetchChartHeaderResolution(
         chartId ?? '',
         undefined,
@@ -779,14 +930,16 @@ export async function POST(request: Request) {
       // failure mode produced it. The completeness receipt (`cap_tripped`,
       // `status: 'partial'`) and a dedicated `synthesis_skipped_cost_cap`
       // judgment flag disclose exactly what happened — never a silent drop.
-      const synthesisCapCheck = tracker.checkAndRecordCall()
+      const synthesisCapCheck = costCapTripped === null ? tracker.checkAndRecordCall() : null
       let synthesis: Awaited<ReturnType<typeof synthesizeReading>>
-      if (synthesisCapCheck.stopped) {
-        const reasonFlag = synthesisCapCheck.judgmentFlag ?? 'cost_cap_exceeded'
+      if (costCapTripped !== null || synthesisCapCheck?.stopped) {
+        const reasonFlag = costCapTripped?.judgmentFlag
+          ?? synthesisCapCheck?.judgmentFlag
+          ?? 'cost_cap_exceeded'
         if (!judgmentFlags.includes(reasonFlag)) judgmentFlags.push(reasonFlag)
         judgmentFlags.push('synthesis_skipped_cost_cap')
         if (!costCapTripped) {
-          costCapTripped = { reason: synthesisCapCheck.reason ?? 'unknown_cap', judgmentFlag: reasonFlag }
+          costCapTripped = { reason: synthesisCapCheck?.reason ?? 'unknown_cap', judgmentFlag: reasonFlag }
         }
         synthesis = { reading: null, model_id: null, judgment_flags: [] }
       } else {
@@ -805,9 +958,10 @@ export async function POST(request: Request) {
           unresolvedTools,
           emptyResultTools,
           strippedLeakedCapabilities: leakedTools,
-          capTripped: costCapTripped?.reason ?? null,
+          capTripped: null,
           nowContextDate,
           currentMahaAntar: chartHeader?.current_maha_antar ?? null,
+          responseFormat,
           // V3-E-024: carries the floor-discipline note (and, at depth:'deepdive',
           // the E-7 INSIGHT MANDATE prefix) folded into plan.synthesis_guidance
           // above — this door's only path for that guidance to reach the model.
@@ -816,7 +970,19 @@ export async function POST(request: Request) {
       }
       judgmentFlags.push(...synthesis.judgment_flags)
 
-      const isPartial = costCapTripped !== null || unresolvedTools.length > 0
+      const responseAccountability = inquiryContract
+        ? buildStructuredResponseAccountability(inquiryContract, {
+            response_text: synthesis.reading,
+            evidence_payloads: toolResults.map((result) => result.bundle),
+            knowledge_snapshot: inquirySnapshot ?? undefined,
+          })
+        : null
+
+      const dispatchErrors = toolEventLog.filter((item) => item.status === 'error')
+      const isPartial = costCapTripped !== null || unresolvedTools.length > 0 ||
+        dispatchErrors.length > 0 ||
+        compiledFloorFailed || unmappedFloorItems > 0 || (inquiryContract !== null && inquiryContract.status !== 'COMPLETE') ||
+        (responseAccountability !== null && responseAccountability.response_coverage_receipt.status !== 'COMPLETE')
 
       // The reading ENVELOPE — everything this route ASSEMBLES — kept structurally
       // separate from `results`, the verbatim evidence rows, so the COLLECT-ONLY guard
@@ -840,9 +1006,15 @@ export async function POST(request: Request) {
           stripped_leaked_capabilities: leakedTools,
           empty_result_tools: emptyResultTools,
           cap_tripped: costCapTripped?.reason ?? null,
+          compiled_floor_failed: compiledFloorFailed,
+          unmapped_floor_item_count: unmappedFloorItems,
         },
-        // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_NONE's doc comment.
-        persistence: MCP_TURN_PERSISTENCE_NONE,
+        inquiry_contract: inquiryContract,
+        inquiry_closure_receipt: inquiryContract ? buildInquiryClosureReceipt(inquiryContract) : null,
+        inquiry_door_parity: inquiryContract ? buildInquiryDoorParityProjection(inquiryContract) : null,
+        response_accountability: responseAccountability,
+        // P2-B-004 / E-119 — see MCP_TURN_PERSISTENCE_CALLER_REQUIRED's doc comment.
+        persistence: MCP_TURN_PERSISTENCE_CALLER_REQUIRED,
         // V3-E-049: `postPlanSafety` (from `classifyTurnSafety` / `reclassifyAfterPlan`
         // above, closed over from the POST handler's scope) already computed and
         // gated dispatch with the full `SafetyDecision` object — only its derived,
@@ -871,8 +1043,19 @@ export async function POST(request: Request) {
       assertNoCalibrationLeak(readingEnvelope, 'api/mcp/prashna_ask:final-envelope')
 
       const finalBody = { ...readingEnvelope, results: toolResults }
+      const finalLine = JSON.stringify({ event: 'final', ...finalBody }) + '\n'
+      if (Buffer.byteLength(finalLine) > MAX_MANAGED_FINAL_EVENT_BYTES) {
+        const boundedFailure = buildErrorEnvelope({
+          trace_id: queryId,
+          error_class: 'internal',
+          message: 'MANAGED_JOB_RESULT_TOO_LARGE',
+          remediation: 'Narrow the question or scope so the durable result fits the managed-job envelope.',
+        })
+        controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...boundedFailure }) + '\n'))
+        return
+      }
 
-      controller.enqueue(encoder.encode(JSON.stringify({ event: 'final', ...finalBody }) + '\n'))
+      controller.enqueue(encoder.encode(finalLine))
   }
 
   return new Response(stream, {

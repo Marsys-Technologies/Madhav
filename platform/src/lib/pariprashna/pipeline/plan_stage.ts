@@ -37,6 +37,8 @@ import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
 import type { SafetyDecision } from '@/lib/pariprashna/safety'
 import { isInjectionContainmentEnabled } from '@/lib/pariprashna/injection/flag'
 import { isHonestControlsEnabled } from '@/lib/pariprashna/honest_controls/flag'
+import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
+import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal, type InquiryContract } from '@/lib/vidhi/inquiry'
 
 import { halt, proceed, type StageResult, type TurnIdentity, type TurnParams } from './stage_context'
 
@@ -111,6 +113,8 @@ export interface PlanStageOutput {
    * synthesis stage cannot reconstruct this set on its own.
    */
   removedCapabilities: string[]
+  /** Same authoritative inquiry contract used by raw MCP lifecycle clients. */
+  inquiryContract: InquiryContract | null
 }
 
 export async function runPlanStage(args: {
@@ -321,6 +325,28 @@ export async function runPlanStage(args: {
   ensureB11WholeChartReadFloor(plan, toolsAuthorized)
   ensureDashaContextFloor(plan, toolsAuthorized)
 
+  const inquiryContract = plan.scope_tuple
+    ? await (async () => {
+        const snapshot = assertPinnedCapabilityKnowledgeCurrent()
+        const overlay = await loadChartCapabilityOverlay(snapshot, chartId)
+        const temporalAnchorDate = new Date().toISOString().slice(0, 10)
+        const contract = compileInquiryContract({
+          snapshot,
+          overlay,
+          chart_id: chartId,
+          question: queryText,
+          scope_tuple: plan.scope_tuple!,
+          ai_proposal: managedPlanToAiInquiryProposal(plan),
+          execution_channel: 'platform_internal',
+          temporal_anchor_date: temporalAnchorDate,
+          temporal_anchor_source: 'request_context_clock',
+        })
+        const adopted = adoptInquiryPlanItems(plan, contract)
+        toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
+        return contract
+      })()
+    : null
+
   // NO-LEAKAGE enforcement (doctrine F-R7) — surfaced as a `flag`.
   const removedCapabilities: string[] = []
   const noLeakageFiltered = filterLeakedCapabilities(toolsAuthorized)
@@ -476,5 +502,6 @@ export async function runPlanStage(args: {
     judgmentFlags,
     safetyDecision,
     removedCapabilities,
+    inquiryContract,
   })
 }

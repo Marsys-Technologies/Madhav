@@ -29,6 +29,13 @@ import {
 } from '@/lib/pariprashna/provenance/stamp'
 import type { WebCompletenessReceipt } from '@/lib/pipeline/completeness_wiring'
 import type { PariprashnaEmitter } from '@/lib/pariprashna/protocol/emitter'
+import {
+  buildInquiryClosureReceipt,
+  buildInquiryDoorParityProjection,
+  buildStructuredResponseAccountability,
+  type InquiryContract,
+  type InquiryResponseAccountability,
+} from '@/lib/vidhi/inquiry'
 
 export interface TurnReceiptProvenance {
   provenanceStamp: TurnProvenanceStamp
@@ -62,7 +69,9 @@ export async function computeTurnReceiptProvenance(args: {
 export function emitCompletenessReceipt(args: {
   em: PariprashnaEmitter
   completenessReceipt: WebCompletenessReceipt | null
-}): void {
+  inquiryContract?: InquiryContract | null
+  responseAccountability?: InquiryResponseAccountability | null
+}): ReturnType<typeof buildInquiryDoorParityProjection> | null {
   const { em, completenessReceipt } = args
   if (completenessReceipt) {
     const { served, floor_item_total } = completenessReceipt.coverage
@@ -72,4 +81,32 @@ export function emitCompletenessReceipt(args: {
       detail: completenessReceipt.channel_note,
     })
   }
+  if (args.inquiryContract) {
+    const closureReceipt = buildInquiryClosureReceipt(args.inquiryContract)
+    const doorParity = buildInquiryDoorParityProjection(args.inquiryContract)
+    const required = args.inquiryContract.obligations.filter((item) => item.materiality === 'required')
+    const dispositioned = required.filter((item) => item.disposition !== 'pending').length
+    const unresolvedMaterialFrontier = args.inquiryContract.material_frontier.filter((item) =>
+      item.materiality === 'required' && (item.disposition === 'open' || item.disposition === 'capped'))
+    em.grade({
+      subject: 'inquiry_contract',
+      grade: args.inquiryContract.status,
+      detail: `${dispositioned}/${required.length} required obligations dispositioned; ${unresolvedMaterialFrontier.length} required frontier items unresolved; receipt ${closureReceipt.receipt_hash}`,
+    })
+    const accountability = args.responseAccountability
+      ?? buildStructuredResponseAccountability(args.inquiryContract)
+    const responseReceipt = accountability.response_coverage_receipt
+    em.grade({
+      subject: 'response_accountability',
+      grade: responseReceipt.status,
+      detail: JSON.stringify(accountability),
+    })
+    em.grade({
+      subject: 'inquiry_door_parity',
+      grade: doorParity.status,
+      detail: JSON.stringify(doorParity),
+    })
+    return doorParity
+  }
+  return null
 }

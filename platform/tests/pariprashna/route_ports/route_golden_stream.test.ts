@@ -438,11 +438,17 @@ import { POST } from '@/app/api/pariprashna/route'
 
 const BASELINE_DIR = join(__dirname, 'baseline')
 const WRITE_MODE = process.env.PARIPRASHNA_PORTS_BASELINE === 'write'
+const GOLDEN_CLOCK = new Date('2026-09-15T12:00:00.000Z')
 
 let uuidCounter = 0
 let originalRandomUUID: typeof crypto.randomUUID
 
 beforeEach(() => {
+  // The real planner resolves current-transit arguments from the UTC date.
+  // Freeze Date only (not timers) so a midnight boundary cannot rewrite the
+  // closure-receipt hash while preserving real stream/timer behaviour.
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(GOLDEN_CLOCK)
   world.scenario = null
   world.sideEffects = []
   world.abort = null
@@ -454,6 +460,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.restoreAllMocks()
   crypto.randomUUID = originalRandomUUID
 })

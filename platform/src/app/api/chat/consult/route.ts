@@ -88,6 +88,8 @@ import { buildChatToolsFromNames } from '@/lib/retrieval/registry/schema_utils'
 import { createToolCache, executeWithCache } from '@/lib/cache/index'
 import { getSharedQosDispatchQueue } from '@/lib/retrieval/qos/dispatch_queue'
 import { loadManifest } from '@/lib/bundle/manifest_reader'
+import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
+import { adoptInquiryPlanItems, compileInquiryContract, managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry'
 import { runAll, summarize } from '@/lib/validators/index'
 import type { ValidationResult } from '@/lib/validators/types'
 import { validateCitationsForStream } from '@/lib/synthesis/streaming_citation_validator'
@@ -253,6 +255,9 @@ async function resolveAttachments(
 }
 
 export async function POST(request: Request) {
+  // One server-owned date anchor for the whole request. Planner text and model
+  // arguments can never supply or move this value.
+  const requestContextDate = new Date().toISOString().slice(0, 10)
   const setupStart = Date.now()
 
   const user = await getServerUser()
@@ -710,6 +715,28 @@ export async function POST(request: Request) {
   // correct dates (data lives in chart_facts.dasha_vimshottari).
   ensureDashaContextFloor(plan, toolsAuthorized)
 
+  // Make the same server-compiled Inquiry Contract authoritative on this
+  // legacy managed door as on the Pariprasna pipeline. This removes planner
+  // authority over executable arguments (including the nine-way current
+  // transit aggregate's date/planet fan-out) before no-leakage and dispatch.
+  if (plan.scope_tuple) {
+    const snapshot = assertPinnedCapabilityKnowledgeCurrent()
+    const overlay = await loadChartCapabilityOverlay(snapshot, chartId)
+    const inquiryContract = compileInquiryContract({
+      snapshot,
+      overlay,
+      chart_id: chartId,
+      question: queryText,
+      scope_tuple: plan.scope_tuple,
+      ai_proposal: managedPlanToAiInquiryProposal(plan),
+      execution_channel: 'platform_internal',
+      temporal_anchor_date: requestContextDate,
+      temporal_anchor_source: 'request_context_clock',
+    })
+    const adopted = adoptInquiryPlanItems(plan, inquiryContract)
+    toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
+  }
+
   // RC-02 (§H.1 crit-6, two-door parity) — judgment_flags aggregation point.
   // /api/mcp/prashna_ask has surfaced a `judgment_flags: string[]` array in its response
   // envelope since W6 (no_leakage_capabilities_stripped, planned_tools_unresolved, …).
@@ -959,6 +986,7 @@ export async function POST(request: Request) {
         const result = await getSharedQosDispatchQueue().submit({
           principalId: user.uid,
           priorityClass: 'interactive',
+          units: t.dispatch_units ?? 1,
           run: () => executeWithCache(t, queryPlan, cache, plannerParamsMap.get(toolName)),
         })
         emit({
@@ -1261,5 +1289,4 @@ export async function POST(request: Request) {
   return res.internal(msg)
 }
 }
-
 

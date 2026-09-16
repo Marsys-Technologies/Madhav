@@ -1,118 +1,17 @@
 {
-  "parity_status": "FAIL",
-  "checked_at": "2026-05-12T15:34:50.377Z",
-  "manifest_fingerprint": "sha256:1a0720ff03d51517acdbf28d33ea43609eb57ba1b83328af63153fc787cf1dda",
+  "parity_status": "PASS",
+  "checked_at": "2026-09-16T05:15:27.452Z",
+  "manifest_fingerprint": "sha256:888196b9194b744785a67c27072eb2ced305d51e7b0c618428bb3518b2621fd1",
   "file_registry_version": "v1.14",
   "canonical_artifacts_version": "v1.0",
   "summary": {
-    "registry_assets": 7,
-    "manifest_assets": 76,
-    "matched": 2,
+    "registry_assets": 6,
+    "manifest_assets": 131,
+    "matched": 6,
     "missing_from_manifest": 0,
-    "version_mismatches": 5,
-    "canonical_id_mismatches": 5,
-    "missing_mirror_pairs": 8
+    "version_mismatches": 0,
+    "canonical_id_mismatches": 0,
+    "missing_mirror_pairs": 0
   },
-  "drift_details": [
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "LEL",
-      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-      "detail": "CA short-form canonical_id \"LEL\" resolved to manifest entry \"LIFE_EVENT_LOG_v1_2\" by path match. This is an expected alias — not a hard failure."
-    },
-    {
-      "drift_mode": "version_mismatch",
-      "canonical_id": "LEL",
-      "path": "01_FACTS_LAYER/LIFE_EVENT_LOG_v1_2.md",
-      "detail": "CA version=\"1.2\" (normalized: \"1.2\") ≠ manifest version=\"1.6\" (normalized: \"1.6\")."
-    },
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "MSR",
-      "path": "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md",
-      "detail": "CA short-form canonical_id \"MSR\" resolved to manifest entry \"MSR_v3_0\" by path match. This is an expected alias — not a hard failure."
-    },
-    {
-      "drift_mode": "version_mismatch",
-      "canonical_id": "MSR",
-      "path": "025_HOLISTIC_SYNTHESIS/MSR_v3_0.md",
-      "detail": "CA version=\"3.0\" (normalized: \"3\") ≠ manifest version=\"3.1\" (normalized: \"3.1\")."
-    },
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "UCN",
-      "path": "025_HOLISTIC_SYNTHESIS/UCN_v4_0.md",
-      "detail": "CA short-form canonical_id \"UCN\" resolved to manifest entry \"UCN_v4_0\" by path match. This is an expected alias — not a hard failure."
-    },
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "CDLM",
-      "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
-      "detail": "CA short-form canonical_id \"CDLM\" resolved to manifest entry \"CDLM_v1_1\" by path match. This is an expected alias — not a hard failure."
-    },
-    {
-      "drift_mode": "version_mismatch",
-      "canonical_id": "CDLM",
-      "path": "025_HOLISTIC_SYNTHESIS/CDLM_v1_1.md",
-      "detail": "CA version=\"1.2\" (normalized: \"1.2\") ≠ manifest version=\"1.3\" (normalized: \"1.3\")."
-    },
-    {
-      "drift_mode": "canonical_id_alias",
-      "canonical_id": "RM",
-      "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
-      "detail": "CA short-form canonical_id \"RM\" resolved to manifest entry \"RM_v2_0\" by path match. This is an expected alias — not a hard failure."
-    },
-    {
-      "drift_mode": "version_mismatch",
-      "canonical_id": "RM",
-      "path": "025_HOLISTIC_SYNTHESIS/RM_v2_0.md",
-      "detail": "CA version=\"2.1\" (normalized: \"2.1\") ≠ manifest version=\"2.2\" (normalized: \"2.2\")."
-    },
-    {
-      "drift_mode": "version_mismatch",
-      "canonical_id": "CGM",
-      "path": "025_HOLISTIC_SYNTHESIS/CGM_v9_0.md",
-      "detail": "CA version=\"9.0\" (normalized: \"9\") ≠ manifest version=\"9.1\" (normalized: \"9.1\")."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.1",
-      "detail": "Mirror pair MP.1 (claude_side=\"CLAUDE.md\", gemini_side=\".geminirules\", mode=\"adapted_parity\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.2",
-      "detail": "Mirror pair MP.2 (claude_side=\"composite(00_ARCHITECTURE/SESSION_LOG.md + 00_ARCHITECTURE/STEP_LEDGER_v1_0.md + active phase/macro-plan pointers)\", gemini_side=\".gemini/project_state.md\", mode=\"adapted_parity_state\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.3",
-      "detail": "Mirror pair MP.3 (claude_side=\"00_ARCHITECTURE/MACRO_PLAN_v2_0.md\", gemini_side=\"\"compact MP summary in .geminirules item\", mode=\"adapted_parity_summary\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.4",
-      "detail": "Mirror pair MP.4 (claude_side=\"00_ARCHITECTURE/PHASE_B_PLAN_v1_0.md\", gemini_side=\"\"current-phase pointer in .gemini/project_state.md + .geminirules item\", mode=\"adapted_parity_summary\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.5",
-      "detail": "Mirror pair MP.5 (claude_side=\"00_ARCHITECTURE/FILE_REGISTRY_v1_3.md\", gemini_side=\"L2.5 canonical-path block in .geminirules layer-architecture section\", mode=\"adapted_parity_subset\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.6",
-      "detail": "Mirror pair MP.6 (claude_side=\"00_ARCHITECTURE/GOVERNANCE_STACK_v1_0.md\", gemini_side=\"null\", mode=\"claude_only\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.7",
-      "detail": "Mirror pair MP.7 (claude_side=\"00_ARCHITECTURE/SESSION_LOG.md\", gemini_side=\"null\", mode=\"claude_only\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    },
-    {
-      "drift_mode": "missing_mirror_pair",
-      "canonical_id": "MP.8",
-      "detail": "Mirror pair MP.8 (claude_side=\"00_ARCHITECTURE/PROJECT_ARCHITECTURE_v2_2.md\", gemini_side=\"compact architecture block in .geminirules + .gemini/project_state.md\", mode=\"adapted_parity_summary\") is NOT represented in manifest_overrides.yaml mirror_pairs section. EXPECTED DRIFT at Phase 1B / Stream F: Stream G adds the mirror_pairs section. This is not a validator bug."
-    }
-  ]
+  "drift_details": []
 }

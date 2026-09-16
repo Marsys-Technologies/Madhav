@@ -10,7 +10,7 @@
  * `platform/` (same constraint `envelope.ts`/`registry_shims.ts` in this directory document).
  * Never hand-edit; never import the JSON sibling from platform-mcp code.
  *
- * generated_at: 2026-08-21T22:18:55.570Z
+ * generated_at: 2026-09-15T15:24:35.840Z
  */
 
 export type McpProfileName = 'full' | 'compact' | 'consult'
@@ -48,7 +48,7 @@ export interface McpSurfaceProfileData {
  * construction. See `platform-mcp/src/resources/mcp_catalog_version.ts`
  * (RETRIEVAL_REGISTRY_PROFILE_TOTAL) — SAMĀPTI B-MCP-CATALOG-GAP / DVA Ruling 25.
  */
-export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-08-21T22:18:55.570Z' as const
+export const MCP_SURFACE_PROFILES_GENERATED_AT = '2026-09-15T15:24:35.840Z' as const
 
 export const COMPACT_MAX_TOOLS = 20 as const
 
@@ -60,7 +60,7 @@ export const MCP_SURFACE_PROFILES: {
   "full": {
     "profile": "full",
     "max_tools": null,
-    "total": 57,
+    "total": 66,
     "tool_names": [
       "assess_career",
       "assess_health",
@@ -68,6 +68,7 @@ export const MCP_SURFACE_PROFILES: {
       "assess_wealth",
       "bodha_chart_digest_get",
       "bodha_discoveries_get",
+      "bodha_domain_reading_get",
       "bodha_graph_subgraph_get",
       "bodha_mechanisms_get",
       "bodha_pratijna_get",
@@ -76,24 +77,31 @@ export const MCP_SURFACE_PROFILES: {
       "bodha_signals_get",
       "chart_snapshot",
       "find_verses_about",
+      "ganita_av_transit_gating_get",
+      "ganita_ayurdaya_get",
       "ganita_chart_facts_get",
       "ganita_concept_locate",
       "ganita_dasha_lord_capability_get",
       "ganita_database_schema_get",
       "ganita_kp_cusps_get",
+      "ganita_medical_get",
       "ganita_nakshatra_get",
       "ganita_planet_get",
       "ganita_positions_get",
       "ganita_sade_sati_get",
+      "ganita_sensitive_degrees_get",
       "ganita_special_lagnas_get",
       "ganita_strength_get",
       "ganita_tajaka_get",
       "ganita_transit_anchors_get",
       "ganita_vastu_get",
+      "ganita_vichara_get",
+      "ganita_yoga_firings_get",
       "get_graha_yuddha",
       "graha_portrait",
       "judgment_query",
       "kala_life_arc_get",
+      "kala_priority_ranking_get",
       "kala_projections_get",
       "kala_windows_get",
       "kala_yoga_activation_get",
@@ -118,6 +126,7 @@ export const MCP_SURFACE_PROFILES: {
       "ref_tantric_remedies_get",
       "ref_yogas_get",
       "resolve_entity",
+      "standing_predictions_read",
       "tool_search"
     ],
     "tools": [
@@ -368,6 +377,81 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Discoveries",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "bodha_domain_reading_get",
+        "description": "Drill into a specific life domain for a chart using the Bodha synthesis layer. Returns question lenses from bodha_question_lenses filtered by question_type via the DOMAIN_TO_QUESTION_TYPES mapping (inverted from bo_drishti.py::QUESTION_TYPE_CONFIG), and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells. CDLM cells include shared_signal_count; shared_signal_ids_array is omitted by default (token-safe). signal_id_refs emits a capped set of signal IDs (default 200) for downstream hydration. Use response_format=full to include shared_signal_ids_array per cell and up to 2000 signal refs. If no lens exists for the requested domain, returns the list of available domains. Multi-vantage: lens covers house + karaka + varga vantages; CDLM covers cross-domain spillover. Follows query_ucd in the reading hierarchy; drill further with query_signals.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Life domain to query. 13 canonical domains: career, wealth, relationship, health, character, spirituality, education, progeny, family, residence, travel, transition, general. Plus backward-compat extras: moksha (spirituality alias via 4-8-12 overlay), other (all lenses). education = vidyā (bhāva 4/5/2/9 + Me/Ju/Ke); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu (NOT a spirituality alias — has its own overlay). Each domain re-ranks signals by a domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale). If omitted or unrecognized, returns the list of available domains for this chart.",
+              "enum": [
+                "career",
+                "character",
+                "education",
+                "family",
+                "general",
+                "health",
+                "progeny",
+                "relationship",
+                "residence",
+                "spirituality",
+                "transition",
+                "travel",
+                "wealth",
+                "moksha",
+                "other"
+              ]
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha')."
+            },
+            "max_signal_refs": {
+              "type": "number",
+              "description": "Max signal IDs to include in signal_id_refs (default 200). Capped at 2000. Sufficient for downstream temporal-activation filtering. Use response_format=full to get up to 2000 automatically."
+            },
+            "response_format": {
+              "type": "string",
+              "description": "Controls payload verbosity. 'default' (or omitted): token-safe — shared_signal_ids_array omitted from cells, signal_id_refs capped to 200. 'full': shared_signal_ids_array included (capped per cell), signal_id_refs capped to 2000.",
+              "enum": [
+                "default",
+                "full"
+              ]
+            },
+            "lens_limit": {
+              "type": "number",
+              "description": "D-1.5b response budget: max bodha_question_lenses rows to return (default 60, max 200). See `lens_pagination.total` in the response for the true family size."
+            },
+            "lens_offset": {
+              "type": "number",
+              "description": "D-1.5b response budget: pagination offset into the question-lens family (default 0). Use with lens_limit to page beyond the default 60."
+            },
+            "max_signals_per_lens": {
+              "type": "number",
+              "description": "D-1.5b B-7 response budget: max ranked_signals to serve INSIDE each question lens (default 25, max 100). The stored lens holds its full relevance family (hundreds–thousands of rows); serving it unbounded blew this response past 900KB. Each lens still reports `ranked_signals_total` (the true family size) and `ranked_signals_capped`. Use response_format=full to raise the per-lens cap to 200, or drill via query_signals for the whole family."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L2/query_domain_reading",
+        "layer": "L2",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Domain Reading",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -860,6 +944,110 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "ganita_av_transit_gating_get",
+        "description": "D-3 Kāla Taraṅga Lane T-1: sign-keyed Aṣṭakavarga transit-gating + kakṣyā sub-windows for a chart. mode=\"sav_bav_gating\" (default) serves SAV (samudaya/sarva) and BAV (bhinnashtakavarga, per-graha) bindu counts per sign, each classified damping/ amplifying/neutral against the classical mean (~28.08 bindus/sign) — used to damp or amplify a timing window when a transiting planet crosses that sign. mode= \"kakshya_windows\" returns dated ~3.75-degree kakṣyā sub-arcs (8 per sign, fixed Saturn->Jupiter->Mars->Sun->Venus->Mercury->Moon->Lagna lordship order) a transiting planet crosses across a date range, each tagged with its kakṣyā lord and entry/exit dates (from BRAHMA daily ephemeris, tropical->sidereal via a documented Lahiri mean-rate approximation — not Swiss-Ephemeris-grade). Duration per kakṣyā window is computed from the ACTUAL transiting planet's speed, not a fixed day-count.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha for the chart_facts lookup (default 'lahiri_chitrapaksha')."
+            },
+            "mode": {
+              "type": "string",
+              "description": "'sav_bav_gating' (default) or 'kakshya_windows'.",
+              "enum": [
+                "sav_bav_gating",
+                "kakshya_windows"
+              ]
+            },
+            "sign_number": {
+              "type": "number",
+              "description": "sav_bav_gating: filter to one sidereal sign (1=Aries..12=Pisces). Omit for all 12."
+            },
+            "house": {
+              "type": "number",
+              "description": "sav_bav_gating: filter by house number (1-12) instead of sign; resolved via the chart LAGNA sign."
+            },
+            "graha": {
+              "type": "string",
+              "description": "sav_bav_gating: filter BAV to one graha (e.g. \"Jupiter\"). Omit for all + SAV."
+            },
+            "planet": {
+              "type": "string",
+              "description": "kakshya_windows (required): transiting planet, e.g. \"Saturn\", \"Jupiter\"."
+            },
+            "target_sign": {
+              "type": "number",
+              "description": "kakshya_windows (required): target SIDEREAL sign number (1-12) to compute sub-windows for."
+            },
+            "start_date": {
+              "type": "string",
+              "description": "kakshya_windows (required): YYYY-MM-DD."
+            },
+            "end_date": {
+              "type": "string",
+              "description": "kakshya_windows (required): YYYY-MM-DD."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_av_transit_gating",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Av Transit Gating",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "ganita_ayurdaya_get",
+        "description": "Retrieve classical longevity (Āyurdāya) computations for a chart from chart_facts (fact_category='ayurdaya'). Covers the classical methods (Piṇḍāyu / Aṃśāyu / Naisargikāyu, subject codes like AMSAYU/PINDAYU/NISARGAYU) — each with total_years (fact_value_num) and a longevity band (fact_value_text: alpayu/madhyayu/purnayu). Every row carries fact_value_jsonb with method-specific detail: total_years rows carry per_graha contributions, lagna_years, classification, and harana_status; the CHART/ maraka_grahas row carries the 2nd/7th-house maraka significators (signs, lords, occupants); the CHART/applicable_method row carries the ruling method + all three raw totals. harana_status is also promoted to a top-level field on this response whenever a total_years row is present on the page (honest disclosure — reductive haranas are not yet applied; see harana_status for the exact caveat text). Filter by ayanamsha_id (omit for all 5) or method (fact_subject). NOT a death prediction — classical longevity-band computation only. Bounded with a disclosed total.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all 5."
+            },
+            "method": {
+              "type": "string",
+              "description": "Filter by longevity method fact_subject (e.g. AMSAYU, PINDAYU, NISARGAYU). Omit for all."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 200, max 200)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_ayurdaya",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Ayurdaya",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "ganita_chart_facts_get",
         "description": "Parametric EAV-crosstab lookup over the chart_facts table (a large, paginated result set per chart, single ayanamsha). Covers planet positions, dignities, strengths, house placements, divisional charts, yogas, doshas, and more. Default shape=\"pivoted\": rows are grouped by fact_subject into ONE wide row per subject (e.g. LAGNA -> {sign, sign_lord, house_d1, longitude_sidereal, pada}) instead of ~5-15 raw EAV rows. shape=\"rows\" returns the flat EAV rows unpivoted. The `about` facet lets you address the chart the way the shastra does instead of guessing categories: `about:\"lagna\"`, `about:{graha:\"Saturn\"}`, `about:{bhava:10}` (the house itself), `about:{house_lord:10}` (resolves the Nth house rashi from the lagna + classical BPHS rulership, and returns the resolved lord graha's own facts — the resolution chain is served in `about_resolution`). Required: chart_id. Optional filters: about, category (single or comma-list), planet, house, sign, nakshatra, divisional_chart (e.g. D9/D10), keyword, fact_subject (exact subject id, comma-list), ayanamsha_id (any of the 6 stored ayanamshas — lahiri_chitrapaksha [default], krishnamurti, raman, surya_siddhanta_classical, true_chitra, INVARIANT), shape, limit, offset. Pagination is disclosed: the response carries `total` (true count of matching subjects/rows across the whole chart, NOT just this page) and `more_available` (whether rows remain past offset+limit), so a caller can page the full subject set without silent truncation. emits_references: every pivoted field carries its source fact_id for Bodha back-reference. Pivoted graha_position rows additionally carry a `dignity` field (D1 dignity_state —  exalted/own/friend/neutral/enemy/debilitated — joined from graha_dignity_per_varga, cited  in fact_ids.dignity) so a caller does not need a second get_dignity call for basic exaltation status. Registry equivalent of the chart_facts_query B.11 floor tool (D7 gap fill). Portal-native alias for query_chart_facts per contract (is_alias=true in tool_metadata).",
         "input_schema": {
@@ -1072,6 +1260,48 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "ganita_medical_get",
+        "description": "Retrieve classical medical (Vaidya-phala) indications for a chart from ga_medical. Per-graha rows: natal_sign, natal_nakshatra, indication_strength, dosha_aggravated (vata/pitta/kapha), organ_watch, body_part_watch, nakshatra_body_part, indication_tier, and classical_citation. NOT a diagnosis (not_diagnosis=true on every row) — these are classical watch-indications, not medical advice. Filters: graha, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total and an honest empty_reason when zero rows match. Derived from chart_facts + bg_medical_mappings (see provenance).",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "graha": {
+              "type": "string",
+              "description": "Filter by graha (e.g. Sun, Moon, Mars). Omit for all."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha (e.g. 'LAHIRI'). Omit for all."
+            },
+            "indication_tier": {
+              "type": "string",
+              "description": "Filter by indication tier. Omit for all."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 50, max 50)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_medical_indications",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Medical Indications",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "ganita_nakshatra_get",
         "description": "Retrieve Tara Bala and Chandra Bala natal baselines for a chart. Tara Bala: nakshatra-based strength computed as the count-position of each nakshatra from the natal Moon nakshatra (Purva Bhadrapada for the native); odd-counted nakshatras (1,3,5,7,9) are favorable, even unfavorable. Chandra Bala: Moon's positional strength relative to each graha by rashi distance; the Moon in a friend/own/exalted rashi gains full Chandra Bala. Both are inputs to overall Panchanga-based timing considerations. Covers 2 fact_categories.",
         "input_schema": {
@@ -1146,7 +1376,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_positions_get",
-        "description": "Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, retrograde status, and combust status. CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, etc.) and aprakasha (dark/shadow) bodies are NOT interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` list containing \"upagraha_position\"/\"aprakasha_position\") to fetch those behind this facet — when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. Each row carries fact_id for Bodha constituent_facts_array back-reference. Covers fact_categories: graha_position, upagraha_position, aprakasha_position. Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each row's house count onto that reference frame in-response (design §27.3) — e.g. frame:\"chandra\" answers \"what house is X in, from Moon\" in one call, without a second lookup. graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde and combustion state (already on the default page) — numeric speed (degrees/day) for the chart's birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). A further real category, nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check), is available on request via categories:[\"nakshatra_cross_ayanamsha\"] — not on the default page.",
+        "description": "Retrieve Gaṇita graha positions for a chart. Returns sidereal longitudes, rashi, nakshatra, pada, retrograde status, and combust status. CR-50: the DEFAULT page serves ONLY the 9 classical grahas (Sun/Moon/Mars/Mercury/Jupiter/Venus/Saturn/Rahu/Ketu) plus Lagna (fact_category graha_position, fact_subject LAGNA/NAVAMSA_LAGNA) — upagrahas (Gulika, Mandi, Sun-derived shadow points, etc.) and aprakasha (dark/shadow) bodies are NOT interleaved into the default page. Pass `include_upagrahas: true` (or an explicit `categories` list containing \"upagraha_position\"/\"sun_derived_upagraha\"/\"aprakasha_position\") to fetch those behind this facet — when present, upagraha/aprakasha rows are still served AFTER the grahas, never interleaved. Each row carries fact_id for Bodha constituent_facts_array back-reference. Covers fact_categories: graha_position, upagraha_position, sun_derived_upagraha, aprakasha_position. Optional `frame` facet (lagna default | chandra | surya | arudha | karakamsha) re-bases each row's house count onto that reference frame in-response (design §27.3) — e.g. frame:\"chandra\" answers \"what house is X in, from Moon\" in one call, without a second lookup; applies to sun_derived_upagraha rows too (they carry house_d1), not just graha/upagraha_position. graha_position.retrograde_flag / graha_position.combustion_state ARE the served retrograde and combustion state (already on the default page) — numeric speed (degrees/day) for the chart's birth date is NOT stored here; fetch it via query_planet_position(date=<birth date>). Two further real categories are available on request, not on the default page or the include_upagrahas bundle: nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check) via categories:[\"nakshatra_cross_ayanamsha\"], and sandhi_flag (bhava-junction flag per graha — not an upagraha, no house_d1) via categories:[\"sandhi_flag\"].",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1160,20 +1390,22 @@ export const MCP_SURFACE_PROFILES: {
             },
             "categories": {
               "type": "array",
-              "description": "Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default (graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check, not on the default page).",
+              "description": "Optional EXPLICIT list of fact_categories to include — overrides the CR-50 default (graha_position only) and `include_upagrahas` entirely when supplied. Includes the SC-5 opt-in category nakshatra_cross_ayanamsha (per-graha 5-ayanamsha nakshatra-stability check) and the F-B32 opt-in category sandhi_flag (bhava-junction flag per graha) — neither is on the default page or the include_upagrahas bundle.",
               "items": {
                 "type": "string",
                 "enum": [
                   "graha_position",
                   "upagraha_position",
+                  "sun_derived_upagraha",
                   "aprakasha_position",
-                  "nakshatra_cross_ayanamsha"
+                  "nakshatra_cross_ayanamsha",
+                  "sandhi_flag"
                 ]
               }
             },
             "include_upagrahas": {
               "type": "boolean",
-              "description": "CR-50: when true (and `categories` is omitted), also includes upagraha_position and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, never interleaved into the default page. Default false.",
+              "description": "CR-50: when true (and `categories` is omitted), also includes upagraha_position, sun_derived_upagraha, and aprakasha_position rows behind this explicit facet — served AFTER the 9 grahas + Lagna, never interleaved into the default page. Default false.",
               "default": false
             },
             "planet": {
@@ -1182,7 +1414,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "frame": {
               "type": "string",
-              "description": "Reference frame to re-base house counts onto (default: lagna). chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the stored lagna-relative `house_d1` (fact_key) value.",
+              "description": "Reference frame to re-base house counts onto (default: lagna). chandra=from Moon, surya=from Sun, arudha=from Arudha Lagna, karakamsha=from Karakamsha. When set to a non-lagna frame, each row gains a `house_from_frame` field alongside the stored lagna-relative `house_d1` (fact_key) value. F-159: frame=\"chandra\" additionally carries `ayanamsha_frame_sensitivity` — a disclosure (never a correctness ruling) of whether the Moon's own sign, the frame-determining fact, agrees across the 5 real ayanamshas.",
               "enum": [
                 "lagna",
                 "chandra",
@@ -1269,8 +1501,50 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "ganita_sensitive_degrees_get",
+        "description": "Retrieve sensitive-degree checks for a chart from chart_facts (fact_category='sensitive_degree_check'). Classically flagged longitudes (gaṇḍānta, sandhi, mṛtyu-bhāga, pushkara, etc.) checked against each graha's placement. Also serves fact_category='sensitive_point_yogi' — the Yogi/ Avayogi/Duplicate-Yogi/Sahayogi Tajika construct (Yogi Sphuta = Sun+Moon+93°20',  Yogi Graha = its nakshatra lord; Avayogi = Yogi+186°40', its nakshatra lord;  Duplicate-Yogi/Sahayogi = the rasi lord of the Yogi Sphuta's own sign). Filter by  ayanamsha_id, subject (fact_subject, e.g. graha code or YOGI/AVAYOGI/DUPLICATE_YOGI/ SAHAYOGI), or check_type (fact_key). Every row carries fact_category and  verification_pass_status so the two families and confirmation tiers are  distinguishable; tier_breakdown + unverified_rows_in_page summarize the page  (rows are never dropped — a single/pending_w3_verification tier is a genuine  classical computation, just not yet independently cross-verified). Bounded with a  disclosed total.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+            },
+            "subject": {
+              "type": "string",
+              "description": "Filter by fact_subject (e.g. a graha code like SUN, VEN, or a Yogi-system subject YOGI/AVAYOGI/DUPLICATE_YOGI/SAHAYOGI). Omit for all."
+            },
+            "check_type": {
+              "type": "string",
+              "description": "Filter by fact_key (the specific sensitive-degree or Yogi-system check). Omit for all."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 200, max 200)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_sensitive_degrees",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Sensitive Degrees",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "ganita_special_lagnas_get",
-        "description": "Retrieve esoteric and sensitive mathematical points for a chart. Includes: 13 tradition-specific esoteric points (Yogi/Avayogi, Brahma/Vishnu/Shiva, Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, Trisphuta, Panchasphuta, Pranapada, Chatushphuta, Bhrigu Bindu), Bhrigu Nadi point, 100 Lal Kitab special points, Maharṣi-specific points, midpoints (all graha pairs), 2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, and nakshatra-pada sensitive degrees. Covers 20 fact_categories (a large row set per chart).",
+        "description": "Retrieve esoteric and sensitive mathematical points for a chart. Includes: 15 tradition-specific esoteric points (Yogi/Avayogi, Yogi-system sign/nakshatra/ longitude, Brahma/Vishnu/Shiva, Sri Yantra position, Mrityu Sphuta, Trikona Dasha Sphuta, Trisphuta, Panchasphuta, Pranapada, Chatushphuta, Sphuta Fertility (Beeja/Kshetra), Bhrigu Bindu), Bhrigu Nadi point, 100 Lal Kitab special points, Maharṣi-specific points, midpoints (all graha pairs), 2800 Arabic Parts (Sahams) across all ayanamshas, Saturn-derived points, and nakshatra-pada sensitive degrees. Covers 22 fact_categories (a large row set per chart).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1458,7 +1732,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_transit_anchors_get",
-        "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha. Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows per chart (9 grahas × 5 ayanamshas). natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1).",
+        "description": "Retrieve natal transit anchor data for a chart: the natal sign, classical house from Moon, and absolute sidereal degree for each of the 9 grahas, by ayanamsha. Used as the reference substrate for all Gochara (planetary transit) computations — sign-ingress triggers, degree-exact conjunctions, and classical vedha rules. 45 rows per chart (9 grahas × 5 ayanamshas). natal_house_from_moon: classical 1-based count from natal Moon sign (Moon own = 1). Each row carries constituent_fact_ids (§N.5) resolving back to the source chart_facts rows (graha_position/graha_sign_attributes) it was derived from.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1500,7 +1774,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ganita_vastu_get",
-        "description": "Retrieve the vastu (directional) planet-impact map for a chart from ga_vastu_planet_direction_map. Per-graha rows: direction, condition_score, dignity_d1, direction_impact, indication_tier, classical_citation. Filters: graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
+        "description": "Retrieve the vastu (directional) planet-impact map for a chart from ga_vastu_planet_direction_map. Per-graha rows: direction, condition_score, dignity_d1, direction_impact, indication_tier, classical_citation, and direction_remedies (F-E11) -- the classical per-direction remedy set (color/symbol/material/space guidance, Brihat Samhita Ch.53 / Mayamata Ch.6) from bg_vastu_direction_remedials for that direction, joined server-side so an afflicted direction and its remedy are never read apart. Filters: graha, direction, ayanamsha_id, indication_tier. Bounded to 50 rows with a disclosed total.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -1538,6 +1812,128 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Get Vastu Directions",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "ganita_vichara_get",
+        "description": "Retrieve ga_vichara (\"judged structure\") rows for a chart from chart_vichara — the judgment layer built on top of ga_structural: valence_pass (functional-lordship valence, e.g. the 8L-Mars→H2 strong_malefic specimen), varga_ratification (ratification_factor ∈ [0.6,1.4] per domain×subject), varga_ratification_divergence (a varga that flips D1's dignity direction — rankable evidence, not noise), varga_consistency (continuous vargottama-generalized index, 0..1), leverage_index (domain_load_bearing_weight ÷ capability, forward-weighted by dasha runway — the number remedy/intervention-timing ranks on). Every row carries constituent_fact_ids resolving back to chart_facts (§N.5 — L1 authority, never restated). Filter by family (closed vocabulary), domain, or subject (graha/lord code, case-insensitive). Layered response: verdict (family counts) + digest (per-family summary) + paginated rows.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha (e.g. 'lahiri_chitrapaksha'). Omit for all."
+            },
+            "family": {
+              "type": "string",
+              "description": "One of: valence_pass, varga_ratification, varga_ratification_divergence, varga_consistency, leverage_index. Omit for all families. Unknown values are rejected, never silently ignored.",
+              "enum": [
+                "valence_pass",
+                "varga_ratification",
+                "varga_ratification_divergence",
+                "varga_consistency",
+                "leverage_index"
+              ]
+            },
+            "domain": {
+              "type": "string",
+              "description": "One of: wealth, career, marriage, health, general. Omit for all domains (only meaningful for varga_ratification/varga_ratification_divergence/leverage_index — valence_pass/varga_consistency rows carry domain=null and are unaffected by this filter).",
+              "enum": [
+                "wealth",
+                "career",
+                "marriage",
+                "health",
+                "general"
+              ]
+            },
+            "subject": {
+              "type": "string",
+              "description": "Filter by subject (graha/lord/karaka code, e.g. VENUS or venus — case-insensitive, CR-10)."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 500, max 500)."
+            },
+            "offset": {
+              "type": "number",
+              "description": "Pagination offset (default 0)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_vichara",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Vichara",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "ganita_yoga_firings_get",
+        "description": "Retrieve detailed Nābhasa/yoga firing rows for a chart from ga_yoga_firings. Each row: yoga_canonical_id, fired (bool), strength + strength_label, partial_formation_pct + is_partial, bhanga_active + bhanga_rule_fired (cancellation), constituent_planets/houses/fact_ids, family_ids, activation_dasha_periods, derivation, catalog_classical_citations (the classical textual grounding from brahma_yoga_catalog — citation_ref/citation_human describe the strength-derivation formula instead, not the classical source; both are served, never conflated). MC-016: constituent_planets is a flat, role-blind union — DEPRECATED for role-sensitive reads (constituent_planets_deprecated_note explains why). When grounds_jsonb is present, each row also carries labeled role-split fields derived server-side: for neecha_bhanga_raja_yoga specifically, debilitated_planets (the debilitated grahas) vs rescuer_planets (the grahas whose placement cancels the debility); for any other yoga family carrying the same per-planet grounds_jsonb shape, principal_planets vs supporting_planets. constituent_planets_role_split_available (bool) discloses whether the split could be derived for that row. Filters: fired (default true), ayanamsha_id, bhanga_active, is_partial, yoga_canonical_id. Weak-tail and cancelled firings are included (strength is a column, not a gate). Includes grounds_jsonb (Lane 3 CR-59 grounds-checked-per-verdict ledger) when present. Default fired=true — a catalog-only (not-fired) row is NEVER served as a finding unless all=true or fired=false is explicit (CR-72/CR-43). Bounded to 50 rows per page with a disclosed total and more_available; pass offset to page past the first 50 (F-D2).",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID. Required."
+            },
+            "fired": {
+              "type": "boolean",
+              "description": "Filter by fired status (default: true — only fired yogas). Pass false for non-firings, omit-as-null via all=true."
+            },
+            "all": {
+              "type": "boolean",
+              "description": "If true, ignore the fired filter and return fired + non-fired rows."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Filter by ayanamsha. Omit for all."
+            },
+            "bhanga_active": {
+              "type": "boolean",
+              "description": "Filter to firings with an active bhanga (cancellation) rule."
+            },
+            "is_partial": {
+              "type": "boolean",
+              "description": "Filter to partially-formed yogas."
+            },
+            "yoga_canonical_id": {
+              "type": "string",
+              "description": "Filter to a specific yoga by canonical id."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max rows (default 50, max 50)."
+            },
+            "offset": {
+              "type": "number",
+              "description": "Row offset for paging past the first page (default 0). F-D2: without this, rows beyond the limit were permanently unreachable."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L1/get_yoga_firings",
+        "layer": "L1",
+        "name_valid": true,
+        "annotations": {
+          "title": "Get Yoga Firings",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -1754,6 +2150,56 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Life Arc",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "kala_priority_ranking_get",
+        "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha (default: 'lahiri_chitrapaksha')."
+            },
+            "date_from": {
+              "type": "string",
+              "description": "Start of evaluation period (ISO 8601: YYYY-MM-DD)."
+            },
+            "date_to": {
+              "type": "string",
+              "description": "End of evaluation period (ISO 8601: YYYY-MM-DD)."
+            },
+            "top_k": {
+              "type": "number",
+              "description": "Max signals to return (default: 20, max: 100)."
+            },
+            "domain": {
+              "type": "string",
+              "description": "MC-024 (ŚODHANA T4): filter to signals affecting ONE life domain (e.g. \"wealth\", \"career\", \"health\", \"relationship\", \"spirituality\", \"character\") — matched against domains_affected_array (case-insensitive). Takes precedence over `domains` if both given."
+            },
+            "domains": {
+              "type": "array",
+              "description": "MC-024: filter to signals affecting ANY of these life domains (OR/overlap match against domains_affected_array, case-insensitive). Ignored if `domain` is also given."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L3/call_priority_ranking",
+        "layer": "L3",
+        "name_valid": true,
+        "annotations": {
+          "title": "Call Priority Ranking",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -2298,7 +2744,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_dasha_systems_get",
-        "description": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 18 rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit (nakshatra_lord|sign_lord|special), sequence_jsonb, computation_method, computation_pseudocode, conditions_for_use, school, classical_citations. Filter by canonical_id or school. Global classical reference — no chart_id needed; returns the system DEFINITION only, not any chart's computed dasha periods (see get_dashas).",
+        "description": "Query the classical dasha-system definitions reference (brahma_dasha_systems, 20 rows). Each row: canonical_id, name_en/name_sa, total_cycle_years, base_unit (nakshatra_lord|sign_lord|special), sequence_jsonb, computation_method, computation_pseudocode, conditions_for_use, school, classical_citations. Filter by canonical_id or school. Global classical reference — no chart_id needed; returns the system DEFINITION only, not any chart's computed dasha periods (see get_dashas).",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2325,7 +2771,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_doshas_get",
-        "description": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 50 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and classical sources. Use to look up what a dosha means, how it is cancelled (neechabhanga-style conditions), and which text defines it. Covers Manglik dosha, Kala Sarpa dosha, Pitra dosha, Guru Chandala, Grahan dosha, Kemdruma, Daridra, and 43 more. Returns all 50 entries with no truncation.",
+        "description": "Query the Brahma Dosha Catalog (brahma_dosha_catalog) — 79 canonical doshas with classical activation rules, severity tiers, cancellation conditions, and classical sources. Use to look up what a dosha means, how it is cancelled (neechabhanga-style conditions), and which text defines it. Covers Manglik dosha, Kala Sarpa dosha, Pitra dosha, Guru Chandala, Grahan dosha, Kemdruma, Daridra, and 72 more. An unfiltered request defaults to all 79 entries. Paginated requests disclose the true matching total and returned count.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2347,7 +2793,7 @@ export const MCP_SURFACE_PROFILES: {
             },
             "limit": {
               "type": "number",
-              "default": 50
+              "default": 79
             }
           }
         },
@@ -2630,7 +3076,7 @@ export const MCP_SURFACE_PROFILES: {
       },
       {
         "tool_name": "ref_yogas_get",
-        "description": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 175 canonical yogas with classical activation rules, tradition, domain tags, and classical sources. Use to look up what a yoga means, its activation predicate, and which classical text defines it. Supports search by yoga name, tradition (parashari/jaimini/tajik/lal_kitab/kp/nadi_bhrigu/maharsi), or domain (wealth/career/health/relationship/spirituality/longevity). Returns the weak-tail too — every yoga in the catalog regardless of activation strength.",
+        "description": "Query the Brahma Yoga Catalog (brahma_yoga_catalog) — 233 canonical yogas with classical activation rules, tradition, domain tags, and classical sources. Use to look up what a yoga means, its activation predicate, and which classical text defines it. Supports search by yoga name, tradition (parashari/jaimini/tajik/lal_kitab/kp/nadi_bhrigu/maharsi), or domain (wealth/career/health/relationship/spirituality/longevity). Returns the weak-tail too — every yoga in the catalog regardless of activation strength.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -2694,6 +3140,44 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
+        "tool_name": "standing_predictions_read",
+        "description": "Returns the OPEN filed, falsifiable standing predictions for a chart from the LIVE prospective ledger (brahma_prospective_ledger, migration 458 — D-4a Lane A-4). Each prediction carries: claim, event_class, temporal shape (point/interval/chain) with its window or milestone_set, confidence, a MANDATORY falsifier, generator_class (reading_synthesis | engine | native_intuition | anchor_engine), source_citation, and lifecycle_status. §11 governance: predictions exist by explicit filing only — this is a READ/confirmation surface, never a filing or calibration write. Filter by domain (question domain — wealth clusters {wealth, residence} as the material/ asset cluster) and lifecycle_status. Non-domain-matching open predictions are still returned under other_domain_predictions (never silently dropped).",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Question domain (e.g. wealth, career, spirituality, residence). Predictions whose event_class resolves into this domain (wealth clusters {wealth, residence}) lead the response; all other open predictions are still returned under other_domain_predictions."
+            },
+            "status": {
+              "type": "string",
+              "description": "Lifecycle filter (open | matched | confirmed | falsified | withdrawn). Default: open."
+            },
+            "limit": {
+              "type": "number",
+              "description": "Max predictions to scan (default 100)."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L4/query_prospective_ledger",
+        "layer": "L4",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Prospective Ledger",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
         "tool_name": "tool_search",
         "description": "Keyword search over the full MARSYS tool/resource/prompt catalog (~120 capabilities across L0-L5). Returns matching tool names, descriptions, and layer/domain tags — NOT the full catalog. Use this before assuming a needed capability does not exist, or when the exact tool name is unknown (e.g. query=\"dasha activation\", \"muhurta\", \"yoga firings\", \"remedies\"). Case-insensitive keyword/substring match across name, description, layer, and domain tags — not fuzzy or semantic search; a query with zero token overlap against every catalog entry returns an honest empty result, not a fabricated best-effort guess.",
         "input_schema": {
@@ -2740,16 +3224,13 @@ export const MCP_SURFACE_PROFILES: {
       "call_ephemeris_at_t",
       "call_muhurta_score",
       "call_panchanga_service",
-      "call_priority_ranking",
       "call_transit_search",
       "classical_attribution_lookup",
       "compose_large_n",
       "get_argala",
       "get_ashtakavarga",
       "get_aspects",
-      "get_av_transit_gating",
       "get_avasthas",
-      "get_ayurdaya",
       "get_bhava_bala",
       "get_chart_header",
       "get_condition_composite",
@@ -2759,13 +3240,11 @@ export const MCP_SURFACE_PROFILES: {
       "get_divisionals",
       "get_eclipse_flags",
       "get_karakas",
-      "get_medical_indications",
+      "get_nakshatra",
       "get_panchanga",
       "get_prashna_lagna",
-      "get_sensitive_degrees",
-      "get_vichara",
+      "get_structural",
       "get_yoga_dosha",
-      "get_yoga_firings",
       "lel_intake_checklist",
       "list_sutravali_rules_by_text",
       "prediction_lifecycle_sweep",
@@ -2786,8 +3265,8 @@ export const MCP_SURFACE_PROFILES: {
       "query_compendium_index",
       "query_contradictions",
       "query_convergence_windows",
+      "query_current_transit_snapshot",
       "query_dasha_dossier",
-      "query_domain_reading",
       "query_domain_result",
       "query_falsifiers",
       "query_formula_constants",
@@ -2816,7 +3295,6 @@ export const MCP_SURFACE_PROFILES: {
       "query_prashna_significators",
       "query_prashna_special_techniques",
       "query_prashna_tajik_yogas",
-      "query_prospective_ledger",
       "query_question_lenses",
       "query_remedy_program",
       "query_retrograde_periods",
@@ -2828,6 +3306,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_rm_resonances",
       "query_shashtiamsha_deities",
       "query_signal_families",
+      "query_sky_calendar",
       "query_spillover_cascades",
       "query_spine_bundle",
       "query_sudarshana_varsha",
@@ -2860,14 +3339,21 @@ export const MCP_SURFACE_PROFILES: {
       "get_tajik": "ganita_tajaka_get",
       "get_tara_chandra_bala": "ganita_nakshatra_get",
       "get_transit_anchors": "ganita_transit_anchors_get",
+      "get_medical_indications": "ganita_medical_get",
       "get_vastu_directions": "ganita_vastu_get",
+      "get_yoga_firings": "ganita_yoga_firings_get",
+      "get_ayurdaya": "ganita_ayurdaya_get",
+      "get_sensitive_degrees": "ganita_sensitive_degrees_get",
+      "get_vichara": "ganita_vichara_get",
       "get_dasha_lord_capability": "ganita_dasha_lord_capability_get",
+      "get_av_transit_gating": "ganita_av_transit_gating_get",
       "get_kp_cusps": "ganita_kp_cusps_get",
       "get_database_schema": "ganita_database_schema_get",
       "concept_locate": "ganita_concept_locate",
       "query_planet": "ganita_planet_get",
       "query_ucd": "bodha_chart_digest_get",
       "traverse_chart_graph": "bodha_graph_subgraph_get",
+      "query_domain_reading": "bodha_domain_reading_get",
       "query_signals": "bodha_signals_get",
       "query_remedies": "bodha_remedies_get",
       "query_quality_scorecard": "bodha_quality_get",
@@ -2877,8 +3363,10 @@ export const MCP_SURFACE_PROFILES: {
       "query_temporal_activation": "kala_windows_get",
       "query_life_arc": "kala_life_arc_get",
       "query_projections": "kala_projections_get",
+      "call_priority_ranking": "kala_priority_ranking_get",
       "query_predictive_anchors": "phala_predictive_anchors_get",
       "query_rectification": "phala_rectification_get",
+      "query_prospective_ledger": "standing_predictions_read",
       "query_insights": "mimamsa_insight_get",
       "query_calibration": "mimamsa_calibration_get",
       "chart_facts_query": "ganita_chart_facts_get",
@@ -2901,6 +3389,7 @@ export const MCP_SURFACE_PROFILES: {
       "assess_marriage",
       "assess_wealth",
       "bodha_discoveries_get",
+      "bodha_domain_reading_get",
       "chart_snapshot",
       "find_verses_about",
       "ganita_chart_facts_get",
@@ -2908,11 +3397,10 @@ export const MCP_SURFACE_PROFILES: {
       "ganita_database_schema_get",
       "graha_portrait",
       "judgment_query",
-      "kala_life_arc_get",
+      "kala_priority_ranking_get",
       "list_classical_texts",
       "list_entities",
       "mimamsa_calibration_get",
-      "mimamsa_insight_get",
       "pact_query",
       "ref_classical_citation_get",
       "ref_remedies_by_category_list"
@@ -3110,6 +3598,81 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Discoveries",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      {
+        "tool_name": "bodha_domain_reading_get",
+        "description": "Drill into a specific life domain for a chart using the Bodha synthesis layer. Returns question lenses from bodha_question_lenses filtered by question_type via the DOMAIN_TO_QUESTION_TYPES mapping (inverted from bo_drishti.py::QUESTION_TYPE_CONFIG), and the domain-scoped CDLM cross-domain matrix cells from bodha_cdlm_cells. CDLM cells include shared_signal_count; shared_signal_ids_array is omitted by default (token-safe). signal_id_refs emits a capped set of signal IDs (default 200) for downstream hydration. Use response_format=full to include shared_signal_ids_array per cell and up to 2000 signal refs. If no lens exists for the requested domain, returns the list of available domains. Multi-vantage: lens covers house + karaka + varga vantages; CDLM covers cross-domain spillover. Follows query_ucd in the reading hierarchy; drill further with query_signals.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "chart_id": {
+              "type": "string",
+              "description": "Chart UUID (<chart_uuid>). Required."
+            },
+            "domain": {
+              "type": "string",
+              "description": "Life domain to query. 13 canonical domains: career, wealth, relationship, health, character, spirituality, education, progeny, family, residence, travel, transition, general. Plus backward-compat extras: moksha (spirituality alias via 4-8-12 overlay), other (all lenses). education = vidyā (bhāva 4/5/2/9 + Me/Ju/Ke); moksha = the 4-8-12 mokṣa-trikoṇa + Ketu (NOT a spirituality alias — has its own overlay). Each domain re-ranks signals by a domain-specific graha×bhāva×varga overlay (see ranked_signals[].rationale). If omitted or unrecognized, returns the list of available domains for this chart.",
+              "enum": [
+                "career",
+                "character",
+                "education",
+                "family",
+                "general",
+                "health",
+                "progeny",
+                "relationship",
+                "residence",
+                "spirituality",
+                "transition",
+                "travel",
+                "wealth",
+                "moksha",
+                "other"
+              ]
+            },
+            "ayanamsha_id": {
+              "type": "string",
+              "description": "Ayanamsha to filter by (default: 'lahiri_chitrapaksha')."
+            },
+            "max_signal_refs": {
+              "type": "number",
+              "description": "Max signal IDs to include in signal_id_refs (default 200). Capped at 2000. Sufficient for downstream temporal-activation filtering. Use response_format=full to get up to 2000 automatically."
+            },
+            "response_format": {
+              "type": "string",
+              "description": "Controls payload verbosity. 'default' (or omitted): token-safe — shared_signal_ids_array omitted from cells, signal_id_refs capped to 200. 'full': shared_signal_ids_array included (capped per cell), signal_id_refs capped to 2000.",
+              "enum": [
+                "default",
+                "full"
+              ]
+            },
+            "lens_limit": {
+              "type": "number",
+              "description": "D-1.5b response budget: max bodha_question_lenses rows to return (default 60, max 200). See `lens_pagination.total` in the response for the true family size."
+            },
+            "lens_offset": {
+              "type": "number",
+              "description": "D-1.5b response budget: pagination offset into the question-lens family (default 0). Use with lens_limit to page beyond the default 60."
+            },
+            "max_signals_per_lens": {
+              "type": "number",
+              "description": "D-1.5b B-7 response budget: max ranked_signals to serve INSIDE each question lens (default 25, max 100). The stored lens holds its full relevance family (hundreds–thousands of rows); serving it unbounded blew this response past 900KB. Each lens still reports `ranked_signals_total` (the true family size) and `ranked_signals_capped`. Use response_format=full to raise the per-lens cap to 200, or drill via query_signals for the whole family."
+            }
+          },
+          "required": [
+            "chart_id"
+          ]
+        },
+        "uri": "marsys://tool/L2/query_domain_reading",
+        "layer": "L2",
+        "name_valid": true,
+        "annotations": {
+          "title": "Query Domain Reading",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -3457,8 +4020,8 @@ export const MCP_SURFACE_PROFILES: {
         }
       },
       {
-        "tool_name": "kala_life_arc_get",
-        "description": "Returns biographical life-arc chapters (parvas) for a chart from kala_jivana_parva. Each parva is anchored to a dasha period (dasha_planet) with theme keywords, quality label (building/peak/consolidating/receding/transitional), and high-convergence count. Total: 739 rows per chart covering the full life arc. Filter by mahadasha_lord (matches dasha_planet) to focus on a specific major period.",
+        "tool_name": "kala_priority_ranking_get",
+        "description": "Returns priority-ranked signals for a chart in a given period (ka_tulana service). Per-chart: requires chart_id. Ranks active signals by combined score of salience × activation_strength × convergence. Use to determine which signals deserve attention in a specific time window. Each row carries signal_headline_label (acharya-grade label from the signal-register glossary) alongside the raw signal_headline_text; headline_label_mapped=false means no glossary entry exists and the raw template is passed through unchanged, never relabelled by guess. Internal computation-abstention markers (\"floored: …\", a writer declining a computation per B.10) are EXCLUDED from ranked_signals and disclosed verbatim in excluded_internal_markers with the rank each would have occupied.",
         "input_schema": {
           "type": "object",
           "properties": {
@@ -3466,62 +4029,40 @@ export const MCP_SURFACE_PROFILES: {
               "type": "string",
               "description": "Chart UUID (<chart_uuid>). Required."
             },
-            "mahadasha_lord": {
+            "ayanamsha_id": {
               "type": "string",
-              "description": "Filter by mahadasha lord (e.g. 'Sun', 'Moon', 'Mars', 'Rahu', 'Jupiter', 'Saturn', 'Mercury', 'Ketu', 'Venus').",
-              "enum": [
-                "Sun",
-                "Moon",
-                "Mars",
-                "Rahu",
-                "Jupiter",
-                "Saturn",
-                "Mercury",
-                "Ketu",
-                "Venus"
-              ]
-            },
-            "quality_label": {
-              "type": "string",
-              "description": "Filter by quality label.",
-              "enum": [
-                "building",
-                "peak",
-                "consolidating",
-                "receding",
-                "transitional"
-              ]
-            },
-            "domain": {
-              "type": "string",
-              "description": "Filter by dominant domain (career, wealth, relationship, health, character, spirituality, other)."
+              "description": "Ayanamsha (default: 'lahiri_chitrapaksha')."
             },
             "date_from": {
               "type": "string",
-              "description": "Filter parvas whose period overlaps after this date (ISO 8601)."
+              "description": "Start of evaluation period (ISO 8601: YYYY-MM-DD)."
             },
             "date_to": {
               "type": "string",
-              "description": "Filter parvas whose period overlaps before this date (ISO 8601)."
+              "description": "End of evaluation period (ISO 8601: YYYY-MM-DD)."
             },
             "top_k": {
               "type": "number",
-              "description": "Max parvas to return (default: 739 = all, max: 739)."
+              "description": "Max signals to return (default: 20, max: 100)."
             },
-            "offset": {
-              "type": "number",
-              "description": "Pagination offset (default: 0). Applied after ORDER BY parva_index."
+            "domain": {
+              "type": "string",
+              "description": "MC-024 (ŚODHANA T4): filter to signals affecting ONE life domain (e.g. \"wealth\", \"career\", \"health\", \"relationship\", \"spirituality\", \"character\") — matched against domains_affected_array (case-insensitive). Takes precedence over `domains` if both given."
+            },
+            "domains": {
+              "type": "array",
+              "description": "MC-024: filter to signals affecting ANY of these life domains (OR/overlap match against domains_affected_array, case-insensitive). Ignored if `domain` is also given."
             }
           },
           "required": [
             "chart_id"
           ]
         },
-        "uri": "marsys://tool/L3/query_life_arc",
+        "uri": "marsys://tool/L3/call_priority_ranking",
         "layer": "L3",
         "name_valid": true,
         "annotations": {
-          "title": "Query Life Arc",
+          "title": "Call Priority Ranking",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -3630,52 +4171,6 @@ export const MCP_SURFACE_PROFILES: {
         "name_valid": true,
         "annotations": {
           "title": "Query Calibration",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      },
-      {
-        "tool_name": "mimamsa_insight_get",
-        "description": "Returns ranked L5 Mīmāṃsā insight units for a chart. Includes calibrated outlooks, manifestation-grammar learnings, emergent-law discoveries, load-bearing conclusions, and negative knowledge. All units carry provenance chains back to L1 chart_facts.",
-        "input_schema": {
-          "type": "object",
-          "properties": {
-            "chart_id": {
-              "type": "string",
-              "description": "Chart UUID"
-            },
-            "insight_type": {
-              "type": "string",
-              "description": "Filter by type: 'calibrated_outlook'|'manifestation_grammar'|'emergent_law'|'retrodiction'|'load_bearing'|'negative_knowledge'|'verdict_object'. ('retrodiction' and 'verdict_object' rows are written by mi_darshana and were previously undocumented here — insight_type mirrors mimamsa_discoveries.discovery_class for discovery-sourced rows.)"
-            },
-            "domain": {
-              "type": "string",
-              "description": "Filter by life domain (career, health, relationship, etc.)"
-            },
-            "min_rank": {
-              "type": "number",
-              "description": "Minimum rank_consequence threshold (0..1, default: 0)"
-            },
-            "top_k": {
-              "type": "number",
-              "description": "Max insight units to return (default: 30, max: 200)"
-            },
-            "include_negative_knowledge": {
-              "type": "boolean",
-              "description": "Include is_negative_knowledge=true rows (default: true)"
-            }
-          },
-          "required": [
-            "chart_id"
-          ]
-        },
-        "uri": "marsys://tool/L5/query_insights",
-        "layer": "L5",
-        "name_valid": true,
-        "annotations": {
-          "title": "Query Insights",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -3844,8 +4339,10 @@ export const MCP_SURFACE_PROFILES: {
       "bodha_remedies_get",
       "bodha_signals_get",
       "ganita_planet_get",
+      "kala_life_arc_get",
       "kala_windows_get",
       "kala_yoga_activation_get",
+      "mimamsa_insight_get",
       "phala_predictive_anchors_get",
       "phala_rectification_get",
       "ref_mantras_get",
@@ -3872,7 +4369,6 @@ export const MCP_SURFACE_PROFILES: {
       "call_ephemeris_at_t",
       "call_muhurta_score",
       "call_panchanga_service",
-      "call_priority_ranking",
       "call_transit_search",
       "compose_large_n",
       "get_chart_header",
@@ -3890,8 +4386,8 @@ export const MCP_SURFACE_PROFILES: {
       "query_chart_gestalt",
       "query_cleansed_anchors",
       "query_convergence_windows",
+      "query_current_transit_snapshot",
       "query_dasha_dossier",
-      "query_domain_reading",
       "query_domain_result",
       "query_falsifiers",
       "query_insight_embeddings",
@@ -3924,6 +4420,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_planet": "ganita_planet_get",
       "query_ucd": "bodha_chart_digest_get",
       "traverse_chart_graph": "bodha_graph_subgraph_get",
+      "query_domain_reading": "bodha_domain_reading_get",
       "query_signals": "bodha_signals_get",
       "query_remedies": "bodha_remedies_get",
       "query_quality_scorecard": "bodha_quality_get",
@@ -3931,6 +4428,7 @@ export const MCP_SURFACE_PROFILES: {
       "query_mechanisms": "bodha_mechanisms_get",
       "query_temporal_activation": "kala_windows_get",
       "query_life_arc": "kala_life_arc_get",
+      "call_priority_ranking": "kala_priority_ranking_get",
       "query_predictive_anchors": "phala_predictive_anchors_get",
       "query_rectification": "phala_rectification_get",
       "query_insights": "mimamsa_insight_get",

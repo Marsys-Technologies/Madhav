@@ -6,7 +6,6 @@ import crypto from 'crypto'
 import type { PoolClient } from 'pg'
 
 import {
-  TRACKER_DDL,
   collectMigrationFiles,
   runMigrations,
   MigrationHashMismatchError,
@@ -14,6 +13,7 @@ import {
   loadHashDisclosures,
   loadRenumberDisclosures,
   normalizeSqlForIdentity,
+  parseMigrationCliArgs,
   sqlIdentityOf,
   type DisclosedHashMismatch,
   type DisclosedRenumber,
@@ -107,11 +107,18 @@ describe('collectMigrationFiles', () => {
     fs.rmSync(dir, { recursive: true, force: true })
   })
 
-  it('returns files sorted lexically by name across dirs', () => {
+  it('returns numbered files in numeric order across dirs', () => {
     writeSql(dir, '002_b.sql', 'SELECT 2')
     writeSql(dir, '001_a.sql', 'SELECT 1')
+    writeSql(dir, '1000_late.sql', 'SELECT 1000')
+    writeSql(dir, '598_prerequisite.sql', 'SELECT 598')
     const files = collectMigrationFiles([dir])
-    expect(files.map(f => f.name)).toEqual(['001_a.sql', '002_b.sql'])
+    expect(files.map(f => f.name)).toEqual([
+      '001_a.sql',
+      '002_b.sql',
+      '598_prerequisite.sql',
+      '1000_late.sql',
+    ])
   })
 
   it('merges and sorts across multiple dirs', () => {
@@ -140,6 +147,20 @@ describe('collectMigrationFiles', () => {
     expect(targetIndex).toBe(prerequisiteIndex + 1)
   })
 
+  it('orders the shared output-digest prerequisite before four-digit consumers', () => {
+    const migrationNames = collectMigrationFiles([
+      path.resolve(process.cwd(), 'migrations'),
+      path.resolve(process.cwd(), 'supabase/migrations'),
+    ]).map(file => file.name)
+    const prerequisiteIndex = migrationNames.indexOf('598_nirmana_output_digest_specs.sql')
+    const consumerIndex = migrationNames.indexOf(
+      '1000_nirmana_l2_bo_cgm_motifs_output_digest_spec.sql'
+    )
+
+    expect(prerequisiteIndex).toBeGreaterThanOrEqual(0)
+    expect(consumerIndex).toBeGreaterThan(prerequisiteIndex)
+  })
+
   it('skips non-existent dirs', () => {
     const files = collectMigrationFiles(['/no/such/dir'])
     expect(files).toHaveLength(0)
@@ -147,6 +168,26 @@ describe('collectMigrationFiles', () => {
 })
 
 // ─── runMigrations ────────────────────────────────────────────────────────────
+
+describe('parseMigrationCliArgs', () => {
+  it('parses a non-empty exact selection', () => {
+    expect(parseMigrationCliArgs(['--only', '001_a.sql,002_b.sql']).only).toEqual(
+      new Set(['001_a.sql', '002_b.sql']),
+    )
+  })
+
+  it('fails closed for missing or empty --only values', () => {
+    expect(() => parseMigrationCliArgs(['--only'])).toThrow('--only requires')
+    expect(() => parseMigrationCliArgs(['--only', ', ,'])).toThrow('--only requires')
+    expect(() => parseMigrationCliArgs(['--only', '--dry-run'])).toThrow('--only requires')
+  })
+
+  it('rejects combining --only with --target', () => {
+    expect(() => parseMigrationCliArgs([
+      '--target', '001_a.sql', '--only', '001_a.sql',
+    ])).toThrow('--target and --only cannot be combined')
+  })
+})
 
 describe('runMigrations', () => {
   let dir: string
@@ -192,6 +233,40 @@ describe('runMigrations', () => {
     const ran = await runMigrations(client, [dir])
 
     expect(ran).toEqual(['001_a.sql', '002_b.sql'])
+  })
+
+  it('runs only the exact selected migrations when predecessors are applied', async () => {
+    const sqlOne = 'SELECT 1'
+    writeSql(dir, '001_a.sql', sqlOne)
+    writeSql(dir, '002_b.sql', 'SELECT 2')
+    writeSql(dir, '003_c.sql', 'SELECT 3')
+    const client = makeClient([{ filename: '001_a.sql', sha256: sha256(sqlOne) }])
+
+    const ran = await runMigrations(client, [dir], {
+      only: new Set(['002_b.sql', '003_c.sql']),
+    })
+
+    expect(ran).toEqual(['002_b.sql', '003_c.sql'])
+  })
+
+  it('rejects an empty or missing exact migration selection', async () => {
+    const client = makeClient()
+    await expect(runMigrations(client, [dir], { only: new Set() })).rejects.toThrow(
+      '--only requires at least one migration filename',
+    )
+    await expect(runMigrations(client, [dir], { only: new Set(['999_missing.sql']) })).rejects.toThrow(
+      'Requested migration file(s) not found',
+    )
+  })
+
+  it('refuses to jump an unapplied predecessor outside the selected set', async () => {
+    writeSql(dir, '001_a.sql', 'SELECT 1')
+    writeSql(dir, '002_b.sql', 'SELECT 2')
+    const client = makeClient()
+
+    await expect(runMigrations(client, [dir], {
+      only: new Set(['002_b.sql']),
+    })).rejects.toThrow('--only would jump unapplied predecessor migration(s): 001_a.sql')
   })
 
   it('rolls back and throws on SQL failure', async () => {

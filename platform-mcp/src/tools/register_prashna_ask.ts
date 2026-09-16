@@ -1,54 +1,20 @@
 /**
- * tools/register_prashna_ask.ts — the prashna_ask MCP tool (W6 redesign, Task 7).
+ * Durable job-handle front door for the Prashna engine.
  *
- * Job-handle-first contract (OT-2 ruling): a caller invokes prashna_ask, gets an
- * immediate `{job_id, status:'pending'}` back WITHOUT waiting for the engine loop
- * (platform's `/api/mcp/prashna_ask` route — see `lib/prashna_ask_bridge.ts`'s
- * header for why the real engine call cannot live in platform-mcp at all), then
- * the full/partial answer is delivered via an MCP `notifications/progress`
- * message keyed by the caller-supplied `progressToken` (`_meta.progressToken` on
- * the tool-call request, per the MCP spec) once the background call resolves.
- * `job_id` exists for correlation/audit only — a caller must never be REQUIRED to
- * separately poll for the finished answer.
- *
- * ── IMPORTANT ARCHITECTURAL CAVEAT (read before relying on this in production) ─
- * Investigation for this task (reading
- * `node_modules/@modelcontextprotocol/sdk/dist/esm/server/webStandardStreamableHttp.js`
- * in full) found: `StreamableHTTPServerTransport.send()` treats a request's SSE
- * stream as done — and calls `stream.cleanup()`, which closes the underlying HTTP
- * response — the instant `allResponsesReady` for that request's stream (see that
- * file's `send()`, ~line 711-747). For a single tools/call request (the case
- * here), that is IMMEDIATELY after this handler's own returned CallToolResult
- * (the job handle) is sent. `server.ts` also runs a brand-new stateless
- * `McpServer` + `StreamableHTTPServerTransport` PER REQUEST (D10) and explicitly
- * disables the standalone GET /mcp SSE channel (`app.get('/mcp', ...)` → 405) that
- * the SDK would otherwise use for server-initiated, out-of-band notifications.
- * Net effect: a `sendNotification()` call made from the background continuation
- * AFTER this handler has already returned its job-handle result has no live
- * stream to write to for that request ID — `send()` throws
- * `No connection established for request ID: ...` in the SDK's own code path.
- * This file still implements the notification call (wrapped in try/catch so a
- * dead channel never crashes the process) because: (a) it is exactly what the
- * task's contract asks for and the SDK's callback shape supports the API in
- * isolation; (b) some MCP clients/transports MAY keep the request's channel
- * alive longer than this codebase's specific stateless-per-request wiring does,
- * so the call is not simply dead code; (c) the `JobRegistry` entry is ALWAYS
- * updated (`complete`/`fail`) regardless of notification delivery, so a caller
- * that falls back to polling `job_id` (audit/logging path) still sees a
- * consistent final state. Closing this gap for real requires either a
- * session-scoped (not per-request) transport with a working standalone SSE
- * stream, or the SDK's experimental MCP "Tasks" feature (`ToolTaskHandler` /
- * `RequestTaskStore`, present in this SDK version's types but not wired into
- * `server.ts` anywhere) — both are bigger architecture changes outside this
- * task's scope and are flagged for a native/architecture ruling rather than
- * silently worked around here.
+ * `prashna_ask` performs a durable, idempotent create and returns the
+ * caller-generated UUID, then submits the job to a bounded in-process worker
+ * queue. The deployment contract explicitly enables instance-based CPU; the
+ * queue caps local engine concurrency and database leases recover instance
+ * death. `prashna_status` remains a true poll and opportunistically resubmits a
+ * pending or lease-expired job without blocking for the engine result.
  */
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js'
 import type { ServerRequest, ServerNotification } from '@modelcontextprotocol/sdk/types.js'
 import type { Principal } from '../types.js'
 import type { McpProfileName } from '../lib/mcp_profile.js'
-import { JobRegistry } from '../lib/job_registry.js'
+import { managedPrashnaJobs } from '../lib/managed_prashna_jobs.js'
 import { callPrashnaAskEngine, type PrashnaAskEngineResponse } from '../lib/prashna_ask_bridge.js'
 import { INTENTS, DOMAINS } from './intent_scope_classifier.js'
 
@@ -90,9 +56,9 @@ const ScopeTupleSchema = z
 export const PrashnaAskInputSchema = z
   .object({
     chart_id: z.string().uuid(),
-    question: z.string().min(1),
+    question: z.string().trim().min(1).max(4000),
     scope_tuple: ScopeTupleSchema.optional(),
-    response_format: z.string(),
+    response_format: z.enum(['digest', 'summary', 'standard', 'narrative', 'full']),
   })
   .strict()
 
@@ -118,7 +84,7 @@ function errorOutput(
 // ── Shared job registry (module-scoped singleton — the store must outlive any
 // single request's per-request McpServer instance; exported for tests). ──────
 
-export const prashnaAskJobs = new JobRegistry<PrashnaAskEngineResponse>()
+export { managedPrashnaJobs as prashnaAskJobs }
 
 async function sendProgress(
   extra: ToolExtra,
@@ -163,74 +129,130 @@ function estimateProgressPct(progress: import('../lib/prashna_ask_bridge.js').Pr
 }
 
 /**
- * Run the engine call in the background and deliver the outcome via progress
- * notification + JobRegistry update. Never throws — all failure paths resolve.
- *
- * W6 Part 2/3: `JobRegistry` is the AUTHORITATIVE, always-updated progress
- * source `prashna_status` reads from — the MCP `notifications/progress` send
+ * Atomically claim or recover a durable job, then run the engine and commit its
+ * outcome. Concurrent instances may call this safely; only the lease winner runs.
+ * The MCP `notifications/progress` send
  * below is best-effort/defensive only (see the file header's architectural
  * caveat on why it is frequently undeliverable in this codebase's current
  * stateless-per-request MCP transport).
  */
-async function runInBackground(
+export async function resumeManagedPrashnaJob(
   jobId: string,
-  chartId: string,
-  question: string,
   principal: Principal,
-  extra: ToolExtra,
-  progressToken: string | number | undefined,
-  scopeTuple: PrashnaAskInput['scope_tuple']
+  extra?: ToolExtra,
+  progressToken?: string | number,
 ): Promise<void> {
-  if (progressToken !== undefined) {
+  const workerId = randomUUID()
+  const claimed = await managedPrashnaJobs.claim(principal, jobId, workerId)
+  if (!claimed || claimed.disposition !== 'acquired') return
+  const jobRequest = claimed.job.request
+  if (!jobRequest) {
+    await managedPrashnaJobs.fail(principal, jobId, workerId, 'MANAGED_JOB_REQUEST_MISSING')
+    return
+  }
+
+  if (progressToken !== undefined && extra) {
     await sendProgress(extra, progressToken, 0, 'prashna_ask: engine call started')
   }
-  prashnaAskJobs.updateProgress(jobId, { message: 'prashna_ask: engine call started', pct: 0 })
+  await managedPrashnaJobs.updateProgress(
+    principal, jobId, workerId, { message: 'prashna_ask: engine call started', pct: 0 },
+  ).catch((error) => {
+    console.warn('[mcp:prashna_ask] initial durable progress update failed', error instanceof Error ? error.message : String(error))
+  })
 
   let result: PrashnaAskEngineResponse
   try {
     result = await callPrashnaAskEngine(
       {
-        chartId,
-        question,
+        chartId: claimed.job.chart_id,
+        question: jobRequest.question,
         principal: { userUid: principal.user_uid, keyId: principal.key_id },
-        scopeTuple,
+        responseFormat: jobRequest.response_format,
+        scopeTuple: jobRequest.scope_tuple,
       },
       (progress) => {
         const elapsedSec = (progress.elapsed_ms / 1000).toFixed(1)
-        prashnaAskJobs.updateProgress(jobId, {
+        void managedPrashnaJobs.updateProgress(principal, jobId, workerId, {
           message:
             `${progress.tools_dispatched_count}/~${progress.cap_ceiling.maxCalls} tool calls made, ` +
             `${elapsedSec}s elapsed`,
           pct: estimateProgressPct(progress),
+        }).catch((error) => {
+          console.warn('[mcp:prashna_ask] durable progress update failed', error instanceof Error ? error.message : String(error))
         })
       }
     )
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    prashnaAskJobs.fail(jobId, message)
-    if (progressToken !== undefined) {
-      await sendProgress(extra, progressToken, 100, `prashna_ask: failed — ${message}`)
-    }
+  } catch {
+    await retainRetryableFailure(jobId, principal, workerId)
     return
   }
 
+  let terminalCommitted = false
+  let deliveredResult: PrashnaAskEngineResponse = result
   if (result.ok === false) {
-    prashnaAskJobs.fail(jobId, result.error.message)
+    if (result.error.retryable === true) {
+      await retainRetryableFailure(jobId, principal, workerId)
+      return
+    }
+    await managedPrashnaJobs.fail(principal, jobId, workerId, result.error.message).then(() => {
+      terminalCommitted = true
+    }).catch((error) => {
+      console.warn('[mcp:prashna_ask] durable failure commit failed', error instanceof Error ? error.message : String(error))
+    })
   } else {
-    prashnaAskJobs.complete(jobId, result)
+    deliveredResult = {
+      ...result,
+      persistence: {
+        status: 'managed_job',
+        job_id: jobId,
+        detail: 'Full managed-MCP terminal result retained in the principal-bound durable job store.',
+      },
+    }
+    await managedPrashnaJobs.complete(principal, jobId, workerId, deliveredResult).then(() => {
+      terminalCommitted = true
+    }).catch(async (error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      if (message === 'MANAGED_JOB_RESULT_TOO_LARGE') {
+        // A successful engine response that exceeds the durable contract must
+        // become an explicit terminal storage failure. Leaving the lease live
+        // would rerun an already-successful (and potentially expensive) engine
+        // call until retry exhaustion while never making the result retrievable.
+        await managedPrashnaJobs.fail(
+          principal,
+          jobId,
+          workerId,
+          'MANAGED_JOB_RESULT_TOO_LARGE: engine succeeded but its terminal envelope exceeded the 2 MiB durable-result ceiling',
+        ).then(() => {
+          terminalCommitted = true
+          deliveredResult = {
+            ok: false,
+            trace_id: result.trace_id,
+            error: {
+              class: 'storage_contract',
+              message: 'MANAGED_JOB_RESULT_TOO_LARGE',
+              remediation: 'Narrow the question or use a smaller response format before starting a new job.',
+            },
+          }
+        }).catch((failError) => {
+          console.warn('[mcp:prashna_ask] durable oversized-result failure commit failed', failError instanceof Error ? failError.message : String(failError))
+        })
+        return
+      }
+      console.warn('[mcp:prashna_ask] durable completion commit failed', message)
+    })
   }
 
   // Terminal notification carries the FULL/PARTIAL result — not just a
   // "go look it up" pointer (binding requirement: a caller must never be
   // required to separately poll job_id for the finished answer).
-  if (progressToken !== undefined) {
+  if (terminalCommitted && progressToken !== undefined && extra) {
     await extra
       .sendNotification({
         method: 'notifications/progress',
         params: {
           progressToken,
           progress: 100,
-          message: JSON.stringify({ job_id: jobId, status: prashnaAskJobs.get(jobId)?.status, result }),
+          message: JSON.stringify({ job_id: jobId, status: deliveredResult.ok === false ? 'failed' : 'complete', result: deliveredResult }),
         },
       })
       .catch((err: unknown) => {
@@ -242,6 +264,78 @@ async function runInBackground(
   }
 }
 
+async function retainRetryableFailure(
+  jobId: string,
+  principal: Principal,
+  workerId: string,
+): Promise<void> {
+  try {
+    await managedPrashnaJobs.updateProgress(principal, jobId, workerId, {
+      message: 'prashna_ask: ambiguous transport failure; retry waits for lease expiry',
+      pct: 99,
+    })
+  } catch (error) {
+    // Leave the existing lease intact if even the progress update fails. A
+    // later status poll may recover only after that lease expires, preventing
+    // overlap with a platform request whose execution outcome is ambiguous.
+    console.warn('[mcp:prashna_ask] durable transient state update failed', error instanceof Error ? error.message : String(error))
+  }
+}
+
+const MAX_ACTIVE_MANAGED_PRASHNA_WORKERS = 2
+const MAX_QUEUED_MANAGED_PRASHNA_JOBS = 32
+type ScheduledJob = {
+  jobId: string
+  principal: Principal
+  extra?: ToolExtra
+  progressToken?: string | number
+  generation: number
+}
+const managedJobQueue: ScheduledJob[] = []
+const scheduledManagedJobIds = new Set<string>()
+let activeManagedPrashnaWorkers = 0
+let managedPrashnaSchedulerGeneration = 0
+
+function drainManagedPrashnaJobQueue(): void {
+  while (activeManagedPrashnaWorkers < MAX_ACTIVE_MANAGED_PRASHNA_WORKERS && managedJobQueue.length > 0) {
+    const job = managedJobQueue.shift()!
+    activeManagedPrashnaWorkers += 1
+    void resumeManagedPrashnaJob(job.jobId, job.principal, job.extra, job.progressToken)
+      .catch((error) => {
+        console.warn('[mcp:prashna_ask] scheduled recovery failed', error instanceof Error ? error.message : String(error))
+      })
+      .finally(() => {
+        if (job.generation !== managedPrashnaSchedulerGeneration) return
+        activeManagedPrashnaWorkers -= 1
+        scheduledManagedJobIds.delete(job.jobId)
+        drainManagedPrashnaJobQueue()
+      })
+  }
+}
+
+export function scheduleManagedPrashnaJob(
+  jobId: string,
+  principal: Principal,
+  extra?: ToolExtra,
+  progressToken?: string | number,
+): 'scheduled' | 'already_scheduled' | 'queue_full' {
+  if (scheduledManagedJobIds.has(jobId)) return 'already_scheduled'
+  if (managedJobQueue.length >= MAX_QUEUED_MANAGED_PRASHNA_JOBS) return 'queue_full'
+  scheduledManagedJobIds.add(jobId)
+  managedJobQueue.push({
+    jobId, principal, extra, progressToken, generation: managedPrashnaSchedulerGeneration,
+  })
+  drainManagedPrashnaJobQueue()
+  return 'scheduled'
+}
+
+export function __resetManagedPrashnaSchedulerForTests(): void {
+  managedPrashnaSchedulerGeneration += 1
+  managedJobQueue.splice(0)
+  scheduledManagedJobIds.clear()
+  activeManagedPrashnaWorkers = 0
+}
+
 export function registerPrashnaAskTool(
   server: PrashnaAskRegisteringServer,
   principal: Principal,
@@ -251,19 +345,16 @@ export function registerPrashnaAskTool(
     'prashna_ask',
     'Full-loop Vidhi Engine question-answering: plans a tool-dispatch sequence for a natural-' +
     'language chart question, runs it under cost caps + NO-LEAKAGE enforcement, and returns an ' +
-    'IMMEDIATE job handle ({job_id, status:"pending"}) — it does NOT block until the answer is ' +
-    'ready. Two-step pattern: (1) call prashna_ask, get back {job_id}; (2) call prashna_status ' +
-    'with that job_id to check progress (a meaningful message + pct estimate while the job is ' +
-    'still running) or retrieve the final result once status is "complete"/"failed" — poll ' +
-    'prashna_status again after a short delay if the job is still "pending"/"running". A best-' +
-    'effort MCP notifications/progress message MAY also arrive (pass a progressToken in the ' +
-    'tool-call request\'s _meta) but is NOT reliably delivered in this deployment — prashna_status ' +
-    'is the durable way to get progress or the final answer. NOT for lightweight lookups — no ' +
+    'IMMEDIATE durable job handle ({job_id, status:"pending"}) before bounded worker execution. ' +
+    'Two-step pattern: (1) call prashna_ask, get back {job_id}; (2) poll prashna_status with that ' +
+    'job_id for meaningful durable progress or the full terminal result. A status poll also ' +
+    'resubmits pending or lease-expired work for cross-instance recovery. ' +
+    'NOT for lightweight lookups — no ' +
     '`depth` param (C-1 signature); use a retrieval-tier tool for a pinpointed factual lookup ' +
     'instead. Requires the "full" or "compact" MCP surface profile — rejected for "consult".',
     {
       chart_id: z.string().uuid().describe('Chart UUID to answer the question against.'),
-      question: z.string().min(1).describe('Natural-language question about the chart.'),
+      question: z.string().trim().min(1).max(4000).describe('Natural-language question about the chart (1–4000 characters).'),
       scope_tuple: z
         .object({
           intent: z.enum(INTENTS),
@@ -276,7 +367,8 @@ export function registerPrashnaAskTool(
         })
         .optional()
         .describe('Optional pre-classified scope tuple (see intent_scope_classifier.ts). Omit to let the planner classify.'),
-      response_format: z.string().describe('Requested response format/verbosity hint for the synthesis layer.'),
+      response_format: z.enum(['digest', 'summary', 'standard', 'narrative', 'full'])
+        .describe('Requested response format for the synthesis layer.'),
     },
     async (args: unknown, extra: ToolExtra) => {
       let parsed: PrashnaAskInput
@@ -305,28 +397,27 @@ export function registerPrashnaAskTool(
         )
       }
 
-      const job = prashnaAskJobs.create({ chartId: parsed.chart_id })
-      const progressToken = extra._meta?.progressToken
-
-      // Fire-and-forget: do NOT await — the job-handle-first contract (OT-2)
-      // requires this handler to resolve before the engine call does. Report the
-      // literal 'pending' status the job was just created with, NOT `job.status`
-      // read after the fire-and-forget call — `runInBackground` runs synchronously
-      // up to its first await, and (when no progressToken is supplied, skipping
-      // the notification await) its first synchronous action is a `JobRegistry
-      // .updateProgress()` call that flips status to 'running' before this line
-      // would otherwise read it, racing the "immediate job handle" contract.
-      void runInBackground(
-        job.id,
-        parsed.chart_id,
-        parsed.question,
-        principal,
-        extra,
-        progressToken,
-        parsed.scope_tuple
-      )
-
-      return dualOutput({ job_id: job.id, status: 'pending', chart_id: parsed.chart_id })
+      const jobId = randomUUID()
+      let job
+      try {
+        job = await managedPrashnaJobs.create(principal, {
+          job_id: jobId,
+          chart_id: parsed.chart_id,
+          request: {
+            question: parsed.question,
+            response_format: parsed.response_format,
+            scope_tuple: parsed.scope_tuple,
+          },
+        })
+      } catch (error) {
+        console.error('[mcp:prashna_ask] durable job creation failed', error instanceof Error ? error.message : String(error))
+        return errorOutput(
+          'MANAGED_JOB_STORE_UNAVAILABLE: creation outcome is unknown; use prashna_status with the returned job_id before retrying',
+          { job_id: jobId },
+        )
+      }
+      scheduleManagedPrashnaJob(job.job_id, principal, extra, extra._meta?.progressToken)
+      return dualOutput({ job_id: job.job_id, status: 'pending', chart_id: parsed.chart_id })
     }
   )
 }

@@ -112,6 +112,7 @@ export interface MsrSqlInput {
 export interface RetrievalTool {
   name: string
   version: string
+  dispatch_units?: number
   description?: string
   retrieve(plan: QueryPlan, params?: Record<string, unknown>): Promise<ToolBundle>
   secondary?: boolean

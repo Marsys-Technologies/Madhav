@@ -332,6 +332,20 @@ describe('buildManifestIndex', () => {
     expect(byPath.get('99_ARCHIVE/01_FACTS_LAYER/FORENSIC_DATA_v8_0_SUPPLEMENT.md')).toBe(FORENSIC_ENTRY)
     expect(byPath.get('025_HOLISTIC_SYNTHESIS/MSR_v3_0.md')).toBe(MSR_ENTRY)
   })
+
+  it('indexes pathless capability entries by canonical_id without inventing a filesystem path', () => {
+    const pathlessEntry: ManifestEntry = {
+      canonical_id: 'RETRIEVAL_TOOL_temporal',
+      path: null,
+      version: null,
+      status: 'ACTIVE',
+    }
+
+    const { byId, byPath } = buildManifestIndex([pathlessEntry])
+
+    expect(byId.get('RETRIEVAL_TOOL_temporal')).toBe(pathlessEntry)
+    expect(byPath.size).toBe(0)
+  })
 })
 
 describe('CURRENT_STATUSES', () => {

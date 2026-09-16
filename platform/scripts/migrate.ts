@@ -2,7 +2,7 @@
  * Idempotent migration runner.
  * - Reads platform/migrations/*.sql and platform/supabase/migrations/*.sql
  * - Tracks applied migrations in _migrations_applied (id, filename, applied_at, sha256)
- * - For each unapplied migration in lexical order:
+ * - For each unapplied migration in numeric-prefix order (lexical tie-break):
  *     BEGIN; <SQL>; INSERT INTO _migrations_applied; COMMIT;
  *   On any error: ROLLBACK and exit non-zero
  * - For each ALREADY-applied migration: recompute its sha256 and compare against the value
@@ -88,8 +88,8 @@ const NIRMANA_SKY_CALENDAR_REPLAY_TARGET =
  * `630_nirmana_l0_wave1_correctness_contract.sql` owns a typed provenance
  * relation whose foreign key targets `classical_text_chunks`.  The active
  * creator for that table is the unnumbered historical-continuity migration
- * `ws2_l0_texts.sql`.  Global lexical ordering puts every numbered migration
- * before that creator, so a fresh replay would otherwise reach 630 too early.
+ * `ws2_l0_texts.sql`. Numeric ordering puts every numbered migration before
+ * that creator, so a fresh replay would otherwise reach 630 too early.
  *
  * Keep this exception closed for the same reason as the 597/594 repair above:
  * it is a single, named replay prerequisite, not a general dependency system.
@@ -116,6 +116,8 @@ export function assertGeneralRunnerMayApply(filename: string): void {
 export interface RunOptions {
   dryRun?: boolean
   target?: string
+  /** Restrict execution and hash checks to an exact reviewed filename set. */
+  only?: Set<string>
   /**
    * Disclosed-residual allowlist (Dvārapāla RULING 73), keyed by filename. Defaults to loading
    * `scripts/ci/migration_hash_disclosed_residuals.json` from disk. Tests pass an explicit map
@@ -450,10 +452,22 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
       .sort()
     files.push(...entries.map(name => ({ name, dir })))
   }
-  files.sort((a, b) => a.name.localeCompare(b.name))
+  files.sort((a, b) => {
+    const aPrefix = a.name.match(/^(\d+)/)?.[1]
+    const bPrefix = b.name.match(/^(\d+)/)?.[1]
+    if (aPrefix !== undefined && bPrefix !== undefined) {
+      const numericDifference = Number(aPrefix) - Number(bPrefix)
+      if (numericDifference !== 0) return numericDifference
+    } else if (aPrefix !== undefined) {
+      return -1
+    } else if (bPrefix !== undefined) {
+      return 1
+    }
+    return a.name.localeCompare(b.name)
+  })
 
-  // Preserve ordinary lexical order, except for the two closed replay repairs
-  // above. A previously applied prerequisite remains in this list and is still
+  // Preserve ordinary numeric-prefix order, except for the closed replay repairs
+  // above and below. A previously applied prerequisite remains in this list and is still
   // skipped by the normal `_migrations_applied` check in runMigrations().
   const prerequisiteIndex = files.findIndex(
     file => file.name === NIRMANA_SKY_CALENDAR_REPLAY_PREREQUISITE
@@ -478,6 +492,7 @@ export function collectMigrationFiles(dirs: string[]): MigrationFile[] {
     const [prerequisite] = files.splice(waveOneTextsPrerequisiteIndex, 1)
     files.splice(waveOneTargetIndex, 0, prerequisite)
   }
+
   return files
 }
 
@@ -668,7 +683,7 @@ export async function runMigrations(
   dirs: string[],
   options: RunOptions = {}
 ): Promise<string[]> {
-  const { dryRun = false, target } = options
+  const { dryRun = false, target, only } = options
   // Defaults to loading scripts/ci/migration_hash_disclosed_residuals.json from disk (real
   // production behavior — main() never passes this explicitly). Tests pass an explicit Map
   // (including `new Map()`) so disclosure behavior is exercised deterministically.
@@ -677,7 +692,29 @@ export async function runMigrations(
 
   await client.query(TRACKER_DDL)
   await client.query(TRACKER_IDENTITY_DDL)
-  const files = collectMigrationFiles(dirs)
+  const allFiles = collectMigrationFiles(dirs)
+  if (only && only.size === 0) throw new Error('--only requires at least one migration filename')
+  const files = only ? allFiles.filter((file) => only.has(file.name)) : allFiles
+  if (only) {
+    const found = new Set(files.map((file) => file.name))
+    const missing = [...only].filter((name) => !found.has(name))
+    if (missing.length > 0) throw new Error(`Requested migration file(s) not found: ${missing.join(', ')}`)
+    const applied = await getApplied(client)
+    const selectedNumbers = files
+      .map((file) => Number.parseInt(file.name.match(/^(\d+)/)?.[1] ?? '', 10))
+      .filter(Number.isFinite)
+    const ceiling = Math.max(...selectedNumbers)
+    const skippedPredecessors = allFiles.filter((file) => {
+      if (only.has(file.name) || applied.has(file.name)) return false
+      const prefix = Number.parseInt(file.name.match(/^(\d+)/)?.[1] ?? '', 10)
+      return Number.isFinite(prefix) && prefix <= ceiling
+    })
+    if (skippedPredecessors.length > 0) {
+      throw new Error(
+        `--only would jump unapplied predecessor migration(s): ${skippedPredecessors.map((file) => file.name).join(', ')}`,
+      )
+    }
+  }
 
   if (dryRun) {
     const applied = await getApplied(client)
@@ -751,6 +788,7 @@ export async function runMigrations(
       ran.push(file.name)
     } catch (err) {
       await client.query('ROLLBACK')
+      console.error(`[migration-failure] ${file.name}`)
       throw err
     }
 
@@ -760,11 +798,25 @@ export async function runMigrations(
   return ran
 }
 
-async function main(): Promise<void> {
-  const args = process.argv.slice(2)
+export function parseMigrationCliArgs(args: string[]): Pick<RunOptions, 'dryRun' | 'target' | 'only'> {
   const dryRun = args.includes('--dry-run')
   const targetIdx = args.indexOf('--target')
   const target = targetIdx !== -1 ? args[targetIdx + 1] : undefined
+  const onlyIdx = args.indexOf('--only')
+  const onlyValue = onlyIdx !== -1 ? args[onlyIdx + 1] : undefined
+  if (onlyIdx !== -1 && (!onlyValue || onlyValue.startsWith('--')
+    || onlyValue.split(',').every((name) => name.trim().length === 0))) {
+    throw new Error('--only requires a non-empty comma-separated migration filename list')
+  }
+  if (target && onlyValue) throw new Error('--target and --only cannot be combined')
+  const only = onlyValue
+    ? new Set(onlyValue.split(',').map((name) => name.trim()).filter(Boolean))
+    : undefined
+  return { dryRun, target, only }
+}
+
+async function main(): Promise<void> {
+  const { dryRun, target, only } = parseMigrationCliArgs(process.argv.slice(2))
 
   const scriptDir = path.dirname(new URL(import.meta.url).pathname)
   const dirs = [
@@ -775,7 +827,7 @@ async function main(): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL })
   const client = await pool.connect()
   try {
-    const ran = await runMigrations(client, dirs, { dryRun, target })
+    const ran = await runMigrations(client, dirs, { dryRun, target, only })
     if (dryRun) {
       console.log('Dry run — would apply:')
       ran.forEach(name => console.log(`  ${name}`))

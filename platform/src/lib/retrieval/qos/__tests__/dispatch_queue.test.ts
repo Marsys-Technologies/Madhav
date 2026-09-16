@@ -47,6 +47,36 @@ describe('QosDispatchQueue — concurrency bound', () => {
     expect(maxObservedInFlight).toBeLessThanOrEqual(3)
     expect(maxObservedInFlight).toBeGreaterThan(0)
   })
+
+  it('accounts fan-out weight atomically so concurrent work never exceeds capacity', async () => {
+    const queue = new QosDispatchQueue({ concurrency: 10 })
+    const firstGate = deferred<void>()
+    const secondGate = deferred<void>()
+    let weightedInFlight = 0
+    let maxWeightedInFlight = 0
+    const submitAggregate = (gate: ReturnType<typeof deferred<void>>) => queue.submit({
+      principalId: 'aggregate',
+      units: 9,
+      run: async () => {
+        weightedInFlight += 9
+        maxWeightedInFlight = Math.max(maxWeightedInFlight, weightedInFlight)
+        await gate.promise
+        weightedInFlight -= 9
+      },
+    })
+    const first = submitAggregate(firstGate)
+    const second = submitAggregate(secondGate)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(queue.stats().inFlight).toBe(9)
+    expect(weightedInFlight).toBe(9)
+    firstGate.resolve()
+    await first
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(weightedInFlight).toBe(9)
+    secondGate.resolve()
+    await second
+    expect(maxWeightedInFlight).toBe(9)
+  })
 })
 
 describe('QosDispatchQueue — priority ordering (interactive > background)', () => {
@@ -134,6 +164,57 @@ describe('QosDispatchQueue — fairness bound (no starvation)', () => {
     // force-promotion — must not exceed the configured MAX_SKIPS.
     expect(backgroundDispatchedAtInteractiveCount).toBeLessThanOrEqual(MAX_SKIPS)
     expect(backgroundDispatchedAtInteractiveCount).toBeGreaterThanOrEqual(0)
+  })
+
+  it('reserves capacity for a starved weighted background task under sustained smaller interactive work', async () => {
+    const queue = new QosDispatchQueue({ concurrency: 10, maxBackgroundSkips: 2, interactiveWeight: 1000 })
+    const gates = Array.from({ length: 20 }, () => deferred<void>())
+    let interactiveStarted = 0
+    let backgroundStarted = false
+    let interactiveStartedAtBackground = -1
+
+    const interactiveTasks = gates.slice(0, 10).map((gate, index) => queue.submit({
+      principalId: `interactive-${index}`,
+      priorityClass: 'interactive',
+      run: async () => {
+        interactiveStarted++
+        await gate.promise
+      },
+    }))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(queue.stats().inFlight).toBe(10)
+
+    const background = queue.submit({
+      principalId: 'transit-aggregate',
+      priorityClass: 'background',
+      units: 9,
+      run: async () => {
+        backgroundStarted = true
+        interactiveStartedAtBackground = interactiveStarted
+      },
+    })
+    interactiveTasks.push(...gates.slice(10).map((gate, index) => queue.submit({
+      principalId: `interactive-refill-${index}`,
+      priorityClass: 'interactive',
+      run: async () => {
+        interactiveStarted++
+        await gate.promise
+      },
+    })))
+
+    // Permit enough completions to make nine units available. Once two smaller
+    // refills have skipped the weighted task, later refills must stop so capacity
+    // can drain and the starved task can start.
+    for (const gate of gates.slice(0, 11)) {
+      gate.resolve()
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    }
+
+    expect(backgroundStarted).toBe(true)
+    expect(interactiveStartedAtBackground).toBeLessThanOrEqual(12)
+
+    for (const gate of gates.slice(11)) gate.resolve()
+    await Promise.all([background, ...interactiveTasks])
   })
 })
 

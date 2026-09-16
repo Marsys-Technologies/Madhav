@@ -17,7 +17,7 @@ export interface TraceState {
   error: string | null
   planningActive: boolean
   planningModel: string | null
-  manifestToolCount: number | null
+  capabilityRouteCount: number | null
   toolsSelected: string[] | null
   planningDoneAt: number | null
   queryIntentSummary: string | null
@@ -29,7 +29,7 @@ export function useTraceStream(queryId: string | null, historical = false): Trac
   const [error, setError] = useState<string | null>(null)
   const [planningActive, setPlanningActive] = useState(false)
   const [planningModel, setPlanningModel] = useState<string | null>(null)
-  const [manifestToolCount, setManifestToolCount] = useState<number | null>(null)
+  const [capabilityRouteCount, setCapabilityRouteCount] = useState<number | null>(null)
   const [toolsSelected, setToolsSelected] = useState<string[] | null>(null)
   const [planningDoneAt, setPlanningDoneAt] = useState<number | null>(null)
   const [queryIntentSummary, setQueryIntentSummary] = useState<string | null>(null)
@@ -52,7 +52,7 @@ export function useTraceStream(queryId: string | null, historical = false): Trac
     setError(null)
     setPlanningActive(false)
     setPlanningModel(null)
-    setManifestToolCount(null)
+    setCapabilityRouteCount(null)
     setToolsSelected(null)
     setPlanningDoneAt(null)
     setQueryIntentSummary(null)
@@ -76,7 +76,7 @@ export function useTraceStream(queryId: string | null, historical = false): Trac
         if (event.event === 'planning_start') {
           setPlanningActive(true)
           setPlanningModel(event.planner_model_id ?? null)
-          setManifestToolCount(event.manifest_tool_count ?? null)
+          setCapabilityRouteCount(event.capability_route_count ?? null)
           return
         }
 
@@ -125,7 +125,7 @@ export function useTraceStream(queryId: string | null, historical = false): Trac
     error,
     planningActive,
     planningModel,
-    manifestToolCount,
+    capabilityRouteCount,
     toolsSelected,
     planningDoneAt,
     queryIntentSummary,

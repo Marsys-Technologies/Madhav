@@ -3,35 +3,32 @@
  *
  * Companion to prashna_ask's job-handle-first contract (see register_prashna_ask.ts's
  * file header for the full architectural background on why polling job_id via this
- * tool — not MCP `notifications/progress` — is the durable delivery mechanism in
- * this codebase's current stateless-per-request MCP transport).
+ * tool is both the work-driving request and durable delivery mechanism in this
+ * codebase's current stateless-per-request MCP transport).
  *
- * Input: { job_id: string }. Looks up the job in the SAME `JobRegistry` instance
- * prashna_ask writes to (`prashnaAskJobs`, exported from register_prashna_ask.ts —
- * a module-scoped singleton, not a new registry).
+ * Input: { job_id: string }. Reads the platform-backed durable store. A pending
+ * job or a running job whose lease expired is safely claimable by this instance;
+ * the database permits exactly one worker to resume it.
  *
  *   - Unknown/expired job_id → a clear error, not a silent empty object. Jobs are
- *     TTL-swept (`JobRegistry.sweepExpired()`), so a caller polling a very old id
- *     gets an honest "expired or unknown," never `{}`.
+ *     inaccessible after a hard 24-hour logical deadline, so a caller polling a
+ *     very old id gets an honest "expired or unknown," never `{}`. Physical
+ *     cleanup is opportunistic until the external maintenance schedule is bound.
  *   - pending/running → the CURRENT progress snapshot (message, pct, elapsed_ms) —
  *     never a bare `{status:"pending"}` with no other information.
  *   - complete/failed → the FULL final result/error exactly as prashna_ask's
- *     background execution stored it via `job.complete()`/`job.fail()` — the
+ *     work-driving status request stored it via `job.complete()`/`job.fail()` — the
  *     complete v3-enveloped reading with its completeness receipt, not a summary
  *     or a pointer telling the caller to look elsewhere.
  *
- * SECURITY NOTE (inherited from JobRegistry.get()'s own doc comment): the registry
- * does not itself check chart entitlement on lookup — any caller holding a job_id
- * can read that job's result regardless of which chart it belongs to. This mirrors
- * prashna_ask's own model: the per-chart entitlement check already happened once,
- * server-side, when the engine call that produced this job ran (authorizeChartAccess
- * in platform/.../prashna_ask/route.ts) — job_id is a correlation handle for that
- * already-authorized call's outcome, not a fresh capability grant. A caller who
- * never had chart access could not have produced a job_id for that chart's
- * question in the first place (job_id is not guessable/enumerable — crypto.randomUUID()).
+ * SECURITY: a job id is only a correlation handle, never a bearer grant. Every
+ * poll is bound to the authenticated user+key that created it and re-runs chart
+ * authorization before any progress, result, or error is disclosed.
  */
 import { z } from 'zod'
-import { prashnaAskJobs } from './register_prashna_ask.js'
+import { scheduleManagedPrashnaJob } from './register_prashna_ask.js'
+import { managedPrashnaJobs } from '../lib/managed_prashna_jobs.js'
+import type { Principal } from '../types.js'
 
 export interface PrashnaStatusRegisteringServer {
   tool: (
@@ -44,7 +41,7 @@ export interface PrashnaStatusRegisteringServer {
 
 const PrashnaStatusInputSchema = z
   .object({
-    job_id: z.string().min(1),
+    job_id: z.string().uuid(),
   })
   .strict()
 
@@ -65,18 +62,17 @@ function errorOutput(
   return { ...dualOutput({ ok: false, error: message, tool: 'prashna_status', ...extra }), isError: true }
 }
 
-export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer): void {
+export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer, principal: Principal): void {
   server.tool(
     'prashna_status',
-    'Poll the status/result of a prashna_ask background job. Call this with the job_id ' +
-    'returned by prashna_ask. If the job is still "pending"/"running", returns a MEANINGFUL ' +
-    'progress snapshot (a human-readable message, a 0-99 pct estimate, elapsed_ms) — never a ' +
-    'bare "pending" with no other information; poll again after a short delay. If the job is ' +
+    'Poll a durable prashna_ask job. Call this with the job_id returned by prashna_ask. A pending ' +
+    'or lease-expired job is resubmitted to the bounded local worker queue; the poll itself ' +
+    'returns its meaningful durable progress snapshot without waiting for the engine. If the job is ' +
     '"complete", returns the FULL final v3-enveloped reading (with its completeness receipt) — ' +
     'not a summary or a pointer to look elsewhere. If "failed", returns the error. An unknown or ' +
-    'expired job_id (jobs are TTL-swept) returns a clear error rather than an empty result.',
+    'expired job_id (outside the 24-hour logical access window) returns a clear error rather than an empty result.',
     {
-      job_id: z.string().min(1).describe('The job_id returned by a prior prashna_ask call.'),
+      job_id: z.string().uuid().describe('The job_id returned by a prior prashna_ask call.'),
     },
     async (args: unknown) => {
       let parsed: { job_id: string }
@@ -87,22 +83,27 @@ export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer
         return errorOutput(`Invalid prashna_status input: ${zodMessage}`)
       }
 
-      const job = prashnaAskJobs.get(parsed.job_id)
+      let job
+      try {
+        job = await managedPrashnaJobs.get(principal, parsed.job_id)
+      } catch (error) {
+        console.error('[mcp:prashna_status] durable store unavailable', error instanceof Error ? error.message : String(error))
+        return errorOutput('MANAGED_JOB_STORE_UNAVAILABLE: status is unknown; retry without starting a duplicate job.', { job_id: parsed.job_id })
+      }
       if (!job) {
         return errorOutput(
-          `Unknown or expired job_id "${parsed.job_id}". Jobs are held in memory only and are ` +
-          'evicted after a TTL — this id was either never issued by prashna_ask, belongs to a ' +
-          'different server instance, or has expired. Call prashna_ask again to start a new job.',
+          `Unknown or expired job_id "${parsed.job_id}" (or not owned by this principal). The id ` +
+          'was never issued to this authenticated user/API-key pair or its durable retention window expired.',
           { job_id: parsed.job_id }
         )
       }
 
-      const elapsedMs = Date.now() - job.createdAt
+      const elapsedMs = Math.max(0, Date.now() - Date.parse(job.created_at))
 
       if (job.status === 'complete') {
         return dualOutput({
           ok: true,
-          job_id: job.id,
+          job_id: job.job_id,
           status: 'complete',
           elapsed_ms: elapsedMs,
           result: job.result,
@@ -112,21 +113,22 @@ export function registerPrashnaStatusTool(server: PrashnaStatusRegisteringServer
       if (job.status === 'failed') {
         return dualOutput({
           ok: true,
-          job_id: job.id,
+          job_id: job.job_id,
           status: 'failed',
           elapsed_ms: elapsedMs,
           error: job.error,
         })
       }
 
-      // pending/running — return the current progress snapshot, never a bare
-      // status with no other information.
+      // Instance-based CPU and the bounded scheduler make this post-response
+      // work explicit. The DB claim still selects the single cross-instance winner.
+      scheduleManagedPrashnaJob(job.job_id, principal)
       return dualOutput({
         ok: true,
-        job_id: job.id,
+        job_id: job.job_id,
         status: job.status,
         elapsed_ms: elapsedMs,
-        progress: job.progress ?? { message: 'prashna_ask: job accepted, engine call not yet started', pct: 0 },
+        progress: job.progress ?? { message: 'prashna_ask: job accepted, awaiting durable worker claim', pct: 0 },
       })
     }
   )
