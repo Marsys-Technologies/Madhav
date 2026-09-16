@@ -1398,51 +1398,67 @@ jobs:
           # lands without re-pinning its layer fails the build instead of silently
           # letting a stale analysis authorise a rebuild.
           #
-          # A merge-queue ref and its squash-delivered protected-main commit are not
-          # the original PR head. Immutable commits intentionally recorded in the pin
-          # history are therefore not ancestors of either delivery topology even
-          # after fetch-depth: 0. The exact PR head passed this required check before
-          # it could enter the queue; rerunning the ancestry predicate on either
-          # delivery topology would reject an otherwise-valid release and suppress
-          # deploy. Keep the strict check for every source-head event and retain the
-          # inventory + topology-independent Python suite on both delivery events.
-          pin_ancestry_required() {
+          # GitHub squash delivery intentionally removes source-branch ancestry.
+          # Validate the immutable history already packaged on protected main as the
+          # baseline, then require every new source-head successor to carry its own
+          # reachable evidence. Merge-group/main delivery trees recheck the complete
+          # structure and exact delta after that strict source-head check has passed.
+          delivery_topology_required() {
             case "$1:$2" in
-              merge_group:*|push:refs/heads/main) return 1 ;;
-              *) return 0 ;;
+              merge_group:*|push:refs/heads/main) return 0 ;;
+              *) return 1 ;;
             esac
           }
 
           while IFS='|' read -r case_event case_ref expected; do
-            if pin_ancestry_required "$case_event" "$case_ref"; then
-              actual=required
+            if delivery_topology_required "$case_event" "$case_ref"; then
+              actual=delivery
             else
-              actual=skip
+              actual=source
             fi
             if [ "$actual" != "$expected" ]; then
               echo "pin ancestry event matrix mismatch: $case_event $case_ref expected=$expected actual=$actual" >&2
               exit 1
             fi
           done <<'PIN_ANCESTRY_EVENT_MATRIX'
-          pull_request|refs/pull/1/merge|required
-          push|refs/heads/feature|required
-          merge_group|refs/heads/gh-readonly-queue/main/pr-1|skip
-          push|refs/heads/main|skip
+          pull_request|refs/pull/1/merge|source
+          push|refs/heads/feature|source
+          merge_group|refs/heads/gh-readonly-queue/main/pr-1|delivery
+          push|refs/heads/main|delivery
           PIN_ANCESTRY_EVENT_MATRIX
 
-          pin_ancestry_test=()
-          if pin_ancestry_required "$GITHUB_EVENT_NAME" "$GITHUB_REF"; then
-            python ../scripts/generate/nirmana_analysis_layer_pins.py --check
-            pin_ancestry_test=(../scripts/__tests__/test_nirmana_analysis_layer_pins.py)
-          else
-            echo "$GITHUB_EVENT_NAME:$GITHUB_REF: pin ancestry was verified on the queued PR source head"
-            # This test module imports immutable historical blobs during collection,
-            # so it intentionally exercises the same source-head-only ancestry
-            # predicate as --check. All other Python tests below still execute on
-            # the delivery tree.
+          case "$GITHUB_EVENT_NAME" in
+            pull_request)
+              pin_baseline_commit="$(jq -r '.pull_request.base.sha' "$GITHUB_EVENT_PATH")"
+              ;;
+            merge_group)
+              pin_baseline_commit="$(jq -r '.merge_group.base_sha' "$GITHUB_EVENT_PATH")"
+              ;;
+            push)
+              if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+                pin_baseline_commit="$(jq -r '.before' "$GITHUB_EVENT_PATH")"
+              else
+                git fetch --no-tags origin main
+                pin_baseline_commit="$(git merge-base HEAD origin/main)"
+              fi
+              ;;
+            *)
+              echo "unsupported pin-check event: $GITHUB_EVENT_NAME" >&2
+              exit 1
+              ;;
+          esac
+
+          pin_check_args=(--check --protected-baseline-commit "$pin_baseline_commit")
+          pin_delivery_topology=0
+          if delivery_topology_required "$GITHUB_EVENT_NAME" "$GITHUB_REF"; then
+            pin_check_args+=(--delivery-topology)
+            pin_delivery_topology=1
           fi
+          export NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT="$pin_baseline_commit"
+          export NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY="$pin_delivery_topology"
+          python ../scripts/generate/nirmana_analysis_layer_pins.py "${pin_check_args[@]}"
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
-            "${pin_ancestry_test[@]}" \
+            ../scripts/__tests__/test_nirmana_analysis_layer_pins.py \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \

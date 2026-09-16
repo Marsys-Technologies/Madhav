@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import importlib.util
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -42,19 +43,51 @@ ACCEPTED_PINS = json.loads(
         cwd=REPO,
     )
 )
-BASELINE = pins_module._inventory_at_commit(
-    "c558e60d3267ded79d65fd25f50ee926ce27b75a"
-)
-CANDIDATE = pins_module._inventory_at_commit(
-    "d2369b888e760e5b8d693328f00683877cbd5f28"
-)
+BASELINE = json.loads(
+    subprocess.check_output(
+        [
+            "git",
+            "show",
+            "c558e60d3267ded79d65fd25f50ee926ce27b75a:"
+            "platform/src/generated/nirmana-writer-digests.json",
+        ],
+        cwd=REPO,
+    )
+)["writers"]
+CANDIDATE = json.loads(
+    subprocess.check_output(
+        [
+            "git",
+            "show",
+            "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda:"
+            "platform/src/generated/nirmana-writer-digests.json",
+        ],
+        cwd=REPO,
+    )
+)["writers"]
 KSHETRA_SOURCE = "87cc8c9baf894c615e167672c6c7af57a15cf71c"
-PRE_KSHETRA_PINS = pins_module._pins_at_commit(
-    "6c1a65e23be6176322d7a9ab78e0c291feeec700"
+PRE_KSHETRA_PINS = json.loads(
+    subprocess.check_output(
+        [
+            "git",
+            "show",
+            "6c1a65e23be6176322d7a9ab78e0c291feeec700:"
+            "platform/src/generated/nirmana-analysis-layer-pins.json",
+        ],
+        cwd=REPO,
+    )
 )
-PRE_KSHETRA_INVENTORY = pins_module._inventory_at_commit(
-    "6c1a65e23be6176322d7a9ab78e0c291feeec700"
-)
+PRE_KSHETRA_INVENTORY = json.loads(
+    subprocess.check_output(
+        [
+            "git",
+            "show",
+            "6c1a65e23be6176322d7a9ab78e0c291feeec700:"
+            "platform/src/generated/nirmana-writer-digests.json",
+        ],
+        cwd=REPO,
+    )
+)["writers"]
 L2_CHANGED = sorted(
     asset_id
     for asset_id in set(BASELINE) | set(CANDIDATE)
@@ -64,6 +97,37 @@ L2_CLASSIFICATIONS = {
     asset_id: "approved_intentional_and_derived_import_change"
     for asset_id in L2_CHANGED
 }
+
+
+def check_current(
+    document: dict | None = None,
+    inventory: dict[str, str] | None = None,
+) -> list[str]:
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    delivery = os.environ.get("NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY") == "1"
+    return pins_module.check(
+        document or CURRENT_PINS,
+        inventory or CURRENT_INVENTORY,
+        protected_baseline_commit=baseline,
+        delivery_topology=delivery,
+    )
+
+
+@pytest.fixture(autouse=True)
+def allow_immutable_unit_fixture_commits(monkeypatch, request) -> None:
+    """Legacy unit fixtures remain inspectable without becoming runtime witnesses."""
+    if request.node.name == "test_side_ref_only_historical_snapshot_is_rejected":
+        return
+    real_require = pins_module._require_reachable_commit
+
+    def require_fixture_or_ancestor(commit: str, label: str) -> None:
+        if pins_module._commit_exists(commit):
+            return
+        real_require(commit, label)
+
+    monkeypatch.setattr(
+        pins_module, "_require_reachable_commit", require_fixture_or_ancestor
+    )
 
 
 def admission(classifications: dict[str, str] | None = None) -> dict:
@@ -205,7 +269,7 @@ def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss(
     wrong_digest["definition_bindings"]["L3"]["membership_sha256"] = "0" * 64
     assert any(
         "definition membership digest" in failure
-        for failure in pins_module.check(wrong_digest, CURRENT_INVENTORY)
+        for failure in check_current(wrong_digest)
     )
 
     overlap = copy.deepcopy(CURRENT_PINS)
@@ -213,7 +277,7 @@ def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss(
     overlap["layers"]["L3"]["non_writer_assets"].sort()
     assert any(
         "writer-disjoint" in failure
-        for failure in pins_module.check(overlap, CURRENT_INVENTORY)
+        for failure in check_current(overlap)
     )
 
     retired_removed = copy.deepcopy(CURRENT_PINS)
@@ -221,26 +285,26 @@ def test_definition_binding_rejects_wrong_digest_overlap_and_retired_sweep_loss(
     retired_removed["layers"]["L3"]["receipt_count"] = 22
     assert any(
         "active membership differs from immutable definition" in failure
-        for failure in pins_module.check(retired_removed, CURRENT_INVENTORY)
+        for failure in check_current(retired_removed)
     )
 
 
 def test_historical_pin_and_writer_rewrites_are_rejected() -> None:
     rewritten_writers = copy.deepcopy(CURRENT_PINS)
     rewritten_writers["history"]["L2"][0]["writer_digests"]["bo_anveshana"] = "0" * 64
-    failures = pins_module.check(rewritten_writers, CURRENT_INVENTORY)
-    assert any("immutable historical snapshot" in failure for failure in failures)
+    failures = check_current(rewritten_writers)
+    assert any("protected baseline generation" in failure for failure in failures)
 
     rewritten_pin = copy.deepcopy(CURRENT_PINS)
     rewritten_pin["history"]["L2"][0]["pin"]["convergence_commit"] = "0" * 40
-    failures = pins_module.check(rewritten_pin, CURRENT_INVENTORY)
-    assert any("archived pin differs" in failure for failure in failures)
+    failures = check_current(rewritten_pin)
+    assert any("protected baseline generation" in failure for failure in failures)
 
 
 def test_fabricated_unversioned_convergence_identity_is_rejected() -> None:
     fabricated = copy.deepcopy(CURRENT_PINS)
     fabricated["layers"]["L5"]["convergence_commit"] = "0" * 40
-    failures = pins_module.check(fabricated, CURRENT_INVENTORY)
+    failures = check_current(fabricated)
     assert any(
         "unversioned active pin differs from immutable definition snapshot" in failure
         for failure in failures
@@ -330,7 +394,7 @@ def test_check_rejects_wrong_source_stale_generation_and_hash(
     result = copy.deepcopy(CURRENT_PINS)
     mutate(result)
 
-    failures = pins_module.check(result, CURRENT_INVENTORY)
+    failures = check_current(result)
 
     assert any(message in failure for failure in failures)
 
@@ -372,7 +436,7 @@ DP019_SOURCE = "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
 
 
 def test_current_successors_are_exact_and_preserve_prior_bytes() -> None:
-    assert pins_module.check(CURRENT_PINS, CURRENT_INVENTORY) == []
+    assert check_current() == []
     for layer, expected_delta in (
         ("L1", EXPECTED_L1_SECURITY_DELTA),
         ("L2", EXPECTED_L2_SECURITY_DELTA),
@@ -429,6 +493,28 @@ def test_current_successors_are_exact_and_preserve_prior_bytes() -> None:
         )
     )
     assert l3_active["supersedes_generation_id"] == l3_prior["generation_id"]
+
+
+def test_delivery_topology_requires_protected_baseline() -> None:
+    failures = pins_module.check(
+        CURRENT_PINS,
+        CURRENT_INVENTORY,
+        delivery_topology=True,
+    )
+    assert "delivery topology requires a protected baseline commit" in failures
+
+
+def test_protected_baseline_rejects_packaged_history_rewrite() -> None:
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    assert baseline, "CI must provide the protected pin baseline"
+    rewritten = copy.deepcopy(CURRENT_PINS)
+    rewritten["history"]["L3"][0]["writer_digests"]["ka_avadhi"] = "0" * 64
+    failures = pins_module.check(
+        rewritten,
+        CURRENT_INVENTORY,
+        protected_baseline_commit=baseline,
+    )
+    assert any("protected baseline generation" in failure for failure in failures)
 
 
 def test_security_source_surface_binding_rederives_exact_equivalence() -> None:
@@ -509,7 +595,7 @@ def test_kshetra_source_surface_binding_rederives_exact_equivalence() -> None:
 def test_security_successor_rejects_omitted_or_wrong_bindings(mutate, message: str) -> None:
     result = copy.deepcopy(CURRENT_PINS)
     mutate(result)
-    failures = pins_module.check(result, CURRENT_INVENTORY)
+    failures = check_current(result)
     assert any(message in failure for failure in failures)
 
 
@@ -608,7 +694,7 @@ def test_every_commit_dereferenced_by_check_is_an_ancestor_of_head(monkeypatch) 
         real_require(commit, label)
 
     monkeypatch.setattr(pins_module, "_require_reachable_commit", record)
-    assert pins_module.check(CURRENT_PINS, CURRENT_INVENTORY) == []
+    assert check_current() == []
     assert dereferenced
     assert all(pins_module._commit_is_ancestor_of_head(commit) for commit in dereferenced)
     assert "da498ebd980cac87796eceb889c7f1c42cfb952b" not in dereferenced
