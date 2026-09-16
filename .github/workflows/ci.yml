@@ -1405,7 +1405,7 @@ jobs:
           # structure and exact delta after that strict source-head check has passed.
           delivery_topology_required() {
             case "$1:$2" in
-              merge_group:*|push:refs/heads/main) return 0 ;;
+              merge_group:*|push:refs/heads/main|workflow_dispatch:refs/heads/main) return 0 ;;
               *) return 1 ;;
             esac
           }
@@ -1425,6 +1425,8 @@ jobs:
           push|refs/heads/feature|source
           merge_group|refs/heads/gh-readonly-queue/main/pr-1|delivery
           push|refs/heads/main|delivery
+          workflow_dispatch|refs/heads/main|delivery
+          workflow_dispatch|refs/heads/feature|source
           PIN_ANCESTRY_EVENT_MATRIX
 
           case "$GITHUB_EVENT_NAME" in
@@ -1437,6 +1439,14 @@ jobs:
             push)
               if [ "$GITHUB_REF" = "refs/heads/main" ]; then
                 pin_baseline_commit="$(jq -r '.before' "$GITHUB_EVENT_PATH")"
+              else
+                git fetch --no-tags origin main
+                pin_baseline_commit="$(git merge-base HEAD origin/main)"
+              fi
+              ;;
+            workflow_dispatch)
+              if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+                pin_baseline_commit="$(git rev-parse HEAD^)"
               else
                 git fetch --no-tags origin main
                 pin_baseline_commit="$(git merge-base HEAD origin/main)"

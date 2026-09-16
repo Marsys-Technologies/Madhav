@@ -960,6 +960,7 @@ def check(
     baseline_nodes_by_layer: dict[
         str, dict[str, tuple[dict[str, Any], dict[str, str]]]
     ] = {}
+    baseline_history_entries_by_layer: dict[str, dict[str, dict[str, Any]]] = {}
     if delivery_topology and protected_baseline_commit is None:
         failures.append("delivery topology requires a protected baseline commit")
     if protected_baseline_commit is not None:
@@ -981,6 +982,7 @@ def check(
                     layer_nodes: dict[
                         str, tuple[dict[str, Any], dict[str, str]]
                     ] = {}
+                    layer_history_entries: dict[str, dict[str, Any]] = {}
                     for entry in baseline_history.get(layer, []):
                         if not isinstance(entry, dict):
                             continue
@@ -993,6 +995,7 @@ def check(
                             and isinstance(writers, dict)
                         ):
                             layer_nodes[generation] = (pin, writers)
+                            layer_history_entries[generation] = entry
                     active_pin = baseline_layers.get(layer)
                     if isinstance(active_pin, dict):
                         active_generation = active_pin.get("generation_id")
@@ -1002,6 +1005,7 @@ def check(
                                 layer_writer_slice(baseline_inventory, prefix),
                             )
                     baseline_nodes_by_layer[layer] = layer_nodes
+                    baseline_history_entries_by_layer[layer] = layer_history_entries
     if pins.get("version") != PINS_VERSION:
         failures.append(f"pins version is {pins.get('version')!r}, expected {PINS_VERSION!r}")
     history = pins.get("history")
@@ -1273,6 +1277,25 @@ def check(
                 if baseline_node != (archived_pin, archived_writers):
                     failures.append(
                         f"{layer}: archived generation differs from protected baseline"
+                    )
+                baseline_entry = baseline_history_entries_by_layer.get(layer, {}).get(
+                    archived_generation
+                )
+                if baseline_entry is not None and entry != baseline_entry:
+                    failures.append(
+                        f"{layer}: protected baseline history entry "
+                        f"{archived_generation} was rewritten"
+                    )
+                elif (
+                    baseline_entry is None
+                    and protected_baseline_commit is not None
+                    and entry.get("historical_snapshot_commit")
+                    != protected_baseline_commit
+                ):
+                    failures.append(
+                        f"{layer}: newly archived protected generation "
+                        f"{archived_generation} must name protected baseline "
+                        f"{protected_baseline_commit} as its historical snapshot"
                     )
             else:
                 snapshot_commit = str(entry.get("historical_snapshot_commit", ""))

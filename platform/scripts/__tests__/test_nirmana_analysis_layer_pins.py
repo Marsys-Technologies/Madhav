@@ -4,7 +4,6 @@ import copy
 import importlib.util
 import json
 import os
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -17,77 +16,56 @@ assert SPEC and SPEC.loader
 pins_module = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(pins_module)
 
-LEGACY_PINS = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "5142109f7f219ea860f859e322646f79d875bee8:"
-            "platform/src/generated/nirmana-analysis-layer-pins.json",
-        ],
-        cwd=REPO,
-    )
-)
 CURRENT_PINS = json.loads(pins_module.PINS_PATH.read_text(encoding="utf-8"))
 CURRENT_INVENTORY = json.loads(
     pins_module.WRITER_DIGESTS_PATH.read_text(encoding="utf-8")
 )["writers"]
-ACCEPTED_PINS = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda:"
-            "platform/src/generated/nirmana-analysis-layer-pins.json",
-        ],
-        cwd=REPO,
-    )
+
+
+def rewind_layer(document: dict, layer: str) -> dict:
+    """Reconstruct one predecessor from the immutable packaged history."""
+    result = copy.deepcopy(document)
+    archived = result["history"][layer].pop()
+    result["layers"][layer] = archived["pin"]
+    return result
+
+
+def replace_layer_writers(
+    base: dict[str, str], layer: str, writers: dict[str, str]
+) -> dict[str, str]:
+    """Return one complete inventory with exactly one packaged layer replaced."""
+    prefix = pins_module.LAYER_PREFIX[layer]
+    result = {
+        key: value for key, value in copy.deepcopy(base).items() if not key.startswith(prefix)
+    }
+    result.update(writers)
+    return result
+
+
+# Unit fixtures must survive GitHub's squash topology and branch deletion.  The
+# accepted predecessor bytes are already embedded in the v2 pin document, so do
+# not make test collection depend on source-branch objects that protected main
+# intentionally cannot retain as ancestors.
+ACCEPTED_PINS = rewind_layer(rewind_layer(CURRENT_PINS, "L1"), "L2")
+LEGACY_PINS = copy.deepcopy(ACCEPTED_PINS)
+LEGACY_PINS["version"] = pins_module.LEGACY_PINS_VERSION
+LEGACY_PINS["layers"]["L2"] = copy.deepcopy(CURRENT_PINS["history"]["L2"][0]["pin"])
+LEGACY_PINS.pop("definition_bindings", None)
+LEGACY_PINS.pop("history", None)
+BASELINE = replace_layer_writers(
+    CURRENT_INVENTORY, "L2", CURRENT_PINS["history"]["L2"][0]["writer_digests"]
 )
-BASELINE = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "c558e60d3267ded79d65fd25f50ee926ce27b75a:"
-            "platform/src/generated/nirmana-writer-digests.json",
-        ],
-        cwd=REPO,
-    )
-)["writers"]
-CANDIDATE = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda:"
-            "platform/src/generated/nirmana-writer-digests.json",
-        ],
-        cwd=REPO,
-    )
-)["writers"]
+CANDIDATE = replace_layer_writers(
+    CURRENT_INVENTORY, "L2", CURRENT_PINS["history"]["L2"][1]["writer_digests"]
+)
+CANDIDATE = replace_layer_writers(
+    CANDIDATE, "L1", CURRENT_PINS["history"]["L1"][-1]["writer_digests"]
+)
 KSHETRA_SOURCE = "87cc8c9baf894c615e167672c6c7af57a15cf71c"
-PRE_KSHETRA_PINS = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "6c1a65e23be6176322d7a9ab78e0c291feeec700:"
-            "platform/src/generated/nirmana-analysis-layer-pins.json",
-        ],
-        cwd=REPO,
-    )
+PRE_KSHETRA_PINS = rewind_layer(CURRENT_PINS, "L3")
+PRE_KSHETRA_INVENTORY = replace_layer_writers(
+    CURRENT_INVENTORY, "L3", CURRENT_PINS["history"]["L3"][-1]["writer_digests"]
 )
-PRE_KSHETRA_INVENTORY = json.loads(
-    subprocess.check_output(
-        [
-            "git",
-            "show",
-            "6c1a65e23be6176322d7a9ab78e0c291feeec700:"
-            "platform/src/generated/nirmana-writer-digests.json",
-        ],
-        cwd=REPO,
-    )
-)["writers"]
 L2_CHANGED = sorted(
     asset_id
     for asset_id in set(BASELINE) | set(CANDIDATE)
@@ -114,20 +92,132 @@ def check_current(
 
 
 @pytest.fixture(autouse=True)
-def allow_immutable_unit_fixture_commits(monkeypatch, request) -> None:
-    """Legacy unit fixtures remain inspectable without becoming runtime witnesses."""
+def package_immutable_unit_fixtures(monkeypatch, request) -> None:
+    """Exercise old generations from packaged bytes, not disposable side refs."""
     if request.node.name == "test_side_ref_only_historical_snapshot_is_rejected":
         return
     real_require = pins_module._require_reachable_commit
+    real_exists = pins_module._commit_exists
+    real_inventory = pins_module._inventory_at_commit
+    real_pins = pins_module._pins_at_commit
+    real_blob_oid = pins_module._blob_oid_at_commit
+    real_blob = pins_module._blob_at_commit
+    real_validate_artifact = pins_module.validate_artifact_binding
+
+    definition_commit = "5142109f7f219ea860f859e322646f79d875bee8"
+    baseline_commit = "c558e60d3267ded79d65fd25f50ee926ce27b75a"
+    accepted_commit = "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda"
+    pre_kshetra_commit = "6c1a65e23be6176322d7a9ab78e0c291feeec700"
+
+    fixture_pins = {
+        definition_commit: LEGACY_PINS,
+        baseline_commit: LEGACY_PINS,
+        accepted_commit: ACCEPTED_PINS,
+        pre_kshetra_commit: PRE_KSHETRA_PINS,
+    }
+    fixture_inventories = {
+        definition_commit: CURRENT_INVENTORY,
+        baseline_commit: BASELINE,
+        accepted_commit: CANDIDATE,
+        pre_kshetra_commit: PRE_KSHETRA_INVENTORY,
+        "d2369b888e760e5b8d693328f00683877cbd5f28": CANDIDATE,
+        "149f8479ac4e22874aabe9a5e5b340fb86bc16fb": CURRENT_INVENTORY,
+        KSHETRA_SOURCE: CURRENT_INVENTORY,
+    }
+    fixture_commits = set(fixture_pins) | set(fixture_inventories)
+    for binding in pins_module.SOURCE_ACCEPTANCE_BINDINGS.values():
+        fixture_commits.update(
+            {
+                binding["reviewed_source_commit"],
+                binding["integrated_equivalent_commit"],
+                binding["common_base_commit"],
+            }
+        )
+
+    valid_artifacts: set[tuple[str, str, str, str]] = set()
+    for expected in pins_module.EXPECTED_REVIEW_ARTIFACTS.values():
+        valid_artifacts.update(
+            (item["commit"], item["path"], item["sha256"], item["decision_binding"])
+            for item in expected
+        )
+    for binding in pins_module.SOURCE_ACCEPTANCE_BINDINGS.values():
+        for expected in binding["review_artifacts"].values():
+            valid_artifacts.update(
+                (item["commit"], item["path"], item["sha256"], item["decision_binding"])
+                for item in expected
+            )
+    authority_content: dict[tuple[str, str], bytes] = {}
+    for binding in pins_module.AUTHORITY_BINDINGS.values():
+        valid_artifacts.add(
+            (
+                binding["evidence_commit"],
+                binding["path"],
+                binding["sha256"],
+                binding["decision_binding"],
+            )
+        )
+        authority_content[(binding["evidence_commit"], binding["path"])] = (
+            f'{binding["decision_binding"]}\n{binding["authority_identity_binding"]}\n'.encode()
+        )
+        fixture_commits.add(binding["evidence_commit"])
+
+    integrated_oids: dict[tuple[str, str], str] = {}
+    for binding in pins_module.SOURCE_ACCEPTANCE_BINDINGS.values():
+        integrated_oids.update(
+            {
+                (binding["integrated_equivalent_commit"], item["path"]): item["blob_oid"]
+                for item in binding["reviewed_surface"]
+            }
+        )
 
     def require_fixture_or_ancestor(commit: str, label: str) -> None:
-        if pins_module._commit_exists(commit):
+        if commit in fixture_commits:
             return
         real_require(commit, label)
 
-    monkeypatch.setattr(
-        pins_module, "_require_reachable_commit", require_fixture_or_ancestor
-    )
+    def commit_exists(commit: str) -> bool:
+        return commit in fixture_commits or real_exists(commit)
+
+    def inventory_at_commit(commit: str) -> dict[str, str]:
+        if commit in fixture_inventories:
+            return copy.deepcopy(fixture_inventories[commit])
+        return real_inventory(commit)
+
+    def pins_at_commit(commit: str) -> dict:
+        if commit in fixture_pins:
+            return copy.deepcopy(fixture_pins[commit])
+        return real_pins(commit)
+
+    def blob_oid_at_commit(commit: str, path: str) -> str:
+        if (commit, path) in integrated_oids:
+            return integrated_oids[(commit, path)]
+        return real_blob_oid(commit, path)
+
+    def blob_at_commit(commit: str, path: str) -> bytes:
+        if (commit, path) in authority_content:
+            return authority_content[(commit, path)]
+        return real_blob(commit, path)
+
+    def validate_artifact(artifact: dict, label: str) -> None:
+        identity = (
+            artifact.get("commit"),
+            artifact.get("path"),
+            artifact.get("sha256"),
+            artifact.get("decision_binding"),
+        )
+        if identity in valid_artifacts:
+            return
+        if any(identity[:2] == expected[:2] for expected in valid_artifacts):
+            raise SystemExit(f"{label} content digest does not match immutable binding")
+        real_validate_artifact(artifact, label)
+
+    monkeypatch.setattr(pins_module, "_require_reachable_commit", require_fixture_or_ancestor)
+    monkeypatch.setattr(pins_module, "_commit_exists", commit_exists)
+    monkeypatch.setattr(pins_module, "_inventory_at_commit", inventory_at_commit)
+    monkeypatch.setattr(pins_module, "_pins_at_commit", pins_at_commit)
+    monkeypatch.setattr(pins_module, "_blob_oid_at_commit", blob_oid_at_commit)
+    monkeypatch.setattr(pins_module, "_blob_at_commit", blob_at_commit)
+    monkeypatch.setattr(pins_module, "validate_artifact_binding", validate_artifact)
 
 
 def admission(classifications: dict[str, str] | None = None) -> dict:
@@ -313,7 +403,7 @@ def test_fabricated_unversioned_convergence_identity_is_rejected() -> None:
 
 def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) -> None:
     second_source = "1" * 40
-    second_snapshot = "2" * 40
+    second_snapshot = "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda"
     second_inventory = dict(CANDIDATE)
     second_inventory["bo_anveshana"] = "f" * 64
     real_inventory_at_commit = pins_module._inventory_at_commit
@@ -357,11 +447,20 @@ def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) 
         historical_snapshot_commit=second_snapshot,
         definition_snapshot_commit="5142109f7f219ea860f859e322646f79d875bee8",
     )
-    assert pins_module.check(two_successors, second_inventory) == []
+    protected_baseline = "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda"
+    assert pins_module.check(
+        two_successors,
+        second_inventory,
+        protected_baseline_commit=protected_baseline,
+    ) == []
 
     two_successors["history"]["L2"][1]["pin"]["convergence_commit"] = "0" * 40
-    failures = pins_module.check(two_successors, second_inventory)
-    assert any("archived pin differs" in failure for failure in failures)
+    failures = pins_module.check(
+        two_successors,
+        second_inventory,
+        protected_baseline_commit=protected_baseline,
+    )
+    assert any("protected baseline" in failure for failure in failures)
 
 
 @pytest.mark.parametrize(
@@ -517,6 +616,19 @@ def test_protected_baseline_rejects_packaged_history_rewrite() -> None:
     assert any("protected baseline generation" in failure for failure in failures)
 
 
+def test_protected_baseline_rejects_history_metadata_rewrite() -> None:
+    baseline = os.environ.get("NIRMANA_ANALYSIS_PIN_BASELINE_COMMIT")
+    assert baseline, "CI must provide the protected pin baseline"
+    rewritten = copy.deepcopy(CURRENT_PINS)
+    rewritten["history"]["L3"][0]["historical_snapshot_commit"] = "0" * 40
+    failures = pins_module.check(
+        rewritten,
+        CURRENT_INVENTORY,
+        protected_baseline_commit=baseline,
+    )
+    assert any("protected baseline history entry" in failure for failure in failures)
+
+
 def test_security_source_surface_binding_rederives_exact_equivalence() -> None:
     binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[SECURITY_SOURCE]
     paths, digest = pins_module._source_surface_mapping(
@@ -652,9 +764,7 @@ def test_reviewed_surface_rejects_wrong_extra_or_omitted_paths(
         surface.append(
             {
                 "path": "CLAUDE.md",
-                "blob_oid": pins_module._blob_oid_at_commit(
-                    binding["integrated_equivalent_commit"], "CLAUDE.md"
-                ),
+                "blob_oid": "f" * 40,
             }
         )
         surface.sort(key=lambda item: item["path"])
