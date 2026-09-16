@@ -1406,13 +1406,19 @@ jobs:
           # therefore reject every otherwise-valid queued delivery. Keep the strict
           # check for all source-head events and retain the inventory + Python suite
           # below for the merge-group tree itself.
+          pin_ancestry_test=()
           if [ "$GITHUB_EVENT_NAME" != "merge_group" ]; then
             python ../scripts/generate/nirmana_analysis_layer_pins.py --check
+            pin_ancestry_test=(../scripts/__tests__/test_nirmana_analysis_layer_pins.py)
           else
             echo "merge_group: pin ancestry was verified on the queued PR head"
+            # This test module imports immutable historical blobs during collection,
+            # so it intentionally exercises the same source-head-only ancestry
+            # predicate as --check. All other Python tests below still execute on
+            # the synthetic delivery tree.
           fi
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
-            ../scripts/__tests__/test_nirmana_analysis_layer_pins.py \
+            "${pin_ancestry_test[@]}" \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \
