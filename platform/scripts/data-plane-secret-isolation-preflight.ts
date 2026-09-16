@@ -334,6 +334,18 @@ export function cloudRunLocation(entry: CloudRunEntry): string {
   return location
 }
 
+export function cloudRunRevisionListArgs(projectId: string, region: string): string[] {
+  if (!/^[a-z]+(?:-[a-z0-9]+)+[0-9]$/.test(region)) {
+    throw new Error('GCP_REGION must name the exact Cloud Run region.')
+  }
+  return [
+    'run', 'revisions', 'list',
+    '--project', projectId,
+    '--platform', 'managed',
+    '--region', region,
+  ]
+}
+
 export function assertSurfaceSecretGrant(serviceAccount: string, secretName: string, policy: IamPolicy, resolved: RolePermissions = {}): void {
   const member = `serviceAccount:${serviceAccount}`
   const grants = (policy.bindings ?? [])
@@ -533,7 +545,8 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     if (!name) throw new Error('Could not resolve a Cloud Run service name for credential inspection.')
     surfaces.push({ kind: 'service', name, definition: gcloud<unknown>(['run', 'services', 'describe', name, '--project', project, '--region', cloudRunLocation(entry)]) })
   }
-  for (const entry of gcloud<CloudRunEntry[]>(['run', 'revisions', 'list', '--project', project, '--platform', 'managed'])) {
+  const cloudRunRegion = process.env.GCP_REGION?.trim() ?? ''
+  for (const entry of gcloud<CloudRunEntry[]>(cloudRunRevisionListArgs(project, cloudRunRegion))) {
     const name = entry?.metadata?.name
     if (!name) throw new Error('Could not resolve a Cloud Run revision name for credential inspection.')
     // The list response already contains the complete immutable revision spec.
