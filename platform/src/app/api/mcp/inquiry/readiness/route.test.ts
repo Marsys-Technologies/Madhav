@@ -97,6 +97,37 @@ describe('POST /api/mcp/inquiry/readiness', () => {
     mocks.probe.mockRejectedValue(new Error('credential material detail'))
     const res = await POST(request({ chart_id: chartId }))
     expect(res.status).toBe(503)
-    expect(await res.json()).toEqual({ ok: false, error: 'INQUIRY_READINESS_FAILED' })
+    const body = await res.json()
+    expect(body).toEqual({
+      ok: false,
+      error: 'INQUIRY_READINESS_FAILED',
+      failure_stage: 'database',
+      failure_code: 'INQUIRY_DATABASE_READINESS_UNCLASSIFIED',
+    })
+    expect(JSON.stringify(body)).not.toContain('credential material detail')
+  })
+
+  it('reports a safe signing-stage classifier without exposing the exception', async () => {
+    mocks.loadRing.mockImplementation(() => { throw new Error('private key detail') })
+    const res = await POST(request({ chart_id: chartId }))
+    expect(res.status).toBe(503)
+    const body = await res.json()
+    expect(body).toEqual({
+      ok: false,
+      error: 'INQUIRY_READINESS_FAILED',
+      failure_stage: 'signing',
+      failure_code: 'INQUIRY_SIGNING_READINESS_UNCLASSIFIED',
+    })
+    expect(JSON.stringify(body)).not.toContain('private key detail')
+    expect(mocks.probe).not.toHaveBeenCalled()
+  })
+
+  it('preserves only allowlisted readiness codes from the protected-store probe', async () => {
+    mocks.probe.mockRejectedValue(new Error('INQUIRY_STORE_READINESS_DATABASE_POSTURE_FAILED'))
+    const res = await POST(request({ chart_id: chartId }))
+    expect(await res.json()).toMatchObject({
+      failure_stage: 'database',
+      failure_code: 'INQUIRY_STORE_READINESS_DATABASE_POSTURE_FAILED',
+    })
   })
 })

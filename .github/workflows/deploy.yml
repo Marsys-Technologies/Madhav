@@ -847,7 +847,7 @@ jobs:
           unset CANARY_KEY CANARY_BODY
           if [ "$STATUS" != "200" ]; then
             echo "::error::Pūrṇa candidate canary returned HTTP $STATUS; refusing traffic promotion."
-            jq -c '{ok,error}' "$RUNNER_TEMP/purna-readiness.json" 2>/dev/null || true
+            jq -c '{ok,error,failure_stage,failure_code}' "$RUNNER_TEMP/purna-readiness.json" 2>/dev/null || true
             exit 1
           fi
           jq -e '
