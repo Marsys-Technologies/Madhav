@@ -187,6 +187,10 @@ export function assertValidationConnectorBinding(
   ])
   const parts = binding.connectionName.split(':')
   const expectedSocket = `/cloudsql/${binding.connectionName}`
+  // The verifier secret predates the isolated restore and therefore names the
+  // source Cloud SQL socket. It is a credential carrier only: this function
+  // discards that route and always returns the authenticated local proxy route.
+  const sourceSocket = `/cloudsql/${parts[0]}:${parts[1]}:amjis-postgres`
   let route: 'proxy' | 'socket-carrier'
   try {
     const url = new URL(databaseUrl)
@@ -211,7 +215,8 @@ export function assertValidationConnectorBinding(
     } catch {
       throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
     }
-    if (socketHost !== expectedSocket || parsed.host !== expectedSocket || parsed.port) {
+    if (![expectedSocket, sourceSocket].includes(socketHost ?? '')
+        || parsed.host !== socketHost || parsed.port) {
       throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
     }
     route = 'socket-carrier'
