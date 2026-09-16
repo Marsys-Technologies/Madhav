@@ -174,10 +174,8 @@ export function assertValidationConnectorBinding(
     connectionName: string; proxyPort: string; project: string
   },
 ): Readonly<PoolConfig> {
-  let url: URL
   let parsed: ReturnType<typeof parsePgConnectionString>
   try {
-    url = new URL(databaseUrl)
     parsed = parsePgConnectionString(databaseUrl)
   } catch {
     throw new Error('Validation database URL is not a valid node-postgres connection string.')
@@ -187,16 +185,42 @@ export function assertValidationConnectorBinding(
     'path','port','server','servername','service','servicename','socket','socketpath',
     'unixsocket','unixsocketpath',
   ])
-  const routingOverride = [...url.searchParams.keys()].some((key) =>
-    routingQueryNames.has(key.toLowerCase().replace(/[^a-z0-9]/g, '')))
   const parts = binding.connectionName.split(':')
+  const expectedSocket = `/cloudsql/${binding.connectionName}`
+  let route: 'proxy' | 'socket-carrier'
+  try {
+    const url = new URL(databaseUrl)
+    const routingOverride = [...url.searchParams.keys()].some((key) =>
+      routingQueryNames.has(key.toLowerCase().replace(/[^a-z0-9]/g, '')))
+    if (!['postgres:','postgresql:'].includes(url.protocol) || routingOverride
+        || !['127.0.0.1','localhost'].includes(parsed.host ?? '')
+        || parsed.port !== binding.proxyPort) {
+      throw new Error('invalid direct proxy route')
+    }
+    route = 'proxy'
+  } catch {
+    const [prefix, query] = databaseUrl.split('?', 2)
+    const queryParts = query?.split('&') ?? []
+    let socketHost: string | undefined
+    try {
+      if (!/^postgres(?:ql)?:\/\/[^/?#]+@\/[^?#]+$/i.test(prefix)
+          || queryParts.length !== 1) throw new Error('invalid socket carrier')
+      const [key, value] = queryParts[0].split('=', 2)
+      if (decodeURIComponent(key) !== 'host' || value === undefined) throw new Error('invalid socket carrier')
+      socketHost = decodeURIComponent(value)
+    } catch {
+      throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
+    }
+    if (socketHost !== expectedSocket || parsed.host !== expectedSocket || parsed.port) {
+      throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
+    }
+    route = 'socket-carrier'
+  }
   if (binding.instance.name !== binding.validationInstance || binding.instance.state !== 'RUNNABLE'
       || binding.instance.connectionName !== binding.connectionName || parts.length !== 3
       || parts[0] !== binding.project || parts[2] !== binding.validationInstance
       || !/^\d{2,5}$/.test(binding.proxyPort) || Number(binding.proxyPort) > 65535
-      || !['postgres:','postgresql:'].includes(url.protocol)
-      || routingOverride || !['127.0.0.1','localhost'].includes(parsed.host ?? '')
-      || parsed.port !== binding.proxyPort) {
+      || !route) {
     throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
   }
   return Object.freeze({
