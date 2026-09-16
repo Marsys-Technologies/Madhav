@@ -149,4 +149,20 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
       .toEqual({ semantics: 'offset', exhausted: false, next: 5 })
   })
+
+  it.each([
+    ['NaN', Number.NaN],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('uses the default page size for a non-finite %s limit', async (_label, limit) => {
+    mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 301 }, (_, index) => row(`non-finite-${index}`)) })
+
+    const args = { chart_id: CHART_ID, limit }
+    const result = await getDivisionalsCapability.handler(args, undefined)
+
+    expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 301, 0])
+    expect(contentOf(result)['rows']).toHaveLength(300)
+    expect(contentOf(result)['next_offset']).toBe(300)
+    expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 300 })
+  })
 })

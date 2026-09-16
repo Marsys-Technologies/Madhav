@@ -44,6 +44,12 @@ The initial D1 receipt contract derived `next` from caller arguments when `conte
 - Focused suite: `npm test -- src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_divisionals.test.ts src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/pagination.test.ts` — 48 passed.
 - Both generated-artifact checks, TypeScript check, and `git diff --check` passed after regeneration.
 
+## Fix round 3/5 — non-finite limit regressions
+
+No runtime change was required. Handler-to-receipt tests now cover both `NaN` and positive `Infinity`: each receives a 301-row probe, uses the existing 300-row default page size, returns 300 served rows and `next_offset: 300`, and produces the non-exhausted receipt `next: 300`.
+
+Focused suite: `npm test -- src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_divisionals.test.ts src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/pagination.test.ts` — 52 passed. TypeScript and `git diff --check` passed.
+
 ## Fix round 2/5 — positive progressing page size
 
 ### Correctness repair
