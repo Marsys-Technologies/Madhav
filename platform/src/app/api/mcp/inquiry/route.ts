@@ -11,7 +11,9 @@ import '@/lib/retrieval/registry/catalog'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
+import { getCapability } from '@/lib/retrieval/registry'
 import { InquiryScopeInputSchema } from '@/lib/vidhi/inquiry/intent_normalization'
+import { isInquirySafeRegistryDescriptor, isInquiryServerDispatchEligible } from '@/lib/vidhi/inquiry/execution_policy'
 import {
   buildInquiryClosureReceipt,
   buildInquiryDoorParityProjection,
@@ -234,8 +236,9 @@ export async function POST(request: Request) {
       const scu = snapshot.scus.find((candidate) => candidate.scu_id === item.scu_id)
       const binding = scu?.bindings.find((candidate) => candidate.binding_id === item.binding_id)
       const tool = getToolByName(uri)
-      if (!binding?.executable || binding.kind !== 'registry_capability'
-        || !binding.execution_channels?.includes('mcp_full') || !tool) {
+      const descriptor = getCapability(uri)
+      if (!binding || !isInquiryServerDispatchEligible(binding, 'raw_mcp')
+        || !isInquirySafeRegistryDescriptor(binding, descriptor) || !tool) {
         return response({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' }, 409)
       }
       const invocationArgs = authorizedArgs(item.args, currentItem.args, binding.pagination_contract?.request_position_path)

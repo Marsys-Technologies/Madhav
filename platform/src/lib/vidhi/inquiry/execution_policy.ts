@@ -2,6 +2,7 @@ import type {
   ExecutionChannel,
   SemanticCapabilityBinding,
 } from '../../retrieval/registry/knowledge/types'
+import type { CapabilityDescriptor } from '../../retrieval/registry/types'
 
 /**
  * The surface carrying an Inquiry Contract. A presentation transport is not a
@@ -46,4 +47,19 @@ export function isInquiryServerDispatchEligible(
   if (binding.binding_id !== `registry:${binding.capability_uri}`) return false
   const channels = binding.execution_channels ?? ['platform_internal']
   return SERVER_DISPATCH_CHANNELS[transport].some((channel) => channels.includes(channel))
+}
+
+/**
+ * The knowledge compiler excludes mutable and calibration-only descriptors
+ * before it authors a binding. The raw lifecycle repeats that boundary against
+ * the live registry so a forged or stale snapshot cannot turn an operation
+ * into inquiry evidence.
+ */
+export function isInquirySafeRegistryDescriptor(
+  binding: SemanticCapabilityBinding,
+  descriptor: Pick<CapabilityDescriptor, 'uri' | 'mutation' | 'calibration_context_only'> | undefined,
+): boolean {
+  return descriptor?.uri === binding.capability_uri
+    && descriptor.mutation !== true
+    && descriptor.calibration_context_only !== true
 }

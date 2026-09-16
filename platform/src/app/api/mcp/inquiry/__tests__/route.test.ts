@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   compile: vi.fn(),
   overlay: vi.fn(),
   snapshot: vi.fn(),
+  capability: vi.fn(),
 }))
 
 vi.mock('@/lib/mcp/service_token', () => ({ validateMcpServiceRequest: async () => true }))
@@ -26,6 +27,7 @@ vi.mock('@/lib/mcp/auth', () => ({ resolveMcpPrincipalRole: vi.fn().mockResolved
 vi.mock('@/lib/auth/authorizeChartAccess', () => ({ authorizeChartAccess: mocks.authorize }))
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
+vi.mock('@/lib/retrieval/registry', () => ({ getCapability: mocks.capability }))
 vi.mock('@/lib/retrieval/registry/knowledge', () => ({
   assertPinnedCapabilityKnowledgeCurrent: mocks.snapshot,
   loadChartCapabilityOverlay: mocks.overlay,
@@ -64,13 +66,11 @@ vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
 
 import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
-import { finalizeInquiryContract } from '@/lib/vidhi/inquiry/compiler'
+import { compileInquiryContract, finalizeInquiryContract } from '@/lib/vidhi/inquiry/compiler'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 import { managedPlanToAiInquiryProposal } from '@/lib/vidhi/inquiry/managed_bridge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
 import {
-  compileW5DoorParityContract,
-  expectedW5DoorParityProjection,
   W5_DOOR_PARITY_CHART_ID,
   W5_DOOR_PARITY_OVERLAY,
   W5_DOOR_PARITY_QUESTION,
@@ -147,11 +147,12 @@ beforeEach(() => {
   mocks.markDispatched.mockResolvedValue(undefined)
   mocks.failCloseAmbiguous.mockResolvedValue(undefined)
   mocks.overlay.mockResolvedValue({ overlay_version: null, build_id: null })
-  mocks.snapshot.mockReturnValue({ content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', scus: [{ scu_id: 'scu.test', bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true, execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'offset' } }] }] })
+  mocks.snapshot.mockReturnValue({ content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1', scus: [{ scu_id: 'scu.test', bindings: [{ binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', capability_uri: 'marsys://tool/L1/test', executable: true, execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'offset' } }] }] })
+  mocks.capability.mockImplementation((uri: string) => ({ uri, mutation: false, calibration_context_only: false }))
 })
 
 describe('raw MCP inquiry route', () => {
-  it('matches the reviewed shared-fixture projection through start, execute and finalize', async () => {
+  it('executes an overlay-granted internal registry binding through raw start, execute and finalize', async () => {
     type Stored = ReturnType<typeof primeStoredLifecycle> extends InquiryContract ? {
       inquiry_id: string; principal_uid: string; chart_id: string;
       semantic_contract_hash: string; execution_plan_hash: string;
@@ -164,9 +165,35 @@ describe('raw MCP inquiry route', () => {
     let tokenCounter = 0
     const claimsByToken = new Map<string, Record<string, unknown>>()
 
-    mocks.snapshot.mockReturnValue(W5_DOOR_PARITY_SNAPSHOT)
-    mocks.overlay.mockResolvedValue(W5_DOOR_PARITY_OVERLAY)
-    mocks.compile.mockImplementation(() => compileW5DoorParityContract('mcp_full'))
+    const internalOnlyScus = W5_DOOR_PARITY_SNAPSHOT.scus.map((scu) => ({
+      ...scu,
+      bindings: scu.bindings.map((binding) => ({ ...binding, execution_channels: ['platform_internal'] as const })),
+    }))
+    const internalSnapshot = {
+      ...W5_DOOR_PARITY_SNAPSHOT,
+      content_hash: stableFingerprint({ fixture: 'raw-inquiry-internal-registry', scus: internalOnlyScus }),
+      scus: internalOnlyScus,
+    }
+    const internalOverlay = {
+      ...W5_DOOR_PARITY_OVERLAY,
+      catalog_content_hash: internalSnapshot.content_hash,
+      overlay_version: 'sha256:raw-inquiry-internal-overlay',
+    }
+    expect(internalSnapshot.scus.flatMap((scu) => scu.bindings)
+      .every((binding) => binding.execution_channels?.length === 1
+        && binding.execution_channels[0] === 'platform_internal')).toBe(true)
+    mocks.snapshot.mockReturnValue(internalSnapshot)
+    mocks.overlay.mockResolvedValue(internalOverlay)
+    mocks.compile.mockImplementation(() => compileInquiryContract({
+      snapshot: internalSnapshot,
+      overlay: internalOverlay,
+      chart_id: W5_DOOR_PARITY_CHART_ID,
+      question: W5_DOOR_PARITY_QUESTION,
+      scope_tuple: W5_DOOR_PARITY_SCOPE,
+      ai_proposal: managedPlanToAiInquiryProposal(w5DoorParityPlan()),
+      execution_channel: 'mcp_full',
+      presentation_transport: 'raw_mcp',
+    }))
     mocks.finalize.mockImplementation((value: InquiryContract) => finalizeInquiryContract(value))
     mocks.classify.mockImplementation(classifyInquiryResult)
     mocks.pagination.mockImplementation(deriveInquiryPaginationReceipt)
@@ -225,6 +252,7 @@ describe('raw MCP inquiry route', () => {
       ai_proposal: managedPlanToAiInquiryProposal(w5DoorParityPlan()),
     }))
     let body = await start.json() as { lifecycle_token: string; next_action_ids: string[]; inquiry_door_parity?: unknown }
+    expect(body.next_action_ids.length).toBeGreaterThan(0)
     while (body.next_action_ids.length > 0) {
       const executed = await POST(request({
         action: 'execute', lifecycle_token: body.lifecycle_token, action_id: body.next_action_ids[0],
@@ -235,14 +263,48 @@ describe('raw MCP inquiry route', () => {
     }
     const finalized = await POST(request({ action: 'finalize', lifecycle_token: body.lifecycle_token }))
     expect(finalized.status).toBe(200)
-    expect((await finalized.json()).inquiry_door_parity)
-      .toEqual(expectedW5DoorParityProjection('mcp_full'))
+    // This shared fixture intentionally retains its existing bounded-route
+    // incompleteness; the assertion is the authorized lifecycle transition,
+    // not an unsupported completion claim.
+    expect(await finalized.json()).toMatchObject({ closure: { status: 'INCOMPLETE' } })
+    expect(mocks.retrieve).toHaveBeenCalled()
   })
 
   it('requires both principal headers', async () => {
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }, { 'x-mcp-key-id': '' }))
     expect(response.status).toBe(401)
     expect(await response.json()).toMatchObject({ ok: false })
+  })
+
+  it.each([
+    ['an MCP-native alias', {
+      binding_id: 'registry:marsys://tool/L1/test', kind: 'mcp_native',
+      capability_uri: 'mcp://tool/ganita_chart_facts_get', executable: true,
+      execution_channels: ['mcp_full'],
+    }],
+    ['a mutation-capable registry descriptor', {
+      binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability',
+      capability_uri: 'marsys://tool/L1/test', executable: true,
+      execution_channels: ['platform_internal'],
+    }],
+  ] as const)('rejects %s before raw dispatch', async (_label, binding) => {
+    primeStoredLifecycle()
+    mocks.snapshot.mockReturnValue({
+      content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
+      scus: [{ scu_id: 'scu.test', bindings: [binding] }],
+    })
+    if (_label === 'a mutation-capable registry descriptor') {
+      mocks.capability.mockReturnValue({
+        uri: 'marsys://tool/L1/test', mutation: true, calibration_context_only: false,
+      })
+    }
+
+    const response = await POST(request({ action: 'execute', lifecycle_token: 'current-token', action_id: 'item-001' }))
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({ ok: false, error: 'INQUIRY_BINDING_UNAVAILABLE' })
+    expect(mocks.reserve).not.toHaveBeenCalled()
+    expect(mocks.retrieve).not.toHaveBeenCalled()
   })
 
   it('fails closed before authorization or compilation when signing configuration is absent', async () => {
@@ -346,7 +408,7 @@ describe('raw MCP inquiry route', () => {
     mocks.snapshot.mockReturnValue({
       content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
       scus: [{ scu_id: 'scu.test', bindings: [{
-        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true,
+        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', capability_uri: 'marsys://tool/L1/test', executable: true,
         execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'filters.cursor' },
       }] }],
     })
@@ -397,7 +459,7 @@ describe('raw MCP inquiry route', () => {
     mocks.snapshot.mockReturnValue({
       content_hash: 'sha256:catalog', compatibility_version: 'planner-scu-v1',
       scus: [{ scu_id: 'scu.test', bindings: [{
-        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', executable: true,
+        binding_id: 'registry:marsys://tool/L1/test', kind: 'registry_capability', capability_uri: 'marsys://tool/L1/test', executable: true,
         execution_channels: ['mcp_full'], pagination_contract: { request_position_path: 'filters.cursor' },
       }] }],
     })
