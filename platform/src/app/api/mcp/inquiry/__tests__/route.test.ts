@@ -266,6 +266,16 @@ describe('raw MCP inquiry route', () => {
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ principal_uid: 'user-1', jti_hash: 'sha256:next-jti' }))
   })
 
+  it('admits a canonical compiler scope at the lifecycle boundary', async () => {
+    const canonicalScope = {
+      intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive',
+      horizon: 'multi_year', intervention: false, entitlement: 'native',
+    }
+    const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: canonicalScope }))
+    expect(response.status).toBe(200)
+    expect(mocks.compile).toHaveBeenCalledWith(expect.objectContaining({ scope_tuple: canonicalScope }))
+  })
+
   it('rejects revoked chart access before compiling or loading lifecycle state', async () => {
     mocks.authorize.mockResolvedValue('deny')
     const response = await POST(request({ action: 'start', chart_id: chartId, question: 'wealth', scope_tuple: scope }))

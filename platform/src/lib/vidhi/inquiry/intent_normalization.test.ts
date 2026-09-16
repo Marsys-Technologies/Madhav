@@ -1,7 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeInquiryScope } from './intent_normalization'
+import { InquiryScopeInputSchema, normalizeInquiryScope } from './intent_normalization'
 
 describe('inquiry scope normalization', () => {
+  it('admits the frozen compiler tuple but remains a closed transport schema', () => {
+    expect(InquiryScopeInputSchema.safeParse({
+      intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive',
+      horizon: 'multi_year', intervention: false, entitlement: 'native',
+    }).success).toBe(true)
+    expect(InquiryScopeInputSchema.safeParse({
+      intent: 'unreviewed_intent', domains: ['wealth'], width: 'panoramic', depth: 'deepdive',
+      horizon: 'multi_year', intervention: false, entitlement: 'native',
+    }).success).toBe(false)
+  })
+
   it('canonicalizes classifier aliases into one semantic scope', () => {
     const result = normalizeInquiryScope({
       intent: ' DOMAIN-ASSESSMENT ',
