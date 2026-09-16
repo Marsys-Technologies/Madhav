@@ -26,10 +26,29 @@ The test proves:
 
 import os
 import sys
+from urllib.parse import urlparse
 
 import psycopg
+import pytest
 
-DB_URL = os.environ["DATABASE_URL"]
+pytestmark = pytest.mark.integration
+
+# This test deliberately attempts a rejected INSERT inside a transaction. It
+# must never inherit a general DATABASE_URL that could point at shared or
+# production data. A caller must opt in with a dedicated disposable test DB.
+DB_URL = os.environ.get("SAVEPOINT_TEST_DATABASE_URL")
+if not DB_URL:
+    pytest.skip(
+        "SAVEPOINT_TEST_DATABASE_URL is not set for the disposable DB test",
+        allow_module_level=True,
+    )
+
+_parsed_db_url = urlparse(DB_URL)
+_database_name = _parsed_db_url.path.lstrip("/")
+if _parsed_db_url.hostname not in {"127.0.0.1", "localhost", "::1"}:
+    raise RuntimeError("SAVEPOINT_TEST_DATABASE_URL must use a loopback host")
+if "test" not in _database_name.lower():
+    raise RuntimeError("SAVEPOINT_TEST_DATABASE_URL must name a test database")
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 

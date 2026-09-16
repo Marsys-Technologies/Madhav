@@ -1,0 +1,88 @@
+{
+  "fixture_id": "synthetic.non_person.l2-resource-mechanism-01.v1",
+  "fixture_class": "ENGINEERING_ONLY",
+  "promotable": false,
+  "person_data": false,
+  "accepted_l0_release": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+  "accepted_l1_terminal": "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+  "accepted_l1_slice_digest": "25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279",
+  "expected_output_digest": "9a5f2f53892c72a8671bae373dd25e75a29982a3635884b99c1233fd8168a013",
+  "expected_context": {
+    "chart_id": "synthetic:l2-resource-mechanism-01",
+    "calculation_context_id": "synthetic:l1-context-01",
+    "generation_id": "synthetic:l1-generation-01",
+    "ayanamsha_id": "lahiri_chitrapaksha"
+  },
+  "selected_configuration": {
+    "chart_id": "synthetic:l2-resource-mechanism-01",
+    "calculation_context_id": "synthetic:l1-context-01",
+    "generation_id": "synthetic:l1-generation-01",
+    "ayanamsha_id": "lahiri_chitrapaksha",
+    "rule_id": "bhavat_bhavam.odd_house_nonrecursive.v1",
+    "qualification_state": "UNQUALIFIED_SOURCE",
+    "claim_class": "resource_mechanism_candidate",
+    "participants": [
+      {"subject": "JUP", "role": "resource_significator"},
+      {"subject": "HOUSE_1", "role": "reference_house"},
+      {"subject": "HOUSE_2", "role": "receipt_house"}
+    ],
+    "configuration_roles": {
+      "JUP": "actor",
+      "HOUSE_1": "reference",
+      "HOUSE_2": "target"
+    },
+    "domains": [
+      {"domain": "retention", "role": "retention"},
+      {"domain": "resources", "role": "creation"},
+      {"domain": "relief", "role": "relief"},
+      {"domain": "income", "role": "receipts"}
+    ],
+    "evidence_roots": [
+    {"root_id": "l1:fact:jup-role", "shared_root_group": "root:jup-role", "epistemic_class": "rule_derived"},
+    {"root_id": "l1:fact:house-2", "shared_root_group": "root:house-2", "epistemic_class": "deterministic_derivation"}
+    ],
+    "paths": [
+      {"path_id": "path:support-a", "actor": "JUP", "relation": "supports", "target": "HOUSE_2", "polarity": 1, "basis": "engineering_control", "root_id": "l1:fact:jup-role", "shared_root_group": "root:jup-role", "directness": "direct", "magnitude_semantics": {"value": 0.6, "unit": "normalized_structural_contribution_0_1", "polarity": "absolute_value_higher_is_stronger"}},
+      {"path_id": "path:support-duplicate", "actor": "JUP", "relation": "amplifies", "target": "HOUSE_2", "polarity": 1, "basis": "engineering_control", "root_id": "l1:fact:jup-role", "shared_root_group": "root:jup-role", "directness": "transitive", "magnitude_semantics": {"value": 0.4, "unit": "normalized_structural_contribution_0_1", "polarity": "absolute_value_higher_is_stronger"}},
+      {"path_id": "path:opposition", "actor": "HOUSE_1", "relation": "inhibits", "target": "HOUSE_2", "polarity": -1, "basis": "engineering_control", "root_id": "l1:fact:house-2", "shared_root_group": "root:house-2", "directness": "direct", "magnitude_semantics": {"value": 0.2, "unit": "normalized_structural_contribution_0_1", "polarity": "absolute_value_higher_is_stronger"}}
+    ],
+    "occurrence_ledger": {
+      "unit": "probability_like_structural_score",
+      "polarity": "higher_is_more_formed",
+      "value": 0.75,
+      "components": [{"condition_id": "formation:participants-present", "value": 0.75}]
+    },
+    "condition_ledger": {
+      "unit": "affliction_0_10",
+      "polarity": "higher_is_more_afflicted",
+      "affliction_value": 2.0,
+      "components": [
+        {"condition_id": "condition:support", "polarity": 1, "value": 0.6},
+        {"condition_id": "condition:opposition", "polarity": -1, "value": 0.2}
+      ]
+    },
+    "cancellation": {
+      "cancellation_id": "cancel:opposition-control",
+      "target_path_id": "path:opposition",
+      "target_original_polarity": -1,
+      "reason": "engineering negative-route attenuation"
+    },
+    "contradictions": [
+      {"contradiction_id": "contradiction:resource-route", "left_path_id": "path:support-a", "right_path_id": "path:opposition", "status": "unresolved"}
+    ],
+    "rivals": [
+      {"rival_id": "rival:alternate-receipt-route", "status": "unexplored", "missing_discriminator": "qualified_rule"}
+    ],
+    "missingness": [
+      {"field": "qualified_bhavat_source", "state": "unqualified_source"},
+      {"field": "activation_window", "state": "unavailable"},
+      {"field": "empirical_effect", "state": "unexplored"}
+    ],
+    "discovery_pointers": [
+      {"pointer_id": "lens:resource-second-domain", "domain": "receipts", "rank": 999, "decisive": true, "requires_hydration": true}
+    ]
+  },
+  "unrelated_configurations": [
+    {"configuration_id": "synthetic:unrelated-01", "domain": "creative", "rank": 1}
+  ]
+}

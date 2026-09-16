@@ -68,13 +68,17 @@ _SAMPLE_TERM_BREAKDOWN = {
     "promise": 0.6,
     "permission": 0.5,
     "activity": 0.7,
+    "tara_modifier": 1.0,
+    "w30_modifier": 1.0,
     "quality_gates": 1.0,
     "lambda_v3": 0.21,
     "activity_terms": [
         {"primitive": "degree_contact", "target_ref": "graha:venus",
          "orb_decay": 0.9, "target_weight": 0.8, "p_i": 0.72},
     ],
-    "formula": "PROMISE × PERMISSION × activity × quality_gates",
+    "formula": (
+        "PROMISE × PERMISSION × activity × tara_modifier × w30_modifier × quality_gates"
+    ),
 }
 
 
@@ -174,7 +178,8 @@ class TestTermBreakdownWiring:
         )
         assert iv.term_breakdown == _SAMPLE_TERM_BREAKDOWN
         assert set(iv.term_breakdown.keys()) == {
-            "promise", "permission", "activity", "quality_gates",
+            "promise", "permission", "activity", "tara_modifier", "w30_modifier",
+            "quality_gates",
             "lambda_v3", "activity_terms", "formula",
         }, "term_breakdown must carry the migration-564-documented shape"
 

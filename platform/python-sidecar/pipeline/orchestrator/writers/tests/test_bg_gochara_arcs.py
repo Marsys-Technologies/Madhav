@@ -197,14 +197,15 @@ def test_substep_deletes_before_inserting_scoped_to_version_and_body():
     assert params == [SUBSTRATE_VERSION, "Saturn"]
 
 
-def test_full_rebuild_first_substep_removes_obsolete_versions_and_unknown_bodies():
+def test_full_rebuild_preserves_prior_versions_and_removes_unknown_current_bodies():
     ctx = _ctx()
     GocharaArcsWriter().run_substep(ctx, GocharaArcsWriter().plan_substeps(ctx)[0])
 
     deletes = [(s, p) for s, p in ctx.db_conn.statements if s.strip().upper().startswith("DELETE")]
     assert len(deletes) == 2
     global_sql, global_params = deletes[0]
-    assert "substrate_version <> %s" in global_sql
+    assert "substrate_version = %s" in global_sql
+    assert "substrate_version <> %s" not in global_sql
     assert "body <> ALL(%s)" in global_sql
     assert global_params == [SUBSTRATE_VERSION, list(BODIES)]
 

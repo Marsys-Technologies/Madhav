@@ -377,15 +377,21 @@ jobs:
   # to correctly predict every way a migration can reach main (merge commits,
   # squash, revert, force-push) to stay safe. A cheap always-run beats a clever
   # filter for a barrier whose failure mode is a fail-closed production outage.
-  migrate:
-    name: Apply DB Migrations
+  # DP-SD-019: inspect semantic state before GitHub decides whether to create a
+  # protected-environment deployment. This read-only job emits the three
+  # semantic states needed to choose the one-time privileged route.
+  migration-state:
+    name: Inspect DB Migration State
     needs: [changes]
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-
     permissions:
       contents: read
       id-token: write
+    outputs:
+      data_plane: ${{ steps.data-plane-ownership.outputs.state }}
+      nirmana: ${{ steps.nirmana-ownership.outputs.state }}
+      purna: ${{ steps.purna-ownership.outputs.state }}
 
     steps:
       - name: Checkout
@@ -423,31 +429,20 @@ jobs:
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
             madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
           proxy_5432_pid=$!
-          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
-            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5433.log 2>&1 &
-          proxy_5433_pid=$!
-
-          # PROD_DATABASE_URL uses 5432, while the intentionally separate
-          # one-shot Pūrṇa bootstrap URL uses 5433. Do not start migrations
-          # until both least-privilege paths reach the same protected instance.
-          for route in "5432:$proxy_5432_pid" "5433:$proxy_5433_pid"; do
-            port="${route%%:*}"
-            pid="${route##*:}"
-            ready=false
-            for _ in {1..20}; do
-              if kill -0 "$pid" 2>/dev/null \
-                && (echo >"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
-                ready=true
-                break
-              fi
-              sleep 1
-            done
-            if [ "$ready" != true ]; then
-              echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:$port."
-              cat "cloud-sql-proxy-$port.log" || true
-              exit 1
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_5432_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then
+              ready=true
+              break
             fi
+            sleep 1
           done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            cat cloud-sql-proxy-5432.log || true
+            exit 1
+          fi
 
       - name: Set up Node.js for migration runner
         uses: actions/setup-node@v4
@@ -461,6 +456,22 @@ jobs:
         env:
           PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
         run: cd platform && npx tsx scripts/validate-migration-database-routes.ts --prod
+
+      - name: Inspect protected data-plane ownership state
+        id: data-plane-ownership
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — cannot read the protected data-plane state."
+            exit 1
+          fi
+          ownership_state="$(cd platform && npx tsx scripts/data-plane-ownership-status.ts)" || exit 1
+          if [ "$ownership_state" != "marked" ] && [ "$ownership_state" != "unmarked" ]; then
+            echo "::error::Unexpected protected data-plane state."
+            exit 1
+          fi
+          echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
       - name: Inspect Nirmana evidence ownership handoff marker
         id: nirmana-ownership
@@ -478,22 +489,6 @@ jobs:
           fi
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
-      - name: One-shot Nirmana evidence ownership preflight
-        if: steps.nirmana-ownership.outputs.state == 'unmarked'
-        env:
-          NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
-          NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
-        run: |
-          if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
-            echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
-            exit 1
-          fi
-          if [ -z "$NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL" ]; then
-            echo "::error::NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL secret not set — cannot prove the preprovisioned control writer before handoff."
-            exit 1
-          fi
-          cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
-
       - name: Inspect Pūrṇa inquiry protected-owner handoff
         id: purna-ownership
         env:
@@ -510,19 +505,184 @@ jobs:
           esac
           echo "state=$ownership_state" >> "$GITHUB_OUTPUT"
 
+  # DP-SD-019: bootstrap-only credentials and authenticated environment
+  # approval exist only on this job. When all protected states are established,
+  # GitHub skips the entire job before requesting environment approval.
+  privileged-bootstrap:
+    name: One-time Protected DB Bootstrap
+    needs: [changes, migration-state]
+    if: >-
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      (
+        needs.migration-state.outputs.data_plane == 'unmarked' ||
+        needs.migration-state.outputs.nirmana == 'unmarked' ||
+        needs.migration-state.outputs.purna != 'marked'
+      )
+    runs-on: ubuntu-latest
+    environment: data-plane-production-cutover
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Bootstrapping immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_5432_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_5432_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            cat cloud-sql-proxy-5432.log || true
+            exit 1
+          fi
+
+      - name: Set up Node.js for protected bootstrap
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install protected bootstrap deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      # The job-level concurrency lock is held before this step starts. Re-read
+      # all states inside that lock so a second run queued on stale output
+      # cannot replay a cutover completed by the first run.
+      - name: Refresh protected bootstrap state under the exclusive lock
+        id: bootstrap-state
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PRIOR_DATA_PLANE_STATE: ${{ needs.migration-state.outputs.data_plane }}
+          PRIOR_NIRMANA_STATE: ${{ needs.migration-state.outputs.nirmana }}
+          PRIOR_PURNA_STATE: ${{ needs.migration-state.outputs.purna }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — bootstrap state cannot be refreshed."
+            exit 1
+          fi
+          data_plane_state="$(cd platform && npx tsx scripts/data-plane-ownership-status.ts)" || exit 1
+          nirmana_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
+          purna_state="$(cd platform && npx tsx scripts/purna-inquiry-ownership-status.ts)" || exit 1
+          for state in "$data_plane_state" "$nirmana_state"; do
+            if [ "$state" != "marked" ] && [ "$state" != "unmarked" ]; then
+              echo "::error::Unexpected protected bootstrap state under the exclusive lock."
+              exit 1
+            fi
+          done
+          case "$purna_state" in
+            armed|rearm_required|interrupted|cleanup_required|marked) ;;
+            *) echo "::error::Invalid or partial Pūrṇa ownership state under the exclusive lock."; exit 1 ;;
+          esac
+          if [ "$PRIOR_DATA_PLANE_STATE" = "marked" ] && [ "$data_plane_state" != "marked" ]; then
+            echo "::error::Protected data-plane state regressed after the initial inspection."
+            exit 1
+          fi
+          if [ "$PRIOR_NIRMANA_STATE" = "marked" ] && [ "$nirmana_state" != "marked" ]; then
+            echo "::error::Nirmana ownership state regressed after the initial inspection."
+            exit 1
+          fi
+          if [ "$PRIOR_PURNA_STATE" = "marked" ] && [ "$purna_state" != "marked" ]; then
+            echo "::error::Pūrṇa ownership state regressed after the initial inspection."
+            exit 1
+          fi
+          {
+            echo "data_plane=$data_plane_state"
+            echo "nirmana=$nirmana_state"
+            echo "purna=$purna_state"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: One-shot Nirmana evidence ownership preflight
+        if: steps.bootstrap-state.outputs.nirmana == 'unmarked'
+        env:
+          NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL: ${{ secrets.NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL }}
+          NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL: ${{ secrets.NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL secret not set — cannot inspect or perform the ownership handoff."
+            exit 1
+          fi
+          if [ -z "$NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_CAMPAIGN_CONTROL_DATABASE_URL secret not set — cannot prove the preprovisioned control writer before handoff."
+            exit 1
+          fi
+          cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
+
+      # Port 5433 is serialized: Pūrṇa uses it first against production, then
+      # releases it before the isolated data-plane restore proof may claim it.
+      - name: Start one-shot Pūrṇa admin proxy
+        id: purna-admin-proxy
+        if: >-
+          steps.bootstrap-state.outputs.purna == 'armed' ||
+          steps.bootstrap-state.outputs.purna == 'interrupted' ||
+          steps.bootstrap-state.outputs.purna == 'cleanup_required'
+        run: |
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5433.log 2>&1 &
+          proxy_5433_pid=$!
+          echo "pid=$proxy_5433_pid" >> "$GITHUB_OUTPUT"
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_5433_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5433") 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Pūrṇa admin proxy did not become ready on 127.0.0.1:5433."
+            cat cloud-sql-proxy-5433.log || true
+            exit 1
+          fi
+
       - name: Validate one-shot Pūrṇa admin database route
         id: purna-admin-route
         if: >-
-          steps.purna-ownership.outputs.state == 'armed' ||
-          steps.purna-ownership.outputs.state == 'interrupted' ||
-          steps.purna-ownership.outputs.state == 'cleanup_required'
+          steps.bootstrap-state.outputs.purna == 'armed' ||
+          steps.bootstrap-state.outputs.purna == 'interrupted' ||
+          steps.bootstrap-state.outputs.purna == 'cleanup_required'
         env:
           PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
         run: cd platform && npx tsx scripts/validate-migration-database-routes.ts --purna-admin
 
       - name: One-shot Pūrṇa protected-owner preflight
         id: purna-preflight
-        if: steps.purna-ownership.outputs.state == 'armed'
+        if: steps.bootstrap-state.outputs.purna == 'armed'
         env:
           PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
           PURNA_INQUIRY_SERVE_PASSWORD: ${{ secrets.PURNA_INQUIRY_SERVE_PASSWORD }}
@@ -534,7 +694,7 @@ jobs:
           cd platform && npx tsx scripts/purna-inquiry-ownership-preflight.ts
 
       - name: Apply exact Pūrṇa protected-owner migrations
-        if: steps.purna-ownership.outputs.state == 'armed'
+        if: steps.bootstrap-state.outputs.purna == 'armed'
         env:
           DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
         run: |
@@ -549,7 +709,7 @@ jobs:
       # If a prior runner died after preflight COMMIT, `interrupted` makes the next
       # run clean the privileged bootstrap first and then stop for explicit rearm.
       - name: Close and attest Pūrṇa protected-owner handoff
-        if: ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.purna-ownership.outputs.state == 'armed' || steps.purna-ownership.outputs.state == 'interrupted' || steps.purna-ownership.outputs.state == 'cleanup_required') }}
+        if: ${{ always() && steps.purna-admin-route.outcome == 'success' && (steps.bootstrap-state.outputs.purna == 'armed' || steps.bootstrap-state.outputs.purna == 'interrupted' || steps.bootstrap-state.outputs.purna == 'cleanup_required') }}
         env:
           PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
         run: |
@@ -559,10 +719,33 @@ jobs:
           fi
           cd platform && npx tsx scripts/purna-inquiry-ownership-postflight.ts
 
+      - name: Release one-shot Pūrṇa admin proxy port
+        if: ${{ always() && steps.purna-admin-proxy.outcome == 'success' }}
+        env:
+          PURNA_PROXY_PID: ${{ steps.purna-admin-proxy.outputs.pid }}
+        run: |
+          if [ -z "$PURNA_PROXY_PID" ]; then
+            echo "::error::Pūrṇa admin proxy PID was not captured."
+            exit 1
+          fi
+          kill "$PURNA_PROXY_PID" 2>/dev/null || true
+          for _ in {1..20}; do
+            if ! kill -0 "$PURNA_PROXY_PID" 2>/dev/null \
+              && ! (echo >"/dev/tcp/127.0.0.1/5433") 2>/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Pūrṇa admin proxy did not release 127.0.0.1:5433."
+          exit 1
+
       # While Pūrṇa is armed, its one-shot bootstrap is intentionally a temporary
       # cloudsqlsuperuser child. Mandatory postflight removes that membership.
       # Re-attest Nirmana only after cleanup, without weakening migration 633.
       - name: Attest Nirmana ownership handoff as deployment-only migrator
+        if: >-
+          steps.bootstrap-state.outputs.nirmana == 'unmarked' ||
+          steps.bootstrap-state.outputs.purna != 'marked'
         env:
           NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
         run: |
@@ -574,17 +757,186 @@ jobs:
           fi
 
       - name: Require explicit bootstrap rearm after interrupted cleanup
-        if: steps.purna-ownership.outputs.state == 'interrupted'
+        if: steps.bootstrap-state.outputs.purna == 'interrupted'
         run: |
           echo "::error::Interrupted Pūrṇa bootstrap authority was removed. Reprovision its one-shot login credential and cloudsqlsuperuser membership, then rerun."
           exit 1
 
       - name: Require Pūrṇa bootstrap provisioning or rearm
-        if: steps.purna-ownership.outputs.state == 'rearm_required'
+        if: steps.bootstrap-state.outputs.purna == 'rearm_required'
         run: |
           echo "::error::Pūrṇa ownership requires the disabled one-shot bootstrap to be explicitly rearmed with a fresh credential and its sole cloudsqlsuperuser edge before cleanup can resume."
           exit 1
 
+      - name: Verify data-plane secret and runtime isolation before privileged access
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+        env:
+          GOOGLE_CLOUD_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
+      - name: Execute protected cutover under backup, restore, lease, quiescence and independent approval
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          DATA_PLANE_BACKUP_RESTORE_ID: ${{ secrets.DATA_PLANE_BACKUP_RESTORE_ID }}
+          DATA_PLANE_RESTORE_VALIDATION_INSTANCE: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_INSTANCE }}
+          DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME }}
+          DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL }}
+          DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT: '5433'
+          DATA_PLANE_CUTOVER_LEASE: ${{ secrets.DATA_PLANE_CUTOVER_LEASE }}
+          DATA_PLANE_CUTOVER_ENVIRONMENT: data-plane-production-cutover
+          GH_TOKEN: ${{ github.token }}
+          DATA_PLANE_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_ADMIN_DATABASE_URL }}
+          DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: |
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
+            "$DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME" >data-plane-validation-proxy.log 2>&1 &
+          validation_proxy_pid=$!
+          trap 'kill "$validation_proxy_pid" 2>/dev/null || true' EXIT
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$validation_proxy_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5433") 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Authenticated validation Cloud SQL proxy failed to become ready."
+            cat data-plane-validation-proxy.log || true
+            exit 1
+          fi
+          cd platform
+          npx tsx scripts/data-plane-protected-cutover.ts
+
+      - name: Re-attest protected data-plane semantic state with deployment-only migrator
+        if: steps.bootstrap-state.outputs.data_plane == 'unmarked'
+        env:
+          DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
+        run: cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
+
+  # The routine path receives no DBA, Pūrṇa admin, data-plane migrator,
+  # legacy-owner or Nirmana migrator credential and has no protected environment.
+  # `always()` is used only to admit the intentional "all already marked" skip;
+  # every failed, cancelled, partial or inconsistent predecessor remains closed.
+  migrate:
+    name: Apply Routine DB Migrations
+    needs: [changes, migration-state, privileged-bootstrap]
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') &&
+      needs.changes.result == 'success' &&
+      needs.migration-state.result == 'success' &&
+      (
+        (
+          needs.migration-state.outputs.data_plane == 'marked' &&
+          needs.migration-state.outputs.nirmana == 'marked' &&
+          needs.migration-state.outputs.purna == 'marked' &&
+          needs.privileged-bootstrap.result == 'skipped'
+        ) ||
+        (
+          (
+            needs.migration-state.outputs.data_plane == 'unmarked' ||
+            needs.migration-state.outputs.nirmana == 'unmarked' ||
+            needs.migration-state.outputs.purna != 'marked'
+          ) &&
+          needs.privileged-bootstrap.result == 'success'
+        )
+      )
+    runs-on: ubuntu-latest
+    concurrency:
+      group: data-plane-production-cutover
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Verify deployment source provenance
+        run: |
+          ACTUAL_SHA="$(git rev-parse HEAD)"
+          if [ "$ACTUAL_SHA" != "$DEPLOY_SHA" ]; then
+            echo "::error::Deployment checkout mismatch: expected $DEPLOY_SHA, got $ACTUAL_SHA"
+            exit 1
+          fi
+          echo "Migrating against immutable source SHA $ACTUAL_SHA"
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SERVICE_ACCOUNT }}
+
+      - name: Start Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
+            -o cloud-sql-proxy && chmod +x cloud-sql-proxy
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          proxy_5432_pid=$!
+          ready=false
+          for _ in {1..20}; do
+            if kill -0 "$proxy_5432_pid" 2>/dev/null \
+              && (echo >"/dev/tcp/127.0.0.1/5432") 2>/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:5432."
+            cat cloud-sql-proxy-5432.log || true
+            exit 1
+          fi
+
+      - name: Set up Node.js for migration runner
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install migration runner deps
+        run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Validate production migration database route
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/validate-migration-database-routes.ts --prod
+
+      - name: Verify data-plane secret and runtime isolation
+        env:
+          GOOGLE_CLOUD_PROJECT: madhav-astrology
+          GCP_REGION: ${{ env.GCP_REGION }}
+          DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+        run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
+
+      - name: Re-attest protected data-plane semantic state with routine credential
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — protected data-plane state cannot be re-attested."
+            exit 1
+          fi
+          cd platform && test "$(npx tsx scripts/data-plane-ownership-status.ts)" = marked
+
+      - name: Re-attest Nirmana evidence ownership state with routine credential
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::PROD_DATABASE_URL secret not set — Nirmana ownership state cannot be re-attested."
+            exit 1
+          fi
+          cd platform && test "$(npx tsx scripts/nirmana-evidence-ownership-status.ts)" = marked
       - name: Run general database migrations
         id: general-migrations
         env:
@@ -1445,7 +1797,7 @@ jobs:
   # Context is the repo root (Dockerfile.pipeline COPYs repo-root paths).
   deploy-pipeline-job:
     name: Build & Deploy Pipeline Job Image
-    needs: [changes]
+    needs: [changes, migrate]
     if: (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') && (needs.changes.outputs.force_all == 'true' || needs.changes.outputs.pipeline == 'true')
     runs-on: ubuntu-latest
     permissions:
@@ -1508,6 +1860,8 @@ jobs:
           gcloud run jobs update brahma-build-pipeline-job \
             --region=${{ env.GCP_REGION }} \
             --image=asia-south1-docker.pkg.dev/madhav-astrology/amjis/brahma-pipeline:${{ env.DEPLOY_SHA }} \
+            --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
+            --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --task-timeout=86400 \
             --memory=16Gi \
             --cpu=4 \

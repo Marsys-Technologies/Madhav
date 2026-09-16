@@ -376,12 +376,9 @@ EXPECTED_MVS = [
 ]
 
 
-class TestG5AllMVsRefreshed:
-    def test_all_8_mvs_are_refreshed_after_rebuild(self):
-        """
-        GREEN: after a successful pramana_mapa run, _refresh_mv is called exactly
-        once for each of the 8 expected MV names — no CDLM MVs silently skipped.
-        """
+class TestServingMVsRemainPassive:
+    def test_no_serving_mv_is_refreshed_by_l2_producer(self):
+        """A per-chart L2 generation cannot mutate uncaptured global MVs."""
         from pipeline.orchestrator.writers.bo_pramana_mapa import BoPramanaMapa
 
         writer = BoPramanaMapa()
@@ -402,15 +399,13 @@ class TestG5AllMVsRefreshed:
                         except Exception:
                             pass  # scorecard insert may fail on mock conn — we only test MV refreshes
 
-        assert len(refreshed) == 8, f"Expected 8 MV refreshes, got {len(refreshed)}: {refreshed}"
-        for mv in EXPECTED_MVS:
-            assert mv in refreshed, f"MV not refreshed: {mv}"
+        assert refreshed == []
 
-    def test_cdlm_mvs_included_in_refresh_list(self):
-        """Verify the 5 CDLM MVs appear in the refresh loop (static inspection)."""
+    def test_temporal_mv_is_not_in_writer_run(self):
+        """The dasha-window projection remains outside L2 runtime authority."""
         import pipeline.orchestrator.writers.bo_pramana_mapa as module
         import inspect
 
-        source = inspect.getsource(module)
+        source = inspect.getsource(module.BoPramanaMapa.run)
         for mv in EXPECTED_MVS:
-            assert mv in source, f"MV name missing from bo_pramana_mapa source: {mv}"
+            assert mv not in source, f"serving MV still refreshed by L2: {mv}"

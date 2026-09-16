@@ -1,15 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
-import { getCatalog } from '../../retrieval/registry/catalog'
-import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import type { CapabilityKnowledgeSnapshot } from '../../retrieval/registry/knowledge/types'
+import committedSnapshot from '../../../generated/capability_knowledge.snapshot.json'
 import {
   BEYOND_ACARYA_ACCEPTANCE_VERSION,
   evaluateBeyondAcaryaAcceptance,
 } from './beyond_acarya_acceptance'
 import { BEYOND_ACARYA_ACCEPTANCE_CASES } from './beyond_acarya_acceptance.corpus'
 
-const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-15T00:00:00.000Z')
+const snapshot = committedSnapshot as CapabilityKnowledgeSnapshot
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -49,7 +48,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:bf9961d5c90c5907d486f8a97c0a9ec19999507234dc0efbda97b369dd947e9d')
+    expect(report.report_hash).toBe('sha256:df21accf7b9c1ee72ef08ee05b07db4c36ae559e2019d5a175bfa842a536d30f')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {

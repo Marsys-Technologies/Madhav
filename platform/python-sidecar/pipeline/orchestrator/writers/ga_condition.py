@@ -5,11 +5,13 @@ Planetary Condition Composite — one sub-step per ayanamsha.
 Delegates to ga_condition_writer.build_ga_condition_substep().
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 
 
 @register('ga_condition')
+@l1_producer_contract
 class GaConditionWriter(WriterBase):
     asset_id = 'ga_condition'
     has_substeps = True

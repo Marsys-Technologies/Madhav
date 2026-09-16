@@ -21,6 +21,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from bodha_writers.special_lagna_emitter import (
     _TARGET_LAGNAS,
     build_signal_row,
@@ -102,6 +103,7 @@ def assign_deterministic_signal_ids(conn: Any, rows: list[dict]) -> int:
 
 
 @register("bo_special_lagna")
+@l2_producer("bo_special_lagna")
 class BoSpecialLagnaWriter(WriterBase):
     """bo_special_lagna: Indu/Sree/Ghati/Hora Lagna MSR signal layer."""
     asset_id = "bo_special_lagna"
@@ -157,7 +159,7 @@ class BoSpecialLagnaWriter(WriterBase):
 
 
 _INSERT_SQL = """
-INSERT INTO bodha_msr_signals (
+INSERT INTO public.bodha_msr_signals (
   signal_id, chart_id, ayanamsha_id, build_id,
   signal_type_id, signal_type_class, signal_tradition,
   fact_kind, source_l1_asset, source_subsystem,

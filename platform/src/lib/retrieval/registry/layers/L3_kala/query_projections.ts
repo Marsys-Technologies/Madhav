@@ -32,6 +32,112 @@ interface ProjectionFamilyRow {
   source_citation: string | null
 }
 
+interface ProjectionBuildRow {
+  build_id: string
+  build_state: string
+  asset_state: string
+  build_ended_at: string | null
+  asset_ended_at: string | null
+}
+
+export interface BhavishyaDataQualification {
+  state: 'qualified' | 'unqualified'
+  generation: {
+    state: 'unavailable'
+    generation_id: null
+    reason: string
+  }
+  build_observation: {
+    state: 'completed_observed' | 'incomplete_observed' | 'absent' | 'unavailable'
+    build_id: string | null
+    build_state?: string
+    asset_state?: string
+    build_ended_at?: string | null
+    asset_ended_at?: string | null
+    reason?: string
+    error?: string
+    physically_bound_to_rows: false
+  }
+  acceptance: {
+    state: 'unavailable'
+    accepted_current: null
+    reason: string
+  }
+}
+
+/**
+ * Shared kala_bhavishya qualification receipt for both direct projections and the
+ * temporal-activation fallback. A build-run row is an observation only: because
+ * physical kala_bhavishya rows carry neither generation nor build_id, even a completed
+ * run cannot be bound to the served rows or upgraded to accepted-current evidence.
+ */
+export async function loadBhavishyaDataQualification(chartId: string): Promise<BhavishyaDataQualification> {
+  const unavailableGeneration: BhavishyaDataQualification['generation'] = {
+    state: 'unavailable',
+    generation_id: null,
+    reason: 'kala_bhavishya rows have no generation or build_id column.',
+  }
+  try {
+    const observed = await query<ProjectionBuildRow>(
+      `SELECT br.id::text AS build_id,
+              br.state AS build_state,
+              bra.state AS asset_state,
+              br.ended_at::text AS build_ended_at,
+              bra.ended_at::text AS asset_ended_at
+         FROM build_run_assets bra
+         JOIN build_runs br ON br.id = bra.run_id
+        WHERE br.chart_id = $1
+          AND bra.asset_id = 'ka_bhavishya_lekha'
+        ORDER BY COALESCE(bra.ended_at, br.ended_at, br.created_at) DESC
+        LIMIT 1`,
+      [chartId],
+    )
+    const row = observed.rows[0]
+    return {
+      state: 'unqualified',
+      generation: unavailableGeneration,
+      build_observation: row ? {
+        state: row.build_state === 'completed' && row.asset_state === 'complete'
+          ? 'completed_observed'
+          : 'incomplete_observed',
+        build_id: row.build_id,
+        build_state: row.build_state,
+        asset_state: row.asset_state,
+        build_ended_at: row.build_ended_at,
+        asset_ended_at: row.asset_ended_at,
+        physically_bound_to_rows: false,
+      } : {
+        state: 'absent',
+        build_id: null,
+        reason: 'No ka_bhavishya_lekha build-run observation exists for this chart.',
+        physically_bound_to_rows: false,
+      },
+      acceptance: {
+        state: 'unavailable',
+        accepted_current: null,
+        reason: 'This query has no accepted-generation binding; a completed build run alone is not acceptance.',
+      },
+    }
+  } catch (err) {
+    return {
+      state: 'unqualified',
+      generation: unavailableGeneration,
+      build_observation: {
+        state: 'unavailable',
+        build_id: null,
+        reason: 'Build qualification lookup failed.',
+        error: String(err),
+        physically_bound_to_rows: false,
+      },
+      acceptance: {
+        state: 'unavailable',
+        accepted_current: null,
+        reason: 'Build qualification is unavailable, so accepted-current data cannot be claimed.',
+      },
+    }
+  }
+}
+
 export const queryProjectionsCapability: CapabilityDescriptor = {
   uri:   'marsys://tool/L3/query_projections',
   type:  'tool',
@@ -51,6 +157,8 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
     'window_end, domain) triple. Prefer `projection_families` — one entry per distinct',
     '(window_start, window_end, domain), with member_count and bounded member_ids/',
     'member_signal_ids — copying query_temporal_activation\'s window_families pattern.',
+    'The response explicitly reports source state and build/generation qualification;',
+    'served rows are never represented as accepted-current without a physical binding.',
   ].join(' '),
 
   scope: 'per_chart',
@@ -170,10 +278,30 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
         LIMIT ${limitPh}
       `
 
-      const [result, familyResult] = await Promise.all([
+      const [result, familyResult, data_qualification] = await Promise.all([
         query(sql, [...params, limit]),
         query<ProjectionFamilyRow>(familySql, [...params, limit]),
+        loadBhavishyaDataQualification(chart_id),
       ])
+
+      let source_row_count: number | null = null
+      let source_state: 'served' | 'source_empty' | 'searched_empty' | 'classification_unavailable' = 'served'
+      let source_classification_error: string | null = null
+      if (result.rows.length === 0) {
+        try {
+          const source = await query<{ total: number }>(
+            `SELECT COUNT(*)::int AS total FROM kala_bhavishya WHERE chart_id = $1`,
+            [chart_id],
+          )
+          source_row_count = Number(source.rows[0]?.total ?? 0)
+          // Zero rows are evidence of an empty physical source, not proof that no valid
+          // build completed. Build history is reported separately and is not row-bound.
+          source_state = source_row_count === 0 ? 'source_empty' : 'searched_empty'
+        } catch (err) {
+          source_state = 'classification_unavailable'
+          source_classification_error = String(err)
+        }
+      }
 
       // signal_id is a scalar per row (not an array); collect distinct refs.
       const signalRefs = new Set<string>()
@@ -207,13 +335,38 @@ export const queryProjectionsCapability: CapabilityDescriptor = {
           projection_family_count: projection_families.length,
           signal_id_refs:   Array.from(signalRefs),
           filters: { horizon_years, probability_tier, domain, limit },
+          source_status: {
+            state: source_state,
+            source_table: 'kala_bhavishya',
+            source_row_count,
+            classification_error: source_classification_error,
+          },
+          // DP-SD-017 L3-U05: the physical table has neither generation nor build_id,
+          // so a latest build-run row is context only. This additive receipt prevents
+          // row presence or build completion from being mistaken for accepted-current data.
+          data_qualification,
           provenance: { tables: ['kala_bhavishya'] },
         },
         is_error: false,
       }
     } catch (err) {
       return {
-        content: { error: String(err), chart_id },
+        content: {
+          error: String(err),
+          chart_id,
+          source_status: {
+            state: 'db_failure',
+            source_table: 'kala_bhavishya',
+            source_row_count: null,
+          },
+          data_qualification: {
+            state: 'unavailable',
+            generation: { state: 'unavailable', generation_id: null },
+            build_observation: { state: 'unavailable', build_id: null },
+            acceptance: { state: 'unavailable', accepted_current: null },
+            reason: 'Projection retrieval failed; no data qualification can be claimed.',
+          },
+        },
         is_error: true,
       }
     }

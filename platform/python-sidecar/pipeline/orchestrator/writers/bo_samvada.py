@@ -21,10 +21,11 @@ Bodha layer for a chart into a compact, LLM-friendly digest:
     trap1_count INT,                 ← synthesis_quality_scorecard.trap1_authority_inversion_count, latest scored_at
     digest_at TIMESTAMPTZ            ← NOW() at view-query time, not build time (a VIEW, not a snapshot)
 
-This is a DDL-only writer: it emits CREATE OR REPLACE VIEW and returns
-rows_inserted = 1 if the view was created successfully (0 on dry_run).  It
-must not DROP ... CASCADE the shared serving view: this definition preserves
-the stable column contract, and CREATE OR REPLACE retains dependents and grants.
+This legacy registry identity owns no durable producer rows. The shared view
+is a serving projection and is preserved, not recreated, by a per-chart L2
+generation. Replacing it here would be an uncaptured global DDL mutation and
+cannot be replayed from a generation snapshot. A later approved integration
+packet may version or replace that projection.
 
 The bo_samvada asset in the orchestrator registry counts rows in the
 view (via count_sql) to signal success — count_sql already reads
@@ -46,6 +47,7 @@ import logging
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 
 logger = logging.getLogger(__name__)
 
@@ -135,24 +137,24 @@ GROUP BY m.chart_id, m.ayanamsha_id
 
 
 @register("bo_samvada")
+@l2_producer("bo_samvada")
 class BoSamvadaWriter(WriterBase):
     """
-    bo_samvada: creates vw_chart_digest view (UCD read surface).
-    DDL-only writer; rows_inserted = 1 on success.
+    bo_samvada: passive compatibility boundary for the legacy UCD view.
     """
     asset_id = "bo_samvada"
 
     def run(self, ctx: ContextSpec) -> WriterResult:
-        if ctx.dry_run:
-            return WriterResult(asset_id=self.asset_id, rows_inserted=0,
-                                notes="dry_run — would CREATE OR REPLACE VIEW vw_chart_digest")
-
-        conn = ctx.db_conn
-        try:
-            conn.execute(_CREATE_VIEW_CLEAN)
-            logger.info("[bo_samvada] vw_chart_digest created/replaced")
-            return WriterResult(asset_id=self.asset_id, rows_inserted=1,
-                                notes="vw_chart_digest created")
-        except Exception as e:
-            logger.error("[bo_samvada] failed to create view: %s", e)
-            raise
+        logger.info(
+            "[bo_samvada] preserving legacy vw_chart_digest; serving DDL is "
+            "outside L2 producer authority"
+        )
+        return WriterResult(
+            asset_id=self.asset_id,
+            rows_inserted=0,
+            rows_skipped=1,
+            notes=(
+                "legacy serving projection preserved; no per-chart DDL; "
+                "versioned projection integration not authorized at L2"
+            ),
+        )

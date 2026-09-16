@@ -75,6 +75,8 @@ import math
 from datetime import datetime, timezone
 from typing import Optional
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 import numpy as np
 
 # v1 imports (I2 compliance — imported, never copied/edited)
@@ -464,6 +466,7 @@ def evaluate_lambda_vector(
     return results
 
 
+@serialized_swiss_state
 def _evaluate_single_from_context(
     swe,
     context: ClassContext,

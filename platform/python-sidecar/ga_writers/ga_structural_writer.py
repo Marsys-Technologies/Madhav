@@ -758,7 +758,8 @@ def _write_halt_log(reason: str, details: str) -> None:
 
 def _fact_id(category: str, subject: str, key: str, chart_id: str,
               ayanamsha_id: str, build_id: str) -> str:
-    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}|{build_id}"
+    # build_id is observation provenance, never semantic fact identity.
+    raw = f"{category}|{subject}|{key}|{chart_id}|{ayanamsha_id}"
     return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
@@ -874,6 +875,45 @@ def check_upstream_presence(conn: Any, chart_id: str) -> dict[str, Any]:
 
 # ── Chart state extractor ─────────────────────────────────────────────────────
 
+def _validate_chart_output_complete(chart_output: dict[str, Any]) -> None:
+    """Reject incomplete numerical state before any structural family can run.
+
+    Many historical family helpers used local ``Aries``/house-1/longitude-0
+    defaults.  Keeping those expressions source-compatible is harmless only
+    when this boundary proves they are unreachable for an emitted generation.
+    """
+    ascendant = chart_output.get("ascendant")
+    if not isinstance(ascendant, dict):
+        raise RuntimeError("ga_structural: ascendant object missing")
+    for key in ("sign", "sign_id", "longitude"):
+        if ascendant.get(key) is None:
+            raise RuntimeError(f"ga_structural: ascendant {key!r} missing")
+    asc_longitude = float(ascendant["longitude"])
+    if not math.isfinite(asc_longitude) or not 0 <= asc_longitude < 360:
+        raise RuntimeError("ga_structural: ascendant longitude is non-finite or outside [0, 360)")
+    if not 1 <= int(ascendant["sign_id"]) <= 12:
+        raise RuntimeError("ga_structural: ascendant sign_id outside 1..12")
+
+    grahas = chart_output.get("grahas")
+    if not isinstance(grahas, list):
+        raise RuntimeError("ga_structural: graha collection missing")
+    by_name = {row.get("name"): row for row in grahas if isinstance(row, dict)}
+    missing = [name for name in ALL_GRAHAS if name not in by_name]
+    if missing:
+        raise RuntimeError(f"ga_structural: required grahas missing: {missing!r}")
+    for name in ALL_GRAHAS:
+        row = by_name[name]
+        for key in ("sign", "sign_id", "house", "longitude", "retrograde"):
+            if row.get(key) is None:
+                raise RuntimeError(f"ga_structural: {name} {key!r} missing")
+        if name in CLASSICAL_GRAHAS and not row.get("dignity_status"):
+            raise RuntimeError(f"ga_structural: {name} dignity_status missing")
+        longitude = float(row["longitude"])
+        if not math.isfinite(longitude) or not 0 <= longitude < 360:
+            raise RuntimeError(f"ga_structural: {name} longitude outside [0, 360)")
+        if not 1 <= int(row["sign_id"]) <= 12 or not 1 <= int(row["house"]) <= 12:
+            raise RuntimeError(f"ga_structural: {name} sign/house outside 1..12")
+
 def _extract_chart_state(chart_output: dict[str, Any]) -> dict[str, Any]:
     """
     Extract a flat chart state dict from PyJHora compute output.
@@ -884,9 +924,9 @@ def _extract_chart_state(chart_output: dict[str, Any]) -> dict[str, Any]:
     ascendant = chart_output.get("ascendant", {})
 
     # Lagna
-    lagna_sign = ascendant.get("sign", NATIVE_LAGNA)
-    lagna_sign_num = ascendant.get("sign_id", NATIVE_LAGNA_NUM)
-    _lagna_long = float(ascendant.get("longitude", 0.0))
+    lagna_sign = ascendant["sign"]
+    lagna_sign_num = ascendant["sign_id"]
+    _lagna_long = float(ascendant["longitude"])
     state["LAGNA"] = {
         "sign": lagna_sign, "sign_num": int(lagna_sign_num),
         "house": 1, "longitude": _lagna_long, "degree": _lagna_long % 30.0,
@@ -895,12 +935,12 @@ def _extract_chart_state(chart_output: dict[str, Any]) -> dict[str, Any]:
 
     for g in grahas:
         name = g["name"]
-        sign = g.get("sign", "Aries")
-        sign_num = int(g.get("sign_id", 1))
-        house = int(g.get("house", 1))
-        long_deg = float(g.get("longitude", 0.0))
-        retro = bool(g.get("retrograde", False))
-        dignity = g.get("dignity_status", "neutral")
+        sign = g["sign"]
+        sign_num = int(g["sign_id"])
+        house = int(g["house"])
+        long_deg = float(g["longitude"])
+        retro = bool(g["retrograde"])
+        dignity = g.get("dignity_status") or "not_applicable"
         state[name] = {
             "sign": sign, "sign_num": sign_num, "house": house,
             "longitude": long_deg, "retrograde": retro, "dignity": dignity,
@@ -941,17 +981,23 @@ def _load_varga_positions(
         for row in cur.fetchall():
             graha_name, sign, sign_num, degree = row
             if sign and sign_num:
+                if degree is None:
+                    raise RuntimeError(
+                        f"ga_structural: {varga} degree missing for {graha_name}"
+                    )
                 raw[graha_name] = {
                     "sign": sign,
                     "sign_num": int(sign_num),
-                    "degree": float(degree) if degree else 0.0,
+                    "degree": float(degree),
                 }
 
     if not raw:
         return {}
 
     # Compute whole-sign house: count from Lagna's divisional sign.
-    lagna_sign_num = int(raw.get("Lagna", {}).get("sign_num", 1) or 1)
+    if "Lagna" not in raw:
+        raise RuntimeError(f"ga_structural: {varga} Lagna missing from chart_divisionals")
+    lagna_sign_num = int(raw["Lagna"]["sign_num"])
     result = {}
     for graha_name, data in raw.items():
         if graha_name == "Lagna":
@@ -987,42 +1033,62 @@ def _get_house_sign(chart_output: dict[str, Any], house_num: int) -> str:
 
 def _get_house_lord(chart_output: dict[str, Any], house_num: int) -> str:
     sign = _get_house_sign(chart_output, house_num)
-    return SIGN_LORDS.get(sign, "Sun")
+    lord = SIGN_LORDS.get(sign)
+    if lord is None:
+        raise RuntimeError(f"ga_structural: no admitted lord for house sign {sign!r}")
+    return lord
 
 
 def _sign_house(chart_output: dict[str, Any], sign_name: str) -> int:
     """Return the house number a given sign occupies (from Lagna)."""
-    lagna_sign_num = int(chart_output.get("ascendant", {}).get("sign_id", NATIVE_LAGNA_NUM))
-    sign_num = SIGN_NAMES.index(sign_name) + 1
+    lagna_sign_raw = chart_output.get("ascendant", {}).get("sign_id")
+    if lagna_sign_raw is None:
+        raise RuntimeError("ga_structural: ascendant sign_id missing — cannot place sign by house")
+    lagna_sign_num = int(lagna_sign_raw)
+    try:
+        sign_num = SIGN_NAMES.index(sign_name) + 1
+    except ValueError as exc:
+        raise RuntimeError(f"ga_structural: unknown sign {sign_name!r}") from exc
     return ((sign_num - lagna_sign_num) % 12) + 1
 
 
 def _graha_in_sign(chart_output: dict[str, Any], graha_name: str) -> str:
     for g in chart_output.get("grahas", []):
         if g["name"] == graha_name:
-            return g.get("sign", "Aries")
-    return "Aries"
+            if not g.get("sign"):
+                raise RuntimeError(f"ga_structural: sign missing for {graha_name}")
+            return str(g["sign"])
+    raise RuntimeError(f"ga_structural: graha {graha_name} missing from chart output")
 
 
 def _graha_house(chart_output: dict[str, Any], graha_name: str) -> int:
     for g in chart_output.get("grahas", []):
         if g["name"] == graha_name:
-            return int(g.get("house", 1))
-    return 1
+            if g.get("house") is None:
+                raise RuntimeError(f"ga_structural: house missing for {graha_name}")
+            return int(g["house"])
+    raise RuntimeError(f"ga_structural: graha {graha_name} missing from chart output")
 
 
 def _graha_longitude(chart_output: dict[str, Any], graha_name: str) -> float:
     for g in chart_output.get("grahas", []):
         if g["name"] == graha_name:
-            return float(g.get("longitude", 0.0))
-    return 0.0
+            if g.get("longitude") is None:
+                raise RuntimeError(f"ga_structural: longitude missing for {graha_name}")
+            longitude = float(g["longitude"])
+            if not math.isfinite(longitude):
+                raise RuntimeError(f"ga_structural: non-finite longitude for {graha_name}")
+            return longitude
+    raise RuntimeError(f"ga_structural: graha {graha_name} missing from chart output")
 
 
 def _graha_retrograde(chart_output: dict[str, Any], graha_name: str) -> bool:
     for g in chart_output.get("grahas", []):
         if g["name"] == graha_name:
-            return bool(g.get("retrograde", False))
-    return False
+            if "retrograde" not in g:
+                raise RuntimeError(f"ga_structural: retrograde state missing for {graha_name}")
+            return bool(g["retrograde"])
+    raise RuntimeError(f"ga_structural: graha {graha_name} missing from chart output")
 
 
 def _detect_kala_sarpa(varga_state: dict) -> dict:
@@ -1195,8 +1261,9 @@ def _build_aspect_rows(
                 ))
 
     # Conjunction within orb (10° default; single pass per spec §1 Q2)
-    for i, g1 in enumerate(ALL_GRAHAS):
-        for g2 in ALL_GRAHAS[i+1:]:
+    present_grahas = [g_name for g_name in ALL_GRAHAS if state.get(g_name) is not None]
+    for i, g1 in enumerate(present_grahas):
+        for g2 in present_grahas[i+1:]:
             long1 = _graha_longitude(chart_output, g1)
             long2 = _graha_longitude(chart_output, g2)
             orb = abs(long1 - long2)
@@ -6728,6 +6795,7 @@ def build_ga_structural(
 
         with (_conn() if owns_conn else nullcontext(conn)) as ay_conn:
             chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
+            _validate_chart_output_complete(chart_output)
 
             # FORENSIC gate — native-anchored; asserted only for the native (Phase 3B).
             if chart_id == CANONICAL_CHART_ID:
@@ -7966,6 +8034,7 @@ def build_ga_structural_substep(
 
     adapter_id = CANONICAL_AYANAMSHAS[ayanamsha_id]
     chart_output = compute_chart(inputs=bp, ayanamsha_id=adapter_id)
+    _validate_chart_output_complete(chart_output)
 
     if chart_id == CANONICAL_CHART_ID:
         forensic_gate(chart_output, ayanamsha_id)

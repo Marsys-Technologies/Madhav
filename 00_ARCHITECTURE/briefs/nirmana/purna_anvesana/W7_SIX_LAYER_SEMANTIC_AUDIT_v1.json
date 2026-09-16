@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "audit_id": "MADHAV-PURNA-ANVESANA-W7-P2-SEMANTIC-AUDIT",
   "audited_source_head": "3dacc5735",
-  "capability_knowledge_content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
+  "capability_knowledge_content_hash": "sha256:55e17219c3e537a442cf02777d501a28874dd27c2e67a55422c0af47424f85a7",
   "evidence_ceiling": "SOURCE_LOCAL_STRUCTURAL_AND_MANUAL_SEMANTIC_REVIEW",
   "explicit_exclusions": [
     "No doctrine or classical correctness ratification.",

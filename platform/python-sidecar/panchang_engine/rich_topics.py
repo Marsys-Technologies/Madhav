@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from typing import Optional
 import swisseph as swe
 
+from .swiss_state import serialized_swiss_state
+
 from .types import (
     SunMoonDynamics, AnandadiYoga, VasaFamily, PanchakaState,
     ShoonyaState, WindowMembership, MicroTiming, AngaAttributes,
@@ -61,6 +63,7 @@ def compute_nakshatra_attrs(nak_id: int, pct_elapsed: Optional[float] = None) ->
 # Topic 4: Sun/Moon dynamics
 # ---------------------------------------------------------------------------
 
+@serialized_swiss_state
 def compute_sun_moon_dynamics(jd: float) -> SunMoonDynamics:
     """
     Compute Moon illumination and Sun-Moon separation at Julian Day jd.

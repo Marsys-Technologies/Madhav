@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 
 import psycopg.rows
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult, SubStep
 from brahmagyan.graha_vocabulary import to_title
@@ -64,14 +65,17 @@ def _house_from_moon(moon_sign: str, planet_sign: str) -> int:
     Compute Gochara house count — 1-based counting from Moon sign.
     Moon's own sign = house 1; next sign = house 2; etc.
     """
-    moon_num = _SIGN_NAME_TO_NUM.get(moon_sign.lower(), 0)
-    planet_num = _SIGN_NAME_TO_NUM.get(planet_sign.lower(), 0)
-    if moon_num == 0 or planet_num == 0:
-        return 1  # fallback: same sign
+    moon_num = _SIGN_NAME_TO_NUM.get(moon_sign.lower())
+    planet_num = _SIGN_NAME_TO_NUM.get(planet_sign.lower())
+    if moon_num is None or planet_num is None:
+        raise ValueError(
+            f"ga_transit_anchors: invalid sign(s) moon={moon_sign!r}, planet={planet_sign!r}"
+        )
     return ((planet_num - moon_num) % 12) + 1
 
 
 @register("ga_transit_anchors")
+@l1_producer_contract
 class GaTransitAnchorsWriter(WriterBase):
     """
     Heavy writer: one sub-step per ayanamsha.
@@ -132,15 +136,9 @@ class GaTransitAnchorsWriter(WriterBase):
                     positions[graha]["natal_nakshatra"] = val_text.lower()
 
         if not positions:
-            logger.warning(
-                "[ga_transit_anchors] No chart_facts found for chart_id=%s ayanamsha=%s",
-                chart_id,
-                ayanamsha_id,
-            )
-            return WriterResult(
-                asset_id=self.asset_id,
-                rows_inserted=0,
-                notes=f"no chart_facts for {ayanamsha_id}",
+            raise RuntimeError(
+                f"ga_transit_anchors: no chart_facts for chart_id={chart_id} "
+                f"ayanamsha={ayanamsha_id}"
             )
 
         # ── FORENSIC assertion for canonical native chart ─────────────────────
@@ -165,11 +163,22 @@ class GaTransitAnchorsWriter(WriterBase):
         # ── Resolve Moon sign for house-from-Moon computation ─────────────────
         moon_sign = positions.get("moon", {}).get("natal_sign", "")
         if not moon_sign:
-            logger.error(
-                "[ga_transit_anchors] Moon sign not found in chart_facts for "
-                "chart_id=%s ayanamsha=%s — house_from_moon will be 1 for all grahas",
-                chart_id,
-                ayanamsha_id,
+            raise RuntimeError(
+                f"ga_transit_anchors: Moon sign missing for chart_id={chart_id} "
+                f"ayanamsha={ayanamsha_id}"
+            )
+
+        expected_grahas = set(_SUBJECT_TO_GRAHA.values())
+        incomplete = sorted(
+            graha for graha in expected_grahas
+            if graha not in positions
+            or not positions[graha].get("natal_sign")
+            or positions[graha].get("natal_degree_absolute") is None
+        )
+        if incomplete:
+            raise RuntimeError(
+                f"ga_transit_anchors: incomplete natal anchors for {incomplete!r}; "
+                "refusing partial/house-1 fallback output"
             )
 
         # ── L1 idempotency: delete then insert ───────────────────────────────
@@ -185,17 +194,7 @@ class GaTransitAnchorsWriter(WriterBase):
             for graha, pos in positions.items():
                 natal_sign = pos.get("natal_sign")
                 natal_degree = pos.get("natal_degree_absolute")
-                if natal_sign is None or natal_degree is None:
-                    logger.warning(
-                        "[ga_transit_anchors] Incomplete data for graha=%s chart_id=%s aya=%s; "
-                        "skipping row",
-                        graha, chart_id, ayanamsha_id,
-                    )
-                    continue
-
-                house_from_moon = (
-                    _house_from_moon(moon_sign, natal_sign) if moon_sign else 1
-                )
+                house_from_moon = _house_from_moon(moon_sign, natal_sign)
 
                 cur.execute(
                     """

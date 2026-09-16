@@ -13,10 +13,13 @@ NEVER calls ctx.db_conn.commit() / rollback() — caller owns the transaction.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Optional
+
+from panchang_engine.swiss_state import serialized_swiss_state
 
 logger = logging.getLogger(__name__)
 
@@ -181,13 +184,38 @@ def orb_strength_score(
 _EPHEMERIS_CACHE_MAXSIZE = 400_000
 
 
+def _resolved_ephemeris_path() -> str | None:
+    """Resolve the same configured/file-backed path used by L0 producers."""
+
+    candidates = (
+        os.environ.get("SWE_EPHE_PATH"),
+        os.environ.get("SWISSEPH_EPHE_PATH"),
+        "/app/ephe",
+        "/tmp/se1",
+    )
+    for candidate in candidates:
+        if candidate and os.path.isfile(os.path.join(candidate, "sepl_18.se1")):
+            return candidate
+    return None
+
+
 @lru_cache(maxsize=_EPHEMERIS_CACHE_MAXSIZE)
-def _calc_ut_cached(swe, jd: float, planet_id: int, flags: int) -> tuple[float, float]:
+def _calc_ut_cached(
+    swe,
+    jd: float,
+    planet_id: int,
+    flags: int,
+    sidereal_mode: int,
+    ephemeris_path: str | None,
+) -> tuple[float, float]:
     """
     Memoized swe.calc_ut(jd, planet_id, flags) -> (sidereal_lon_deg, speed_deg_per_day).
-    Keyed on the exact (swe module identity, jd, planet_id, flags) tuple --
-    no rounding. See the module note above for the correctness rationale.
+    Keyed on the exact Swiss module, JD, body, flags, sidereal mode and
+    configured ephemeris path -- no rounding.  ``sidereal_mode`` and
+    ``ephemeris_path`` are intentionally unused by the body: they are semantic
+    cache dimensions selected by the serialized caller.
     """
+    del sidereal_mode, ephemeris_path
     result = swe.calc_ut(jd, planet_id, flags)
     # result[0] is (lon, lat, dist, speed_lon, speed_lat, speed_dist)
     lon = result[0][0] % 360.0
@@ -198,9 +226,9 @@ def _calc_ut_cached(swe, jd: float, planet_id: int, flags: int) -> tuple[float, 
 def clear_ephemeris_cache() -> None:
     """Clear the process-local `_get_planet_pos` memoization cache. Exposed
     for tests/benchmarks; production callers do not need to call this -- the
-    cache is keyed on absolute (swe, jd, planet_id, flags), which is valid to
-    reuse across charts/builds within the same process (a given jd's
-    ephemeris position does not depend on which chart is being built)."""
+    cache is keyed on absolute calculation inputs plus sidereal mode and
+    ephemeris path, which is valid to reuse across charts/builds within the
+    same process."""
     _calc_ut_cached.cache_clear()
 
 
@@ -210,12 +238,16 @@ def ephemeris_cache_info():
     return _calc_ut_cached.cache_info()
 
 
+@serialized_swiss_state
 def _get_planet_pos(swe, planet: str, jd: float) -> tuple[float, float]:
     """
     Return (sidereal_longitude_deg, speed_deg_per_day) for a planet at JD jd.
     Uses Lahiri sidereal (swe.SIDM_LAHIRI).
     TRUE_NODE for Rahu; Ketu = Rahu + 180.
     """
+    ephemeris_path = _resolved_ephemeris_path()
+    if hasattr(swe, "set_ephe_path"):
+        swe.set_ephe_path(ephemeris_path)
     swe.set_sid_mode(swe.SIDM_LAHIRI)
 
     if planet == "Ketu":
@@ -230,7 +262,14 @@ def _get_planet_pos(swe, planet: str, jd: float) -> tuple[float, float]:
         raise ValueError(f"Unexpected planet_id type for {planet!r}: {planet_id!r}")
 
     flags = swe.FLG_SIDEREAL | swe.FLG_SPEED
-    return _calc_ut_cached(swe, jd, planet_id, flags)
+    return _calc_ut_cached(
+        swe,
+        jd,
+        planet_id,
+        flags,
+        swe.SIDM_LAHIRI,
+        ephemeris_path,
+    )
 
 
 def _step_size(planet: str) -> float:

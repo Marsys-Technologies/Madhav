@@ -1173,6 +1173,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -1391,12 +1393,32 @@ jobs:
           # it; otherwise old receipts could survive a code deployment as fresh.
           python -m pipeline.orchestrator.provenance_inventory --check
           # Nirmana #1715: the per-layer analysis-receipt pins are derived FROM
-          # that inventory. Checking them here (offline; no DB) is what keeps the
-          # generalised receipt spine fail-closed -- a writer change that lands
-          # without re-pinning its layer fails the build instead of silently
+          # that inventory. Checking them on the PR head (offline; no DB) is what
+          # keeps the generalised receipt spine fail-closed -- a writer change that
+          # lands without re-pinning its layer fails the build instead of silently
           # letting a stale analysis authorise a rebuild.
-          python ../scripts/generate/nirmana_analysis_layer_pins.py --check
+          #
+          # A merge-queue ref is not that PR head: GitHub synthesizes a linear
+          # delivery commit on main, so immutable commits intentionally recorded in
+          # the pin history are not ancestors of its HEAD even after fetch-depth: 0.
+          # The exact PR head passed this required check before it could enter the
+          # queue; rerunning the ancestry predicate on the synthetic topology would
+          # therefore reject every otherwise-valid queued delivery. Keep the strict
+          # check for all source-head events and retain the inventory + Python suite
+          # below for the merge-group tree itself.
+          pin_ancestry_test=()
+          if [ "$GITHUB_EVENT_NAME" != "merge_group" ]; then
+            python ../scripts/generate/nirmana_analysis_layer_pins.py --check
+            pin_ancestry_test=(../scripts/__tests__/test_nirmana_analysis_layer_pins.py)
+          else
+            echo "merge_group: pin ancestry was verified on the queued PR head"
+            # This test module imports immutable historical blobs during collection,
+            # so it intentionally exercises the same source-head-only ancestry
+            # predicate as --check. All other Python tests below still execute on
+            # the synthetic delivery tree.
+          fi
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
+            "${pin_ancestry_test[@]}" \
             pipeline/orchestrator/writers/tests/test_bg_sky_calendar.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_metadata_upsert.py \
             pipeline/orchestrator/writers/tests/test_bg_texts_source_manifest.py \

@@ -385,17 +385,22 @@ def _resolve_panchanga_get_location(
     """
     Resolve (lat, lon, tz_offset_minutes, location_label) for panchanga_get.
 
-    Priority: explicit lat/lon wins (tz_offset_minutes defaults to +330/IST if
-    omitted — documented, not silent, since this project's whole panchāṅga
-    surface is IST-anchored) > named `location` (must be a recognized key,
-    else a loud error — never a silent geocode guess) > no params at all
-    (defaults to Bhubaneswar, the project's canonical native location, per
-    the same fallback panchang.py::_fetch_native_context already uses).
+    Explicit coordinates are one indivisible `(lat, lon, timezone)` tuple.
+    Named locations retain their pinned timezone. No field is silently borrowed
+    from Bhubaneswar for an otherwise arbitrary location.
     """
+    if (lat is None) != (lon is None):
+        raise PanchangaGetLocationError(
+            "[EXTERNAL_COMPUTATION_REQUIRED] lat and lon must be supplied together."
+        )
     if lat is not None and lon is not None:
-        resolved_tz = tz_offset_minutes if tz_offset_minutes is not None else 330
+        if tz_offset_minutes is None:
+            raise PanchangaGetLocationError(
+                "[EXTERNAL_COMPUTATION_REQUIRED] explicit lat/lon require "
+                "tz_offset_minutes; the service never guesses a timezone."
+            )
         label = location or f"lat={lat},lon={lon}"
-        return lat, lon, resolved_tz, label
+        return lat, lon, tz_offset_minutes, label
 
     if location:
         key = location.strip().lower()
@@ -407,7 +412,19 @@ def _resolve_panchanga_get_location(
                 f"this endpoint never guesses coordinates for an unrecognized name."
             )
         loc = _PANCHANGA_KNOWN_LOCATIONS[key]
-        return loc["lat"], loc["lon"], int(loc["tz_offset_minutes"]), location
+        expected_tz = int(loc["tz_offset_minutes"])
+        if tz_offset_minutes is not None and tz_offset_minutes != expected_tz:
+            raise PanchangaGetLocationError(
+                f"[EXTERNAL_COMPUTATION_REQUIRED] timezone {tz_offset_minutes} conflicts "
+                f"with pinned {location!r} timezone {expected_tz}."
+            )
+        return loc["lat"], loc["lon"], expected_tz, location
+
+    if tz_offset_minutes is not None:
+        raise PanchangaGetLocationError(
+            "[EXTERNAL_COMPUTATION_REQUIRED] tz_offset_minutes requires a named "
+            "location or an explicit lat/lon tuple."
+        )
 
     loc = _PANCHANGA_KNOWN_LOCATIONS[_PANCHANGA_DEFAULT_LOCATION_KEY]
     return loc["lat"], loc["lon"], int(loc["tz_offset_minutes"]), "Bhubaneswar (default)"
@@ -470,9 +487,8 @@ def panchanga_get_endpoint(
     lon: Optional[float] = Query(None, ge=-180, le=180, description="Explicit longitude (overrides `location`)."),
     tz_offset_minutes: Optional[int] = Query(
         None, ge=-720, le=840,
-        description="UTC offset in minutes for the civil date and all local-time fields. "
-                    "Defaults to +330 (IST) — every named location in this endpoint's gazetteer "
-                    "is IST-anchored, matching the project's canonical panchāṅga convention.",
+        description="UTC offset in minutes for the civil date and local-time fields. "
+                    "Required with explicit coordinates; named locations use their pinned offset.",
     ),
 ):
     """
@@ -547,5 +563,39 @@ def panchanga_get_endpoint(
         "panchang": payload,
         "source": "panchang_engine.compute_panchang (engine-direct; not the panchanga_daily cache — "
                   "see this endpoint's module-level comment for why)",
+        "service_context": {
+            "schema_version": "l0-panchanga-service-context/v1",
+            "service_asset_id": "bg_panchanga",
+            "grain": "civil_date+latitude+longitude+tz_offset_minutes",
+            "frame": "geocentric_sidereal",
+            "ayanamsha_id": "lahiri",
+            "node_mode": "mean",
+            "calendar_day_boundary": "local_sunrise_to_next_local_sunrise",
+            "sunrise_convention": "upper_limb_with_atmospheric_refraction",
+            "reference_instant": "sunrise_at_resolved_location",
+            "location_source": (
+                "explicit_coordinates" if lat is not None else
+                "named_gazetteer" if location else "pinned_default"
+            ),
+            "computation_version": payload.get("computation_version"),
+            "ephemeris_version": payload.get("ephemeris_version"),
+            "precision": {
+                "civil_date": "day",
+                "coordinates": "caller_or_pinned_gazetteer_precision",
+                "timezone": "fixed_utc_offset_minutes_not_zone_rules",
+                "transition_times": "second_in_serialized_output",
+            },
+            "approximations": [
+                "fixed UTC offset does not encode daylight-saving transitions",
+                "named-location gazetteer is intentionally bounded",
+            ],
+            "failure_contract": {
+                "partial_or_timezone_free_coordinates": "HTTP_422",
+                "unknown_named_location": "HTTP_422",
+                "conflicting_named_timezone": "HTTP_422",
+                "engine_validation_or_range": "HTTP_422",
+                "engine_failure": "HTTP_500",
+            },
+        },
         "computed_at": _DateTime.now(_TZ.utc).isoformat(),
     }

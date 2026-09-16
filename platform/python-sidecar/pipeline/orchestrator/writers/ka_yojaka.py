@@ -29,7 +29,11 @@ Every emitted lord traces to a real L1 row (§N.5 — reference, never invent).
 import json
 import logging
 
-from brahmagyan.domain_vocabulary import canonical_domain
+from brahmagyan.domain_vocabulary import (
+    CANONICAL_DOMAINS,
+    DOMAIN_SYNONYMS,
+    canonical_domain,
+)
 from brahmagyan.graha_vocabulary import to_title
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
 from services.ka_yojaka.classifier import classify_signal
@@ -56,20 +60,19 @@ DISTRIBUTION_YOGA_MIN_GRAHAS = 6
 
 @register('ka_yojaka')
 class KaYojakaWriter(WriterBase):
+    asset_id = 'ka_yojaka'
+
     def run(self, ctx) -> WriterResult:
         conn = ctx.db_conn  # orchestrator owns the transaction; writer never commits
         chart_id = ctx.config['chart_id']
 
-        # Step 1: delete existing for this chart (delete-then-insert idempotency per §N.3)
+        if ctx.dry_run:
+            return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
+
         with conn.cursor() as _timeout_cur:
             _timeout_cur.execute("SET LOCAL statement_timeout = 0")
-        with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
-                (chart_id,),
-            )
 
-        # Step 2: read all MSR signals for this chart (SELECT only — never write to bodha_*)
+        # Step 1: read all MSR signals for this chart (SELECT only — never write to bodha_*)
         # WP-S4-R45/CR-5/CR-12/CR-48: shadbala_norm added — real per-signal strength
         # feeding the non-affliction proxy below (kills the flat-0.5 alignment wall).
         with conn.cursor() as cur:
@@ -77,12 +80,20 @@ class KaYojakaWriter(WriterBase):
                 """
                 SELECT signal_id, chart_id, ayanamsha_id, signal_type_class, signal_type_id,
                        configuration_jsonb, constituent_facts_array, valence, dignity_score,
-                       shadbala_norm
+                       shadbala_norm, domains_affected_array, domain_salience_jsonb,
+                       contradicts_signals_array
                 FROM bodha_msr_signals WHERE chart_id = %s
                 """,
                 (chart_id,),
             )
             signals = cur.fetchall()
+
+        if not signals:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no bodha_msr_signals; prior predicate partition preserved",
+            )
 
         # CR-5/CR-12/CR-48 (flat dasha_activation_proximity_score=0.5 wall): the
         # writer's downstream _proximity_score() formula (dignity * non_affliction)
@@ -144,13 +155,18 @@ class KaYojakaWriter(WriterBase):
                     FROM bodha_pratijna bp
                     JOIN brahma_event_ontology beo USING (event_class_id)
                     WHERE bp.chart_id = %s
-                    ORDER BY bp.grade DESC
+                    ORDER BY bp.grade DESC NULLS LAST, bp.pratijna_id
                     """,
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    d = str(row['domain'] or 'unknown')
-                    pratijna_by_domain.setdefault(d, []).append(str(row['pratijna_id']))
+                    d = _canonicalize_explicit_domain(row['domain'])
+                    if d is None:
+                        continue
+                    promise_id = str(row['pratijna_id'])
+                    domain_promises = pratijna_by_domain.setdefault(d, [])
+                    if promise_id not in domain_promises:
+                        domain_promises.append(promise_id)
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -165,7 +181,13 @@ class KaYojakaWriter(WriterBase):
                     (chart_id,),
                 )
                 for row in cur.fetchall():
-                    domain_confirmation[str(row['domain'])] = int(row['aya_count'] or 0)
+                    d = _canonicalize_explicit_domain(row['domain'])
+                    if d is None:
+                        continue
+                    domain_confirmation[d] = max(
+                        domain_confirmation.get(d, 0),
+                        int(row['aya_count'] or 0),
+                    )
             with conn.cursor() as _sp:
                 _sp.execute("RELEASE SAVEPOINT sp_pratijna_yojaka")
             logger.debug("ka_yojaka: pratijna linkage loaded — %d domains", len(pratijna_by_domain))
@@ -194,6 +216,17 @@ class KaYojakaWriter(WriterBase):
                 'dignity_score': sig['dignity_score'],
                 'shadbala_norm': sig.get('shadbala_norm'),
             }
+            # These columns are the accepted L2 structural contract.  Keep the
+            # membership test so old unit fixtures that pre-date the columns
+            # exercise the documented signal_type_id compatibility fallback,
+            # while an explicitly empty current array remains honestly empty.
+            for structural_key in (
+                'domains_affected_array',
+                'domain_salience_jsonb',
+                'contradicts_signals_array',
+            ):
+                if structural_key in sig:
+                    signal_dict[structural_key] = sig.get(structural_key)
             sc = classify_signal(signal_dict)
             pred = build_predicate(signal_dict, sc)
 
@@ -282,15 +315,49 @@ class KaYojakaWriter(WriterBase):
             cgm_weight = cgm_pagerank.get(primary_graha, 0.5) if primary_graha else 0.5
             pred['dasha_eligibility_rule']['cgm_centrality_weight'] = round(cgm_weight, 4)
 
-            # D6: enrich with CDLM domain strength for the signal's inferred domain.
-            domain = _infer_signal_domain(signal_dict)
-            pred['dasha_eligibility_rule']['cdlm_domain_strength'] = round(
-                cdlm_domain_strength.get(domain, 0.5), 4
+            # DP-SD-019: preserve L2's complete signed multi-domain structure.
+            # The old path inferred ONE keyword domain from signal_type_id and
+            # truncated that domain's compatible promises to five.  Build a
+            # lossless deterministic projection from the accepted L2 columns,
+            # while retaining scalar aggregates for existing consumers.
+            structural = _build_structural_domain_context(
+                signal_dict,
+                cdlm_domain_strength=cdlm_domain_strength,
+                pratijna_by_domain=pratijna_by_domain,
+                domain_confirmation=domain_confirmation,
             )
+            rule = pred['dasha_eligibility_rule']
+            rule['domains_affected'] = structural['domains_affected']
+            rule['domain_source'] = structural['domain_source']
+            rule['domain_salience_by_domain'] = structural['domain_salience_by_domain']
+            rule['cdlm_domain_strength_by_domain'] = structural['cdlm_domain_strength_by_domain']
+            rule['cdlm_domain_strength'] = structural['cdlm_domain_strength']
+            rule['pratijna_ids_by_domain'] = structural['pratijna_ids_by_domain']
+            rule['pratijna_ids'] = structural['pratijna_ids']
+            rule['multi_system_confirmation_by_domain'] = structural[
+                'multi_system_confirmation_by_domain'
+            ]
+            rule['multi_system_confirmation_count'] = structural[
+                'multi_system_confirmation_count'
+            ]
+            rule['primary_domain'] = structural['primary_domain']
+            rule['multi_system_confirmation_aggregate_rule'] = 'primary_domain_v1'
 
-            # P5A: pratijna linkage — activated promise IDs + multi-system ayanamsha confirmation count
-            pred['dasha_eligibility_rule']['pratijna_ids'] = pratijna_by_domain.get(domain, [])[:5]
-            pred['dasha_eligibility_rule']['multi_system_confirmation_count'] = domain_confirmation.get(domain, 0)
+            hook = pred['strength_affliction_hook']
+            hook['signal_valence'] = structural['signal_valence']
+            hook['contrary_signal_ids'] = structural['contrary_signal_ids']
+            hook['contrary_evidence_state'] = structural['contrary_evidence_state']
+
+            ledger = pred['derivation_ledger']
+            ledger['source_context'] = structural['source_context']
+            ledger['structural_projection'] = {
+                'version': 'yojaka_multidomain_signed_v1',
+                'domain_membership_source': structural['domain_source'],
+                'domain_salience_source': 'bodha_msr_signals.domain_salience_jsonb',
+                'valence_source': 'bodha_msr_signals.valence',
+                'contrary_evidence_source': 'bodha_msr_signals.contradicts_signals_array',
+                'promise_compatibility_rule': 'canonical_domain_overlap',
+            }
 
             idx = len(enriched)
             enriched.append((sig, sc, pred))
@@ -363,12 +430,27 @@ class KaYojakaWriter(WriterBase):
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """
+
+        if not rows:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="no activation-predicate candidate rows; prior partition preserved",
+            )
+
+        # Step 4: replace only after the full candidate exists.  This prevents
+        # missing upstream data from committing an empty chart partition.
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM kala_activation_predicates WHERE chart_id = %s",
+                (chart_id,),
+            )
         with conn.cursor() as cur:
             for i in range(0, len(rows), 1000):
                 batch = rows[i:i + 1000]
                 cur.executemany(_INSERT_SQL, batch)
 
-        return WriterResult(asset_id='ka_yojaka', rows_inserted=len(rows))
+        return WriterResult(asset_id=self.asset_id, rows_inserted=len(rows))
 
     def _fetch_house_lord_map(self, conn, chart_id: str) -> dict:
         """WP-S4-R45-iter2: fetch chart_facts(fact_category='lord_in_house_per_varga')
@@ -675,6 +757,182 @@ def _infer_signal_domain(signal_dict: dict) -> str:
         if any(kw in stid for kw in keywords):
             return canonical_domain(raw_domain)
     return 'general'
+
+
+def _canonicalize_explicit_domain(raw: object) -> str | None:
+    """Canonicalize a stated domain without inventing ``general`` on a miss."""
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    normalized = raw.strip().lower()
+    normalized = DOMAIN_SYNONYMS.get(normalized, normalized)
+    return normalized if normalized in CANONICAL_DOMAINS else None
+
+
+def _normalize_signal_domains(signal_dict: dict) -> tuple[list[str], str]:
+    """Return stable unique canonical memberships and their exact source.
+
+    Current L2 rows always carry ``domains_affected_array``.  When the column is
+    present, even an empty/invalid value is authoritative and remains empty; the
+    keyword fallback exists only for old fixtures/rows that genuinely lack the
+    column.  This prevents an unknown upstream state from becoming a fabricated
+    ``general`` or keyword-derived membership.
+    """
+    if 'domains_affected_array' in signal_dict:
+        raw_domains = signal_dict.get('domains_affected_array')
+        if isinstance(raw_domains, str):
+            try:
+                raw_domains = json.loads(raw_domains)
+            except Exception:
+                raw_domains = []
+        if not isinstance(raw_domains, (list, tuple)):
+            raw_domains = []
+        domains: list[str] = []
+        for raw in raw_domains:
+            domain = _canonicalize_explicit_domain(raw)
+            if domain is not None and domain not in domains:
+                domains.append(domain)
+        return domains, 'bodha_msr_signals.domains_affected_array'
+
+    return [_infer_signal_domain(signal_dict)], 'signal_type_id_keyword_fallback'
+
+
+def _stable_string_ids(raw: object) -> list[str] | None:
+    """Normalize an optional SQL/JSON array to sorted unique string IDs."""
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = [raw]
+    if not isinstance(raw, (list, tuple, set)):
+        raw = []
+    return sorted({str(value) for value in raw if value is not None})
+
+
+def _domain_salience_for(
+    raw: object,
+    domains: list[str],
+) -> dict[str, float]:
+    """Project only stated canonical-domain salience values deterministically."""
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except Exception:
+            raw = {}
+    if not isinstance(raw, dict):
+        return {}
+
+    normalized: dict[str, float] = {}
+    for raw_domain, raw_value in raw.items():
+        domain = _canonicalize_explicit_domain(raw_domain)
+        if domain not in domains or raw_value is None:
+            continue
+        try:
+            value = round(float(raw_value), 4)
+        except (TypeError, ValueError):
+            continue
+        # A synonym and canonical key may both exist.  Max is deterministic and
+        # retains the stronger stated salience without summing duplicate labels.
+        normalized[domain] = max(normalized.get(domain, value), value)
+    return {domain: normalized[domain] for domain in domains if domain in normalized}
+
+
+def _build_structural_domain_context(
+    signal_dict: dict,
+    *,
+    cdlm_domain_strength: dict[str, float],
+    pratijna_by_domain: dict[str, list[str]],
+    domain_confirmation: dict[str, int],
+) -> dict:
+    """Build Yojaka's complete L2→L3 signed/multi-domain projection.
+
+    The per-domain maps retain exact distinctions.  The existing CDLM scalar
+    stays bound to the legacy inferred-domain lookup so the accepted CDLM
+    behavior does not drift; the new per-domain map carries the complete view.
+    Multi-system confirmation's compatibility scalar uses the authoritative
+    primary domain (the first L2 membership), exactly matching ph_nimitta's
+    existing ``domains_affected_array[1]`` selection; the complete map preserves
+    secondary-domain support without cross-domain inflation.  Promise IDs are
+    never capped; they are stable and de-duplicated in upstream domain order,
+    then SQL grade/id order.
+    """
+    domains, domain_source = _normalize_signal_domains(signal_dict)
+
+    strength_by_domain = {
+        domain: round(float(cdlm_domain_strength.get(domain, 0.5)), 4)
+        for domain in domains
+    }
+    promise_ids_by_domain: dict[str, list[str]] = {}
+    all_promise_ids: list[str] = []
+    all_promise_seen: set[str] = set()
+    for domain in domains:
+        domain_ids: list[str] = []
+        domain_seen: set[str] = set()
+        for promise_id in pratijna_by_domain.get(domain, []):
+            normalized_id = str(promise_id)
+            if normalized_id not in domain_seen:
+                domain_seen.add(normalized_id)
+                domain_ids.append(normalized_id)
+            if normalized_id not in all_promise_seen:
+                all_promise_seen.add(normalized_id)
+                all_promise_ids.append(normalized_id)
+        promise_ids_by_domain[domain] = domain_ids
+
+    confirmation_by_domain = {
+        domain: max(0, int(domain_confirmation.get(domain, 0)))
+        for domain in domains
+    }
+    primary_domain = domains[0] if domains else None
+
+    raw_contrary = signal_dict.get('contradicts_signals_array')
+    contrary_ids = _stable_string_ids(raw_contrary)
+    if contrary_ids is None:
+        contrary_state = 'not_measured'
+    elif contrary_ids:
+        contrary_state = 'present'
+    else:
+        contrary_state = 'measured_none'
+
+    constituent_facts = signal_dict.get('constituent_facts_array') or []
+    if not isinstance(constituent_facts, (list, tuple)):
+        constituent_facts = []
+
+    return {
+        'domains_affected': domains,
+        'primary_domain': primary_domain,
+        'domain_source': domain_source,
+        'domain_salience_by_domain': _domain_salience_for(
+            signal_dict.get('domain_salience_jsonb'), domains,
+        ),
+        'cdlm_domain_strength_by_domain': strength_by_domain,
+        'cdlm_domain_strength': round(
+            float(cdlm_domain_strength.get(_infer_signal_domain(signal_dict), 0.5)),
+            4,
+        ),
+        'pratijna_ids_by_domain': promise_ids_by_domain,
+        'pratijna_ids': all_promise_ids,
+        'multi_system_confirmation_by_domain': confirmation_by_domain,
+        'multi_system_confirmation_count': (
+            confirmation_by_domain.get(primary_domain, 0)
+            if primary_domain is not None
+            else 0
+        ),
+        'signal_valence': (
+            str(signal_dict['valence'])
+            if signal_dict.get('valence') is not None
+            else None
+        ),
+        'contrary_signal_ids': contrary_ids,
+        'contrary_evidence_state': contrary_state,
+        'source_context': {
+            'source_table': 'bodha_msr_signals',
+            'chart_id': str(signal_dict.get('chart_id')),
+            'ayanamsha_id': str(signal_dict.get('ayanamsha_id')),
+            'signal_id': str(signal_dict.get('signal_id')),
+            'constituent_fact_ids': [str(fid) for fid in constituent_facts],
+        },
+    }
 
 
 def _resolve_firing_lords(

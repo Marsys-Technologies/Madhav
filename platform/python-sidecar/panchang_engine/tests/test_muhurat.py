@@ -50,8 +50,17 @@ def test_find_muhurat_top_n_respected():
 
 
 def test_all_events_supported():
-    """All 6 MVP events are recognized."""
+    """The six MVP and two L3 Kāla remedial events are recognized."""
     from panchang_engine.muhurat import is_supported_event, EVENTS_MVP
-    assert len(EVENTS_MVP) == 6
+    assert set(EVENTS_MVP) == {
+        "vivah",
+        "griha_pravesh",
+        "vyapara",
+        "yatra",
+        "property_purchase",
+        "mantra_initiation",
+        "upaya_ritual",
+        "sadhana_initiation",
+    }
     for event in EVENTS_MVP:
         assert is_supported_event(event), f"EVENTS_MVP entry '{event}' not recognized"

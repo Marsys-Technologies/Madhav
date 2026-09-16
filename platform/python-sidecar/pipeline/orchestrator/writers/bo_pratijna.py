@@ -157,12 +157,12 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 
 from brahmagyan.chart_reader_v4 import ChartReaderV4
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 from .bo_pratijna_v4_engine import ClassScore, PratijnaV4Engine
 
 logger = logging.getLogger(__name__)
@@ -213,7 +213,7 @@ def status_from_occurrence_label(occurrence_label: str) -> str:
 
 
 _PRATIJNA_INSERT = """
-INSERT INTO bodha_pratijna (
+INSERT INTO public.bodha_pratijna (
     pratijna_id, chart_id, ayanamsha_id, build_id,
     event_class_id, status, grade,
     occurrence_grade, condition_grade,
@@ -357,7 +357,10 @@ def _row_for_score(
     """
     if score.status == "no_evidence":
         return {
-            "pratijna_id": str(uuid.uuid4()),
+            "pratijna_id": stable_semantic_uuid("pratijna", {
+                "chart_id": chart_id, "ayanamsha_id": aya,
+                "event_class_id": event_class_id,
+            }),
             "chart_id": chart_id,
             "ayanamsha_id": aya,
             "build_id": build_id,
@@ -373,6 +376,10 @@ def _row_for_score(
                 "engine_version": ENGINE_VERSION,
                 "rubric_version": score.rubric_version,
                 "reason": "no KaryatvaMap registered for this event_class_id",
+                "occurrence_unit": "probability_like_structural_score_0_1",
+                "occurrence_polarity": "higher_is_more_formed",
+                "condition_unit": "affliction_0_10",
+                "condition_polarity": "higher_is_more_afflicted",
             }),
             "formula_version": FORMULA_VERSION,
             "computed_at": now,
@@ -387,6 +394,10 @@ def _row_for_score(
         "occurrence_label": score.occurrence_label,
         "condition_label": score.condition_label,
         "occurrence_pre_denial": score.occurrence_pre_denial,
+        "occurrence_unit": "probability_like_structural_score_0_1",
+        "occurrence_polarity": "higher_is_more_formed",
+        "condition_unit": "affliction_0_10",
+        "condition_polarity": "higher_is_more_afflicted",
         "status_mapping_rule": (
             "V4_RUBRIC_SPEC_v1_0.md §6.1 occurrence band -> status: "
             "DENIED->denied, WEAK/MODERATE->conditional, "
@@ -399,7 +410,10 @@ def _row_for_score(
         "provenance": score.provenance,
     }
     return {
-        "pratijna_id": str(uuid.uuid4()),
+        "pratijna_id": stable_semantic_uuid("pratijna", {
+            "chart_id": chart_id, "ayanamsha_id": aya,
+            "event_class_id": event_class_id,
+        }),
         "chart_id": chart_id,
         "ayanamsha_id": aya,
         "build_id": build_id,
@@ -419,6 +433,7 @@ def _row_for_score(
 
 
 @register("bo_pratijna")
+@l2_producer("bo_pratijna")
 class BoPratijnaWriter(WriterBase):
     """bo_pratijna -- Promise Register (L2 Bodha), PRATIJÑĀ v4.1.0 (R22 adoption)."""
 
@@ -428,11 +443,19 @@ class BoPratijnaWriter(WriterBase):
         conn = ctx.db_conn
         now = datetime.now(timezone.utc).isoformat()
 
+        if ctx.dry_run:
+            logger.info("[bo_pratijna dry_run] chart=%s", chart_id)
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes="dry_run; no mutation",
+            )
+
         # Idempotency: delete prior rows for this chart (§N.3).
         # Disable per-statement timeout for the heavy DELETE on large charts.
         # SET LOCAL scopes to the orchestrator txn (writer never commits).
         conn.execute("SET LOCAL statement_timeout = 0")
-        conn.execute("DELETE FROM bodha_pratijna WHERE chart_id=%s", [chart_id])
+        conn.execute("DELETE FROM public.bodha_pratijna WHERE chart_id=%s", [chart_id])
 
         rows_inserted = 0
         no_evidence_count = 0

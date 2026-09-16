@@ -104,6 +104,19 @@ ON CONFLICT (chart_id, ayanamsha_id, graha, window_start) DO NOTHING
 """
 
 
+def _has_complete_daily_series(
+    rows: list[tuple[date, float]], horizon_start: date, horizon_end: date,
+) -> bool:
+    """Require one and only one ordered row for every inclusive horizon day."""
+    expected_count = (horizon_end - horizon_start).days + 1
+    if len(rows) != expected_count:
+        return False
+    return all(
+        observed_date == horizon_start + timedelta(days=offset)
+        for offset, (observed_date, _value) in enumerate(rows)
+    )
+
+
 def _fetch_janma_nakshatra_idx(conn: Any, chart_id: str) -> tuple[int, str] | None:
     """Returns (0-based nakshatra_idx, fact_id) for the natal Moon, or None if
     the L1 dependency (ga_positions) has not produced this fact — honest
@@ -195,14 +208,26 @@ class KaMoortiNirnayaWriter(WriterBase):
         bodies_needed = MOORTI_GRAHAS + ("Moon",)
         daily_by_body = _fetch_daily_sidereal_by_body(conn, horizon_start, horizon_end, offset, bodies_needed)
 
+        incomplete_bodies = [
+            body for body in bodies_needed
+            if not _has_complete_daily_series(
+                daily_by_body.get(body) or [], horizon_start, horizon_end,
+            )
+        ]
+        if incomplete_bodies:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "incomplete daily ephemeris coverage for " + ",".join(incomplete_bodies)
+                    + "; prior partition preserved"
+                ),
+            )
+
         moon_daily = daily_by_body.get("Moon") or []
         moon_nak_by_date: dict[date, int] = {
             d: int(lon // NAK_SIZE_DEG) % 27 for d, lon in moon_daily
         }
-
-        # Idempotency: per-chart delete-then-insert (§N.3)
-        with conn.cursor() as cur:
-            cur.execute(_DELETE_SQL, (chart_id,))
 
         all_rows: list[dict] = []
         grahas_with_data = 0
@@ -277,6 +302,10 @@ class KaMoortiNirnayaWriter(WriterBase):
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
             )
+        # Do not turn missing/incomplete upstream coverage into destructive
+        # empty replacement.  The candidate is fully assembled first.
+        with conn.cursor() as cur:
+            cur.execute(_DELETE_SQL, (chart_id,))
 
         with conn.cursor() as cur:
             cur.executemany(_INSERT_SQL, all_rows)

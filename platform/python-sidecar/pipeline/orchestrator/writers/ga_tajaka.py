@@ -1,10 +1,12 @@
 """Orchestrator adapter for the L1 Gaṇita `ga_tajaka` writer (Vārṣaphal, light)."""
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult
 
 
 @register('ga_tajaka')
+@l1_producer_contract
 class GaTajakaWriter(WriterBase):
     asset_id = 'ga_tajaka'
     source_paths = ['platform/python-sidecar/ga_writers/ga_tajaka_writer.py']

@@ -9,25 +9,28 @@
  *   runParityCheck() // throws on mismatch
  */
 
-// ── L0 Brahmagyan asset registry (12 assets post Phase α) ────────────────────
-// Phase α (2026-06-08): 8 original + 4 new (bg_yogas, bg_dasha_systems,
-// bg_doshas, bg_compendium_index). Per design §3 of L0_BRAHMAGYAN_HOLISTIC_DESIGN.
-export const L0_BRAHMAGYAN_ASSETS = [
-  'bg_ephemeris',
-  'bg_reference',
-  'bg_texts',
-  'bg_ontology',
-  'bg_text_index',
-  'bg_rules',
-  'bg_remedies',
-  'bg_concordance',
-  'bg_yogas',
-  'bg_dasha_systems',
-  'bg_doshas',
-  'bg_compendium_index',
-] as const
+import writerDigests from "../../../generated/nirmana-writer-digests.json";
+import layerPins from "../../../generated/nirmana-analysis-layer-pins.json";
 
-export type L0BrahmagyanAsset = (typeof L0_BRAHMAGYAN_ASSETS)[number]
+// ── L0 Brahmagyan generated inventory ───────────────────────────────────────
+// The previous literal froze the historical 12-asset Phase-alpha picture and
+// could report confidence while omitting 28 current identities. Derive the
+// producer description from the two checked-in generated authorities used by
+// the execution foundation: 36 bg_* writers plus four named non-writers.
+const l0Writers = Object.keys(writerDigests.writers).filter((id) =>
+  id.startsWith("bg_"),
+);
+const l0NonWriters = layerPins.layers.L0.non_writer_assets;
+if (l0Writers.length !== 36 || l0NonWriters.length !== 4) {
+  throw new Error(
+    `L0 generated inventory mismatch: writers=${l0Writers.length}, non_writers=${l0NonWriters.length}`,
+  );
+}
+export const L0_BRAHMAGYAN_ASSETS: readonly string[] = Object.freeze(
+  [...l0Writers, ...l0NonWriters].sort(),
+);
+
+export type L0BrahmagyanAsset = string;
 
 // FK integrity assertions (run against prod periodically; non-blocking):
 //   - every brahma_yoga_catalog.canonical_id appears in brahma_ontology (entity_class='yoga')
@@ -36,8 +39,8 @@ export type L0BrahmagyanAsset = (typeof L0_BRAHMAGYAN_ASSETS)[number]
 //   - every brahma_compendium_index.text_id resolves in classical_texts
 //   - every brahma_compendium_index.topic_id resolves in reference_topic_tags
 
-import { listCapabilityUris } from './index'
-import type { ParityCheckResult, CapabilityUri } from './types'
+import { listCapabilityUris } from "./index";
+import type { ParityCheckResult, CapabilityUri } from "./types";
 
 // ── MCP exports snapshot ──────────────────────────────────────────────────────
 
@@ -54,17 +57,17 @@ import type { ParityCheckResult, CapabilityUri } from './types'
  * never as an empty-but-passing set.
  */
 export async function getMcpExportedUris(): Promise<{
-  uris: Set<CapabilityUri>
-  bridgeError: string | null
+  uris: Set<CapabilityUri>;
+  bridgeError: string | null;
 }> {
   // Dynamic import to avoid hard dependency in non-MCP contexts
   try {
-    const { listMcpCapabilityUris } = await import('./mcp_capability_bridge')
-    const uris = await listMcpCapabilityUris()
-    return { uris: new Set(uris), bridgeError: null }
+    const { listMcpCapabilityUris } = await import("./mcp_capability_bridge");
+    const uris = await listMcpCapabilityUris();
+    return { uris: new Set(uris), bridgeError: null };
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return { uris: new Set<CapabilityUri>(), bridgeError: message }
+    const message = err instanceof Error ? err.message : String(err);
+    return { uris: new Set<CapabilityUri>(), bridgeError: message };
   }
 }
 
@@ -82,22 +85,22 @@ export function buildParityResult(
   mcpUris: Set<CapabilityUri>,
   bridgeError: string | null,
 ): ParityCheckResult {
-  const missing_in_mcp: CapabilityUri[] = []
-  const missing_in_consume: CapabilityUri[] = []
-  const extra_in_mcp: CapabilityUri[] = []
+  const missing_in_mcp: CapabilityUri[] = [];
+  const missing_in_consume: CapabilityUri[] = [];
+  const extra_in_mcp: CapabilityUri[] = [];
 
   // Find URIs in Consume Chat but not in MCP
   for (const uri of consumeUris) {
     if (!mcpUris.has(uri)) {
-      missing_in_mcp.push(uri)
+      missing_in_mcp.push(uri);
     }
   }
 
   // Find URIs in MCP but not in Consume Chat
   for (const uri of mcpUris) {
     if (!consumeUris.has(uri)) {
-      extra_in_mcp.push(uri)
-      missing_in_consume.push(uri)
+      extra_in_mcp.push(uri);
+      missing_in_consume.push(uri);
     }
   }
 
@@ -105,7 +108,10 @@ export function buildParityResult(
   // the degenerate case where the Consume Chat registry is also empty (which
   // would otherwise leave missing_in_mcp and extra_in_mcp both trivially
   // empty and report a false PASS).
-  const passed = bridgeError === null && missing_in_mcp.length === 0 && extra_in_mcp.length === 0
+  const passed =
+    bridgeError === null &&
+    missing_in_mcp.length === 0 &&
+    extra_in_mcp.length === 0;
 
   return {
     passed,
@@ -115,7 +121,7 @@ export function buildParityResult(
     missing_in_consume,
     extra_in_mcp,
     bridge_error: bridgeError,
-  }
+  };
 }
 
 /**
@@ -123,9 +129,9 @@ export function buildParityResult(
  * Returns a ParityCheckResult with details.
  */
 export async function checkParity(): Promise<ParityCheckResult> {
-  const consumeUris = new Set(listCapabilityUris())
-  const { uris: mcpUris, bridgeError } = await getMcpExportedUris()
-  return buildParityResult(consumeUris, mcpUris, bridgeError)
+  const consumeUris = new Set(listCapabilityUris());
+  const { uris: mcpUris, bridgeError } = await getMcpExportedUris();
+  return buildParityResult(consumeUris, mcpUris, bridgeError);
 }
 
 /**
@@ -133,38 +139,42 @@ export async function checkParity(): Promise<ParityCheckResult> {
  * For use in CI gates.
  */
 export async function runParityCheck(): Promise<void> {
-  const result = await checkParity()
+  const result = await checkParity();
 
   if (!result.passed) {
     const lines: string[] = [
       `[parity_check] FAIL — registry mismatch detected`,
       `  MCP exports: ${result.mcp_count}`,
       `  Consume Chat registry: ${result.consume_count}`,
-    ]
+    ];
 
     if (result.bridge_error) {
-      lines.push(`  MCP bridge FAILED to load: ${result.bridge_error}`)
+      lines.push(`  MCP bridge FAILED to load: ${result.bridge_error}`);
       lines.push(
-        `  (GT-36: parity cannot be verified while the bridge is unavailable — this is always a hard failure, never an auto-pass)`
-      )
+        `  (GT-36: parity cannot be verified while the bridge is unavailable — this is always a hard failure, never an auto-pass)`,
+      );
     }
 
     if (result.missing_in_mcp.length > 0) {
-      lines.push(`  In Consume Chat but NOT in MCP (${result.missing_in_mcp.length}):`)
-      result.missing_in_mcp.forEach((u) => lines.push(`    - ${u}`))
+      lines.push(
+        `  In Consume Chat but NOT in MCP (${result.missing_in_mcp.length}):`,
+      );
+      result.missing_in_mcp.forEach((u) => lines.push(`    - ${u}`));
     }
 
     if (result.extra_in_mcp.length > 0) {
-      lines.push(`  In MCP but NOT in Consume Chat (${result.extra_in_mcp.length}):`)
-      result.extra_in_mcp.forEach((u) => lines.push(`    - ${u}`))
+      lines.push(
+        `  In MCP but NOT in Consume Chat (${result.extra_in_mcp.length}):`,
+      );
+      result.extra_in_mcp.forEach((u) => lines.push(`    - ${u}`));
     }
 
-    throw new Error(lines.join('\n'))
+    throw new Error(lines.join("\n"));
   }
 
   console.log(
-    `[parity_check] PASS — ${result.consume_count} capabilities registered in both channels`
-  )
+    `[parity_check] PASS — ${result.consume_count} capabilities registered in both channels`,
+  );
 }
 
 /**
@@ -172,15 +182,17 @@ export async function runParityCheck(): Promise<void> {
  * Only checks that both registries have the same count (quick sanity).
  */
 export function quickParityCheck(mcpUris: CapabilityUri[]): boolean {
-  const consumeUris = listCapabilityUris()
-  const consumeSet = new Set(consumeUris)
-  const mcpSet = new Set(mcpUris)
+  const consumeUris = listCapabilityUris();
+  const consumeSet = new Set(consumeUris);
+  const mcpSet = new Set(mcpUris);
 
   for (const uri of consumeSet) {
     if (!mcpSet.has(uri)) {
-      console.error(`[parity_check] DRIFT: ${uri} in Consume Chat but not in MCP`)
-      return false
+      console.error(
+        `[parity_check] DRIFT: ${uri} in Consume Chat but not in MCP`,
+      );
+      return false;
     }
   }
-  return true
+  return true;
 }

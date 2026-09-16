@@ -98,6 +98,21 @@ const NIRMANA_L0_WAVE1_TEXTS_REPLAY_PREREQUISITE = 'ws2_l0_texts.sql'
 const NIRMANA_L0_WAVE1_TEXTS_REPLAY_TARGET =
   '630_nirmana_l0_wave1_correctness_contract.sql'
 
+/** DP-SD-018: these files may only be applied by data-plane-migration-attestation.ts. */
+export const PROTECTED_DATA_PLANE_MIGRATIONS = new Set([
+  '1035_data_plane_l1_producer_history.sql',
+  '1036_data_plane_l2_producer_generations.sql',
+])
+
+export function assertGeneralRunnerMayApply(filename: string): void {
+  if (PROTECTED_DATA_PLANE_MIGRATIONS.has(filename)) {
+    throw new Error(
+      `Protected data-plane migration "${filename}" is pending. ` +
+      'The general DATABASE_URL runner cannot create protected objects; run the deployment-only data-plane attestation first.'
+    )
+  }
+}
+
 export interface RunOptions {
   dryRun?: boolean
   target?: string
@@ -708,6 +723,7 @@ export async function runMigrations(
         assertAppliedHashMatches(file, applied, readMigrationSql(file), disclosures)
         continue
       }
+      assertGeneralRunnerMayApply(file.name)
       // Surface a renumbered re-apply from the PREVIEW too, not only from a real run —
       // same reasoning as the dry-run hash check above it.
       assertNotRenumberedReapply(file, readMigrationSql(file), applied, renumbers)
@@ -736,6 +752,8 @@ export async function runMigrations(
       assertAppliedHashMatches(file, applied, sql, disclosures)
       continue
     }
+
+    assertGeneralRunnerMayApply(file.name)
 
     // Looks new by filename — but is it? Throws unless this is genuinely new content, or a
     // renumber that an operator has explicitly reconciled.
@@ -828,6 +846,6 @@ async function main(): Promise<void> {
 // Guard: only execute when run directly, not when imported by tests.
 // Unguarded main() caused an unhandled rejection (ECONNREFUSED) in vitest
 // because there is no database in the CI test environment.
-if (process.env.NODE_ENV !== 'test') {
+if (require.main === module && process.env.NODE_ENV !== 'test') {
   main()
 }

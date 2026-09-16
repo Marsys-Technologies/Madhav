@@ -29,6 +29,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any, Optional
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 # ── Ratified supporting-factor weights (I-16, sum = 1.0) ──────────────────────
@@ -416,6 +418,7 @@ def _c_nakshatra_subsystem(transit_nakshatra: str, janma_nakshatra_idx: int) -> 
     return _tara_score_for_nakshatra(transit_nakshatra, janma_nakshatra_idx)
 
 
+@serialized_swiss_state
 def _c_tara_bala_for_jd(peak_jd: float, janma_nakshatra_idx: int) -> float:
     """
     C_tara_bala: tara bala of the Moon's nakshatra at peak_jd relative to

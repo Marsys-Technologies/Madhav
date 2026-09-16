@@ -9,6 +9,7 @@ Supported modes: lahiri, raman, krishnamurti, true_chitra_paksha.
 """
 import swisseph as swe
 from .exceptions import AyanamshaError
+from .swiss_state import serialized_swiss_state
 
 # Project default ayanamsha. All computations use this unless overridden.
 DEFAULT_AYANAMSHA = "lahiri"
@@ -22,6 +23,7 @@ _AYANAMSHA_MAP = {
 }
 
 
+@serialized_swiss_state
 def set_ayanamsha(mode: str = DEFAULT_AYANAMSHA) -> None:
     """
     Set the sidereal mode (ayanamsha) for all subsequent swisseph computations.
@@ -48,6 +50,7 @@ def set_ayanamsha(mode: str = DEFAULT_AYANAMSHA) -> None:
     swe.set_sid_mode(_AYANAMSHA_MAP[mode])
 
 
+@serialized_swiss_state
 def get_ayanamsha_value(jd_ut: float) -> float:
     """
     Return the ayanamsha value (degrees) for the currently-set mode at the

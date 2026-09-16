@@ -4,6 +4,7 @@ import os
 from dotenv import load_dotenv
 from routers import ephemeris, events, sade_sati, jaimini, v7_additions
 from routers import panchang as panchang_router
+from routers import muhurat as muhurat_router
 from routers import pyhora as pyhora_router
 from routers import prashna as prashna_router
 from routers import brahmagyan_almanac as almanac_router
@@ -41,6 +42,10 @@ app.include_router(v7_additions.router, prefix="/v7_additions", dependencies=[De
 
 # Phase 4C-3 — Panchang compute endpoints (engine-direct; 4C-2 will add cache layer)
 app.include_router(panchang_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
+
+# Panchang UI Muhurat Finder compatibility endpoint.  Its deterministic engine
+# remains the shared muhurat.finder primitive used by the L3 service.
+app.include_router(muhurat_router.router, prefix="/api/compute", dependencies=[Depends(verify_api_key)])
 
 # BRAHMA PH-4-4 — phala.muhurta electional finder (inverts Phala prediction engine)
 from brahmagyan.phala.muhurta import router as phala_muhurta_router

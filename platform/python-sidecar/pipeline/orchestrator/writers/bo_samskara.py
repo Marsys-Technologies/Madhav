@@ -18,11 +18,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, SubStep, register
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +42,7 @@ CANONICAL_AYAS   = [
 ]
 
 _INSERT = """
-INSERT INTO bodha_signal_embeddings (
+INSERT INTO public.bodha_signal_embeddings (
   embedding_id, signal_id, chart_id, ayanamsha_id, build_id,
   embedding_vec, embedding_model, embedding_model_version,
   embedding_input_summary, computed_at
@@ -145,11 +145,27 @@ def _fetch_existing_embeddings(conn, chart_id: str, aya: str) -> dict[str, dict]
     unchanged summary guarantees the reused vector is the value Vertex would return
     for the same input again — this is the perf-pre-D3 embedding-reuse optimization."""
     rows = conn.execute(
-        """SELECT signal_id, embedding_input_summary, embedding_vec::text,
-                  embedding_model, embedding_model_version
-           FROM bodha_signal_embeddings
-           WHERE chart_id = %s AND ayanamsha_id = %s""",
-        [chart_id, aya],
+        """WITH compatible_head AS MATERIALIZED (
+             SELECT h.current_generation_id
+             FROM public.l2_data_plane_generation_heads h
+             WHERE h.chart_id = %s::uuid AND h.asset_id = 'bo_samskara'
+               AND public.l2_data_plane_generation_is_compatible(
+                     h.chart_id, h.asset_id, h.current_generation_id
+                   )
+           )
+           SELECT DISTINCT ON (s.row_identity)
+                  s.source_row_jsonb->>'signal_id' AS signal_id,
+                  s.source_row_jsonb->>'embedding_input_summary' AS embedding_input_summary,
+                  s.source_row_jsonb->>'embedding_vec' AS embedding_vec,
+                  s.source_row_jsonb->>'embedding_model' AS embedding_model,
+                  s.source_row_jsonb->>'embedding_model_version' AS embedding_model_version
+           FROM public.l2_data_plane_row_snapshots s
+           JOIN compatible_head h ON h.current_generation_id = s.generation_id
+           WHERE s.chart_id = %s::uuid AND s.asset_id = 'bo_samskara'
+             AND s.source_table = 'bodha_signal_embeddings'
+             AND s.source_row_jsonb->>'ayanamsha_id' = %s
+           ORDER BY s.row_identity, s.captured_at DESC, s.snapshot_id DESC""",
+        [chart_id, chart_id, aya],
     ).fetchall()
     keys = ["signal_id", "embedding_input_summary", "embedding_vec",
             "embedding_model", "embedding_model_version"]
@@ -187,6 +203,7 @@ def _batch_insert(conn, rows: list[dict]) -> int:
 
 
 @register("bo_samskara")
+@l2_producer("bo_samskara")
 class BoSamskaraWriter(WriterBase):
     """bo_samskara: deterministic signal embeddings (1:1 with MSR signals)."""
     asset_id = "bo_samskara"
@@ -239,7 +256,11 @@ class BoSamskaraWriter(WriterBase):
                     and prior["embedding_model"] == EMBEDDING_MODEL
                     and prior["embedding_model_version"] == EMBEDDING_VER):
                 rows.append({
-                    "embedding_id":             str(uuid.uuid4()),
+                    "embedding_id":             stable_semantic_uuid("signal_embedding", {
+                        "signal_id": str(sig["signal_id"]),
+                        "embedding_model": EMBEDDING_MODEL,
+                        "embedding_model_version": EMBEDDING_VER,
+                    }),
                     "signal_id":                str(sig["signal_id"]),
                     "chart_id":                 chart_id,
                     "ayanamsha_id":             aya,
@@ -264,23 +285,17 @@ class BoSamskaraWriter(WriterBase):
             try:
                 vecs = _embed_batch(batch_texts)
             except Exception as exc:
-                # Previously uncaught: any embedding-API exception on any one
-                # batch aborted the whole ayanamsha substep, and whether that
-                # read as a hard build failure or a quiet no-op depended on
-                # orchestrator-level retry/catch behavior — this is exactly how
-                # 4 of 5 ayanamshas' embeddings went missing without the
-                # bo_pramana_mapa scorecard ever being told. Log loudly and
-                # skip only this batch so the remaining batches (and other
-                # ayanamsha substeps) still get a chance to write real rows.
-                logger.warning(
-                    "[bo_samskara] %s — embedding batch at offset %d failed "
-                    "(%d signals lost from this batch): %s",
-                    aya, batch_start, len(batch), exc,
-                )
-                continue
+                raise RuntimeError(
+                    f"[bo_samskara] {aya} — embedding batch at offset "
+                    f"{batch_start} failed; refusing a partial generation"
+                ) from exc
             for (sig, summary), vec in zip(batch, vecs):
                 rows.append({
-                    "embedding_id":             str(uuid.uuid4()),
+                    "embedding_id":             stable_semantic_uuid("signal_embedding", {
+                        "signal_id": str(sig["signal_id"]),
+                        "embedding_model": EMBEDDING_MODEL,
+                        "embedding_model_version": EMBEDDING_VER,
+                    }),
                     "signal_id":                str(sig["signal_id"]),
                     "chart_id":                 chart_id,
                     "ayanamsha_id":             aya,
@@ -302,17 +317,10 @@ class BoSamskaraWriter(WriterBase):
                 f"{len(signals)} signals found but 0 embeddings written; "
                 "all Vertex AI embedding batches failed"
             )
-        if inserted < len(signals):
-            # Partial coverage for this ayanamsha — not a hard failure (some
-            # embeddings did land), but a silent partial loss here is exactly
-            # how bo_pramana_mapa's scorecard went stale relative to live data
-            # (embedding_count contradicted the live table by 4 of 5
-            # ayanamshas). Surface it loudly so a partial substep failure
-            # can't look like a clean no-op.
-            logger.warning(
-                "[bo_samskara] G3-partial: chart_id=%s aya=%s — %d/%d signals "
-                "embedded; %d signal(s) missing an embedding (embedding-API "
-                "batch/row failures — see prior warnings)",
-                chart_id, aya, inserted, len(signals), len(signals) - inserted,
+        if inserted != len(signals):
+            raise RuntimeError(
+                f"[bo_samskara] G3-partial: chart_id={chart_id} aya={aya} — "
+                f"{inserted}/{len(signals)} embeddings written; refusing a "
+                "partial generation"
             )
-        return WriterResult(asset_id=self.asset_id, rows_inserted=inserted)
+        return WriterResult(asset_id=self.asset_id, rows_inserted=inserted, rows_skipped=0)

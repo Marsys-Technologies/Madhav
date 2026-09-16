@@ -56,6 +56,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 if TYPE_CHECKING:
     from services.gochara_v3.context import ClassContext
 
@@ -160,6 +162,7 @@ def _compute_aspected_signs(rahu_sign: int) -> frozenset[int]:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+@serialized_swiss_state
 def compute(
     context: "ClassContext",
     t_jd: float,

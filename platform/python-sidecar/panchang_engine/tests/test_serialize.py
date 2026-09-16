@@ -13,7 +13,7 @@ from datetime import date
 
 import pytest
 
-from panchang_engine import compute_panchang
+from panchang_engine import __version__, compute_panchang
 from panchang_engine.serialize import panchang_to_dict
 
 
@@ -139,8 +139,8 @@ def test_datetime_strings_are_utc(panchang_dict):
 
 
 def test_computation_version_present(panchang_dict):
-    """computation_version should be '1.0.0-S3' (muhurat backend live; 4C-6-S1)."""
-    assert panchang_dict["computation_version"] == "1.0.0-S3"
+    """Serialization carries the current engine computation version."""
+    assert panchang_dict["computation_version"] == __version__
 
 
 def test_special_yogas_serializable(panchang_dict):

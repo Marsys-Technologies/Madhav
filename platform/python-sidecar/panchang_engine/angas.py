@@ -10,6 +10,7 @@ import swisseph as swe
 from datetime import datetime, timedelta, timezone
 from .types import Anga
 from .exceptions import PanchangEngineError
+from .swiss_state import serialized_swiss_state
 from .shastra_tables import (
     TITHI_NAMES, NAKSHATRA_NAMES, YOGA_NAMES, KARANA_NAMES, VARA_NAMES,
 )
@@ -42,6 +43,7 @@ def _jd_to_utc(jd: float) -> datetime:
     return datetime(y, mo, d, hour_int, minute_int, second_int, tzinfo=timezone.utc)
 
 
+@serialized_swiss_state
 def _get_sun_moon_lon(jd: float):
     """Return (sun_lon_sidereal, moon_lon_sidereal) at given JD."""
     sun = swe.calc_ut(jd, swe.SUN, _SWE_FLAGS)[0][0]
@@ -69,6 +71,7 @@ def _bisect_boundary(fn_value, target: float, jd_lo: float, jd_hi: float) -> flo
     return (jd_lo + jd_hi) / 2
 
 
+@serialized_swiss_state
 def compute_tithi(sun_lon: float, moon_lon: float, asof_utc: datetime) -> Anga:
     """
     Tithi = floor((moon_lon - sun_lon) % 360 / 12) + 1.  Range 1..30.
@@ -146,6 +149,7 @@ def compute_tithi(sun_lon: float, moon_lon: float, asof_utc: datetime) -> Anga:
     return Anga(id=tithi_num, name=name, end_utc=end_utc)
 
 
+@serialized_swiss_state
 def compute_nakshatra(moon_lon: float, asof_utc: datetime) -> Anga:
     """
     Nakshatra = floor(moon_lon / (360/27)) + 1.  Range 1..27.
@@ -208,6 +212,7 @@ def compute_nakshatra(moon_lon: float, asof_utc: datetime) -> Anga:
     return Anga(id=nak_num, name=name, end_utc=end_utc)
 
 
+@serialized_swiss_state
 def compute_yoga(sun_lon: float, moon_lon: float, asof_utc: datetime) -> Anga:
     """
     Yoga = floor((sun_lon + moon_lon) % 360 / (360/27)) + 1.  Range 1..27.
@@ -267,6 +272,7 @@ def compute_yoga(sun_lon: float, moon_lon: float, asof_utc: datetime) -> Anga:
     return Anga(id=yoga_num, name=name, end_utc=end_utc)
 
 
+@serialized_swiss_state
 def compute_karana_pair(sun_lon: float, moon_lon: float, asof_utc: datetime,
                         sunrise_utc: datetime) -> tuple:
     """

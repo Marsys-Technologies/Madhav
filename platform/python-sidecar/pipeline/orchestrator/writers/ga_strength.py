@@ -1,10 +1,12 @@
 """Orchestrator adapter for the L1 Gaṇita `ga_strength` writer (light)."""
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from . import register, WriterBase, ContextSpec, WriterResult
 
 
 @register('ga_strength')
+@l1_producer_contract
 class GaStrengthWriter(WriterBase):
     asset_id = 'ga_strength'
     source_paths = ['platform/python-sidecar/ga_writers/ga_strength_writer.py']

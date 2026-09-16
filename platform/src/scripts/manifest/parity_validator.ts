@@ -40,8 +40,8 @@ export interface MirrorPairRow {
 
 export interface ManifestEntry {
   canonical_id: string
-  path: string
-  version: string
+  path: string | null
+  version: string | null
   status: string
   [key: string]: unknown
 }
@@ -204,7 +204,7 @@ export function parseFileRegistryVersion(text: string): string {
  * "8" === "8.0", "1" === "1.0", "3.0" === "3" etc.
  * Returns the canonical form with trailing .0 segments stripped.
  */
-export function normalizeVersion(v: string): string {
+export function normalizeVersion(v: string | null | undefined): string {
   if (!v) return ''
   v = v.replace(/^["']|["']$/g, '').trim()
   // Extract leading numeric portion (e.g. "1.0-updated-STEP_15" → "1.0")
@@ -263,8 +263,10 @@ export function buildManifestIndex(entries: ManifestEntry[]): {
   const byPath = new Map<string, ManifestEntry>()
   for (const entry of entries) {
     byId.set(entry.canonical_id, entry)
-    const normPath = entry.path.replace(/^\.\//, '')
-    byPath.set(normPath, entry)
+    if (typeof entry.path === 'string' && entry.path.length > 0) {
+      const normPath = entry.path.replace(/^\.\//, '')
+      byPath.set(normPath, entry)
+    }
   }
   return { byId, byPath }
 }

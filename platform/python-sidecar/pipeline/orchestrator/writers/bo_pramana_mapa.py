@@ -28,18 +28,18 @@ from __future__ import annotations
 
 import json
 import logging
-import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer, stable_semantic_uuid
 
 logger = logging.getLogger(__name__)
 
 ENGINE_VERSION = "bo_pramana_mapa_v1.0"
 
 _SCORECARD_INSERT = """
-INSERT INTO synthesis_quality_scorecard (
+INSERT INTO public.synthesis_quality_scorecard (
   scorecard_id, chart_id, build_id, scored_at,
   msr_signal_count, cdlm_cell_count, cgm_node_count, cgm_edge_count,
   rm_resonance_count, rm_prescription_count, embedding_count,
@@ -141,7 +141,7 @@ def _refresh_mv(conn: Any, mv_name: str) -> None:
 # writer stamps `lel_origin=False` by design (bo_laksana.py:11). A leak is
 # therefore observable three independent ways, and ANY of them failing flips the
 # gate. Term B and Term C do not depend on a writer having flagged itself
-# honestly — they read the leaked payload directly.
+# honestly — they inspect declared L2 provenance/payload only.
 _LEL_PAYLOAD_KEYS = [
     # jsonb key shapes that carry LEL rows out of `life_events` — the exact
     # payload bo_upaya legitimately writes at ITS layer (milestone_event_ids) and
@@ -155,21 +155,21 @@ SELECT count(*) FROM bodha_msr_signals
  WHERE chart_id = %s AND lel_origin IS TRUE
 """
 
-# Term B: a constituent "fact_id" that actually resolves to a life_events row —
-# an LEL primary key smuggled into the L1 grounding chain (§N.5 violation).
+# Term B: provenance that declares anything other than an L1 Gaṇita producer.
+# L2 must never consult private/later-layer life_events state to decide whether
+# deterministic producer output is clean.
 _LEL_TERM_B_SQL = """
-SELECT count(DISTINCT s.signal_id)
-  FROM bodha_msr_signals s
-  CROSS JOIN LATERAL unnest(s.constituent_facts_array) AS r(ref)
-  JOIN life_events le ON le.event_id::text = r.ref
- WHERE s.chart_id = %s
+SELECT count(*) FROM bodha_msr_signals
+ WHERE chart_id = %s
+   AND (source_l1_asset IS NULL OR source_l1_asset NOT LIKE 'ga_%%')
 """
 
-# Term C: an LEL-shaped payload key present in the deterministic configuration.
+# Term C: an LEL-shaped payload key at any depth in deterministic configuration.
 _LEL_TERM_C_SQL = """
 SELECT count(*) FROM bodha_msr_signals
  WHERE chart_id = %s
-   AND jsonb_exists_any(configuration_jsonb, %s)
+   AND configuration_jsonb::text ~*
+       '"(milestone_event_ids|life_event_ids|lel_event_ids|event_id|event_date|outcome_observed)"[[:space:]]*:'
 """
 
 
@@ -182,18 +182,18 @@ def detect_lel_leak(conn: Any, chart_id: str) -> dict:
     unevaluable check is an unknown, not a clean pass (§N.8).
 
     Can-fail: set any bodha_msr_signals row's `lel_origin` to true (term A),
-    put a real `life_events.event_id` into its `constituent_facts_array`
-    (term B), or add a `milestone_event_ids` key to its `configuration_jsonb`
+    declare a non-Gaṇita source asset (term B), or add a
+    `milestone_event_ids` key to its `configuration_jsonb`
     (term C) — each independently flips `pass` to False.
     """
     terms: dict[str, Any] = {}
     try:
         terms["lel_origin_signals"] = _count_one(conn, _LEL_TERM_A_SQL, [chart_id])
-        terms["life_event_ids_in_constituent_chain"] = _count_one(
+        terms["non_l1_source_provenance"] = _count_one(
             conn, _LEL_TERM_B_SQL, [chart_id]
         )
         terms["lel_payload_keys_in_configuration"] = _count_one(
-            conn, _LEL_TERM_C_SQL, [chart_id, _LEL_PAYLOAD_KEYS]
+            conn, _LEL_TERM_C_SQL, [chart_id]
         )
     except Exception as exc:  # unevaluable ⇒ unknown, NOT a pass
         logger.warning("[bo_pramana_mapa] lel_zero_leak detector unevaluable: %s", exc)
@@ -498,7 +498,157 @@ def count_divergent_signals(conn: Any, chart_id: str) -> dict:
     return {"count": total, "terms": terms, "error": None}
 
 
+def _pass_from_count(conn: Any, chart_id: str, sql: str, name: str) -> dict:
+    """Run one scoped integrity detector; an error is unknown, never green."""
+    try:
+        count = _count_one(conn, sql, [chart_id])
+    except Exception as exc:
+        logger.warning("[bo_pramana_mapa] %s detector unevaluable: %s", name, exc)
+        return {"pass": None, "violation_count": None, "error": str(exc)}
+    return {"pass": count == 0, "violation_count": count, "error": None}
+
+
+_NO_PRE_ANSWER_SQL = r"""
+SELECT count(*) FROM bodha_question_lenses
+ WHERE chart_id = %s
+   AND (
+     points_only_assertion IS NOT TRUE
+     OR all_relevant_ranked_jsonb::text ~* '"(verdict|answer|recommendation|prediction)"[[:space:]]*:'
+     OR wildcard_element_ids_jsonb::text ~* '"(verdict|answer|recommendation|prediction)"[[:space:]]*:'
+   )
+"""
+
+_LEDGER_INDEPENDENCE_SQL = """
+SELECT count(*) FROM bodha_cdlm_cells
+ WHERE chart_id = %s
+   AND (
+     shared_factor_keys_jsonb IS NULL
+     OR jsonb_typeof(shared_factor_keys_jsonb->'shared_root_groups') IS DISTINCT FROM 'array'
+     OR shared_factor_count IS DISTINCT FROM
+        jsonb_array_length(shared_factor_keys_jsonb->'shared_root_groups')
+   )
+"""
+
+_DISCOVERY_GROUNDING_SQL = """
+SELECT count(*) FROM bodha_discoveries
+ WHERE chart_id = %s
+   AND (
+     meaningfulness_basis IS NULL OR btrim(meaningfulness_basis) = ''
+     OR jsonb_typeof(constituent_refs_jsonb->'signal_ids') IS DISTINCT FROM 'array'
+     OR jsonb_array_length(constituent_refs_jsonb->'signal_ids') = 0
+     OR jsonb_typeof(reasoning_chain_jsonb->'steps') IS DISTINCT FROM 'array'
+     OR jsonb_array_length(reasoning_chain_jsonb->'steps') = 0
+   )
+"""
+
+_CONTEXT_GENERATION_SQL = """
+WITH RECURSIVE declared_upstream(asset_id) AS (
+  SELECT unnest(COALESCE(depends_on, ARRAY[]::text[]))
+  FROM public.asset_registry WHERE asset_id = 'bo_pramana_mapa'
+  UNION
+  SELECT unnest(COALESCE(r.depends_on, ARRAY[]::text[]))
+  FROM public.asset_registry r
+  JOIN declared_upstream d ON d.asset_id = r.asset_id
+), selected_upstream AS (
+  SELECT h.chart_id, h.asset_id, h.current_generation_id
+  FROM public.l2_data_plane_generation_heads h
+  JOIN declared_upstream d ON d.asset_id = h.asset_id
+  WHERE h.chart_id = %s AND h.asset_id LIKE 'bo_%%'
+)
+SELECT count(*) FROM (
+  SELECT s.snapshot_id::text AS violation
+  FROM public.l2_data_plane_row_snapshots s
+  JOIN selected_upstream h
+    ON h.chart_id = s.chart_id AND h.asset_id = s.asset_id
+   AND h.current_generation_id = s.generation_id
+  WHERE (
+      s.calculation_context_jsonb->>'chart_id' IS DISTINCT FROM s.chart_id::text
+      OR s.calculation_context_jsonb->>'calculation_context_id'
+         IS DISTINCT FROM s.calculation_context_id
+      OR NOT EXISTS (
+        SELECT 1 FROM jsonb_array_elements(s.source_dependencies_jsonb) d
+        WHERE d->>'layer' = 'L1'
+      )
+    )
+  UNION ALL
+  SELECT h.asset_id
+  FROM selected_upstream h
+  JOIN public.data_plane_l2_producer_generations g
+    ON g.chart_id = h.chart_id AND g.asset_id = h.asset_id
+   AND g.generation_id = h.current_generation_id
+  WHERE (
+      g.state <> 'complete'
+      OR g.semantic_output_digest IS NULL
+      OR NOT public.l2_data_plane_generation_is_compatible(
+        h.chart_id, h.asset_id, h.current_generation_id
+      )
+    )
+) violations
+"""
+
+_SIGNED_RELATION_SQL = """
+SELECT count(*) FROM (
+  SELECT edge_id::text AS violation
+  FROM bodha_cgm_edges
+  WHERE chart_id = %s
+    AND (
+      valence IS NULL
+      OR valence NOT IN (
+        'harmonious','antagonistic','mixed','neutral','benefic','malefic'
+      )
+      OR (cancelled_flag IS TRUE AND (
+        cancelled_by_jsonb IS NULL
+        OR cancelled_by_jsonb->>'original_polarity' NOT IN ('-1','1')
+        OR cancelled_by_jsonb->>'resulting_role' IS NULL
+        OR jsonb_typeof(cancelled_by_jsonb->'cancelling_roots') IS DISTINCT FROM 'array'
+        OR jsonb_array_length(cancelled_by_jsonb->'cancelling_roots') = 0
+      ))
+    )
+  UNION ALL
+  SELECT cell_id::text
+  FROM bodha_cdlm_cells
+  WHERE chart_id = %s
+    AND negative_contribution > 0
+    AND cross_domain_contradiction_flag IS NOT TRUE
+) violations
+"""
+
+
+def detect_l2_contract_integrity(conn: Any, chart_id: str) -> dict[str, dict]:
+    """Reachable-false L2 context, polarity, root and grounding detectors."""
+    # Two queries have the same chart parameter twice. Keep the small helper for
+    # the one-parameter gates and execute these explicitly so their scopes stay
+    # visible in the evidence payload.
+    results = {
+        "no_pre_answer": _pass_from_count(
+            conn, chart_id, _NO_PRE_ANSWER_SQL, "no_pre_answer"
+        ),
+        "ledger_independence_and_duplicate_root": _pass_from_count(
+            conn, chart_id, _LEDGER_INDEPENDENCE_SQL, "ledger_independence"
+        ),
+        "discovery_grounding": _pass_from_count(
+            conn, chart_id, _DISCOVERY_GROUNDING_SQL, "discovery_grounding"
+        ),
+    }
+    for name, sql, params in (
+        ("context_generation", _CONTEXT_GENERATION_SQL, [chart_id]),
+        ("signed_relation_and_cancellation", _SIGNED_RELATION_SQL, [chart_id, chart_id]),
+    ):
+        try:
+            count = _count_one(conn, sql, params)
+            results[name] = {
+                "pass": count == 0, "violation_count": count, "error": None,
+            }
+        except Exception as exc:
+            logger.warning("[bo_pramana_mapa] %s detector unevaluable: %s", name, exc)
+            results[name] = {
+                "pass": None, "violation_count": None, "error": str(exc),
+            }
+    return results
+
+
 @register("bo_pramana_mapa")
+@l2_producer("bo_pramana_mapa")
 class BoPramanaMapa(WriterBase):
     """bo_pramana_mapa: global synthesis quality scorecard + MV refresh."""
     asset_id = "bo_pramana_mapa"
@@ -626,6 +776,7 @@ class BoPramanaMapa(WriterBase):
         no_drop_result  = detect_no_threshold_drop(conn, chart_id, msr_count)
         trap2_result    = count_narration_leaks(conn, chart_id)
         divergent_result = count_divergent_signals(conn, chart_id)
+        l2_integrity = detect_l2_contract_integrity(conn, chart_id)
 
         # The two INT columns are NOT NULL in the schema, so "unknown" cannot be
         # stored as NULL there. Storing 0 for an unevaluable detector would
@@ -661,7 +812,10 @@ class BoPramanaMapa(WriterBase):
         l1_assets_projected = len(l1_assets_projected_array)
 
         scorecard = {
-            "scorecard_id": str(uuid.uuid4()),
+            "scorecard_id": stable_semantic_uuid("quality_scorecard", {
+                "chart_id": chart_id,
+                "engine_version": ENGINE_VERSION,
+            }),
             "chart_id": chart_id,
             "build_id": build_id,
             "scored_at": now,
@@ -707,17 +861,17 @@ class BoPramanaMapa(WriterBase):
             # F-07 (was `trap1_count == 0`, a proxy that never read LEL data):
             # real three-term LEL scan. None when unevaluable — never True.
             "lel_zero_leak_pass": lel_result["pass"],
-            # These three gates have no real detector implemented yet. Previously
-            # hardcoded to True, which is indistinguishable from a genuinely-passed
-            # verification. NULL is the honest "not yet computed" value — a
-            # scorecard consumer must not read a NULL gate as a clean pass.
-            "no_pre_answer_pass": None,
+            "no_pre_answer_pass": l2_integrity["no_pre_answer"]["pass"],
             # F-08 (was `msr_count > 0`, unreachable-false because msr_count == 0
             # already raised ~160 lines above): real presence + graph-reachability
             # gate. None when unevaluable — never True.
             "pillars_meet_reachability_pass": pillars_result["pass"],
-            "ledger_independence_pass": None,
-            "discovery_not_fabricated_pass": None,
+            "ledger_independence_pass": l2_integrity[
+                "ledger_independence_and_duplicate_root"
+            ]["pass"],
+            "discovery_not_fabricated_pass": l2_integrity[
+                "discovery_grounding"
+            ]["pass"],
             "notes": json.dumps({
                 "engine_version": ENGINE_VERSION,
                 "counts": {
@@ -746,6 +900,7 @@ class BoPramanaMapa(WriterBase):
                     "msr_no_threshold_drop_flag": no_drop_result,
                     "trap2_narration_leak_count": trap2_result,
                     "divergent_flagged_count": divergent_result,
+                    "l2_contract_integrity": l2_integrity,
                 },
             }),
         }
@@ -762,19 +917,9 @@ class BoPramanaMapa(WriterBase):
         )
 
         # ── Materialised view refresh (G5: all 8 Bodha MVs) ─────────────────
-        for mv in [
-            # MSR MVs (3)
-            "mv_msr_top_signals_per_chart",
-            "mv_msr_recurring_patterns_per_chart",
-            "mv_msr_domain_summary",
-            # CDLM MVs (5) — previously not refreshed; added by G5 fix
-            "mv_cdlm_static_summary",
-            "mv_cdlm_top_K_links_per_chart",
-            "mv_cdlm_per_tradition_summary",
-            "mv_cdlm_dasha_window_lookup",
-            "mv_cdlm_pattern_summary",
-        ]:
-            _refresh_mv(conn, mv)
+        # Shared materialized views are serving projections, not per-chart L2
+        # producer rows. Preserve them until an integration brief owns a
+        # versioned refresh/cutover; the dasha-window view is also L3-temporal.
 
         return WriterResult(asset_id=self.asset_id, rows_inserted=1,
                             notes=f"msr={msr_count} cdlm={cdlm_count} nodes={node_count} trap1={trap1_count}")

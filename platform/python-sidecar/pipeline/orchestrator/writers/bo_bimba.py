@@ -19,10 +19,10 @@ from __future__ import annotations
 import json
 import logging
 import re
-import uuid
 from datetime import datetime, timezone
 
 from . import WriterBase, ContextSpec, WriterResult, register
+from bodha_writers.data_plane_contracts import l2_producer
 from brahmagyan.graha_vocabulary import to_title
 from brahmagyan.domain_vocabulary import CANONICAL_DOMAINS, CANONICAL_DOMAINS_SORTED
 
@@ -65,7 +65,7 @@ _SUBJECT_TO_GRAHA: dict[str, str] = {
 _KNOWN_DOMAINS = CANONICAL_DOMAINS  # module-local alias; not re-exported
 
 _NODE_INSERT = """
-INSERT INTO bodha_cgm_nodes (
+INSERT INTO public.bodha_cgm_nodes (
   node_id, chart_id, ayanamsha_id, build_id, snapshot_type,
   node_type, node_subject, node_label_human,
   position_in_chart_jsonb, strength_score, dignity_state,
@@ -613,6 +613,7 @@ def _batch_insert(conn, nodes: list[dict]) -> int:
 
 
 @register("bo_bimba")
+@l2_producer("bo_bimba")
 class BoBimbaWriter(WriterBase):
     """bo_bimba: CGM node layer — one row per unique entity per ayanamsha."""
     asset_id = "bo_bimba"

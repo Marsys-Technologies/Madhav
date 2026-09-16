@@ -28,6 +28,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 
@@ -368,6 +370,7 @@ def _validated_ephemeris_probe_config(probe_spec: dict) -> dict[str, Any]:
     }
 
 
+@serialized_swiss_state
 def _probe_ephemeris_engine(probe_spec: dict) -> dict[str, Any]:
     checks: list[dict] = []
     failures: list[str] = []

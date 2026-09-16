@@ -46,6 +46,7 @@ from pyjhora_adapter.positions import compute_positions
 
 from ga_writers._idempotency import replace_prior_tajik_varsha
 from ga_writers._telemetry import update_asset_throughput  # legacy CLI path only; orchestrator never calls this
+from ga_writers.data_plane_contracts import stable_uuid
 from pipeline.orchestrator.birth_params import resolve_birth_params
 
 logger = logging.getLogger(__name__)
@@ -627,7 +628,10 @@ def _compute_one(conn: Any, chart_id: str, canonical_aya: str, aya_adapter: str,
     )
 
     return {
-        "varsha_id": str(uuid.uuid4()),
+        "varsha_id": stable_uuid(
+            "tajaka_varsha", chart_id, canonical_aya, varsha_year,
+            instant_iso, next_iso,
+        ),
         "chart_id": chart_id,
         "ayanamsha_id": canonical_aya,
         "build_id": build_id,

@@ -1,0 +1,186 @@
+{
+  "fixture_id": "synthetic.non_person.l1-resource-config-01.v1",
+  "subject_id": "synthetic-subject:l1-resource-config-01",
+  "chart_id": "synthetic:l1-resource-config-01",
+  "build_id": "fixture-build-0001",
+  "instant_iso": "2000-01-01T12:00:00+00:00",
+  "latitude_deg": 0.0,
+  "longitude_deg": 0.0,
+  "timezone_name": "UTC",
+  "input_precision": "second",
+  "frame": "sidereal",
+  "ayanamsha_id": "lahiri_chitrapaksha",
+  "node_type": "mean",
+  "house_convention": "whole_sign",
+  "varga": "D1",
+  "varga_formula": "identity_v1",
+  "varga_domain": "natal",
+  "karaka_school": "jaimini_eight_karaka",
+  "engine_version": "synthetic-deterministic/1.0",
+  "facts": [
+    {
+      "category": "graha_position",
+      "subject": "JUP",
+      "key": "longitude_sidereal",
+      "grain": "chart-context-graha",
+      "unit": "degree",
+      "epistemic_class": "astronomical",
+      "verification_class": "engineering_fixture",
+      "value_num": 119.999,
+      "source_dependencies": ["l0:graha:JUP", "l0:ayanamsha:lahiri_chitrapaksha"]
+    },
+    {
+      "category": "graha_position",
+      "subject": "LAGNA",
+      "key": "house_d1",
+      "grain": "chart-context-lagna",
+      "unit": "house_number",
+      "epistemic_class": "deterministic_derivation",
+      "verification_class": "engineering_fixture",
+      "value_num": 1,
+      "source_dependencies": ["l0:house_convention:whole_sign"]
+    },
+    {
+      "category": "karaka_role",
+      "subject": "JUP",
+      "key": "resource_significator",
+      "grain": "chart-context-graha-role",
+      "unit": null,
+      "epistemic_class": "rule_derived",
+      "verification_class": "engineering_fixture",
+      "value_text": "resource_significator",
+      "source_dependencies": ["l0:karaka_school:jaimini_eight_karaka"]
+    },
+    {
+      "category": "graha_position",
+      "subject": "SUN",
+      "key": "sun_longitude_sidereal",
+      "grain": "chart-context-graha",
+      "unit": "degree",
+      "epistemic_class": "astronomical",
+      "verification_class": "engineering_fixture",
+      "value_num": 100.0,
+      "source_dependencies": ["l0:graha:SUN", "l0:ayanamsha:lahiri_chitrapaksha"]
+    },
+    {
+      "category": "condition_component",
+      "subject": "JUP",
+      "key": "combustion_orb_delta",
+      "grain": "chart-context-graha-condition",
+      "unit": "degree",
+      "epistemic_class": "deterministic_derivation",
+      "verification_class": "engineering_fixture",
+      "missingness": "zero",
+      "value_num": 0,
+      "source_dependencies": ["fixture_fact:longitude_sidereal", "fixture_fact:sun_longitude_sidereal"]
+    },
+    {
+      "category": "condition_component",
+      "subject": "JUP",
+      "key": "ashtakavarga_contributor_prastara",
+      "grain": "chart-context-graha-condition",
+      "unit": "bindu_contributors",
+      "epistemic_class": "deterministic_derivation",
+      "verification_class": "not_computed",
+      "missingness": "unavailable",
+      "reason": "contributor-level prastara is computed-discarded in the current producer and is not invented by this slice"
+    },
+    {
+      "category": "condition_component",
+      "subject": "JUP",
+      "key": "medical_diagnosis",
+      "grain": "chart-context-restricted-method",
+      "unit": null,
+      "epistemic_class": "restricted_scholarly",
+      "verification_class": "safety_boundary",
+      "missingness": "inapplicable",
+      "reason": "L1 medical capital is non-diagnostic"
+    },
+    {
+      "category": "condition_component",
+      "subject": "JUP",
+      "key": "kala_bala_per_varga",
+      "grain": "chart-context-graha-varga-condition",
+      "unit": "rupa",
+      "epistemic_class": "deterministic_derivation",
+      "verification_class": "floored",
+      "missingness": "floored",
+      "reason": "no qualified per-varga kāla-bala method in the accepted contract"
+    },
+    {
+      "category": "configuration_clause",
+      "subject": "RESOURCE_CONFIG_01",
+      "key": "bhavat_bhavam_operator",
+      "grain": "chart-context-configuration-clause",
+      "unit": null,
+      "epistemic_class": "rule_derived",
+      "verification_class": "unqualified_source",
+      "missingness": "unqualified_source",
+      "reason": "accepted L0 package carries Bhāvat Bhāvam as UNQUALIFIED_SOURCE and L2-owned"
+    },
+    {
+      "category": "numerical_attempt",
+      "subject": "RESOURCE_CONFIG_01",
+      "key": "deliberate_engine_error",
+      "grain": "chart-context-computation-attempt",
+      "unit": null,
+      "epistemic_class": "deterministic_derivation",
+      "verification_class": "error_injection",
+      "missingness": "failed",
+      "reason": "synthetic numerical exception; no Aries/0-degree or empty-success fact emitted"
+    },
+    {
+      "category": "condition_component",
+      "subject": "JUP",
+      "key": "future_unmeasured_variant",
+      "grain": "chart-context-graha-condition",
+      "unit": null,
+      "epistemic_class": "documented_approximation",
+      "verification_class": "not_investigated",
+      "missingness": "unexplored",
+      "reason": "variant is visible but has no admitted method or computation in this generation"
+    }
+  ],
+  "configuration": {
+    "configuration_id": "resource_configuration.synthetic.01",
+    "configuration_version": "1.0",
+    "source_rule_id": "bhavat_bhavam.odd_house_nonrecursive.v1",
+    "source_rule_version": "l0-resource-config-g1",
+    "qualification_state": "UNQUALIFIED_SOURCE",
+    "state": "unqualified_source",
+    "participants": [
+      {"role": "resource_significator", "subject": "JUP"},
+      {"role": "primary_house", "subject": "HOUSE_1"}
+    ],
+    "satisfied_clauses": ["primary_house_fact_present"],
+    "failed_clauses": ["qualified_bhavat_witness_absent"],
+    "exceptions": ["never_generator"],
+    "cancellations": [],
+    "constituent_fact_keys": ["longitude_sidereal", "house_d1", "resource_significator", "bhavat_bhavam_operator"]
+  },
+  "sensitivity": [
+    {
+      "fact_key": "longitude_sidereal",
+      "perturbation_id": "crosses-varga-boundary",
+      "baseline_input": 119.999,
+      "perturbed_input": 120.001,
+      "target_varga": "D9",
+      "target_varga_formula": "parasara_standard_v1",
+      "target_varga_domain": "relationship"
+    },
+    {
+      "fact_key": "longitude_sidereal",
+      "perturbation_id": "stays-within-varga-segment",
+      "baseline_input": 119.999,
+      "perturbed_input": 119.998,
+      "target_varga": "D9",
+      "target_varga_formula": "parasara_standard_v1",
+      "target_varga_domain": "relationship"
+    }
+  ],
+  "clock": {
+    "system_id": "fixture_exact_interval",
+    "duration_seconds": 86400,
+    "uncertainty_seconds": 1.0
+  }
+}

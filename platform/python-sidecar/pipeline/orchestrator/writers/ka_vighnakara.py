@@ -21,6 +21,8 @@ import logging
 from datetime import date as DateType
 from typing import Optional
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 import psycopg
 
 from pipeline.orchestrator.writers import WriterBase, WriterResult, register
@@ -113,6 +115,7 @@ def _coerce_date(d) -> Optional[DateType]:
         return None
 
 
+@serialized_swiss_state
 def _get_sidereal_lon(swe, jd: float, planet_id: int) -> Optional[float]:
     """Return Lahiri sidereal longitude of a planet at JD, or None on error."""
     try:

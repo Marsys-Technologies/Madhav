@@ -14,10 +14,19 @@ role: >
   adopted planning-basis and proposal state without granting implementation,
   campaign, merge or deployment authority except through a separately approved brief.
 changelog:
+  - "1.0 update 2026-09-15: Approves DP-SD-019 in-place execution-focus amendment following the velocity audit: retain the full L3 goal and current repair, isolate privileged bootstrap from routine delivery, restore independent asset/value work, and strengthen durable recovery and proportional validation. Dispatch evidence is recorded in section 11."
+  - "1.0 update 2026-09-13: Links the native-authorized planner capability-knowledge and Inquiry Contract branch candidate as DP-P8a; implementation is local/reviewable only, not adopted, merged, migrated, deployed or production-verified."
   - "1.0: Opens the permanent data-plane strategic ledger by reconciling Product Definition v3.0, the reviewed v2.0 proposal package, current generated inventory and historical layer records."
   - "1.0 update 2026-09-13: Records FOUNDATION completion, DP-SD-009 planning-basis adoption with control amendments, and the approved L0 Brahmagyan strategy/execution brief."
   - "1.0 update 2026-09-13: Records the L0 producer-ready Swiss-state blocker and DP-SD-010 shared-serialization scope amendment."
-  - "1.0 update 2026-09-13: Links the native-authorized planner capability-knowledge and Inquiry Contract branch candidate as DP-P8a; implementation is local/reviewable only, not adopted, merged, migrated, deployed or production-verified."
+  - "1.0 update 2026-09-13: Records DP-SD-011, the exact ga_strength PyJHora transitive-span addendum returned by the deeper DP-SD-010 audit."
+  - "1.0 update 2026-09-13: Accepts the independently challenged L0 PRODUCER_READY packet at execution commit f6fed12c7 and opens L1 for strategy only."
+  - "1.0 update 2026-09-14: Approves the complete 19-writer L1 Gaṇita producer-ready strategy and execution brief under DP-SD-013; L2 remains waiting."
+  - "1.0 update 2026-09-14: Pins DP-SD-013 approval to immutable L1 strategy/brief content commit 7e101ffc31e28ca902265def6de733a5286705e5; dispatch is the next action."
+  - "1.0 update 2026-09-14: Dispatches the pinned DP-SD-013 L1 brief to the permanent Execution — Data Plane task on codex/madhav-data-plane-execution."
+  - "1.0 update 2026-09-14: Accepts the independently challenged L1 PRODUCER_READY packet at execution commit 18503e9c2; opens L2 for strategy only under DP-SD-014."
+  - "1.0 update 2026-09-14: Approves the independently challenged complete L2 Bodha producer-ready strategy and execution brief under DP-SD-015; immutable approval pin and dispatch remain separate next actions, and L3 stays waiting."
+  - "1.0 update 2026-09-14: Pins DP-SD-015 approval to immutable L2 strategy/brief content commit 86374d65f3dc742085783e352a9999e2edb48715; dispatch is the next action."
 ---
 
 # Madhav data-plane strategic ledger
@@ -117,10 +126,29 @@ separately admitted next-generation artifact. Product backcasting is not runtime
 | DP-SD-008 | Treat retrieval, judgment/assessment tools, adaptive inquiry, managed channels and replay/export as part of the data-to-answer chain, not post-layer polish. | WORKING STRATEGIC REQUIREMENT inherited from product v3.0. |
 | DP-SD-009 | Adopt Data Plane Value Architecture v2.0 with the execution foundation and L0 strategy controls as the governing data-plane planning basis. | ADOPTED AS PLANNING BASIS on 2026-09-13; not canonical product adoption or implementation proof. |
 | DP-SD-010 | Close the L0 Swiss Ephemeris process-global state blocker by extending one shared re-entrant serialization boundary to every live setter and dependent calculation in the approved exact scope; do not adopt process-isolated execution. | ADOPTED BLOCKER RESOLUTION on 2026-09-13; no output-semantic, deployment or L1-L5 authority expansion. |
+| DP-SD-011 | Extend DP-SD-010 only to the two live PyJHora state-selection/dependent-calculation spans in `ga_strength_writer.py` and their exact tests/evidence. | ADOPTED SCOPE ADDENDUM on 2026-09-13; no strength semantics or broader directory authority. |
+| DP-SD-012 | Accept the L0 Brahmagyan terminal packet at `f6fed12c794224329f6b3b436f8b1b814499d06d` as `PRODUCER_READY`, with all later delivery states explicitly unreached. | ACCEPTED on 2026-09-13 after independent challenge; authorizes L1 strategy preparation only, not L1 execution. |
+| DP-SD-013 | Approve the complete L1 Gaṇita producer-ready strategy and paired immutable execution brief against accepted L0 revision `f6fed12c7`: reconcile all 19 current writers plus adjacent numerical service/projection capital; implement exact context/fact/configuration/condition/relation/clock/sensitivity/generation contracts and `L1-SLICE-RESOURCE-CONFIG-01`; preserve the L0 `UNQUALIFIED_SOURCE` Bhāvat boundary, frozen producer architecture and all later-state gates. | APPROVED on 2026-09-14 at immutable content commit `7e101ffc31e28ca902265def6de733a5286705e5`; authorizes only the permanent execution task on `codex/madhav-data-plane-execution` to execute the pinned L1 brief and stop at `PRODUCER_READY`. |
+| DP-SD-014 | Accept the L1 Gaṇita terminal packet at `18503e9c2dbb140f5d17b4bc34a5f6d087f97c38` as `PRODUCER_READY`, with reviewed implementation tip `a9c44c298a3b6460d676e84cd7b26468e3d2e053`, exactly 19/19 runtime producer boundaries, slice digest `25c46b559def7e1a9f8e1a05114be5a6c306a846a23b2665b1b5c917128d3279`, independent challenge PASS and every later delivery state unreached. | ACCEPTED on 2026-09-14 after strategy-side commit/scope/artifact review, independent rerun of the 19/19 validator and 52 focused contract tests. Authorizes L2 strategy preparation only; it does not authorize L2 execution, integration, deployment, production mutation, consumer-value or empirical claims. |
+| DP-SD-015 | Approve the complete L2 Bodha producer-ready strategy and paired execution brief against accepted L0 `f6fed12c7` and L1 terminal `18503e9c2`: reconcile all 23 current `bo_*` writers including supporting `bo_grounding` while preserving the historical formal denominator of 22; disposition adjacent engines/helpers/stores/projections; implement stable signed/multidomain proposition, configuration, occurrence/condition/cancellation, graph/mechanism, contradiction/rival, evidence-dependence, epistemic/grounding, discovery/investigator, practice-eligibility and generation contracts; remove L3 runtime/activation-window authority from new L2 generations; and prove `L2-SLICE-RESOURCE-MECHANISM-01` without fabricating a qualified doctrine case. | APPROVED on 2026-09-14 at immutable content commit `86374d65f3dc742085783e352a9999e2edb48715`, after independent challenge and correction of authority-pin, adjacent-surface, L3-boundary and zero-positive-rule completion gaps. Authorizes only the permanent execution task on `codex/madhav-data-plane-execution` to stop at `PRODUCER_READY`; no L3, integration, deployment, production mutation, consumer-value or empirical authority. |
 
 The planning basis and the bounded DP-SD-010 blocker resolution are adopted.
 Other individual layer/asset deltas remain subject to their approved strategy
 and execution brief.
+
+### DP-SD-019 — execution focus and recovery
+
+The native authorized Strategy to inspect the current L3 execution and inject
+the recommended corrective prompt into the existing task. Strategy selects an
+in-place amendment: preserve the accepted security integration and active
+provenance repair; isolate privileged bootstrap from routine deployment;
+restore useful independent asset/performance/consumer work; use durable
+checkpoints, proportional review and accepted-asset throughput. The full
+DP-SD-017 goal, DP-SD-018 bounded authority and all 22 active identities remain.
+The approved instruction is
+[L3 execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md).
+This is implementation authorization for its stated corrections, not evidence
+that any correction or L3 asset is complete. Exact content and dispatch are in §11.
 
 ## 5. Assumptions, contested findings and evidence limits
 
@@ -180,22 +208,25 @@ the repeatedly studied charts.
 |---|---|---|---|
 | DP-P0 | Plane baseline: ratified inheritance, target proposal, inventory, evidence limits and adoption delta | COMPLETE — baseline established and planning basis adopted by DP-SD-009 | This ledger; foundation commit `d838af455` |
 | DP-P1 | Overall value-architecture decision and versioned amendment if required | COMPLETE — DP-SD-009 | Foundation commit `d838af455`; this ledger |
-| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | EXECUTION BLOCKER RESOLUTION APPROVED — DP-SD-010; terminal re-challenge pending | L0 strategy/brief; `MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_AMENDMENT_v1_0.md`; execution evidence `552fa76d2` |
-| DP-P3 | L1 Gaṇita definition: 19 writers, fact/configuration/context/precision packages, honest failure and L0 consumption | PENDING L0 contract | None |
-| DP-P4 | L2 Bodha definition: 23 writers including support, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | PENDING L1 contract | None |
+| DP-P2 | L0 Brahmagyan definition: 36 writers + four non-writers, exact authority boundaries, source/rule coverage, semantic releases and first-slice contracts | COMPLETE — `PRODUCER_READY` accepted by DP-SD-012 | L0 strategy/brief; Swiss-state amendment/addendum; execution terminal `f6fed12c794224329f6b3b436f8b1b814499d06d` |
+| DP-P3 | L1 Gaṇita definition: 19 writers, adjacent numerical service/projections, fact/configuration/context/precision/clock packages, honest failure and accepted-L0 consumption | COMPLETE — `PRODUCER_READY` accepted by DP-SD-014; integration/deployment/value/evaluation remain unreached | L1 strategy/brief pins `7e101ffc3`/`e846baf3c`; reviewed tip `a9c44c298`; terminal evidence `18503e9c2` |
+| DP-P4 | L2 Bodha definition: 23 writers including support, adjacent answer authorities, full signed/multidomain structural mechanisms, epistemics and investigator interfaces | APPROVED AND IMMUTABLY PINNED by DP-SD-015; dispatch is next | Accepted L0 `f6fed12c7`; accepted L1 terminal `18503e9c2`; L2 content pin `86374d65f` |
 | DP-P5 | L3 Kāla definition: 22 writers + one non-writer, exact structure-time mechanisms, interval/search/view responsibilities and upstream reconciliation | PENDING L2 contract | None |
 | DP-P6 | L4 Phala definition: nine writers, manifestation/publication chain, outcome specificity, falsifiers and claim-issuance boundary | PENDING L3 contract | None |
 | DP-P7 | L5 Mīmāṃsā definition: 14 writers + `lel_events`, observation/claim/evaluation ownership and future-artifact admission | PENDING L4 and intake contracts | None |
 | DP-P8 | Cross-layer integration plan: DP01-DP18, discovery/investigation, managed delivery, coherent generations, correction and purpose firewalls | VISIBLE FROM START; finalized after layer plans | None |
 | DP-P8a | Planner-facing SCU snapshot, Inquiry Contract/compiler, managed/raw lifecycle foundation and mechanical estate census | IMPLEMENTED BRANCH CANDIDATE — local tests/static review only; not adopted, merged, migrated, deployed or production-verified | `MADHAV_PLANNER_CAPABILITY_KNOWLEDGE_AND_INQUIRY_IMPLEMENTATION_v1_0.md`; branch `codex/planner-knowledge-inquiry` |
 | DP-P9 | Individual asset/interface plans in layer order, each with exact inputs, outputs, consumers, preserved kernels, delta, tests, compatibility and rollback | PENDING its layer definition | None |
-| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 BRIEF APPROVED; later briefs pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde` |
+| DP-P10 | Self-contained execution briefs for approved bounded slices; one permanent execution task reused sequentially | L0 and L1 terminals accepted; L2 brief approved and pinned with dispatch pending; L3-L5 pending | Execution task `01a0998a-8240-7631-97ce-36c6d4734fde`; L2 content `86374d65f` |
 
 The first proposed vertical slice remains:
 
 `L0 canonical meaning and qualified rule -> L1 exact configuration/condition facts -> L2 complete signed structural distinction -> managed delivered finding`
 
-Use a financial/configuration question with a qualified Bhāvat Bhāvam or cancellation case.
+Use a financial/configuration question with a source-qualified cancellation case when one is
+already admitted; otherwise preserve the Bhāvat Bhāvam arm as `UNQUALIFIED_SOURCE` and prove
+state machinery only with a non-promotable engineering fixture. Zero qualified positive doctrinal
+propositions is an honest valid producer outcome when the accepted L0 release supplies none.
 Only after that structural slice is accepted should its L3 activation, L4 manifestation/claim and
 L5 evaluation extensions proceed. Producer-ready, integrated, deployed and empirically validated
 remain separate statuses.
@@ -209,3 +240,46 @@ remain separate statuses.
 - Keep layer status and execution links concise. Detailed evidence belongs in versioned layer,
   asset or execution artifacts.
 - Preserve superseded recommendations and decision deltas; do not erase earlier evidence.
+## 9. L3 kickoff control — DP-SD-017
+
+| Control | Exact binding |
+|---|---|
+| Approved strategy/brief/review content | `793972c754b106688097dbc54536c1a9c270a793` on `codex/madhav-data-plane-strategy`; only the four documented strategy files changed |
+| Immutable approval record | `04a9ab33effa23e5e9b4e89772330ae264498a9b`; pins DP-SD-017 to the exact content commit above |
+| Native authority | 2026-09-15 request to implement the L3 campaign and send context/kickoff; one execution task with three coordinated workstreams |
+| Independent handoff review | Scoped approval by `l3_data_dag_astra`; two bounded clarifications applied before content commit; prior three Astra/max planning reviews preserved |
+| Execution destination | `Execution — Data Plane`, task `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`, branch `codex/madhav-data-plane-execution`, worktree `/Users/Dev/.codex/worktrees/c9bd/Madhav` |
+| Verified entry state | Idle task and clean worktree at accepted L2 terminal `e5307fadef42cca557a1c0ca3c1831b1296e22b4`; goal-tool state must be reconciled in the execution task |
+| New goal | Exact `goal_objective` from the pinned L3 execution brief; no token budget; not the old L2 objective or a producer-only terminal |
+| First execution packet | `L3-W0-FOUNDATION-SAFETY-01`; no initial full-chart rebuild |
+| Dispatch state | DISPATCHED: task-message tool returned success for destination `01a0998a-8240-7631-97ce-36c6d4734fde`; kickoff contains exact content/approval pins, goal objective, scope and W0 instructions. At 2026-09-15 02:50 IST a fresh task snapshot reports `active` with turn `01a0a1c8-678b-73e3-a8c2-b1141c27524d` `inProgress`. No implementation, acceptance or completion inferred. |
+| Goal and unattended recovery | Kickoff directs execution to reconcile the old goal, create the exact L3 goal, and activate/reconcile a task heartbeat with tested durable recovery. These are delegated requirements, not confirmed activation or continuity claims in this strategic handoff. |
+| Final limits | Specific holds persist; L4/L5 wait; acceptance requires evidence for each delivery state; no empirical-outcome claim |
+
+## 10. L3 unblock and resume control — DP-SD-018
+
+| Control | Exact binding |
+|---|---|
+| Native decision | Authorize an autonomously executable plan, all scoped authorizations needed to resolve the current blockers, and resumption in the existing execution task through full L3 completion. |
+| Amendment | [L3 unblock and resume](MADHAV_DATA_PLANE_L3_UNBLOCK_AND_RESUME_AMENDMENT_v1_0.md); supplements immutable DP-SD-017 content `793972c75` and approval `04a9ab33e` rather than rewriting them. |
+| Execution checkpoint | Clean `codex/madhav-data-plane-execution@5142109f7f219ea860f859e322646f79d875bee8`; source W2 reviewed at `47131772b`, RI-01 code-owned findings reviewed at `6a7ecc171`. |
+| Protected baseline | `731e311f0b8f5f84db2f152b93951e1d3d50d89a`, rechecked 2026-09-15; revalidate immediately before integration. |
+| Authority delta | Evidence-based source-provenance supersession, metadata-only L4 reconciliation, scoped DBA/credential/resource-binding and protected lifecycle/deployment repair; actual access and independent acceptance are not assumed. |
+| Goal | Continue the existing full DP-SD-017 L3 goal; DP-SD-018 is an authorized prerequisite, not a producer-only replacement goal or a new layer. No token budget. |
+| First packet | `L3-RI-02-AUTHORIZED-UNBLOCK`: reconcile state/authority, assign independent provenance and security lanes, then execute the non-circular release/cutover/W1 path. |
+| Independent handoff review | Source challenge identified the narrative L0-hash discrepancy, hardcoded L0 generator admission, invoker-default lifecycle API, and circular pre-PR cutover gate; all addressed. Reviewer `l3_data_dag_astra` approved the complete draft SHA-256 `4c2588a725c09349cef8cc3a1dd15909d552a7f006faa5c8454b9bf0cd4d2db5` with no blocking changes. Only status/review recording followed. |
+| Immutable approved amendment content | 6b6ce9c06ce54fb7c474d97c70257a505bf2ed84; exactly the new amendment and this strategic-ledger authority record changed. The original DP-SD-017 documents and acceptance history remain untouched. |
+| Approval-record binding | `7f21f27b14a7909424591a530096dc2f5d6e2b13` records native DP-SD-018 approval of the exact content pin above after independent review. |
+| Dispatch | DISPATCHED at 2026-09-15 11:42 IST: task-message tool confirmed success for `01a0998a-8240-7631-97ce-36c6d4734fde`. Fresh task snapshot at 11:43 IST reports `active`, turn `01a0a3b2-18ee-71b1-8e32-dd5cb9d1668a` `inProgress`. Goal/heartbeat reconciliation and actual repair remain execution-owned; no gate-closure claim. |
+| Scope guard | Original history and retired sweep remain protected; no blanket provenance repin, branch-protection bypass, broad IAM, unrelated credential rotation, L4/L5 elevation or empirical claim. |
+
+## 11. L3 execution focus control — DP-SD-019
+
+| Control | Binding |
+|---|---|
+| Native decision | Inspect current execution and, if preferred, build and inject the velocity-audit corrections into the same execution task. Strategy selects in-place continuation. |
+| Approved instruction | [Execution focus amendment](MADHAV_DATA_PLANE_L3_EXECUTION_FOCUS_AMENDMENT_v1_0.md), version 1.0. |
+| Current observations | Permanent branch clean at `d22533825613c3d428bd844a5dfdc2c0c283b088`; isolated provenance candidate at `66a85047b1b7e2415d7cf2678179983f0708d761`; task active. These are refreshable observations, not final acceptance. |
+| Destination | `Execution — Data Plane`, `01a0998a-8240-7631-97ce-36c6d4734fde`, host `local`; preserve `codex/madhav-data-plane-execution` and its existing worktree. |
+| Goal and authority | Retain full DP-SD-017 L3 completion and DP-SD-018 prerequisite authority. Narrowly authorize bootstrap/routine-workflow separation and operating corrections; no protection bypass or new layer scope. |
+| Content pin and dispatch | Strategy content is pinned at `16590cc49f720e4200a8d9b6cad3f52b68e21792`, content SHA-256 `5fa92c6a5df2f5dda0e9d2041ba599b4c733775c1d438c786831fbd24c6ed48c`; consumed on the permanent execution branch by `d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f`. The existing task and heartbeat were updated in place; this records delivery and consumption only, not implementation or scheduled-wake proof. |

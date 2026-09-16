@@ -148,6 +148,19 @@ ON CONFLICT (chart_id, ayanamsha_id, vedha_kind, graha, window_start) DO NOTHING
 """
 
 
+def _has_complete_daily_series(
+    rows: list[tuple[date, float]], horizon_start: date, horizon_end: date,
+) -> bool:
+    """Require one and only one ordered row for every inclusive horizon day."""
+    expected_count = (horizon_end - horizon_start).days + 1
+    if len(rows) != expected_count:
+        return False
+    return all(
+        observed_date == horizon_start + timedelta(days=offset)
+        for offset, (observed_date, _value) in enumerate(rows)
+    )
+
+
 def _fetch_janma_moon(conn: Any, chart_id: str) -> tuple[int, int, str] | None:
     """Returns (moon_sign_idx 0-11, moon_nak_idx 0-26, fact_id) for the natal
     Moon, or None if the L1 dependency (ga_positions) has not produced this
@@ -297,6 +310,21 @@ class KaVedhaGocharaWriter(WriterBase):
                 asset_id=self.asset_id, rows_inserted=0,
                 notes=f"no ephemeris_daily rows for horizon {horizon_start}..{horizon_end} — "
                       "run bg_ephemeris first",
+            )
+        incomplete_grahas = [
+            graha for graha in ALL_GRAHAS
+            if not _has_complete_daily_series(
+                daily_by_body.get(graha) or [], horizon_start, horizon_end,
+            )
+        ]
+        if incomplete_grahas:
+            return WriterResult(
+                asset_id=self.asset_id,
+                rows_inserted=0,
+                notes=(
+                    "incomplete daily ephemeris coverage for " + ",".join(incomplete_grahas)
+                    + "; prior partition preserved"
+                ),
             )
 
         # Per-graha sign runs and nakshatra runs, computed once and reused by

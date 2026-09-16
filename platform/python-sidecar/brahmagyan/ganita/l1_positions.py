@@ -31,6 +31,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 # ── Constants ──────────────────────────────────────────────────────────────────
@@ -99,6 +101,7 @@ def _birth_jd_utc() -> float:
 
 # ── Position computation for all bodies ──────────────────────────────────────
 
+@serialized_swiss_state
 def compute_positions_all_bodies(jd_utc: float, ayanamsha_key: str) -> list[dict[str, Any]]:
     """
     Compute sidereal positions for 9 grahas + Lagna for one ayanamsha.

@@ -133,6 +133,8 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 from pipeline.orchestrator.writers import (
     ContextSpec,
     WriterBase,
@@ -213,6 +215,7 @@ def _require_reproducible_write_runtime() -> None:
         )
 
 
+@serialized_swiss_state
 def _require_pinned_ephemeris_runtime(swe: Any, ephe_path: str | None) -> str:
     """Require the exact file-backed corpus whose provenance is persisted."""
     if not ephe_path:
@@ -305,6 +308,7 @@ def _parse_sidereal(sid_lon: float, speed: float) -> dict[str, Any]:
     }
 
 
+@serialized_swiss_state
 def compute_synthetic_positions(
     birth_dt: datetime, lat: float, lon: float, swe: Any, ephe_path: str | None,
 ) -> dict[str, dict[str, Any]]:
@@ -314,8 +318,7 @@ def compute_synthetic_positions(
     Returns {graha_name: {sidereal_longitude, sign_id, sign, nakshatra_id,
     nakshatra, nakshatra_pada, is_retrograde}}.
     """
-    if ephe_path is not None:
-        swe.set_ephe_path(ephe_path)
+    swe.set_ephe_path(ephe_path)
 
     jd_utc = swe.julday(
         birth_dt.year, birth_dt.month, birth_dt.day,

@@ -7,7 +7,8 @@ test_hazard.py / test_integrator.py / test_stage4_field.py / test_stage5_null.py
 
   • FROZEN orchestrator contract conformance — no commit/rollback/close, no
     asset_throughput write, plan_substeps + run_substep;
-  • idempotency done ONCE in plan_substeps (the ka_gochara_sweep D-5 RED-C lesson);
+  • planning is read-only and idempotent replacement runs ONCE in the leading
+    execution-owned prepare substep (the ka_gochara_sweep D-5 RED-C lesson);
   • the weights version pinned ONCE (§7.5 sub-rule 5);
   • the §5.4 reconciliation invariant actually firing at write time;
   • ZERO rows written to any legacy table (§1 rail 2 — the wave's headline
@@ -16,6 +17,7 @@ test_hazard.py / test_integrator.py / test_stage4_field.py / test_stage5_null.py
 """
 from __future__ import annotations
 
+import copy
 import json
 import re
 import sys
@@ -36,8 +38,9 @@ from tests.l3.ka_kshetra import fixtures as F  # noqa: E402
 def _small_build(monkeypatch):
     """Shrink the horizon and the replicate count so the wiring tests are fast.
 
-    The SHAPE is unchanged: ten stage-4 decade slices, N stage-5 replicate
-    blocks, a finalize per class, a terminal snapshot. Only the magnitudes move.
+    The SHAPE is unchanged after the leading prepare step: ten stage-4 decade
+    slices, N stage-5 replicate blocks, a finalize per class, a terminal
+    snapshot. Only the magnitudes move.
     """
     monkeypatch.setattr(W, 'HORIZON_DAYS', 400.0)
     monkeypatch.setattr(S5, 'DEFAULT_REPLICATES', 8)
@@ -63,6 +66,20 @@ def _small_build(monkeypatch):
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage0_kinematics', None)
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage1_symbolization', None)
     monkeypatch.setitem(sys.modules, 'services.ka_kshetra.stage3_clocks', None)
+    # These orchestration tests intentionally replace stages 0–3 with fixture
+    # rows (above), so preserve those fixture inputs when prepare executes. The
+    # dedicated planning-safety suite exercises the production `_OWNED_TABLES`
+    # list and proves all stage tables are cleared in dependency-safe order.
+    fixture_input_tables = {
+        'kala_field_kinematics', 'kala_field_primitives',
+        'kala_field_promise_nodes', 'kala_field_promise_edges',
+        'kala_field_routes', 'kala_field_clocks', 'kala_field_boundaries',
+    }
+    monkeypatch.setattr(
+        W,
+        '_OWNED_TABLES',
+        tuple(item for item in W._OWNED_TABLES if item[0] not in fixture_input_tables),
+    )
     yield
 
 
@@ -90,6 +107,7 @@ class TestPlan:
         # OPT-N1: under ENGINE_VERSION='analytic' (now the default), stage5dhara
         # replaces stage5:*/stage5finalize:*. Test the stage that is actually
         # present in the analytic plan.
+        assert kinds[0] == 'prepare'
         assert kinds.index('stage4') < kinds.index('stage5dhara')
         assert kinds.index('stage5dhara') < kinds.index('stage6')
         assert kinds[-1] == 'snapshot'
@@ -114,12 +132,13 @@ class TestPlan:
 
     def test_no_event_classes_is_an_honest_empty_plan(self):
         # Lane A (bo_pratijna) has not promised or conditionally-promised anything
-        # for this chart yet. Zero substeps and a log line — not a crash, and not
-        # a fabricated class list.
+        # for this chart yet. The only executable work is replacement cleanup —
+        # not a crash, and not a fabricated class list.
         tables = F.build_tables()
         tables['bodha_pratijna'] = []
         conn = FakeConn(tables)
-        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        assert [step.key for step in steps] == ['prepare:replace']
 
     def test_denied_pratijna_rows_do_not_count_as_event_classes(self):
         # A chart can have bo_pratijna rows that are all `denied` — real Bodha
@@ -134,10 +153,11 @@ class TestPlan:
             {'chart_id': F.CHART_ID, 'event_class_id': 'never_promised', 'status': 'denied'},
         ]
         conn = FakeConn(tables)
-        assert W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID)) == []
+        steps = W.KaKshetraWriter().plan_substeps(FakeCtx(conn, F.CHART_ID))
+        assert [step.key for step in steps] == ['prepare:replace']
 
-    def test_idempotency_delete_happens_exactly_once_in_plan_substeps(self):
-        # THE ka_gochara_sweep D-5 RED-C LESSON. A per-substep delete can fire
+    def test_idempotency_delete_happens_exactly_once_in_prepare_substep(self):
+        # THE ka_gochara_sweep D-5 RED-C LESSON. A computational-substep delete can fire
         # after sibling substeps have committed rows in the SAME build and
         # silently wipe them.
         writer, conn = _run_full_build(F.build_tables())
@@ -465,15 +485,24 @@ class TestDeterminism:
         hb = b.tables['kala_field_snapshots'][0]['field_content_hash']
         assert ha == hb
 
-    def test_a_rebuild_over_existing_rows_replaces_rather_than_accretes(self):
+    def test_a_fresh_rebuild_over_existing_rows_is_held_until_w7(self):
         tables = F.build_tables()
         _, conn = _run_full_build(tables)
-        first = len(conn.tables['kala_field'])
+        conn.tables['build_substep_progress'] = []
+        conn.executed.clear()
+        conn.deletes.clear()
+        prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
-        for step in writer.plan_substeps(ctx):
-            writer.run_substep(ctx, step)
-        assert len(conn.tables['kala_field']) == first
+        steps = writer.plan_substeps(ctx)
+
+        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+            writer.run_substep(ctx, steps[0])
+
+        assert conn.tables == prior_slice
+        assert conn.deletes == []
+        assert not any(re.match(r'\s*(?:DELETE|INSERT|UPDATE|TRUNCATE)\b', sql, re.I)
+                       for sql in conn.executed)
 
     def test_a_changed_weights_version_changes_the_snapshot_identity(self):
         tables = F.build_tables()
@@ -555,7 +584,7 @@ class TestStage65Insights:
         assert all(r['insight_type'] != 'biographical_echo' for r in rows)
         assert all(r['field_snapshot_id'] == writer._snapshot_id for r in rows)
 
-    def test_a_lane_E_biographical_row_survives_a_field_rebuild(self):
+    def test_a_lane_E_biographical_row_survives_a_held_populated_rebuild(self):
         # THE SHARED-TABLE HAZARD. `kala_insights` is written by two authors; a
         # blanket per-chart delete on a field rebuild would silently destroy
         # Lane E's LEL-derived rows, which are outside this writer's authorship
@@ -572,14 +601,20 @@ class TestStage65Insights:
         # assertion below would pass while proving nothing — which is exactly
         # what a mutation run caught this test doing.
         conn.tables['build_substep_progress'] = []
+        conn.executed.clear()
+        conn.deletes.clear()
+        prior_slice = copy.deepcopy(conn.tables)
         writer = W.KaKshetraWriter()
         ctx = FakeCtx(conn, F.CHART_ID)
         steps = writer.plan_substeps(ctx)
-        assert 'kala_insights' in conn.deletes, 'the delete path must actually run'
-        for step in steps:
-            writer.run_substep(ctx, step)
-        ids = {r['insight_id'] for r in conn.tables['kala_insights']}
-        assert 'kin_laneE_biographical' in ids
+        assert conn.deletes == [], 'planning must be read-only'
+        assert steps[0].key == 'prepare:replace'
+        with pytest.raises(W.KshetraReplacementHeld, match='until W7'):
+            writer.run_substep(ctx, steps[0])
+        assert conn.tables == prior_slice
+        assert conn.deletes == []
+        assert not any(re.match(r'\s*(?:DELETE|INSERT|UPDATE|TRUNCATE)\b', sql, re.I)
+                       for sql in conn.executed)
 
     def test_a_lel_derived_row_never_enters_the_content_hash(self):
         # The other half of the carve-out: the insight is SERVED and the field

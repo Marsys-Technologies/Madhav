@@ -27,6 +27,8 @@ import os
 from datetime import datetime, timedelta
 from typing import Any
 
+from panchang_engine.swiss_state import serialized_swiss_state
+
 logger = logging.getLogger(__name__)
 
 # ── Native birth constants ─────────────────────────────────────────────────────
@@ -60,6 +62,7 @@ def _birth_jd_utc() -> float:
     )
 
 
+@serialized_swiss_state
 def run_engine_smoke() -> dict[str, Any]:
     """
     Run a full smoke test of the pyswisseph engine for the native's birth data.

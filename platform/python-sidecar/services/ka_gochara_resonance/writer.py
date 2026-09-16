@@ -514,22 +514,33 @@ def _build_writer_class():
                 logger.info("[ka_gochara_resonance] dry_run=True — skipping")
                 return WriterResult(asset_id=self.asset_id, rows_inserted=0, notes="dry_run=True")
 
-            # Idempotency: per-chart delete-then-insert (§N.3)
-            with conn.cursor() as cur:
-                cur.execute(_DELETE_SQL, (chart_id,))
-
             all_rows: list[dict] = []
+            missing_event_classes: list[str] = []
             for event_class in TARGET_EVENT_CLASSES:
                 class_rows = _fetch_event_class_rows(conn, chart_id, event_class)
+                if not class_rows:
+                    missing_event_classes.append(event_class)
+                    continue
                 for row in class_rows:
                     row["chart_id"] = chart_id
                 all_rows.extend(class_rows)
 
-            if not all_rows:
+            if missing_event_classes:
                 return WriterResult(
                     asset_id=self.asset_id, rows_inserted=0,
-                    notes="No rows built — check brahma_event_ontology/bg_transit_rules coverage",
+                    notes=(
+                        "incomplete event-class coverage for "
+                        + ",".join(missing_event_classes)
+                        + "; prior partition preserved"
+                    ),
                 )
+
+            # Build and validate the complete candidate before replacement.
+            # An honest-empty upstream result must not erase the prior servable
+            # chart partition.  The orchestrator still owns atomic rollback for
+            # any later INSERT failure.
+            with conn.cursor() as cur:
+                cur.execute(_DELETE_SQL, (chart_id,))
 
             with conn.cursor() as cur:
                 cur.executemany(_INSERT_SQL, all_rows)

@@ -1,8 +1,612 @@
 {
+  "definition_bindings": {
+    "L0": {
+      "membership_sha256": "e136c56d9720f7383234f9c524fd1756071fa0e4dabfee8b6367a8a562139bbd",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L1": {
+      "membership_sha256": "967e107735c2c0ff2174fad8886aefb6b86e60a680f4c35c9b9c3ab8c759cc24",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L2": {
+      "membership_sha256": "ed79468208d665dc9eb7f47bf70392e058f6a1b7d1f51ad492afdbaad7f058bb",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L3": {
+      "membership_sha256": "b0df0e0a5767c530ca8161c11e768d6e2797830a53b8445e0751736f6d8bc4ab",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L4": {
+      "membership_sha256": "367159d666a511051e6364788a6638009b832fb4529409c01aa4869fa25388a4",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    },
+    "L5": {
+      "membership_sha256": "70221ef549ea99db55541d0f09a78650b22ec634575314f2b6f89711a356db53",
+      "schema_version": "nirmana-analysis-layer-definition/v1",
+      "snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8"
+    }
+  },
+  "history": {
+    "L0": [
+      {
+        "generation_id": "l0:49bb5c98b864:5125cccb6871",
+        "historical_snapshot_commit": "c558e60d3267ded79d65fd25f50ee926ce27b75a",
+        "pin": {
+          "asset_prefix": "bg_",
+          "convergence_commit": "49bb5c98b864a2cb2fee037cdb7f14f6892a8263",
+          "non_writer_assets": [
+            "bg_ephemeris_engine",
+            "bg_gochara_citation_resolution",
+            "bg_panchanga",
+            "bg_sarvatobhadra_grid"
+          ],
+          "receipt_count": 40,
+          "writer_inventory_sha256": "5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178"
+        },
+        "superseded_by_generation_id": "l0:d2369b888e76:3dda261170ee",
+        "writer_digests": {
+          "bg_class_lifetime_counts": "3f19ed97443e3adb4c0b6edfc4c06b664b3cdfa97cd678a2c103a5a5e8ad89dc",
+          "bg_class_priors": "902a427cce3c7f1a34476e0868a9e071b1377076942f957b5bfb6c2a4975b9ea",
+          "bg_cohort": "46d1641ffd9f22bbeee4f4332255b68c74c3cd63f282eaa1fb04403476eccfb2",
+          "bg_compendium_index": "6b90756b1fc08129529be0d0f741f1a5c66409e9400ef09d0b202983081bf3e0",
+          "bg_concordance": "f50945458f0643664d3659d6d2783c9037db1f3d855eb9affcf3697476966327",
+          "bg_dasha_systems": "66585e94ff6436555eedca470ae72542392054ae2d24afa7db0b6503ad02edb7",
+          "bg_dignity_reference": "28c4e6ac68bd3864eea1995a9c8289047c286d5363d64ce10afbed206537c359",
+          "bg_doshas": "14f7d534dade5db960f4a1779d1bd7143a356523e77e62f5bf834ba93e29aed1",
+          "bg_ephemeris": "a9e40a3e235e65ad354f44701ee600bb001e39c446f1f2737f2af2a7b3ae9594",
+          "bg_formula_constants": "54c8bbee62cbe3ffde5dc25a42d119f1f74cf8445149c184d07d6c7ecec8c5a0",
+          "bg_ghatana": "db43d48b92aa425c11522ae20fc9c93efe64e346daf688bff162e9ca784f0a4b",
+          "bg_gochara_arcs": "1e780b029848be15d37216cfc9239ea4804e6e262e4e9e39fe20e48df38caa96",
+          "bg_kota_chakra_rings": "f416a3c52b95938def7a287f491b58883c193c579fa4fd57c4e80ecd5bc70076",
+          "bg_kp_sublord_division": "ece749ff2c9ac3768b73731d941d6c9479fc0404ecc5ad6efa4e08ec11ff5a39",
+          "bg_medical_mappings": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_muhurta_lattice": "2ab11ded18a1468533772b6f03f8183d131ff62a29f6ff6c8be44cfbfcdfbcce",
+          "bg_nakshatra": "1371918553b7af0b5a54ce492fc3238c8b5a78267577a46381b787a0eac12df4",
+          "bg_nakshatra_medical": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_ontology": "6e2f349634c5f98d0658c363b3ac03153eed61f921e74376dd19f5c40aeb1017",
+          "bg_parihara_rules": "e3d5118746f02847dbb1f6f317c6367b37df5d89d41626cc1977a0016ab7ecf2",
+          "bg_phaladeepika_latta": "9170aa9ea0368e6f3854834ff44c8e83776f14b45fc911eab3bde6b5ae5eb5df",
+          "bg_prashna_rules": "07b6ac8065abbcfb98cc76ea37dc7c32ad7a4f7edcafe8c08ccf35b15c3db6eb",
+          "bg_reference": "36c611ee482f7f51b74c3af1b29e9ccda84881e7bcf28403694848b4fcf591b3",
+          "bg_remedies": "fde070f1390963cbc85460c4679a894d869836b9779d8aee9aa1f17d9340f2d3",
+          "bg_rules": "e947be09e636ab63ede2c267b2f75d2609a594fdf510dc68f1bffb0c7dcbd0e1",
+          "bg_sign_medical": "b7487e71f18d76ce8473d7c1edc9580daeeb8bc6bd26131a7d078bfc858fa400",
+          "bg_sky_calendar": "3c401a16066fd86347ac6538aa63c55045760a75fc1df4a4bf400b23f36f4cc8",
+          "bg_text_index": "6c0ac3bd5529a4ea812c80787093a5224adde0087d16d4a14bf3654d4cf76d26",
+          "bg_texts": "04f78c4fd926e7aeb9d34c6b5b27e304bb006114c2833c41b48ff5b849c00834",
+          "bg_transit_engine": "9812db139d568ba645c67c3c920d22bb6fac6c08a6222731a59b07bc2593f1aa",
+          "bg_transit_rules": "9812db139d568ba645c67c3c920d22bb6fac6c08a6222731a59b07bc2593f1aa",
+          "bg_vastu_directions": "6c010f59476b462252235407b811c491410d192a8afe3aaf658fc9aaa0462d4d",
+          "bg_vedha_malefic_scale": "9170aa9ea0368e6f3854834ff44c8e83776f14b45fc911eab3bde6b5ae5eb5df",
+          "bg_vidhi_floors": "2c22fdd83accc3ad1a732951eb7cfcca2f0ed4aa9569c604e24505c6466d33b9",
+          "bg_vidhi_primitives": "63f0a35a4be711d2a19af5f28124316b7b8d0d2940d6fc6d62bc46780bb99cca",
+          "bg_yogas": "18340f9966fb8dfb18519f7463ed276a3a5d63dcd0e72873a712e019ea39aca2"
+        }
+      }
+    ],
+    "L1": [
+      {
+        "generation_id": "l1:d56bb9fd50d4:55984558527e",
+        "historical_snapshot_commit": "c558e60d3267ded79d65fd25f50ee926ce27b75a",
+        "pin": {
+          "asset_prefix": "ga_",
+          "convergence_commit": "d56bb9fd50d42c1045c7aac2cee19478f216b174",
+          "non_writer_assets": [],
+          "receipt_count": 19,
+          "writer_inventory_sha256": "55984558527e9c1b95da608839b69a4dde255b3855ac6839980c26b24c2b17e0"
+        },
+        "superseded_by_generation_id": "l1:d2369b888e76:3e8816fc708a",
+        "writer_digests": {
+          "ga_ayurdaya": "2a39d34072fbe22a983983f05b17f58ec2dc2daa294dfdd8265bd5822a8547ec",
+          "ga_condition": "f35ee0b53acc234d9db11cf30974b7dbc97f782e2b7c8ce2dcf7c4f9ec9229c4",
+          "ga_dashas": "26ab9e5b87e6e3e5ce4e999cbdd53e7ae5be169717ab5df2d1cd4b213712f584",
+          "ga_medical": "47b8977db59caf116949a905a606b77ce53d8817e659fc9264d4e079811e1e15",
+          "ga_nakshatra": "e675487344874af2df7888d5166748dd13e7d8a257832a024f3e6949a1cef50a",
+          "ga_panchanga": "72aa5b836cd34435c02a252a4962e41da7697bc24cdece957bf22166d075bb5f",
+          "ga_positions": "106c428d5a887ae0889a3b4e639d23fdabb34ae7c67c47b770ac82bbca750496",
+          "ga_prashna": "ec06a522e3b282a576cb9970266cb52f70902b664867cba718019e5a8803f85a",
+          "ga_sade_sati": "738c6b0a2a1bc23c1db8d2acadfa6486e3db03f3a533befd2c8a57eaa4b6543e",
+          "ga_sensitive": "9636d6d69a232a7be5ebe698d26b4812c2aa870a12c8c4fb93ace133f0dad61f",
+          "ga_sensitive_degree": "43dcdec9888f3f2def0f27ffb76d15d520f3ccee084c487edf1ac8cdd5333124",
+          "ga_strength": "c304a0e3201051b16ef9fc855e074eaa220c42c1348ac7f172864226b393bf3e",
+          "ga_structural": "43dcdec9888f3f2def0f27ffb76d15d520f3ccee084c487edf1ac8cdd5333124",
+          "ga_tajaka": "98a67d136cffbb989510ebbfa941e4ed2d7cf0bf8f9e7d91e35a223727f07207",
+          "ga_transit_anchors": "1595ae4e3301e7a852ab304b761e0c99b86b8a8aba6df1c1e3468bfd1dd57848",
+          "ga_vargas": "d99aff100b9a0d4af353daadea28f19d97f3e6915e461943368313e15759fe4b",
+          "ga_vastu": "6a54bc80accb5b6064668ff3e6527e44ff5d0e11b8550f3dedfb639d0ce21ead",
+          "ga_vichara": "5836c07d6e04bda71255587d93aa64fee8dbe699cd06c0050af49d1b80d2f16a",
+          "ga_yoga": "43dcdec9888f3f2def0f27ffb76d15d520f3ccee084c487edf1ac8cdd5333124"
+        }
+      },
+      {
+        "generation_id": "l1:d2369b888e76:3e8816fc708a",
+        "historical_snapshot_commit": "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
+        "pin": {
+          "admission": {
+            "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            "authority_decision": "DP-SD-018",
+            "changed_assets": [
+              "ga_ayurdaya",
+              "ga_condition",
+              "ga_dashas",
+              "ga_medical",
+              "ga_nakshatra",
+              "ga_panchanga",
+              "ga_positions",
+              "ga_prashna",
+              "ga_sade_sati",
+              "ga_sensitive",
+              "ga_sensitive_degree",
+              "ga_strength",
+              "ga_structural",
+              "ga_tajaka",
+              "ga_transit_anchors",
+              "ga_vargas",
+              "ga_vichara",
+              "ga_yoga"
+            ],
+            "delta_classifications": {
+              "ga_ayurdaya": "approved_intentional_change",
+              "ga_condition": "approved_intentional_change",
+              "ga_dashas": "approved_intentional_change",
+              "ga_medical": "approved_intentional_change",
+              "ga_nakshatra": "approved_intentional_change",
+              "ga_panchanga": "approved_intentional_change",
+              "ga_positions": "approved_intentional_change",
+              "ga_prashna": "approved_intentional_change",
+              "ga_sade_sati": "approved_intentional_change",
+              "ga_sensitive": "approved_intentional_change",
+              "ga_sensitive_degree": "approved_intentional_change",
+              "ga_strength": "approved_intentional_change",
+              "ga_structural": "approved_intentional_change",
+              "ga_tajaka": "approved_intentional_change",
+              "ga_transit_anchors": "approved_intentional_change",
+              "ga_vargas": "approved_intentional_change",
+              "ga_vichara": "approved_intentional_change",
+              "ga_yoga": "approved_intentional_change"
+            },
+            "reason": "Admit the independently accepted L1 producer-contract source closure; source scope only and no inherited runtime acceptance.",
+            "review_artifacts": [
+              {
+                "commit": "18503e9c2dbb140f5d17b4bc34a5f6d087f97c38",
+                "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L1_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+                "sha256": "265ed113e94915ee3dcaa55c842bf3fd61f6a71320ffe33f3dbd22e87a82c267"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+          },
+          "asset_prefix": "ga_",
+          "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+          "generation_id": "l1:d2369b888e76:3e8816fc708a",
+          "non_writer_assets": [],
+          "receipt_count": 19,
+          "supersedes_generation_id": "l1:d56bb9fd50d4:55984558527e",
+          "writer_inventory_sha256": "3e8816fc708ac9b93d1551269be702651add7e7b246f74049303493e62f8db40"
+        },
+        "superseded_by_generation_id": "l1:149f8479ac4e:93de3b2c84b7",
+        "writer_digests": {
+          "ga_ayurdaya": "f3b0f6144005ea9e677d09d55e4151a2569c064bf42bcdc80b2e65d8401e79ce",
+          "ga_condition": "0fffb91dc9646836f21568acf615175d4f6cd5cb2e2146453c5388ee60265320",
+          "ga_dashas": "07f155af0f6d13f3754ba2c409632dceb20c71009c3a496daf8a841d042452dc",
+          "ga_medical": "88026da432efca22453c3c682eb68c4c3c633ffdd188129b25b985213cc89537",
+          "ga_nakshatra": "0a77c7379233935891e66ab99150f794858fbbed5b3851d025c44f3688f330a1",
+          "ga_panchanga": "7c612c72aed3d61e04d554a908c1ba4d5e7145e255b976ad5b15da80ac6bd042",
+          "ga_positions": "b5dac9a2fc0a73c38fde5cb4846246517b74cd17fc9eec6c5f256430e0e79703",
+          "ga_prashna": "7d9a4c52e8595ccbeb3627acedbb87d2ac1fbec07fdc8e8088fae00cfdaadf78",
+          "ga_sade_sati": "90c64ca455d6b140fafc030b1bb7c1996a4a8dfecbe17109aa9380c9d86570b8",
+          "ga_sensitive": "c5085534a8cc24f1cc275620bc60d2ada6137695b158f7bbcf16bfaef54cb67d",
+          "ga_sensitive_degree": "a5b35c325ccf4a908d6d41b9f9e47d28d1c013be1efe51ab93e2dac51d0c7852",
+          "ga_strength": "ca23af2c91590bf84638f9c97a7ec2c6e5bb8becc3a099a26ed92e0f97d94bc5",
+          "ga_structural": "a5b35c325ccf4a908d6d41b9f9e47d28d1c013be1efe51ab93e2dac51d0c7852",
+          "ga_tajaka": "bcedd0b7f232504ef05444b6e433a7a3ea1973a97141616c3c672b249cb83816",
+          "ga_transit_anchors": "79248ef545cf71b4d0f84b35faa879d602c49c9da56fd9c7aea8b5b35dbb3893",
+          "ga_vargas": "f65d22d3b8a4be0e141a3092acf23f753fe722bf9256ad7b25c8d5c30dee1ba2",
+          "ga_vastu": "6a54bc80accb5b6064668ff3e6527e44ff5d0e11b8550f3dedfb639d0ce21ead",
+          "ga_vichara": "38e6845adda12962b43769000f6034b37ea30f9e1901dcea8c5119c51ff73f30",
+          "ga_yoga": "a5b35c325ccf4a908d6d41b9f9e47d28d1c013be1efe51ab93e2dac51d0c7852"
+        }
+      }
+    ],
+    "L2": [
+      {
+        "generation_id": "l2:a3da94d408e6:863a3e6e6b67",
+        "historical_snapshot_commit": "c558e60d3267ded79d65fd25f50ee926ce27b75a",
+        "pin": {
+          "asset_prefix": "bo_",
+          "convergence_commit": "a3da94d408e64a3b01f965340833dd46b377b5f3",
+          "non_writer_assets": [],
+          "receipt_count": 22,
+          "writer_inventory_sha256": "863a3e6e6b67320fd5de7d00c6093307a9f2c816e39af09c4b4bc9341af8169b"
+        },
+        "superseded_by_generation_id": "l2:d2369b888e76:ad143c22bd8d",
+        "writer_digests": {
+          "bo_anveshana": "a00dd2cabf1ce443d3130c0a7ff3546e5411b88f2277797fd45072c6120fb3c4",
+          "bo_arudha": "e7d8f05e9add56ffc4c1d33c6705e59c5051a27929d28c50c20f47f85e47738d",
+          "bo_bimba": "e03131fa513abf29e0bc47bf64c4683a4c6f7a8eac4d3445d1f02949b7958ae4",
+          "bo_cdlm_summary": "15cc14901d223afa4a36d3b9132d85d03827a9e32d0528093625ca0651869bb2",
+          "bo_cgm_motifs": "5ca95ee29ae7c9f9f5f4065ad006cde5cd2df237b4420b37397116f7a53f9ae7",
+          "bo_cgm_paths": "eebbc56bfcbdf0aa12a99f27cf618ed0f46d32f2ee37b3ce2baea2a886363bdb",
+          "bo_chart_gestalt": "1bd1da9df17f6941cdd694fbc871102437899015b7f223b5bd79e833546bca78",
+          "bo_drishti": "e5dfd625aa7ece6aceabc4b9eefb91e27ff2fba8804309761fa165a4aa10ed84",
+          "bo_grounding": "af9df723f86d71266e431820376eb4b0c7cfa6763ad74e9ef447126cbb1737f9",
+          "bo_karanajala": "b7b155bc5e725716a77702c7b155f5caf50356132b50f02538a8bdcc0440c021",
+          "bo_laksana": "b4d360f93756cdd5e1ee052eaa3cb0f9a2ef0eb42c20ed1ea85a9eb6a37286d5",
+          "bo_laksana_rerank": "b4d360f93756cdd5e1ee052eaa3cb0f9a2ef0eb42c20ed1ea85a9eb6a37286d5",
+          "bo_nakshatra_semantic": "ce7298f2f3dd74d075f20284b63bb076013a4162b1a610bf903bf754af3003a6",
+          "bo_pramana_mapa": "ec67006111fbfad2669af497f18eef86cd2aba70ccac94cbc008c399ee021251",
+          "bo_pratijna": "3bcd54b115e8200b45fff75bd4937efbb0f578b602c29be1ae64b5ef951fd7c0",
+          "bo_samskara": "92b771f73fccd412d1f47540bde669a2501cf2b7cfe9cb4c3904f4b3561cd227",
+          "bo_samvada": "1524b46ccbf3d1055c39bf7e5f917896d00319e4825f62a6f75ac5e1129b9e26",
+          "bo_sangati": "3c449328cd6191a5a8cf6f9201aa38c6d41afc14b89780940d628b275383b5fe",
+          "bo_special_lagna": "55bd73f7baab6d04a834d262c1c969cd4efe5c5fef6dd75ec0c966405ecf01e7",
+          "bo_sudarshana": "382043b3cd9b33181bbfd4825789406934a52fd8929ed60bd94d743519ec9e3e",
+          "bo_upaya": "d06ecf352b20b3883e8cdb4da608aa5d1223d2a0fcd00ff88c7d9cf73114fd17",
+          "bo_vargottama_dhana": "d1abd8d28f7d67c4b511305b204cf345b3a2ffbbb5fdc8f5519a5c8316bd6e2b",
+          "bo_yantra_mechanism": "8b5aa335ee640d8ce5466497885a33a48ba36d130ef77019fa476480d8763120"
+        }
+      },
+      {
+        "generation_id": "l2:d2369b888e76:ad143c22bd8d",
+        "historical_snapshot_commit": "7b1576d59f8300a608fce3acc1d1ec26e8bb3bda",
+        "pin": {
+          "admission": {
+            "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            "authority_decision": "DP-SD-018",
+            "changed_assets": [
+              "bo_anveshana",
+              "bo_arudha",
+              "bo_bimba",
+              "bo_cdlm_summary",
+              "bo_cgm_motifs",
+              "bo_cgm_paths",
+              "bo_chart_gestalt",
+              "bo_drishti",
+              "bo_grounding",
+              "bo_karanajala",
+              "bo_laksana",
+              "bo_laksana_rerank",
+              "bo_nakshatra_semantic",
+              "bo_pramana_mapa",
+              "bo_pratijna",
+              "bo_samskara",
+              "bo_samvada",
+              "bo_sangati",
+              "bo_special_lagna",
+              "bo_sudarshana",
+              "bo_upaya",
+              "bo_vargottama_dhana",
+              "bo_yantra_mechanism"
+            ],
+            "delta_classifications": {
+              "bo_anveshana": "approved_intentional_and_derived_import_change",
+              "bo_arudha": "approved_intentional_and_derived_import_change",
+              "bo_bimba": "approved_intentional_and_derived_import_change",
+              "bo_cdlm_summary": "approved_intentional_and_derived_import_change",
+              "bo_cgm_motifs": "approved_intentional_and_derived_import_change",
+              "bo_cgm_paths": "approved_intentional_and_derived_import_change",
+              "bo_chart_gestalt": "approved_intentional_and_derived_import_change",
+              "bo_drishti": "approved_intentional_and_derived_import_change",
+              "bo_grounding": "approved_intentional_and_derived_import_change",
+              "bo_karanajala": "approved_intentional_and_derived_import_change",
+              "bo_laksana": "approved_intentional_and_derived_import_change",
+              "bo_laksana_rerank": "approved_intentional_and_derived_import_change",
+              "bo_nakshatra_semantic": "approved_intentional_and_derived_import_change",
+              "bo_pramana_mapa": "approved_intentional_and_derived_import_change",
+              "bo_pratijna": "approved_intentional_and_derived_import_change",
+              "bo_samskara": "approved_intentional_and_derived_import_change",
+              "bo_samvada": "approved_intentional_and_derived_import_change",
+              "bo_sangati": "approved_intentional_and_derived_import_change",
+              "bo_special_lagna": "approved_intentional_and_derived_import_change",
+              "bo_sudarshana": "approved_intentional_and_derived_import_change",
+              "bo_upaya": "approved_intentional_and_derived_import_change",
+              "bo_vargottama_dhana": "approved_intentional_and_derived_import_change",
+              "bo_yantra_mechanism": "approved_intentional_and_derived_import_change"
+            },
+            "reason": "Admit independently accepted L2 producer contracts plus their accepted L3 W2 derived import closure; source scope only.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L2_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+                "sha256": "adc2b3c9eceee0e51018c068f5a9e1a6554fa3d1421d5c4e16c5d1b744768b9e"
+              },
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+          },
+          "asset_prefix": "bo_",
+          "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+          "generation_id": "l2:d2369b888e76:ad143c22bd8d",
+          "non_writer_assets": [],
+          "receipt_count": 22,
+          "supersedes_generation_id": "l2:a3da94d408e6:863a3e6e6b67",
+          "writer_inventory_sha256": "ad143c22bd8d21e2d8d4c1ecef399b8ba3c46d3b5347757cfbeeece35af9dc16"
+        },
+        "superseded_by_generation_id": "l2:149f8479ac4e:51d3164426ac",
+        "writer_digests": {
+          "bo_anveshana": "ff3d8e83881c002ad74f6dd319cac1af6021ec27ddbad84b92eca32be653948c",
+          "bo_arudha": "55b597b22e4df80aa4be97e4e00759940775da8e4fe9021b2e5e3f4190237895",
+          "bo_bimba": "9eef953a478cf3aab3e86a430bc7272da4d23844b1089a1005ef669829d02c81",
+          "bo_cdlm_summary": "f8637a298e7fa119a8dfe1c538f8012569649d917ed2ee3d76f8c497c1e2e946",
+          "bo_cgm_motifs": "109fec1858e7a3c57b7f7f3c5db928b4e6f7a3b82483ca3e1c19d3c72aab30fd",
+          "bo_cgm_paths": "cef2b69d7820a3f214a0569b0f1a880873e0ccf0b5533a726cc7cda416142588",
+          "bo_chart_gestalt": "fed89f54fe7c70435e99d4fc1bcaf95e4395a3619bfc1b5f83685fa2c216ec68",
+          "bo_drishti": "0737e9fced6bfdda9bcdf2eadf991c0f30e63152dc01c368567cc06c0480e996",
+          "bo_grounding": "037cd514957856b0b70c1db5423a5fb6b5813379cbefbbd09bf7010464b000bc",
+          "bo_karanajala": "1216dc9d93106b7ea1969f8b1ba5f1ab431c00151f676008048e285060061e4f",
+          "bo_laksana": "057528b668f2e4cf6ffa235e1cff983430b1288ca06c3d83a2350370aba643d1",
+          "bo_laksana_rerank": "057528b668f2e4cf6ffa235e1cff983430b1288ca06c3d83a2350370aba643d1",
+          "bo_nakshatra_semantic": "09339f300c8debb6275f57809b769688f8b90d17c26af306b3a96714d08bcde5",
+          "bo_pramana_mapa": "b896ada8e327736bd44b7b502753ac98505cea03f5bf1c6071f8028a0abd523d",
+          "bo_pratijna": "a6e43a7b147f4ef91298f39ca4181e9721c2ecc97eb8b4c2e61191d8996e407d",
+          "bo_samskara": "93a2264a645417e085a09d7070232d89f0136158fad66a2423c4afbcec614ed5",
+          "bo_samvada": "c4f36e33f67c6fb8c52a60c34e50ad9becd2feef1772a39ff4e68ef8e1fd91df",
+          "bo_sangati": "24dce48b1afee0d465274f9f7a551dd50e138db36826d3b10ddf96c3600c5fe9",
+          "bo_special_lagna": "e74b00d9c6aeb7809b8cdab59de2d5aca0903a17cd5bd3861b74370c45af13fe",
+          "bo_sudarshana": "5b5ce0b5550df487d33834f0f03b642fd657627edc779ef54dc472a2a935c073",
+          "bo_upaya": "66a111605b7a4e1c0e0e64e038ffc742709160cfa1497e2ec1666f498b597c42",
+          "bo_vargottama_dhana": "9c32354364bec2b68719787b3aeda785ce747ddf0fc8b3eebf72533f6d37c777",
+          "bo_yantra_mechanism": "150dd17f73cfa4f226226c8f91e46786c98c8b38e4dc0052107249a2ba1d76e6"
+        }
+      }
+    ],
+    "L3": [
+      {
+        "generation_id": "l3:47131772b355:a32b7cc7b4fc",
+        "historical_snapshot_commit": "5142109f7f219ea860f859e322646f79d875bee8",
+        "pin": {
+          "asset_prefix": "ka_",
+          "convergence_commit": "47131772b355ae2c67b1f6fb2b90e9fa007e2202",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "writer_inventory_sha256": "a32b7cc7b4fc82cce56ffa2d84331633bc75dd5c39fd829a303a269f3ebb9667"
+        },
+        "superseded_by_generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "b4017881abc4c6f8157ce270631bff26627ce40f53edd7c5c70cbe43e2aa324d",
+          "ka_gochara_resonance": "58e76f509505b3929dcdaf7048e29780ba59294ab359941f43c11e5458b93a3e",
+          "ka_gochara_v3_century_materialize": "3ffa1741b70cd1ba18fbec0bd93292311461853bba510604e08de1559a25abb2",
+          "ka_graha_sancara": "d05aeb1a98e2552a658d55ae0cd7ea39a60f58974fb432c41e5b77e6f59512cf",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "2137a22ef0bb583a54e0aae45cf1f81e59ce13eb5f4bc4dfab9c6c2b6f161bfd",
+          "ka_kshetra": "979a2500f639f42865ed5be1e26861cb5f97db2535c0309f060e75255a764085",
+          "ka_moorti_nirnaya": "61da1016db8a720a5cbba84ecd907ba49cf5d8ce58250272bc3be31c85c92715",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "a6e1a1808ec3611a5211b502a5d386eb611bcab01aba0ef7d5913a79e5a9a258",
+          "ka_sudarshana_varsha": "85d80944d1cbb0c17449d01acb40c17d3d25794b4f82bc775bb9ed45abd1b9ea",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "e2129b0bb8def10a8c1f8a58fc57d69b10458de299ca8febc470e5e5010b2929",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "2c591d8c214b12c647f9bdcce370efd236a5700695c6f88251e36084d6afe04a"
+        }
+      },
+      {
+        "generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+        "historical_snapshot_commit": "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f",
+        "pin": {
+          "admission": {
+            "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+            "authority_decision": "DP-SD-018",
+            "changed_assets": [
+              "ka_sangam"
+            ],
+            "delta_classifications": {
+              "ka_sangam": "derived_import_change"
+            },
+            "reason": "Metadata-only admission of ka_sangam import-closure movement caused by accepted W2 shared source; no ka_sangam behavior, data, deployment or freeze claim.",
+            "review_artifacts": [
+              {
+                "commit": "5142109f7f219ea860f859e322646f79d875bee8",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED_PROVENANCE_LOCAL",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L3_W2_FIRST_FRONTIER_SOURCE_v1_0.md",
+                "sha256": "27ba58e10997ae9c35053d75d11d044c66220053c7a0dc4bdc8727bc09bcf781"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+          "generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:47131772b355:a32b7cc7b4fc",
+          "writer_inventory_sha256": "44e78dc0ccbce53661d79dcc43188382604e25d57667d8afff0a7339110e6e3b"
+        },
+        "superseded_by_generation_id": "l3:64facb9763d1:f86cf07a0a75",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "b4017881abc4c6f8157ce270631bff26627ce40f53edd7c5c70cbe43e2aa324d",
+          "ka_gochara_resonance": "58e76f509505b3929dcdaf7048e29780ba59294ab359941f43c11e5458b93a3e",
+          "ka_gochara_v3_century_materialize": "3ffa1741b70cd1ba18fbec0bd93292311461853bba510604e08de1559a25abb2",
+          "ka_graha_sancara": "d05aeb1a98e2552a658d55ae0cd7ea39a60f58974fb432c41e5b77e6f59512cf",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "2137a22ef0bb583a54e0aae45cf1f81e59ce13eb5f4bc4dfab9c6c2b6f161bfd",
+          "ka_kshetra": "979a2500f639f42865ed5be1e26861cb5f97db2535c0309f060e75255a764085",
+          "ka_moorti_nirnaya": "61da1016db8a720a5cbba84ecd907ba49cf5d8ce58250272bc3be31c85c92715",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "1c692a0fb4c6d6f8ba027ae40d9140fa225c7489b16505285874e72c06ace6a3",
+          "ka_sudarshana_varsha": "85d80944d1cbb0c17449d01acb40c17d3d25794b4f82bc775bb9ed45abd1b9ea",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "e2129b0bb8def10a8c1f8a58fc57d69b10458de299ca8febc470e5e5010b2929",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "2c591d8c214b12c647f9bdcce370efd236a5700695c6f88251e36084d6afe04a"
+        }
+      },
+      {
+        "generation_id": "l3:64facb9763d1:f86cf07a0a75",
+        "historical_snapshot_commit": "6c1a65e23be6176322d7a9ab78e0c291feeec700",
+        "pin": {
+          "admission": {
+            "authority_commit": "16590cc49f720e4200a8d9b6cad3f52b68e21792",
+            "authority_decision": "DP-SD-019",
+            "changed_assets": [
+              "ka_yojaka"
+            ],
+            "delta_classifications": {
+              "ka_yojaka": "approved_intentional_change"
+            },
+            "reason": "DP-SD-019 accepted Yojaka signed multidomain projection and complete compatible promise linkage with primary-domain consumer alignment; no physical-data, deployment, value or empirical claim.",
+            "review_artifacts": [
+              {
+                "commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+                "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
+                "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_SOURCE_ACCEPTANCE_v1_0.md",
+                "sha256": "a24f4ad257d755359dd82d3ad52af928f74d625aaf183f2638c5ec08f07858c5"
+              }
+            ],
+            "schema_version": "nirmana-analysis-layer-successor/v2",
+            "source_acceptance": {
+              "common_base_commit": "d07ea4f3f3b6b0bcb5d66cbd7c1d5f67784d658f",
+              "integrated_equivalent_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+              "reviewed_source_commit": "7697c43b31da3655c2add7cda128a57ca4afd44e",
+              "reviewed_surface": [
+                {
+                  "blob_oid": "8939b234c20794eb59edc559bb6f8e3a44865cc5",
+                  "path": "platform/python-sidecar/pipeline/orchestrator/writers/ka_yojaka.py"
+                },
+                {
+                  "blob_oid": "52e7ba3d5ba97024f1327ca2f97d25e98e01e589",
+                  "path": "platform/python-sidecar/tests/l3/test_ka_yojaka_multidomain.py"
+                }
+              ],
+              "schema_version": "nirmana-analysis-source-acceptance/v1",
+              "source_surface_sha256": "c7335980706c9815362f3fc39dca349b42aa94e7f0bddcc6b0e85c56d19d366a"
+            },
+            "source_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81"
+          },
+          "asset_prefix": "ka_",
+          "convergence_commit": "64facb9763d13eece7098b5b24cc03dfb8e3ba81",
+          "generation_id": "l3:64facb9763d1:f86cf07a0a75",
+          "non_writer_assets": [
+            "ka_gochara_sweep"
+          ],
+          "receipt_count": 23,
+          "supersedes_generation_id": "l3:d2369b888e76:44e78dc0ccbc",
+          "writer_inventory_sha256": "f86cf07a0a75b95e3ef524419caf3ddfc6f09f6a4d900ff709ad296e49cf6c0b"
+        },
+        "superseded_by_generation_id": "l3:87cc8c9baf89:002a118b218e",
+        "writer_digests": {
+          "ka_avadhi": "2e876a2381014fad924052a98bc387bdb82e90d70b1469c192b45640bb066679",
+          "ka_bhavishya_lekha": "5c84f86134afc84b31ccce7c2620061d01e645a526d48adcbafac501b83d9542",
+          "ka_dasha_kala": "ae89dfb13feb7b96268dc8baeb5904523b8fd0297730ee70adfc872e10408bd7",
+          "ka_gochara": "b4017881abc4c6f8157ce270631bff26627ce40f53edd7c5c70cbe43e2aa324d",
+          "ka_gochara_resonance": "58e76f509505b3929dcdaf7048e29780ba59294ab359941f43c11e5458b93a3e",
+          "ka_gochara_v3_century_materialize": "3ffa1741b70cd1ba18fbec0bd93292311461853bba510604e08de1559a25abb2",
+          "ka_graha_sancara": "d05aeb1a98e2552a658d55ae0cd7ea39a60f58974fb432c41e5b77e6f59512cf",
+          "ka_jivana_parva": "bd4e641da119ef1cb2bb7c1c36bfaee78e2eefcd8a505943a5405aa397dedc92",
+          "ka_kala_darshana": "6e47c95756862a684edef5435231cef137cde19821d76a8b79cebf5d15093cb1",
+          "ka_kalasutra": "48b9bd6efaa04c781126b83fa3bdd739ed5a4913f2d0c19339fe2f6e09dde775",
+          "ka_kota_chakra": "2137a22ef0bb583a54e0aae45cf1f81e59ce13eb5f4bc4dfab9c6c2b6f161bfd",
+          "ka_kshetra": "979a2500f639f42865ed5be1e26861cb5f97db2535c0309f060e75255a764085",
+          "ka_moorti_nirnaya": "61da1016db8a720a5cbba84ecd907ba49cf5d8ce58250272bc3be31c85c92715",
+          "ka_muhurta_seva": "dc5427036221ee49a9f31ff1d9b15a9ce4ea9a2a78a819b857d2e8feb3d35de8",
+          "ka_sangam": "1c692a0fb4c6d6f8ba027ae40d9140fa225c7489b16505285874e72c06ace6a3",
+          "ka_sudarshana_varsha": "85d80944d1cbb0c17449d01acb40c17d3d25794b4f82bc775bb9ed45abd1b9ea",
+          "ka_taranga": "fb2ebba5a53986aa53ac0736df0c094886fda9c217b43ad1ee14abcc0f7bae64",
+          "ka_tithi_pravesha": "adb915f15af469018e4b269fcf76b87a9128fc5b86a090aa8dec52fc048821e5",
+          "ka_tulana": "268742a3c5dd47d3e6578e92b27f7aaea9b260d442a11264c164f0bcac092123",
+          "ka_vedha_gochara": "e2129b0bb8def10a8c1f8a58fc57d69b10458de299ca8febc470e5e5010b2929",
+          "ka_vighnakara": "7414651029a07701b0ab6e0fed2cf6dd343f8a7986b188793df1fba55920ecc1",
+          "ka_yojaka": "11576f295562d9a2e1b0be31da4baf47798f83bf0be470eb67bb6b3a2ff49f22"
+        }
+      }
+    ],
+    "L4": [
+      {
+        "generation_id": "l4:be470cb8fa28:486959b1df74",
+        "historical_snapshot_commit": "c558e60d3267ded79d65fd25f50ee926ce27b75a",
+        "pin": {
+          "asset_prefix": "ph_",
+          "convergence_commit": "be470cb8fa289c65fe4e273abe1cd1210e96f805",
+          "non_writer_assets": [],
+          "receipt_count": 9,
+          "writer_inventory_sha256": "486959b1df74015873b326c2b5d58aa00865a47e6116b3b0c39f479f978d66f9"
+        },
+        "superseded_by_generation_id": "l4:d2369b888e76:e73988c0dd03",
+        "writer_digests": {
+          "ph_muhurta": "b20027bbec044d7b3f4e45252161e626aad2acb3d07f0738cb554f9e8c699a03",
+          "ph_nimitta": "b0d4483152e0c9ac6d1f7ad9428e74b275b5c38f7cc95263596b14ea879cedda",
+          "ph_phaladesa": "7f5937d79bc5424ebdc216af6456af482c41201dc27b36ceb70cfec8653962cd",
+          "ph_pramana": "6b28b16991466c2c5857f18284a3b77f6f3ee3edf10043ef6cf528cab4339d36",
+          "ph_pratikara": "5b5bf2b612376199caf23687bfccbe5c340cba55bd9c2a71aabc9736d26ed42e",
+          "ph_rectification": "720fb36199d5da123fab23edb35b75d140ab2ee62fd850ff4a0d31db6a7516af",
+          "ph_sankrama": "55529acb7dce71fa37caaa6661941d0417cd9a2c0a8f8155701e30cd2db45e29",
+          "ph_sodhana": "50835868fcaeb46fd79fee1e4d81819d286d816d38f023ff34d329744ebd31c3",
+          "ph_suddha_sodhana": "4fb356eaeb28fb57f0e8c2e0080ba867f00628c8e51d2f91c7aa01c05cb73e3d"
+        }
+      }
+    ],
+    "L5": []
+  },
   "layers": {
     "L0": {
+      "admission": {
+        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "authority_decision": "DP-SD-018",
+        "changed_assets": [
+          "bg_cohort",
+          "bg_ephemeris",
+          "bg_gochara_arcs",
+          "bg_muhurta_lattice",
+          "bg_remedies",
+          "bg_rules",
+          "bg_sky_calendar"
+        ],
+        "delta_classifications": {
+          "bg_cohort": "approved_intentional_change",
+          "bg_ephemeris": "derived_import_change",
+          "bg_gochara_arcs": "approved_intentional_change",
+          "bg_muhurta_lattice": "derived_import_change",
+          "bg_remedies": "approved_intentional_change",
+          "bg_rules": "derived_import_change",
+          "bg_sky_calendar": "derived_import_change"
+        },
+        "reason": "Admit the already accepted L0 producer and Swiss-state source closure while preserving the frozen predecessor receipts; source scope only.",
+        "review_artifacts": [
+          {
+            "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+            "decision_binding": "status: PRODUCER_READY_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_PRODUCER_READY_ACCEPTANCE_v1_0.md",
+            "sha256": "abeb3ffa67d646bdbf4777145ba43e97318e04da9226c78a3fb2e0876b7e76f4"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+      },
       "asset_prefix": "bg_",
-      "convergence_commit": "49bb5c98b864a2cb2fee037cdb7f14f6892a8263",
+      "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+      "generation_id": "l0:d2369b888e76:3dda261170ee",
       "non_writer_assets": [
         "bg_ephemeris_engine",
         "bg_gochara_citation_resolution",
@@ -10,37 +614,419 @@
         "bg_sarvatobhadra_grid"
       ],
       "receipt_count": 40,
-      "writer_inventory_sha256": "5125cccb68715ebc6054c3ce47bc4c047684445249503a4c4dabd85e0d036178"
+      "supersedes_generation_id": "l0:49bb5c98b864:5125cccb6871",
+      "writer_inventory_sha256": "3dda261170ee0dc879071d43d8e266e5cbf5c715775f94d2a27edaeee1c9e146"
     },
     "L1": {
+      "admission": {
+        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "authority_decision": "DP-SD-018",
+        "changed_assets": [
+          "ga_ayurdaya",
+          "ga_condition",
+          "ga_dashas",
+          "ga_nakshatra",
+          "ga_panchanga",
+          "ga_positions",
+          "ga_sade_sati",
+          "ga_sensitive",
+          "ga_sensitive_degree",
+          "ga_strength",
+          "ga_structural",
+          "ga_tajaka",
+          "ga_vargas",
+          "ga_yoga"
+        ],
+        "delta_classifications": {
+          "ga_ayurdaya": "derived_import_change",
+          "ga_condition": "approved_intentional_and_derived_import_change",
+          "ga_dashas": "approved_intentional_and_derived_import_change",
+          "ga_nakshatra": "derived_import_change",
+          "ga_panchanga": "derived_import_change",
+          "ga_positions": "derived_import_change",
+          "ga_sade_sati": "derived_import_change",
+          "ga_sensitive": "derived_import_change",
+          "ga_sensitive_degree": "derived_import_change",
+          "ga_strength": "derived_import_change",
+          "ga_structural": "derived_import_change",
+          "ga_tajaka": "derived_import_change",
+          "ga_vargas": "derived_import_change",
+          "ga_yoga": "derived_import_change"
+        },
+        "reason": "Authorized RI-02 security lifecycle compatibility; exact reviewed source and integrated equivalent are independently security-cleared and content-bound",
+        "review_artifacts": [
+          {
+            "commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+            "decision_binding": "status: SECURITY_CLEAR_SOURCE_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_0.md",
+            "sha256": "94cbe76aff7d1a15d5efd1d3f355a6f49a6af49fafc14edf7b708bb8f454c084"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_acceptance": {
+          "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
+          "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
+          "reviewed_source_commit": "da498ebd980cac87796eceb889c7f1c42cfb952b",
+          "reviewed_surface": [
+            {
+              "blob_oid": "e6a42c8035c47920d745c35da2e10f3036bd6324",
+              "path": ".github/workflows/deploy.yml"
+            },
+            {
+              "blob_oid": "b97ba202377a68de1d6c181b50ab30207be6b189",
+              "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md"
+            },
+            {
+              "blob_oid": "26f2f718d8066fe8df50591b1ff50a774ab44b89",
+              "path": "platform/package-lock.json"
+            },
+            {
+              "blob_oid": "1c05bf84e8077433194424f8c1860e1cda776517",
+              "path": "platform/package.json"
+            },
+            {
+              "blob_oid": "abba1b47b3981ef7e998b7cb322116aa72247f28",
+              "path": "platform/pnpm-lock.yaml"
+            },
+            {
+              "blob_oid": "46d5e70c0af44989afe22db8b94aa78dd807a00b",
+              "path": "platform/python-sidecar/bodha_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "6ea79a86d6654dfab8805ac63ff102fb5a8891d4",
+              "path": "platform/python-sidecar/ga_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "e787b242a1d7c673d9ca62baa908315be3e83855",
+              "path": "platform/python-sidecar/ga_writers/ga_condition_writer.py"
+            },
+            {
+              "blob_oid": "7bc444068023de3502f9056c6799a08b54e09a4a",
+              "path": "platform/python-sidecar/ga_writers/ga_dashas_writer.py"
+            },
+            {
+              "blob_oid": "e72aea9012013f7c0bdfc3a3b2d2c2c072aa9dff",
+              "path": "platform/python-sidecar/pipeline/dispatcher.py"
+            },
+            {
+              "blob_oid": "56242b0b4043a5254f1a4e85bc52720a0c2f697b",
+              "path": "platform/python-sidecar/tests/test_bodha_idempotency.py"
+            },
+            {
+              "blob_oid": "3b6ed86f0572e1c69e6d913552d98e157ab857fd",
+              "path": "platform/python-sidecar/tests/test_ga_idempotency.py"
+            },
+            {
+              "blob_oid": "0e171ae470b931e7328f1437e51f0ab579b74051",
+              "path": "platform/scripts/data-plane-cutover-preflight.ts"
+            },
+            {
+              "blob_oid": "5972102d5894476bd8ed0cfec7bb76c24d5c4a16",
+              "path": "platform/scripts/data-plane-migration-attestation.ts"
+            },
+            {
+              "blob_oid": "85a760356640d943264f3c67c7b6c759c56eefac",
+              "path": "platform/scripts/data-plane-ownership-preflight.ts"
+            },
+            {
+              "blob_oid": "8e9b980ce6e2bef5d7b122c34f185e83bba99328",
+              "path": "platform/scripts/data-plane-ownership-status.ts"
+            },
+            {
+              "blob_oid": "57fb5a613646f25d0f3cbe465f57bd54e05cf2b0",
+              "path": "platform/scripts/data-plane-protected-cutover.ts"
+            },
+            {
+              "blob_oid": "112a3592848d51c462b14269061948fd7f548c15",
+              "path": "platform/scripts/data-plane-secret-isolation-preflight.ts"
+            },
+            {
+              "blob_oid": "1807347da2dbf470b589b3aad6e835768b5504e2",
+              "path": "platform/scripts/migrate.ts"
+            },
+            {
+              "blob_oid": "aa878d964dbdbc5d35d352eec7cbacb62c1bdb0d",
+              "path": "platform/supabase/migrations/1035_data_plane_l1_producer_history.sql"
+            },
+            {
+              "blob_oid": "d00b7cda7f00b1243c8a9e8dfcf5a2903f502e69",
+              "path": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql"
+            },
+            {
+              "blob_oid": "43dfa413d26f39a42c3a7ac2d2336b462884ae94",
+              "path": "platform/tests/integration/data_plane_protected_roles.db.test.ts"
+            },
+            {
+              "blob_oid": "d0c8059efe1487b1f5bc389ed6f094be26586e8f",
+              "path": "platform/tests/unit/data_plane_security_contract.test.ts"
+            }
+          ],
+          "schema_version": "nirmana-analysis-source-acceptance/v1",
+          "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876"
+        },
+        "source_commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb"
+      },
       "asset_prefix": "ga_",
-      "convergence_commit": "d56bb9fd50d42c1045c7aac2cee19478f216b174",
+      "convergence_commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+      "generation_id": "l1:149f8479ac4e:93de3b2c84b7",
       "non_writer_assets": [],
       "receipt_count": 19,
-      "writer_inventory_sha256": "55984558527e9c1b95da608839b69a4dde255b3855ac6839980c26b24c2b17e0"
+      "supersedes_generation_id": "l1:d2369b888e76:3e8816fc708a",
+      "writer_inventory_sha256": "93de3b2c84b74bb1a26ef70eaa739419e169fea5f3a0f5222dd5c46fa0c58003"
     },
     "L2": {
+      "admission": {
+        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "authority_decision": "DP-SD-018",
+        "changed_assets": [
+          "bo_arudha",
+          "bo_bimba",
+          "bo_grounding",
+          "bo_karanajala",
+          "bo_laksana",
+          "bo_laksana_rerank",
+          "bo_nakshatra_semantic",
+          "bo_pramana_mapa",
+          "bo_samskara",
+          "bo_sangati",
+          "bo_special_lagna",
+          "bo_sudarshana",
+          "bo_upaya",
+          "bo_vargottama_dhana"
+        ],
+        "delta_classifications": {
+          "bo_arudha": "derived_import_change",
+          "bo_bimba": "derived_import_change",
+          "bo_grounding": "derived_import_change",
+          "bo_karanajala": "derived_import_change",
+          "bo_laksana": "derived_import_change",
+          "bo_laksana_rerank": "derived_import_change",
+          "bo_nakshatra_semantic": "derived_import_change",
+          "bo_pramana_mapa": "derived_import_change",
+          "bo_samskara": "derived_import_change",
+          "bo_sangati": "derived_import_change",
+          "bo_special_lagna": "derived_import_change",
+          "bo_sudarshana": "derived_import_change",
+          "bo_upaya": "derived_import_change",
+          "bo_vargottama_dhana": "derived_import_change"
+        },
+        "reason": "Authorized RI-02 security lifecycle compatibility; exact reviewed source and integrated equivalent are independently security-cleared and content-bound",
+        "review_artifacts": [
+          {
+            "commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+            "decision_binding": "status: SECURITY_CLEAR_SOURCE_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_0.md",
+            "sha256": "94cbe76aff7d1a15d5efd1d3f355a6f49a6af49fafc14edf7b708bb8f454c084"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_acceptance": {
+          "common_base_commit": "5142109f7f219ea860f859e322646f79d875bee8",
+          "integrated_equivalent_commit": "d22533825613c3d428bd844a5dfdc2c0c283b088",
+          "reviewed_source_commit": "da498ebd980cac87796eceb889c7f1c42cfb952b",
+          "reviewed_surface": [
+            {
+              "blob_oid": "e6a42c8035c47920d745c35da2e10f3036bd6324",
+              "path": ".github/workflows/deploy.yml"
+            },
+            {
+              "blob_oid": "b97ba202377a68de1d6c181b50ab30207be6b189",
+              "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_CUTOVER_v1_0.md"
+            },
+            {
+              "blob_oid": "26f2f718d8066fe8df50591b1ff50a774ab44b89",
+              "path": "platform/package-lock.json"
+            },
+            {
+              "blob_oid": "1c05bf84e8077433194424f8c1860e1cda776517",
+              "path": "platform/package.json"
+            },
+            {
+              "blob_oid": "abba1b47b3981ef7e998b7cb322116aa72247f28",
+              "path": "platform/pnpm-lock.yaml"
+            },
+            {
+              "blob_oid": "46d5e70c0af44989afe22db8b94aa78dd807a00b",
+              "path": "platform/python-sidecar/bodha_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "6ea79a86d6654dfab8805ac63ff102fb5a8891d4",
+              "path": "platform/python-sidecar/ga_writers/_idempotency.py"
+            },
+            {
+              "blob_oid": "e787b242a1d7c673d9ca62baa908315be3e83855",
+              "path": "platform/python-sidecar/ga_writers/ga_condition_writer.py"
+            },
+            {
+              "blob_oid": "7bc444068023de3502f9056c6799a08b54e09a4a",
+              "path": "platform/python-sidecar/ga_writers/ga_dashas_writer.py"
+            },
+            {
+              "blob_oid": "e72aea9012013f7c0bdfc3a3b2d2c2c072aa9dff",
+              "path": "platform/python-sidecar/pipeline/dispatcher.py"
+            },
+            {
+              "blob_oid": "56242b0b4043a5254f1a4e85bc52720a0c2f697b",
+              "path": "platform/python-sidecar/tests/test_bodha_idempotency.py"
+            },
+            {
+              "blob_oid": "3b6ed86f0572e1c69e6d913552d98e157ab857fd",
+              "path": "platform/python-sidecar/tests/test_ga_idempotency.py"
+            },
+            {
+              "blob_oid": "0e171ae470b931e7328f1437e51f0ab579b74051",
+              "path": "platform/scripts/data-plane-cutover-preflight.ts"
+            },
+            {
+              "blob_oid": "5972102d5894476bd8ed0cfec7bb76c24d5c4a16",
+              "path": "platform/scripts/data-plane-migration-attestation.ts"
+            },
+            {
+              "blob_oid": "85a760356640d943264f3c67c7b6c759c56eefac",
+              "path": "platform/scripts/data-plane-ownership-preflight.ts"
+            },
+            {
+              "blob_oid": "8e9b980ce6e2bef5d7b122c34f185e83bba99328",
+              "path": "platform/scripts/data-plane-ownership-status.ts"
+            },
+            {
+              "blob_oid": "57fb5a613646f25d0f3cbe465f57bd54e05cf2b0",
+              "path": "platform/scripts/data-plane-protected-cutover.ts"
+            },
+            {
+              "blob_oid": "112a3592848d51c462b14269061948fd7f548c15",
+              "path": "platform/scripts/data-plane-secret-isolation-preflight.ts"
+            },
+            {
+              "blob_oid": "1807347da2dbf470b589b3aad6e835768b5504e2",
+              "path": "platform/scripts/migrate.ts"
+            },
+            {
+              "blob_oid": "aa878d964dbdbc5d35d352eec7cbacb62c1bdb0d",
+              "path": "platform/supabase/migrations/1035_data_plane_l1_producer_history.sql"
+            },
+            {
+              "blob_oid": "d00b7cda7f00b1243c8a9e8dfcf5a2903f502e69",
+              "path": "platform/supabase/migrations/1036_data_plane_l2_producer_generations.sql"
+            },
+            {
+              "blob_oid": "43dfa413d26f39a42c3a7ac2d2336b462884ae94",
+              "path": "platform/tests/integration/data_plane_protected_roles.db.test.ts"
+            },
+            {
+              "blob_oid": "d0c8059efe1487b1f5bc389ed6f094be26586e8f",
+              "path": "platform/tests/unit/data_plane_security_contract.test.ts"
+            }
+          ],
+          "schema_version": "nirmana-analysis-source-acceptance/v1",
+          "source_surface_sha256": "59a1845b74fb0777274f18b876de0ddae3ac873cea95e405f959d1163ad4d876"
+        },
+        "source_commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb"
+      },
       "asset_prefix": "bo_",
-      "convergence_commit": "a3da94d408e64a3b01f965340833dd46b377b5f3",
+      "convergence_commit": "149f8479ac4e22874aabe9a5e5b340fb86bc16fb",
+      "generation_id": "l2:149f8479ac4e:51d3164426ac",
       "non_writer_assets": [],
       "receipt_count": 22,
-      "writer_inventory_sha256": "863a3e6e6b67320fd5de7d00c6093307a9f2c816e39af09c4b4bc9341af8169b"
+      "supersedes_generation_id": "l2:d2369b888e76:ad143c22bd8d",
+      "writer_inventory_sha256": "51d3164426ac4fcefd8a5e9444b38b0e6e2ceddf382505250c5288129f45a9d2"
     },
     "L3": {
+      "admission": {
+        "authority_commit": "16590cc49f720e4200a8d9b6cad3f52b68e21792",
+        "authority_decision": "DP-SD-019",
+        "changed_assets": [
+          "ka_kshetra"
+        ],
+        "delta_classifications": {
+          "ka_kshetra": "approved_intentional_change"
+        },
+        "reason": "DP-SD-019 accepted the Kshetra baseline API alignment, single active DHARA null engine and corrected midpoint-relative circular-shift arithmetic with independent integer and fractional oracles; no physical-data, deployment, consumer-value or empirical claim.",
+        "review_artifacts": [
+          {
+            "commit": "58b7d455d803c54238bdae050c1770f9f514d21e",
+            "decision_binding": "status: SOURCE_PACKET_ACCEPTED",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_DP019_KSHETRA_GATE_ACCEPTANCE_v1_0.md",
+            "sha256": "687eed0309e906730364a394fb674ebac17ce58220309308bfcf071ac972175d"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_acceptance": {
+          "common_base_commit": "6c1a65e23be6176322d7a9ab78e0c291feeec700",
+          "integrated_equivalent_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+          "reviewed_source_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+          "reviewed_surface": [
+            {
+              "blob_oid": "786fa0644d733005a6c9cbfd016915232822563b",
+              "path": "platform/python-sidecar/services/ka_kshetra/dhara_null.py"
+            },
+            {
+              "blob_oid": "ebaa7014a49f035770495b72eb1a6701c4f25520",
+              "path": "platform/python-sidecar/services/ka_kshetra/dhara_null_vec.py"
+            },
+            {
+              "blob_oid": "b4affc3ea1bb74c44fbb0edbbc31ef483e12a95a",
+              "path": "platform/python-sidecar/services/ka_kshetra/layer1.py"
+            },
+            {
+              "blob_oid": "ea1dd0d6b230f18954b10a824fbc18846fcec712",
+              "path": "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null.py"
+            },
+            {
+              "blob_oid": "ce70ca1253c3ef2addb146db5b968be07c3a7616",
+              "path": "platform/python-sidecar/services/ka_kshetra/tests/test_dhara_null_vectorized.py"
+            },
+            {
+              "blob_oid": "1b0277fe9ddb4259a575df80c9dcabfd1e5bc6cf",
+              "path": "platform/python-sidecar/services/ka_kshetra/tests/test_stage1_symbolization.py"
+            }
+          ],
+          "schema_version": "nirmana-analysis-source-acceptance/v1",
+          "source_surface_sha256": "8eb4cce85bdc32434cad92d649837a1fcb80e63e941efedc9838c6e5e8c62cbe"
+        },
+        "source_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c"
+      },
       "asset_prefix": "ka_",
-      "convergence_commit": "7ddaeaa55768732189135cfc97b7bf12e55a8386",
+      "convergence_commit": "87cc8c9baf894c615e167672c6c7af57a15cf71c",
+      "generation_id": "l3:87cc8c9baf89:002a118b218e",
       "non_writer_assets": [
         "ka_gochara_sweep"
       ],
       "receipt_count": 23,
-      "writer_inventory_sha256": "3cfdd5df83f47b7969db8e98bc5305f50841a7ef3ebacbf0d80e9d5aae94396c"
+      "supersedes_generation_id": "l3:64facb9763d1:f86cf07a0a75",
+      "writer_inventory_sha256": "002a118b218e97c0f053d489933763a70eba911b0ecfcaf13640445157a0b81d"
     },
     "L4": {
+      "admission": {
+        "authority_commit": "7f21f27b14a7909424591a530096dc2f5d6e2b13",
+        "authority_decision": "DP-SD-018",
+        "changed_assets": [
+          "ph_muhurta",
+          "ph_rectification"
+        ],
+        "delta_classifications": {
+          "ph_muhurta": "derived_import_change",
+          "ph_rectification": "derived_import_change"
+        },
+        "reason": "Provenance-only admission of the accepted Swiss-state shared import closure affecting ph_muhurta and ph_rectification; no L4 behavior change, rebuild, freeze or elevation.",
+        "review_artifacts": [
+          {
+            "commit": "f6fed12c794224329f6b3b436f8b1b814499d06d",
+            "decision_binding": "status: VALIDATED_INDEPENDENT_CHALLENGE_PASS",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_L0_SWISS_STATE_BOUNDARY_VALIDATION_v1_0.md",
+            "sha256": "0f87dc072590179cc9a5e8b928bf30a0436de5d13b3d1e9ed4c20ce31aceee79"
+          }
+        ],
+        "schema_version": "nirmana-analysis-layer-successor/v2",
+        "source_commit": "d2369b888e760e5b8d693328f00683877cbd5f28"
+      },
       "asset_prefix": "ph_",
-      "convergence_commit": "be470cb8fa289c65fe4e273abe1cd1210e96f805",
+      "convergence_commit": "d2369b888e760e5b8d693328f00683877cbd5f28",
+      "generation_id": "l4:d2369b888e76:e73988c0dd03",
       "non_writer_assets": [],
       "receipt_count": 9,
-      "writer_inventory_sha256": "486959b1df74015873b326c2b5d58aa00865a47e6116b3b0c39f479f978d66f9"
+      "supersedes_generation_id": "l4:be470cb8fa28:486959b1df74",
+      "writer_inventory_sha256": "e73988c0dd03174681e8e98ba7c6e6bdc77ca27b9e6a6a90458c814eba51c7ac"
     },
     "L5": {
       "asset_prefix": "mi_",
@@ -52,5 +1038,5 @@
       "writer_inventory_sha256": "df295e3ac158980ee69a210ecfd6252ffa2a4cb2db1ae8e732af7814240883bc"
     }
   },
-  "version": "nirmana-analysis-layer-pins/v1"
+  "version": "nirmana-analysis-layer-pins/v2"
 }

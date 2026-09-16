@@ -1,61 +1,99 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
+import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 
 const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
 const purnaPostflight = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-postflight.ts'), 'utf8')
 const purnaStatus = readFileSync(resolve(__dirname, '../../scripts/purna-inquiry-ownership-status.ts'), 'utf8')
+const jobs = (load(workflow) as { jobs: Record<string, {
+  environment?: string
+  steps: Array<{ name?: string; if?: string; env?: Record<string, string>; run?: string }>
+}> }).jobs
 
 describe('Nirmana ownership deployment attestation', () => {
-  it('starts and health-checks both migration proxy listeners', () => {
-    const proxy = workflow.match(/- name: Start Cloud SQL Auth Proxy[\s\S]*?(?=\n      - name: Set up Node\.js for migration runner)/)?.[0]
+  it('keeps the one-shot owner handoff privileged but reattests marked state on every routine deployment', () => {
+    const bootstrap = jobs['privileged-bootstrap']
+    const migrate = jobs.migrate
+    const preflight = bootstrap.steps.find((step) => step.name === 'One-shot Nirmana evidence ownership preflight')
+    const marker = bootstrap.steps.find((step) => step.name === 'Attest Nirmana ownership handoff as deployment-only migrator')
+    const routineAttestation = migrate.steps.find((step) => step.name === 'Re-attest Nirmana evidence ownership state with routine credential')
 
-    expect(proxy).toContain('--port 5432')
-    expect(proxy).toContain('--port 5433')
-    expect(proxy).toContain('proxy_5432_pid=$!')
-    expect(proxy).toContain('proxy_5433_pid=$!')
-    expect(proxy).toContain('for route in "5432:$proxy_5432_pid" "5433:$proxy_5433_pid"')
-    expect(proxy).toContain('kill -0 "$pid"')
-    expect(proxy).toContain('/dev/tcp/127.0.0.1/$port')
+    expect(bootstrap.environment).toBe('data-plane-production-cutover')
+    expect(preflight?.if).toBe("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
+    expect(marker?.if).toContain("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
+    expect(marker?.if).toContain("steps.bootstrap-state.outputs.purna != 'marked'")
+    expect(marker?.run).toContain('npx tsx scripts/nirmana-evidence-ownership-marker.ts')
+    expect(routineAttestation?.env).toEqual({ DATABASE_URL: '${{ secrets.PROD_DATABASE_URL }}' })
+    expect(routineAttestation?.run).toContain('nirmana-evidence-ownership-status.ts')
+    expect(JSON.stringify(migrate)).not.toContain('NIRMANA_MIGRATOR_DATABASE_URL')
+  })
+
+  it('serializes and health-checks the production, Pūrṇa admin, and restore-validation listeners', () => {
+    const bootstrap = jobs['privileged-bootstrap']
+    const prodProxy = bootstrap.steps.find((step) => step.name === 'Start Cloud SQL Auth Proxy')
+    const adminProxy = bootstrap.steps.find((step) => step.name === 'Start one-shot Pūrṇa admin proxy')
+    const release = bootstrap.steps.find((step) => step.name === 'Release one-shot Pūrṇa admin proxy port')
+    const cutover = bootstrap.steps.find((step) => step.name === 'Execute protected cutover under backup, restore, lease, quiescence and independent approval')
+
+    expect(prodProxy?.run).toContain('--port 5432')
+    expect(prodProxy?.run).toContain('proxy_5432_pid=$!')
+    expect(prodProxy?.run).toContain('kill -0 "$proxy_5432_pid"')
+    expect(prodProxy?.run).not.toContain('--port 5433')
+    expect(adminProxy?.run).toContain('--port 5433')
+    expect(adminProxy?.run).toContain('proxy_5433_pid=$!')
+    expect(adminProxy?.run).toContain('kill -0 "$proxy_5433_pid"')
+    expect(release?.run).toContain('kill "$PURNA_PROXY_PID"')
+    expect(release?.run).toContain('/dev/tcp/127.0.0.1/5433')
+    expect(cutover?.run).toContain('--port 5433')
+    expect(cutover?.run).toContain('kill -0 "$validation_proxy_pid"')
   })
 
   it('always validates PROD but requires the one-shot route only while ownership needs it', () => {
-    const prodRoute = workflow.match(/- name: Validate production migration database route[\s\S]*?(?=\n      - name: Inspect Nirmana evidence ownership handoff marker)/)?.[0]
-    const adminRoute = workflow.match(/- name: Validate one-shot Pūrṇa admin database route[\s\S]*?(?=\n      - name: One-shot Pūrṇa protected-owner preflight)/)?.[0]
-    const postflight = workflow.match(/- name: Close and attest Pūrṇa protected-owner handoff[\s\S]*?(?=\n      # While Pūrṇa is armed)/)?.[0]
+    const stateProdRoute = jobs['migration-state'].steps.find((step) => step.name === 'Validate production migration database route')
+    const routineProdRoute = jobs.migrate.steps.find((step) => step.name === 'Validate production migration database route')
+    const adminRoute = jobs['privileged-bootstrap'].steps.find((step) => step.name === 'Validate one-shot Pūrṇa admin database route')
+    const postflight = jobs['privileged-bootstrap'].steps.find((step) => step.name === 'Close and attest Pūrṇa protected-owner handoff')
 
-    expect(prodRoute).toContain('PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}')
-    expect(prodRoute).toContain('validate-migration-database-routes.ts --prod')
-    expect(prodRoute).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
-    expect(adminRoute).toContain("steps.purna-ownership.outputs.state == 'armed'")
-    expect(adminRoute).toContain("steps.purna-ownership.outputs.state == 'interrupted'")
-    expect(adminRoute).toContain("steps.purna-ownership.outputs.state == 'cleanup_required'")
-    expect(adminRoute).toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}')
-    expect(adminRoute).toContain('validate-migration-database-routes.ts --purna-admin')
-    expect(postflight).toContain("steps.purna-admin-route.outcome == 'success'")
+    for (const prodRoute of [stateProdRoute, routineProdRoute]) {
+      expect(prodRoute?.env).toEqual({ PROD_DATABASE_URL: '${{ secrets.PROD_DATABASE_URL }}' })
+      expect(prodRoute?.run).toContain('validate-migration-database-routes.ts --prod')
+      expect(JSON.stringify(prodRoute)).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
+    }
+    expect(adminRoute?.if).toContain("steps.bootstrap-state.outputs.purna == 'armed'")
+    expect(adminRoute?.if).toContain("steps.bootstrap-state.outputs.purna == 'interrupted'")
+    expect(adminRoute?.if).toContain("steps.bootstrap-state.outputs.purna == 'cleanup_required'")
+    expect(adminRoute?.env).toEqual({ PURNA_INQUIRY_ADMIN_DATABASE_URL: '${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}' })
+    expect(adminRoute?.run).toContain('validate-migration-database-routes.ts --purna-admin')
+    expect(postflight?.if).toContain("steps.purna-admin-route.outcome == 'success'")
+    expect(JSON.stringify(jobs.migrate)).not.toContain('PURNA_INQUIRY_ADMIN_DATABASE_URL')
   })
 
-  it('runs the one-shot preflight conditionally and reattests after Pūrṇa cleanup on every deployment', () => {
-    const preflight = workflow.match(/- name: One-shot Nirmana evidence ownership preflight[\s\S]*?(?=\n      - name: Inspect Pūrṇa inquiry protected-owner handoff)/)?.[0]
-    const marker = workflow.match(/- name: Attest Nirmana ownership handoff as deployment-only migrator[\s\S]*?(?=\n      - name: (?:Require explicit bootstrap rearm|Run general database migrations))/)?.[0]
-    const proxyIndex = workflow.indexOf('- name: Start Cloud SQL Auth Proxy')
-    const purnaStateIndex = workflow.indexOf('- name: Inspect Pūrṇa inquiry protected-owner handoff')
+  it('orders Pūrṇa cleanup and port release before Nirmana attestation and data-plane restore proof', () => {
+    const bootstrap = jobs['privileged-bootstrap']
+    const preflight = bootstrap.steps.find((step) => step.name === 'One-shot Nirmana evidence ownership preflight')
+    const marker = bootstrap.steps.find((step) => step.name === 'Attest Nirmana ownership handoff as deployment-only migrator')
+    const stateIndex = workflow.indexOf('- name: Refresh protected bootstrap state under the exclusive lock')
+    const adminProxyIndex = workflow.indexOf('- name: Start one-shot Pūrṇa admin proxy')
     const adminRouteIndex = workflow.indexOf('- name: Validate one-shot Pūrṇa admin database route')
     const purnaPreflightIndex = workflow.indexOf('- name: One-shot Pūrṇa protected-owner preflight')
     const purnaMigrationIndex = workflow.indexOf('- name: Apply exact Pūrṇa protected-owner migrations')
     const purnaPostflightIndex = workflow.indexOf('- name: Close and attest Pūrṇa protected-owner handoff')
+    const purnaReleaseIndex = workflow.indexOf('- name: Release one-shot Pūrṇa admin proxy port')
     const nirmanaMarkerIndex = workflow.indexOf('- name: Attest Nirmana ownership handoff as deployment-only migrator')
+    const dataPlaneCutoverIndex = workflow.indexOf('- name: Execute protected cutover under backup, restore, lease, quiescence and independent approval')
 
-    expect(preflight).toContain("if: steps.nirmana-ownership.outputs.state == 'unmarked'")
-    expect(marker).toContain('npx tsx scripts/nirmana-evidence-ownership-marker.ts')
-    expect(marker).not.toMatch(/^\s*if:/m)
-    expect(proxyIndex).toBeGreaterThan(-1)
-    expect(purnaStateIndex).toBeGreaterThan(proxyIndex)
-    expect(adminRouteIndex).toBeGreaterThan(purnaStateIndex)
+    expect(preflight?.if).toBe("steps.bootstrap-state.outputs.nirmana == 'unmarked'")
+    expect(marker?.run).toContain('npx tsx scripts/nirmana-evidence-ownership-marker.ts')
+    expect(stateIndex).toBeGreaterThan(-1)
+    expect(adminProxyIndex).toBeGreaterThan(stateIndex)
+    expect(adminRouteIndex).toBeGreaterThan(adminProxyIndex)
     expect(purnaPreflightIndex).toBeGreaterThan(adminRouteIndex)
     expect(purnaMigrationIndex).toBeGreaterThan(purnaPreflightIndex)
     expect(purnaPostflightIndex).toBeGreaterThan(purnaMigrationIndex)
-    expect(nirmanaMarkerIndex).toBeGreaterThan(purnaPostflightIndex)
+    expect(purnaReleaseIndex).toBeGreaterThan(purnaPostflightIndex)
+    expect(nirmanaMarkerIndex).toBeGreaterThan(purnaReleaseIndex)
+    expect(dataPlaneCutoverIndex).toBeGreaterThan(nirmanaMarkerIndex)
   })
 
   it('retires the watchdog secret bridge and explicitly removes serialized comment variables', () => {

@@ -3,7 +3,7 @@ test_dasha_sentinel_savepoint_isolation.py — regression for the ga_dashas
 scope-cap sentinel poisoning the ORCHESTRATOR's shared transaction.
 
 ── THE DEFECT (found live 2026-08-06, both canonical charts) ──────────────────
-`write_dasha_scope_cap_sentinels()` builds a Prana-Dasha sentinel row with
+The historical implementation built a Prana-Dasha sentinel row with
 `level_n = 5`. `chart_dashas` has carried
 `CHECK ((level_n >= 1) AND (level_n <= 4))` — constraint `cd_level_n_max4`,
 migration 211 — since long before that row existed, so the INSERT can NEVER
@@ -43,12 +43,9 @@ semantics. The fake connection below models those semantics (a raised
 statement poisons the connection until a ROLLBACK TO SAVEPOINT clears it), so
 the orchestrator-path damage is visible to the suite.
 
-NOTE ON SCOPE: this test pins the TRANSACTION-SAFETY property only. It does
-NOT assert that the Prana sentinel writes — it still does not, and cannot,
-while `level_n=5` contradicts `cd_level_n_max4`. Making that row land is a
-separate SEMANTIC decision (how to represent "5th level, out of scope" inside
-a 1-4 domain) reserved for the native. See this module's companion assertion
-`test_prana_sentinel_still_does_not_write_pending_semantic_ruling`.
+The repaired contract never attempts an invalid interval. It stores Prāṇa's
+method-inapplicable declaration as a chart fact and retains the legal KP
+level-4 interval marker.
 
 NO DB required.
 """
@@ -176,24 +173,14 @@ def test_kp_sentinel_is_attempted_on_a_clean_transaction(monkeypatch):
 
     written = gdw.write_dasha_scope_cap_sentinels("chart-XYZ", "build-123", conn=conn)
 
-    assert written == 1, (
-        "expected exactly one sentinel to land: the KP level_n=4 row. "
+    assert written == 2, (
+        "expected the Prāṇa fact and KP level_n=4 sentinel to land. "
         f"got written={written}"
     )
 
 
-def test_prana_sentinel_still_does_not_write_pending_semantic_ruling(monkeypatch):
-    """HONESTY PIN — SD-DASHA-1 is NOT fixed by the savepoint change.
-
-    The Prana sentinel still does not write, because `level_n=5` still
-    contradicts `cd_level_n_max4`. All the savepoint fix does is stop that
-    failure from destroying the run. Production still holds ZERO rows at
-    system_id='scope_cap', and will continue to until the native rules on how
-    to represent "5th level, out of scope" within a 1-4 domain.
-
-    This test exists so that anyone who later makes the Prana row land is
-    forced to come here, read that, and delete this test deliberately.
-    """
+def test_prana_scope_cap_never_attempts_an_invalid_level_5_interval(monkeypatch):
+    """Prāṇa's explicit fact must not widen or violate the 1..4 clock domain."""
     conn = FakeConn()
     upserts: list[int] = []
 
@@ -207,7 +194,7 @@ def test_prana_sentinel_still_does_not_write_pending_semantic_ruling(monkeypatch
     monkeypatch.setattr(gdw, "_upsert_rows", _upsert)
     gdw.write_dasha_scope_cap_sentinels("chart-XYZ", "build-123", conn=conn)
 
-    assert 5 not in upserts, "the Prana level_n=5 sentinel cannot land under cd_level_n_max4"
+    assert 5 not in upserts, "Prāṇa must not be represented as a level-5 interval"
     assert upserts == [4], f"only the KP level_n=4 sentinel should land; got {upserts}"
 
 
@@ -223,7 +210,7 @@ def test_cli_path_also_isolates_each_sentinel(monkeypatch):
     written = gdw.write_dasha_scope_cap_sentinels("chart-XYZ", "build-123")
 
     assert not conn.aborted
-    assert written == 1
+    assert written == 2
     # The owned path still durably commits — once, after both sentinels, rather
     # than once per sentinel (a COMMIT inside a savepoint would discard it).
     assert conn.commits == 1

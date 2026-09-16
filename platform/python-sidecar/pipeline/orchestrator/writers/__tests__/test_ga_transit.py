@@ -312,10 +312,29 @@ def test_ga_transit_anchors_dry_run_substep_returns_zero():
 
 # ── 8. FORENSIC Moon sign assertion ──────────────────────────────────────────
 
-def test_forensic_moon_sign_assertion_raises_on_wrong_sign():
+def _complete_anchor_rows(*, moon_nakshatra: str) -> list[tuple]:
+    anchors = {
+        "SUN": ("capricorn", 285.3),
+        "MOON": ("aquarius", 315.5),
+        "MAR": ("aries", 10.0),
+        "MER": ("aquarius", 320.0),
+        "JUP": ("sagittarius", 250.0),
+        "VEN": ("pisces", 340.0),
+        "SAT": ("scorpio", 220.0),
+        "RAH_MEAN": ("taurus", 45.0),
+        "KET_MEAN": ("scorpio", 225.0),
+    }
+    rows = []
+    for subject, (sign, longitude) in anchors.items():
+        rows.append((subject, "sign", sign, None))
+        rows.append((subject, "longitude_sidereal", None, longitude))
+    rows.append(("MOON", "nakshatra", moon_nakshatra, None))
+    return rows
+
+
+def test_forensic_moon_nakshatra_assertion_raises_on_wrong_nakshatra():
     """
-    FORENSIC assertion: if Moon natal_sign != 'aquarius' for canonical chart_id,
-    run_substep must raise AssertionError.
+    FORENSIC assertion: a wrong Moon nakshatra for the canonical chart must fail.
     """
     from unittest.mock import MagicMock
     from pipeline.orchestrator.writers.ga_transit_anchors import GaTransitAnchorsWriter
@@ -328,16 +347,13 @@ def test_forensic_moon_sign_assertion_raises_on_wrong_sign():
     ctx.build_id = "test-forensic"
     ctx.dry_run = False
 
-    # Simulate DB returning Moon in wrong sign (scorpio instead of aquarius)
+    # Supply a complete producer input with the wrong invariant anchor.
     mock_cursor = MagicMock()
     mock_cursor.__enter__ = lambda s: s
     mock_cursor.__exit__ = MagicMock(return_value=False)
-    mock_cursor.fetchall.return_value = [
-        ("MOON", "sign", "scorpio", None),
-        ("MOON", "longitude_sidereal", None, 300.0),
-        ("SUN", "sign", "capricorn", None),
-        ("SUN", "longitude_sidereal", None, 285.0),
-    ]
+    mock_cursor.fetchall.return_value = _complete_anchor_rows(
+        moon_nakshatra="shatabhisha"
+    )
     ctx.db_conn.cursor.return_value = mock_cursor
 
     step = SubStep(key="ayanamsha_lahiri_chitrapaksha", label="test")
@@ -348,8 +364,8 @@ def test_forensic_moon_sign_assertion_raises_on_wrong_sign():
 
 def test_forensic_moon_sign_passes_for_aquarius():
     """
-    FORENSIC assertion: Moon natal_sign = 'aquarius' for canonical chart must NOT raise.
-    Uses a minimal mock that simulates only MOON + SUN rows.
+    FORENSIC assertion: the canonical Moon nakshatra and complete nine-graha
+    anchor set must pass.
     """
     from unittest.mock import MagicMock
     from pipeline.orchestrator.writers.ga_transit_anchors import GaTransitAnchorsWriter
@@ -363,12 +379,7 @@ def test_forensic_moon_sign_passes_for_aquarius():
 
     call_count = 0
     fetch_results = [
-        [
-            ("MOON", "sign", "aquarius", None),
-            ("MOON", "longitude_sidereal", None, 315.5),
-            ("SUN", "sign", "capricorn", None),
-            ("SUN", "longitude_sidereal", None, 285.3),
-        ],
+        _complete_anchor_rows(moon_nakshatra="purva bhadrapada"),
         [],   # DELETE returns nothing
         [],   # INSERT returns nothing
     ]

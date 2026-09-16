@@ -4,9 +4,21 @@ FORENSIC anchor: Sun tropical on 1984-02-05 = 315.874297° (pyswisseph DE441, ve
 Lahiri offset on that date ≈ 23.6349° → sidereal ≈ 292.239° = Capricorn (sign 10).
 """
 import pytest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date
+from threading import Event
+from time import sleep
 
 from brahmagyan.l0_ephemeris import derive_sidereal, _tropical_to_jd, AYANAMSHA_MAP
+from fastapi import HTTPException
+from panchang_engine import compute_panchang, panchanga_instant
+from panchang_engine.swiss_state import serialized_swiss_state
+from routers.ephemeris import (
+    EphemerisAtTRequest,
+    _calculate_sidereal_positions,
+    _service_context,
+    ephemeris_at_t,
+)
 
 
 NATIVE_BIRTH_DATE = date(1984, 2, 5)
@@ -14,6 +26,95 @@ NATIVE_BIRTH_DATE = date(1984, 2, 5)
 # Actual Sun tropical longitude on 1984-02-05 (pyswisseph DE441, noon UT)
 # Verified: 315.874297°
 SUN_TROPICAL_1984_02_05 = 315.874297
+
+
+def test_arbitrary_instant_service_emits_full_l0_context():
+    result = ephemeris_at_t(
+        EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00Z")
+    )
+    context = result["service_context"]
+    assert context["service_asset_id"] == "bg_ephemeris_engine"
+    assert context["instant_utc"] == "2026-07-20T12:00:00Z"
+    assert context["frame"] == "geocentric_sidereal"
+    assert context["ayanamsha_id"] == "lahiri_chitrapaksha"
+    assert context["node_mode"] == "mean"
+    assert context["ephemeris_backends_observed"]
+    assert context["backend_observation_state"] == "OBSERVED"
+    assert context["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
+    assert context["precision"]["supported_horizon"] == "UNVERIFIED_FOR_OBSERVED_BACKEND"
+
+
+def test_backend_flag_is_observation_not_corpus_qualification():
+    swiss_flag_only = _service_context(
+        instant_utc="2026-07-20T12:00:00Z",
+        ayanamsha_id="lahiri_chitrapaksha",
+        backends={"swiss_ephemeris_file"},
+        input_precision="second",
+    )
+    degraded = _service_context(
+        instant_utc="2026-07-20T12:00:00Z",
+        ayanamsha_id="lahiri_chitrapaksha",
+        backends={"moshier_analytic_fallback"},
+        input_precision="second",
+    )
+    assert swiss_flag_only["backend_observation_state"] == "OBSERVED"
+    assert swiss_flag_only["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
+    assert degraded["backend_qualification_state"] == "UNQUALIFIED_BACKEND"
+    assert swiss_flag_only["failure_contract"]["qualification_requires"] == (
+        "VERIFIED_REGISTRY_PROBE_RECEIPT"
+    )
+
+
+def test_ephemeris_and_panchanga_share_process_global_mode_boundary(monkeypatch):
+    import routers.ephemeris as ephemeris
+
+    first_calc_entered = Event()
+    selected = {"mode": None}
+
+    def fake_set_sid_mode(mode):
+        selected["mode"] = mode
+
+    def fake_calc_ut(_jd, _code, _flags):
+        mode_at_entry = selected["mode"]
+        if mode_at_entry == 101 and not first_calc_entered.is_set():
+            first_calc_entered.set()
+            sleep(0.05)
+            assert selected["mode"] == 101, "sidereal mode changed mid-calculation"
+        return ([10.0, 0.0, 0.0, -0.1], ephemeris.swe.FLG_SWIEPH)
+
+    monkeypatch.setattr(ephemeris.swe, "set_sid_mode", fake_set_sid_mode)
+    monkeypatch.setattr(ephemeris.swe, "calc_ut", fake_calc_ut)
+
+    @serialized_swiss_state
+    def panchanga_like_calculation():
+        ephemeris.swe.set_sid_mode(202)
+        ephemeris.swe.calc_ut(2460000.5, ephemeris.swe.SUN, 0)
+
+    assert getattr(compute_panchang, "__swiss_state_serialized__", False)
+    assert getattr(panchanga_instant, "__swiss_state_serialized__", False)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(_calculate_sidereal_positions, 2460000.5, 101)
+        assert first_calc_entered.wait(timeout=1)
+        second = pool.submit(panchanga_like_calculation)
+        first.result(timeout=2)
+        second.result(timeout=2)
+
+
+def test_rahu_and_ketu_share_signed_angular_speed():
+    result = ephemeris_at_t(
+        EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00Z")
+    )
+    rahu = next(p for p in result["positions"] if p["planet"] == "Rahu")
+    ketu = next(p for p in result["positions"] if p["planet"] == "Ketu")
+    assert ketu["speed"] == rahu["speed"]
+    assert ketu["retrograde"] == rahu["retrograde"]
+
+
+def test_arbitrary_instant_rejects_timezone_free_input():
+    with pytest.raises(HTTPException) as exc:
+        ephemeris_at_t(EphemerisAtTRequest(datetime_utc="2026-07-20T12:00:00"))
+    assert exc.value.status_code == 400
 
 
 # ── FORENSIC anchor ───────────────────────────────────────────────────────────

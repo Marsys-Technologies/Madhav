@@ -17,6 +17,7 @@ from services.ka_kshetra.dhara_sweep import (
     dhara_build_segments,
 )
 from services.ka_kshetra.contracts import Segment
+from services.ka_kshetra.integrator import integrate, lambda_at
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -260,10 +261,10 @@ def test_suppression_detection_uses_multiplicative_identity():
         ln_lambda_fn=ln_lam_concave,
     )
     segs_sup = dhara_build_segments(ev_sup)
-    # With suppression_term=0.9 and a highly concave function, bisection fires:
-    # we should get 2 sub-segments instead of 1.
-    assert len(segs_sup) == 2, (
-        f"Expected 2 sub-segments (bisection triggered by suppression), got {len(segs_sup)}"
+    # The mandatory decade knots create ten intervals; with suppression_term=0.9
+    # and a highly concave function, each one is bisected.
+    assert len(segs_sup) == 20, (
+        f"Expected 20 sub-segments (bisection at every decade interval), got {len(segs_sup)}"
     )
     for seg in segs_sup:
         assert seg.refinement_depth == 1
@@ -292,7 +293,7 @@ def test_dhara_build_segments_nosuppression_exact_linear():
     def terms_flat(t: float):
         return _make_terms(ALPHA, suppression_term=1.0)
 
-    # Three clock knots produce two inter-knot intervals: [0,50] and [50,100].
+    # The clock knot at 50 is also one of the mandatory decade knots.
     periods = [
         _make_ladder_period('vimshottari', 'MD', 'Sun', 0.0, 50.0),
         _make_ladder_period('vimshottari', 'MD', 'Moon', 50.0, 100.0),
@@ -307,8 +308,8 @@ def test_dhara_build_segments_nosuppression_exact_linear():
 
     segs = dhara_build_segments(ev)
 
-    # Two inter-knot intervals → two segments (no bisection)
-    assert len(segs) == 2, f"Expected 2 segments, got {len(segs)}"
+    # Ten decade intervals → ten segments (no bisection).
+    assert len(segs) == 10, f"Expected 10 segments, got {len(segs)}"
     for i, seg in enumerate(segs):
         assert seg.index == i
         assert seg.refinement_depth == 0
@@ -325,9 +326,81 @@ def test_dhara_build_segments_nosuppression_exact_linear():
 
     # Segments are contiguous
     assert math.isclose(segs[0].t_start, 0.0)
-    assert math.isclose(segs[0].t_end, 50.0)
-    assert math.isclose(segs[1].t_start, 50.0)
-    assert math.isclose(segs[1].t_end, 100.0)
+    assert math.isclose(segs[-1].t_end, 100.0)
+    assert any(math.isclose(seg.t_end, 50.0) for seg in segs)
+    assert all(math.isclose(left.t_end, right.t_start) for left, right in zip(segs, segs[1:]))
+
+
+@pytest.mark.parametrize('suppression_term', [1.0, 0.8])
+def test_clock_step_uses_left_limit_for_preceding_interval_and_right_value_at_knot(
+    suppression_term: float,
+):
+    """A right-continuous clock step must not leak into the preceding interval.
+
+    The independent oracle is 1 on [0, 0.5) and 4 on [0.5, 1], so the exact
+    integral is 2.5. The suppression-active parameter exercises the midpoint
+    branch without changing the step oracle or its tolerances.
+    """
+    periods = [
+        _make_ladder_period('vimshottari', 'MD', 'Sun', 0.0, 0.5),
+        _make_ladder_period('vimshottari', 'MD', 'Moon', 0.5, 1.0),
+    ]
+
+    def terms_step(t: float):
+        value = 1.0 if t < 0.5 else 4.0
+        return _make_terms(math.log(value), suppression_term=suppression_term)
+
+    ev = _make_evaluator(
+        horizon_days=1.0,
+        ladder_periods={'vimshottari': periods},
+        envelope_breakpoints=[],
+        terms_at_fn=terms_step,
+        ln_lambda_fn=lambda t: terms_step(t).ln_lambda,
+        lord_stacks_at_fn=lambda t: {
+            'vimshottari': [('MD', 'Sun' if t < 0.5 else 'Moon')]
+        } if t < 1.0 else {},
+    )
+
+    segments = dhara_build_segments(ev)
+
+    assert all(a.t_end == b.t_start for a, b in zip(segments, segments[1:]))
+    assert lambda_at(segments, 0.5 - 1e-9) == pytest.approx(1.0, abs=1e-12)
+    assert lambda_at(segments, 0.5) == pytest.approx(4.0, abs=1e-12)
+    assert integrate(segments, 0.0, 1.0) == pytest.approx(2.5, abs=1e-12)
+
+
+def test_clock_step_terminal_horizon_call_sequence_and_left_limit():
+    """Internal knots need t- and t; the terminal horizon needs only t-."""
+    periods = [
+        _make_ladder_period('vimshottari', 'MD', 'Sun', 0.0, 0.5),
+        _make_ladder_period('vimshottari', 'MD', 'Moon', 0.5, 1.0),
+    ]
+
+    def terms_step(t: float):
+        value = 1.0 if t < 0.5 else 4.0
+        return _make_terms(math.log(value), suppression_term=1.0)
+
+    ev = _make_evaluator(
+        horizon_days=1.0,
+        ladder_periods={'vimshottari': periods},
+        envelope_breakpoints=[],
+        terms_at_fn=terms_step,
+        ln_lambda_fn=lambda t: terms_step(t).ln_lambda,
+        lord_stacks_at_fn=lambda _t: {},
+    )
+
+    segments = dhara_build_segments(ev)
+    calls = [float(call.args[0]) for call in ev.terms_at.call_args_list]
+    knots = assemble_knot_set(ev)
+
+    internal_left = math.nextafter(0.5, 0.4)
+    terminal_left = math.nextafter(1.0, 0.9)
+    internal_left_index = calls.index(internal_left)
+    assert calls[internal_left_index + 1] == 0.5
+    assert calls[-1] == terminal_left
+    assert 1.0 not in calls
+    assert len(calls) == len(knots) + 1  # one extra t- for one internal clock knot
+    assert lambda_at(segments, 1.0) == pytest.approx(4.0, abs=1e-12)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

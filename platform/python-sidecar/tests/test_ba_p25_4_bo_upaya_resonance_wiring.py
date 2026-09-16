@@ -1,20 +1,21 @@
 """
 test_ba_p25_4_bo_upaya_resonance_wiring.py — BA Phase 2.5 fast-follow #4
 =========================================================================
-bo_upaya's resonance_score_v1 previously fed 5 hardcoded 0.0 inputs
-(cancellation_burden, dispositor_chain_weakness, dasha_proximity_activation_score,
-cdlm_weakest_constituent_count, cgm_motifs_weakest_node), which collapsed
-resonance_score toward weakness_score for every graha regardless of real
-dispositor-chain condition or dasha timing.
+bo_upaya's resonance_score_v1 previously fed several hardcoded 0.0 inputs,
+which collapsed resonance_score toward weakness_score for every graha regardless
+of real dispositor-chain and L2 burden evidence.
 
-This fix wires 3 of the 5 inputs to real already-computed sources:
+The current L2 contract wires structural inputs to real already-computed sources:
   - dispositor_chain_weakness      <- chart_facts composite_dispositor_strength (ga_structural)
-  - dasha_proximity_activation_score <- chart_dashas (ga_dashas)
   - cgm_motifs_weakest_node         <- bodha_cgm_motifs (bo_cgm_motifs)
+  - cdlm_weakest_constituent_count  <- bodha_cdlm_cells (bo_sangati)
 
-The other 2 (cancellation_burden, cdlm_weakest_constituent_count) have no
-already-computed source anywhere in the codebase and remain honest 0.0
-placeholders (B.10 — no fabricated computation).
+Daśā proximity is intentionally unavailable at L2: resolving an observation
+time against a period window is an L3 interpretation. Compatibility inputs are
+ignored by the L2 formula and legacy fetch helpers fail closed.
+
+The remaining cancellation_burden input has no already-computed per-graha
+source and remains an honest 0.0 placeholder (B.10 — no fabricated computation).
 
 All tests are pure unit tests: no real DB connections.
 """
@@ -25,7 +26,6 @@ import importlib.util
 import pathlib
 import sys
 import types
-from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
 import pytest
@@ -135,61 +135,27 @@ class TestDispositorChainWeaknessWired:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _fetch_dasha_proximity — wired real source #2
+# Daśā proximity — L3-only authority boundary
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestDashaProximityWired:
+class TestDashaProximityUnavailableAtL2:
     def _load(self):
         return _load_module("bo_upaya.py")
 
-    def _at(self):
-        return datetime(2026, 7, 5, tzinfo=timezone.utc)
-
-    def test_md_and_ad_same_graha_scores_1_0(self):
+    def test_legacy_fetcher_fails_closed(self):
         mod = self._load()
-        rows = [(1, "Saturn"), (2, "Saturn")]
-        conn = _conn_returning(rows)
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert result["Saturn"] == 1.0
+        with pytest.raises(RuntimeError, match="L3-only"):
+            mod._legacy_l3_dasha_proximity_unavailable()
 
-    def test_md_only_scores_0_6(self):
-        mod = self._load()
-        rows = [(1, "Saturn"), (2, "Mercury")]
-        conn = _conn_returning(rows)
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert result["Saturn"] == 0.6
-        assert result["Mercury"] == 0.6
+    def test_compatibility_input_does_not_change_l2_score(self):
+        from bodha_writers.formulas import ResonanceInputs, resonance_score_v1
 
-    def test_neither_scores_0_0(self):
-        mod = self._load()
-        rows = [(1, "Saturn"), (2, "Mercury")]
-        conn = _conn_returning(rows)
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert result["Venus"] == 0.0
-        assert result["Sun"] == 0.0
-
-    def test_no_active_dasha_rows_all_zero(self):
-        mod = self._load()
-        conn = _conn_returning([])
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert all(v == 0.0 for v in result.values())
-
-    def test_all_nine_grahas_present_in_output(self):
-        mod = self._load()
-        conn = _conn_returning([(1, "Saturn"), (2, "Mercury")])
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert set(result.keys()) == set(mod.KNOWN_GRAHAS)
-
-    def test_scores_differ_per_graha_not_constant(self):
-        """Core fix assertion: dasha_proximity_activation_score is no longer a
-        flat 0.0 across all grahas — it now distinguishes the running MD/AD
-        lords from everyone else."""
-        mod = self._load()
-        conn = _conn_returning([(1, "Saturn"), (2, "Saturn")])
-        result = mod._fetch_dasha_proximity(conn, "chart-1", "lahiri_chitrapaksha", self._at())
-        assert len(set(result.values())) > 1, (
-            f"dasha_proximity_activation_score must vary across grahas, got {result}"
+        base = ResonanceInputs(shadbala_normalized=0.4)
+        with_dasha = ResonanceInputs(
+            shadbala_normalized=0.4,
+            dasha_proximity_activation_score=1.0,
         )
+        assert resonance_score_v1(with_dasha) == resonance_score_v1(base)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -509,8 +475,8 @@ class TestMsrContradictionBurden:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestResonanceDegeneracyGate:
-    """Core BA-P2.5 #4 assertion: feeding the 3 newly-wired inputs (dispositor
-    chain weakness, dasha proximity, CGM motif weakness) with real, non-zero,
+    """Core BA-P2.5 #4 assertion: feeding the L2-authorized inputs (dispositor
+    chain weakness and CGM motif weakness) with real, non-zero,
     per-graha-varying values must change resonance_score — proving the old bug
     (all 5 inputs hardcoded to 0.0, collapsing resonance_score toward a flat
     function of weakness_score alone) is fixed. Mirrors the degeneracy-gate
@@ -549,20 +515,20 @@ class TestResonanceDegeneracyGate:
         ))
 
         assert wired["resonance_score"] != old_bug["resonance_score"], (
-            "Wiring real non-zero dispositor/dasha/motif inputs must change "
+            "Wiring real non-zero dispositor/motif inputs must change "
             f"resonance_score; old_bug={old_bug['resonance_score']} "
             f"wired={wired['resonance_score']}"
         )
         assert wired["weakness_score"] != old_bug["weakness_score"], (
-            "dispositor_chain_weakness and dasha_proximity_activation_score feed "
-            "weakness_score directly — must differ once wired to non-zero values"
+            "dispositor_chain_weakness feeds weakness_score directly — it must differ "
+            "once wired to a non-zero value"
         )
 
     def test_two_grahas_with_different_wired_inputs_get_different_resonance(self):
         """Simulates the exact bug scenario: two grahas that are otherwise
         identical (same shadbala/bhava_bala/combustion/debility/afflictions)
-        must now get DIFFERENT resonance_score once dispositor-chain and
-        dasha-timing data (which naturally differ per graha) are wired in —
+        must now get DIFFERENT resonance_score once dispositor-chain data
+        differ per graha —
         previously they would have been indistinguishable."""
         ResonanceInputs, resonance_score_v1 = self._formulas()
 
@@ -574,12 +540,13 @@ class TestResonanceDegeneracyGate:
             msr_signals_in_conflict=0.0,
         )
 
-        # graha A: strong dispositor terminal, no current dasha
+        # graha A: strong dispositor terminal.
         graha_a = resonance_score_v1(ResonanceInputs(
             **shared, dispositor_chain_weakness=0.0,
             dasha_proximity_activation_score=0.0, cgm_motifs_weakest_node=0.0,
         ))
-        # graha B: weak dispositor terminal AND currently running its own MD+AD
+        # graha B: weak dispositor terminal. The compatibility-only daśā value
+        # deliberately differs too, but must not be needed for this result.
         graha_b = resonance_score_v1(ResonanceInputs(
             **shared, dispositor_chain_weakness=0.75,
             dasha_proximity_activation_score=1.0, cgm_motifs_weakest_node=0.0,
@@ -587,11 +554,11 @@ class TestResonanceDegeneracyGate:
 
         assert graha_a["resonance_score"] != graha_b["resonance_score"], (
             "Two grahas with identical base weakness inputs but different real "
-            "dispositor-chain/dasha-timing data must not collapse to the same "
+            "dispositor-chain data must not collapse to the same "
             f"resonance_score; got {graha_a['resonance_score']} for both"
         )
         assert graha_b["resonance_score"] > graha_a["resonance_score"], (
-            "The graha with weaker dispositor terminal + active own-dasha should "
+            "The graha with weaker dispositor terminal should "
             "rank as MORE resonant (higher remedy priority), not less"
         )
 
@@ -639,18 +606,22 @@ class TestGrahaCdlmCellsWired:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# CR-69 (SARVA-SIDDHI W-3): the sadhana-milestone date filter must use a
-# parameter cast (`%s::date`), not the invalid `DATE %s` that raised a
-# SyntaxError and kept bodha_rm_dasha_windowed_prescriptions at 0 rows.
+# DP-SD-015: LEL milestones and resolved daśā windows are unavailable at L2.
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestSadhanaMilestoneDateCast:
+class TestSadhanaMilestonesUnavailableAtL2:
     def _load(self):
         return _load_module("bo_upaya.py")
 
-    def test_sadhana_query_uses_param_cast_not_date_keyword(self):
+    def test_l2_writer_has_no_lel_reader_or_window_insert(self):
         mod = self._load()
         import inspect
-        src = inspect.getsource(mod._fetch_sadhana_milestones)
-        assert "%s::date" in src, "sadhana date filter must cast the bound param"
-        assert "DATE %s" not in src, "the invalid `DATE %s` parameter form must be gone"
+        src = inspect.getsource(mod)
+        assert not hasattr(mod, "_fetch_sadhana_milestones")
+        assert not hasattr(mod, "_WINDOWED_INSERT")
+        assert "FROM life_events" not in src
+
+    def test_legacy_dasha_runway_fails_closed(self):
+        mod = self._load()
+        with pytest.raises(RuntimeError, match="L3-only"):
+            mod._fetch_dasha_runway_fresh()

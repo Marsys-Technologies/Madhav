@@ -140,9 +140,23 @@ class KaDashaKalaService:
         if max_level < 1 or max_level > 4:
             raise ValueError(f"max_level must be 1-4 (got {max_level})")
 
-        active_systems = sorted(
-            (systems & ALL_DASHA_SYSTEMS) if systems else ALL_DASHA_SYSTEMS
-        )
+        if date_start >= date_end:
+            raise ValueError(
+                "date_start must be before date_end "
+                f"(got {date_start.isoformat()} >= {date_end.isoformat()})"
+            )
+
+        if systems is None:
+            active_systems = sorted(ALL_DASHA_SYSTEMS)
+        else:
+            if not systems:
+                raise ValueError("systems must not be empty when explicitly provided")
+            unknown_systems = sorted(systems - ALL_DASHA_SYSTEMS)
+            if unknown_systems:
+                raise ValueError(
+                    "unknown dasha systems: " + ", ".join(unknown_systems)
+                )
+            active_systems = sorted(systems)
 
         # -- Walk each system independently ----------------------------------
         all_intervals: list[DashaInterval] = []
@@ -168,7 +182,14 @@ class KaDashaKalaService:
                     sys_id, len(intervals),
                 )
             except Exception as exc:
-                logger.warning("[ka_dasha_kala] system=%s error: %s", sys_id, exc)
+                # A result that lists a failed system in ``systems_queried`` is
+                # indistinguishable from complete evidence to callers.  The L3
+                # field contract requires exceptions to fail the call, so never
+                # downgrade a system read failure to an apparently valid partial
+                # result.
+                raise RuntimeError(
+                    f"ka_dasha_kala system {sys_id} failed: {exc}"
+                ) from exc
 
         # -- Cross-dasa agreement --------------------------------------------
         # For each (start_date, end_date) pair, count how many systems agree

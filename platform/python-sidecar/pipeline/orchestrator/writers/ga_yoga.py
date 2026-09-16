@@ -16,6 +16,7 @@ FROZEN contract (ORCHESTRATOR_CONVERGENCE_CLOSE_v1_0.md §2):
 Build: 2026-06-17 — Yoga Subsystem Gate-1
 """
 from __future__ import annotations
+from ga_writers.data_plane_runtime import l1_producer_contract
 
 from pipeline.orchestrator.writers import register, WriterBase, ContextSpec, WriterResult, SubStep
 
@@ -30,6 +31,7 @@ CANONICAL_AYANAMSHAS: list[str] = [
 
 
 @register("ga_yoga")
+@l1_producer_contract
 class GaYogaWriter(WriterBase):
     """
     Per-chart yoga firing writer.
