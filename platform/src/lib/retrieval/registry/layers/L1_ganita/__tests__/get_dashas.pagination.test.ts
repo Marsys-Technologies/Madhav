@@ -242,10 +242,14 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(database.pageCalls[0]?.sql).toContain("receipt.output_digest_spec_sha256")
   })
 
-  it('fences a partial ga_dashas replacement even while an older receipt snapshot remains readable', async () => {
+  it('fences a standalone ga_dashas current run even when an old eligible receipt has an absent or partial page', async () => {
     const database = mockBuildPages({
       eligibleBuild: 'build-a', replacementInProgress: true,
-      rowsByBuild: { 'build-a': [dasha('a'), dasha('b')] },
+      // A standalone writer has committed its build_run_assets=building lifecycle
+      // before deleting/replacing this old receipt's snapshot. The adapter's
+      // page slice may therefore be absent or partial, but must never read empty
+      // as terminal while the same-statement fence is true.
+      rowsByBuild: { 'build-a': [] },
     })
 
     const result = await getDashasCapability.handler(args(), undefined)

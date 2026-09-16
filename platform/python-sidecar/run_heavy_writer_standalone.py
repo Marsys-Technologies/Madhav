@@ -22,7 +22,8 @@ WHAT THIS SCRIPT DOES
    rows with legacy ayanamsha IDs (lahiri, kp, surya_siddhanta) are purged.
    replace_prior_chart_dashas scopes deletes to (chart_id, system_id, ayanamsha_id)
    pairs present in the NEW rows — it would never touch the old IDs.
-3. Calls _run_data_writer which drives _drive_substeps (per-substep SAVEPOINT +
+3. Creates and commits a durable `build_runs` + `build_run_assets` lifecycle
+   before any ga_dashas pre-clean delete, then calls _run_data_writer which drives _drive_substeps (per-substep SAVEPOINT +
    commit + heartbeat) then sets state='lit' + marks downstream stale.
 
 IDEMPOTENCY
@@ -37,8 +38,10 @@ Any future heavy writer whose substep computation exceeds the 15-min watchdog
 threshold must use this pattern:
   - Call _run_data_writer directly (skip run_asset / execute_run)
   - Never SET state='building' in asset_throughput during the standalone run
-  - A synthetic run_id (uuid4) is sufficient — no build_run record required
-  - The UPDATE build_run_assets inside _run_data_writer affects 0 rows harmlessly
+  - Create and commit a real running build_run plus building build_run_asset
+    before the first destructive write; complete or fail both terminal records
+    after _run_data_writer returns
+  - _run_data_writer's existing build_run_assets updates then target that real row
   - Downstream stale cascade runs automatically
 
 USAGE
@@ -49,6 +52,7 @@ USAGE
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -63,6 +67,61 @@ logger = logging.getLogger(__name__)
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 VALID_ASSETS = {"ga_dashas", "ga_sensitive"}
+
+
+def _create_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str) -> None:
+    """Commit the durable fence before a standalone writer can replace output."""
+    plan = json.dumps({
+        "entrypoint": "run_heavy_writer_standalone",
+        "asset_ids": [asset_id],
+        "watchdog_safe_asset_throughput": True,
+    }, sort_keys=True)
+    cur.execute(
+        """INSERT INTO build_runs
+             (id, chart_id, scope, scope_target, action, plan, state, triggered_by,
+              started_at, current_asset_id)
+           VALUES (%s, %s, 'asset', %s, 'rebuild', %s::jsonb, 'running',
+                   'run_heavy_writer_standalone', NOW(), %s)""",
+        (run_id, CHART_ID, asset_id, plan, asset_id),
+    )
+    cur.execute(
+        """INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at)
+           VALUES (%s, %s, 0, 'building', NOW())""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+
+
+def _complete_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str) -> None:
+    """Terminalize the standalone lifecycle only after writer success."""
+    cur.execute(
+        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW(), error = NULL
+           WHERE run_id = %s AND asset_id = %s AND state IN ('queued', 'building', 'complete')""",
+        (run_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_runs SET state = 'completed', ended_at = NOW(), last_error = NULL
+           WHERE id = %s AND state IN ('planned', 'running', 'paused')""",
+        (run_id,),
+    )
+    conn.commit()
+
+
+def _fail_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str, error: str) -> None:
+    """Fail the durable fence without overwriting a more specific writer error."""
+    cur.execute(
+        """UPDATE build_run_assets
+           SET state = 'error', ended_at = NOW(), error = COALESCE(NULLIF(error, ''), %s)
+           WHERE run_id = %s AND asset_id = %s""",
+        (error[:2000], run_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_runs
+           SET state = 'failed', ended_at = NOW(), last_error = COALESCE(NULLIF(last_error, ''), %s)
+           WHERE id = %s AND state IN ('planned', 'running', 'paused')""",
+        (error[:2000], run_id),
+    )
+    conn.commit()
 
 
 def main() -> None:
@@ -90,9 +149,9 @@ def main() -> None:
 
     discover_all()
 
-    # Synthetic run_id — no build_run record required.
-    # _run_data_writer uses this only as build_id for rows + a harmless
-    # UPDATE build_run_assets that affects 0 rows (no matching run_id).
+    # The ID is durable: its build_runs/build_run_assets lifecycle is committed
+    # before ga_dashas can delete any old rows, so readers can fence the partial
+    # replacement without putting asset_throughput into watchdog-visible building.
     run_id = str(uuid.uuid4())
     logger.info("Starting standalone run: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
 
@@ -111,7 +170,12 @@ def main() -> None:
     conn.autocommit = False
     cur = conn.cursor()
 
+    lifecycle_created = False
     try:
+        _create_standalone_run_lifecycle(conn, cur, run_id, asset_id)
+        lifecycle_created = True
+        logger.info("Standalone lifecycle running: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
+
         # ── ga_dashas pre-cleanup ─────────────────────────────────────────────
         # replace_prior_chart_dashas scopes deletes to (chart_id, system_id,
         # ayanamsha_id) pairs present in the NEW rows — it NEVER deletes stale
@@ -139,17 +203,27 @@ def main() -> None:
         success = _run_data_writer(conn, cur, run_id, CHART_ID, asset_id)
 
         if success:
+            _complete_standalone_run_lifecycle(conn, cur, run_id, asset_id)
             logger.info("SUCCESS: %s is now state='lit'", asset_id)
         else:
             logger.error("FAILURE: _run_data_writer returned False for %s — check logs above", asset_id)
+            _fail_standalone_run_lifecycle(
+                conn, cur, run_id, asset_id,
+                "_run_data_writer returned False; preserving any writer error recorded on build_run_assets",
+            )
             sys.exit(1)
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Unexpected error during standalone run for %s", asset_id)
         try:
             conn.rollback()
         except Exception:
             pass
+        if lifecycle_created:
+            try:
+                _fail_standalone_run_lifecycle(conn, cur, run_id, asset_id, f"{type(exc).__name__}: {exc}")
+            except Exception:
+                logger.exception("Could not record standalone lifecycle failure for %s", asset_id)
         sys.exit(1)
     finally:
         try:
