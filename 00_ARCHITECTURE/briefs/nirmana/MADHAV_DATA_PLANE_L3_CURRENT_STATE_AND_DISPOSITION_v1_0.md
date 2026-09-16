@@ -725,3 +725,12 @@ policy. The protected GitHub environment now contains the one-shot admin,
 migrator, verifier, restore-validation, and UUID lease inputs. These are
 cutover prerequisites only: database ownership, runtime job binding, protected
 branch merge, deployment, and physical L3 data remain unexecuted.
+
+Protected-main deploy run `35100203452` was bound to the exact merge SHA and
+receipt, but attempts 1 and 2 both stopped before privileged work when the
+first refresh-state query received `ECONNRESET` through an otherwise ready
+Cloud SQL Auth Proxy. Migration-state inspection had succeeded immediately
+beforehand, and every cutover/rebind/routine step was skipped. The refresh now
+uses five bounded state-read attempts with short backoff for each independent
+marker. It still fails closed on exhaustion, invalid state, or regression; it
+does not retry or conceal any mutating cutover operation.
