@@ -31,19 +31,23 @@ function args(overrides: Record<string, unknown> = {}) {
 function mockBuildPages(state: {
   eligibleBuild: string | null
   replacementInProgress?: boolean
+  unreceiptedNewerRun?: 'completed' | 'error' | null
   unrelatedCompletedBuild?: string | null
   rowsByBuild: Record<string, readonly Record<string, unknown>[]>
 }) {
   const pageCalls: Array<{ params: readonly unknown[]; sql: string }> = []
   queryMock.mockImplementation((sql: string, params: unknown[] = []) => {
     if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
-    if (sql.includes('WITH replacement_fence')) {
+    if (sql.includes('replacement_fence AS')) {
       const buildId = state.eligibleBuild
       const offset = Number(params[2])
       const fetchLimit = Number(params[1])
+      const terminalRunIsFenced = Boolean(state.unreceiptedNewerRun)
+        && sql.includes('fenced_run.started_at >= eligible.observed_at')
+        && sql.includes('proven_receipt.build_id = fenced_run.id')
       pageCalls.push({ sql, params })
       return Promise.resolve({ rows: [{
-        replacement_in_progress: state.replacementInProgress ?? false,
+        replacement_in_progress: state.replacementInProgress ?? terminalRunIsFenced,
         eligible_build_id: buildId,
         rows: buildId ? (state.rowsByBuild[buildId] ?? []).slice(offset, offset + fetchLimit) : [],
       }] })
@@ -152,7 +156,7 @@ describe('get_dashas build-pinned cursor pagination', () => {
 
     const firstPageResult = await getDashasCapability.handler(args({ limit: 3.9 }), undefined)
     expect(firstPageResult.is_error).toBe(false)
-    const pageCall = queryMock.mock.calls.find(([sql]) => String(sql).includes('WITH replacement_fence'))!
+    const pageCall = queryMock.mock.calls.find(([sql]) => String(sql).includes('replacement_fence AS'))!
     expect(pageCall[1]).toEqual(expect.arrayContaining([CHART_ID, 4, 0]))
   })
 
@@ -258,5 +262,40 @@ describe('get_dashas build-pinned cursor pagination', () => {
     expect(database.pageCalls).toHaveLength(1)
     expect(database.pageCalls[0]?.sql).toContain('build_run_assets')
     expect(database.pageCalls[0]?.sql).toContain("fenced_run.state IN ('planned', 'running', 'paused')")
+  })
+
+  it.each(['completed', 'error'] as const)(
+    'requires restart when a newer %s ga_dashas run has no fresh/proven exact-build receipt',
+    async (unreceiptedNewerRun) => {
+      const database = mockBuildPages({
+        eligibleBuild: 'build-old',
+        unreceiptedNewerRun,
+        rowsByBuild: { 'build-old': [] },
+      })
+
+      const result = await getDashasCapability.handler(args(), undefined)
+
+      expect(result).toMatchObject({
+        is_error: true,
+        content: { code: 'ga_dashas_replacement_in_progress', restart_required: true },
+      })
+      expect(database.pageCalls[0]?.sql).toContain('fenced_run.started_at >= eligible.observed_at')
+      expect(database.pageCalls[0]?.sql).toContain('proven_receipt.build_id = fenced_run.id')
+    },
+  )
+
+  it('clears the post-clean fence when the latest fresh/proven receipt belongs to the new run', async () => {
+    const database = mockBuildPages({
+      eligibleBuild: 'build-new',
+      rowsByBuild: { 'build-new': [dasha('n')] },
+    })
+
+    const result = await getDashasCapability.handler(args(), undefined)
+
+    expect(result).toMatchObject({
+      is_error: false,
+      content: { build_id: 'build-new', rows: [expect.objectContaining({ dasha_row_id: 'n' })] },
+    })
+    expect(database.pageCalls[0]?.sql).toContain('proven_receipt.build_id = fenced_run.id')
   })
 })

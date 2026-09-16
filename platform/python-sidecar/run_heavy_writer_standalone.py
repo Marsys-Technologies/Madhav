@@ -38,9 +38,10 @@ Any future heavy writer whose substep computation exceeds the 15-min watchdog
 threshold must use this pattern:
   - Call _run_data_writer directly (skip run_asset / execute_run)
   - Never SET state='building' in asset_throughput during the standalone run
-  - Create and commit a real running build_run plus building build_run_asset
-    before the first destructive write; complete or fail both terminal records
-    after _run_data_writer returns
+  - Load the asset's real registry provenance declaration, then create and
+    commit a running build_run plus building build_run_asset before the first
+    destructive write. Complete only after a fresh/proven exact-build receipt;
+    otherwise fail both terminal records so serving remains fenced.
   - _run_data_writer's existing build_run_assets updates then target that real row
   - Downstream stale cascade runs automatically
 
@@ -67,6 +68,54 @@ logger = logging.getLogger(__name__)
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 VALID_ASSETS = {"ga_dashas", "ga_sensitive"}
+GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256 = "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14"
+
+
+def _load_registry_provenance_inputs(cur, asset_id: str) -> tuple[list[str], str | None, bool]:
+    """Load the production provenance declaration before a standalone mutation."""
+    cur.execute(
+        """SELECT COALESCE(ar.depends_on, '{}') AS depends_on,
+                  ar.natural_key_partition,
+                  EXISTS (
+                    SELECT 1 FROM asset_registry peer
+                     WHERE peer.target_table IS NOT DISTINCT FROM ar.target_table
+                       AND ar.target_table IS NOT NULL
+                       AND peer.asset_id <> ar.asset_id
+                       AND peer.is_active = true
+                       AND peer.has_writer = true
+                  ) AS has_cowriters
+             FROM asset_registry ar
+            WHERE ar.asset_id = %s""",
+        (asset_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise RuntimeError(f"asset registry row missing for standalone provenance: {asset_id}")
+    return list(row.get("depends_on") or []), row.get("natural_key_partition"), bool(row.get("has_cowriters"))
+
+
+def _has_eligible_ga_dashas_receipt(cur, run_id: str) -> bool:
+    """Require the pager's fresh/proven receipt evidence before completing this run."""
+    cur.execute(
+        """SELECT EXISTS (
+             SELECT 1
+               FROM asset_provenance_receipts receipt
+               JOIN asset_freshness freshness
+                 ON freshness.asset_id = receipt.asset_id
+                AND freshness.scope_key = receipt.scope_key
+                AND freshness.partition_key = receipt.partition_key
+                AND freshness.receipt_version = receipt.receipt_version
+              WHERE receipt.asset_id = 'ga_dashas'
+                AND receipt.chart_id = %s::uuid
+                AND receipt.build_id = %s::uuid
+                AND receipt.receipt_state = 'proven'
+                AND receipt.output_digest_spec_sha256 = %s
+                AND freshness.freshness_state = 'fresh'
+           ) AS receipt_exists""",
+        (CHART_ID, run_id, GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256),
+    )
+    row = cur.fetchone() or {}
+    return bool(row.get("receipt_exists"))
 
 
 def _create_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str) -> None:
@@ -172,6 +221,17 @@ def main() -> None:
 
     lifecycle_created = False
     try:
+        writer_provenance_kwargs = {}
+        if asset_id == "ga_dashas":
+            declared_deps, natural_key_partition, has_cowriters = _load_registry_provenance_inputs(cur, asset_id)
+            writer_provenance_kwargs = {
+                "declared_deps": declared_deps,
+                "natural_key_partition": natural_key_partition,
+                "has_cowriters": has_cowriters,
+                # This writer has just deliberately pre-cleaned its full output;
+                # a delta skip would leave the new run without replacement rows.
+                "force": True,
+            }
         _create_standalone_run_lifecycle(conn, cur, run_id, asset_id)
         lifecycle_created = True
         logger.info("Standalone lifecycle running: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
@@ -200,9 +260,16 @@ def main() -> None:
         # _drive_substeps commits per-substep and updates last_built_at.
         # _run_data_writer sets state='lit' and marks downstream stale on success.
         logger.info("Calling _run_data_writer for %s — watchdog-safe (no 'building' transition)", asset_id)
-        success = _run_data_writer(conn, cur, run_id, CHART_ID, asset_id)
+        success = _run_data_writer(conn, cur, run_id, CHART_ID, asset_id, **writer_provenance_kwargs)
 
         if success:
+            if asset_id == "ga_dashas" and not _has_eligible_ga_dashas_receipt(cur, run_id):
+                logger.error("FAILURE: ga_dashas run %s has no fresh/proven exact-build receipt", run_id)
+                _fail_standalone_run_lifecycle(
+                    conn, cur, run_id, asset_id,
+                    "ga_dashas completed without a fresh/proven exact-build provenance receipt",
+                )
+                sys.exit(1)
             _complete_standalone_run_lifecycle(conn, cur, run_id, asset_id)
             logger.info("SUCCESS: %s is now state='lit'", asset_id)
         else:

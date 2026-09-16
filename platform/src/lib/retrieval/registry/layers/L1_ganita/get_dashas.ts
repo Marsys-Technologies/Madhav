@@ -637,8 +637,10 @@ export const getDashasCapability: CapabilityDescriptor = {
       // This single statement gives the replacement fence, receipt/freshness proof, and page
       // the same PostgreSQL statement snapshot. A completed build alone is not proof: only a
       // chart-scoped ga_dashas receipt with this reviewed digest spec and matching fresh state
-      // may select the build. Any planned/running/paused owner or queued/building ga_dashas
-      // asset fences serving so a partial replacement cannot be misreported as exhaustion.
+      // may select the build. The fence covers an active replacement AND a terminal ga_dashas
+      // run started after the selected receipt that lacks its own fresh/proven receipt. The
+      // latter is the post-delete receipt-failure case: never reinterpret its empty old-build
+      // page as exhaustion. Older failures pre-dating the selected receipt do not block it.
       let pageResult: { rows: Array<{
         replacement_in_progress: boolean
         eligible_build_id: string | null
@@ -650,20 +652,9 @@ export const getDashasCapability: CapabilityDescriptor = {
           eligible_build_id: string | null
           rows: Record<string, unknown>[]
         }>(
-          `WITH replacement_fence AS (
-           SELECT EXISTS (
-             SELECT 1
-               FROM build_run_assets fenced_asset
-               JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
-              WHERE fenced_run.chart_id = $1::uuid
-                AND fenced_asset.asset_id = $${assetIdParam}::text
-                AND (
-                  fenced_run.state IN ('planned', 'running', 'paused')
-                  OR fenced_asset.state IN ('queued', 'building')
-                )
-           ) AS replacement_in_progress
-         ), eligible_receipt AS (
-           SELECT receipt.build_id::text AS build_id
+          `WITH eligible_receipt AS (
+           SELECT receipt.build_id::text AS build_id,
+                  receipt.observed_at AS observed_at
              FROM asset_provenance_receipts receipt
              JOIN asset_freshness freshness
                ON freshness.asset_id = receipt.asset_id
@@ -680,6 +671,39 @@ export const getDashasCapability: CapabilityDescriptor = {
               AND receipt_run.state = 'completed'
             ORDER BY receipt.observed_at DESC
             LIMIT 1
+         ), replacement_fence AS (
+           SELECT EXISTS (
+             SELECT 1
+               FROM build_run_assets fenced_asset
+               JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
+              WHERE fenced_run.chart_id = $1::uuid
+                AND fenced_asset.asset_id = $${assetIdParam}::text
+                AND (
+                  fenced_run.state IN ('planned', 'running', 'paused')
+                  OR fenced_asset.state IN ('queued', 'building')
+                  OR (
+                    EXISTS (
+                      SELECT 1 FROM eligible_receipt eligible
+                       WHERE fenced_run.started_at >= eligible.observed_at
+                    )
+                    AND NOT EXISTS (
+                      SELECT 1
+                        FROM asset_provenance_receipts proven_receipt
+                        JOIN asset_freshness proven_freshness
+                          ON proven_freshness.asset_id = proven_receipt.asset_id
+                         AND proven_freshness.scope_key = proven_receipt.scope_key
+                         AND proven_freshness.partition_key = proven_receipt.partition_key
+                         AND proven_freshness.receipt_version = proven_receipt.receipt_version
+                       WHERE proven_receipt.asset_id = fenced_asset.asset_id
+                         AND proven_receipt.chart_id = $1::uuid
+                         AND proven_receipt.build_id = fenced_run.id
+                         AND proven_receipt.receipt_state = 'proven'
+                         AND proven_receipt.output_digest_spec_sha256 = $${specParam}::text
+                         AND proven_freshness.freshness_state = 'fresh'
+                    )
+                  )
+                )
+           ) AS replacement_in_progress
          ), page_rows AS (
            SELECT to_jsonb(d) AS row,
                   d.system_id AS order_system_id,
