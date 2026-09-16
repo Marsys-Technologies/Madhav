@@ -19,6 +19,17 @@ function withContracts(availability_contracts: unknown): CapabilityKnowledgeSnap
 }
 
 describe('binding availability contracts', () => {
+  it('reports a non-array availability contract without throwing', () => {
+    const inspect = () => inspectCapabilityKnowledge(catalog, withContracts({ binding_id: knownBindingId }))
+
+    expect(inspect).not.toThrow()
+    expect(inspect().findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      severity: 'error',
+      subject: source.scu_id,
+    }))
+  })
+
   it('rejects malformed producer requirements and contracts for unknown bindings', () => {
     const report = inspectCapabilityKnowledge(catalog, withContracts([
       {

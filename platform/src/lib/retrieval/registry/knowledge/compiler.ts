@@ -653,9 +653,10 @@ export function inspectCapabilityKnowledge(
       }
     }
     const contracts = scu.availability_contracts
+    const contractArray = Array.isArray(contracts) ? contracts : []
     if (contracts !== undefined && !Array.isArray(contracts)) {
       findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'Binding availability contracts must be an array.' })
-    } else for (const contract of contracts ?? []) {
+    } else for (const contract of contractArray) {
       if (!isRecord(contract) || typeof contract.binding_id !== 'string' || !Array.isArray(contract.requirements)) {
         findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'A binding availability contract must name one binding and one or more requirements.' })
         continue
@@ -688,7 +689,7 @@ export function inspectCapabilityKnowledge(
       }
     }
     const contractCounts = new Map<string, number>()
-    for (const contract of contracts ?? []) if (isRecord(contract) && typeof contract.binding_id === 'string') {
+    for (const contract of contractArray) if (isRecord(contract) && typeof contract.binding_id === 'string') {
       contractCounts.set(contract.binding_id, (contractCounts.get(contract.binding_id) ?? 0) + 1)
     }
     for (const [bindingId, count] of contractCounts) if (count > 1) {
