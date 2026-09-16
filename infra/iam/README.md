@@ -14,15 +14,17 @@ Four least-privilege runtime SAs, one per Cloud Run service / build pipeline:
 | `amjis-builder-runtime`                  | Artifact Registry writer only                                             | Retained dormant identity; no WIF, Cloud Run mutation, or runtime actAs authority. |
 
 The live deploy identity is `github-actions@madhav-astrology.iam.gserviceaccount.com`; this root
-binds it only to the exact `Marsys-Technologies/Madhav` protected-main OIDC subject. The three
-runtime SAs are attached to the corresponding Cloud Run revisions via `--service-account=`. The
-legacy builder is deliberately unable to deploy or act as a runtime. This replaces the prior
-pattern where every service ran under the project default compute SA
-(`<project_number>-compute@developer.gserviceaccount.com`).
+binds it only to two exact `Marsys-Technologies/Madhav` OIDC subjects: protected `main` for routine
+deploy jobs, and the protected `data-plane-production-cutover` environment for its one-time
+bootstrap job. GitHub uses an environment subject in place of the ref subject when a job enters an
+environment, so both narrow bindings are required. The three runtime SAs are attached to the
+corresponding Cloud Run revisions via `--service-account=`. The legacy builder is deliberately
+unable to deploy or act as a runtime. This replaces the prior pattern where every service ran under
+the project default compute SA (`<project_number>-compute@developer.gserviceaccount.com`).
 
 ## Files
 
-- `main.tf` — SA resources + IAM role grants + exact protected-main WIF binding for the live deploy SA.
+- `main.tf` — SA resources + IAM role grants + exact protected-main and protected-environment WIF bindings for the live deploy SA.
 - `backend.tf` — GCS-backed terraform remote state.
 - `apply.sh` — idempotent plan/apply wrapper.
 

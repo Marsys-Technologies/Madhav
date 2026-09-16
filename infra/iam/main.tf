@@ -37,6 +37,12 @@ variable "github_deploy_wif_subject" {
   default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies/Madhav:ref:refs/heads/main"
 }
 
+variable "github_data_plane_cutover_wif_subject" {
+  type        = string
+  description = "Exact protected GitHub environment OIDC subject allowed to impersonate the live deploy identity for the one-time data-plane cutover."
+  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover"
+}
+
 // Runtime Secret Manager access is deliberately secret-specific. Keep these
 // sets aligned with deploy.yml and every Cloud Run job that reuses a runtime
 // service account; a service-level inventory alone misses those job mounts.
@@ -295,6 +301,16 @@ resource "google_service_account_iam_member" "protected_main_impersonates_github
   service_account_id = "projects/${var.gcp_project}/serviceAccounts/github-actions@${var.gcp_project}.iam.gserviceaccount.com"
   role               = "roles/iam.workloadIdentityUser"
   member             = var.github_deploy_wif_subject
+}
+
+// GitHub replaces the ref-based OIDC subject with an environment-based subject
+// when a job enters a protected environment. Keep that bootstrap-only route as
+// a second exact subject instead of widening the protected-main binding to the
+// whole repository.
+resource "google_service_account_iam_member" "data_plane_cutover_environment_impersonates_github_actions" {
+  service_account_id = "projects/${var.gcp_project}/serviceAccounts/github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+  role               = "roles/iam.workloadIdentityUser"
+  member             = var.github_data_plane_cutover_wif_subject
 }
 
 // ── Pub/Sub: cockpit-events (SSE real-time build events) ─────────────────────
