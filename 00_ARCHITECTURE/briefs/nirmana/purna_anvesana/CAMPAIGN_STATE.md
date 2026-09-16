@@ -419,7 +419,38 @@ Current state is `ACTIVE_LIVE_WRAPUP`. Source-local 34/34 remains prior evidence
 for the aggregate or delivered revision. Required checks and independent aggregate reviews are pending;
 shared migration, signing/runtime configuration, deployed three-door/overlay validation, empirical
 acceptance, protected merge, production revision proof, bounded health observation, compatibility
-disposition and governance close are all `NOT_RUN` at this checkpoint.
+ disposition and governance close are all `NOT_RUN` at this checkpoint.
+
+## Live technical-delivery checkpoint — 2026-09-16
+
+Protected delivery is complete at `origin/main@ac3ef565ec98f716da4557891b9c269121fa95e1`: main CI
+run `35060226139` and deployment `35061039613` both succeeded. The deployment migration job completed
+the general migration pass and the final Pūrṇa protected-owner marker; the zero-traffic web candidate
+passed smoke plus signing/RLS canary and was promoted. `amjis-web-probe-ac3ef565ec98-35061039613-1`
+is the ready revision and carries 100% traffic with that exact source SHA. Health returned HTTP 200.
+
+The legacy watchdog bridge has been retired after the candidate was live: the web revision has neither
+the legacy secret mount nor fallback flag, Scheduler's audience-bound OIDC request returned HTTP 200
+both before and after retirement, an anonymous request returned 401, and an arbitrary old header
+returned 403. The sole `watchdog-secret` version is disabled and the web-runtime accessor binding was
+removed. Inquiry database and lifecycle signing secrets remain explicitly pinned to version 2. No secret
+material is recorded in this state file.
+
+The Portal, managed MCP, and raw MCP lifecycle were exercised against the live synthetic fixture. They
+selected the same active build and capability snapshot and honestly returned the same required dark
+obligations; the managed path completed durably and the raw path finalized without fabricated
+availability. This earns deployed dark-state/overlay evidence, not pagination or strict semantic parity:
+the active build has only one proven `ka_gochara` receipt and lacks current receipts for the reviewed
+producer-output claims needed to light the relevant query SCUs.
+
+Accordingly the current campaign state is
+`TECHNICAL_DELIVERY_COMPLETE_WITH_EXTERNAL_ACCEPTANCE_GATES_OPEN`, not full completion. The two
+exclusive Pūrṇa live-operation leases were released at
+`origin/campaign-coordination@77824b74fd0095181ffaa68de996a5c29ec48ee6`, allowing the Data Plane owner
+to continue under its own authority. Remaining gates are (1) authorized data-plane provenance/build work
+that could supply live pagination evidence, and (2) PA-R08's eligible consented corpus, privacy approval,
+independent experts, blinded execution and signed acceptance. Neither can be inferred from deployment,
+CI, a three-door dark-state receipt, or this governance record.
 
 ### G1 migration-order repair — 2026-09-16
 
