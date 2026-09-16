@@ -134,7 +134,7 @@ describe('MR-01 — ROW_COLUMNS includes all 8 v3 output-model columns', () => {
  *   - v1-authority (no kala_gochara_authority row): build_substep_progress
  *     query params[1] == 'ka_gochara_sweep'.
  *   - v3-authority (authority row exists with gen '3.0' / 'g3_*'):
- *     build_substep_progress query params[1] == 'ka_gochara'.
+ *     build_substep_progress query params[1] == 'ka_gochara_v3_century_materialize'.
  *
  * The body of each POST is { sql, params } — we inspect body.params[1] on the
  * call whose body.sql includes 'build_substep_progress'.
@@ -204,7 +204,7 @@ describe('MR-02 — computeGocharaCoverage is authority-aware', () => {
     expect(body.params[1]).toBe('ka_gochara_sweep')
   })
 
-  it('uses ka_gochara as $2 param for v3-authority charts (authority row with 3.0)', async () => {
+  it('uses the v3 century materializer as $2 param for v3-authority charts (authority row with 3.0)', async () => {
     fetchSpy.mockImplementation((_url: string, init: RequestInit) => {
       const { sql } = JSON.parse(init.body as string) as { sql: string; params: unknown[] }
       if (sql.includes('kala_gochara_authority')) {
@@ -232,8 +232,10 @@ describe('MR-02 — computeGocharaCoverage is authority-aware', () => {
     })
     expect(substepCall).toBeDefined()
     const body = getBody(substepCall!)
-    // $2 (params[1]) must be 'ka_gochara' for a v3-authority chart
-    expect(body.params[1]).toBe('ka_gochara')
+    // $2 (params[1]) must name the actual v3 century materializer, not its
+    // predecessor alias or the protected retired sweep.
+    expect(body.params[1]).toBe('ka_gochara_v3_century_materialize')
+    expect(body.params[1]).not.toBe('ka_gochara')
     expect(body.params[1]).not.toBe('ka_gochara_sweep')
   })
 
