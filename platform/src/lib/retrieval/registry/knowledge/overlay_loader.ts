@@ -119,12 +119,17 @@ function contractForBinding(
   return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
 }
 
+function hasAuthoredContracts(scu: SemanticCapabilityUnit): boolean {
+  return (scu.availability_contracts?.length ?? 0) > 0
+}
+
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (contract === null) return []
     if (contract) return contract.requirements.filter(producerOutputRequirement).map((requirement) => requirement.asset_id)
+    if (hasAuthoredContracts(scu)) return []
     return (scu.producer_output_claims ?? []).filter((claim) => claim.disposition === 'reviewed_output').map((claim) => claim.asset_id)
   })))].sort()
 }
@@ -157,6 +162,12 @@ function evidenceForBinding(
     receipts: [],
     gaps: ['Duplicate binding availability contracts prevent a safe evidence selection.'],
   }
+  if (hasAuthoredContracts(scu) && !contract) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: ['Binding has no authored availability contract.'],
+  }
   if (contract) {
     const producerRequirements = contract.requirements.filter(producerOutputRequirement)
     const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement))
@@ -170,12 +181,18 @@ function evidenceForBinding(
   }
 
   const claims = scu.producer_output_claims ?? []
-  const reviewed = claims.filter((claim) => claim.disposition === 'reviewed_output')
+  if (binding.relation !== 'primary') return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: ['Legacy availability fallback is limited to the primary executable binding.'],
+  }
+  const reviewed = claims.filter((claim) => claim.disposition === 'reviewed_output' && /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))
   const receipts = reviewed.map((claim) => receiptForClaim(claim, rows, activeBuildId))
-  const unsupported = claims.filter((claim) => claim.disposition !== 'reviewed_output')
+  const unsupported = claims.filter((claim) => !reviewed.includes(claim))
   return {
     binding_id: binding.binding_id,
-    passed: receipts.length > 0 && receipts.every((receipt) => receipt.state === 'passed'),
+    passed: claims.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed'),
     receipts,
     gaps: [
       ...unsupported.map((claim) => claim.gap_reason ?? `${claim.asset_id} has no reviewed output claim.`),

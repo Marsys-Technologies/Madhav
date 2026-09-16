@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CapabilityKnowledgeSnapshot } from './types'
+import generatedCapabilityKnowledge from '../../../../generated/capability_knowledge.snapshot.json'
 
 const mocks = vi.hoisted(() => ({ query: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mocks.query }))
@@ -47,6 +48,28 @@ const bindingContractSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const primaryOnlyContractSnapshot = () => ({
+  ...bindingContractSnapshot(),
+  scus: [{
+    ...bindingContractSnapshot().scus[0]!,
+    availability_contracts: [bindingContractSnapshot().scus[0]!.availability_contracts![0]!],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
+const legacyAlternateSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    bindings: [
+      snapshot.scus[0]!.bindings[0]!,
+      {
+        binding_id: 'registry:marsys://tool/L1/legacy_alternate', kind: 'registry_capability', relation: 'provides',
+        capability_uri: 'marsys://tool/L1/legacy_alternate', input_contract: {}, output_contract: {}, pagination: 'none', executable: true,
+      },
+    ],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
 const duplicateBindingContractSnapshot = () => ({
   ...snapshot,
   scus: [{
@@ -78,6 +101,39 @@ beforeEach(() => {
 })
 
 describe('chart capability overlay loader', () => {
+  it('keeps uncontracted bindings dark when the SCU has an authored contract', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_test')] })
+
+    expect((await loadChartCapabilityOverlay(primaryOnlyContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
+  })
+
+  it('uses a legacy receipt fallback for the primary binding only', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test')] })
+
+    expect((await loadChartCapabilityOverlay(legacyAlternateSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
+  })
+
+  it('keeps generated temporal and alternate bindings dark without complete exact contracts', async () => {
+    const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
+    const temporal = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')!
+    const wealth = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.finance.prosperity_assessment')!
+    const yoga = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.yoga.firing_and_cancellation')!
+    const rows = [temporal, wealth, yoga].flatMap((scu) => (scu.producer_output_claims ?? [])
+      .filter((claim) => claim.disposition === 'reviewed_output')
+      .map((claim) => receipt(claim.asset_id, { output_digest_spec_sha256: claim.output_digest_spec_sha256 })))
+    mocks.query.mockResolvedValue({ rows })
+
+    const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === temporal.scu_id))
+      .toMatchObject({ state: 'dark', available_binding_ids: [] })
+    expect(availability.find((item) => item.scu_id === wealth.scu_id))
+      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L-DOMAIN/assess_wealth'] })
+    expect(availability.find((item) => item.scu_id === yoga.scu_id))
+      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/get_yoga_firings'] })
+  })
+
   it('fails closed when duplicate contracts name one binding with different producer assets', async () => {
     mocks.query.mockResolvedValue({ rows: [receipt('ga_primary')] })
 
