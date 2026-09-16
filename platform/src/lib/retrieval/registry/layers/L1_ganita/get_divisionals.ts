@@ -133,6 +133,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
           source_table: 'chart_divisionals',
           rows: rowsWithHouse,
           more_available: moreAvailable,
+          // The continuation offset uses the effective server page size, not
+          // an omitted or over-large client limit that the handler normalizes.
+          next_offset: moreAvailable ? offset + rows.length : null,
         },
         is_error: false,
       }

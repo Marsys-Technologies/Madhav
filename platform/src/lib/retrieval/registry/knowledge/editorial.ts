@@ -105,7 +105,7 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     intents: ['assess', 'verify', 'deep_inquiry'],
     horizons: ['natal'],
     inputs: ['chart_id', 'varga?', 'graha?', 'offset?', 'limit?'],
-    outputs: ['divisional_placements', 'house_from_varga_lagna', 'more_available', 'vargottama'],
+    outputs: ['divisional_placements', 'house_from_varga_lagna', 'more_available', 'next_offset', 'vargottama'],
     primary_binding_uri: 'marsys://tool/L1/get_divisionals',
     primary_binding_details: {
       pagination: 'offset',
@@ -114,7 +114,7 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       pagination_contract: {
         request_position_path: 'offset', request_limit_path: 'limit', effective_maximum: 2000,
         result_collection_path: 'content.rows',
-        more_available_path: 'content.more_available',
+        next_path: 'content.next_offset',
         deterministic_order: ['varga', 'ayanamsha_id', 'graha', 'fact_category', 'fact_key'],
       },
       execution_channels: ['platform_internal'],

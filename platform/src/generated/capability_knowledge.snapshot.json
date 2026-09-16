@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-16T20:40:27.000Z",
-  "content_hash": "sha256:9e61f36f182df8be4680d63c15f277895a804bf4112a7f8ee252a5e3dde2fc78",
-  "source_catalog_fingerprint": "sha256:112fb29f81376c8d542ea4eaa98ddd538a207e19d55f07cdf54f5e38984f7834",
+  "generated_at": "2026-09-16T20:46:49.000Z",
+  "content_hash": "sha256:85c02fe49904b7fd846839b246fe837a192d798e38d8f85e6f41de8245df8dd0",
+  "source_catalog_fingerprint": "sha256:6bc16f3f0aa5bf00590a35c751f35604726300c39eb10baad1d56b5bac4d047b",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -6193,6 +6193,7 @@
         "divisional_placements",
         "house_from_varga_lagna",
         "more_available",
+        "next_offset",
         "vargottama"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_divisionals",
@@ -6205,7 +6206,7 @@
           "request_limit_path": "limit",
           "effective_maximum": 2000,
           "result_collection_path": "content.rows",
-          "more_available_path": "content.more_available",
+          "next_path": "content.next_offset",
           "deterministic_order": [
             "varga",
             "ayanamsha_id",
@@ -6320,7 +6321,7 @@
             "request_limit_path": "limit",
             "effective_maximum": 2000,
             "result_collection_path": "content.rows",
-            "more_available_path": "content.more_available",
+            "next_path": "content.next_offset",
             "deterministic_order": [
               "varga",
               "ayanamsha_id",

@@ -28,3 +28,18 @@ COMPLETE — source implementation and generated internal capability binding now
 ## Remaining boundary
 
 The public `ganita_chart_facts_get` alias remains separately non-exhaustion-reviewed and requires a `divisional_chart` filter; it is not the internal `get_divisionals` binding and is outside D1 scope.
+
+## Fix round 1/5 — server-computed continuation
+
+### Correctness repair
+
+The initial D1 receipt contract derived `next` from caller arguments when `content.more_available` was true. That could skip rows when the caller omitted `limit` (the handler serves its default 300 while the receipt used its contract maximum) or supplied a value above the handler's 2000 cap.
+
+`get_divisionals` now returns `content.next_offset`: `offset + rows.length` when the server-observed probe proves more rows, otherwise explicit `null`. The reviewed binding declares `next_path: content.next_offset` rather than a `more_available_path`, so `deriveInquiryPaginationReceipt` consumes the actual server continuation and uses `null` as terminal exhaustion. `more_available` remains a truthful response field.
+
+### Regression evidence
+
+- RED observed: terminal-null and omitted/oversized handler-to-receipt regressions failed before the response and contract change.
+- GREEN: an omitted limit serving 300 of a 301-row probe returns receipt `next: 300`; an oversized `limit: 5000` at `offset: 100` serves the 2000-row cap and returns `next: 2100`. Neither receipt is exhausted.
+- Focused suite: `npm test -- src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_divisionals.test.ts src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/pagination.test.ts` — 48 passed.
+- Both generated-artifact checks, TypeScript check, and `git diff --check` passed after regeneration.

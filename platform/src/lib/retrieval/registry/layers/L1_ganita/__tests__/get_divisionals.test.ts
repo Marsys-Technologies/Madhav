@@ -12,6 +12,9 @@ const { mockQuery } = vi.hoisted(() => ({ mockQuery: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mockQuery }))
 
 import { getDivisionalsCapability } from '../get_divisionals'
+import { getCatalog } from '../../../catalog'
+import { compileCapabilityKnowledge } from '../../../knowledge/compiler'
+import { deriveInquiryPaginationReceipt } from '@/lib/vidhi/inquiry/pagination'
 
 const CHART_ID = '482012f1-710e-4a25-994a-93821f5871aa'
 
@@ -21,6 +24,14 @@ function row(id: string) {
 
 function contentOf(result: Awaited<ReturnType<typeof getDivisionalsCapability.handler>>) {
   return result.content as Record<string, unknown>
+}
+
+function divisionalBinding() {
+  const snapshot = compileCapabilityKnowledge(getCatalog(), '2026-09-16T20:40:27.000Z')
+  const binding = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.get_divisionals')
+    ?.bindings.find((candidate) => candidate.relation === 'primary')
+  if (!binding) throw new Error('missing reviewed divisional binding')
+  return binding
 }
 
 describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => {
@@ -54,6 +65,7 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(result.is_error).toBe(false)
     expect(content['rows']).toEqual([row('last')])
     expect(content['more_available']).toBe(false)
+    expect(content['next_offset']).toBeNull()
     expect(content).not.toHaveProperty('total')
   })
 
@@ -88,5 +100,27 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(content['rows']).toEqual([row('fifth'), row('sixth')])
     expect(content['more_available']).toBe(true)
     expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 3, 4])
+  })
+
+  it('uses the server default page size for an omitted-limit continuation receipt', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 301 }, (_, index) => row(`default-${index}`)) })
+
+    const args = { chart_id: CHART_ID }
+    const result = await getDivisionalsCapability.handler(args, undefined)
+
+    expect(contentOf(result)['next_offset']).toBe(300)
+    expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 300 })
+  })
+
+  it('uses the server-clamped page size for an oversized-limit continuation receipt', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: Array.from({ length: 2001 }, (_, index) => row(`clamped-${index}`)) })
+
+    const args = { chart_id: CHART_ID, offset: 100, limit: 5000 }
+    const result = await getDivisionalsCapability.handler(args, undefined)
+
+    expect(contentOf(result)['next_offset']).toBe(2100)
+    expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 2100 })
   })
 })
