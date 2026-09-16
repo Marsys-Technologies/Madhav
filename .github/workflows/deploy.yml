@@ -464,17 +464,6 @@ jobs:
           fi
           cd platform && npx tsx scripts/nirmana-evidence-ownership-preflight.ts
 
-      - name: Attest Nirmana ownership handoff as deployment-only migrator
-        env:
-          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
-        run: |
-          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
-            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migration 633 cannot be attested. This credential is deployment-only and must never be mounted in Cloud Run."
-            exit 1
-          else
-            cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
-          fi
-
       - name: Inspect Pūrṇa inquiry protected-owner handoff
         id: purna-ownership
         env:
@@ -529,6 +518,20 @@ jobs:
             exit 1
           fi
           cd platform && npx tsx scripts/purna-inquiry-ownership-postflight.ts
+
+      # While Pūrṇa is armed, its one-shot bootstrap is intentionally a temporary
+      # cloudsqlsuperuser child. Mandatory postflight removes that membership.
+      # Re-attest Nirmana only after cleanup, without weakening migration 633.
+      - name: Attest Nirmana ownership handoff as deployment-only migrator
+        env:
+          NIRMANA_MIGRATOR_DATABASE_URL: ${{ secrets.NIRMANA_MIGRATOR_DATABASE_URL }}
+        run: |
+          if [ -z "$NIRMANA_MIGRATOR_DATABASE_URL" ]; then
+            echo "::error::NIRMANA_MIGRATOR_DATABASE_URL secret not set — migration 633 cannot be attested. This credential is deployment-only and must never be mounted in Cloud Run."
+            exit 1
+          else
+            cd platform && npx tsx scripts/nirmana-evidence-ownership-marker.ts
+          fi
 
       - name: Require explicit bootstrap rearm after interrupted cleanup
         if: steps.purna-ownership.outputs.state == 'interrupted'
