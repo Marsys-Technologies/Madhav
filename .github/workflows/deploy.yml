@@ -421,8 +421,28 @@ jobs:
             "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.10.1/cloud-sql-proxy.linux.amd64" \
             -o cloud-sql-proxy && chmod +x cloud-sql-proxy
           ./cloud-sql-proxy --address 127.0.0.1 --port 5432 \
-            madhav-astrology:asia-south1:amjis-postgres &
-          sleep 5
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5432.log 2>&1 &
+          ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
+            madhav-astrology:asia-south1:amjis-postgres >cloud-sql-proxy-5433.log 2>&1 &
+
+          # PROD_DATABASE_URL uses 5432, while the intentionally separate
+          # one-shot Pūrṇa bootstrap URL uses 5433. Do not start migrations
+          # until both least-privilege paths reach the same protected instance.
+          for port in 5432 5433; do
+            ready=false
+            for _ in {1..20}; do
+              if (echo >"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+            if [ "$ready" != true ]; then
+              echo "::error::Cloud SQL Auth Proxy did not become ready on 127.0.0.1:$port."
+              cat "cloud-sql-proxy-$port.log" || true
+              exit 1
+            fi
+          done
 
       - name: Set up Node.js for migration runner
         uses: actions/setup-node@v4
@@ -431,6 +451,12 @@ jobs:
 
       - name: Install migration runner deps
         run: cd platform && npm install --ignore-scripts --no-fund tsx pg
+
+      - name: Validate migration database routes
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          PURNA_INQUIRY_ADMIN_DATABASE_URL: ${{ secrets.PURNA_INQUIRY_ADMIN_DATABASE_URL }}
+        run: cd platform && npx tsx scripts/validate-migration-database-routes.ts
 
       - name: Inspect Nirmana evidence ownership handoff marker
         id: nirmana-ownership
