@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-15T21:10:50.000Z",
-  "content_hash": "sha256:639ca04791a052ac4c00513078639a393940069a6f729a7a64ef3dee835bc3a2",
-  "source_catalog_fingerprint": "sha256:523545193ee68cb5fc1cc99dd99a1e5130474683e0a05a701d99c8f410a628a9",
+  "generated_at": "2026-09-16T05:16:34.000Z",
+  "content_hash": "sha256:55e17219c3e537a442cf02777d501a28874dd27c2e67a55422c0af47424f85a7",
+  "source_catalog_fingerprint": "sha256:56fd051c90bf6d84c46a9418d554e9b75ce5ecb2e370a685eb997f1c7c89dcd2",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -21753,7 +21753,7 @@
       "scu_id": "scu.catalog.query_projections",
       "version": 1,
       "label": "Query Projections",
-      "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4). MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many times (one per contributing signal) — e.g. dozens of rows can share one (window_start, window_end, domain) triple. Prefer `projection_families` — one entry per distinct (window_start, window_end, domain), with member_count and bounded member_ids/ member_signal_ids — copying query_temporal_activation's window_families pattern. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Returns probabilistic forward projections for a chart from kala_bhavishya. Source: kala_bhavishya (50 rows — spanning multiple years and domains). Each projection carries: domain, probability_tier, peak_date, window_start/window_end, falsifiability hook, source_chain, effective_score, and narrative. Filter by probability_tier: tier_1_high (≥0.65), tier_2_moderate (0.40–0.65), tier_3_speculative (<0.40). emits_references: returns signal_id references linkable to bo_laksana / ph_pramana (L4). MC-015/026: the raw `projections` array frequently repeats the SAME resolved window many times (one per contributing signal) — e.g. dozens of rows can share one (window_start, window_end, domain) triple. Prefer `projection_families` — one entry per distinct (window_start, window_end, domain), with member_count and bounded member_ids/ member_signal_ids — copying query_temporal_activation's window_families pattern. The response explicitly reports source state and build/generation qualification; served rows are never represented as accepted-current without a physical binding. Evidence use: establish dated sequence, activation, or timing evidence.",
       "kind": "temporal",
       "domains": [
         "timing"
