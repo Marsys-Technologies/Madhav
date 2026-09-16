@@ -1,15 +1,15 @@
 ---
 artifact: MADHAV_DATA_PLANE_L3_CURRENT_STATE_AND_DISPOSITION
 version: "1.0"
-status: DP_SD_019_SOURCE_RELEASE_GATE_GREEN_LIVE_CUTOVER_HELD
-observed_at: 2026-09-16T03:44:00+05:30
-strategy_decision: DP-SD-017_PLUS_DP-SD-018
+status: DP_SD_020_AUTOMATED_CUTOVER_SOURCE_AMENDMENT_IN_PROGRESS
+observed_at: 2026-09-16T16:26:52+05:30
+strategy_decision: DP-SD-017_PLUS_DP-SD-018_PLUS_DP-SD-019_PLUS_DP-SD-020
 strategy_content_commit: 793972c754b106688097dbc54536c1a9c270a793
 approval_pin_commit: 04a9ab33effa23e5e9b4e89772330ae264498a9b
 accepted_l2_terminal: e5307fadef42cca557a1c0ca3c1831b1296e22b4
 active_identity_denominator: 22
 protected_retired_identity: ka_gochara_sweep
-active_packet: L3-DP-SD-019-SOURCE-GATE-GREEN
+active_packet: L3-DP-SD-020-AUTOMATED-CUTOVER-AUTHORITY
 implementation_tip: 876fbb69671a74ee1905681fc38d8f4f3e97dba7
 w2_reviewed_tip: 47131772b355ae2c67b1f6fb2b90e9fa007e2202
 ri01_reviewed_tip: 6a7ecc17117163debcc4b742aa183f17588ef621
@@ -552,3 +552,176 @@ consumer value or empirical outcome acceptance. No production role, credential,
 IAM, database, migration, build, deploy, data, L0, L4 or L5 mutation occurred.
 L3 terminal acceptance therefore remains 0/22, and live cutover still requires
 the separate exclusive authority and external prerequisites already recorded.
+
+## 11. DP-SD-020 Native-authorized automated cutover amendment
+
+The Native has removed only the requirement for a separate person to approve
+the GitHub production-cutover environment and instructed the automated plan to
+continue beyond that point when complete. The amendment is recorded in
+`MADHAV_DATA_PLANE_L3_AUTOMATED_CUTOVER_AUTHORITY_AMENDMENT_v1_0.md` and remains
+owned by this permanent Execution — Data Plane task. Pūrṇa Anveṣaṇa is a
+downstream consumer and does not own or duplicate the Data Plane cutover.
+
+The replacement source contract requires the named environment to exist with
+no `required_reviewers` rule and with the exact protected-branch-only policy. It
+authenticates the repository, workflow run and immutable deploy SHA, and binds
+the restore receipt to `DP-SD-020` plus
+`native_authorized_automated_cutover`. It does not call the GitHub approvals
+endpoint or accept an `approvedBy` surrogate.
+
+All non-human gates remain unchanged: source checks and technical/security
+review, dedicated least-privilege identity and secret, fresh backup and exact
+isolated restore, expiring receipt, unique lease, refreshed state, quiescence,
+protected ownership and migration attestation, rollback, postflight, canaries
+and routine-delivery barriers. The exclusive coordination lease is recorded at
+`85b25bac593dc932415dc38207db94720031e033`.
+
+At 2026-09-16T16:26:52+05:30, pull request `#2615` was clean at source base
+`113ccc37eb93f02416907fee75b52958792eae7a`; the environment, dedicated builder
+service account and builder secret were absent. This is a source amendment in
+progress, not evidence of protected integration, deployment, live mutation,
+physical generation, consumer use, L3 acceptance, or L4/L5 authority.
+
+The first live IAM preflight then exposed one deterministic source-model
+blocker: the sole human project Owner includes Secret Manager version access and
+service-account token permissions, so the former aggregate check treated the
+Native control-plane administrator as a runtime credential leak. Removing the
+sole Owner would risk administrative lockout. The corrected gate permits exactly
+one repository-declared unconditional human `roles/owner` on this project only,
+while still rejecting every extra or undeclared user, all service accounts,
+groups, domains, conditions and folder/organization inheritance. The builder
+secret resource policy remains exact and builder-only. No permission or
+principal is added by this correction.
+
+The next full read stopped before evaluation because the complete Cloud Run
+revision inventory exceeded Node's default 1 MiB synchronous child-process
+buffer. The preflight now uses a bounded 64 MiB JSON buffer so the required
+complete inventory can be evaluated instead of truncating or silently sampling
+it. This is an observability-capacity repair, not a relaxation of the inventory
+or credential rules.
+
+The same live read reports 2,807 immutable revisions. Because the list response
+already contains each complete revision specification, the preflight now checks
+those returned specifications directly instead of issuing 2,807 redundant
+`describe` calls. All revisions remain in scope; only the pathological N+1 API
+pattern is removed. The three services and six jobs remain individually
+described from their resolved regions.
+
+The next scan exposed project-level impersonation permissions held by the
+ordinary GitHub deployer, Firebase Admin SDK and canonical Google service
+agents. GitHub Actions is now resource-bound to only web, sidecar, MCP and Data
+Plane builder service accounts; Firebase token creation is self-only. The two
+broad project grants were removed and read back absent. Provider service agents
+cannot safely be removed without disabling their GCP services, so the gate now
+accepts only exact built-in service-agent role/member pairs derived from the
+authenticated project number on this project. Wrong or additional principals,
+roles, conditions, projects and inherited bindings still fail closed.
+
+The first workload-surface finding was a long-standing Cloud Run action artifact:
+comments embedded in deployment `env_vars` were serialized into immutable
+revisions as name-only entries beginning `#`, including comments containing
+words such as `token`. They have no value or secret reference and appear on the
+current revisions as well as historical probes. The parser now ignores only an
+exact one-field, name-only comment entry. A comment entry with any value,
+reference or extra field still fails, and every real environment entry across
+the full estate remains checked. Future errors include the exact surface kind
+and name.
+
+The next exact surface was `service/amjis-web` and its literal
+`NEXT_PUBLIC_FIREBASE_API_KEY`. This is Firebase public browser configuration,
+already shipped in the client bundle, not an administrative or server
+credential. The gate now permits only that exact variable, only as an exact
+`name,value` entry, and only with the `AIza` Firebase client-key shape. Every
+other API-key name, value shape or extra field remains subject to the secret
+reference rule.
+
+The next scan found 1,334 immutable legacy revisions carrying historical
+literal `DATABASE_URL` or `WATCHDOG_SECRET` values, while every current web,
+sidecar and MCP service template uses Secret Manager references for server
+credentials. Bulk deletion/rotation of that pre-existing estate is a separate
+global-security campaign under DP-SD-019's scope guard. The cutover preflight
+therefore applies complete literal-credential validation to every current
+service and job, while every historical revision remains checked for the Data
+Plane builder identity/secret and all Data Plane DBA/migrator credentials. No
+historical revision can conceal or admit a Data Plane privileged surface; the
+legacy shared-credential retirement debt remains explicitly unresolved.
+
+The complete live preflight now advances to the intended final pre-credential
+barrier: `brahma-build-pipeline-job` still uses
+`amjis-web-runtime` plus `amjis-pipeline-db-url`, while the new builder secret has
+no version. The GitHub environment exists as ID `22052663287`, with no reviewer
+rule and exact protected-branches-only policy. The builder service account has
+only project `roles/cloudsql.client`, topic `roles/pubsub.publisher`, and its
+single resource-level GitHub Actions impersonator; the empty builder secret has
+exactly that builder as accessor. GitHub Actions actAs grants for web, sidecar
+and MCP plus Firebase self-signing are now codified as resource-level Terraform
+bindings. No build-job rebind, database credential, migration, deployment or
+physical data mutation has occurred.
+
+Exact-tip review of `c720f1832` found a P1 workflow deadlock: strict isolation
+required the build job's final binding before the workflow's only rebind step,
+which was itself downstream of the migration barrier. The corrected sequence
+uses an explicit pre-transition mode that permits only the exact observed legacy
+job binding or the exact target binding while enforcing every other gate. After
+the protected cutover succeeds, the same bootstrap job immediately rebinds the
+named job and reruns strict isolation. Workflow tests bind strict verification
+after the rebind and before semantic postflight/routine delivery. This is an
+ordering repair; the final-state requirement is unchanged.
+
+The finalization path is also restartable. Every deployment now performs a
+read-only strict runtime-isolation inspection and emits either `strict` or
+`repair_required`. A database already carrying the protected ownership marker
+but still reporting `repair_required` re-enters the protected bootstrap job,
+idempotently rebinds the named build job, reruns strict isolation, and
+re-attests the database state. Routine migration remains unavailable until the
+strict detector passes. This closes the interruption window between database
+cutover and runtime rebinding without introducing a second mutable marker.
+
+The command parser now treats only shell-variable-shaped `NAME=value`
+arguments as assignments, but it deliberately continues to reject embedded
+credential-shaped flags. Completed denial-probe jobs must be retired by their
+owning campaign rather than hidden from the strict current-runtime inventory.
+The three bounded Pūrṇa denial probes were subsequently retired by that owning
+campaign after their successful denial executions were confirmed. Secret grant
+validation now excludes only revisions whose Cloud Run `Active` condition is
+explicitly `False`: those immutable revisions cannot start or receive traffic,
+and retaining obsolete grants for them would enlarge access. Their definitions
+remain in the exhaustive scan for any data-plane builder or deployment-only
+DBA/migrator identity or credential.
+
+Live pre-transition isolation then passed against the complete current estate
+(three services, three remaining jobs, and the exhaustive retained revision
+inventory). Fresh rollback evidence is also physical rather than inferred:
+Cloud SQL backup `1789559207984` completed `SUCCESSFUL`; restore operation
+`81fa436f-115b-4f27-82c8-93800000002f` completed `DONE` on isolated instance
+`amjis-ri02-validation-c720f1832`. Authenticated validation through the exact
+instance proxy observed protected ownership `unmarked`, PostgreSQL server
+version `150019`, and `public.build_runs`. This proves the restore artifact and
+pre-cutover source state only; it is not production cutover or deployment
+acceptance.
+
+Final exact-tip review also tightened the target binding itself: strict mode
+now requires the named build job to expose exactly one Secret Manager resource,
+`data-plane-builder-db-url`, under the dedicated builder identity. The runtime
+transition uses `--set-secrets` so an unrelated pre-existing mount cannot
+survive the cutover.
+
+The protected workflow identity also requires read-only access to the IAM and
+runtime metadata inspected by the isolation detector. The exact project-level
+grant is `roles/iam.securityReviewer` for the GitHub Actions service account,
+codified alongside its resource-level actAs grants. This role exposes policy
+metadata but not Secret Manager payload access, service-account impersonation,
+or IAM/runtime mutation. Acceptance requires a full live preflight executed by
+impersonating that workflow identity, not merely a successful native-account
+scan.
+
+The live project now carries that exact Security Reviewer binding and no new
+secret-access, impersonation, or runtime-mutation role. The three database
+logins (`data_plane_builder`, `data_plane_verifier`, `data_plane_migrator`) were
+preprovisioned as LOGIN + NOINHERIT with no elevated role attributes and their
+fresh credentials were verified without emitting them. Builder Secret Manager
+version `1` is enabled with the previously attested single-principal accessor
+policy. The protected GitHub environment now contains the one-shot admin,
+migrator, verifier, restore-validation, and UUID lease inputs. These are
+cutover prerequisites only: database ownership, runtime job binding, protected
+branch merge, deployment, and physical L3 data remain unexecuted.
