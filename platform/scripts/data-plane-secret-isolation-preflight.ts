@@ -336,7 +336,7 @@ export function cloudRunLocation(entry: CloudRunEntry): string {
 
 export function cloudRunRevisionListArgs(projectId: string, region: string): string[] {
   if (!/^[a-z]+(?:-[a-z0-9]+)+[0-9]$/.test(region)) {
-    throw new Error('GCP_REGION must name the exact Cloud Run region.')
+    throw new Error('GOOGLE_CLOUD_REGION must name the exact Cloud Run region.')
   }
   return [
     'run', 'revisions', 'list',
@@ -545,7 +545,7 @@ export function runDataPlaneSecretIsolationPreflight(): void {
     if (!name) throw new Error('Could not resolve a Cloud Run service name for credential inspection.')
     surfaces.push({ kind: 'service', name, definition: gcloud<unknown>(['run', 'services', 'describe', name, '--project', project, '--region', cloudRunLocation(entry)]) })
   }
-  const cloudRunRegion = process.env.GCP_REGION?.trim() ?? ''
+  const cloudRunRegion = process.env.GOOGLE_CLOUD_REGION?.trim() ?? ''
   for (const entry of gcloud<CloudRunEntry[]>(cloudRunRevisionListArgs(project, cloudRunRegion))) {
     const name = entry?.metadata?.name
     if (!name) throw new Error('Could not resolve a Cloud Run revision name for credential inspection.')
