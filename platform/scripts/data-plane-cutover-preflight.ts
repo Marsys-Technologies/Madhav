@@ -24,6 +24,23 @@ export interface BackupRestoreReceipt {
   environment: string
 }
 
+/**
+ * Short-lived Native authorization stored before an automatic deploy exists.
+ * The workflow's authenticated runtime identity supplies the only two values
+ * that cannot be known until that deploy has been created.
+ */
+export interface BackupRestoreAuthorization {
+  authorityDecision: string
+  backupId: string
+  executionMode: string
+  restoreOperationId: string
+  validationInstance: string
+  leaseId: string
+  expiresAt: string
+  repository: string
+  environment: string
+}
+
 interface GitHubEnvironment {
   name?: string
   protection_rules?: Array<{
@@ -67,6 +84,30 @@ export function parseBackupRestoreReceipt(value: string): BackupRestoreReceipt {
     throw new Error('Backup/restore receipt fields are missing, empty, or unexpected.')
   }
   return receipt as unknown as BackupRestoreReceipt
+}
+
+export function parseBackupRestoreAuthorization(value: string): BackupRestoreAuthorization {
+  let parsed: unknown
+  try { parsed = JSON.parse(value) }
+  catch { throw new Error('DATA_PLANE_CUTOVER_AUTHORIZATION must be an exact JSON authorization.') }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Backup/restore authorization must be an object.')
+  const authorization = parsed as Record<string, unknown>
+  const expectedKeys = [
+    'authorityDecision','backupId','environment','executionMode','expiresAt','leaseId','repository',
+    'restoreOperationId','validationInstance',
+  ]
+  if (Object.keys(authorization).sort().join(',') !== expectedKeys.join(',')
+      || expectedKeys.some((key) => typeof authorization[key] !== 'string' || !(authorization[key] as string).trim())) {
+    throw new Error('Backup/restore authorization fields are missing, empty, or unexpected.')
+  }
+  return authorization as unknown as BackupRestoreAuthorization
+}
+
+export function materializeRunBoundBackupRestoreReceipt(
+  authorization: BackupRestoreAuthorization,
+  binding: { sourceCommit: string; workflowRunId: string },
+): BackupRestoreReceipt {
+  return { ...authorization, ...binding }
 }
 
 export function assertBackupReceiptBinding(
@@ -216,12 +257,13 @@ function githubApi<T>(path: string): T {
 }
 
 export async function withDataPlaneCutoverLease<T>(action: () => Promise<T>): Promise<T> {
-  const receipt = parseBackupRestoreReceipt(requireValue('DATA_PLANE_BACKUP_RESTORE_ID'))
+  const authorization = parseBackupRestoreAuthorization(requireValue('DATA_PLANE_CUTOVER_AUTHORIZATION'))
   const lease = requireValue('DATA_PLANE_CUTOVER_LEASE')
   const repository = requireValue('GITHUB_REPOSITORY')
   const workflowRunId = requireValue('GITHUB_RUN_ID')
   const environmentName = requireValue('DATA_PLANE_CUTOVER_ENVIRONMENT')
   const sourceCommit = requireValue('DEPLOY_SHA')
+  const receipt = materializeRunBoundBackupRestoreReceipt(authorization, { sourceCommit, workflowRunId })
   const encodedEnvironment = encodeURIComponent(environmentName)
   const environment = githubApi<GitHubEnvironment>(`repos/${repository}/environments/${encodedEnvironment}`)
   const workflowRun = githubApi<GitHubWorkflowRun>(`repos/${repository}/actions/runs/${workflowRunId}`)

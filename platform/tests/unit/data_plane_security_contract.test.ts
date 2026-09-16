@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
-import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
+import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, materializeRunBoundBackupRestoreReceipt, parseBackupRestoreAuthorization, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
 
 type WorkflowStep = { name?: string; if?: string; env?: Record<string, string>; run?: string }
@@ -394,7 +394,8 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow).toContain('DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}')
     expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
     expect(workflow).toContain('environment: data-plane-production-cutover')
-    expect(workflow).toContain('DATA_PLANE_BACKUP_RESTORE_ID')
+    expect(workflow).toContain('DATA_PLANE_CUTOVER_AUTHORIZATION')
+    expect(workflow).not.toContain('DATA_PLANE_BACKUP_RESTORE_ID')
     expect(workflow).toContain('group: data-plane-production-cutover')
     expect(workflow).toMatch(/deploy-pipeline-job:[\s\S]*?needs: \[changes, migrate\]/)
     expect(workflow.indexOf('Re-attest protected data-plane semantic state')).toBeLessThan(workflow.indexOf('Run general database migrations'))
@@ -627,6 +628,25 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(preflight).not.toContain('/approvals')
     expect(preflight).not.toContain('approvedBy')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
+  })
+
+  it('materializes a run-bound receipt only from a short-lived exact authorization template', () => {
+    const authorization = parseBackupRestoreAuthorization(JSON.stringify({
+      authorityDecision: DATA_PLANE_CUTOVER_AUTHORITY,
+      backupId: '123', restoreOperationId: 'restore-op-456', validationInstance: 'amjis-ri02-validation',
+      leaseId: '11111111-1111-4111-8111-111111111111',
+      executionMode: DATA_PLANE_CUTOVER_EXECUTION_MODE, expiresAt: '2026-09-16T00:00:00.000Z',
+      repository: 'owner/repo', environment: 'data-plane-production-cutover',
+    }))
+    const receipt = materializeRunBoundBackupRestoreReceipt(authorization, {
+      sourceCommit: 'a'.repeat(40), workflowRunId: '123456',
+    })
+    expect(receipt).toMatchObject({
+      backupId: authorization.backupId, restoreOperationId: authorization.restoreOperationId,
+      leaseId: authorization.leaseId, sourceCommit: 'a'.repeat(40), workflowRunId: '123456',
+    })
+    expect(() => parseBackupRestoreAuthorization(JSON.stringify({ ...authorization, sourceCommit: 'a'.repeat(40) })))
+      .toThrow(/missing, empty, or unexpected/)
   })
 
   it('binds the restore operation to the exact backup through Cloud Audit Logs', () => {
