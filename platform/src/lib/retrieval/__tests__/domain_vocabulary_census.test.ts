@@ -269,7 +269,10 @@ describe('domain vocabulary census (TS)', () => {
     for (const key of INTENTIONAL_EXCLUSIONS.keys()) {
       expect(rawHitKeys, `stale exclusion entry (no longer found by scanner): ${key}`).toContain(key)
     }
-  })
+  // This traverses and parses every eligible TS source file. It normally completes in
+  // about a second, but needs headroom when Vitest runs the full suite concurrently.
+  // The longer budget does not change the scanner, exclusions, or failure condition.
+  }, 15_000)
 
   it('THE GATE (R17): 0 unexplained independent TS domain vocabularies survive tree-wide', () => {
     // BEFORE Lane A7 (measured by this exact scanner shape, re-run directly against the
