@@ -185,6 +185,7 @@ export function assertValidationConnectorBinding(
     'path','port','server','servername','service','servicename','socket','socketpath',
     'unixsocket','unixsocketpath',
   ])
+  const benignSocketCarrierMetadata = new Set(['sslmode', 'applicationname'])
   const parts = binding.connectionName.split(':')
   const expectedSocket = `/cloudsql/${binding.connectionName}`
   // The verifier secret predates the isolated restore and therefore names the
@@ -207,11 +208,26 @@ export function assertValidationConnectorBinding(
     const queryParts = query?.split('&') ?? []
     let socketHost: string | undefined
     try {
-      if (!/^postgres(?:ql)?:\/\/[^/?#]+@\/[^?#]+$/i.test(prefix)
-          || queryParts.length !== 1) throw new Error('invalid socket carrier')
-      const [key, value] = queryParts[0].split('=', 2)
-      if (decodeURIComponent(key) !== 'host' || value === undefined) throw new Error('invalid socket carrier')
-      socketHost = decodeURIComponent(value)
+      if (!/^postgres(?:ql)?:\/\/[^/?#]+@\/[^?#]+$/i.test(prefix)) {
+        throw new Error('invalid socket carrier')
+      }
+      const hostValues: string[] = []
+      for (const part of queryParts) {
+        const separator = part.indexOf('=')
+        if (separator <= 0) throw new Error('invalid socket carrier')
+        const key = decodeURIComponent(part.slice(0, separator))
+        const value = decodeURIComponent(part.slice(separator + 1))
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '')
+        if (key === 'host') {
+          hostValues.push(value)
+        } else if (!benignSocketCarrierMetadata.has(normalizedKey)) {
+          throw new Error('invalid socket carrier')
+        }
+      }
+      if (hostValues.length !== 1) throw new Error('invalid socket carrier')
+      // Only explicitly benign metadata is accepted; it is deliberately ignored
+      // because the returned PoolConfig always uses the authenticated local proxy.
+      socketHost = hostValues[0]
     } catch {
       throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
     }
