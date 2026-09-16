@@ -14,10 +14,11 @@ Four least-privilege runtime SAs, one per Cloud Run service / build pipeline:
 | `amjis-builder-runtime`                  | Artifact Registry writer only                                             | Retained dormant identity; no WIF, Cloud Run mutation, or runtime actAs authority. |
 
 The live deploy identity is `github-actions@madhav-astrology.iam.gserviceaccount.com`; this root
-binds it only to two exact `Marsys-Technologies/Madhav` OIDC subjects: protected `main` for routine
+binds it only to two exact immutable repository-ID OIDC subjects: protected `main` for routine
 deploy jobs, and the protected `data-plane-production-cutover` environment for its one-time
-bootstrap job. GitHub uses an environment subject in place of the ref subject when a job enters an
-environment, so both narrow bindings are required. Its read-only Logging Viewer grant lets the
+bootstrap job. The repository enables GitHub's immutable-subject mode, and GitHub uses an
+environment subject in place of the ref subject when a job enters an environment, so both narrow
+bindings require the numeric organization and repository IDs. Its read-only Logging Viewer grant lets the
 cutover verifier bind a Cloud SQL restore operation to its exact backup through Admin Activity
 audit evidence; Cloud SQL's operation response omits that source-backup field. The three runtime SAs are attached to the
 corresponding Cloud Run revisions via `--service-account=`. The legacy builder is deliberately

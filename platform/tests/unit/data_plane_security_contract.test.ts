@@ -166,8 +166,10 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(iamTerraform).toContain('role    = "roles/iam.securityReviewer"')
     expect(iamTerraform).toContain('resource "google_service_account_iam_member" "protected_main_impersonates_github_actions"')
     expect(iamTerraform).toContain('resource "google_service_account_iam_member" "data_plane_cutover_environment_impersonates_github_actions"')
-    expect(iamTerraform).toContain('repo:Marsys-Technologies/Madhav:ref:refs/heads/main')
-    expect(iamTerraform).toContain('repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover')
+    expect(iamTerraform).toContain('repo:Marsys-Technologies@311530097/Madhav@1213634114:ref:refs/heads/main')
+    expect(iamTerraform).toContain('repo:Marsys-Technologies@311530097/Madhav@1213634114:environment:data-plane-production-cutover')
+    expect(iamTerraform).not.toContain('subject/repo:Marsys-Technologies/Madhav:ref:refs/heads/main')
+    expect(iamTerraform).not.toContain('subject/repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover')
     expect(iamTerraform).not.toContain('/attribute.repository/Marsys-Technologies/Madhav')
   })
   it('requires secret grants for runnable surfaces but not explicitly retired revisions', () => {
