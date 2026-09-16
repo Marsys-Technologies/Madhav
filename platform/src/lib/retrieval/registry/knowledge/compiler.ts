@@ -211,6 +211,10 @@ function editorialSourceRef(cap: CapabilityDescriptor, authored: boolean): strin
   return `platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#${review.family_id}:${cap.name}`
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 function normalizeDeclaration(
   declaration: SemanticCapabilityDeclaration,
   source: CapabilityDescriptor,
@@ -646,6 +650,41 @@ export function inspectCapabilityKnowledge(
       }
       if (scu.editorial && descriptor?.density_contract?.paginated && !binding.pagination_verified) {
         findings.push({ code: 'BAD_PAGINATION_CONTRACT', severity: 'warning', subject: binding.binding_id, detail: 'Editorial SCU uses a bounded route whose response/exhaustion contract is not yet source-reviewed.' })
+      }
+    }
+    const contracts = scu.availability_contracts
+    if (contracts !== undefined && !Array.isArray(contracts)) {
+      findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'Binding availability contracts must be an array.' })
+    } else for (const contract of contracts ?? []) {
+      if (!isRecord(contract) || typeof contract.binding_id !== 'string' || !Array.isArray(contract.requirements)) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: scu.scu_id, detail: 'A binding availability contract must name one binding and one or more requirements.' })
+        continue
+      }
+      const binding = scu.bindings.find((candidate) => candidate.binding_id === contract.binding_id)
+      if (!binding?.executable) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'Binding availability contracts may name only known executable bindings.' })
+      }
+      if (contract.requirements.length === 0) {
+        findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A binding availability contract must have one or more requirements.' })
+      }
+      for (const requirement of contract.requirements) {
+        if (!isRecord(requirement) || typeof requirement.kind !== 'string') {
+          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'An availability requirement must declare a supported kind.' })
+          continue
+        }
+        if (requirement.kind !== 'producer_output') {
+          findings.push({ code: 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `${requirement.kind} availability requirements are declared but not implemented.` })
+          continue
+        }
+        const assetId = typeof requirement.asset_id === 'string' ? requirement.asset_id : ''
+        const spec = typeof requirement.spec_sha256 === 'string' ? requirement.spec_sha256 : ''
+        const scope = requirement.scope
+        const sourceRef = typeof requirement.source_ref === 'string' ? requirement.source_ref : ''
+        const reviewedClaim = (scu.producer_output_claims ?? []).some((claim) => claim.disposition === 'reviewed_output'
+          && claim.asset_id === assetId && claim.output_digest_spec_sha256 === spec)
+        if (!assetId || !/^[a-f0-9]{64}$/.test(spec) || (scope !== 'chart_build' && scope !== 'global') || !sourceRef || !reviewedClaim) {
+          findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A producer-output availability requirement must pin a source-referenced reviewed claim with exact asset, SHA-256, and supported scope.' })
+        }
       }
     }
     for (const claim of scu.producer_output_claims ?? []) {

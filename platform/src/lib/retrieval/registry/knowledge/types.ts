@@ -107,6 +107,49 @@ export interface PaginationReviewDisposition {
   readonly blocker?: string
 }
 
+/** Exact evidence a binding needs before it can be offered for execution. */
+export interface ProducerOutputAvailabilityRequirement {
+  readonly kind: 'producer_output'
+  readonly asset_id: string
+  readonly spec_sha256: string
+  readonly scope: 'chart_build' | 'global'
+  readonly source_ref: string
+}
+
+/** Reserved contracts stay explicit until a runtime evaluator is implemented. */
+export interface ServiceProbeAvailabilityRequirement {
+  readonly kind: 'service_probe'
+  readonly asset_id: string
+  readonly probe_id: string
+  readonly source_ref: string
+}
+
+export interface SourceQueryAvailabilityRequirement {
+  readonly kind: 'source_query'
+  readonly contract_id: string
+  readonly scope: 'chart' | 'global'
+  readonly source_ref: string
+}
+
+export interface DerivedAvailabilityRequirement {
+  readonly kind: 'derived'
+  readonly required_binding_ids: readonly string[]
+  readonly source_ref: string
+}
+
+export type AvailabilityRequirement =
+  | ProducerOutputAvailabilityRequirement
+  | ServiceProbeAvailabilityRequirement
+  | SourceQueryAvailabilityRequirement
+  | DerivedAvailabilityRequirement
+
+/** Source-authored requirements for one known executable binding. */
+export interface BindingAvailabilityContract {
+  readonly binding_id: string
+  readonly requirements: readonly AvailabilityRequirement[]
+  readonly unavailable_reason?: string
+}
+
 export interface SemanticCapabilityBinding {
   readonly binding_id: string
   readonly kind: ExecutionBindingKind
@@ -162,6 +205,8 @@ export interface SemanticCapabilityDeclaration {
   readonly known_gaps: readonly string[]
   /** Links to producer outputs without claiming unreviewed output contracts exist. */
   readonly producer_output_claims?: readonly ProducerOutputClaim[]
+  /** Binding-specific evidence. Snapshots without this use reviewed SCU claims as a legacy fallback. */
+  readonly availability_contracts?: readonly BindingAvailabilityContract[]
   /** false means the compiler conservatively derived this from a descriptor. */
   readonly editorial: boolean
 }
@@ -286,6 +331,8 @@ export interface KnowledgeIntegrityFinding {
     | 'NON_EXECUTABLE_BINDING'
     | 'BAD_PAGINATION_CONTRACT'
     | 'BAD_PRODUCER_OUTPUT_CLAIM'
+    | 'BAD_BINDING_AVAILABILITY_CONTRACT'
+    | 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT'
     | 'ORPHAN_DESCRIPTOR'
     | 'UNBOUND_CONCEPT'
     | 'ISOLATED_SCU'

@@ -22,11 +22,67 @@ const snapshot = {
   }],
 } as CapabilityKnowledgeSnapshot
 
+const bindingContractSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    bindings: [
+      snapshot.scus[0]!.bindings[0]!,
+      {
+        binding_id: 'registry:marsys://tool/L1/alternate', kind: 'registry_capability', relation: 'provides',
+        capability_uri: 'marsys://tool/L1/alternate', input_contract: {}, output_contract: {}, pagination: 'none', executable: true,
+      },
+    ],
+    availability_contracts: [
+      {
+        binding_id: 'registry:marsys://tool/L1/test',
+        requirements: [{ kind: 'producer_output', asset_id: 'ga_primary', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:primary' }],
+      },
+      {
+        binding_id: 'registry:marsys://tool/L1/alternate',
+        requirements: [{ kind: 'producer_output', asset_id: 'ga_alternate', spec_sha256: claimHash, scope: 'chart_build', source_ref: 'fixture:alternate' }],
+      },
+    ],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
+function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    active_build_id: 'build-1', active_build_status: 'completed',
+    asset_id, chart_id: 'chart-1', build_id: 'build-1', receipt_version: 'v1', receipt_state: 'proven',
+    output_digest_spec_sha256: claimHash, observed_at: '2026-09-13T00:00:00Z', freshness_state: 'fresh', unknown_reasons: [], freshness_reasons: [],
+    ...overrides,
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
 
 describe('chart capability overlay loader', () => {
+  it('exposes executable bindings only from their own exact producer receipts', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_alternate')] })
+
+    const availability = (await loadChartCapabilityOverlay(bindingContractSnapshot(), 'chart-1')).availability[0]
+
+    expect(availability).toMatchObject({
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L1/alternate', 'registry:marsys://tool/L1/test'],
+    })
+    expect(mocks.query.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([['ga_alternate', 'ga_primary']]))
+  })
+
+  it.each([
+    ['stale', receipt('ga_primary'), receipt('ga_alternate', { freshness_state: 'stale', freshness_reasons: ['stale'] })],
+    ['mismatched', receipt('ga_primary'), receipt('ga_alternate', { output_digest_spec_sha256: 'b'.repeat(64) })],
+    ['missing', receipt('ga_primary')],
+  ])('does not activate a binding with %s producer evidence', async (_case, ...rows) => {
+    mocks.query.mockResolvedValue({ rows })
+
+    expect((await loadChartCapabilityOverlay(bindingContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({ available_binding_ids: ['registry:marsys://tool/L1/test'] })
+  })
+
   it('exposes a binding only when every selected partition is proven, fresh, and spec-matched', async () => {
     mocks.query.mockResolvedValue({ rows: [{
       active_build_id: 'build-1', active_build_status: 'completed',
