@@ -33,14 +33,14 @@ variable "gcp_region" {
 
 variable "github_deploy_wif_subject" {
   type        = string
-  description = "Exact protected-main GitHub OIDC subject allowed to impersonate the live deploy identity. Repository-wide principalSets are forbidden."
-  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies/Madhav:ref:refs/heads/main"
+  description = "Exact immutable protected-main GitHub OIDC subject allowed to impersonate the live deploy identity. Repository-wide principalSets are forbidden."
+  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies@311530097/Madhav@1213634114:ref:refs/heads/main"
 }
 
 variable "github_data_plane_cutover_wif_subject" {
   type        = string
-  description = "Exact protected GitHub environment OIDC subject allowed to impersonate the live deploy identity for the one-time data-plane cutover."
-  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover"
+  description = "Exact immutable protected GitHub environment OIDC subject allowed to impersonate the live deploy identity for the one-time data-plane cutover."
+  default     = "principal://iam.googleapis.com/projects/938361928218/locations/global/workloadIdentityPools/github/subject/repo:Marsys-Technologies@311530097/Madhav@1213634114:environment:data-plane-production-cutover"
 }
 
 // Runtime Secret Manager access is deliberately secret-specific. Keep these

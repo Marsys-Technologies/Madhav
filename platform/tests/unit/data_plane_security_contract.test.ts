@@ -4,7 +4,7 @@ import { runInNewContext } from 'node:vm'
 import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
-import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
+import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
 import { stripTransactionWrapper } from '../../scripts/data-plane-migration-attestation'
 import { assertBackupReceiptBinding, assertGitHubAutomatedCutoverEvidence, assertRestoreAuditBinding, assertValidationConnectorBinding, DATA_PLANE_CUTOVER_AUTHORITY, DATA_PLANE_CUTOVER_EXECUTION_MODE, parseBackupRestoreReceipt } from '../../scripts/data-plane-cutover-preflight'
 import { L1_ACTIVE_TABLES, L2_ACTIVE_TABLES } from '../../scripts/data-plane-ownership-preflight'
@@ -45,6 +45,14 @@ describe('DP-SD-018 protected migration routing', () => {
 })
 
 describe('DP-SD-018 GCP credential isolation', () => {
+  it('scopes the Cloud Run revision inventory to the configured region', () => {
+    expect(cloudRunRevisionListArgs('example-project', 'asia-south1')).toEqual([
+      'run', 'revisions', 'list',
+      '--project', 'example-project',
+      '--platform', 'managed',
+      '--region', 'asia-south1',
+    ])
+  })
   it('rejects the current project-wide secret accessor topology', () => {
     expect(() => assertSecretIsolation({ bindings: [{ role: 'roles/secretmanager.secretAccessor', members: ['serviceAccount:amjis-web-runtime@example'] }] }, {}, {}))
       .toThrow(/Project-wide Secret Manager accessor/)
@@ -166,8 +174,10 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(iamTerraform).toContain('role    = "roles/iam.securityReviewer"')
     expect(iamTerraform).toContain('resource "google_service_account_iam_member" "protected_main_impersonates_github_actions"')
     expect(iamTerraform).toContain('resource "google_service_account_iam_member" "data_plane_cutover_environment_impersonates_github_actions"')
-    expect(iamTerraform).toContain('repo:Marsys-Technologies/Madhav:ref:refs/heads/main')
-    expect(iamTerraform).toContain('repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover')
+    expect(iamTerraform).toContain('repo:Marsys-Technologies@311530097/Madhav@1213634114:ref:refs/heads/main')
+    expect(iamTerraform).toContain('repo:Marsys-Technologies@311530097/Madhav@1213634114:environment:data-plane-production-cutover')
+    expect(iamTerraform).not.toContain('subject/repo:Marsys-Technologies/Madhav:ref:refs/heads/main')
+    expect(iamTerraform).not.toContain('subject/repo:Marsys-Technologies/Madhav:environment:data-plane-production-cutover')
     expect(iamTerraform).not.toContain('/attribute.repository/Marsys-Technologies/Madhav')
   })
   it('requires secret grants for runnable surfaces but not explicitly retired revisions', () => {
