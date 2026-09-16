@@ -28,10 +28,20 @@ const FORBIDDEN_QUERY_KEYS = new Set([
   'username',
 ])
 
-export function validateMigrationDatabaseRoutes(environment: RouteEnvironment = process.env): void {
-  const parsed = new Map<RouteSpec['name'], URL>()
+export type MigrationDatabaseRoute = 'prod' | 'purna-admin'
 
-  for (const spec of ROUTES) {
+export function validateMigrationDatabaseRoutes(
+  environment: RouteEnvironment = process.env,
+  routes: readonly MigrationDatabaseRoute[] = ['prod', 'purna-admin'],
+): void {
+  const selected = ROUTES.filter((spec) => routes.includes(
+    spec.name === 'PROD_DATABASE_URL' ? 'prod' : 'purna-admin',
+  ))
+  if (selected.length !== routes.length || selected.length === 0) {
+    throw new Error('A known migration database route is required.')
+  }
+
+  for (const spec of selected) {
     const value = environment[spec.name]
     if (!value) throw new Error(`${spec.name} is required.`)
 
@@ -55,18 +65,16 @@ export function validateMigrationDatabaseRoutes(environment: RouteEnvironment = 
         `${spec.name} must use the approved principal and local proxy route for the amjis database.`,
       )
     }
-    parsed.set(spec.name, route)
-  }
-
-  if (parsed.get('PROD_DATABASE_URL')?.pathname
-    !== parsed.get('PURNA_INQUIRY_ADMIN_DATABASE_URL')?.pathname) {
-    throw new Error('Migration credentials must target the same database through their separate proxy listeners.')
   }
 }
 
 if (require.main === module) {
   try {
-    validateMigrationDatabaseRoutes()
+    const mode = process.argv[2]
+    if (mode !== '--prod' && mode !== '--purna-admin') {
+      throw new Error('Use --prod or --purna-admin to select one migration database route.')
+    }
+    validateMigrationDatabaseRoutes(process.env, [mode === '--prod' ? 'prod' : 'purna-admin'])
     process.stdout.write('Migration database routes validated.\n')
   } catch (error) {
     console.error(error instanceof Error ? error.message : 'Migration database route validation failed.')
