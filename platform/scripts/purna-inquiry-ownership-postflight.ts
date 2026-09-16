@@ -20,26 +20,34 @@ export async function runPurnaInquiryOwnershipPostflight(
       throw new Error('Pūrṇa ownership postflight requires the dedicated temporary Cloud SQL bootstrap login.')
     }
     await client.query('BEGIN')
-    const appMembership = await client.query<{ member: boolean }>(`
-      SELECT pg_has_role(session_user, 'amjis_app', 'member') AS member
+    // A recovery run may begin after an older postflight already removed the
+    // app membership but left detector-only ACLs. Re-establish the exact role
+    // only inside this transaction, use it to revoke app-owned grants, and
+    // remove it again below before COMMIT.
+    await client.query('SET LOCAL ROLE cloudsqlsuperuser')
+    await client.query('GRANT amjis_app TO purna_inquiry_bootstrap')
+    await client.query('RESET ROLE')
+    await client.query('SET LOCAL ROLE amjis_app')
+    await client.query(`
+      DO $$
+      DECLARE role_name text;
+      BEGIN
+        FOREACH role_name IN ARRAY ARRAY[
+          'purna_inquiry_owner', 'amjis_inquiry_serve', 'role_web_serve'
+        ] LOOP
+          IF to_regrole(role_name) IS NOT NULL THEN
+            EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', role_name);
+          END IF;
+        END LOOP;
+      END $$;
+      -- The one-shot login receives these two direct read prerequisites so
+      -- the ownership state detector can run before temporary memberships
+      -- are armed. Revoke them here so the disabled Cloud SQL user has no
+      -- ACL dependencies and can be deleted after marked attestation.
+      REVOKE SELECT ON TABLE public._migrations_applied FROM purna_inquiry_bootstrap;
+      REVOKE USAGE ON SCHEMA public FROM purna_inquiry_bootstrap;
     `)
-    if (appMembership.rows[0]?.member) {
-      await client.query('SET LOCAL ROLE amjis_app')
-      await client.query(`
-        DO $$
-        DECLARE role_name text;
-        BEGIN
-          FOREACH role_name IN ARRAY ARRAY[
-            'purna_inquiry_owner', 'amjis_inquiry_serve', 'role_web_serve'
-          ] LOOP
-            IF to_regrole(role_name) IS NOT NULL THEN
-              EXECUTE format('REVOKE CREATE ON SCHEMA public FROM %I', role_name);
-            END IF;
-          END LOOP;
-        END $$;
-      `)
-      await client.query('RESET ROLE')
-    }
+    await client.query('RESET ROLE')
     await client.query('SET LOCAL ROLE cloudsqlsuperuser')
     await client.query(`
       DO $$
@@ -69,6 +77,7 @@ export async function runPurnaInquiryOwnershipPostflight(
       serving_can_create: boolean
       bootstrap_disabled: boolean
       bootstrap_memberships: number
+      bootstrap_acl_dependencies: number
     }>(`
       SELECT
         coalesce((SELECT has_schema_privilege(oid,'public','CREATE')
@@ -81,11 +90,16 @@ export async function runPurnaInquiryOwnershipPostflight(
           AND NOT rolreplication AND NOT rolbypassrls) AS bootstrap_disabled,
         (SELECT count(*)::int FROM pg_auth_members membership
           JOIN pg_roles role ON role.oid=membership.roleid OR role.oid=membership.member
-          WHERE role.rolname='purna_inquiry_bootstrap') AS bootstrap_memberships
+          WHERE role.rolname='purna_inquiry_bootstrap') AS bootstrap_memberships,
+        (SELECT count(*)::int FROM pg_shdepend dependency
+          JOIN pg_roles role ON role.oid=dependency.refobjid
+          WHERE role.rolname='purna_inquiry_bootstrap'
+            AND dependency.deptype='a') AS bootstrap_acl_dependencies
     `)
     const final = finalState.rows[0]
     if (!final || final.owner_can_create || final.serving_can_create
-      || !final.bootstrap_disabled || final.bootstrap_memberships !== 0) {
+      || !final.bootstrap_disabled || final.bootstrap_memberships !== 0
+      || final.bootstrap_acl_dependencies !== 0) {
       throw new Error('Pūrṇa ownership postflight did not remove all temporary authority.')
     }
     await client.query('COMMIT')

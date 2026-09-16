@@ -1,6 +1,6 @@
 {
-  "schema_version": "madhav-purna-anvesana/production-compatible-migration-evidence/v2",
-  "recorded_at": "2026-09-16T02:27:00+05:30",
+  "schema_version": "madhav-purna-anvesana/production-compatible-migration-evidence/v3",
+  "recorded_at": "2026-09-16T08:36:05+05:30",
   "authority": "CCD-012",
   "production_read": {
     "mode": "read-only transaction through Cloud SQL Auth Proxy",
@@ -36,8 +36,8 @@
       "1038_planner_managed_prashna_jobs.sql": "8a0c49d5be132567f3bf393f2ce9f4439cf6266b17d99965c4b233d3b2e2158c",
       "1039_purna_inquiry_protected_ownership.sql": "654ffe9d0c820bb2ac99e5a20485949598adaeda77bf66a7f09228ca24707cbb",
       "purna-inquiry-ownership-preflight.ts": "a31c33aaa976a3b4f5f6a52b9bc8f14d1717ecfc17bcc93b686627c01aaab7be",
-      "purna-inquiry-ownership-postflight.ts": "70bc152f7569a46cb1158b0c5f92201de0d4a3271760cec0919a7ad4aaf4a50a",
-      "purna-inquiry-ownership-status.ts": "792623199c07d7d21d8e71f3b43375c59c1a77c9ad85b6fcfbbb81f8a0e1f272"
+      "purna-inquiry-ownership-postflight.ts": "15506284090991492b1f53ba252f2c8c69e3981b7f010bd46ac0e69786d0365f",
+      "purna-inquiry-ownership-status.ts": "61e067b42aa740e05be2176367854f94c89e35d5595217e434bfdbc58807061d"
     },
     "observed_state_sequence": ["armed", "interrupted", "cleanup_required", "marked"],
     "first_run_applied": [
@@ -69,6 +69,45 @@
       "inbound_membership_attack_rejected": true
     },
     "result": "PASS_PROTECTED_OWNER_APPLY_POSTFLIGHT_IDEMPOTENT_REPLAY_AND_SERVING_CANARY"
+  },
+  "acl_cleanup_recovery_replay": {
+    "database": "ephemeral postgres:15 container",
+    "database_version": "15.19 (Debian 15.19-1.pgdg13+2)",
+    "shared_or_production_mutation": false,
+    "exact_source_sha256": {
+      "purna-inquiry-ownership-postflight.ts": "15506284090991492b1f53ba252f2c8c69e3981b7f010bd46ac0e69786d0365f",
+      "purna-inquiry-ownership-status.ts": "61e067b42aa740e05be2176367854f94c89e35d5595217e434bfdbc58807061d",
+      "purna_inquiry_ownership_postflight.test.ts": "6ae8be828a0479bae7e30ef9f047aebd67058d9d1954119980845db6e6e818f2"
+    },
+    "initial_topology": "marker present; protected objects owned by purna_inquiry_owner; serving login has exact role_web_serve edge; bootstrap NOLOGIN NOINHERIT, password null, zero memberships, direct public schema USAGE and _migrations_applied SELECT ACLs",
+    "observed_state_sequence": [
+      "rearm_required",
+      "cleanup_required",
+      "marked"
+    ],
+    "rearm": "fresh disposable password plus sole direct cloudsqlsuperuser membership",
+    "successful_postflight": {
+      "bootstrap_login": false,
+      "bootstrap_inherit": false,
+      "bootstrap_membership_edges": 0,
+      "bootstrap_acl_dependencies": 0,
+      "result": "PASS"
+    },
+    "forced_failure": {
+      "mechanism": "transfer _migrations_applied ownership away from amjis_app while retaining a direct bootstrap ACL, forcing the final zero-ACL attestation to fail",
+      "postflight_exit_code": 1,
+      "error": "Pūrṇa ownership postflight did not remove all temporary authority.",
+      "rollback_observation": {
+        "bootstrap_login": true,
+        "bootstrap_inherit": true,
+        "bootstrap_membership_edges": 1,
+        "cloudsqlsuperuser_member": true,
+        "amjis_app_member": false,
+        "bootstrap_acl_dependencies": 2
+      },
+      "result": "PASS_ROLLBACK_NO_LEAKED_APP_MEMBERSHIP"
+    },
+    "result": "PASS_REARM_CLEANUP_MARKED_AND_FAILURE_ROLLBACK"
   },
   "qualifications": [
     "This proves the reviewed Purna protected-owner path against a same-run production-compatible schema and ledger clone, not against production itself.",
