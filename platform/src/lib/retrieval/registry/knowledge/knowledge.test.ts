@@ -89,6 +89,36 @@ describe('planner capability knowledge', () => {
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
   })
 
+  it('binds each reviewed editorial route to its compiled primary binding and exact reviewed output claims', () => {
+    const expectedPrimaryBindingIds: Record<string, string> = {
+      'scu.bodha.mechanism.network': 'registry:marsys://tool/L2/query_mechanisms',
+      'scu.catalog.get_divisionals': 'registry:marsys://tool/L1/get_divisionals',
+      'scu.finance.prosperity_assessment': 'registry:marsys://tool/L-DOMAIN/assess_wealth',
+      'scu.yoga.firing_and_cancellation': 'registry:marsys://tool/L1/get_yoga_firings',
+    }
+
+    for (const [scuId, expectedBindingId] of Object.entries(expectedPrimaryBindingIds)) {
+      const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+      const primary = scu.bindings.find((binding) => binding.relation === 'primary')!
+      const reviewedClaims = scu.producer_output_claims!.filter((claim) => claim.disposition === 'reviewed_output')
+
+      expect(primary).toMatchObject({ binding_id: expectedBindingId, executable: true })
+      expect(scu.availability_contracts).toHaveLength(1)
+      expect(scu.availability_contracts![0]).toEqual({
+        binding_id: primary.binding_id,
+        requirements: reviewedClaims.map((claim) => ({
+          kind: 'producer_output',
+          asset_id: claim.asset_id,
+          spec_sha256: claim.output_digest_spec_sha256,
+          scope: 'chart_build',
+          source_ref: claim.evidence,
+        })),
+      })
+    }
+
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toBeUndefined()
+  })
+
   it('replaces every descriptor-derived stub with a source-linked editorial unit', () => {
     const enriched = snapshot as CapabilityKnowledgeSnapshot & {
       scus: readonly (SemanticCapabilityUnit & {

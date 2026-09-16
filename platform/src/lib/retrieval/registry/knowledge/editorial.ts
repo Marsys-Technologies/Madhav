@@ -48,6 +48,15 @@ export const MECHANISM_SCUS: readonly SemanticCapabilityDeclaration[] = [
       disposition: 'reviewed_output',
       evidence: 'platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114',
     }],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L2/query_mechanisms',
+      requirements: [{
+        kind: 'producer_output', asset_id: 'bo_yantra_mechanism',
+        spec_sha256: 'b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e',
+        scope: 'chart_build',
+        source_ref: 'platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114',
+      }],
+    }],
     editorial: true,
   },
 ]
@@ -138,6 +147,15 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       output_digest_spec_sha256: '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51',
       disposition: 'reviewed_output', evidence: 'platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28',
     }],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/get_divisionals',
+      requirements: [{
+        kind: 'producer_output', asset_id: 'ga_vargas',
+        spec_sha256: '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51',
+        scope: 'chart_build',
+        source_ref: 'platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28',
+      }],
+    }],
     editorial: true,
   },
 ]
@@ -190,6 +208,15 @@ export const YOGA_SCUS: readonly SemanticCapabilityDeclaration[] = [
       asset_id: 'ga_yoga', component: 'ga_yoga_firings rows',
       output_digest_spec_sha256: 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246',
       disposition: 'reviewed_output', evidence: 'platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128',
+    }],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/get_yoga_firings',
+      requirements: [{
+        kind: 'producer_output', asset_id: 'ga_yoga',
+        spec_sha256: 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246',
+        scope: 'chart_build',
+        source_ref: 'platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128',
+      }],
     }],
     editorial: true,
   },
@@ -245,6 +272,23 @@ export const FINANCE_SCUS: readonly SemanticCapabilityDeclaration[] = [
       { asset_id: 'bo_cdlm_summary', component: 'wealth domain reconciled summary', output_digest_spec_sha256: 'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497', disposition: 'reviewed_output', evidence: 'platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:137' },
       { asset_id: 'bo_vargottama_dhana', component: 'vargottama and dhana-axis signals', output_digest_spec_sha256: '8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec', disposition: 'reviewed_output', evidence: 'platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44' },
     ],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L-DOMAIN/assess_wealth',
+      requirements: [
+        {
+          kind: 'producer_output', asset_id: 'bo_cdlm_summary',
+          spec_sha256: 'f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497',
+          scope: 'chart_build',
+          source_ref: 'platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:137',
+        },
+        {
+          kind: 'producer_output', asset_id: 'bo_vargottama_dhana',
+          spec_sha256: '8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec',
+          scope: 'chart_build',
+          source_ref: 'platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44',
+        },
+      ],
+    }],
     editorial: true,
   },
 ]

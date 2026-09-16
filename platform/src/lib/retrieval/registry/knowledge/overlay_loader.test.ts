@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn() }))
 vi.mock('@/lib/db/client', () => ({ query: mocks.query }))
 
 import { loadChartCapabilityOverlay } from './overlay_loader'
+import { getPinnedCapabilityKnowledgeSnapshot } from './snapshot'
 
 const claimHash = 'a'.repeat(64)
 const snapshot = {
@@ -94,6 +95,31 @@ describe('chart capability overlay loader', () => {
       available_binding_ids: ['registry:marsys://tool/L1/alternate', 'registry:marsys://tool/L1/test'],
     })
     expect(mocks.query.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([['ga_alternate', 'ga_primary']]))
+  })
+
+  it('does not let one reviewed editorial route receipt enable another route binding in the generated snapshot', async () => {
+    const generatedSnapshot = getPinnedCapabilityKnowledgeSnapshot()
+    const source = generatedSnapshot.scus.find((scu) => scu.scu_id === 'scu.bodha.mechanism.network')!
+    const sourceContract = source.availability_contracts![0]!
+    const sourceRequirement = sourceContract.requirements.find((requirement) => requirement.kind === 'producer_output')!
+    const targetBindingIds = [
+      'scu.catalog.get_divisionals',
+      'scu.finance.prosperity_assessment',
+      'scu.yoga.firing_and_cancellation',
+    ].flatMap((scuId) => generatedSnapshot.scus.find((scu) => scu.scu_id === scuId)!
+      .bindings.filter((binding) => binding.executable).map((binding) => binding.binding_id))
+
+    mocks.query.mockResolvedValue({ rows: [receipt(sourceRequirement.asset_id, {
+      output_digest_spec_sha256: sourceRequirement.spec_sha256,
+    })] })
+
+    const availability = (await loadChartCapabilityOverlay(generatedSnapshot, 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === source.scu_id)).toMatchObject({
+      available_binding_ids: [sourceContract.binding_id],
+    })
+    for (const bindingId of targetBindingIds) {
+      expect(availability.some((item) => item.available_binding_ids.includes(bindingId))).toBe(false)
+    }
   })
 
   it.each([
