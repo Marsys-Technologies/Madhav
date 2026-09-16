@@ -23,6 +23,23 @@ function response(data: Record<string, unknown>, status = 200) {
   return NextResponse.json(data, { status, headers: { 'Cache-Control': 'no-store' } })
 }
 
+function readinessFailureCode(error: unknown, stage: 'signing' | 'database'): string {
+  const message = error instanceof Error ? error.message : ''
+  if (/^INQUIRY_[A-Z0-9_]+$/.test(message)) return message
+
+  const code = typeof error === 'object' && error !== null && 'code' in error
+    ? String((error as { code?: unknown }).code ?? '')
+    : ''
+  if (/^[A-Z0-9]{5}$/.test(code)) return `PG_${code}`
+  if (['ECONNREFUSED', 'ETIMEDOUT', 'ENETUNREACH', 'EHOSTUNREACH'].includes(code)) {
+    return 'DB_CONNECTIVITY_FAILED'
+  }
+  if (/password authentication failed/i.test(message)) return 'DB_AUTHENTICATION_FAILED'
+  if (/permission denied/i.test(message)) return 'DB_PERMISSION_FAILED'
+  if (/cloud sql|connector/i.test(message)) return 'DB_CONNECTOR_FAILED'
+  return stage === 'signing' ? 'INQUIRY_SIGNING_READINESS_UNCLASSIFIED' : 'INQUIRY_DATABASE_READINESS_UNCLASSIFIED'
+}
+
 export async function POST(request: Request) {
   const principal = await validateMcpKey(request.headers.get('authorization'))
   if (!principal) return response({ ok: false, error: 'Unauthorized' }, 401)
@@ -56,8 +73,9 @@ export async function POST(request: Request) {
   })
   if (permission === 'deny') return response({ ok: false, error: 'AUTHZ_DENIED' }, 403)
 
+  let signingRing: ReturnType<typeof loadInquiryLifecycleSigningKeyRing>
   try {
-    const signingRing = loadInquiryLifecycleSigningKeyRing()
+    signingRing = loadInquiryLifecycleSigningKeyRing()
     const subject = `${principal.user_uid}:${principal.key_id}`
     const issued = issueInquiryLifecycleToken({
       sub: subject,
@@ -77,6 +95,20 @@ export async function POST(request: Request) {
     }, signingRing)
     verifyInquiryLifecycleToken(issued.token, signingRing, subject)
 
+  } catch (error) {
+    const failureCode = readinessFailureCode(error, 'signing')
+    console.error('[mcp:inquiry:readiness] candidate probe failed', {
+      code: 'INQUIRY_READINESS_FAILED', stage: 'signing', failure_code: failureCode,
+    })
+    return response({
+      ok: false,
+      error: 'INQUIRY_READINESS_FAILED',
+      failure_stage: 'signing',
+      failure_code: failureCode,
+    }, 503)
+  }
+
+  try {
     const database = await probeInquiryStoreReadiness({
       principalUid: principal.user_uid,
       principalKeyId: principal.key_id,
@@ -89,10 +121,16 @@ export async function POST(request: Request) {
       signing_round_trip: true,
       database,
     })
-  } catch {
+  } catch (error) {
+    const failureCode = readinessFailureCode(error, 'database')
     console.error('[mcp:inquiry:readiness] candidate probe failed', {
-      code: 'INQUIRY_READINESS_FAILED',
+      code: 'INQUIRY_READINESS_FAILED', stage: 'database', failure_code: failureCode,
     })
-    return response({ ok: false, error: 'INQUIRY_READINESS_FAILED' }, 503)
+    return response({
+      ok: false,
+      error: 'INQUIRY_READINESS_FAILED',
+      failure_stage: 'database',
+      failure_code: failureCode,
+    }, 503)
   }
 }

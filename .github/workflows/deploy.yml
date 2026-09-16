@@ -787,7 +787,7 @@ jobs:
           secrets: |
             FIREBASE_ADMIN_CREDENTIALS=firebase-admin-credentials:1
             DB_PASSWORD=amjis-db-password:3
-            DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:1
+            DB_INQUIRY_PASSWORD=amjis-inquiry-db-password:2
             NIRMANA_CAMPAIGN_CONTROL_DB_PASSWORD=nirmana-campaign-control-db-password:latest
             NIRMANA_EVIDENCE_INGRESS_DB_PASSWORD=nirmana-evidence-ingress-db-password:latest
             OPENAI_API_KEY=openai-api-key:2
@@ -799,7 +799,7 @@ jobs:
             MARSYS_CRON_SECRET=mcpt-scheduler-secret:latest
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
-            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:1
+            INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2
             WATCHDOG_SECRET=watchdog-secret:1
 
       - name: Resolve web candidate URL
@@ -847,7 +847,7 @@ jobs:
           unset CANARY_KEY CANARY_BODY
           if [ "$STATUS" != "200" ]; then
             echo "::error::Pūrṇa candidate canary returned HTTP $STATUS; refusing traffic promotion."
-            jq -c '{ok,error}' "$RUNNER_TEMP/purna-readiness.json" 2>/dev/null || true
+            jq -c '{ok,error,failure_stage,failure_code}' "$RUNNER_TEMP/purna-readiness.json" 2>/dev/null || true
             exit 1
           fi
           jq -e '
