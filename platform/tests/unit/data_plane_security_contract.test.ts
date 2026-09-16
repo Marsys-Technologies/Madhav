@@ -21,6 +21,7 @@ type WorkflowJob = {
 
 const workflow = readFileSync(resolve(__dirname, '../../../.github/workflows/deploy.yml'), 'utf8')
 const workflowJobs = (load(workflow) as { jobs: Record<string, WorkflowJob> }).jobs
+const iamTerraform = readFileSync(resolve(__dirname, '../../../infra/iam/main.tf'), 'utf8')
 
 function evaluateWorkflowCondition(expression: string, values: Record<string, string>): boolean {
   let executable = expression.replace(/always\(\)/g, 'true')
@@ -70,6 +71,52 @@ describe('DP-SD-018 GCP credential isolation', () => {
     ], { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }, []))
       .toThrow(/Inherited/)
   })
+  it('distinguishes the declared human control-plane owner from runtime-wide access', () => {
+    const admin = 'user:admin@example.com'
+    const ownerPermissions = {
+      'roles/owner': ['secretmanager.versions.access', 'iam.serviceAccounts.getAccessToken'],
+      'roles/run.serviceAgent': ['iam.serviceAccounts.getAccessToken'],
+    }
+    const serviceAgent = 'serviceAccount:service-123@serverless-robot-prod.iam.gserviceaccount.com'
+    const ownerPolicy = { bindings: [
+      { role: 'roles/owner', members: [admin] },
+      { role: 'roles/run.serviceAgent', members: [serviceAgent] },
+    ] }
+    const builderPolicy = { bindings: [{
+      role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'],
+    }] }
+    const builderSurface = [{ kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: {
+      serviceAccount: BUILDER_SERVICE_ACCOUNT,
+      secretKeyRef: { name: 'data-plane-builder-db-url', key: 'latest' },
+    } }]
+    const builderSecretPolicy = { bindings: [{
+      role: 'roles/secretmanager.secretAccessor', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`],
+    }] }
+    const builderProjectPolicy = { bindings: [
+      { role: 'roles/cloudsql.client', members: [`serviceAccount:${BUILDER_SERVICE_ACCOUNT}`] },
+      ...ownerPolicy.bindings,
+    ] }
+    expect(() => assertSecretIsolation(
+      builderProjectPolicy, builderSecretPolicy, {}, undefined, ownerPermissions, admin,
+    )).not.toThrow()
+    expect(() => assertSecretIsolation(
+      builderProjectPolicy, builderSecretPolicy, {}, undefined, ownerPermissions, 'user:other@example.com',
+    )).toThrow(/undeclared or runtime principal/)
+    process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
+    expect(() => assertEffectiveIsolation(
+      [{ resource: 'projects/madhav-astrology', policy: ownerPolicy }], builderPolicy,
+      builderSurface, ownerPermissions, admin, '123',
+    )).not.toThrow()
+    expect(() => assertEffectiveIsolation(
+      [{ resource: 'folders/123', policy: ownerPolicy }], builderPolicy,
+      builderSurface, ownerPermissions, admin, '123',
+    )).toThrow(/Inherited or aggregate/)
+    expect(() => assertEffectiveIsolation(
+      [{ resource: 'projects/madhav-astrology', policy: { bindings: [{
+        role: 'roles/run.serviceAgent', members: ['serviceAccount:rogue@example.com'],
+      }] } }], builderPolicy, builderSurface, ownerPermissions, admin, '123',
+    )).toThrow(/rogue@example.com/)
+  })
   it('permits the builder secret only on the named build job', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
     const policy = { bindings: [{ role: 'roles/iam.serviceAccountUser', members: ['serviceAccount:github-actions@example'] }] }
@@ -91,6 +138,16 @@ describe('DP-SD-018 GCP credential isolation', () => {
       { type: 'folder', id: '123' },
       { type: 'organization', id: '456' },
     ])).toEqual([`projects/${process.env.GOOGLE_CLOUD_PROJECT ?? 'madhav-astrology'}`, 'projects/madhav-astrology', 'folders/123', 'organizations/456'].filter((scope, index, all) => all.indexOf(scope) === index))
+    const preflight = readFileSync(resolve(__dirname, '../../scripts/data-plane-secret-isolation-preflight.ts'), 'utf8')
+    expect(preflight).toContain('GCLOUD_JSON_MAX_BUFFER')
+    expect(preflight).toContain('maxBuffer: GCLOUD_JSON_MAX_BUFFER')
+    expect(preflight).not.toContain("['run', 'revisions', 'describe'")
+    for (const resource of [
+      'github_actions_acts_as_web_runtime',
+      'github_actions_acts_as_sidecar_runtime',
+      'github_actions_acts_as_mcp_runtime',
+      'firebase_admin_self_token_creator',
+    ]) expect(iamTerraform).toContain(`resource "google_service_account_iam_member" "${resource}"`)
   })
   it('rejects builder identity or deployment-only secrets on every other surface', () => {
     process.env.DATA_PLANE_DEPLOY_PRINCIPAL = 'serviceAccount:github-actions@example'
@@ -99,6 +156,22 @@ describe('DP-SD-018 GCP credential isolation', () => {
       .toThrow(/Builder identity is used outside/)
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'data-plane-admin-db-url' } } }]))
       .toThrow(/DBA\/migrator credential/)
+    expect(() => assertEffectiveIsolation([], policy, [
+      { kind: 'revision', name: 'historical-web', definition: {
+        serviceAccount: 'web@example', env: [{ name: 'DATABASE_URL', value: 'legacy-literal' }],
+      } },
+      { kind: 'job', name: 'brahma-build-pipeline-job', definition: {
+        serviceAccount: BUILDER_SERVICE_ACCOUNT, secretKeyRef: { name: 'data-plane-builder-db-url' },
+      } },
+    ])).not.toThrow()
+    expect(() => assertEffectiveIsolation([], policy, [
+      { kind: 'service', name: 'current-web', definition: {
+        serviceAccount: 'web@example', env: [{ name: 'DATABASE_URL', value: 'legacy-literal' }],
+      } },
+      { kind: 'job', name: 'brahma-build-pipeline-job', definition: {
+        serviceAccount: BUILDER_SERVICE_ACCOUNT, secretKeyRef: { name: 'data-plane-builder-db-url' },
+      } },
+    ])).toThrow(/service\/current-web/)
   })
   it('extracts every revision secret and requires an explicit per-secret runtime grant', () => {
     const inventory = extractRunIdentityAndSecrets({ spec: { template: { spec: {
@@ -153,6 +226,17 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertNoLiteralCredentials({ spec: { template: { spec: {
       volumes: [{ clientSecret: 12345 }],
     } } } })).toThrow(/clientSecret/)
+    expect(() => assertNoLiteralCredentials({ env: [{ name: '# documentation containing token terminology' }] }))
+      .not.toThrow()
+    expect(() => assertNoLiteralCredentials({ env: [{
+      name: '# documentation containing token terminology', value: 'not-empty',
+    }] })).toThrow(/explicit Secret Manager reference/)
+    expect(() => assertNoLiteralCredentials({ env: [{
+      name: 'NEXT_PUBLIC_FIREBASE_API_KEY', value: `AIza${'a'.repeat(35)}`,
+    }] })).not.toThrow()
+    expect(() => assertNoLiteralCredentials({ env: [{
+      name: 'NEXT_PUBLIC_FIREBASE_API_KEY', value: 'not-a-firebase-client-key',
+    }] })).toThrow(/explicit Secret Manager reference/)
     for (const name of ['DB_PASS','PGPASSWORD','PASS','DB_PASSPHRASE','APP_ACCESS_TOKEN','app-client-secret']) {
       expect(() => assertNoLiteralCredentials({ spec: { template: { spec: { containers: [{ env: [{
         name, value: 'opaque',
@@ -260,6 +344,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow.indexOf('Execute Native-authorized automated cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
     expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
+    expect(workflow).toContain('DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}')
     expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
     expect(workflow).toContain('environment: data-plane-production-cutover')
     expect(workflow).toContain('DATA_PLANE_BACKUP_RESTORE_ID')

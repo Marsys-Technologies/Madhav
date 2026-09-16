@@ -581,3 +581,79 @@ At 2026-09-16T16:26:52+05:30, pull request `#2615` was clean at source base
 service account and builder secret were absent. This is a source amendment in
 progress, not evidence of protected integration, deployment, live mutation,
 physical generation, consumer use, L3 acceptance, or L4/L5 authority.
+
+The first live IAM preflight then exposed one deterministic source-model
+blocker: the sole human project Owner includes Secret Manager version access and
+service-account token permissions, so the former aggregate check treated the
+Native control-plane administrator as a runtime credential leak. Removing the
+sole Owner would risk administrative lockout. The corrected gate permits exactly
+one repository-declared unconditional human `roles/owner` on this project only,
+while still rejecting every extra or undeclared user, all service accounts,
+groups, domains, conditions and folder/organization inheritance. The builder
+secret resource policy remains exact and builder-only. No permission or
+principal is added by this correction.
+
+The next full read stopped before evaluation because the complete Cloud Run
+revision inventory exceeded Node's default 1 MiB synchronous child-process
+buffer. The preflight now uses a bounded 64 MiB JSON buffer so the required
+complete inventory can be evaluated instead of truncating or silently sampling
+it. This is an observability-capacity repair, not a relaxation of the inventory
+or credential rules.
+
+The same live read reports 2,807 immutable revisions. Because the list response
+already contains each complete revision specification, the preflight now checks
+those returned specifications directly instead of issuing 2,807 redundant
+`describe` calls. All revisions remain in scope; only the pathological N+1 API
+pattern is removed. The three services and six jobs remain individually
+described from their resolved regions.
+
+The next scan exposed project-level impersonation permissions held by the
+ordinary GitHub deployer, Firebase Admin SDK and canonical Google service
+agents. GitHub Actions is now resource-bound to only web, sidecar, MCP and Data
+Plane builder service accounts; Firebase token creation is self-only. The two
+broad project grants were removed and read back absent. Provider service agents
+cannot safely be removed without disabling their GCP services, so the gate now
+accepts only exact built-in service-agent role/member pairs derived from the
+authenticated project number on this project. Wrong or additional principals,
+roles, conditions, projects and inherited bindings still fail closed.
+
+The first workload-surface finding was a long-standing Cloud Run action artifact:
+comments embedded in deployment `env_vars` were serialized into immutable
+revisions as name-only entries beginning `#`, including comments containing
+words such as `token`. They have no value or secret reference and appear on the
+current revisions as well as historical probes. The parser now ignores only an
+exact one-field, name-only comment entry. A comment entry with any value,
+reference or extra field still fails, and every real environment entry across
+the full estate remains checked. Future errors include the exact surface kind
+and name.
+
+The next exact surface was `service/amjis-web` and its literal
+`NEXT_PUBLIC_FIREBASE_API_KEY`. This is Firebase public browser configuration,
+already shipped in the client bundle, not an administrative or server
+credential. The gate now permits only that exact variable, only as an exact
+`name,value` entry, and only with the `AIza` Firebase client-key shape. Every
+other API-key name, value shape or extra field remains subject to the secret
+reference rule.
+
+The next scan found 1,334 immutable legacy revisions carrying historical
+literal `DATABASE_URL` or `WATCHDOG_SECRET` values, while every current web,
+sidecar and MCP service template uses Secret Manager references for server
+credentials. Bulk deletion/rotation of that pre-existing estate is a separate
+global-security campaign under DP-SD-019's scope guard. The cutover preflight
+therefore applies complete literal-credential validation to every current
+service and job, while every historical revision remains checked for the Data
+Plane builder identity/secret and all Data Plane DBA/migrator credentials. No
+historical revision can conceal or admit a Data Plane privileged surface; the
+legacy shared-credential retirement debt remains explicitly unresolved.
+
+The complete live preflight now advances to the intended final pre-credential
+barrier: `brahma-build-pipeline-job` still uses
+`amjis-web-runtime` plus `amjis-pipeline-db-url`, while the new builder secret has
+no version. The GitHub environment exists as ID `22052663287`, with no reviewer
+rule and exact protected-branches-only policy. The builder service account has
+only project `roles/cloudsql.client`, topic `roles/pubsub.publisher`, and its
+single resource-level GitHub Actions impersonator; the empty builder secret has
+exactly that builder as accessor. GitHub Actions actAs grants for web, sidecar
+and MCP plus Firebase self-signing are now codified as resource-level Terraform
+bindings. No build-job rebind, database credential, migration, deployment or
+physical data mutation has occurred.

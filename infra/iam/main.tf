@@ -100,6 +100,35 @@ resource "google_service_account" "amjis_builder_runtime" {
   description  = "Retained without WIF, Cloud Run mutation, or runtime actAs authority."
 }
 
+// Deployment may attach only these exact runtime identities. The former
+// project-wide serviceAccountUser grant allowed github-actions@ to act as the
+// data-plane builder and every other service account in the project.
+resource "google_service_account_iam_member" "github_actions_acts_as_web_runtime" {
+  service_account_id = google_service_account.amjis_web_runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
+resource "google_service_account_iam_member" "github_actions_acts_as_sidecar_runtime" {
+  service_account_id = google_service_account.amjis_sidecar_runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
+resource "google_service_account_iam_member" "github_actions_acts_as_mcp_runtime" {
+  service_account_id = google_service_account.amjis_mcp_runtime.name
+  role               = "roles/iam.serviceAccountUser"
+  member             = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
+// Firebase custom-token signing is self-only. A project-wide Token Creator
+// grant would also allow this SDK identity to impersonate the data-plane builder.
+resource "google_service_account_iam_member" "firebase_admin_self_token_creator" {
+  service_account_id = "projects/${var.gcp_project}/serviceAccounts/firebase-adminsdk-fbsvc@${var.gcp_project}.iam.gserviceaccount.com"
+  role               = "roles/iam.serviceAccountTokenCreator"
+  member             = "serviceAccount:firebase-adminsdk-fbsvc@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
 // ── amjis-web-runtime grants ─────────────────────────────────────────────────
 
 resource "google_project_iam_member" "web_sql_client" {

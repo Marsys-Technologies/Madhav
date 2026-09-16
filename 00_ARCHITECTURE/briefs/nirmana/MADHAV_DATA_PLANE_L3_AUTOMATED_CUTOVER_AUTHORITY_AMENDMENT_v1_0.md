@@ -59,7 +59,7 @@ The following gates remain mandatory and fail closed:
 1. exact protected source, repository and workflow-run binding;
 2. accepted source checks and independent technical/security verification;
 3. dedicated builder service account, builder-only secret and least-privilege
-   IAM with no broad or inherited Secret Manager accessor;
+   runtime IAM, with no broad or inherited runtime Secret Manager accessor;
 4. fresh production backup, restore of that exact backup only to a distinct
    isolated validation instance, PostgreSQL/schema/state attestation, and an
    expiring exact receipt;
@@ -73,6 +73,34 @@ The following gates remain mandatory and fail closed:
 No broad IAM grant, credential disclosure, protection bypass, arbitrary-branch
 deployment, destructive production restore, L0 restart, L4/L5 work, or empirical
 success claim is authorized.
+
+### Control-plane administrator clarification
+
+Live preflight established that the project's sole human `roles/owner` is also
+reported by Google as having `secretmanager.versions.access` and service-account
+token permissions. Removing that sole Owner would create an administrative
+lockout risk and is not a runtime-isolation control. The preflight must therefore
+distinguish control-plane administration from workload authority without
+creating a general exception.
+
+Exactly one repository-declared `user:` principal may be accepted only as an
+unconditional `roles/owner` binding on `projects/madhav-astrology`. The same
+principal is rejected at any folder or organization ancestor. Every additional
+user, service account, group, domain, conditional grant, role, or inherited
+secret/impersonation grant remains blocking. The builder secret's own policy
+still contains exactly one accessor: the dedicated builder runtime. This
+clarification adds no principal or permission; it makes the gate model the one
+pre-existing Native administrative principal separately from runtime access.
+
+The same rule applies to Google-managed control-plane service agents: only an
+exact built-in service-agent role paired with its canonical principal derived
+from the authenticated project number may remain on this exact project. This
+allowlist covers only the enabled Vertex AI, App Engine, Cloud Build, Scheduler,
+Tasks, Compute, GKE, Pub/Sub and Cloud Run service agents. A wrong role/member,
+condition, project number, ordinary service account, folder or organization
+binding remains blocking. These provider agents are not accepted as builder
+runtime principals; the builder service account's resource policy remains the
+single GitHub Actions allowlist.
 
 ## 4. Current observation and non-claim
 

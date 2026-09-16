@@ -774,6 +774,7 @@ jobs:
           GOOGLE_CLOUD_PROJECT: madhav-astrology
           GCP_REGION: ${{ env.GCP_REGION }}
           DATA_PLANE_DEPLOY_PRINCIPAL: serviceAccount:github-actions@madhav-astrology.iam.gserviceaccount.com
+          DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}
         run: cd platform && npx tsx scripts/data-plane-secret-isolation-preflight.ts
 
       - name: Execute Native-authorized automated cutover under backup, restore, lease and quiescence
