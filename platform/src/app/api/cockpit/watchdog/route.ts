@@ -59,7 +59,6 @@
  * deleted here.
  */
 import { type NextRequest, NextResponse } from 'next/server'
-import { timingSafeEqual } from 'node:crypto'
 import { verifyOidcToken } from '@/lib/auth/oidc'
 import { query } from '@/lib/db/client'
 import { classifyStuckCandidate } from './classifyStuckCandidate'
@@ -89,17 +88,6 @@ async function publishEvent(event: Record<string, unknown>): Promise<void> {
 
 export const maxDuration = 10
 
-function validLegacyWatchdogHeader(req: NextRequest): boolean {
-  if (process.env.WATCHDOG_LEGACY_FALLBACK_ENABLED !== 'true') return false
-  const expected = process.env.WATCHDOG_SECRET
-  const supplied = req.headers.get('x-watchdog-auth')
-  if (!expected || !supplied) return false
-  const expectedBytes = Buffer.from(expected)
-  const suppliedBytes = Buffer.from(supplied)
-  return expectedBytes.length === suppliedBytes.length
-    && timingSafeEqual(expectedBytes, suppliedBytes)
-}
-
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const authorization = req.headers.get('authorization')
   let authorized = false
@@ -113,7 +101,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       authorized = false
     }
   }
-  if (!authorized) authorized = validLegacyWatchdogHeader(req)
   if (!authorized) {
     const hadCredential = Boolean(authorization || req.headers.get('x-watchdog-auth'))
     return NextResponse.json(

@@ -53,8 +53,6 @@ locals {
     "PYTHON_SIDECAR_API_KEY",
     "SUPER_ADMIN_EMAIL",
     "mcpt-scheduler-secret",
-    // Transitional watchdog bridge; removed with fallback after OIDC attestation.
-    "watchdog-secret",
     "mcp-internal-token",
     "mcp-canary-key",
     // brahma-build-pipeline-job also runs as amjis-web-runtime.
@@ -108,22 +106,6 @@ resource "google_project_iam_member" "web_sql_client" {
   project = var.gcp_project
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
-}
-
-// Phase A of the live cutover deliberately retains the existing broad grant
-// while every EXISTING-secret binding below is added and cold-started. The two
-// new Pūrṇa secrets are forbidden until all broad readers are gone and join
-// this set only in the reviewed Phase B commit. prevent_destroy
-// makes a generic apply fail closed. Remove this resource only in the reviewed
-// Phase B commit after the live verification receipt exists.
-resource "google_project_iam_member" "web_secrets" {
-  project = var.gcp_project
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.amjis_web_runtime.email}"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "google_secret_manager_secret_iam_member" "web_secret_access" {
@@ -218,16 +200,6 @@ resource "google_project_iam_member" "sidecar_sql_client" {
   member  = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
 }
 
-resource "google_project_iam_member" "sidecar_secrets" {
-  project = var.gcp_project
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.amjis_sidecar_runtime.email}"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
 resource "google_secret_manager_secret_iam_member" "sidecar_secret_access" {
   for_each  = local.sidecar_runtime_secret_ids
   project   = var.gcp_project
@@ -242,16 +214,6 @@ resource "google_project_iam_member" "mcp_sql_client" {
   project = var.gcp_project
   role    = "roles/cloudsql.client"
   member  = "serviceAccount:${google_service_account.amjis_mcp_runtime.email}"
-}
-
-resource "google_project_iam_member" "mcp_secrets" {
-  project = var.gcp_project
-  role    = "roles/secretmanager.secretAccessor"
-  member  = "serviceAccount:${google_service_account.amjis_mcp_runtime.email}"
-
-  lifecycle {
-    prevent_destroy = true
-  }
 }
 
 resource "google_secret_manager_secret_iam_member" "mcp_secret_access" {

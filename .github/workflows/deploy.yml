@@ -739,16 +739,14 @@ jobs:
             --tag=${{ steps.web-candidate.outputs.tag }}
             --min-instances=1
             --timeout=360s
-            --remove-env-vars=WATCHDOG_SECRET
+            --remove-secrets=WATCHDOG_SECRET
+            --remove-env-vars="^|^WATCHDOG_LEGACY_FALLBACK_ENABLED|# ── 4.observability (Wave 4) ──────────────────────────────────────────|# Vertex AI region pin for batched embeddings (lib/embeddings/embedText.ts).|# Region must match the prod Cloud Run region (asia-south1) to keep|# Vertex calls in-region for both latency + egress cost.|# NOTE: NEXT_PUBLIC_FIREBASE_* intentionally absent from runtime env_vars.|# These are NEXT_PUBLIC_ flags baked into the bundle at build time (see|# build-args above). Cloud Run env_vars are never read by Next.js at|# runtime — setting them here has zero effect and misleadingly implies|# that rotating them without a full rebuild would take effect.|# Campaign definitions|labels|and non-server receipts use this|# distinct Cloud-SQL principal.  Its absent secret fails those|# writes closed; neither the migrator nor legacy-owner credential|# is ever present in the serving revision.|# Server-reconstructed evidence (probe_accepted|integrity_verified|# asset_frozen|stage_transition_accepted|foundation_lane_accepted)|# uses this distinct Cloud-SQL principal instead. Its absent secret|# fails those writes closed the same way -- this was missing from|# the serving revision from when the ingress writer role and its|# secret were first provisioned (2026-08-27) until this line."
           # Pūrṇa inquiry state uses a separate LOGIN member of role_web_serve;
           # its secret is provisioned before merge and never falls back to DB_USER.
           # The signing ring is likewise dedicated and mounted only in web.
-          # WATCHDOG_SECRET began life as a literal environment variable. The
-          # removal flag above lets Cloud Run remount it from Secret Manager.
           # NIRMANA_EVIDENCE_INGRESS_DB_USER is the distinct Cloud SQL principal
           # for server-reconstructed evidence and fails those writes closed when
-          # its separate secret is absent. The watchdog fallback remains only for
-          # the Scheduler OIDC transition. NEXT_PUBLIC_FIREBASE_* values stay out
+          # its separate secret is absent. NEXT_PUBLIC_FIREBASE_* values stay out
           # of this runtime list because they are baked into the image at build.
           env_vars: |
             NODE_ENV=production
@@ -769,7 +767,6 @@ jobs:
             APP_URL=https://amjis-web-938361928218.asia-south1.run.app
             WATCHDOG_SCHEDULER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
             WATCHDOG_SCHEDULER_SERVICE_ACCOUNT=amjis-scheduler@madhav-astrology.iam.gserviceaccount.com
-            WATCHDOG_LEGACY_FALLBACK_ENABLED=true
             MCP_CALLER_OIDC_AUDIENCE=https://amjis-web-938361928218.asia-south1.run.app
             MCP_CALLER_OIDC_SERVICE_ACCOUNT=amjis-mcp-runtime@madhav-astrology.iam.gserviceaccount.com
             PURNA_READINESS_CANARY_KEY_ID=mcp_prod_tDO7obNw
@@ -800,7 +797,6 @@ jobs:
             MCP_INTERNAL_TOKEN=mcp-internal-token:1
             MCP_CANARY_KEY=mcp-canary-key:latest
             INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT=inquiry-lifecycle-signing-key:2
-            WATCHDOG_SECRET=watchdog-secret:1
 
       - name: Resolve web candidate URL
         id: web-candidate-url
