@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:136aa2038614e65d49af957d89f81cbeca3296f9f5ab1ce6431f8f43e2fbeea4",
-  "source_catalog_fingerprint": "sha256:22e970cfa3840cb900ad7f338b575ba316bea708c5ee9785f62805ac7ddc899b",
+  "content_hash": "sha256:542421cbe01802243f78885abfe566141edbc85275c77d06d008ead5be8c2aed",
+  "source_catalog_fingerprint": "sha256:06e6390d203fe2db9f71042914999b200250fd37eddcd26939ef239bbb42c39c",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -5449,10 +5449,10 @@
       }
     },
     {
-      "scu_id": "scu.catalog.get_dashas",
       "version": 1,
+      "scu_id": "scu.catalog.get_dashas",
       "label": "Get Dashas",
-      "description": "Retrieve dasha period data for a chart from the chart_dashas table. Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, Chara Karaka (Jaimini), Kalachakra, Mudda (annual/varshaphal), and Naisargika. Returns period boundaries (start/end dates), lord graha, level (Maha=1/Antar=2/Pratyantar=3/Sookshma=4/Prana=5), and the dasha system identifier. FACETED (R5 W1): system (default vimshottari — pass system=\"all\" for every system), level (default cap = 3, i.e. Maha/Antar/Pratyantar only — pass level for one exact level, or all_levels=true for every level), and window (default now±5y when no date filter is given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). Use as_of_date to retrieve the dasha running on a specific date (e.g. today). Spans all systems and levels as a large, paginated result set — never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Retrieve dated dasha period evidence from chart_dashas.",
       "kind": "temporal",
       "domains": [
         "timing"
@@ -5498,7 +5498,6 @@
         "timing_windows"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_dashas",
-      "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
@@ -5511,6 +5510,29 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [
+        {
+          "asset_id": "ga_dashas",
+          "component": "chart_dashas dasha periods",
+          "output_digest_spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_dashas",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "ga_dashas",
+              "spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -5557,41 +5579,14 @@
       "source_descriptor_uris": [
         "marsys://tool/L1/get_dashas"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L1/get_dashas",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -5599,22 +5594,22 @@
         {
           "concept_id": "activation_timing",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "get_dashas",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "temporal_sequence",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "timing_window",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         }
       ],
       "gap_dispositions": [
@@ -5622,7 +5617,7 @@
           "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         }
       ],
       "graph_disposition": {
@@ -5645,7 +5640,8 @@
           "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_dashas",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.get_dashas:ga_dashas"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.get_database_schema",
@@ -13749,10 +13745,10 @@
       }
     },
     {
-      "scu_id": "scu.catalog.query_chart_gestalt",
       "version": 1,
+      "scu_id": "scu.catalog.query_chart_gestalt",
       "label": "Query Chart Gestalt",
-      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per ayanamsha. Fields: defining_threads, central_dynamics_ids, pivot_ids, center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic), watch_list, central_question, outliers, contested_areas, zoom_spine. This is the orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded with a disclosed total. Evidence use: frame and reconcile domain evidence before downstream interpretation.",
+      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt.",
       "kind": "datum",
       "domains": [
         "cross_domain"
@@ -13783,7 +13779,6 @@
         "reconciled_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L2/query_chart_gestalt",
-      "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
@@ -13795,6 +13790,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bo_chart_gestalt",
+          "component": "bodha_chart_gestalt rows",
+          "output_digest_spec_sha256": "2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_chart_gestalt",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bo_chart_gestalt",
+              "spec_sha256": "2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -13826,41 +13844,14 @@
       "source_descriptor_uris": [
         "marsys://tool/L2/query_chart_gestalt"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -13868,22 +13859,22 @@
         {
           "concept_id": "domain_assessment",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "evidence_reconciliation",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "judgment_support",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "query_chart_gestalt",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         }
       ],
       "gap_dispositions": [],
@@ -13891,8 +13882,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         ]
       },
       "producer_semantic_disposition": {
@@ -13908,7 +13898,8 @@
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_chart_gestalt:bo_arudha",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_chart_gestalt:bo_chart_gestalt"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.query_class_priors",
@@ -31683,10 +31674,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -32255,6 +32246,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32263,7 +32255,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -32339,6 +32330,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32347,7 +32339,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -32532,7 +32523,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
       ]
     },
     {
@@ -32813,6 +32804,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32821,7 +32813,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -33230,7 +33221,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
       ]
     },
     {
@@ -34269,10 +34260,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -34338,10 +34329,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -35886,8 +35877,8 @@
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 8,
-    "reviewed_output_claims": 7,
+    "producer_output_claims": 10,
+    "reviewed_output_claims": 9,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,

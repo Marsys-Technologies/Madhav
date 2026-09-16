@@ -160,6 +160,88 @@ export const DIVISIONAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
   },
 ]
 
+export const DASHA_SCUS: readonly SemanticCapabilityDeclaration[] = [
+  {
+    version: 1,
+    scu_id: 'scu.catalog.get_dashas',
+    label: 'Get Dashas',
+    description: 'Retrieve dated dasha period evidence from chart_dashas.',
+    kind: 'temporal',
+    domains: ['timing'],
+    concepts: ['activation_timing', 'get_dashas', 'temporal_sequence', 'timing_window'],
+    intents: ['sequence', 'time'],
+    horizons: ['current', 'future', 'historical', 'multi_year'],
+    scope: 'chart',
+    inputs: ['all_levels', 'as_of_date', 'ayanamsha_id', 'chart_id', 'dasha_system', 'date_contains', 'date_from', 'fields', 'level', 'limit', 'lord_graha', 'offset', 'system', 'system_id', 'window_end', 'window_start'],
+    outputs: ['evidence_references', 'temporal_sequence_evidence', 'timing_windows'],
+    primary_binding_uri: 'marsys://tool/L1/get_dashas',
+    provenance_requirements: ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+    freshness_policy: 'Must resolve against the active compatible chart build.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: ['Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.'],
+    producer_output_claims: [{
+      asset_id: 'ga_dashas',
+      component: 'chart_dashas dasha periods',
+      output_digest_spec_sha256: '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56',
+    }],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/get_dashas',
+      requirements: [{
+        kind: 'producer_output',
+        asset_id: 'ga_dashas',
+        spec_sha256: '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14',
+        scope: 'chart_build',
+        source_ref: 'platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56',
+      }],
+    }],
+    editorial: true,
+  },
+]
+
+export const GESTALT_SCUS: readonly SemanticCapabilityDeclaration[] = [
+  {
+    version: 1,
+    scu_id: 'scu.catalog.query_chart_gestalt',
+    label: 'Query Chart Gestalt',
+    description: 'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt.',
+    kind: 'datum',
+    domains: ['cross_domain'],
+    concepts: ['domain_assessment', 'evidence_reconciliation', 'judgment_support', 'query_chart_gestalt'],
+    intents: ['assess', 'reconcile'],
+    horizons: ['current', 'natal'],
+    scope: 'chart',
+    inputs: ['ayanamsha_id', 'chart_id', 'limit'],
+    outputs: ['assessment_findings', 'evidence_references', 'reconciled_evidence'],
+    primary_binding_uri: 'marsys://tool/L2/query_chart_gestalt',
+    provenance_requirements: ['chart_id_when_chart_scoped', 'build_id', 'formula_or_writer_version'],
+    freshness_policy: 'Must resolve against the active compatible chart build.',
+    entitlement: 'native',
+    safety_notes: ['Read-only evidence surface; planner must not interpret returned chart facts.'],
+    known_gaps: [],
+    producer_output_claims: [{
+      asset_id: 'bo_chart_gestalt',
+      component: 'bodha_chart_gestalt rows',
+      output_digest_spec_sha256: '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125',
+    }],
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L2/query_chart_gestalt',
+      requirements: [{
+        kind: 'producer_output',
+        asset_id: 'bo_chart_gestalt',
+        spec_sha256: '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e',
+        scope: 'chart_build',
+        source_ref: 'platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125',
+      }],
+    }],
+    editorial: true,
+  },
+]
+
 export const YOGA_SCUS: readonly SemanticCapabilityDeclaration[] = [
   {
     ...common,

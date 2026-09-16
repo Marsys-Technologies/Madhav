@@ -83,7 +83,7 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(7)
+    expect(snapshot.census.reviewed_output_claims).toBe(9)
     expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
@@ -92,7 +92,9 @@ describe('planner capability knowledge', () => {
   it('binds each reviewed editorial route to its compiled primary binding and exact reviewed output claims', () => {
     const expectedPrimaryBindingIds: Record<string, string> = {
       'scu.bodha.mechanism.network': 'registry:marsys://tool/L2/query_mechanisms',
+      'scu.catalog.get_dashas': 'registry:marsys://tool/L1/get_dashas',
       'scu.catalog.get_divisionals': 'registry:marsys://tool/L1/get_divisionals',
+      'scu.catalog.query_chart_gestalt': 'registry:marsys://tool/L2/query_chart_gestalt',
       'scu.finance.prosperity_assessment': 'registry:marsys://tool/L-DOMAIN/assess_wealth',
       'scu.yoga.firing_and_cancellation': 'registry:marsys://tool/L1/get_yoga_firings',
     }
@@ -233,7 +235,7 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(176)
+    expect(reviewed).toHaveLength(174)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

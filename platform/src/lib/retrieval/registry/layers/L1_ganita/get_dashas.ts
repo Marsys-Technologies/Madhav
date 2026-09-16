@@ -26,6 +26,7 @@ import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DASHA_SCUS } from '../../knowledge/editorial'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -231,6 +232,7 @@ export const getDashasCapability: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L1',
   name: 'get_dashas',
+  semantic_capabilities: DASHA_SCUS,
   description:
     'Retrieve dasha period data for a chart from the chart_dashas table. ' +
     'Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, ' +

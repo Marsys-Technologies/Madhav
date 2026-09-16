@@ -101,6 +101,31 @@ beforeEach(() => {
 })
 
 describe('chart capability overlay loader', () => {
+  it('enables only the reviewed dasha and gestalt primary bindings from their exact receipts', async () => {
+    const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
+    const dashas = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.get_dashas')!
+    const gestalt = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_chart_gestalt')!
+    const dashaReceipt = receipt('ga_dashas', { output_digest_spec_sha256: '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14' })
+    const gestaltReceipt = receipt('bo_chart_gestalt', { output_digest_spec_sha256: '2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e' })
+
+    mocks.query.mockResolvedValueOnce({ rows: [dashaReceipt, gestaltReceipt] })
+    let availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === dashas.scu_id))
+      .toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L1/get_dashas'] })
+    expect(availability.find((item) => item.scu_id === gestalt.scu_id))
+      .toMatchObject({ state: 'available', available_binding_ids: ['registry:marsys://tool/L2/query_chart_gestalt'] })
+
+    mocks.query.mockResolvedValueOnce({ rows: [gestaltReceipt] })
+    availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === dashas.scu_id))
+      .toMatchObject({ state: 'dark', available_binding_ids: [] })
+
+    mocks.query.mockResolvedValueOnce({ rows: [dashaReceipt, receipt('bo_chart_gestalt', { output_digest_spec_sha256: 'b'.repeat(64) })] })
+    availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === gestalt.scu_id))
+      .toMatchObject({ state: 'incompatible', available_binding_ids: [] })
+  })
+
   it('keeps uncontracted bindings dark when the SCU has an authored contract', async () => {
     mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_test')] })
 

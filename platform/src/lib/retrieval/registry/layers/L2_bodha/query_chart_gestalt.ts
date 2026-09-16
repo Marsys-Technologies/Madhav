@@ -12,6 +12,7 @@
 import type { CapabilityDescriptor } from '../../types'
 import { query } from '@/lib/db/client'
 import { buildTailWatch } from '@/lib/retrieval/tail/build_tail_watch'
+import { GESTALT_SCUS } from '../../knowledge/editorial'
 
 const MAX_LIMIT = 50
 
@@ -20,6 +21,7 @@ export const queryChartGestaltCapability: CapabilityDescriptor = {
   type:  'tool',
   layer: 'L2',
   name:  'query_chart_gestalt',
+  semantic_capabilities: GESTALT_SCUS,
 
   description: [
     'Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per',
