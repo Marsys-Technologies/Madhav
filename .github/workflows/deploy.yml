@@ -616,9 +616,26 @@ jobs:
             echo "::error::PROD_DATABASE_URL secret not set — bootstrap state cannot be refreshed."
             exit 1
           fi
-          data_plane_state="$(cd platform && npx tsx scripts/data-plane-ownership-status.ts)" || exit 1
-          nirmana_state="$(cd platform && npx tsx scripts/nirmana-evidence-ownership-status.ts)" || exit 1
-          purna_state="$(cd platform && npx tsx scripts/purna-inquiry-ownership-status.ts)" || exit 1
+          read_protected_state() {
+            local script="$1"
+            local label="$2"
+            local state=''
+            local attempt
+            for attempt in 1 2 3 4 5; do
+              if state="$(cd platform && npx tsx "scripts/$script")"; then
+                printf '%s' "$state"
+                return 0
+              fi
+              if [ "$attempt" -lt 5 ]; then
+                sleep "$((attempt * 2))"
+              fi
+            done
+            echo "::error::$label state could not be read after 5 bounded attempts." >&2
+            return 1
+          }
+          data_plane_state="$(read_protected_state data-plane-ownership-status.ts 'Protected data-plane')" || exit 1
+          nirmana_state="$(read_protected_state nirmana-evidence-ownership-status.ts 'Nirmana ownership')" || exit 1
+          purna_state="$(read_protected_state purna-inquiry-ownership-status.ts 'Pūrṇa ownership')" || exit 1
           for state in "$data_plane_state" "$nirmana_state"; do
             if [ "$state" != "marked" ] && [ "$state" != "unmarked" ]; then
               echo "::error::Unexpected protected bootstrap state under the exclusive lock."
