@@ -74,7 +74,9 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       const limit   = Math.min((args.limit as number) ?? 300, 2000)
       const offset  = (args.offset as number) ?? 0
 
-      const params: unknown[] = [chartId, limit, offset]
+      // Fetch one extra row so continuation is established by the server-observed
+      // filtered result, without mislabelling this page's length as a total.
+      const params: unknown[] = [chartId, limit + 1, offset]
       let sql = `SELECT * FROM chart_divisionals WHERE chart_id = $1`
 
       if (args.ayanamsha_id) {
@@ -89,10 +91,16 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
         sql += ` AND graha = $${params.length + 1}`
         params.push(args.graha as string)
       }
-      sql += ` ORDER BY varga, ayanamsha_id, graha LIMIT $2 OFFSET $3`
+      // Migration 883 documents the DB-enforced natural unique key as
+      // (chart_id, graha, ayanamsha_id, varga, fact_category, fact_key).
+      // chart_id is fixed by this query, so the remaining terms make offset
+      // pagination repeatable for a fixed filtered snapshot.
+      sql += ` ORDER BY varga, ayanamsha_id, graha, fact_category, fact_key LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const fetchedRows = result.rows ?? []
+      const moreAvailable = fetchedRows.length > limit
+      const rows = fetchedRows.slice(0, limit)
 
       // EL-47: compute house_from_varga_lagna for every row with a resolvable sign, using
       // that row's OWN (varga, ayanamsha_id) lagna sign. Single lookup query covers every
@@ -120,7 +128,12 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
       }
 
       return {
-        content: { chart_id: chartId, source_table: 'chart_divisionals', rows: rowsWithHouse, total: rowsWithHouse.length },
+        content: {
+          chart_id: chartId,
+          source_table: 'chart_divisionals',
+          rows: rowsWithHouse,
+          more_available: moreAvailable,
+        },
         is_error: false,
       }
     } catch (err) {
