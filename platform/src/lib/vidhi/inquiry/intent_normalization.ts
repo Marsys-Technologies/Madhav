@@ -1,7 +1,39 @@
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
+import { z } from 'zod'
 import type { InquiryScopeNormalizationReceipt, InquiryScopeTuple } from './types'
 
 export const INQUIRY_SCOPE_NORMALIZATION_VERSION = 'inquiry-scope-normalization-v1' as const
+
+/**
+ * Admission vocabulary for raw Inquiry lifecycle callers.
+ *
+ * The lifecycle is intentionally able to receive either the classifier tuple
+ * (the public MCP/portal vocabulary) or the compiler tuple (the frozen
+ * acceptance corpus vocabulary). Both are normalized and hashed by the
+ * compiler; rejecting the latter at the transport boundary made an otherwise
+ * valid signed lifecycle impossible to start. This is a closed union, not an
+ * open string schema, so normalization never becomes an admission bypass.
+ */
+export const InquiryScopeInputSchema = z.object({
+  intent: z.enum([
+    'dasha_timing', 'transit_analysis', 'yoga_identification', 'planet_strength',
+    'house_analysis', 'remedy_lookup', 'panchanga', 'classical_rule', 'chart_overview',
+    'prediction_calibration', 'domain_assessment', 'unknown',
+    'wealth_deepdive', 'career_deepdive', 'health_deepdive', 'marriage_deepdive',
+    'spirituality_deepdive', 'education_deepdive', 'progeny_deepdive',
+    'structure_read', 'panoramic_breadth', 'retrieval_only', 'general_synthesis',
+    'undertaking_election', 'biography_narrative', 'ritual_yajna',
+  ]),
+  domains: z.array(z.enum([
+    'wealth', 'career', 'marriage', 'health', 'children', 'education', 'spirituality',
+    'litigation', 'property', 'travel', 'general', 'all',
+  ])).min(1),
+  width: z.enum(['narrow', 'standard', 'broad', 'panoramic']),
+  depth: z.enum(['shallow', 'standard', 'deep', 'retrieval', 'structure', 'deepdive']),
+  horizon: z.enum(['past', 'present', 'near', 'far', 'atemporal', 'natal', 'current', 'multi_year']),
+  intervention: z.union([z.boolean(), z.enum(['none', 'remedy', 'muhurta', 'mitigation'])]),
+  entitlement: z.enum(['reference', 'native', 'restricted', 'public_disclosed', 'research']),
+}).strict()
 
 const DOMAIN_ALIASES: Readonly<Record<string, string>> = {
   finance: 'wealth', financial: 'wealth', money: 'wealth', prosperity: 'wealth',
