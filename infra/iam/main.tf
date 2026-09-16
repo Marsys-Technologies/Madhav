@@ -121,6 +121,16 @@ resource "google_service_account_iam_member" "github_actions_acts_as_mcp_runtime
   member             = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
 }
 
+// The protected deployment preflight reads IAM and runtime metadata to prove
+// the data-plane isolation boundary. Security Reviewer grants policy metadata
+// only: it cannot access secret payloads, impersonate identities, or mutate
+// IAM/runtime state.
+resource "google_project_iam_member" "github_actions_security_reviewer" {
+  project = var.gcp_project
+  role    = "roles/iam.securityReviewer"
+  member  = "serviceAccount:github-actions@${var.gcp_project}.iam.gserviceaccount.com"
+}
+
 // Firebase custom-token signing is self-only. A project-wide Token Creator
 // grant would also allow this SDK identity to impersonate the data-plane builder.
 resource "google_service_account_iam_member" "firebase_admin_self_token_creator" {

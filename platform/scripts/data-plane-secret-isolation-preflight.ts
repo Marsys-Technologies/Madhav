@@ -454,7 +454,8 @@ export function assertEffectiveIsolation(
     }
     const hasBuilderSecret = inventory.secrets.includes(BUILDER_SECRET)
     const isBuildJob = surface.kind === 'job' && surface.name === 'brahma-build-pipeline-job'
-    const exactTargetBinding = isBuildJob && hasBuilderSecret
+    const exactTargetBinding = isBuildJob
+      && inventory.secrets.length === 1 && inventory.secrets[0] === BUILDER_SECRET
       && inventory.serviceAccount === BUILDER_SERVICE_ACCOUNT
     const exactLegacyBinding = isBuildJob
       && inventory.serviceAccount === `amjis-web-runtime@${project}.iam.gserviceaccount.com`

@@ -124,6 +124,11 @@ describe('DP-SD-018 GCP credential isolation', () => {
       .toThrow(/outside the one named build job/)
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'job', name: 'brahma-build-pipeline-job', definition: { secretKeyRef: { name: 'data-plane-builder-db-url' }, serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
       .not.toThrow()
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'job', name: 'brahma-build-pipeline-job', definition: {
+      database: { secretKeyRef: { name: 'data-plane-builder-db-url' } },
+      unrelated: { secretKeyRef: { name: 'unrelated-secret' } },
+      serviceAccount: BUILDER_SERVICE_ACCOUNT,
+    } }])).toThrow(/lacks the exact builder/)
     const legacy = [{ kind: 'job' as const, name: 'brahma-build-pipeline-job', definition: {
       secretKeyRef: { name: 'amjis-pipeline-db-url' },
       serviceAccount: 'amjis-web-runtime@madhav-astrology.iam.gserviceaccount.com',
@@ -157,6 +162,8 @@ describe('DP-SD-018 GCP credential isolation', () => {
       'github_actions_acts_as_mcp_runtime',
       'firebase_admin_self_token_creator',
     ]) expect(iamTerraform).toContain(`resource "google_service_account_iam_member" "${resource}"`)
+    expect(iamTerraform).toContain('resource "google_project_iam_member" "github_actions_security_reviewer"')
+    expect(iamTerraform).toContain('role    = "roles/iam.securityReviewer"')
   })
   it('requires secret grants for runnable surfaces but not explicitly retired revisions', () => {
     expect(requiresRuntimeSecretGrant({ kind: 'service', name: 'current', definition: {} })).toBe(true)
@@ -368,7 +375,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow.indexOf('Verify data-plane pre-transition isolation before privileged access')).toBeLessThan(workflow.indexOf('Execute Native-authorized automated cutover under backup'))
     expect(workflow.indexOf('Execute Native-authorized automated cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
-    expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
+    expect(workflow).toContain('--set-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
     expect(workflow).toContain('DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL: ${{ vars.DATA_PLANE_CONTROL_PLANE_ADMIN_PRINCIPAL }}')
     expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
     expect(workflow).toContain('environment: data-plane-production-cutover')

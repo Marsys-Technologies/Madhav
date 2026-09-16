@@ -842,7 +842,7 @@ jobs:
             --project=madhav-astrology \
             --region="$GCP_REGION" \
             --service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com \
-            --update-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
+            --set-secrets=DATABASE_URL=data-plane-builder-db-url:latest \
             --quiet
 
       - name: Verify strict data-plane isolation after build-job rebind

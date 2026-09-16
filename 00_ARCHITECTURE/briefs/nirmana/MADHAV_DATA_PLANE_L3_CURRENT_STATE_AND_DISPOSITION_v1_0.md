@@ -699,3 +699,29 @@ instance proxy observed protected ownership `unmarked`, PostgreSQL server
 version `150019`, and `public.build_runs`. This proves the restore artifact and
 pre-cutover source state only; it is not production cutover or deployment
 acceptance.
+
+Final exact-tip review also tightened the target binding itself: strict mode
+now requires the named build job to expose exactly one Secret Manager resource,
+`data-plane-builder-db-url`, under the dedicated builder identity. The runtime
+transition uses `--set-secrets` so an unrelated pre-existing mount cannot
+survive the cutover.
+
+The protected workflow identity also requires read-only access to the IAM and
+runtime metadata inspected by the isolation detector. The exact project-level
+grant is `roles/iam.securityReviewer` for the GitHub Actions service account,
+codified alongside its resource-level actAs grants. This role exposes policy
+metadata but not Secret Manager payload access, service-account impersonation,
+or IAM/runtime mutation. Acceptance requires a full live preflight executed by
+impersonating that workflow identity, not merely a successful native-account
+scan.
+
+The live project now carries that exact Security Reviewer binding and no new
+secret-access, impersonation, or runtime-mutation role. The three database
+logins (`data_plane_builder`, `data_plane_verifier`, `data_plane_migrator`) were
+preprovisioned as LOGIN + NOINHERIT with no elevated role attributes and their
+fresh credentials were verified without emitting them. Builder Secret Manager
+version `1` is enabled with the previously attested single-principal accessor
+policy. The protected GitHub environment now contains the one-shot admin,
+migrator, verifier, restore-validation, and UUID lease inputs. These are
+cutover prerequisites only: database ownership, runtime job binding, protected
+branch merge, deployment, and physical L3 data remain unexecuted.
