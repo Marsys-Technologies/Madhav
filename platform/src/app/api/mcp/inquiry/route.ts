@@ -11,7 +11,7 @@ import '@/lib/retrieval/registry/catalog'
 import { assertPinnedCapabilityKnowledgeCurrent, loadChartCapabilityOverlay } from '@/lib/retrieval/registry/knowledge'
 import { stableFingerprint } from '@/lib/retrieval/registry/knowledge/stable'
 import { getToolByName } from '@/lib/retrieval/registry/tool_name_bridge'
-import { ScopeTupleSchema } from '@/lib/vidhi/scope_classifier'
+import { InquiryScopeInputSchema } from '@/lib/vidhi/inquiry/intent_normalization'
 import {
   buildInquiryClosureReceipt,
   buildInquiryDoorParityProjection,
@@ -163,7 +163,9 @@ export async function POST(request: Request) {
     const key = loadInquiryLifecycleSigningKeyRing()
     if (body.action === 'start') {
       if (!(await entitled(principalUid, body.chart_id))) return response({ ok: false, error: 'AUTHZ_DENIED' }, 401)
-      const scope = ScopeTupleSchema.parse(body.scope_tuple)
+      // Accept both classifier and canonical compiler scope vocabularies. The
+      // compiler owns their deterministic normalization and semantic hash.
+      const scope = InquiryScopeInputSchema.parse(body.scope_tuple)
       const snapshot = assertPinnedCapabilityKnowledgeCurrent()
       const overlay = await loadChartCapabilityOverlay(snapshot, body.chart_id)
       const contract = compileInquiryContract({

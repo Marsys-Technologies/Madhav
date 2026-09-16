@@ -25,6 +25,16 @@ describe('raw inquiry lifecycle MCP surface', () => {
     expect(callInquiryLifecycle).toHaveBeenCalledWith(principal, expect.objectContaining({ action: 'start', question: 'wealth outlook' }))
   })
 
+  it('forwards the frozen compiler vocabulary without weakening the full-profile gate', async () => {
+    await handlers.get('inquiry_start')?.({
+      chart_id: '482012f1-0000-4000-8000-000000000001', question: 'wealth outlook',
+      scope_tuple: { intent: 'wealth_deepdive', domains: ['wealth'], width: 'panoramic', depth: 'deepdive', horizon: 'multi_year', intervention: false, entitlement: 'native' },
+    })
+    expect(callInquiryLifecycle).toHaveBeenCalledWith(principal, expect.objectContaining({
+      scope_tuple: expect.objectContaining({ intent: 'wealth_deepdive', depth: 'deepdive' }),
+    }))
+  })
+
   it('does not expose lifecycle execution outside the full profile', async () => {
     const restricted = new Map<string, (args: unknown) => Promise<unknown>>()
     registerInquiryLifecycleTools({ tool(name, _description, _schema, handler) { restricted.set(name, handler) } }, principal, 'compact')

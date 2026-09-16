@@ -7,13 +7,23 @@ export interface InquiryRegisteringServer {
 }
 
 const scopeSchema = z.object({
-  intent: z.enum(['dasha_timing', 'transit_analysis', 'yoga_identification', 'planet_strength', 'house_analysis', 'remedy_lookup', 'panchanga', 'classical_rule', 'chart_overview', 'prediction_calibration', 'domain_assessment', 'unknown']),
-  domains: z.array(z.enum(['wealth', 'career', 'marriage', 'health', 'children', 'education', 'spirituality', 'litigation', 'property', 'travel', 'general'])),
-  width: z.enum(['narrow', 'standard', 'broad']),
-  depth: z.enum(['shallow', 'standard', 'deep']),
-  horizon: z.enum(['past', 'present', 'near', 'far', 'atemporal']),
-  intervention: z.enum(['none', 'remedy', 'muhurta', 'mitigation']),
-  entitlement: z.enum(['reference', 'native', 'restricted']),
+  // Keep this closed union in parity with platform's
+  // InquiryScopeInputSchema. The two packages have no shared runtime import.
+  intent: z.enum([
+    'dasha_timing', 'transit_analysis', 'yoga_identification', 'planet_strength',
+    'house_analysis', 'remedy_lookup', 'panchanga', 'classical_rule', 'chart_overview',
+    'prediction_calibration', 'domain_assessment', 'unknown',
+    'wealth_deepdive', 'career_deepdive', 'health_deepdive', 'marriage_deepdive',
+    'spirituality_deepdive', 'education_deepdive', 'progeny_deepdive',
+    'structure_read', 'panoramic_breadth', 'retrieval_only', 'general_synthesis',
+    'undertaking_election', 'biography_narrative', 'ritual_yajna',
+  ]),
+  domains: z.array(z.enum(['wealth', 'career', 'marriage', 'health', 'children', 'education', 'spirituality', 'litigation', 'property', 'travel', 'general', 'all'])).min(1),
+  width: z.enum(['narrow', 'standard', 'broad', 'panoramic']),
+  depth: z.enum(['shallow', 'standard', 'deep', 'retrieval', 'structure', 'deepdive']),
+  horizon: z.enum(['past', 'present', 'near', 'far', 'atemporal', 'natal', 'current', 'multi_year']),
+  intervention: z.union([z.boolean(), z.enum(['none', 'remedy', 'muhurta', 'mitigation'])]),
+  entitlement: z.enum(['reference', 'native', 'restricted', 'public_disclosed', 'research']),
 }).strict()
 
 const aiProposalSchema = z.object({
