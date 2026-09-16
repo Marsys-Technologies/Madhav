@@ -162,7 +162,10 @@ describe('versioned inquiry compiler', () => {
       .toMatchObject({ clarification: { code: 'TEMPORAL_ANCHOR_INVALID' } })
 
     const raw = compileInquiryContract({ snapshot, chart_id: 'chart-fixture', question: 'wealth varga', scope_tuple: wealthScope, execution_channel: 'mcp_full' })
-    expect(raw.plan_items.find((item) => item.scu_id === 'scu.catalog.get_divisionals')).toMatchObject({ state: 'blocked', binding_id: null })
+    expect(raw.plan_items.find((item) => item.scu_id === 'scu.catalog.get_divisionals')).toMatchObject({
+      state: 'ready',
+      binding_id: 'registry:marsys://tool/L1/get_divisionals',
+    })
   })
 
   it('derives one receipted aggregate binding with immutable nine-graha component arguments', () => {

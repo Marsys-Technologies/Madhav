@@ -1,5 +1,6 @@
 import type { CapabilityKnowledgeSnapshot, ChartCapabilityOverlay, ExecutionChannel } from '../../retrieval/registry/knowledge/types'
 import { assertOverlayCompatibility } from '../../retrieval/registry/knowledge/overlay'
+import { isInquiryServerDispatchEligible, presentationTransportForInquiry, type InquiryPresentationTransport } from './execution_policy'
 import { searchSemanticCapabilities } from '../../retrieval/registry/knowledge/query'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import {
@@ -313,7 +314,7 @@ function planFor(
   chartId: string,
   question: string,
   scope: InquiryScopeTuple,
-  executionChannel: ExecutionChannel,
+  presentationTransport: InquiryPresentationTransport,
   temporalAnchorDate: string | undefined,
   temporalAnchorSource: InquiryArgumentResolutionReceipt['source'],
   overlay?: ChartCapabilityOverlay | null,
@@ -333,9 +334,8 @@ function planFor(
         }
         continue
       }
-      const channelBindings = scu.bindings.filter((candidate) => candidate.executable
-        && candidate.kind === 'registry_capability'
-        && (candidate.execution_channels ?? ['platform_internal']).includes(executionChannel))
+      const channelBindings = scu.bindings.filter((candidate) =>
+        isInquiryServerDispatchEligible(candidate, presentationTransport))
       const aggregateTransitBinding = channelBindings
         .find((candidate) => candidate.binding_id === CURRENT_TRANSIT_SNAPSHOT_BINDING_ID)
       const binding = aggregateTransitBinding
@@ -364,7 +364,7 @@ function planFor(
         && availability.available_binding_ids.includes(binding.binding_id))
       const executable = Boolean(binding && unresolvedRequired.length === 0 && overlayAllowsBinding)
       const blockedReason = !binding
-        ? `No executable ${executionChannel} binding is declared.`
+        ? `No executable registry binding is eligible for ${presentationTransport}.`
         : argumentResolution?.status === 'clarification_required'
           ? argumentResolution.clarification!.message
         : unresolvedRequired.length > 0
@@ -411,6 +411,8 @@ export function compileInquiryContract(args: {
   ai_proposal?: AiInquiryProposal
   max_iterations?: number
   execution_channel?: ExecutionChannel
+  /** Presentation is distinct from server dispatch eligibility. */
+  presentation_transport?: InquiryPresentationTransport
   planning_budget?: Partial<InquiryPlanningBudget>
   /** Explicit request-time anchor; the compiler never reads the wall clock. */
   temporal_anchor_date?: string
@@ -422,6 +424,7 @@ export function compileInquiryContract(args: {
   const budget = planningBudget(scope, args.planning_budget)
   const aiProposal = normalizeAiProposal(args.ai_proposal)
   const executionChannel = args.execution_channel ?? 'platform_internal'
+  const presentationTransport = presentationTransportForInquiry(executionChannel, args.presentation_transport)
   if (args.overlay) assertOverlayCompatibility(args.snapshot, args.overlay, args.chart_id)
   const selection = selectedScus({ snapshot: args.snapshot, question, scope, ai: aiProposal, budget })
   const remainingGraphNodeBudget = Math.max(0, budget.max_graph_nodes - selection.ai_adjacency_nodes_selected)
@@ -516,7 +519,7 @@ export function compileInquiryContract(args: {
     args.chart_id,
     question,
     scope,
-    executionChannel,
+    presentationTransport,
     args.temporal_anchor_date,
     args.temporal_anchor_source ?? 'caller_temporal_anchor',
     args.overlay,
