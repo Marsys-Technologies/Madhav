@@ -123,4 +123,30 @@ describe('getDivisionalsCapability — Task D1 receipt-grade pagination', () => 
     expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
       .toEqual({ semantics: 'offset', exhausted: false, next: 2100 })
   })
+
+  it('normalizes a zero limit to a progressing one-row continuation', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [row('zero-first'), row('zero-second')] })
+
+    const args = { chart_id: CHART_ID, limit: 0 }
+    const result = await getDivisionalsCapability.handler(args, undefined)
+
+    expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 2, 0])
+    expect(contentOf(result)['rows']).toEqual([row('zero-first')])
+    expect(contentOf(result)['next_offset']).toBe(1)
+    expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 1 })
+  })
+
+  it('normalizes a negative limit to a progressing one-row continuation', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [row('negative-first'), row('negative-second')] })
+
+    const args = { chart_id: CHART_ID, offset: 4, limit: -10 }
+    const result = await getDivisionalsCapability.handler(args, undefined)
+
+    expect(mockQuery.mock.calls[0][1]).toEqual([CHART_ID, 2, 4])
+    expect(contentOf(result)['rows']).toEqual([row('negative-first')])
+    expect(contentOf(result)['next_offset']).toBe(5)
+    expect(deriveInquiryPaginationReceipt(divisionalBinding(), result, args))
+      .toEqual({ semantics: 'offset', exhausted: false, next: 5 })
+  })
 })

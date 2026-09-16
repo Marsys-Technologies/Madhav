@@ -71,7 +71,10 @@ export const getDivisionalsCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
-      const limit   = Math.min((args.limit as number) ?? 300, 2000)
+      const requestedLimit = Number(args.limit ?? 300)
+      const limit = Number.isFinite(requestedLimit)
+        ? Math.min(Math.max(Math.floor(requestedLimit), 1), 2000)
+        : 300
       const offset  = (args.offset as number) ?? 0
 
       // Fetch one extra row so continuation is established by the server-observed

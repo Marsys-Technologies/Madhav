@@ -43,3 +43,16 @@ The initial D1 receipt contract derived `next` from caller arguments when `conte
 - GREEN: an omitted limit serving 300 of a 301-row probe returns receipt `next: 300`; an oversized `limit: 5000` at `offset: 100` serves the 2000-row cap and returns `next: 2100`. Neither receipt is exhausted.
 - Focused suite: `npm test -- src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_divisionals.test.ts src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/pagination.test.ts` — 48 passed.
 - Both generated-artifact checks, TypeScript check, and `git diff --check` passed after regeneration.
+
+## Fix round 2/5 — positive progressing page size
+
+### Correctness repair
+
+`limit: 0` previously fetched a probe but served no rows, producing `next_offset` equal to the current offset. The handler now normalizes its effective page size before building the query: finite inputs are floored and clamped to `1…2000`; non-finite values use the existing 300-row default. This preserves the cap/default while ensuring any non-terminal page advances.
+
+### Regression evidence
+
+- RED observed: zero and negative limit handler-to-receipt regressions used a zero/negative probe parameter and failed their required progressing continuation assertions.
+- GREEN: both inputs use an effective one-row page and two-row probe; zero returns `next: 1`, while `offset: 4, limit: -10` returns `next: 5`. Both receipts remain non-exhausted and make progress.
+- Focused suite: `npm test -- src/lib/retrieval/registry/layers/L1_ganita/__tests__/get_divisionals.test.ts src/lib/retrieval/registry/knowledge/knowledge.test.ts src/lib/vidhi/inquiry/pagination.test.ts` — 50 passed.
+- Both generated-artifact checks, TypeScript check, and `git diff --check` passed after regeneration.
