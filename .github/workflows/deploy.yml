@@ -1865,7 +1865,6 @@ jobs:
             --task-timeout=86400 \
             --memory=16Gi \
             --cpu=4 \
-            --update-secrets=DATABASE_URL=amjis-pipeline-db-url:latest \
             --update-env-vars=GCP_PROJECT=madhav-astrology,PUBSUB_TOPIC=cockpit-events,KA_KSHETRA_HASH_SPILL_DIR=/tmp \
             --quiet
 

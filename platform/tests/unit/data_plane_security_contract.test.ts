@@ -260,6 +260,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(workflow.indexOf('Execute protected cutover under backup')).toBeLessThan(workflow.indexOf('Run general database migrations'))
     expect(workflow).toContain('--service-account=data-plane-builder-runtime@madhav-astrology.iam.gserviceaccount.com')
     expect(workflow).toContain('--update-secrets=DATABASE_URL=data-plane-builder-db-url:latest')
+    expect(JSON.stringify(workflowJobs['deploy-pipeline-job'])).not.toContain('DATABASE_URL=amjis-pipeline-db-url')
     expect(workflow).toContain('environment: data-plane-production-cutover')
     expect(workflow).toContain('DATA_PLANE_BACKUP_RESTORE_ID')
     expect(workflow).toContain('group: data-plane-production-cutover')
