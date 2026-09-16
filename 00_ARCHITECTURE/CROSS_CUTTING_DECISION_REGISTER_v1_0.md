@@ -225,6 +225,7 @@ coordination lease that produced it.
 - **Work order/evidence:** [review and adoption record](briefs/nirmana/MADHAV_PRODUCT_DEFINITION_V3_REVIEW_AND_ADOPTION_v1_0.md). Publication base `731e311f0b8f5f84db2f152b93951e1d3d50d89a`; source-audit baseline `0955849d1864a0f94cd746ab9706194831856a04`; no live/private-data or empirical certification.
 - **Applicability at close:** this non-build documentation session does not serialize/upload production build-state. Record that N/A honestly, following the existing non-build-close precedent; do not create a production action to satisfy a generic close field. All applicable close validation, exact residual accounting and remote coordination release remain required.
 - **Supersession:** product-level predecessor proposals only. Earlier CCD decisions, ratified architecture, campaign authorities/acceptance and output restrictions are not superseded. Native adoption and local registration/commit are distinct from protected-main integration.
+
 ## CCD-011 — MADHAV PŪRṆA ANVEṢAṆA source-campaign authority
 
 - **Date/tool/session:** 2026-09-14; Codex; `MADHAV-PURNA-ANVESANA-W0-20260914`.
