@@ -611,6 +611,11 @@ describe('DP-SD-018 deployment ordering', () => {
       instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
       proxyPort: '5433', project: 'madhav-astrology',
     })).toMatchObject({ host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored' })
+    const sourceSocketCarrier = 'postgresql://validator:secret@/restored?host=/cloudsql/madhav-astrology:asia-south1:amjis-postgres'
+    expect(assertValidationConnectorBinding(sourceSocketCarrier, {
+      instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+      proxyPort: '5433', project: 'madhav-astrology',
+    })).toMatchObject({ host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored' })
     expect(() => assertValidationConnectorBinding(
       'postgresql://validator:secret@/restored?host=/cloudsql/madhav-astrology:asia-south1:rogue-instance', {
         instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
