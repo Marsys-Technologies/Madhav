@@ -606,6 +606,17 @@ describe('DP-SD-018 deployment ordering', () => {
     })
     expect(poolConfig.password).toBe(['sec', 'ret'].join(''))
     expect(Object.isFrozen(poolConfig)).toBe(true)
+    const socketCarrier = 'postgresql://validator:secret@/restored?host=/cloudsql/madhav-astrology:asia-south1:amjis-ri02-validation'
+    expect(assertValidationConnectorBinding(socketCarrier, {
+      instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+      proxyPort: '5433', project: 'madhav-astrology',
+    })).toMatchObject({ host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored' })
+    expect(() => assertValidationConnectorBinding(
+      'postgresql://validator:secret@/restored?host=/cloudsql/madhav-astrology:asia-south1:rogue-instance', {
+        instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+        proxyPort: '5433', project: 'madhav-astrology',
+      },
+    )).toThrow(/authenticated isolated Cloud SQL proxy identity/)
     for (const query of [
       'host=rogue.internal','HOST_ADDR=10.0.0.5','port=5432','service=rogue',
       'socket=%2Ftmp%2Frogue.sock','socket_path=%2Ftmp%2Frogue.sock','unixSocketPath=%2Ftmp%2Frogue.sock',
@@ -624,6 +635,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(preflight).toContain('readDataPlaneOwnershipStatus(validationPoolConfig)')
     expect(preflight).toContain('new Pool(validationPoolConfig)')
     expect(workflow).toContain('DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME')
+    expect(workflow).toContain('DATA_PLANE_VERIFIER_DATABASE_URL')
     expect(workflow).toContain('GH_TOKEN: ${{ github.token }}')
     expect(preflight).not.toContain('/approvals')
     expect(preflight).not.toContain('approvedBy')
