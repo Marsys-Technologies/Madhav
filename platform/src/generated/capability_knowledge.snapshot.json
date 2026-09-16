@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:542421cbe01802243f78885abfe566141edbc85275c77d06d008ead5be8c2aed",
-  "source_catalog_fingerprint": "sha256:06e6390d203fe2db9f71042914999b200250fd37eddcd26939ef239bbb42c39c",
+  "content_hash": "sha256:fbdd5c85e7959c17bbcec22d25bed4c6bd25defdb882dea508bf779695f1a2b3",
+  "source_catalog_fingerprint": "sha256:26e62a2c6b22787a893bf3dc775f109dbf3992c51705da281f644554c573686c",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -5498,6 +5498,31 @@
         "timing_windows"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_dashas",
+      "primary_binding_details": {
+        "pagination": "offset",
+        "pagination_verified": true,
+        "result_collection_verified": true,
+        "pagination_contract": {
+          "request_position_path": "offset",
+          "request_limit_path": "limit",
+          "effective_maximum": 1000,
+          "result_collection_path": "content.rows",
+          "next_path": "content.next_offset",
+          "more_available_path": "content.more_available",
+          "deterministic_order": [
+            "system_id ASC",
+            "ayanamsha_id ASC",
+            "start_date ASC",
+            "level_n ASC",
+            "start_iso ASC",
+            "dasha_row_id ASC"
+          ]
+        },
+        "execution_channels": [
+          "platform_internal"
+        ],
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts"
+      },
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
@@ -5508,9 +5533,7 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
-      ],
+      "known_gaps": [],
       "producer_output_claims": [
         {
           "asset_id": "ga_dashas",
@@ -5563,17 +5586,33 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": true,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dashas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
-          "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_dashas",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "result_collection_verified": true,
+          "pagination_contract": {
+            "request_position_path": "offset",
+            "request_limit_path": "limit",
+            "effective_maximum": 1000,
+            "result_collection_path": "content.rows",
+            "next_path": "content.next_offset",
+            "more_available_path": "content.more_available",
+            "deterministic_order": [
+              "system_id ASC",
+              "ayanamsha_id ASC",
+              "start_date ASC",
+              "level_n ASC",
+              "start_iso ASC",
+              "dasha_row_id ASC"
+            ]
           },
           "execution_channels": [
             "platform_internal"
-          ]
+          ],
+          "pagination_review": {
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_dashas"
+          }
         }
       ],
       "source_descriptor_uris": [
@@ -5612,14 +5651,7 @@
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -35869,11 +35901,11 @@
     "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
-    "reviewed_pagination_bindings": 2,
+    "reviewed_pagination_bindings": 3,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
-    "exhaustible_reviewed_descriptors": 2,
-    "non_exhaustible_descriptors": 94,
+    "exhaustible_reviewed_descriptors": 3,
+    "non_exhaustible_descriptors": 93,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,

@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "ca2e042e49796919290235d4085331842bb8b43099086db8241e6556786bfbeb",
+  "content_sha256": "448d142d935649e47086a99472bb526451360242773f64bd39e464529ad781c8",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -15,9 +15,9 @@
       },
       "denominator": 186,
       "descriptor_content_untyped": 181,
-      "exhaustible_paginated": 2,
+      "exhaustible_paginated": 3,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 94
+      "non_exhaustible_paginated": 93
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -4277,6 +4277,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
@@ -4288,9 +4289,8 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
           "declared": "offset",
-          "disposition": "non_exhaustible"
+          "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -6265,6 +6265,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
           "platform/src/lib/retrieval/synthesis/surface_gateway.ts"
@@ -21283,7 +21284,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "c0a72966e3711b0fba603178b4a93a3379be7223dc9dc574b00597bf952c15c9"
+            "sha256": "b191bed6685adaabfea703c38dc1dcb48a114280108c2b637c0ef5df7e461083"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21291,7 +21292,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "d32551f9674029997f5b3ee6759722992daa2296bc4a32af231ab8f5e59976d9"
+            "sha256": "f8fbd0a904650be9df793e0889307440abde97e4c409e75e792d7b2c4bea0f4d"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -21571,7 +21572,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "b0fb9b18a1a9158b3b84da8578b2d54f91f4624cf9cb3c8450b23dcfb3f46873"
+            "sha256": "516b562a6bf6722c009de7c128cab8f2dbe99220a34ef8c049b3d46c01aa5a50"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -21707,7 +21708,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
-            "sha256": "89edfa6e65b53597af0e1c4fbeec801acf636012793a5f5437cef0857cc5ae8d"
+            "sha256": "5928b0fae1f1e099a84b92323fd1cb92d8ab230cd4541916dd956bd9fa4afc3b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
@@ -22039,7 +22040,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "a3bb7f6be8312059ccddbb30b468335c6da7a3565e6414177ad33f99b00b8f07"
+        "sha256": "e6f412a5e83d48bf1723c93ef2b5e0914955fa10749c8a5d5496db8fe9b23dc1"
       },
       {
         "id": "service_effect_contracts",
@@ -22064,5 +22065,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "8108339c5cf2126231b8e814b88172866314edef"
+  "source_revision": "103981edb4d2afd032e7f6321cf84f0b9ea03ae3"
 }

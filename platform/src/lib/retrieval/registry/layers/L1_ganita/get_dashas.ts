@@ -128,6 +128,21 @@ const COMPACT_FIELDS = [
   'lord_natal_shadbala_total', 'verification_pass_status', 'citation_ref',
 ] as const
 
+const DEFAULT_PAGE_LIMIT = 200
+const MAX_PAGE_LIMIT = 1000
+
+function normalizePageLimit(value: unknown): number {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return DEFAULT_PAGE_LIMIT
+  return Math.min(Math.floor(numeric), MAX_PAGE_LIMIT)
+}
+
+function normalizePageOffset(value: unknown): number {
+  const numeric = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(numeric) || numeric <= 0) return 0
+  return Math.floor(numeric)
+}
+
 function projectRow(row: Record<string, unknown>, fields: readonly string[] | null): Record<string, unknown> {
   if (!fields) return row
   const out: Record<string, unknown> = {}
@@ -324,8 +339,8 @@ export const getDashasCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
-      const limit   = Math.min((args.limit as number) ?? 200, 1000)
-      const offset  = (args.offset as number) ?? 0
+      const limit = normalizePageLimit(args.limit)
+      const offset = normalizePageOffset(args.offset)
 
       const requestedAyanamsha = args.ayanamsha_id
       if (
@@ -351,7 +366,10 @@ export const getDashasCapability: CapabilityDescriptor = {
         typeof requestedAyanamsha === 'string' && requestedAyanamsha !== ''
           ? requestedAyanamsha
           : DEFAULT_AYANAMSHA
-      const params: unknown[] = [chartId, limit, offset]
+      // Fetch one extra row to prove whether this page has a continuation.  `total` remains
+      // the page count for backwards compatibility; it is deliberately not presented as a
+      // whole-result count because no matching COUNT query is issued here.
+      const params: unknown[] = [chartId, limit + 1, offset]
       let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
 
       sql += ` AND ayanamsha_id = $${params.length + 1}`
@@ -472,10 +490,14 @@ export const getDashasCapability: CapabilityDescriptor = {
         dateFilterApplied.default_window_applied = true
       }
 
-      sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
+      // dasha_row_id is the chart_dashas UUID primary key and therefore closes the otherwise
+      // non-unique temporal ordering across repeated starts, levels, or rebuild generations.
+      sql += ` ORDER BY system_id ASC, ayanamsha_id ASC, start_date ASC, level_n ASC, start_iso ASC, dasha_row_id ASC LIMIT $2 OFFSET $3`
 
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const fetchedRows = result.rows ?? []
+      const moreAvailable = fetchedRows.length > limit
+      const rows = fetchedRows.slice(0, limit)
 
       // ── R-43 (WP-1.8): dasha-lord natal strength re-derivation, SERVE-side ──────────
       // The denormalized chart_dashas.lord_natal_dignity_d1 / lord_natal_shadbala_total
@@ -697,6 +719,8 @@ export const getDashasCapability: CapabilityDescriptor = {
           },
           rows: projectedRows,
           total: projectedRows.length,
+          more_available: moreAvailable,
+          next_offset: moreAvailable ? offset + rows.length : null,
           // R-43 (WP-1.8): dasha-lord natal dignity + shadbala are re-derived from chart_facts at
           // serve time (the denormalized chart_dashas columns are NULL/wrong; §N.5 — L1 is the
           // authority). Compact always-on provenance marker (envelope-budget safe); the exhaustive

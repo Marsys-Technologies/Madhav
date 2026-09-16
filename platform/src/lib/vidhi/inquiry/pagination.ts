@@ -120,6 +120,10 @@ export function deriveInquiryPaginationReceipt(
   if (!contract) return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
   for (const object of nestedValues(raw)) {
     if (!Array.isArray(atPath(object, contract.result_collection_path))) continue
+    const nextCursor = atPath(object, contract.next_path)
+    if (contract.next_path && nextCursor !== undefined) {
+      return { semantics: binding.pagination, exhausted: nextCursor == null, next: nextCursor ?? null }
+    }
     const moreAvailable = atPath(object, contract.more_available_path)
     if (typeof moreAvailable === 'boolean') {
       const hasMore = moreAvailable
@@ -127,8 +131,6 @@ export function deriveInquiryPaginationReceipt(
       const limit = Number(atPath(args, contract.request_limit_path) ?? contract.effective_maximum ?? 0)
       return { semantics: binding.pagination, exhausted: !hasMore, next: hasMore && limit > 0 ? current + limit : hasMore ? 'unproven' : null }
     }
-    const nextCursor = atPath(object, contract.next_path)
-    if (contract.next_path && nextCursor !== undefined) return { semantics: binding.pagination, exhausted: nextCursor == null, next: nextCursor ?? null }
   }
   return { semantics: binding.pagination, exhausted: false, next: 'unproven' }
 }
