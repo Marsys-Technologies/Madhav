@@ -1398,24 +1398,48 @@ jobs:
           # lands without re-pinning its layer fails the build instead of silently
           # letting a stale analysis authorise a rebuild.
           #
-          # A merge-queue ref is not that PR head: GitHub synthesizes a linear
-          # delivery commit on main, so immutable commits intentionally recorded in
-          # the pin history are not ancestors of its HEAD even after fetch-depth: 0.
-          # The exact PR head passed this required check before it could enter the
-          # queue; rerunning the ancestry predicate on the synthetic topology would
-          # therefore reject every otherwise-valid queued delivery. Keep the strict
-          # check for all source-head events and retain the inventory + Python suite
-          # below for the merge-group tree itself.
+          # A merge-queue ref and its squash-delivered protected-main commit are not
+          # the original PR head. Immutable commits intentionally recorded in the pin
+          # history are therefore not ancestors of either delivery topology even
+          # after fetch-depth: 0. The exact PR head passed this required check before
+          # it could enter the queue; rerunning the ancestry predicate on either
+          # delivery topology would reject an otherwise-valid release and suppress
+          # deploy. Keep the strict check for every source-head event and retain the
+          # inventory + topology-independent Python suite on both delivery events.
+          pin_ancestry_required() {
+            case "$1:$2" in
+              merge_group:*|push:refs/heads/main) return 1 ;;
+              *) return 0 ;;
+            esac
+          }
+
+          while IFS='|' read -r case_event case_ref expected; do
+            if pin_ancestry_required "$case_event" "$case_ref"; then
+              actual=required
+            else
+              actual=skip
+            fi
+            if [ "$actual" != "$expected" ]; then
+              echo "pin ancestry event matrix mismatch: $case_event $case_ref expected=$expected actual=$actual" >&2
+              exit 1
+            fi
+          done <<'PIN_ANCESTRY_EVENT_MATRIX'
+          pull_request|refs/pull/1/merge|required
+          push|refs/heads/feature|required
+          merge_group|refs/heads/gh-readonly-queue/main/pr-1|skip
+          push|refs/heads/main|skip
+          PIN_ANCESTRY_EVENT_MATRIX
+
           pin_ancestry_test=()
-          if [ "$GITHUB_EVENT_NAME" != "merge_group" ]; then
+          if pin_ancestry_required "$GITHUB_EVENT_NAME" "$GITHUB_REF"; then
             python ../scripts/generate/nirmana_analysis_layer_pins.py --check
             pin_ancestry_test=(../scripts/__tests__/test_nirmana_analysis_layer_pins.py)
           else
-            echo "merge_group: pin ancestry was verified on the queued PR head"
+            echo "$GITHUB_EVENT_NAME:$GITHUB_REF: pin ancestry was verified on the queued PR source head"
             # This test module imports immutable historical blobs during collection,
             # so it intentionally exercises the same source-head-only ancestry
             # predicate as --check. All other Python tests below still execute on
-            # the synthetic delivery tree.
+            # the delivery tree.
           fi
           pytest tests/ bodha_writers/__tests__ pipeline/orchestrator/tests/ \
             "${pin_ancestry_test[@]}" \
