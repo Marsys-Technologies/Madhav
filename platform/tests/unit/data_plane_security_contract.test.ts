@@ -277,10 +277,12 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(state.outputs).toEqual({
       data_plane: '${{ steps.data-plane-ownership.outputs.state }}',
       nirmana: '${{ steps.nirmana-ownership.outputs.state }}',
+      purna: '${{ steps.purna-ownership.outputs.state }}',
     })
     expect(state.steps?.map((step) => step.name)).toEqual(expect.arrayContaining([
       'Inspect protected data-plane ownership state',
       'Inspect Nirmana evidence ownership handoff marker',
+      'Inspect Pūrṇa inquiry protected-owner handoff',
     ]))
 
     expect(bootstrap.needs).toEqual(['changes', 'migration-state'])
@@ -288,6 +290,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(bootstrap.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
     expect(bootstrap.if).toContain("needs.migration-state.outputs.data_plane == 'unmarked'")
     expect(bootstrap.if).toContain("needs.migration-state.outputs.nirmana == 'unmarked'")
+    expect(bootstrap.if).toContain("needs.migration-state.outputs.purna != 'marked'")
     expect(Object.entries(workflowJobs).filter(([, job]) => job.environment === 'data-plane-production-cutover').map(([name]) => name))
       .toEqual(['privileged-bootstrap'])
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_ADMIN_DATABASE_URL')
@@ -308,8 +311,10 @@ describe('DP-SD-018 deployment ordering', () => {
     const bootstrapRefresh = bootstrap.steps?.find((step) => step.name === 'Refresh protected bootstrap state under the exclusive lock')
     expect(bootstrapRefresh?.run).toContain('PRIOR_DATA_PLANE_STATE')
     expect(bootstrapRefresh?.run).toContain('PRIOR_NIRMANA_STATE')
+    expect(bootstrapRefresh?.run).toContain('PRIOR_PURNA_STATE')
     expect(bootstrapRefresh?.run).toContain('data-plane-ownership-status.ts')
     expect(bootstrapRefresh?.run).toContain('nirmana-evidence-ownership-status.ts')
+    expect(bootstrapRefresh?.run).toContain('purna-inquiry-ownership-status.ts')
     expect(bootstrapRefresh?.run).toContain('state regressed after the initial inspection')
     for (const stepName of [
       'Execute protected cutover under backup, restore, lease, quiescence and independent approval',
@@ -350,31 +355,34 @@ describe('DP-SD-018 deployment ordering', () => {
       'needs.changes.result': 'success',
       'needs.migration-state.result': 'success',
     }
-    const scenario = (dataPlane: string, nirmana: string, bootstrapResult: string) => ({
+    const scenario = (dataPlane: string, nirmana: string, purna: string, bootstrapResult: string) => ({
       ...base,
       'needs.migration-state.outputs.data_plane': dataPlane,
       'needs.migration-state.outputs.nirmana': nirmana,
+      'needs.migration-state.outputs.purna': purna,
       'needs.privileged-bootstrap.result': bootstrapResult,
     })
 
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'skipped'))).toBe(false)
-    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'skipped'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('unmarked', 'marked', 'skipped'))).toBe(true)
-    expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'success'))).toBe(true)
-    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'unmarked', 'skipped'))).toBe(true)
-    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'unmarked', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'marked', 'skipped'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('unmarked', 'marked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'marked', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'unmarked', 'marked', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'unmarked', 'marked', 'success'))).toBe(true)
+    expect(evaluateWorkflowCondition(bootstrapIf, scenario('marked', 'marked', 'armed', 'skipped'))).toBe(true)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'armed', 'success'))).toBe(true)
 
     for (const result of ['failure', 'cancelled', 'skipped']) {
-      expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', result))).toBe(false)
+      expect(evaluateWorkflowCondition(migrateIf, scenario('unmarked', 'marked', 'marked', result))).toBe(false)
     }
-    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'success'))).toBe(false)
-    expect(evaluateWorkflowCondition(migrateIf, scenario('unknown', 'marked', 'skipped'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('marked', 'marked', 'marked', 'success'))).toBe(false)
+    expect(evaluateWorkflowCondition(migrateIf, scenario('unknown', 'marked', 'marked', 'skipped'))).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, {
-      ...scenario('marked', 'marked', 'skipped'),
+      ...scenario('marked', 'marked', 'marked', 'skipped'),
       'needs.migration-state.result': 'failure',
     })).toBe(false)
     expect(evaluateWorkflowCondition(migrateIf, {
-      ...scenario('marked', 'marked', 'skipped'),
+      ...scenario('marked', 'marked', 'marked', 'skipped'),
       'github.event.workflow_run.conclusion': 'failure',
     })).toBe(false)
   })
