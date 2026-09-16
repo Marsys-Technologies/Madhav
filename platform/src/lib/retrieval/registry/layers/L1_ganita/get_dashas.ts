@@ -20,6 +20,7 @@
  * historical) and the wrong-ayanamsha-reaches-the-model failure mode from DIAGNOSIS/F-93.
  */
 import type { CapabilityDescriptor } from '../../types'
+import { createHash } from 'node:crypto'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
@@ -130,17 +131,75 @@ const COMPACT_FIELDS = [
 
 const DEFAULT_PAGE_LIMIT = 200
 const MAX_PAGE_LIMIT = 1000
+const MAX_PAGE_OFFSET = 1_000_000
 
-function normalizePageLimit(value: unknown): number {
-  const numeric = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(numeric) || numeric <= 0) return DEFAULT_PAGE_LIMIT
-  return Math.min(Math.floor(numeric), MAX_PAGE_LIMIT)
+interface DashaPageCursor {
+  readonly version: 1
+  readonly build_id: string
+  readonly offset: number
+  readonly filter_fingerprint: string
 }
 
-function normalizePageOffset(value: unknown): number {
-  const numeric = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(numeric) || numeric <= 0) return 0
-  return Math.floor(numeric)
+function normalizePageLimit(value: unknown): number | null {
+  if (value === undefined || value === null) return DEFAULT_PAGE_LIMIT
+  const numeric = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
+  if (!Number.isFinite(numeric)) return null
+  const integer = Math.floor(numeric)
+  if (!Number.isSafeInteger(integer) || integer < 1) return null
+  return Math.min(integer, MAX_PAGE_LIMIT)
+}
+
+function normalizePageOffset(value: unknown): number | null {
+  if (value === undefined || value === null) return 0
+  const numeric = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
+  if (!Number.isFinite(numeric)) return null
+  const integer = Math.floor(numeric)
+  if (!Number.isSafeInteger(integer) || integer < 0 || integer > MAX_PAGE_OFFSET) return null
+  return integer
+}
+
+function filterFingerprint(filters: Record<string, unknown>): string {
+  return createHash('sha256').update(JSON.stringify(filters)).digest('hex')
+}
+
+function encodePageCursor(cursor: DashaPageCursor): string {
+  return Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64')
+}
+
+function decodePageCursor(value: unknown): DashaPageCursor | null {
+  if (typeof value !== 'string' || value.length === 0) return null
+  try {
+    const parsed = JSON.parse(Buffer.from(value, 'base64').toString('utf8')) as Partial<DashaPageCursor>
+    if (parsed.version !== 1 || typeof parsed.build_id !== 'string' || parsed.build_id.length === 0
+      || typeof parsed.filter_fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.filter_fingerprint)
+      || typeof parsed.offset !== 'number' || !Number.isInteger(parsed.offset)
+      || parsed.offset < 0 || parsed.offset > MAX_PAGE_OFFSET) return null
+    return parsed as DashaPageCursor
+  } catch {
+    return null
+  }
+}
+
+function paginationError(chartId: string, code: string, error: string, extra: Record<string, unknown> = {}) {
+  return {
+    content: {
+      chart_id: chartId,
+      code,
+      error,
+      restart_required: true,
+      rows: [],
+      total: 0,
+      more_available: false,
+      next_offset: null,
+      next_page_cursor: null,
+      ...extra,
+    },
+    is_error: true,
+  }
 }
 
 function projectRow(row: Record<string, unknown>, fields: readonly string[] | null): Record<string, unknown> {
@@ -321,6 +380,10 @@ export const getDashasCapability: CapabilityDescriptor = {
     },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 200 },
+    page_cursor: {
+      type: 'string',
+      description: 'Opaque, build-pinned continuation token from next_page_cursor. It rejects changed filters or a replaced chart build and requires a restart rather than replaying an unsafe offset.',
+    },
   },
   required_inputs: ['chart_id'],
   scope: 'per_chart',
@@ -340,7 +403,24 @@ export const getDashasCapability: CapabilityDescriptor = {
     try {
       const chartId = args.chart_id as string
       const limit = normalizePageLimit(args.limit)
-      const offset = normalizePageOffset(args.offset)
+      const requestedOffset = normalizePageOffset(args.offset)
+      if (limit === null || requestedOffset === null) {
+        return paginationError(
+          chartId,
+          'invalid_pagination',
+          `get_dashas requires limit in [1, ${MAX_PAGE_LIMIT}] after normalization and offset in [0, ${MAX_PAGE_OFFSET}].`,
+        )
+      }
+      // A numeric offset has no build identity. Retain offset=0 for legacy first-page callers
+      // and retain next_offset in the response envelope, but do not permit an unpinned offset
+      // to become a continuation across a replacement rebuild.
+      if ((args.page_cursor === undefined || args.page_cursor === null) && requestedOffset > 0) {
+        return paginationError(
+          chartId,
+          'page_cursor_required',
+          'A nonzero offset is not a safe dasha continuation; restart from the first page and use next_page_cursor.',
+        )
+      }
 
       const requestedAyanamsha = args.ayanamsha_id
       if (
@@ -369,7 +449,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       // Fetch one extra row to prove whether this page has a continuation.  `total` remains
       // the page count for backwards compatibility; it is deliberately not presented as a
       // whole-result count because no matching COUNT query is issued here.
-      const params: unknown[] = [chartId, limit + 1, offset]
+      const params: unknown[] = [chartId, limit + 1, requestedOffset]
       let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
 
       sql += ` AND ayanamsha_id = $${params.length + 1}`
@@ -489,6 +569,67 @@ export const getDashasCapability: CapabilityDescriptor = {
         windowApplied = { start: startIso, end: endIso }
         dateFilterApplied.default_window_applied = true
       }
+
+      // A continuation is meaningful only for this exact normalized query and one completed
+      // build snapshot.  `dasha_row_id` is regenerated on rebuild, so a bare offset cannot
+      // safely cross that boundary.
+      const queryFilterFingerprint = filterFingerprint({
+        chart_id: chartId,
+        ayanamsha_id: ayanamshaId,
+        system_id: systemApplied,
+        level: levelApplied,
+        lord_graha: args.lord_graha ?? null,
+        date_contains: containsDate ?? null,
+        date_from: args.date_from ?? null,
+        window_start: windowApplied?.start ?? null,
+        window_end: windowApplied?.end ?? null,
+        order: 'system_id:asc,ayanamsha_id:asc,start_date:asc,level_n:asc,start_iso:asc,dasha_row_id:asc',
+      })
+      const activeBuildResult = await query<{ build_id: string }>(
+        `SELECT id::text AS build_id
+           FROM build_runs
+          WHERE chart_id=$1::uuid AND state='completed'
+          ORDER BY ended_at DESC NULLS LAST, id DESC
+          LIMIT 1`,
+        [chartId],
+      )
+      const activeBuildId = activeBuildResult.rows[0]?.build_id ?? null
+      if (!activeBuildId) {
+        return paginationError(chartId, 'active_build_unavailable', 'get_dashas requires an active completed chart build before serving a build-pinned page.')
+      }
+
+      let offset = requestedOffset
+      if (args.page_cursor !== undefined && args.page_cursor !== null) {
+        const cursor = decodePageCursor(args.page_cursor)
+        if (!cursor) {
+          return paginationError(chartId, 'invalid_page_cursor', 'The supplied page_cursor is malformed or outside the supported pagination range.')
+        }
+        if (cursor.filter_fingerprint !== queryFilterFingerprint) {
+          return paginationError(chartId, 'page_cursor_filter_mismatch', 'The supplied page_cursor was minted for different normalized query filters; restart from the first page.')
+        }
+        if (cursor.build_id !== activeBuildId) {
+          return paginationError(chartId, 'page_cursor_build_changed', 'The active completed chart build changed after this page_cursor was minted; restart from the first page.', {
+            cursor_build_id: cursor.build_id,
+            active_build_id: activeBuildId,
+          })
+        }
+        const snapshotResult = await query<{ snapshot_available: boolean }>(
+          `SELECT 1 AS snapshot_available
+             FROM chart_dashas
+            WHERE chart_id=$1::uuid AND build_id=$2::uuid
+            LIMIT 1`,
+          [chartId, cursor.build_id],
+        )
+        if (!snapshotResult.rows[0]?.snapshot_available) {
+          return paginationError(chartId, 'page_cursor_snapshot_unavailable', 'The chart-build snapshot pinned by this page_cursor is unavailable; restart from the first page.', {
+            cursor_build_id: cursor.build_id,
+          })
+        }
+        offset = cursor.offset
+      }
+      params[2] = offset
+      sql += ` AND build_id = $${params.length + 1}::uuid`
+      params.push(activeBuildId)
 
       // dasha_row_id is the chart_dashas UUID primary key and therefore closes the otherwise
       // non-unique temporal ordering across repeated starts, levels, or rebuild generations.
@@ -691,6 +832,8 @@ export const getDashasCapability: CapabilityDescriptor = {
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
         lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
         lvlParams.push(ayanamshaId)
+        lvlSql += ` AND build_id = $${lvlParams.length + 1}::uuid`
+        lvlParams.push(activeBuildId)
         if (systemApplied) {
           lvlSql += ` AND system_id = $${lvlParams.length + 1}`
           lvlParams.push(systemApplied)
@@ -706,6 +849,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         content: {
           chart_id: chartId,
           source_table: 'chart_dashas',
+          build_id: activeBuildId,
           levels_available: levelsAvailable,
           facets_applied: {
             system: systemApplied ?? 'all',
@@ -720,7 +864,15 @@ export const getDashasCapability: CapabilityDescriptor = {
           rows: projectedRows,
           total: projectedRows.length,
           more_available: moreAvailable,
+          // Legacy envelope compatibility only. A subsequent nonzero bare offset is rejected;
+          // callers must use the build-pinned opaque cursor above.
           next_offset: moreAvailable ? offset + rows.length : null,
+          next_page_cursor: moreAvailable ? encodePageCursor({
+            version: 1,
+            build_id: activeBuildId,
+            offset: offset + rows.length,
+            filter_fingerprint: queryFilterFingerprint,
+          }) : null,
           // R-43 (WP-1.8): dasha-lord natal dignity + shadbala are re-derived from chart_facts at
           // serve time (the denormalized chart_dashas columns are NULL/wrong; §N.5 — L1 is the
           // authority). Compact always-on provenance marker (envelope-budget safe); the exhaustive

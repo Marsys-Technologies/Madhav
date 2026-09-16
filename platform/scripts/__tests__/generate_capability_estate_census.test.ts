@@ -143,6 +143,8 @@ describe('capability estate census', () => {
         public_route_disposition: 'reviewed_exposed',
         public_tool_names: ['ganita_yoga_firings_get'],
       })
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'get_dashas')?.pagination)
+      .toMatchObject({ disposition: 'exhaustible_reviewed', declared: 'cursor' })
     expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'list_entities')?.public_routes)
       .toEqual(expect.arrayContaining([
         { tool_name: 'list_entities', route_kind: 'parallel_same_name' },

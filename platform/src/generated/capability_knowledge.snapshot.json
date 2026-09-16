@@ -2,8 +2,8 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:fbdd5c85e7959c17bbcec22d25bed4c6bd25defdb882dea508bf779695f1a2b3",
-  "source_catalog_fingerprint": "sha256:26e62a2c6b22787a893bf3dc775f109dbf3992c51705da281f644554c573686c",
+  "content_hash": "sha256:cc2efc08dde3fcb08ef6496f057cd4b1c8213eda27286a416fc8e8acea60fe7d",
+  "source_catalog_fingerprint": "sha256:583ab13405df16faa770a689fd5f0109d9ebe7efe26601a6b8559d14b3ecf2e6",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -5487,6 +5487,7 @@
         "limit",
         "lord_graha",
         "offset",
+        "page_cursor",
         "system",
         "system_id",
         "window_end",
@@ -5499,15 +5500,15 @@
       ],
       "primary_binding_uri": "marsys://tool/L1/get_dashas",
       "primary_binding_details": {
-        "pagination": "offset",
+        "pagination": "cursor",
         "pagination_verified": true,
         "result_collection_verified": true,
         "pagination_contract": {
-          "request_position_path": "offset",
+          "request_position_path": "page_cursor",
           "request_limit_path": "limit",
           "effective_maximum": 1000,
           "result_collection_path": "content.rows",
-          "next_path": "content.next_offset",
+          "next_path": "content.next_page_cursor",
           "more_available_path": "content.more_available",
           "deterministic_order": [
             "system_id ASC",
@@ -5577,6 +5578,7 @@
             "limit": "number:optional",
             "lord_graha": "string:optional",
             "offset": "number:optional",
+            "page_cursor": "string:optional",
             "system": "string:optional",
             "system_id": "string:optional",
             "window_end": "string:optional",
@@ -5585,17 +5587,17 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "offset",
+          "pagination": "cursor",
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "result_collection_verified": true,
           "pagination_contract": {
-            "request_position_path": "offset",
+            "request_position_path": "page_cursor",
             "request_limit_path": "limit",
             "effective_maximum": 1000,
             "result_collection_path": "content.rows",
-            "next_path": "content.next_offset",
+            "next_path": "content.next_page_cursor",
             "more_available_path": "content.more_available",
             "deterministic_order": [
               "system_id ASC",

@@ -13,6 +13,7 @@ describe('F-33 get_dashas pre-birth as_of disclosure', () => {
 
   it('keeps computed rows but flags an as_of_date before the chart birth date', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ build_id: 'build-a' }] }) // active completed build
       .mockResolvedValueOnce({ rows: [] }) // chart_dashas page
       .mockResolvedValueOnce({ rows: [{ birth_date: '1984-02-05', as_of_date_precedes_birth: true }] })
       .mockResolvedValueOnce({ rows: [{ max_level: 3 }] })
@@ -37,6 +38,7 @@ describe('F-33 get_dashas pre-birth as_of disclosure', () => {
 
   it('does not add the pre-birth warning for a post-birth as_of_date', async () => {
     mockQuery
+      .mockResolvedValueOnce({ rows: [{ build_id: 'build-a' }] }) // active completed build
       .mockResolvedValueOnce({ rows: [] }) // chart_dashas page
       .mockResolvedValueOnce({ rows: [{ birth_date: '1984-02-05', as_of_date_precedes_birth: false }] })
       .mockResolvedValueOnce({ rows: [{ max_level: 3 }] })

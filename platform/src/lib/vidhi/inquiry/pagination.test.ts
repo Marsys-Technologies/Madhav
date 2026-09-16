@@ -18,25 +18,25 @@ describe('inquiry pagination receipts', () => {
       .toEqual({ semantics: 'offset', exhausted: false, next: 75 })
   })
 
-  it('prefers a reviewed server continuation over unnormalized caller pagination arguments', () => {
+  it('consumes the reviewed build-pinned dasha cursor rather than replaying a caller offset', () => {
     const serverContinued = generatedCapabilityKnowledge.scus
       .find((scu) => scu.scu_id === 'scu.catalog.get_dashas')!
       .bindings.find((candidate) => candidate.binding_id === 'registry:marsys://tool/L1/get_dashas') as SemanticCapabilityBinding
 
     expect(serverContinued.pagination_contract).toMatchObject({
-      request_position_path: 'offset',
+      request_position_path: 'page_cursor',
       request_limit_path: 'limit',
       result_collection_path: 'content.rows',
       more_available_path: 'content.more_available',
-      next_path: 'content.next_offset',
+      next_path: 'content.next_page_cursor',
       deterministic_order: expect.arrayContaining(['dasha_row_id ASC']),
     })
 
     expect(deriveInquiryPaginationReceipt(
       serverContinued,
-      { content: { rows: [{ dasha_row_id: 'a' }], more_available: true, next_offset: 2 } },
-      { offset: -10, limit: Number.POSITIVE_INFINITY },
-    )).toEqual({ semantics: 'offset', exhausted: false, next: 2 })
+      { content: { rows: [{ dasha_row_id: 'a' }], more_available: true, next_page_cursor: 'opaque-page-2' } },
+      { page_cursor: 'opaque-page-1', offset: -10, limit: Number.POSITIVE_INFINITY },
+    )).toEqual({ semantics: 'cursor', exhausted: false, next: 'opaque-page-2' })
   })
 
   it('reads a reviewed nested request position and limit path', () => {

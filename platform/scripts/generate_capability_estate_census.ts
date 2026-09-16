@@ -514,7 +514,7 @@ function paginationForDescriptor(cap: CapabilityDescriptor): string {
     && !Array.isArray(schema['properties'])
     ? schema['properties'] as Record<string, unknown>
     : schema
-  if ('cursor' in properties) return 'cursor'
+  if ('cursor' in properties || 'page_cursor' in properties) return 'cursor'
   if ('offset' in properties) return 'offset'
   return 'bounded_without_position'
 }

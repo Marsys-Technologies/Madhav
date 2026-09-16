@@ -13,24 +13,14 @@ function dasha(id: string) {
     system_id: 'vimshottari',
     ayanamsha_id: 'lahiri_chitrapaksha',
     start_date: '2000-01-01',
-    start_iso: '2000-01-01T00:00:00.000Z',
+    start_iso: `2000-01-0${id.charCodeAt(0) - 96}T00:00:00.000Z`,
   }
-}
-
-function mockPage(rows: readonly Record<string, unknown>[]) {
-  queryMock.mockImplementation((sql: string) => {
-    if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
-    if (sql.startsWith('SELECT * FROM chart_dashas')) return Promise.resolve({ rows })
-    if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
-    throw new Error(`unexpected query: ${sql}`)
-  })
 }
 
 function args(overrides: Record<string, unknown> = {}) {
   return {
     chart_id: CHART_ID,
     limit: 2,
-    offset: 0,
     fields: 'all',
     window_start: '2000-01-01',
     window_end: '2100-01-01',
@@ -38,70 +28,115 @@ function args(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe('get_dashas truthful offset pagination', () => {
+function mockBuildPages(state: {
+  activeBuild: string | null
+  availableBuilds: Set<string>
+  rowsByBuild: Record<string, readonly Record<string, unknown>[]>
+}) {
+  const pageCalls: Array<{ params: readonly unknown[]; sql: string }> = []
+  queryMock.mockImplementation((sql: string, params: unknown[] = []) => {
+    if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
+    if (sql.includes('FROM build_runs')) return Promise.resolve({ rows: state.activeBuild ? [{ build_id: state.activeBuild }] : [] })
+    if (sql.includes('snapshot_available')) return Promise.resolve({ rows: state.availableBuilds.has(String(params[1])) ? [{ snapshot_available: true }] : [] })
+    if (sql.startsWith('SELECT * FROM chart_dashas')) {
+      const buildId = String(params.at(-1))
+      const offset = Number(params[2])
+      const fetchLimit = Number(params[1])
+      pageCalls.push({ sql, params })
+      return Promise.resolve({ rows: (state.rowsByBuild[buildId] ?? []).slice(offset, offset + fetchLimit) })
+    }
+    if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
+    throw new Error(`unexpected query: ${sql}`)
+  })
+  return { pageCalls }
+}
+
+describe('get_dashas build-pinned cursor pagination', () => {
   beforeEach(() => queryMock.mockReset())
 
-  it('fetches one extra row, returns only the requested page, and discloses its continuation', async () => {
-    mockPage([dasha('a'), dasha('b'), dasha('c')])
+  it('pins first, middle, and final pages to one completed build without duplicate progression', async () => {
+    const state = {
+      activeBuild: 'build-a',
+      availableBuilds: new Set(['build-a']),
+      rowsByBuild: { 'build-a': [dasha('a'), dasha('b'), dasha('c'), dasha('d'), dasha('e')] },
+    }
+    const database = mockBuildPages(state)
 
-    const result = await getDashasCapability.handler(args(), undefined)
-    const content = result.content as Record<string, unknown>
-
-    expect(result.is_error).toBe(false)
-    expect((content.rows as Array<Record<string, unknown>>).map((row) => row.dasha_row_id)).toEqual(['a', 'b'])
-    expect(content).toMatchObject({ total: 2, more_available: true, next_offset: 2 })
-    const [pageSql, pageParams] = queryMock.mock.calls[0]!
-    expect(pageSql).toContain('ORDER BY system_id ASC, ayanamsha_id ASC, start_date ASC, level_n ASC, start_iso ASC, dasha_row_id ASC LIMIT $2 OFFSET $3')
-    expect(pageParams).toEqual(expect.arrayContaining([CHART_ID, 3, 0]))
-    expect(queryMock.mock.calls.every(([sql]) => typeof sql === 'string')).toBe(true)
-    expect(queryMock.mock.calls.some(([sql]) => String(sql).includes('COUNT('))).toBe(false)
-  })
-
-  it('uses a stable continuation without duplicate progression through middle and final pages', async () => {
-    const pages = [
-      [dasha('a'), dasha('b'), dasha('c')],
-      [dasha('c'), dasha('d'), dasha('e')],
-      [dasha('e')],
-    ]
-    let call = 0
-    queryMock.mockImplementation((sql: string) => {
-      if (typeof sql !== 'string') return Promise.resolve({ rows: [] })
-      if (sql.startsWith('SELECT * FROM chart_dashas')) return Promise.resolve({ rows: pages[call++] })
-      if (sql.startsWith('SELECT MAX(level_n)')) return Promise.resolve({ rows: [{ max_level: 3 }] })
-      throw new Error(`unexpected query: ${sql}`)
-    })
-
-    const first = (await getDashasCapability.handler(args({ offset: 0 }), undefined)).content as Record<string, unknown>
-    const middle = (await getDashasCapability.handler(args({ offset: 2 }), undefined)).content as Record<string, unknown>
-    const final = (await getDashasCapability.handler(args({ offset: 4 }), undefined)).content as Record<string, unknown>
+    const first = (await getDashasCapability.handler(args(), undefined)).content as Record<string, unknown>
+    const middle = (await getDashasCapability.handler(args({ page_cursor: first.next_page_cursor }), undefined)).content as Record<string, unknown>
+    const final = (await getDashasCapability.handler(args({ page_cursor: middle.next_page_cursor }), undefined)).content as Record<string, unknown>
     const served = [first, middle, final].flatMap((content) => (content.rows as Array<Record<string, unknown>>).map((row) => row.dasha_row_id))
 
     expect(served).toEqual(['a', 'b', 'c', 'd', 'e'])
     expect(new Set(served).size).toBe(served.length)
-    expect([first.next_offset, middle.next_offset, final.next_offset]).toEqual([2, 4, null])
     expect([first.more_available, middle.more_available, final.more_available]).toEqual([true, true, false])
+    expect([first.next_offset, middle.next_offset, final.next_offset]).toEqual([2, 4, null])
+    expect([first.next_page_cursor, middle.next_page_cursor, final.next_page_cursor]).toEqual([expect.any(String), expect.any(String), null])
+    expect(database.pageCalls.map((call) => [call.params[2], call.params.at(-1)])).toEqual([[0, 'build-a'], [2, 'build-a'], [4, 'build-a']])
+    expect(database.pageCalls.every((call) => call.sql.includes('build_id'))).toBe(true)
   })
 
-  it('normalizes invalid, nonfinite, and fractional pagination arguments safely', async () => {
-    for (const [limit, offset, expectedFetchLimit, expectedOffset] of [
-      [Number.NaN, Number.NaN, 201, 0],
-      [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 201, 0],
-      [-1, -5, 201, 0],
-      [3.9, 1.9, 4, 1],
-      [5000, 2, 1001, 2],
-    ]) {
-      mockPage([])
-      await getDashasCapability.handler(args({ limit, offset }), undefined)
-      expect(queryMock.mock.calls[0]![1]).toEqual(expect.arrayContaining([CHART_ID, expectedFetchLimit, expectedOffset]))
-      queryMock.mockReset()
+  it('marks a first-page empty filter as exhausted only after confirming the active build snapshot', async () => {
+    mockBuildPages({ activeBuild: 'build-a', availableBuilds: new Set(['build-a']), rowsByBuild: { 'build-a': [] } })
+
+    const result = await getDashasCapability.handler(args(), undefined)
+
+    expect(result).toMatchObject({
+      is_error: false,
+      content: { build_id: 'build-a', rows: [], total: 0, more_available: false, next_page_cursor: null },
+    })
+  })
+
+  it('rejects fractional and huge finite pagination before issuing SQL, while safely flooring usable values', async () => {
+    mockBuildPages({ activeBuild: 'build-a', availableBuilds: new Set(['build-a']), rowsByBuild: { 'build-a': [dasha('a')] } })
+
+    for (const invalid of [{ limit: 0.5 }, { limit: Number.POSITIVE_INFINITY }, { offset: 1_000_001 }]) {
+      queryMock.mockClear()
+      const result = await getDashasCapability.handler(args(invalid), undefined)
+      expect(result).toMatchObject({ is_error: true, content: { code: 'invalid_pagination', restart_required: true } })
+      expect(queryMock).not.toHaveBeenCalled()
     }
+
+    const result = await getDashasCapability.handler(args({ limit: 3.9, offset: 1.9 }), undefined)
+    expect(result).toMatchObject({ is_error: true, content: { code: 'page_cursor_required', restart_required: true } })
+    expect(queryMock).not.toHaveBeenCalled()
+
+    const firstPageResult = await getDashasCapability.handler(args({ limit: 3.9 }), undefined)
+    expect(firstPageResult.is_error).toBe(false)
+    const pageCall = queryMock.mock.calls.find(([sql]) => String(sql).startsWith('SELECT * FROM chart_dashas'))!
+    expect(pageCall[1]).toEqual(expect.arrayContaining([CHART_ID, 4, 0]))
   })
 
-  it('marks an empty page as exhausted without a continuation', async () => {
-    mockPage([])
+  it('denies a cursor replay when a query filter changes instead of serving another family', async () => {
+    const state = {
+      activeBuild: 'build-a', availableBuilds: new Set(['build-a']),
+      rowsByBuild: { 'build-a': [dasha('a'), dasha('b'), dasha('c')] },
+    }
+    const database = mockBuildPages(state)
+    const first = (await getDashasCapability.handler(args(), undefined)).content as Record<string, unknown>
+    const result = await getDashasCapability.handler(args({ system: 'yogini', page_cursor: first.next_page_cursor }), undefined)
 
-    const result = await getDashasCapability.handler(args({ offset: 50 }), undefined)
+    expect(result).toMatchObject({ is_error: true, content: { code: 'page_cursor_filter_mismatch', restart_required: true } })
+    expect(database.pageCalls).toHaveLength(1)
+  })
 
-    expect(result.content).toMatchObject({ rows: [], total: 0, more_available: false, next_offset: null })
+  it('requires restart rather than falsely exhausting after a completed-build transition or missing pinned snapshot', async () => {
+    const state = {
+      activeBuild: 'build-a', availableBuilds: new Set(['build-a']),
+      rowsByBuild: { 'build-a': [dasha('a'), dasha('b'), dasha('c')], 'build-b': [dasha('x')] },
+    }
+    const database = mockBuildPages(state)
+    const first = (await getDashasCapability.handler(args(), undefined)).content as Record<string, unknown>
+
+    state.activeBuild = 'build-b'
+    const rebuilt = await getDashasCapability.handler(args({ page_cursor: first.next_page_cursor }), undefined)
+    expect(rebuilt).toMatchObject({ is_error: true, content: { code: 'page_cursor_build_changed', restart_required: true } })
+    expect(database.pageCalls).toHaveLength(1)
+
+    state.activeBuild = 'build-a'
+    state.availableBuilds.delete('build-a')
+    const unavailable = await getDashasCapability.handler(args({ page_cursor: first.next_page_cursor }), undefined)
+    expect(unavailable).toMatchObject({ is_error: true, content: { code: 'page_cursor_snapshot_unavailable', restart_required: true } })
+    expect(database.pageCalls).toHaveLength(1)
   })
 })

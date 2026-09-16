@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "448d142d935649e47086a99472bb526451360242773f64bd39e464529ad781c8",
+  "content_sha256": "0a66e7ce68a1cd7f62268e360c46970ca1652bb712d3679727408ca340782dac",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -4258,6 +4258,10 @@
             "default": 0,
             "type": "number"
           },
+          "page_cursor": {
+            "description": "Opaque, build-pinned continuation token from next_page_cursor. It rejects changed filters or a replaced chart build and requires a restart rather than replaying an unsafe offset.",
+            "type": "string"
+          },
           "system": {
             "description": "Dasha system facet. One of: vimshottari | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka). Pass \"all\" to disable the system filter (all 7 systems). Default: vimshottari.",
             "type": "string"
@@ -4289,7 +4293,7 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "declared": "offset",
+          "declared": "cursor",
           "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
@@ -20668,12 +20672,12 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "48ba94ab7908dd7d4c4579a440731790e7b775aff31519c85b5ca2b79e69fd9b"
+        "sha256": "4b6cec7e0152e367bbd209481368464008682f347046a4ea63a51cb4b2afe7d4"
       },
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "3e285d2728d1482a5cdb1dcf8d58c638b55440e1fd12e2f49c519e9617e6c941"
+        "sha256": "2b6a872c6b5ea4ead47ada6ff9a45506f6f4a65bf2dcd2ceff39570a44992135"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21284,7 +21288,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "b191bed6685adaabfea703c38dc1dcb48a114280108c2b637c0ef5df7e461083"
+            "sha256": "bd18a376d13c8c33028070fa9aca605c6950b1a04fb4cf8bf08f617abb3cb1dc"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21572,7 +21576,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "516b562a6bf6722c009de7c128cab8f2dbe99220a34ef8c049b3d46c01aa5a50"
+            "sha256": "13821727c7e8dc40b2644a05d4c42753d40fb1dbbffb47183d4ab319b02c3fc2"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -22040,7 +22044,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "e6f412a5e83d48bf1723c93ef2b5e0914955fa10749c8a5d5496db8fe9b23dc1"
+        "sha256": "6712c88cfea069438afdcf0c172edc4c33f77127c47a545705b5e18c89fc689d"
       },
       {
         "id": "service_effect_contracts",
@@ -22065,5 +22069,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "103981edb4d2afd032e7f6321cf84f0b9ea03ae3"
+  "source_revision": "a9764f19b56c450913ed0e19d389acd97c0af399"
 }
