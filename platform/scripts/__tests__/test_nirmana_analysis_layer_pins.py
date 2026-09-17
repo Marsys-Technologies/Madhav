@@ -639,6 +639,22 @@ def test_security_source_surface_binding_rederives_exact_equivalence() -> None:
     assert digest == binding["source_surface_sha256"]
 
 
+def test_post_integration_source_acceptance_rederives_route_repair() -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    binding = pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source]
+    paths, digest = pins_module._source_surface_mapping(
+        binding["reviewed_surface"], binding["integrated_equivalent_commit"]
+    )
+    assert paths == [
+        "platform/scripts/data-plane-migration-attestation.ts",
+        "platform/scripts/data-plane-ownership-preflight.ts",
+        "platform/scripts/data-plane-protected-cutover.ts",
+        "platform/tests/unit/data_plane_security_contract.test.ts",
+    ]
+    assert digest == "89fdc9c7ef43031faffcf7e9d633114bed4892e7b401703d7d9bb951bcb2dde1"
+    pins_module.validate_post_integration_source_acceptance_bindings()
+
+
 def test_dp019_source_surface_binding_rederives_exact_equivalence() -> None:
     binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[DP019_SOURCE]
     paths, digest = pins_module._source_surface_mapping(

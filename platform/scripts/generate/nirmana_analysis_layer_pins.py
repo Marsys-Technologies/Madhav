@@ -298,6 +298,32 @@ SOURCE_ACCEPTANCE_BINDINGS = {
     },
 }
 
+# Post-integration acceptance records cover privileged route corrections that
+# intentionally do not move a writer generation. Keeping them distinct from
+# per-layer successor admissions prevents a no-writer-delta repair from
+# rewriting L1/L2 receipt history merely to preserve review provenance.
+POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS = {
+    "ea9b27bfeba607c5332c51e10b037e100e97b717": {
+        "schema_version": SOURCE_ACCEPTANCE_SCHEMA_VERSION,
+        "reviewed_source_commit": "ea9b27bfeba607c5332c51e10b037e100e97b717",
+        "integrated_equivalent_commit": "ea9b27bfeba607c5332c51e10b037e100e97b717",
+        "common_base_commit": "7982524fde1b210dea72eb38e1704aa2b0514eb2",
+        "source_surface_sha256": "89fdc9c7ef43031faffcf7e9d633114bed4892e7b401703d7d9bb951bcb2dde1",
+        "reviewed_surface": [
+            {"path": "platform/scripts/data-plane-migration-attestation.ts", "blob_oid": "ae225a2d5c3ac1eb03938c8338191e21a8a56fd7"},
+            {"path": "platform/scripts/data-plane-ownership-preflight.ts", "blob_oid": "3fc5f7d7f296fd6c79c0e8650154fa51df66b342"},
+            {"path": "platform/scripts/data-plane-protected-cutover.ts", "blob_oid": "bad228594eb620d68e6ddbd79267af94499315f0"},
+            {"path": "platform/tests/unit/data_plane_security_contract.test.ts", "blob_oid": "f3ea6d49d191dad280390edd6aed76391a37a64f"},
+        ],
+        "record_artifact": {
+            "commit": "3fcf972e1f2e3b3d9994b361902048276c1aff3b",
+            "path": "00_ARCHITECTURE/briefs/nirmana/MADHAV_DATA_PLANE_RI02_SECURITY_SOURCE_ACCEPTANCE_v1_1.md",
+            "sha256": "fc2ac7c157d4222337ccaff5b4ea5425c1d297bbd96d8220ca83a4251c27d3fb",
+            "decision_binding": "status: SECURITY_CLEAR_SOURCE_ACCEPTED",
+        },
+    },
+}
+
 # L0's reviewed convergence, carried forward verbatim from the pre-generalisation
 # nirmana-l0-analysis-receipts.ts.  Changing either value re-computes every L0
 # analysis digest and invalidates the frozen L0 capsules — see --check.
@@ -726,6 +752,30 @@ def validate_source_acceptance(
         )
 
 
+def validate_post_integration_source_acceptance_bindings() -> None:
+    """Re-derive privileged no-writer-delta acceptance records offline."""
+    for source_commit, binding in POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS.items():
+        expected_keys = {
+            "schema_version", "reviewed_source_commit", "integrated_equivalent_commit",
+            "common_base_commit", "source_surface_sha256", "reviewed_surface", "record_artifact",
+        }
+        if set(binding) != expected_keys or binding["schema_version"] != SOURCE_ACCEPTANCE_SCHEMA_VERSION:
+            raise SystemExit(f"post-integration source acceptance {source_commit} is malformed")
+        if binding["reviewed_source_commit"] != source_commit:
+            raise SystemExit(f"post-integration source acceptance {source_commit} has the wrong reviewed tip")
+        _require_reachable_commit(source_commit, "post-integration reviewed source")
+        _, derived_digest = _source_surface_mapping(
+            binding["reviewed_surface"], binding["integrated_equivalent_commit"]
+        )
+        if derived_digest != binding["source_surface_sha256"]:
+            raise SystemExit(
+                f"post-integration source acceptance {source_commit} has the wrong source-surface digest"
+            )
+        validate_artifact_binding(
+            binding["record_artifact"], f"post-integration source acceptance {source_commit}"
+        )
+
+
 def validate_review_artifacts(
     layer: str, artifacts: list[dict[str, str]], source_commit: str
 ) -> None:
@@ -955,6 +1005,10 @@ def check(
     pin file — the exact failure mode the missing generator allowed.
     """
     failures: list[str] = []
+    try:
+        validate_post_integration_source_acceptance_bindings()
+    except SystemExit as exc:
+        failures.append(str(exc))
     baseline_pins: dict[str, Any] | None = None
     baseline_inventory: dict[str, str] | None = None
     baseline_nodes_by_layer: dict[
