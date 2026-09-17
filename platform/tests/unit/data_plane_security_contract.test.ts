@@ -251,6 +251,11 @@ describe('DP-SD-018 GCP credential isolation', () => {
       .toThrow(/Builder identity is used outside/)
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'data-plane-admin-db-url' } } }]))
       .toThrow(/DBA\/migrator credential/)
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: {
+      serviceAccount: 'web@example',
+      env: [{ name: 'DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL', valueFrom: { secretKeyRef: { name: 'data-plane-ownership-admin-db-url' } } }],
+    } }]))
+      .toThrow(/DBA\/migrator credential/)
     expect(() => assertEffectiveIsolation([], policy, [
       { kind: 'revision', name: 'historical-web', definition: {
         serviceAccount: 'web@example', env: [{ name: 'DATABASE_URL', value: 'legacy-literal' }],
