@@ -1,5 +1,5 @@
 /** DP-SD-018 one-shot administrator bootstrap for the L1/L2 protected boundary. */
-import { Pool, PoolClient } from 'pg'
+import { Pool, PoolClient, type PoolConfig } from 'pg'
 
 // This is intentionally distinct from DATA_PLANE_ADMIN_DATABASE_URL.  The
 // latter is constrained to the isolated validation proxy; ownership transfer
@@ -240,9 +240,13 @@ async function transferTables(client: PoolClient, owner: string, tables: readonl
   }
 }
 
-export async function runDataPlaneOwnershipPreflight(databaseUrl = process.env[ADMIN_URL]): Promise<void> {
+export async function runDataPlaneOwnershipPreflight(
+  databaseUrl: string | PoolConfig | undefined = process.env[ADMIN_URL],
+): Promise<void> {
   if (!databaseUrl) throw new Error(`${ADMIN_URL} is required for the one-shot data-plane ownership preflight.`)
-  const pool = new Pool({ connectionString: databaseUrl, max: 1 })
+  const pool = new Pool(typeof databaseUrl === 'string'
+    ? { connectionString: databaseUrl, max: 1 }
+    : { ...databaseUrl, max: 1 })
   const client = await pool.connect()
   try {
     await client.query('BEGIN')
