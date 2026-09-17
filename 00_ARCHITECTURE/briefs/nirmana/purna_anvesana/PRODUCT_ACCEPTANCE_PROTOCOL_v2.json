@@ -57,7 +57,7 @@
     "approved_non_secret_environment_configuration",
     "https_url_and_revision_for_each_arm",
     "case_input_and_evidence_receipt_retention",
-    "deterministic_evidence_failure_overrides_qualitative_score",
+    "deterministic_evidence_failure_overrides_independent_four_axis_assessment",
     "fixtures_are_never_live_evidence"
   ],
   "run_record": {

@@ -1,14 +1,14 @@
 ---
 artifact: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
 canonical_id: MADHAV_PURNA_ANVESANA_CAMPAIGN_STATE
-version: 0.20.0
+version: 0.21.0
 status: PRODUCT_DELIVERY_SUCCESSOR_ACTIVE
 campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0093
-last_updated: 2026-09-17T23:25:00+05:30
+last_event: PA-E0094
+last_updated: 2026-09-17T23:30:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -62,6 +62,15 @@ layer state, queue or authority.
   `platform-mcp` typecheck and generated-envelope/registry-shim freshness also pass. This preserves
   a source-level recovery and lifecycle claim only. It does not prove a cross-instance candidate
   restart, a served revision, or any three-door product case.
+
+- Independent answer assessment source repair: acceptance no longer admits a caller-provided
+  qualitative scalar. `judge_answers.ts` invokes the governed `eval_judge` model route only with
+  an explicit non-secret approval ID, requires the typed response-accountability envelope, and
+  stores relevance, evidence-based explanation, contradiction handling, and usefulness as separate
+  integer 1–5 scores. A pass requires every dimension to be at least 3 and their average to be at
+  least 4; malformed judge output or missing accountability yields an incomplete result. Focused
+  Pūrṇa tests pass 26/26, TypeScript and both capability-codegen freshness checks pass. No judge
+  call, candidate/live collection, or acceptance verdict has been recorded.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without

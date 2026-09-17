@@ -22,7 +22,7 @@ const EXPECTED_HARD_GATES = [
   'approved_non_secret_environment_configuration',
   'https_url_and_revision_for_each_arm',
   'case_input_and_evidence_receipt_retention',
-  'deterministic_evidence_failure_overrides_qualitative_score',
+  'deterministic_evidence_failure_overrides_independent_four_axis_assessment',
   'fixtures_are_never_live_evidence',
 ] as const
 
@@ -75,10 +75,20 @@ export interface AcceptanceAnswer {
   readonly case_id: string
   readonly answer: string | null
   readonly evidence: readonly DeterministicEvidence[]
-  /** Optional qualitative input; it cannot override deterministic gate failure. */
-  readonly qualitative_score?: number | null
+  /** Independent four-axis assessment; a scalar self-score is not accepted. */
+  readonly qualitative_assessment?: QualitativeAssessment | null
   /** Reuses the governed response-accountability shape when supplied by a real run. */
   readonly response_accountability?: InquiryResponseAccountability | null
+}
+
+export interface QualitativeAssessment {
+  readonly assessor: 'independent_eval_judge'
+  readonly model_id: string
+  readonly relevance: number
+  readonly evidence_based_explanation: number
+  readonly contradiction_handling: number
+  readonly usefulness: number
+  readonly rationale: string
 }
 
 export interface ApprovedEnvironmentConfig {
@@ -108,6 +118,16 @@ function isString(value: unknown): value is string {
 
 function isStringArray(value: unknown): value is readonly string[] {
   return Array.isArray(value) && value.every(isString)
+}
+
+function isQualitativeAssessment(value: unknown): value is QualitativeAssessment {
+  if (!isObject(value)
+    || !hasOnlyKeys(value, ['assessor', 'model_id', 'relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness', 'rationale'])
+    || value.assessor !== 'independent_eval_judge'
+    || !isString(value.model_id)
+    || !isString(value.rationale)) return false
+  return ['relevance', 'evidence_based_explanation', 'contradiction_handling', 'usefulness']
+    .every((key) => Number.isInteger(value[key]) && (value[key] as number) >= 1 && (value[key] as number) <= 5)
 }
 
 function isNonNegativeInteger(value: unknown): value is number {
@@ -475,12 +495,9 @@ export function validateAcceptanceAnswers(
       || typeof candidate.case_id !== 'string'
       || (candidate.answer !== null && typeof candidate.answer !== 'string')
       || !Array.isArray(candidate.evidence)
-      || (candidate.qualitative_score !== undefined
-        && candidate.qualitative_score !== null
-        && (typeof candidate.qualitative_score !== 'number'
-          || !Number.isFinite(candidate.qualitative_score)
-          || candidate.qualitative_score < 0
-          || candidate.qualitative_score > 1))
+      || (candidate.qualitative_assessment !== undefined
+        && candidate.qualitative_assessment !== null
+        && !isQualitativeAssessment(candidate.qualitative_assessment))
       || (candidate.response_accountability !== undefined
         && candidate.response_accountability !== null
         && !isObject(candidate.response_accountability))) {
@@ -516,7 +533,7 @@ export function validateAcceptanceAnswers(
       case_id: candidate.case_id,
       answer: candidate.answer as string | null,
       evidence,
-      ...(candidate.qualitative_score === undefined ? {} : { qualitative_score: candidate.qualitative_score as number | null }),
+      ...(candidate.qualitative_assessment === undefined ? {} : { qualitative_assessment: candidate.qualitative_assessment as QualitativeAssessment | null }),
       ...(responseAccountability === undefined
         ? {}
         : { response_accountability: responseAccountability }),
