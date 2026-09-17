@@ -647,7 +647,7 @@ export function inspectCapabilityKnowledge(
   const explicitContractForBinding = (bindingId: string): BindingAvailabilityContract | null => {
     const target = executableBindingById.get(bindingId)
     if (!target || !Array.isArray(target.scu.availability_contracts)) return null
-    const matches = target.scu.availability_contracts.filter((contract) => contract.binding_id === bindingId)
+    const matches = target.scu.availability_contracts.filter((contract) => isRecord(contract) && contract.binding_id === bindingId)
     return matches.length === 1 && Array.isArray(matches[0]?.requirements) && matches[0]!.requirements.length > 0
       ? matches[0]!
       : null

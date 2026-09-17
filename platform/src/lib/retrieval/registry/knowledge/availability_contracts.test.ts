@@ -181,5 +181,20 @@ describe('binding availability contracts', () => {
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
       subject: `${source.scu_id}:${knownBindingId}`,
     }))
+
+    const mixedContractSnapshot = withContracts([null, {
+      binding_id: knownBindingId,
+      requirements: [{
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: [derivedLegBindingId],
+        source_ref: 'fixture:mixed-null-contract-derived-leg',
+      }],
+    }])
+    expect(() => inspectCapabilityKnowledge(catalog, mixedContractSnapshot)).not.toThrow()
+    expect(inspectCapabilityKnowledge(catalog, mixedContractSnapshot).findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: source.scu_id,
+    }))
   })
 })
