@@ -353,8 +353,16 @@ export function validateResponseAccountability(value: unknown, answer: string | 
     && coverage.continuation.blocked_item_ids.length === 0
     && coverage.continuation.unresolved_obligation_ids.length === 0
     && coverage.continuation.frontier_ids.length === 0
+  const hasOutstandingContinuation = [
+    coverage.continuation.next_action_ids,
+    coverage.continuation.blocked_item_ids,
+    coverage.continuation.unresolved_obligation_ids,
+    coverage.continuation.frontier_ids,
+  ].some((ids) => ids.length > 0)
+  const cappedWithOutstandingContinuation = coverage.continuation.iteration >= coverage.continuation.max_iterations
+    && hasOutstandingContinuation
   const expectedStatus = canComplete ? 'COMPLETE'
-    : coverage.continuation.exhausted ? 'BLOCKED'
+    : coverage.continuation.exhausted || cappedWithOutstandingContinuation ? 'BLOCKED'
       : 'INCOMPLETE_RESUMABLE'
   if (factIds.size !== register.facts.length
     || partIds.size !== value.delivery_parts.length
@@ -376,6 +384,8 @@ export function validateResponseAccountability(value: unknown, answer: string | 
     || coverage.status !== expectedStatus
     || coverage.resume_required !== !canComplete
     || coverage.continuation.iteration > coverage.continuation.max_iterations
+    || (cappedWithOutstandingContinuation && coverage.continuation.exhausted !== true)
+    || register.validation_errors.length > 0
     || ![
       coverage.continuation.next_action_ids,
       coverage.continuation.blocked_item_ids,
@@ -510,7 +520,7 @@ export function validateAcceptanceAnswers(
     })
     const responseAccountability = candidate.response_accountability === undefined || candidate.response_accountability === null
       ? candidate.response_accountability
-      : validateResponseAccountability(candidate.response_accountability)
+      : validateResponseAccountability(candidate.response_accountability, candidate.answer as string | null)
     return {
       case_id: candidate.case_id,
       answer: candidate.answer as string | null,

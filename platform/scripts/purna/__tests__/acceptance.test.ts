@@ -174,6 +174,27 @@ function accountabilityWithDeliveredFact() {
   }
 }
 
+function accountabilityWithCompleteProse(answer: string) {
+  const base = accountabilityWithDeliveredFact()
+  const prosePart = {
+    part_id: 'prose:complete',
+    kind: 'prose',
+    content_hash: stableFingerprint(answer),
+    content: null,
+    fact_ids: [],
+    evidence_payload_hashes: [],
+    exclusion_reason: null,
+  }
+  const coverage = withCoverageReceipt({
+    ...base.response_coverage_receipt,
+    status: 'COMPLETE',
+    coverage: { ...base.response_coverage_receipt.coverage, synthesis_present: true },
+    delivery_part_ids: [base.delivery_parts[0]!.part_id, prosePart.part_id].sort(),
+    resume_required: false,
+  })
+  return { ...base, delivery_parts: [...base.delivery_parts, prosePart], response_coverage_receipt: coverage }
+}
+
 describe('Purna product acceptance harness', () => {
   beforeAll(async () => {
     protocol = JSON.parse(await readFile(new URL(
@@ -312,6 +333,31 @@ describe('Purna product acceptance harness', () => {
     }
   })
 
+  it('persists a valid COMPLETE prose accountability envelope through writeAcceptanceRun', async () => {
+    const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
+    const firstCase = casesForSuite(protocol, 'product')[0]
+    const answer = 'Complete accountable response'
+    try {
+      const written = await writeAcceptanceRun({
+        protocol,
+        suite: 'product',
+        environment: 'candidate',
+        environmentConfig: candidateConfig,
+        input: { answers: [{
+          case_id: firstCase.case_id,
+          answer,
+          qualitative_score: 1,
+          evidence: [{ gate_id: firstCase.deterministic_gates[0], passed: true, receipt_ref: 'receipt-1' }],
+          response_accountability: accountabilityWithCompleteProse(answer),
+        }] },
+        artifactDir,
+      })
+      expect(written.record.answers[0]?.response_accountability?.response_coverage_receipt.status).toBe('COMPLETE')
+    } finally {
+      await rm(artifactDir, { recursive: true, force: true })
+    }
+  })
+
   it('rejects forged-but-rehashed accountability coverage and delivery projections', () => {
     const base = accountabilityWithDeliveredFact()
     expect(validateResponseAccountability(base, 'answer')).toMatchObject({
@@ -368,6 +414,39 @@ describe('Purna product acceptance harness', () => {
     expect(() => validateResponseAccountability({
       ...arbitraryPartHash,
       response_coverage_receipt: withCoverageReceipt(base.response_coverage_receipt),
+    }, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+
+    const capBypass = {
+      ...base,
+      response_coverage_receipt: withCoverageReceipt({
+        ...base.response_coverage_receipt,
+        continuation: {
+          ...base.response_coverage_receipt.continuation,
+          iteration: 4,
+          max_iterations: 4,
+          next_action_ids: ['action:remaining'],
+        },
+      }),
+    }
+    expect(() => validateResponseAccountability(capBypass, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+
+    const denominatorErrorProjection: Record<string, unknown> = {
+      ...base.fact_register,
+      validation_errors: ['required denominator mismatch'],
+    }
+    delete denominatorErrorProjection.register_hash
+    const denominatorErrorRegister = {
+      ...denominatorErrorProjection,
+      register_hash: stableFingerprint(denominatorErrorProjection),
+    }
+    const denominatorErrorCoverage = withCoverageReceipt({
+      ...base.response_coverage_receipt,
+      fact_register_hash: denominatorErrorRegister.register_hash,
+    })
+    expect(() => validateResponseAccountability({
+      ...base,
+      fact_register: denominatorErrorRegister,
+      response_coverage_receipt: denominatorErrorCoverage,
     }, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
   })
 
