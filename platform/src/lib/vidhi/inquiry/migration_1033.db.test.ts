@@ -546,9 +546,13 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
     })
     expect(overlapping).toMatchObject({ status: 'in_progress', reservation_hash: 'sha256:reservation-d2' })
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 1_100))
+    const recoveredLifecycle = await getInquiryLifecycle(inquiryD, principalA, chartA)
+    expect(recoveredLifecycle?.current_jti_hash).toBe('sha256:reservation-d2')
     const retry = await reserveInquiryAction({
-      row: created,
-      expected_jti_hash: 'sha256:jti-d',
+      row: recoveredLifecycle!,
+      // Recovery proves the durable current reservation hash, rather than
+      // reconstructing the source JTI consumed before the first dispatch.
+      expected_jti_hash: recoveredLifecycle!.current_jti_hash,
       reservation_hash: 'sha256:reservation-d4',
       plan_item_id: 'item-001',
     })
@@ -559,8 +563,8 @@ describeDisposable('migration 1033 disposable PostgreSQL acceptance', () => {
       status_reasons: ['dispatch outcome became ambiguous after the at-most-once boundary'],
     }
     await failCloseAmbiguousInquiryAction({
-      row: created,
-      expected_source_jti_hash: 'sha256:jti-d',
+      row: recoveredLifecycle!,
+      expected_reservation_hash: recoveredLifecycle!.current_jti_hash,
       plan_item_id: 'item-001',
       contract: blocked,
     })

@@ -520,6 +520,46 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(retrieve).not.toHaveBeenCalled()
     expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
   })
+
+  it.each([
+    ['catalog content hash', { capability_content_hash: 'sha256:persisted-catalog' }],
+    ['compatibility version', { capability_compatibility_version: 'planner-scu-persisted' }],
+    ['overlay version', { chart_availability_version: 'sha256:persisted-overlay' }],
+    ['chart build ID', { chart_build_id: 'persisted-build' }],
+  ])('fails closed before action for a recovered %s mismatch', async (_field, drift) => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000015'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000015'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn()
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: any
+    const session = {
+      get currentContract() { return current },
+      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+      current = { ...(contract as any), status: 'INCOMPLETE', ...drift }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover one changed authority field', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect(retrieve).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
+  })
 })
 
 /**
