@@ -46,6 +46,14 @@ describe('DP-SD-018 protected migration routing', () => {
 })
 
 describe('DP-SD-020 isolated validation bootstrap', () => {
+  it('validates the administrator credential before entering the native cutover lease', () => {
+    const cutover = readFileSync(resolve(__dirname, '../../scripts/data-plane-protected-cutover.ts'), 'utf8')
+    const credentialCheck = cutover.indexOf('validationAdminProxyConfig(adminUrl')
+    const lease = cutover.indexOf('await withDataPlaneCutoverLease')
+    expect(credentialCheck).toBeGreaterThan(-1)
+    expect(credentialCheck).toBeLessThan(lease)
+  })
+
   it('pins the admin credential to the authenticated validation proxy', () => {
     const hostileRoute = new URL('postgresql://rogue.example:6543/amjis?sslmode=require')
     hostileRoute.username = 'admin'
