@@ -624,11 +624,25 @@ export function inspectCapabilityKnowledge(
     findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'producer_semantic_bindings', detail: 'Producer semantic bindings differ from the authored W1-to-SCU review.' })
   }
   const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
-  const executableBindingById = new Map<string, { scu: SemanticCapabilityUnit; binding: SemanticCapabilityBinding }>()
-  for (const candidateScu of snapshot.scus) for (const candidateBinding of candidateScu.bindings) {
-    if (candidateBinding.executable && !executableBindingById.has(candidateBinding.binding_id)) {
-      executableBindingById.set(candidateBinding.binding_id, { scu: candidateScu, binding: candidateBinding })
+  const executableBindingById = new Map<string, { scu: SemanticCapabilityUnit; binding: SemanticCapabilityBinding } | null>()
+  const duplicateExecutableBindingIdsWithinScu = new Set<string>()
+  for (const candidateScu of snapshot.scus) {
+    const executableBindingIdsWithinScu = new Set<string>()
+    for (const candidateBinding of candidateScu.bindings) {
+      if (!candidateBinding.executable) continue
+      if (executableBindingIdsWithinScu.has(candidateBinding.binding_id)) {
+        duplicateExecutableBindingIdsWithinScu.add(candidateBinding.binding_id)
+      }
+      executableBindingIdsWithinScu.add(candidateBinding.binding_id)
+      if (executableBindingById.has(candidateBinding.binding_id)) {
+        executableBindingById.set(candidateBinding.binding_id, null)
+      } else {
+        executableBindingById.set(candidateBinding.binding_id, { scu: candidateScu, binding: candidateBinding })
+      }
     }
+  }
+  for (const bindingId of [...duplicateExecutableBindingIdsWithinScu].sort()) {
+    findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: bindingId, detail: 'Executable binding ID is duplicated within one SCU and therefore ambiguous for availability resolution.' })
   }
   const explicitContractForBinding = (bindingId: string): BindingAvailabilityContract | null => {
     const target = executableBindingById.get(bindingId)
@@ -642,8 +656,11 @@ export function inspectCapabilityKnowledge(
     if (visiting.has(currentBindingId)) return true
     visiting.add(currentBindingId)
     const contract = explicitContractForBinding(currentBindingId)
-    const cycle = Boolean(contract?.requirements.some((requirement) => requirement.kind === 'derived'
-      && requirement.required_binding_ids.some((bindingId) => derivedCycle(bindingId, visiting))))
+    const cycle = Boolean(contract?.requirements.some((requirement) => isRecord(requirement)
+      && requirement.kind === 'derived'
+      && Array.isArray(requirement.required_binding_ids)
+      && requirement.required_binding_ids.some((bindingId) => typeof bindingId === 'string'
+        && derivedCycle(bindingId, visiting))))
     visiting.delete(currentBindingId)
     return cycle
   }

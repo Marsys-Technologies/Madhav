@@ -87,6 +87,14 @@ const duplicateBindingContractSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const duplicateExecutableBindingSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    bindings: [snapshot.scus[0]!.bindings[0]!, { ...snapshot.scus[0]!.bindings[0]! }],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
 const serviceProbeContractSnapshot = () => ({
   ...snapshot,
   scus: [{
@@ -318,6 +326,14 @@ describe('chart capability overlay loader', () => {
 
     expect((await loadChartCapabilityOverlay(duplicateBindingContractSnapshot(), 'chart-1')).availability[0])
       .toMatchObject({ state: 'dark', available_binding_ids: [] })
+  })
+
+  it('treats a duplicate executable binding ID as ambiguous and dark', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test')] })
+
+    const availability = (await loadChartCapabilityOverlay(duplicateExecutableBindingSnapshot(), 'chart-1')).availability[0]!
+    expect(availability).toMatchObject({ state: 'dark', available_binding_ids: [] })
+    expect(availability.gaps).toContain('Duplicate executable binding ID prevents a safe availability selection.')
   })
 
   it('enables a derived composite only when every mandatory handler leg has fresh exact evidence', async () => {

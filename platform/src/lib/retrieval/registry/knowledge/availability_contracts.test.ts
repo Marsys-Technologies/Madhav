@@ -23,6 +23,15 @@ function withContracts(availability_contracts: unknown): CapabilityKnowledgeSnap
   } as CapabilityKnowledgeSnapshot
 }
 
+function withBindings(bindings: unknown): CapabilityKnowledgeSnapshot {
+  return {
+    ...snapshot,
+    scus: snapshot.scus.map((scu) => scu.scu_id === source.scu_id
+      ? { ...scu, bindings }
+      : scu),
+  } as CapabilityKnowledgeSnapshot
+}
+
 describe('binding availability contracts', () => {
   it('reports a non-array availability contract without throwing', () => {
     const inspect = () => inspectCapabilityKnowledge(catalog, withContracts({ binding_id: knownBindingId }))
@@ -71,6 +80,19 @@ describe('binding availability contracts', () => {
       severity: 'error',
       subject: `${source.scu_id}:${knownBindingId}`,
       detail: expect.stringContaining('duplicate'),
+    }))
+  })
+
+  it('rejects duplicate executable binding IDs rather than selecting one arbitrarily', () => {
+    const bindings = source.bindings.map((binding) => ({ ...binding }))
+    bindings.push({ ...bindings[0]! })
+
+    const report = inspectCapabilityKnowledge(catalog, withBindings(bindings))
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      severity: 'error',
+      subject: knownBindingId,
+      detail: expect.stringContaining('duplicated'),
     }))
   })
 
@@ -136,6 +158,28 @@ describe('binding availability contracts', () => {
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
       subject: `${source.scu_id}:${knownBindingId}`,
       detail: expect.stringContaining('same global scope'),
+    }))
+  })
+
+  it('rejects duplicate or malformed derived legs without throwing during cycle inspection', () => {
+    const derived = {
+      kind: 'derived' as const,
+      scope: 'chart' as const,
+      required_binding_ids: [derivedLegBindingId, derivedLegBindingId],
+      source_ref: 'fixture:duplicate-derived-leg',
+    }
+    const duplicateReport = inspectCapabilityKnowledge(catalog, withContracts([{ binding_id: knownBindingId, requirements: [derived] }]))
+    expect(duplicateReport.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+      detail: expect.stringContaining('unique set'),
+    }))
+
+    const malformedSnapshot = withContracts([{ binding_id: knownBindingId, requirements: [null] }])
+    expect(() => inspectCapabilityKnowledge(catalog, malformedSnapshot)).not.toThrow()
+    expect(inspectCapabilityKnowledge(catalog, malformedSnapshot).findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
     }))
   })
 })

@@ -119,11 +119,11 @@ function serviceProbeRequirement(requirement: AvailabilityRequirement): requirem
   return requirement.kind === 'service_probe'
 }
 
-function derivedRequirement(requirement: AvailabilityRequirement): requirement is DerivedAvailabilityRequirement {
-  return requirement.kind === 'derived'
+function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
+  return isRecord(requirement) && requirement.kind === 'derived'
 }
 
-function usableDerivedRequirement(requirement: AvailabilityRequirement): requirement is DerivedAvailabilityRequirement {
+function usableDerivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
   return derivedRequirement(requirement)
     && (requirement.scope === 'chart' || requirement.scope === 'global')
     && Array.isArray(requirement.required_binding_ids)
@@ -156,17 +156,19 @@ interface BindingTarget {
   readonly binding: SemanticCapabilityBinding
 }
 
-function executableBindingIndex(snapshot: CapabilityKnowledgeSnapshot): ReadonlyMap<string, BindingTarget> {
-  const index = new Map<string, BindingTarget>()
+function executableBindingIndex(snapshot: CapabilityKnowledgeSnapshot): ReadonlyMap<string, BindingTarget | null> {
+  const index = new Map<string, BindingTarget | null>()
   for (const scu of snapshot.scus) for (const binding of scu.bindings) {
-    if (binding.executable && !index.has(binding.binding_id)) index.set(binding.binding_id, { scu, binding })
+    if (!binding.executable) continue
+    if (index.has(binding.binding_id)) index.set(binding.binding_id, null)
+    else index.set(binding.binding_id, { scu, binding })
   }
   return index
 }
 
 function explicitRequirementsForBinding(
   bindingId: string,
-  index: ReadonlyMap<string, BindingTarget>,
+  index: ReadonlyMap<string, BindingTarget | null>,
 ): readonly AvailabilityRequirement[] {
   const target = index.get(bindingId)
   if (!target) return []
@@ -176,7 +178,7 @@ function explicitRequirementsForBinding(
 
 function requirementsForBindingTree(
   bindingId: string,
-  index: ReadonlyMap<string, BindingTarget>,
+  index: ReadonlyMap<string, BindingTarget | null>,
   visiting = new Set<string>(),
 ): readonly AvailabilityRequirement[] {
   if (visiting.has(bindingId)) return []
@@ -299,10 +301,16 @@ function evidenceForBinding(
   activeBuildId: string | null,
   probeRows: readonly ServiceProbeEvidenceRow[],
   now: Date,
-  bindingIndex: ReadonlyMap<string, BindingTarget>,
+  bindingIndex: ReadonlyMap<string, BindingTarget | null>,
   visiting = new Set<string>(),
   requireExplicitContract = false,
 ): BindingEvidence {
+  if (bindingIndex.has(binding.binding_id) && bindingIndex.get(binding.binding_id) === null) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: ['Duplicate executable binding ID prevents a safe availability selection.'],
+  }
   if (visiting.has(binding.binding_id)) return {
     binding_id: binding.binding_id,
     passed: false,
