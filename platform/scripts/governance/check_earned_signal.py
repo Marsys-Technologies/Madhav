@@ -137,7 +137,9 @@ against the live tree at base `a7dfefcb` (SUPPRESSED COUNT in brackets):
   N1. **Branch-guarded constants** [~144]. A constant inside `if`/`else`, an
       `except` handler, a `match` case, or a loop `else` is a control-flow
       OUTCOME, not a frozen signal: `except Exception as exc: checks.append({...
-      "passed": False, "error": str(exc)})` is a correct failure record. Cost:
+      "passed": False, "error": str(exc)})` is a correct failure record. Python
+      recognizes those regions; TypeScript recognizes only a direct
+      `if (...) return { passed: false, ... }` fail-closed form. Cost:
       `if x: s='PASS'` / `else: s='PASS'` — constant in every branch — is missed.
   N2. **CONSTANT_CASE dict tables** [~605]. A dict literal assigned to a
       CONSTANT_CASE name is a lookup/weight/seed table, and its entries are data:
@@ -173,8 +175,9 @@ Further false-negative mechanics:
     name reference, so it is NOT flagged. Indirection defeats this lint.
   - TypeScript: no parser. A property split across lines, a value built by a
     ternary of two constants, a spread that injects the constant from elsewhere,
-    or a constant reached through a helper is not seen. There is also no
-    branch-guard analysis on the TS side (N1 is Python-only).
+    or a constant reached through a helper is not seen. Its only branch-guard
+    analysis is the direct fail-closed `if (...) return { passed: false, ... }`
+    form described in N1.
 
 Known false-positive mechanics:
   - TypeScript: a string-literal union in a type position (`status?: 'a' | 'b'`)
@@ -819,6 +822,97 @@ _TS_MUTABLE_DECL_RE_TEMPLATE = r"\b(?:let|var)\s+{name}\b"
 # Type-position markers: an optional property (`name?: 'a' | 'b'`) or a value
 # followed by `|` is a string-literal union type, not a value binding.
 _TS_OPTIONAL_PROP_RE = re.compile(r"^\s*[A-Za-z_$][\w$]*\s*\?\s*:")
+# A direct conditional `return { passed: false, ... }` is a fail-closed outcome
+# selected by a live condition, not an unconditional status stamp. Keep this
+# deliberately narrow: braced `if` blocks, non-failure outcomes, and arbitrary
+# control flow still remain visible to this line-scoped scanner. The Python AST
+# scanner has broader branch analysis.
+_TS_DIRECT_CONDITIONAL_RETURN_RE = re.compile(
+    r"^\s*if\s*\([^{}\n]*\)\s*return\s*(?P<object>{)"
+)
+_TS_FAIL_CLOSED_PASSED_RE = re.compile(r"^\s*passed\s*:\s*false\s*(?:[,;}]|$)")
+
+
+def _ts_brace_delta(code: str) -> int:
+    """Count structural braces while ignoring quoted literal contents.
+
+    This is only used after `_TS_DIRECT_CONDITIONAL_RETURN_RE` has identified
+    an inline conditional return. It is not a TypeScript parser.
+    """
+    delta = 0
+    quote: Optional[str] = None
+    escaped = False
+    for char in code:
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif char == "\\\\":
+                escaped = True
+            elif char == quote:
+                quote = None
+            continue
+        if char in ("'", '"', '`'):
+            quote = char
+        elif char == '{':
+            delta += 1
+        elif char == '}':
+            delta -= 1
+    return delta
+
+
+def _ts_direct_conditional_return_object_lines(text: str) -> Set[int]:
+    """Return lines inside direct `if (...) return { ... }` objects only.
+
+    Suppression is intentionally limited to a returned object which itself has
+    `passed: false`; an unconditional literal, a conditional green, or a literal
+    in a regular braced `if` block remains a finding. The FAIL fixtures guard
+    against weakening the detector wholesale.
+    """
+    guarded: Set[int] = set()
+    in_block_comment = False
+    depth = 0
+    returning = False
+    candidate_lines: List[Tuple[int, str]] = []
+
+    def record_if_fail_closed() -> None:
+        if any(_TS_FAIL_CLOSED_PASSED_RE.search(code) for _, code in candidate_lines):
+            guarded.update(idx for idx, _ in candidate_lines)
+
+    for idx, raw in enumerate(text.splitlines(), start=1):
+        stripped = raw.strip()
+        if in_block_comment:
+            if "*/" in stripped:
+                in_block_comment = False
+            continue
+        if stripped.startswith("/*"):
+            if "*/" not in stripped:
+                in_block_comment = True
+            continue
+        if _TS_COMMENT_RE.match(raw):
+            continue
+        code = raw.split("//", 1)[0] if "//" in raw else raw
+        if not code.strip():
+            continue
+
+        if returning:
+            candidate_lines.append((idx, code))
+            depth += _ts_brace_delta(code)
+            if depth <= 0:
+                record_if_fail_closed()
+                returning = False
+                candidate_lines = []
+            continue
+
+        match = _TS_DIRECT_CONDITIONAL_RETURN_RE.match(code)
+        if match:
+            candidate_lines = [(idx, code)]
+            depth = _ts_brace_delta(code[match.start('object'):])
+            returning = depth > 0
+            if not returning:
+                record_if_fail_closed()
+                candidate_lines = []
+
+    return guarded
 
 
 def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
@@ -826,6 +920,7 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
     hits: List[Tuple[int, str, str, str]] = []
     in_block_comment = False
     mutable_cache: dict = {}
+    conditional_return_lines = _ts_direct_conditional_return_object_lines(text)
 
     def declared_mutable(name: str) -> bool:
         if name not in mutable_cache:
@@ -854,6 +949,8 @@ def scan_ts_text(text: str) -> List[Tuple[int, str, str, str]]:
         if not code.strip():
             continue
         if _TS_SQL_CONTEXT_RE.search(code):
+            continue
+        if idx in conditional_return_lines:
             continue
 
         snippet = " ".join(stripped.split())[:160]
