@@ -90,7 +90,7 @@ export async function collectRawCase(input: {
     chart_id: input.chartId, question: input.test.question, scope_tuple: input.test.scope_tuple,
   }))
   calls += 1
-  let inquiryId = typeof response.inquiry_id === 'string' ? response.inquiry_id : null
+  const inquiryId = typeof response.inquiry_id === 'string' ? response.inquiry_id : null
   let token = typeof response.lifecycle_token === 'string' ? response.lifecycle_token : null
   if (!inquiryId || !token) return failed(input, 'raw_mcp', calls, 'RAW_LIFECYCLE_START_INVALID')
   const seen = new Set<string>()
