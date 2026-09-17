@@ -232,6 +232,21 @@ describe('versioned inquiry compiler', () => {
     expect(later.semantic_contract_hash).toBe(first.semantic_contract_hash)
     expect(later.execution_plan_hash).not.toBe(first.execution_plan_hash)
     expect(later.contract_id).not.toBe(first.contract_id)
+
+    const raw = compileInquiryContract({
+      snapshot,
+      chart_id: 'chart-fixture',
+      question: 'wealth transit timing',
+      scope_tuple: wealthScope,
+      execution_channel: 'mcp_full',
+      temporal_anchor_date: '2026-09-15',
+    })
+    expect(raw.plan_items.find((item) => item.scu_id === 'scu.catalog.query_planet_transit')).toMatchObject({
+      state: 'ready',
+      binding_id: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      argument_resolution: { status: 'resolved' },
+    })
+    expect(validateInquiryContract(raw)).toEqual({ valid: true, errors: [] })
   })
 
   it('derives the temporal anchor when the aggregate transit SCU is selected directly', () => {

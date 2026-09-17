@@ -275,6 +275,8 @@ describe('raw MCP inquiry route', () => {
     expect(finalizedBody.closure.residual_frontier).toEqual(expect.arrayContaining([
       expect.objectContaining({ materiality: 'required', disposition: 'open' }),
     ]))
+    expect(finalizedBody.closure.status_reasons.some((reason: string) =>
+      /(?:internal transit plan|argument resolution receipt)/i.test(reason))).toBe(false)
     expect(mocks.retrieve).toHaveBeenCalled()
   })
 

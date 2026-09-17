@@ -7,7 +7,7 @@ import type {
 } from '../../retrieval/registry/knowledge/types'
 import { stableFingerprint } from '../../retrieval/registry/knowledge/stable'
 import { BEYOND_ACARYA_ACCEPTANCE_CASES } from './beyond_acarya_acceptance.corpus'
-import { compileInquiryContract } from './compiler'
+import { compileInquiryContract, validateInquiryContract } from './compiler'
 import { buildInquiryDoorParityProjection } from './door_parity'
 
 const snapshot = committedSnapshot as CapabilityKnowledgeSnapshot
@@ -110,6 +110,9 @@ describe('C2 runtime channel coverage', () => {
       expect(contracts[0]![1].semantic_contract_hash).toBe(contracts[2]![1].semantic_contract_hash)
       expect(projections[1]).toEqual(projections[0])
       expect(projections[2]).toEqual(projections[0])
+      for (const [, contract] of contracts) {
+        expect(validateInquiryContract(contract)).toEqual({ valid: true, errors: [] })
+      }
 
       for (const [scuId, expectedBinding] of Object.entries(requiredBindings) as Array<[RequiredScuId, string]>) {
         const items = selectedItems(contracts[2]![1], scuId)

@@ -795,7 +795,14 @@ export function validateInquiryContract(contract: InquiryContract): InquiryValid
   }
   for (const item of contract.plan_items) {
     const receipt = item.argument_resolution
-    const requiresTransitReceipt = contract.execution_channel === 'platform_internal' && TRANSIT_SCU_IDS.has(item.scu_id)
+    // Raw MCP carries mcp_full as its immutable external envelope, but its
+    // authenticated Inquiry lifecycle dispatches the reviewed registry
+    // handler server-side. It therefore has the same aggregate-transit
+    // argument receipt requirement as Portal and managed MCP; this does not
+    // authorize an MCP-native alias.
+    const requiresTransitReceipt = TRANSIT_SCU_IDS.has(item.scu_id)
+      && (contract.execution_channel === 'platform_internal'
+        || presentationTransportForInquiry(contract.execution_channel) === 'raw_mcp')
     if (requiresTransitReceipt && !receipt) {
       errors.push(`plan item ${item.item_id} internal transit plan lacks an argument resolution receipt`)
     }
