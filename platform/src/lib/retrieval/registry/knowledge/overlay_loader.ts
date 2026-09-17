@@ -160,7 +160,11 @@ function contractForBinding(
   return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
 }
 
-function authoredContractIntegrityGap(scu: SemanticCapabilityUnit): string | null {
+function authoredContractIntegrityGap(
+  scu: SemanticCapabilityUnit,
+  bindingIndex: ReadonlyMap<string, BindingTarget | null>,
+  visiting = new Set<string>(),
+): string | null {
   const contracts = scu.availability_contracts
   if (contracts === undefined) return null
   if (!Array.isArray(contracts)
@@ -175,6 +179,8 @@ function authoredContractIntegrityGap(scu: SemanticCapabilityUnit): string | nul
       return 'Duplicate binding availability contracts prevent a safe evidence selection.'
     }
     contractBindingIds.add(contract.binding_id)
+    const nextVisiting = new Set(visiting)
+    nextVisiting.add(contract.binding_id)
     if (scu.bindings.filter((binding) => binding.binding_id === contract.binding_id && binding.executable).length !== 1) {
       return 'Binding availability contract names an unknown or non-executable local binding.'
     }
@@ -191,7 +197,24 @@ function authoredContractIntegrityGap(scu: SemanticCapabilityUnit): string | nul
         }
         continue
       }
-      if (!serviceProbeRequirement(requirement) && !usableDerivedRequirement(requirement)) {
+      if (usableDerivedRequirement(requirement)) {
+        for (const childBindingId of requirement.required_binding_ids) {
+          if (nextVisiting.has(childBindingId)) {
+            return 'Derived availability contracts contain a cycle.'
+          }
+          const childTarget = bindingIndex.get(childBindingId)
+          if (!childTarget || childTarget.scu.scope !== requirement.scope || scu.scope !== requirement.scope) {
+            return `Derived availability leg ${childBindingId} has no scope-compatible executable binding.`
+          }
+          if (!contractForBinding(childTarget.scu, childTarget.binding)) {
+            return `Derived availability leg ${childBindingId} has no exact authored availability contract.`
+          }
+          const childGap = authoredContractIntegrityGap(childTarget.scu, bindingIndex, nextVisiting)
+          if (childGap) return `Derived availability leg ${childBindingId}: ${childGap}`
+        }
+        continue
+      }
+      if (!serviceProbeRequirement(requirement)) {
         return 'Binding availability contract contains a malformed or unsupported requirement.'
       }
     }
@@ -253,7 +276,7 @@ function requirementsForBindingTree(
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
-    if (authoredContractIntegrityGap(scu)) return []
+    if (authoredContractIntegrityGap(scu, index)) return []
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (contract === null) return []
@@ -266,7 +289,7 @@ function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
 function serviceProbeAssetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
   const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
-    if (authoredContractIntegrityGap(scu)) return []
+    if (authoredContractIntegrityGap(scu, index)) return []
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (!contract) return []
@@ -366,6 +389,13 @@ function evidenceForBinding(
   visiting = new Set<string>(),
   requireExplicitContract = false,
 ): BindingEvidence {
+  const contractIntegrityGap = authoredContractIntegrityGap(scu, bindingIndex, visiting)
+  if (contractIntegrityGap) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: [contractIntegrityGap],
+  }
   if (bindingIndex.has(binding.binding_id) && bindingIndex.get(binding.binding_id) === null) return {
     binding_id: binding.binding_id,
     passed: false,
@@ -470,7 +500,7 @@ function evidenceForSnapshot(
 ): ChartCapabilityEvidence[] {
   const bindingIndex = executableBindingIndex(snapshot)
   return snapshot.scus.map((scu) => {
-    const contractIntegrityGap = authoredContractIntegrityGap(scu)
+    const contractIntegrityGap = authoredContractIntegrityGap(scu, bindingIndex)
     if (contractIntegrityGap) return {
       scu_id: scu.scu_id,
       build_status: build.status,

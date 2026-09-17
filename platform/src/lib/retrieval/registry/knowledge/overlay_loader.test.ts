@@ -83,6 +83,28 @@ const mixedValidUnreviewedClaimContractSnapshot = () => {
   } as CapabilityKnowledgeSnapshot
 }
 
+const mixedValidInvalidDerivedContractSnapshot = () => {
+  const base = bindingContractSnapshot()
+  return {
+    ...base,
+    scus: [{
+      ...base.scus[0]!,
+      availability_contracts: [
+        base.scus[0]!.availability_contracts![0]!,
+        {
+          binding_id: 'registry:marsys://tool/L1/alternate',
+          requirements: [{
+            kind: 'derived',
+            scope: 'chart',
+            required_binding_ids: ['registry:marsys://tool/L1/missing-derived-leg'],
+            source_ref: 'fixture:missing-derived-leg',
+          }],
+        },
+      ],
+    }],
+  } as CapabilityKnowledgeSnapshot
+}
+
 const primaryOnlyContractSnapshot = () => ({
   ...bindingContractSnapshot(),
   scus: [{
@@ -260,6 +282,25 @@ const derivedCompositeSnapshot = () => {
   return { ...snapshot, scus: [parent, ...legs] } as CapabilityKnowledgeSnapshot
 }
 
+const derivedCompositeWithInvalidChildSnapshot = () => {
+  const base = derivedCompositeSnapshot()
+  const [parent, invalidChild, ...remainingLegs] = base.scus
+  return {
+    ...base,
+    scus: [
+      parent!,
+      {
+        ...invalidChild!,
+        producer_output_claims: invalidChild!.producer_output_claims!.map((claim) => ({
+          ...claim,
+          output_digest_spec_sha256: 'b'.repeat(64),
+        })),
+      },
+      ...remainingLegs,
+    ],
+  } as CapabilityKnowledgeSnapshot
+}
+
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
   return {
     active_build_id: 'build-1', active_build_status: 'completed',
@@ -423,6 +464,33 @@ describe('chart capability overlay loader', () => {
         available_binding_ids: [],
         gaps: ['Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'],
       })
+  })
+
+  it('fails the whole SCU closed when a sibling derived contract is semantically invalid', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_primary'), receipt('ga_alternate')] })
+
+    expect((await loadChartCapabilityOverlay(mixedValidInvalidDerivedContractSnapshot(), 'chart-1')).availability[0])
+      .toMatchObject({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: ['Derived availability leg registry:marsys://tool/L1/missing-derived-leg has no scope-compatible executable binding.'],
+      })
+  })
+
+  it('does not let a semantically invalid child contract promote a composite parent', async () => {
+    mocks.query.mockResolvedValue({ rows: COMPOSITE_LEGS.map(([, assetId]) => receipt(assetId)) })
+
+    const availability = (await loadChartCapabilityOverlay(derivedCompositeWithInvalidChildSnapshot(), 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === 'scu.composite.assessment')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Producer-output availability requirement has no same-SCU reviewed output claim')],
+    })
+    expect(availability.find((item) => item.scu_id === 'scu.composite.leg.1')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: ['Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'],
+    })
   })
 
   it('treats a duplicate executable binding ID as ambiguous and dark', async () => {
