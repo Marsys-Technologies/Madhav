@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { runInNewContext } from 'node:vm'
 import { load } from 'js-yaml'
+import { Pool } from 'pg'
 import { describe, expect, it } from 'vitest'
 import { assertGeneralRunnerMayApply } from '../../scripts/migrate'
 import { assertEffectiveIsolation, assertNoLiteralCredentials, assertSecretIsolation, assertSurfaceSecretGrant, BUILDER_SERVICE_ACCOUNT, cloudRunLocation, cloudRunRevisionListArgs, extractRunIdentityAndSecrets, iamSearchScopes, requiresRuntimeSecretGrant, roleDescribeArgs } from '../../scripts/data-plane-secret-isolation-preflight'
@@ -693,6 +694,61 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(preflight).not.toContain('/approvals')
     expect(preflight).not.toContain('approvedBy')
     expect(preflight).toMatch(/LOCK TABLE public\.build_runs, public\.build_run_assets[\s\S]*SHARE ROW EXCLUSIVE MODE NOWAIT/)
+  })
+
+  it('normalizes the isolated socket credential carrier into the authenticated proxy pool without exposing its credential', async () => {
+    const validationInstance = 'amjis-ri02-validation'
+    const connectionName = `madhav-astrology:asia-south1:${validationInstance}`
+    // This intentionally uses a constructed fixture rather than a credential-shaped
+    // literal. It exercises URL decoding without putting a reusable secret in source
+    // or test output.
+    const socketCredential = ['fixture', 'only', 'socket', 'credential'].join('@')
+    const socketPath = `/cloudsql/${connectionName}`
+    const socketCarrier = `postgresql://validator:${encodeURIComponent(socketCredential)}@/restored?host=${encodeURIComponent(socketPath)}`
+    const binding = {
+      instance: { name: validationInstance, state: 'RUNNABLE', connectionName },
+      validationInstance,
+      connectionName,
+      proxyPort: '5433',
+      project: 'madhav-astrology',
+    }
+
+    expect(socketCarrier).not.toContain(socketCredential)
+    const config = assertValidationConnectorBinding(socketCarrier, binding)
+    expect(config).toEqual({
+      host: '127.0.0.1',
+      port: 5433,
+      user: 'validator',
+      password: socketCredential,
+      database: 'restored',
+      max: 1,
+    })
+
+    // Constructing the pool performs no connection. This proves the exact config
+    // passed to node-postgres retains the socket-carried principal/credential while
+    // routing to the already-authenticated, isolated local proxy destination.
+    const pool = new Pool(config)
+    try {
+      expect(pool.options).toMatchObject({
+        host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored', max: 1,
+      })
+      expect(pool.options.password).toBe(socketCredential)
+    } finally {
+      await pool.end()
+    }
+
+    let rejection: unknown
+    try {
+      assertValidationConnectorBinding(
+        `postgresql://validator:${encodeURIComponent(socketCredential)}@/restored?host=${encodeURIComponent('/cloudsql/madhav-astrology:asia-south1:rogue-instance')}`,
+        binding,
+      )
+    } catch (error) {
+      rejection = error
+    }
+    expect(rejection).toBeInstanceOf(Error)
+    expect(String(rejection)).toMatch(/authenticated isolated Cloud SQL proxy identity/)
+    expect(String(rejection)).not.toContain(socketCredential)
   })
 
   it('materializes a run-bound receipt only from a short-lived exact authorization template', () => {
