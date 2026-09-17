@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:764ab2be38a93332e49961e00eddbbf8f575c63a4672cb6982ab9703dd150c24",
+  "content_hash": "sha256:d51a68221befd06dd9584a1212f2367c3112dc688ebb21e741f4a17f66149fc2",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:e98460d11736ca0c3fcd3589b5413ee2fc70bac429ecd6fc214a37d90d95fa76",
+  "semantic_review_fingerprint": "sha256:a0191eb8cc727834a851e51e69bfe54a589d8e8ad77b78bfad5177321c89bb7e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15922,6 +15922,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_domain_reading",
+          "status": "deliberately_dark",
+          "reason": "The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {

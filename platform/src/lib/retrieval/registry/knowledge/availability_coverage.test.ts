@@ -140,6 +140,27 @@ describe('first-slice availability coverage', () => {
     })])
   })
 
+  it('keeps query_domain_reading machine-readably dark rather than inferring a composed route from adjacent producer receipts', async () => {
+    const scu = findScu('scu.catalog.query_domain_reading')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L2/query_domain_reading',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193',
+        'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
+      ]),
+    })])
+
+    const overlay = await overlayFor([])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the

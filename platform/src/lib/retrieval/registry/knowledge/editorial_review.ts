@@ -81,6 +81,16 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
     ],
   },
+  query_domain_reading: {
+    reason: 'The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
+    ],
+  },
 }
 
 export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {
