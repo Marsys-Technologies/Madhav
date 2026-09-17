@@ -165,6 +165,7 @@ describe('query_temporal_activation bounded temporal closure', () => {
       routeQueries({ activations: ROWS, totalMatching: 2 })
       const blank = await handler({
         chart_id: CHART_ID,
+        ayanamsha_id: '   ',
         date_from: '  ',
         date_to: '',
         domain: '   ',
@@ -181,8 +182,25 @@ describe('query_temporal_activation bounded temporal closure', () => {
       expect(blankClosure['filter_identity']).toBe(omittedClosure['filter_identity'])
       expect(blankClosure['query_identity']).toBe(omittedClosure['query_identity'])
       expect(JSON.stringify(blank.content)).not.toContain('   ')
-      const activationSql = String(queryMock.mock.calls.find(([sql]) => String(sql).includes('SELECT id, signal_id, ayanamsha_id, signature_class'))![0])
+      const activationCalls = queryMock.mock.calls.filter(([sql]) => String(sql).includes('COUNT(*) OVER()::int AS total_matching'))
+      expect(activationCalls).toHaveLength(2)
+      for (const [, params] of activationCalls) {
+        expect((params as unknown[])[1]).toBe('lahiri_chitrapaksha')
+      }
+      const activationSql = String(activationCalls[0]![0])
       expect(activationSql).not.toContain('domains_affected_array))')
+
+      // A blank ayanamsha must also remain compatible with the forward-window
+      // fallback. Treating it as explicit would incorrectly close the fallback
+      // behind `incompatible_filters` even though SQL used the default variant.
+      queryMock.mockClear()
+      routeQueries({ activations: [], totalMatching: 0, sourceTotal: 7, sourceDated: 7 })
+      const blankFallback = await handler({ chart_id: CHART_ID, ayanamsha_id: '   ', top_k: 2 })
+      queryMock.mockClear()
+      routeQueries({ activations: [], totalMatching: 0, sourceTotal: 7, sourceDated: 7 })
+      const omittedFallback = await handler({ chart_id: CHART_ID, top_k: 2 })
+      expect(blankFallback.content['forward_window_status']).toMatchObject({ state: 'source_empty', incompatible_filters: [] })
+      expect(omittedFallback.content['forward_window_status']).toMatchObject({ state: 'source_empty', incompatible_filters: [] })
     } finally {
       vi.useRealTimers()
     }

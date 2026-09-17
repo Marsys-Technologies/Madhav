@@ -179,8 +179,9 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
-    const explicitAyanamsha   = args['ayanamsha_id'] !== undefined && args['ayanamsha_id'] !== null
+    const requestedAyanamsha  = normalizeOptionalText(args['ayanamsha_id'])
+    const ayanamsha_id        = requestedAyanamsha ?? DEFAULT_AYANAMSHA
+    const explicitAyanamsha   = requestedAyanamsha !== undefined
     // WP-1.3(e): track whether the caller supplied an explicit window so the echo can
     // honestly disclose when a default (today..+1y) was silently applied.
     const requestedDateFrom   = normalizeOptionalText(args['date_from'])
