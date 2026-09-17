@@ -353,6 +353,38 @@ const derivedCompositeWithInvalidChildSnapshot = () => {
   } as CapabilityKnowledgeSnapshot
 }
 
+const compositeWithInvalidChildSiblingSnapshot = () => {
+  const parentBindingId = 'registry:marsys://tool/L-DOMAIN/assess_parent'
+  const childBindingId = 'registry:marsys://tool/L2/query_child'
+  const childSiblingBindingId = 'registry:marsys://tool/L2/query_child_sibling'
+  const parent = {
+    ...snapshot.scus[0]!,
+    scu_id: 'scu.parent.composite',
+    primary_binding_uri: parentBindingId.replace(/^registry:/, ''),
+    producer_output_claims: [],
+    bindings: [{ ...snapshot.scus[0]!.bindings[0]!, binding_id: parentBindingId, capability_uri: parentBindingId.replace(/^registry:/, '') }],
+    availability_contracts: [{
+      binding_id: parentBindingId,
+      requirements: [{ kind: 'derived' as const, scope: 'chart' as const, required_binding_ids: [childBindingId], source_ref: 'fixture:parent-child' }],
+    }],
+  }
+  const child = {
+    ...snapshot.scus[0]!,
+    scu_id: 'scu.child.with-invalid-sibling',
+    primary_binding_uri: childBindingId.replace(/^registry:/, ''),
+    producer_output_claims: [{ asset_id: 'ga_child', component: 'child rows', output_digest_spec_sha256: claimHash, disposition: 'reviewed_output' as const, evidence: 'fixture:child' }],
+    bindings: [
+      { ...snapshot.scus[0]!.bindings[0]!, binding_id: childBindingId, capability_uri: childBindingId.replace(/^registry:/, '') },
+      { binding_id: childSiblingBindingId, kind: 'registry_capability' as const, relation: 'provides' as const, capability_uri: childSiblingBindingId.replace(/^registry:/, ''), input_contract: {}, output_contract: {}, pagination: 'none' as const, executable: true },
+    ],
+    availability_contracts: [
+      { binding_id: childBindingId, requirements: [{ kind: 'producer_output' as const, asset_id: 'ga_child', spec_sha256: claimHash, scope: 'chart_build' as const, source_ref: 'fixture:child' }] },
+      { binding_id: childSiblingBindingId, requirements: [{ kind: 'producer_output' as const, asset_id: 'ga_unreviewed', spec_sha256: claimHash, scope: 'chart_build' as const, source_ref: 'fixture:child-sibling' }] },
+    ],
+  }
+  return { ...snapshot, scus: [parent, child] } as CapabilityKnowledgeSnapshot
+}
+
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
   return {
     active_build_id: 'build-1', active_build_status: 'completed',
@@ -563,6 +595,22 @@ describe('chart capability overlay loader', () => {
       gaps: [expect.stringContaining('Producer-output availability requirement has no same-SCU reviewed output claim')],
     })
     expect(availability.find((item) => item.scu_id === 'scu.composite.leg.1')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: ['Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'],
+      })
+  })
+
+  it('does not let a valid child binding promote a parent when its sibling makes the child SCU dark', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_child')] })
+
+    const availability = (await loadChartCapabilityOverlay(compositeWithInvalidChildSiblingSnapshot(), 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === 'scu.parent.composite')).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Producer-output availability requirement has no same-SCU reviewed output claim')],
+    })
+    expect(availability.find((item) => item.scu_id === 'scu.child.with-invalid-sibling')).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
       gaps: ['Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'],

@@ -160,6 +160,16 @@ function contractForBinding(
 
 type ContractValidationMemo = Map<string, string | null>
 
+interface ContractIntegrityContext {
+  readonly bindingMemo: ContractValidationMemo
+  readonly scuMemo: Map<string, string | null>
+  readonly visitingScuIds: Set<string>
+}
+
+function contractIntegrityContext(): ContractIntegrityContext {
+  return { bindingMemo: new Map(), scuMemo: new Map(), visitingScuIds: new Set() }
+}
+
 function contractValidationKey(scu: SemanticCapabilityUnit, binding: SemanticCapabilityBinding): string {
   return `${scu.scu_id}\u0000${binding.binding_id}`
 }
@@ -168,12 +178,12 @@ function bindingContractIntegrityGap(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
   bindingIndex: ReadonlyMap<string, BindingTarget | null>,
-  memo: ContractValidationMemo,
+  context: ContractIntegrityContext,
   visiting: Set<string>,
 ): string | null {
   const key = contractValidationKey(scu, binding)
   if (visiting.has(key)) return 'Derived availability contracts contain a cycle.'
-  if (memo.has(key)) return memo.get(key)!
+  if (context.bindingMemo.has(key)) return context.bindingMemo.get(key)!
   const contract = contractForBinding(scu, binding)
   if (!contract) return null
   visiting.add(key)
@@ -200,7 +210,12 @@ function bindingContractIntegrityGap(
           gap = `Derived availability leg ${childBindingId} has no exact authored availability contract.`
           break
         }
-        const childGap = bindingContractIntegrityGap(childTarget.scu, childTarget.binding, bindingIndex, memo, visiting)
+        const childScuGap = childTarget.scu === scu ? null : authoredContractIntegrityGap(childTarget.scu, bindingIndex, context)
+        if (childScuGap) {
+          gap = `Derived availability leg ${childBindingId}: ${childScuGap}`
+          break
+        }
+        const childGap = bindingContractIntegrityGap(childTarget.scu, childTarget.binding, bindingIndex, context, visiting)
         if (childGap) {
           gap = `Derived availability leg ${childBindingId}: ${childGap}`
           break
@@ -215,42 +230,57 @@ function bindingContractIntegrityGap(
     }
   }
   visiting.delete(key)
-  memo.set(key, gap)
+  context.bindingMemo.set(key, gap)
   return gap
 }
 
 function authoredContractIntegrityGap(
   scu: SemanticCapabilityUnit,
   bindingIndex: ReadonlyMap<string, BindingTarget | null>,
+  context: ContractIntegrityContext = contractIntegrityContext(),
 ): string | null {
+  if (context.scuMemo.has(scu.scu_id)) return context.scuMemo.get(scu.scu_id)!
+  // A binding-level DFS is responsible for identifying the precise derived cycle.
+  // This SCU-level guard only prevents re-entering an in-flight aggregate validation.
+  if (context.visitingScuIds.has(scu.scu_id)) return null
+  context.visitingScuIds.add(scu.scu_id)
+  let gap: string | null = null
   const contracts = scu.availability_contracts
-  if (contracts === undefined) return null
+  if (contracts === undefined) {
+    context.visitingScuIds.delete(scu.scu_id)
+    context.scuMemo.set(scu.scu_id, null)
+    return null
+  }
   if (!Array.isArray(contracts)
     || contracts.some((contract) => !isRecord(contract)
       || typeof contract.binding_id !== 'string'
       || !Array.isArray(contract.requirements))) {
-    return 'Malformed binding availability contracts prevent a safe evidence selection.'
+    gap = 'Malformed binding availability contracts prevent a safe evidence selection.'
   }
   const contractBindingIds = new Set<string>()
-  for (const contract of contracts) {
+  if (!gap) for (const contract of contracts) {
     if (contractBindingIds.has(contract.binding_id)) {
-      return 'Duplicate binding availability contracts prevent a safe evidence selection.'
+      gap = 'Duplicate binding availability contracts prevent a safe evidence selection.'
+      break
     }
     contractBindingIds.add(contract.binding_id)
     if (scu.bindings.filter((binding) => binding.binding_id === contract.binding_id && binding.executable).length !== 1) {
-      return 'Binding availability contract names an unknown or non-executable local binding.'
+      gap = 'Binding availability contract names an unknown or non-executable local binding.'
+      break
     }
     if (contract.requirements.length === 0) {
-      return 'Binding availability contract has no requirements.'
+      gap = 'Binding availability contract has no requirements.'
+      break
     }
   }
-  const memo: ContractValidationMemo = new Map()
-  for (const contract of contracts) {
+  if (!gap) for (const contract of contracts) {
     const binding = scu.bindings.find((candidate) => candidate.binding_id === contract.binding_id && candidate.executable)!
-    const gap = bindingContractIntegrityGap(scu, binding, bindingIndex, memo, new Set())
-    if (gap) return gap
+    gap = bindingContractIntegrityGap(scu, binding, bindingIndex, context, new Set())
+    if (gap) break
   }
-  return null
+  context.visitingScuIds.delete(scu.scu_id)
+  context.scuMemo.set(scu.scu_id, gap)
+  return gap
 }
 
 function hasAuthoredContracts(scu: SemanticCapabilityUnit): boolean {
@@ -420,7 +450,7 @@ function evidenceForBinding(
   visiting = new Set<string>(),
   requireExplicitContract = false,
 ): BindingEvidence {
-  const contractIntegrityGap = bindingContractIntegrityGap(scu, binding, bindingIndex, new Map(), new Set())
+  const contractIntegrityGap = bindingContractIntegrityGap(scu, binding, bindingIndex, contractIntegrityContext(), new Set())
   if (contractIntegrityGap) return {
     binding_id: binding.binding_id,
     passed: false,
