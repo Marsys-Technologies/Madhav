@@ -10,7 +10,7 @@ describe('Purna capability coverage projection', () => {
     const rows = buildCapabilityCoverage(snapshot)
     expect(rows).toHaveLength(182)
     expect(new Set(rows.map((row) => row.scu_id)).size).toBe(182)
-    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(157)
+    expect(rows.filter((row) => row.blocker === 'availability_contract_missing')).toHaveLength(156)
   })
 
   it('keeps semantic outputs, bindings, and exact evidence dependencies together', () => {

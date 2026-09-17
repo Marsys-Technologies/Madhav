@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T07:28:59.000Z",
-  "content_hash": "sha256:509f3eb0372c0d1095f5ca8d51c7cc28635b564b006cc958f647ced0536164ca",
+  "generated_at": "2026-09-17T22:59:00.000Z",
+  "content_hash": "sha256:ace22df6f2a906d160464d5b2dbbec8b831e98d01ac7031d30eae9de800a8ec4",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:8110291398f3b61392117ea93a257ade130c43d20ee65d6e6ce5092b01c38325",
+  "semantic_review_fingerprint": "sha256:717546e495b940e2c04a49d69a70a24394f018ea3b7ba67a62d13d8d6a89d624",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -7746,6 +7746,29 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "producer_output_claims": [
+        {
+          "asset_id": "ga_positions",
+          "component": "chart_facts graha positions, sign attributes, bhava cusps, and house-chalit facts",
+          "output_digest_spec_sha256": "474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_positions",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "ga_positions",
+              "spec_sha256": "474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -36220,8 +36243,8 @@
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 15,
-    "reviewed_output_claims": 14,
+    "producer_output_claims": 16,
+    "reviewed_output_claims": 15,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,
