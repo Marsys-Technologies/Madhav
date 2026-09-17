@@ -130,6 +130,10 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    # A healthy complete suite is measured in seconds locally and bounded minutes in
+    # GitHub Actions. Fail explicitly rather than consuming the platform's six-hour
+    # default if a hosted runner loses process progress.
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: platform
@@ -1167,6 +1171,10 @@ jobs:
     # (exit-code-3 known_residuals whitelist) but blocks NEW regressions.
     name: Governance Gates (drift / schema / edge / native-literal / py-sidecar)
     runs-on: ubuntu-latest
+    # The Python suite has historical healthy variance in the low single-digit
+    # minutes. A finite ceiling turns an otherwise silent hosted-runner stall into
+    # a visible, retryable protected-check outcome.
+    timeout-minutes: 30
     permissions:
       contents: read
 
