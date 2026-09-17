@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0086
-last_updated: 2026-09-17T21:03:00+05:30
+last_event: PA-E0087
+last_updated: 2026-09-17T22:50:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -52,6 +52,13 @@ layer state, queue or authority.
   is not an ancestor of that deployed commit. Therefore M1's live behavior is a valid observation
   of the older deployment, but cannot prove or refute this successor source candidate. Protected
   deployment must precede any acceptance claim for this branch.
+
+- Managed-M1 terminal evidence: a durable job created for the synthetic wealth case was later
+  polled to terminal `complete` after 130133 ms and returned its structured plan/result envelope.
+  Its inquiry contract and closure remained `INCOMPLETE`, with the same eight dark required
+  obligations, `partial` completeness, zero dispatched tools, and a present prose reading. This
+  proves job persistence/polling for the served older revision, but not accountable product
+  completion; its deployment mismatch remains disqualifying for successor acceptance.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
