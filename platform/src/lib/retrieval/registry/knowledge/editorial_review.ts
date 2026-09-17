@@ -134,6 +134,15 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673',
     ],
   },
+  query_compendium_index: {
+    reason: 'The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
+    ],
+  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {

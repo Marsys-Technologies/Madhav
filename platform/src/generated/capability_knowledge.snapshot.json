@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:c70e6ea91298c830910ca0fdcdfe1b0d35f4a182b712c3216f4c87e8f9b4c242",
+  "content_hash": "sha256:2f5a1c93b55262d24b1df10178404139aa19b80cdc2c896bb6a22c71a92311ce",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:d028d8ad82a4649167cabc4155d92c36f5408037fda3e565eb8e3e5c8dc2334e",
+  "semantic_review_fingerprint": "sha256:c3b6669fbb2172498cc773d96f637fb64443b72ce9eff0ebccc716d6571a16f7",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -14712,6 +14712,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_compendium_index",
+          "status": "deliberately_dark",
+          "reason": "The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

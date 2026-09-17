@@ -348,6 +348,32 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps query_compendium_index dark when its related digest omits a served index field', async () => {
+    const scu = findScu('scu.catalog.query_compendium_index')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L0/query_compendium_index',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('handler returns index_id'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82',
+        'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
+      ]),
+    })])
+
+    // bg_compendium_index is the reviewed producer linked to this route, but
+    // its two content components omit the handler's served index_id. A fresh
+    // matching receipt cannot attest the complete filtered index response.
+    const overlay = await overlayFor([
+      globalProducerReceipt('bg_compendium_index', 'f66dba530dc2647a835d5c4034702b6d799949b064020384ce40899d7a3c7806'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates query_formula_constants only from a fresh, matching global formula-constants receipt', async () => {
     const scu = findScu('scu.catalog.query_formula_constants')
     const bindingId = 'registry:marsys://tool/L0/query_formula_constants'
