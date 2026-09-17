@@ -71,10 +71,13 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
     ],
   },
   query_classical_texts: {
-    reason: 'The handler serves corpus text, summaries, topics, and hybrid ranking from classical_text_chunks. bg_texts and bg_text_index digest narrower field sets, so neither is an exact receipt for this route.',
+    reason: 'The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler\'s corpus query and ranking response.',
     source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:191',
-      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:26',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27',
       'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44',
     ],
   },

@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:e8ec469c9a7ac1ce33a3a441f725d00cd9071794d006c9b62122760461829fb8",
+  "content_hash": "sha256:48861b371c0b92b55dade4afd46f049b49888c7360290faeecf931f02bf8f6bd",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:eac560ad76f1068c17ea192819d7deca1d3b6c4dfbc01f123642e82e946befcd",
+  "semantic_review_fingerprint": "sha256:4687d6e444e0017bc83f70657f579e49ff1091eb3fa918b68f55ff9a3ebea3a9",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -14201,10 +14201,13 @@
         {
           "binding_id": "registry:marsys://tool/L0/query_classical_texts",
           "status": "deliberately_dark",
-          "reason": "The handler serves corpus text, summaries, topics, and hybrid ranking from classical_text_chunks. bg_texts and bg_text_index digest narrower field sets, so neither is an exact receipt for this route.",
+          "reason": "The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler's corpus query and ranking response.",
           "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:191",
-            "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:26",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286",
+            "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27",
             "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44"
           ]
         }

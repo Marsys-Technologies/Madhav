@@ -245,6 +245,35 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps query_classical_texts dark when corpus and topic-index receipts cannot attest its served search result', async () => {
+    const scu = findScu('scu.catalog.query_classical_texts')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L0/query_classical_texts',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('serve content_summary and topics'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186',
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250',
+        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286',
+        'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27',
+      ]),
+    })])
+
+    // bg_texts covers a fixed subset of corpus fields and text IDs; bg_text_index
+    // covers only chunk_id/topic_tag. Neither attests the served summaries/topics
+    // or the request-specific hybrid/list ranking that this handler returns.
+    const overlay = await overlayFor([
+      adjacentProducerReceipt('bg_texts', '10416cda800b6bd6d606f8daee76b06928071d66b09ff733a3b48ebc734c02f6'),
+      adjacentProducerReceipt('bg_text_index', 'd64d63f85dc52de32537731121bfc696d3fcee7e9ab1d01415a019d2944c81e7'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
