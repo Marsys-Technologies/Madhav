@@ -147,6 +147,12 @@ export interface SourceQueryAvailabilityRequirement {
 
 export interface DerivedAvailabilityRequirement {
   readonly kind: 'derived'
+  /**
+   * The child bindings are evaluated in the same availability scope as the
+   * composite.  This prevents a chart-scoped composite from being promoted by
+   * a merely global or differently-scoped adjacent route.
+   */
+  readonly scope: 'chart' | 'global'
   readonly required_binding_ids: readonly string[]
   readonly source_ref: string
 }
@@ -175,6 +181,13 @@ export interface BindingAvailabilityDisposition {
   readonly binding_id: string
   readonly status: 'deliberately_dark'
   readonly reason: string
+  /**
+   * Exact mandatory executable legs that prevent a composite from becoming
+   * available.  This is structured rather than inferred from prose so callers
+   * can distinguish an intentionally dark route from a route with a complete
+   * derived availability contract.
+   */
+  readonly missing_binding_ids?: readonly string[]
   readonly source_refs: readonly string[]
 }
 

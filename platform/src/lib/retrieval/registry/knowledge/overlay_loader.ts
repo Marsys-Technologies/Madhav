@@ -8,6 +8,7 @@ import type {
   CapabilityKnowledgeSnapshot,
   ChartAssetCapabilityReceipt,
   ChartCapabilityOverlay,
+  DerivedAvailabilityRequirement,
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
   ServiceProbeAvailabilityRequirement,
@@ -118,6 +119,18 @@ function serviceProbeRequirement(requirement: AvailabilityRequirement): requirem
   return requirement.kind === 'service_probe'
 }
 
+function derivedRequirement(requirement: AvailabilityRequirement): requirement is DerivedAvailabilityRequirement {
+  return requirement.kind === 'derived'
+}
+
+function usableDerivedRequirement(requirement: AvailabilityRequirement): requirement is DerivedAvailabilityRequirement {
+  return derivedRequirement(requirement)
+    && (requirement.scope === 'chart' || requirement.scope === 'global')
+    && Array.isArray(requirement.required_binding_ids)
+    && requirement.required_binding_ids.length > 0
+    && requirement.required_binding_ids.every((bindingId) => typeof bindingId === 'string' && bindingId.length > 0)
+}
+
 function contractForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
@@ -138,23 +151,63 @@ function deliberateDarkDisposition(
   return matches.length === 1 ? matches[0]! : null
 }
 
+interface BindingTarget {
+  readonly scu: SemanticCapabilityUnit
+  readonly binding: SemanticCapabilityBinding
+}
+
+function executableBindingIndex(snapshot: CapabilityKnowledgeSnapshot): ReadonlyMap<string, BindingTarget> {
+  const index = new Map<string, BindingTarget>()
+  for (const scu of snapshot.scus) for (const binding of scu.bindings) {
+    if (binding.executable && !index.has(binding.binding_id)) index.set(binding.binding_id, { scu, binding })
+  }
+  return index
+}
+
+function explicitRequirementsForBinding(
+  bindingId: string,
+  index: ReadonlyMap<string, BindingTarget>,
+): readonly AvailabilityRequirement[] {
+  const target = index.get(bindingId)
+  if (!target) return []
+  const matches = target.scu.availability_contracts?.filter((contract) => contract.binding_id === bindingId) ?? []
+  return matches.length === 1 && Array.isArray(matches[0]?.requirements) ? matches[0]!.requirements : []
+}
+
+function requirementsForBindingTree(
+  bindingId: string,
+  index: ReadonlyMap<string, BindingTarget>,
+  visiting = new Set<string>(),
+): readonly AvailabilityRequirement[] {
+  if (visiting.has(bindingId)) return []
+  visiting.add(bindingId)
+  const requirements = explicitRequirementsForBinding(bindingId, index)
+  const flattened = requirements.flatMap((requirement) => usableDerivedRequirement(requirement)
+    ? requirement.required_binding_ids.flatMap((childBindingId) => requirementsForBindingTree(childBindingId, index, visiting))
+    : [requirement])
+  visiting.delete(bindingId)
+  return flattened
+}
+
 function assetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
+  const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (contract === null) return []
-    if (contract) return contract.requirements.filter(producerOutputRequirement).map((requirement) => requirement.asset_id)
+    if (contract) return requirementsForBindingTree(binding.binding_id, index).filter(producerOutputRequirement).map((requirement) => requirement.asset_id)
     if (hasAuthoredContracts(scu)) return []
     return (scu.producer_output_claims ?? []).filter((claim) => claim.disposition === 'reviewed_output').map((claim) => claim.asset_id)
   })))].sort()
 }
 
 function serviceProbeAssetIdsForSnapshot(snapshot: CapabilityKnowledgeSnapshot): string[] {
+  const index = executableBindingIndex(snapshot)
   return [...new Set(snapshot.scus.flatMap((scu) => scu.bindings.flatMap((binding) => {
     if (!binding.executable) return []
     const contract = contractForBinding(scu, binding)
     if (!contract) return []
-    return contract.requirements.filter(serviceProbeRequirement).map((requirement) => requirement.asset_id)
+    return requirementsForBindingTree(binding.binding_id, index).filter(serviceProbeRequirement).map((requirement) => requirement.asset_id)
   })))].sort()
 }
 
@@ -246,7 +299,18 @@ function evidenceForBinding(
   activeBuildId: string | null,
   probeRows: readonly ServiceProbeEvidenceRow[],
   now: Date,
+  bindingIndex: ReadonlyMap<string, BindingTarget>,
+  visiting = new Set<string>(),
+  requireExplicitContract = false,
 ): BindingEvidence {
+  if (visiting.has(binding.binding_id)) return {
+    binding_id: binding.binding_id,
+    passed: false,
+    receipts: [],
+    gaps: ['Derived availability contracts contain a cycle.'],
+  }
+  const nextVisiting = new Set(visiting)
+  nextVisiting.add(binding.binding_id)
   const contract = contractForBinding(scu, binding)
   if (contract === null) return {
     binding_id: binding.binding_id,
@@ -254,7 +318,7 @@ function evidenceForBinding(
     receipts: [],
     gaps: ['Duplicate binding availability contracts prevent a safe evidence selection.'],
   }
-  if (hasAuthoredContracts(scu) && !contract) return {
+  if ((hasAuthoredContracts(scu) || requireExplicitContract) && !contract) return {
     binding_id: binding.binding_id,
     passed: false,
     receipts: [],
@@ -263,19 +327,38 @@ function evidenceForBinding(
   if (contract) {
     const producerRequirements = contract.requirements.filter(producerOutputRequirement)
     const serviceRequirements = contract.requirements.filter(serviceProbeRequirement)
-    const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement) && !serviceProbeRequirement(requirement))
+    const derivedRequirements = contract.requirements.filter(usableDerivedRequirement)
+    const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement)
+      && !serviceProbeRequirement(requirement) && !usableDerivedRequirement(requirement))
     const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, activeBuildId))
+    const derivedEvidence = derivedRequirements.flatMap((requirement) => requirement.required_binding_ids.map((bindingId) => {
+      const target = bindingIndex.get(bindingId)
+      if (!target || target.scu.scope !== requirement.scope || scu.scope !== requirement.scope) return {
+        binding_id: bindingId,
+        passed: false,
+        receipts: [],
+        gaps: [`Derived availability leg ${bindingId} has no scope-compatible executable binding.`],
+      } satisfies BindingEvidence
+      return evidenceForBinding(
+        target.scu, target.binding, rows, activeBuildId, probeRows, now, bindingIndex, nextVisiting, true,
+      )
+    }))
+    const derivedGaps = derivedEvidence.flatMap((evidence) => evidence.gaps.map((gap) =>
+      `Derived availability leg ${evidence.binding_id}: ${gap}`,
+    ))
     const gaps = [
       ...(contract.requirements.length === 0 ? ['Binding availability contract has no requirements.'] : []),
       ...unsupported.map((requirement) => `${requirement.kind} availability requirements are not implemented.`),
       ...gapsForReceipts(receipts, rows),
       ...serviceRequirements.flatMap((requirement) => serviceProbeGaps(requirement, probeRows, now)),
+      ...derivedGaps,
     ]
     return {
       binding_id: binding.binding_id,
       passed: contract.requirements.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed')
-        && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0),
-      receipts,
+        && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0)
+        && derivedEvidence.every((evidence) => evidence.passed),
+      receipts: [...receipts, ...derivedEvidence.flatMap((evidence) => evidence.receipts)],
       gaps,
     }
   }
@@ -316,9 +399,12 @@ function evidenceForSnapshot(
   probeRows: readonly ServiceProbeEvidenceRow[],
   now: Date,
 ): ChartCapabilityEvidence[] {
+  const bindingIndex = executableBindingIndex(snapshot)
   return snapshot.scus.map((scu) => {
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
-    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(scu, binding, rows, build.build_id, probeRows, now))
+    const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(
+      scu, binding, rows, build.build_id, probeRows, now, bindingIndex,
+    ))
     const availableBindingIds = bindingEvidence.filter((evidence) => evidence.passed).map((evidence) => evidence.binding_id)
     const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
     const allPassed = executableBindings.length > 0 && availableBindingIds.length === executableBindings.length

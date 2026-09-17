@@ -25,22 +25,34 @@ export interface DescriptorEditorialFamily {
  */
 export interface DescriptorAvailabilityReview {
   readonly reason: string
+  /** Mandatory executable legs that currently lack a complete exact contract. */
+  readonly missing_binding_ids?: readonly string[]
   readonly source_refs: readonly string[]
 }
 
+const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_domain_reading',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L2/query_contradictions',
+] as const
+
 const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
   assess_career: {
-    reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
+    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
+    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],
   },
   assess_marriage: {
-    reason: 'The handler composes chart_facts, Bodha signals, kala_activation, and the contradiction surface. No existing reviewed producer receipt represents that complete assembled result.',
+    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
+    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
       'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
     ],

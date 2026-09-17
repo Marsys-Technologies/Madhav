@@ -4,6 +4,7 @@ import {
   CAPABILITY_KNOWLEDGE_SCHEMA_VERSION,
   type CapabilityKnowledgeCensus,
   type CapabilityKnowledgeSnapshot,
+  type BindingAvailabilityContract,
   type KnowledgeIntegrityFinding,
   type KnowledgeIntegrityReport,
   type PaginationSemantics,
@@ -198,6 +199,7 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
         binding_id: `registry:${cap.uri}`,
         status: 'deliberately_dark' as const,
         reason: availabilityReview.reason,
+        ...(availabilityReview.missing_binding_ids ? { missing_binding_ids: availabilityReview.missing_binding_ids } : {}),
         source_refs: availabilityReview.source_refs,
       }],
     } : {}),
@@ -548,7 +550,11 @@ export function compileCapabilityKnowledge(
     semantic_capabilities: cap.semantic_capabilities,
   })).sort((a, b) => a.uri.localeCompare(b.uri)))
   const semanticReviewFingerprint = stableFingerprint({
-    descriptor_editorial_review: getReviewedDescriptorNames().map((name) => ({ name, review: getDescriptorEditorialReview(name) })),
+    descriptor_editorial_review: getReviewedDescriptorNames().map((name) => ({
+      name,
+      review: getDescriptorEditorialReview(name),
+      availability_review: getDescriptorAvailabilityReview(name),
+    })),
     producer_editorial_review: getProducerSemanticReview(),
   })
   const producerContractFingerprint = stableFingerprint(activeProducerContracts)
@@ -618,6 +624,29 @@ export function inspectCapabilityKnowledge(
     findings.push({ code: 'CHANGE_SYNC_DRIFT', severity: 'error', subject: 'producer_semantic_bindings', detail: 'Producer semantic bindings differ from the authored W1-to-SCU review.' })
   }
   const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
+  const executableBindingById = new Map<string, { scu: SemanticCapabilityUnit; binding: SemanticCapabilityBinding }>()
+  for (const candidateScu of snapshot.scus) for (const candidateBinding of candidateScu.bindings) {
+    if (candidateBinding.executable && !executableBindingById.has(candidateBinding.binding_id)) {
+      executableBindingById.set(candidateBinding.binding_id, { scu: candidateScu, binding: candidateBinding })
+    }
+  }
+  const explicitContractForBinding = (bindingId: string): BindingAvailabilityContract | null => {
+    const target = executableBindingById.get(bindingId)
+    if (!target || !Array.isArray(target.scu.availability_contracts)) return null
+    const matches = target.scu.availability_contracts.filter((contract) => contract.binding_id === bindingId)
+    return matches.length === 1 && Array.isArray(matches[0]?.requirements) && matches[0]!.requirements.length > 0
+      ? matches[0]!
+      : null
+  }
+  const derivedCycle = (currentBindingId: string, visiting = new Set<string>()): boolean => {
+    if (visiting.has(currentBindingId)) return true
+    visiting.add(currentBindingId)
+    const contract = explicitContractForBinding(currentBindingId)
+    const cycle = Boolean(contract?.requirements.some((requirement) => requirement.kind === 'derived'
+      && requirement.required_binding_ids.some((bindingId) => derivedCycle(bindingId, visiting))))
+    visiting.delete(currentBindingId)
+    return cycle
+  }
   const conceptById = new Map(snapshot.concept_universe.map((concept) => [concept.concept_id, concept]))
   const expectedConceptById = new Map(expectedSnapshot.concept_universe.map((concept) => [concept.concept_id, concept]))
   const scuIds = new Set<string>()
@@ -712,6 +741,30 @@ export function inspectCapabilityKnowledge(
           }
           continue
         }
+        if (requirement.kind === 'derived') {
+          const scope = requirement.scope
+          const requiredBindingIds = requirement.required_binding_ids
+          const sourceRef = requirement.source_ref
+          const validList = Array.isArray(requiredBindingIds) && requiredBindingIds.length > 0
+            && requiredBindingIds.every((bindingId) => typeof bindingId === 'string' && bindingId.length > 0)
+            && new Set(requiredBindingIds).size === requiredBindingIds.length
+          if ((scope !== 'chart' && scope !== 'global') || !validList || !sourceRef) {
+            findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: 'A derived availability requirement must pin a non-empty, unique set of mandatory binding IDs, a compatible scope, and a source reference.' })
+            continue
+          }
+          for (const requiredBindingId of requiredBindingIds) {
+            const target = executableBindingById.get(requiredBindingId)
+            const targetContract = explicitContractForBinding(requiredBindingId)
+            if (!target || !targetContract || target.scu.scope !== scope || scu.scope !== scope) {
+              findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} must be an executable binding with an existing exact availability contract in the same ${scope} scope.` })
+              continue
+            }
+            if (derivedCycle(requiredBindingId)) {
+              findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `Derived availability leg ${requiredBindingId} creates an availability-contract cycle.` })
+            }
+          }
+          continue
+        }
         findings.push({ code: 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT', severity: 'error', subject: `${scu.scu_id}:${contract.binding_id}`, detail: `${requirement.kind} availability requirements are declared but not implemented.` })
       }
     }
@@ -737,7 +790,13 @@ export function inspectCapabilityKnowledge(
       }
       dispositionCounts.set(disposition.binding_id, (dispositionCounts.get(disposition.binding_id) ?? 0) + 1)
       const binding = scu.bindings.find((candidate) => candidate.binding_id === disposition.binding_id)
-      if (!binding?.executable || !disposition.reason || disposition.source_refs.length === 0 || contractCounts.has(disposition.binding_id)) {
+      const missingBindingIds = disposition.missing_binding_ids
+      const validMissingBindingIds = missingBindingIds === undefined || (Array.isArray(missingBindingIds)
+        && missingBindingIds.length > 0
+        && missingBindingIds.every((bindingId) => typeof bindingId === 'string' && bindingId.length > 0
+          && bindingId !== disposition.binding_id && executableBindingById.has(bindingId))
+        && new Set(missingBindingIds).size === missingBindingIds.length)
+      if (!binding?.executable || !disposition.reason || disposition.source_refs.length === 0 || contractCounts.has(disposition.binding_id) || !validMissingBindingIds) {
         findings.push({ code: 'BAD_BINDING_AVAILABILITY_DISPOSITION', severity: 'error', subject: `${scu.scu_id}:${disposition.binding_id}`, detail: 'A deliberate-dark disposition must name one executable binding, have an evidence-backed reason, and cannot coexist with an availability contract.' })
       }
     }

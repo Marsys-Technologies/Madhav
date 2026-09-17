@@ -8,6 +8,11 @@ const snapshot = compileCapabilityKnowledge(catalog, '2026-09-17T00:00:00.000Z')
 const source = snapshot.scus.find((scu) => (scu.producer_output_claims?.length ?? 0) > 0)!
 const reviewedClaim = source.producer_output_claims!.find((claim) => claim.disposition === 'reviewed_output')!
 const knownBindingId = source.bindings.find((binding) => binding.executable)!.binding_id
+const derivedLeg = snapshot.scus.find((scu) => scu.scu_id !== source.scu_id
+  && scu.scope === source.scope
+  && (scu.availability_contracts?.length ?? 0) > 0
+  && scu.bindings.some((binding) => binding.executable))!
+const derivedLegBindingId = derivedLeg.bindings.find((binding) => binding.executable)!.binding_id
 
 function withContracts(availability_contracts: unknown): CapabilityKnowledgeSnapshot {
   return {
@@ -97,6 +102,40 @@ describe('binding availability contracts', () => {
       code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
       severity: 'error',
       subject: `${source.scu_id}:${knownBindingId}`,
+    }))
+  })
+
+  it('accepts a derived composite only when every mandatory leg has an explicit scope-compatible contract', () => {
+    const derived = {
+      kind: 'derived' as const,
+      scope: 'chart' as const,
+      required_binding_ids: [derivedLegBindingId],
+      source_ref: 'fixture:composite-handler-leg',
+    }
+    const validReport = inspectCapabilityKnowledge(catalog, withContracts([{ binding_id: knownBindingId, requirements: [derived] }]))
+    expect(validReport.findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+    }))
+
+    const missingLegReport = inspectCapabilityKnowledge(catalog, withContracts([{
+      binding_id: knownBindingId,
+      requirements: [{ ...derived, required_binding_ids: ['registry:marsys://tool/L2/query_domain_reading'] }],
+    }]))
+    expect(missingLegReport.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+      detail: expect.stringContaining('existing exact availability contract'),
+    }))
+
+    const incompatibleScopeReport = inspectCapabilityKnowledge(catalog, withContracts([{
+      binding_id: knownBindingId,
+      requirements: [{ ...derived, scope: 'global' as const }],
+    }]))
+    expect(incompatibleScopeReport.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${source.scu_id}:${knownBindingId}`,
+      detail: expect.stringContaining('same global scope'),
     }))
   })
 })

@@ -107,6 +107,76 @@ const serviceProbeContractSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const COMPOSITE_BINDING_ID = 'registry:marsys://tool/L-DOMAIN/assess_composite'
+const COMPOSITE_LEGS = [
+  ['registry:marsys://tool/L2/query_domain_reading', 'bo_domain_reading'],
+  ['registry:marsys://tool/L3/query_temporal_activation', 'ka_temporal_activation'],
+  ['registry:marsys://tool/L2/query_contradictions', 'bo_contradictions'],
+] as const
+
+/** A reduced runAssessDomain-style composite: every handler leg is its own binding. */
+const derivedCompositeSnapshot = () => {
+  const legs = COMPOSITE_LEGS.map(([bindingId, assetId], index) => ({
+    ...snapshot.scus[0]!,
+    scu_id: `scu.composite.leg.${index + 1}`,
+    label: `Composite leg ${index + 1}`,
+    primary_binding_uri: bindingId.replace(/^registry:/, ''),
+    producer_output_claims: [{
+      asset_id: assetId,
+      component: `${assetId} rows`,
+      output_digest_spec_sha256: claimHash,
+      disposition: 'reviewed_output' as const,
+      evidence: `fixture:${assetId}`,
+    }],
+    bindings: [{
+      ...snapshot.scus[0]!.bindings[0]!,
+      binding_id: bindingId,
+      capability_uri: bindingId.replace(/^registry:/, ''),
+    }],
+    availability_contracts: [{
+      binding_id: bindingId,
+      requirements: [{
+        kind: 'producer_output' as const,
+        asset_id: assetId,
+        spec_sha256: claimHash,
+        scope: 'chart_build' as const,
+        source_ref: `fixture:${assetId}`,
+      }],
+    }],
+  }))
+  const parent = {
+    ...snapshot.scus[0]!,
+    scu_id: 'scu.composite.assessment',
+    label: 'Composite assessment',
+    primary_binding_uri: COMPOSITE_BINDING_ID.replace(/^registry:/, ''),
+    producer_output_claims: [],
+    bindings: [
+      {
+        ...snapshot.scus[0]!.bindings[0]!,
+        binding_id: COMPOSITE_BINDING_ID,
+        capability_uri: COMPOSITE_BINDING_ID.replace(/^registry:/, ''),
+      },
+      {
+        binding_id: 'registry:marsys://tool/L-DOMAIN/assess_composite_alternate',
+        kind: 'registry_capability' as const,
+        relation: 'provides' as const,
+        capability_uri: 'marsys://tool/L-DOMAIN/assess_composite_alternate',
+        input_contract: {}, output_contract: {}, pagination: 'none' as const, executable: true,
+      },
+    ],
+    availability_contracts: [{
+      binding_id: COMPOSITE_BINDING_ID,
+      requirements: [{
+        kind: 'derived' as const,
+        scope: 'chart' as const,
+        required_binding_ids: COMPOSITE_LEGS.map(([bindingId]) => bindingId),
+        source_ref: 'fixture:runAssessDomain:mandatory-handler-legs',
+      }],
+    }],
+  }
+  return { ...snapshot, scus: [parent, ...legs] } as CapabilityKnowledgeSnapshot
+}
+
 function receipt(asset_id: string, overrides: Partial<Record<string, unknown>> = {}) {
   return {
     active_build_id: 'build-1', active_build_status: 'completed',
@@ -248,6 +318,53 @@ describe('chart capability overlay loader', () => {
 
     expect((await loadChartCapabilityOverlay(duplicateBindingContractSnapshot(), 'chart-1')).availability[0])
       .toMatchObject({ state: 'dark', available_binding_ids: [] })
+  })
+
+  it('enables a derived composite only when every mandatory handler leg has fresh exact evidence', async () => {
+    mocks.query.mockResolvedValue({ rows: COMPOSITE_LEGS.map(([, assetId]) => receipt(assetId)) })
+
+    const availability = (await loadChartCapabilityOverlay(derivedCompositeSnapshot(), 'chart-1')).availability
+    expect(availability.find((item) => item.scu_id === 'scu.composite.assessment')).toMatchObject({
+      state: 'partial',
+      available_binding_ids: [COMPOSITE_BINDING_ID],
+    })
+  })
+
+  it.each(COMPOSITE_LEGS)('keeps a derived composite dark when mandatory leg %s is absent', async (missingBindingId, missingAssetId) => {
+    mocks.query.mockResolvedValue({ rows: COMPOSITE_LEGS
+      .filter(([, assetId]) => assetId !== missingAssetId)
+      .map(([, assetId]) => receipt(assetId)) })
+
+    const availability = (await loadChartCapabilityOverlay(derivedCompositeSnapshot(), 'chart-1')).availability
+      .find((item) => item.scu_id === 'scu.composite.assessment')!
+    expect(availability).toMatchObject({ state: 'dark', available_binding_ids: [] })
+    expect(availability.gaps).toContainEqual(expect.stringContaining(missingBindingId))
+  })
+
+  it.each([
+    ['stale', receipt('bo_domain_reading', { freshness_state: 'stale', freshness_reasons: ['stale'] })],
+    ['mismatched', receipt('bo_domain_reading', { output_digest_spec_sha256: 'b'.repeat(64) })],
+  ])('keeps a derived composite dark on %s mandatory-leg evidence', async (_state, badLegReceipt) => {
+    mocks.query.mockResolvedValue({ rows: [
+      badLegReceipt,
+      receipt('ka_temporal_activation'),
+      receipt('bo_contradictions'),
+    ] })
+
+    expect((await loadChartCapabilityOverlay(derivedCompositeSnapshot(), 'chart-1')).availability
+      .find((item) => item.scu_id === 'scu.composite.assessment'))
+      .toMatchObject({ available_binding_ids: [] })
+  })
+
+  it('never promotes an alternate composite binding from adjacent receipts', async () => {
+    mocks.query.mockResolvedValue({ rows: [
+      ...COMPOSITE_LEGS.map(([, assetId]) => receipt(assetId)),
+      receipt('ga_unrelated_alternate'),
+    ] })
+
+    expect((await loadChartCapabilityOverlay(derivedCompositeSnapshot(), 'chart-1')).availability
+      .find((item) => item.scu_id === 'scu.composite.assessment'))
+      .toMatchObject({ available_binding_ids: [COMPOSITE_BINDING_ID] })
   })
 
   it('enables a binding only from a fresh, exact, authenticated service-probe receipt', async () => {

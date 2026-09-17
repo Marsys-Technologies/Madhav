@@ -127,6 +127,19 @@ describe('first-slice availability coverage', () => {
     }
   })
 
+  it.each([
+    'scu.catalog.assess_career',
+    'scu.catalog.assess_marriage',
+  ])('records the exact missing mandatory composite legs for %s', (scuId) => {
+    expect(findScu(scuId).availability_dispositions).toEqual([expect.objectContaining({
+      missing_binding_ids: [
+        'registry:marsys://tool/L2/query_domain_reading',
+        'registry:marsys://tool/L3/query_temporal_activation',
+        'registry:marsys://tool/L2/query_contradictions',
+      ],
+    })])
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
