@@ -21,6 +21,50 @@ import {
   type BhavishyaDataQualification,
 } from './query_projections'
 import { TEMPORAL_SCUS } from '../../knowledge/editorial'
+import { stableFingerprint } from '../../knowledge/stable'
+
+const MAX_TOP_K = 500
+const TEMPORAL_ACTIVATION_CLOSURE_VERSION = 'temporal-activation-closure-v1'
+const ACTIVATION_STABLE_SORT = [
+  'dasha_activation_proximity_score DESC NULLS LAST',
+  'orb_strength DESC NULLS LAST',
+  'activation_start ASC',
+  'id ASC',
+] as const
+
+/**
+ * A temporal activation response deliberately remains a bounded top-k read.
+ * Normalize the boundary before it reaches SQL so the receipt can name the
+ * actual finite limit rather than echoing a caller-supplied NaN/fraction/zero.
+ */
+function normalizeTopK(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return 50
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? Math.min(normalized, MAX_TOP_K) : 50
+}
+
+/** The SQL IN predicate is set-like, so its identity must be set-like too. */
+function normalizeSignalIds(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const ids = [...new Set(value
+    .filter((candidate): candidate is string => typeof candidate === 'string')
+    .map((candidate) => candidate.trim())
+    .filter(Boolean))].sort()
+  return ids.length > 0 ? ids : undefined
+}
+
+function normalizeMinStrength(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : 0
+}
+
+/** Optional text filters are blank-insensitive across SQL, echoes, and hashes. */
+function normalizeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const normalized = value.trim()
+  return normalized || undefined
+}
 
 type ForwardWindowState =
   | 'not_needed'
@@ -135,19 +179,45 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       return { content: { error: 'chart_id is required' }, is_error: true }
     }
 
-    const ayanamsha_id        = (args['ayanamsha_id'] as string | undefined) ?? DEFAULT_AYANAMSHA
-    const explicitAyanamsha   = args['ayanamsha_id'] !== undefined && args['ayanamsha_id'] !== null
+    const requestedAyanamsha  = normalizeOptionalText(args['ayanamsha_id'])
+    const ayanamsha_id        = requestedAyanamsha ?? DEFAULT_AYANAMSHA
+    const explicitAyanamsha   = requestedAyanamsha !== undefined
     // WP-1.3(e): track whether the caller supplied an explicit window so the echo can
     // honestly disclose when a default (today..+1y) was silently applied.
-    const explicitFrom        = args['date_from'] !== undefined && args['date_from'] !== null
-    const explicitTo          = args['date_to'] !== undefined && args['date_to'] !== null
-    const as_of               = args['as_of'] as string | undefined
-    const date_from           = (args['date_from'] as string | undefined) ?? new Date().toISOString().split('T')[0]
-    const date_to             = (args['date_to'] as string | undefined) ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
-    const signal_ids          = args['signal_ids'] as string[] | undefined
-    const top_k               = Math.min(Number(args['top_k'] ?? 50), 500)
-    const min_strength        = Number(args['min_activation_strength'] ?? 0)
-    const domain              = args['domain'] as string | undefined
+    const requestedDateFrom   = normalizeOptionalText(args['date_from'])
+    const requestedDateTo     = normalizeOptionalText(args['date_to'])
+    const explicitFrom        = requestedDateFrom !== undefined
+    const explicitTo          = requestedDateTo !== undefined
+    const as_of               = normalizeOptionalText(args['as_of'])
+    const date_from           = requestedDateFrom ?? new Date().toISOString().split('T')[0]
+    const date_to             = requestedDateTo ?? new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0]
+    const signal_ids          = normalizeSignalIds(args['signal_ids'])
+    const top_k               = normalizeTopK(args['top_k'])
+    const min_strength        = normalizeMinStrength(args['min_activation_strength'])
+    const domain              = normalizeOptionalText(args['domain'])
+
+    // The response is intentionally a bounded, ranked window read rather than
+    // an unbounded temporal search. Keep the query identity independent of
+    // caller spelling/order and bind the exact effective window, filters,
+    // ordering, and cap into the response so a later consumer cannot mistake a
+    // top-k slice for the whole time line.
+    const temporalFilterBasis = {
+      closure_version: TEMPORAL_ACTIVATION_CLOSURE_VERSION,
+      chart_id,
+      ayanamsha_id,
+      temporal_filter: as_of
+        ? { mode: 'point_in_time' as const, as_of }
+        : { mode: 'range' as const, date_from, date_to },
+      signal_ids: signal_ids ?? [],
+      min_activation_strength: min_strength,
+      domain: domain ?? null,
+    }
+    const filter_identity = stableFingerprint(temporalFilterBasis)
+    const query_identity = stableFingerprint({
+      ...temporalFilterBasis,
+      stable_sort: ACTIVATION_STABLE_SORT,
+      top_k,
+    })
 
     try {
       const actConds = ['chart_id = $1', 'ayanamsha_id = $2']
@@ -209,6 +279,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
                orb_strength, convergence_score, dasha_activation_proximity_score,
                active_dasha_periods_jsonb, activation_predicted_dates_jsonb,
                source_citation,
+               COUNT(*) OVER()::int AS total_matching,
                (SELECT ms.domains_affected_array FROM bodha_msr_signals ms
                  WHERE ms.signal_id = kala_activation.signal_id
                    AND ms.chart_id = kala_activation.chart_id
@@ -225,11 +296,21 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         -- secondary tiebreak (real signal for the small fraction of rows ka_sangam does
         -- cover); activation_start/id remain the final deterministic tiebreak (§N.7 item 2).
         ORDER BY dasha_activation_proximity_score DESC NULLS LAST,
-                 orb_strength DESC NULLS LAST, activation_start, id
+                 orb_strength DESC NULLS LAST, activation_start ASC, id ASC
         LIMIT ${topKPh}
       `
 
-      const activations = await query<Record<string, unknown>>(activationSql, actParams)
+      // COUNT(*) OVER() is evaluated under the same PostgreSQL statement
+      // snapshot as the ranked page. A separate count round-trip could observe
+      // a replacement between page and count and falsely call a moving set
+      // complete. Empty page means the same statement observed zero matches.
+      const activationResult = await query<Record<string, unknown>>(activationSql, actParams)
+      const rawActivationRows = activationResult.rows as Array<Record<string, unknown>>
+      const total_matching = rawActivationRows.length > 0
+        ? Number(rawActivationRows[0]?.['total_matching'] ?? 0)
+        : 0
+      const activations = rawActivationRows.map(({ total_matching: _totalMatching, ...row }) => row)
+      const more_available = total_matching > activations.length
 
       // CR-4/CR-29/T-10 (window-family collapse): the raw row set above is frequently
       // MANY signals sharing the exact same resolved [activation_start, activation_end]
@@ -252,7 +333,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         domains: Set<string>
         max_orb_strength: number
       }>()
-      for (const row of activations.rows as Array<Record<string, unknown>>) {
+      for (const row of activations) {
         const start = (row['activation_start'] as string | null) ?? null
         const end = (row['activation_end'] as string | null) ?? null
         const key = start && end ? `${start}|${end}` : `undated:${String(row['id'])}`
@@ -292,7 +373,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
       // Predicates link to activations by signal_id (+ signature_class), not an
       // activation_id FK. Fetch predicates for the signals in the returned set.
       const predSignalIds = [...new Set(
-        (activations.rows as Array<{ signal_id?: string }>)
+        (activations as Array<{ signal_id?: string }>)
           .map(r => r.signal_id).filter(Boolean) as string[]
       )]
 
@@ -315,7 +396,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
 
       // Collect signal_id references
       const signalRefs = [...new Set(
-        (activations.rows as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
+        (activations as Array<{ signal_id?: string }>).map(r => r.signal_id).filter(Boolean) as string[]
       )]
 
       // WP-1.3(e): honest-empty disclosure. When the date filter yields nothing, an LLM
@@ -354,7 +435,7 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         error: null,
         data_qualification: null,
       }
-      if (activations.rows.length === 0) {
+      if (activations.length === 0) {
         const disc = await query<{ total: number; dated: number }>(
           `SELECT COUNT(*)::int AS total, COUNT(activation_start)::int AS dated
              FROM kala_activation
@@ -488,8 +569,41 @@ export const queryTemporalActivationCapability: CapabilityDescriptor = {
         content: {
           chart_id,
           ayanamsha_id,
-          activations:       activations.rows,
-          activation_count:  activations.rows.length,
+          activations,
+          activation_count:  activations.length,
+          // The count and status apply to the raw activation collection only.
+          // `window_families` is a presentation collapse and `forward_windows`
+          // is a separate fallback source, so neither can be used to assert
+          // closure of this exact kala_activation search.
+          total_matching,
+          more_available,
+          truncated: more_available,
+          temporal_closure: {
+            closure_version: TEMPORAL_ACTIVATION_CLOSURE_VERSION,
+            state: more_available
+              ? 'bounded_window_incomplete'
+              : 'complete_within_stated_window',
+            collection: 'activations',
+            completeness_scope: 'exact filtered kala_activation rows within the stated temporal window',
+            filter_identity,
+            query_identity,
+            filters: temporalFilterBasis,
+            stable_sort: ACTIVATION_STABLE_SORT,
+            limit: {
+              effective_top_k: top_k,
+              maximum_top_k: MAX_TOP_K,
+              returned: activations.length,
+              total_matching,
+            },
+            exhaustive_within_stated_window: !more_available,
+            continuation: {
+              supported: false,
+              next: null,
+              reason: more_available
+                ? 'The exact filtered temporal set exceeds the bounded top_k response; no reviewed continuation is available, so a required inquiry must remain unresolved.'
+                : 'All rows matching this exact stated window and filters were returned.',
+            },
+          },
           // CR-4/CR-29/T-10: window-family collapse — one entry per DISTINCT dated
           // window with its member signal_ids + per-domain flavor, instead of the raw
           // (often duplicate-windowed) `activations` array above. `activations` is kept

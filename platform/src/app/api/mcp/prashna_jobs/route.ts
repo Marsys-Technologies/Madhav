@@ -23,6 +23,7 @@ export const maxDuration = 30
 const BodySchema = z.discriminatedUnion('action', [
   z.object({
     action: z.literal('create'), job_id: z.string().uuid(), chart_id: z.string().uuid(),
+    inquiry_id: z.string().uuid(),
     question: z.string().trim().min(1).max(4000),
     response_format: z.enum(['digest', 'summary', 'standard', 'narrative', 'full']),
     scope_tuple: ScopeTupleSchema.optional(),
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
         job_id: body.job_id, principal_uid: principalUid, principal_key_id: principalKeyId,
         principal_auth_kind: principalAuthKind,
         chart_id: body.chart_id,
-        request: { question: body.question, response_format: body.response_format, scope_tuple: body.scope_tuple },
+        request: { inquiry_id: body.inquiry_id, question: body.question, response_format: body.response_format, scope_tuple: body.scope_tuple },
       })
       return response({ ok: true, job: projectJob(row) })
     }

@@ -20,12 +20,15 @@
  * historical) and the wrong-ayanamsha-reaches-the-model failure mode from DIAGNOSIS/F-93.
  */
 import type { CapabilityDescriptor } from '../../types'
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import type { DrillPointer, JudgmentFlagEntry } from '../../../envelope'
 import { judgmentFlag } from '../../../envelope'
 import { query } from '@/lib/db/client'
 import { grahaCodeOf } from '../../../address_resolver'
 import { REAL_AYANAMSHAS } from '@/lib/vidhi/ayanamsha_variation'
 import { DEFAULT_AYANAMSHA } from '../../constants'
+import { DASHA_SCUS } from '../../knowledge/editorial'
+import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 
 // The 7 dasha systems actually written to chart_dashas.system_id (verified live, both charts:
 // native 482012f1 + Abhinandan 1c826d5a). NOTE: this replaces a stale doc claim (Narayana/Shoola
@@ -126,6 +129,104 @@ const COMPACT_FIELDS = [
   'lord_natal_house_d1', 'lord_natal_sign', 'lord_natal_nakshatra', 'lord_natal_dignity_d1',
   'lord_natal_shadbala_total', 'verification_pass_status', 'citation_ref',
 ] as const
+
+const DEFAULT_PAGE_LIMIT = 200
+const MAX_PAGE_LIMIT = 1000
+const MAX_PAGE_OFFSET = 1_000_000
+const GA_DASHAS_ASSET_ID = 'ga_dashas'
+const GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256 = '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'
+const PAGE_CURSOR_DOMAIN = 'madhav:get_dashas:page_cursor:v1'
+
+interface DashaPageCursor {
+  readonly version: 1
+  readonly build_id: string
+  readonly offset: number
+  readonly filter_fingerprint: string
+}
+
+function normalizePageLimit(value: unknown): number | null {
+  if (value === undefined || value === null) return DEFAULT_PAGE_LIMIT
+  const numeric = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
+  if (!Number.isFinite(numeric)) return null
+  const integer = Math.floor(numeric)
+  if (!Number.isSafeInteger(integer) || integer < 1) return null
+  return Math.min(integer, MAX_PAGE_LIMIT)
+}
+
+function normalizePageOffset(value: unknown): number | null {
+  if (value === undefined || value === null) return 0
+  const numeric = typeof value === 'number'
+    ? value
+    : typeof value === 'string' && value.trim() !== '' ? Number(value) : Number.NaN
+  if (!Number.isFinite(numeric)) return null
+  const integer = Math.floor(numeric)
+  if (!Number.isSafeInteger(integer) || integer < 0 || integer > MAX_PAGE_OFFSET) return null
+  return integer
+}
+
+function filterFingerprint(filters: Record<string, unknown>): string {
+  return createHash('sha256').update(JSON.stringify(filters)).digest('hex')
+}
+
+function cursorMessage(kid: string, payload: string): string {
+  return `${PAGE_CURSOR_DOMAIN}:${kid}.${payload}`
+}
+
+function encodePageCursor(cursor: DashaPageCursor, ring: InquiryLifecycleSigningKeyRing): string {
+  const kid = ring.current.kid
+  const payload = Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url')
+  const signature = createHmac('sha256', ring.current.material)
+    .update(cursorMessage(kid, payload)).digest('base64url')
+  return `${kid}.${payload}.${signature}`
+}
+
+function decodePageCursor(value: unknown, ring: InquiryLifecycleSigningKeyRing): DashaPageCursor | null {
+  if (typeof value !== 'string' || value.length === 0) return null
+  try {
+    const parts = value.split('.')
+    if (parts.length !== 3) return null
+    const [kid, payload, providedSignature] = parts
+    if (!kid || !payload || !providedSignature || !/^[A-Za-z0-9_-]+$/.test(payload) || !/^[A-Za-z0-9_-]+$/.test(providedSignature)) return null
+    const signingKey = [ring.current, ...(ring.previous ?? [])].find((candidate) => candidate.kid === kid)
+    if (!signingKey) return null
+    const payloadBytes = Buffer.from(payload, 'base64url')
+    if (payloadBytes.toString('base64url') !== payload) return null
+    const expectedSignature = createHmac('sha256', signingKey.material)
+      .update(cursorMessage(kid, payload)).digest()
+    const actualSignature = Buffer.from(providedSignature, 'base64url')
+    if (actualSignature.toString('base64url') !== providedSignature
+      || actualSignature.length !== expectedSignature.length
+      || !timingSafeEqual(actualSignature, expectedSignature)) return null
+    const parsed = JSON.parse(payloadBytes.toString('utf8')) as Partial<DashaPageCursor>
+    if (parsed.version !== 1 || typeof parsed.build_id !== 'string' || parsed.build_id.length === 0
+      || typeof parsed.filter_fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.filter_fingerprint)
+      || typeof parsed.offset !== 'number' || !Number.isInteger(parsed.offset)
+      || parsed.offset < 0 || parsed.offset > MAX_PAGE_OFFSET) return null
+    return parsed as DashaPageCursor
+  } catch {
+    return null
+  }
+}
+
+function paginationError(chartId: string, code: string, error: string, extra: Record<string, unknown> = {}) {
+  return {
+    content: {
+      chart_id: chartId,
+      code,
+      error,
+      restart_required: true,
+      rows: [],
+      total: 0,
+      more_available: false,
+      next_offset: null,
+      next_page_cursor: null,
+      ...extra,
+    },
+    is_error: true,
+  }
+}
 
 function projectRow(row: Record<string, unknown>, fields: readonly string[] | null): Record<string, unknown> {
   if (!fields) return row
@@ -231,6 +332,7 @@ export const getDashasCapability: CapabilityDescriptor = {
   type: 'tool',
   layer: 'L1',
   name: 'get_dashas',
+  semantic_capabilities: DASHA_SCUS,
   description:
     'Retrieve dasha period data for a chart from the chart_dashas table. ' +
     'Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, ' +
@@ -304,6 +406,10 @@ export const getDashasCapability: CapabilityDescriptor = {
     },
     offset: { type: 'number', default: 0 },
     limit:  { type: 'number', default: 200 },
+    page_cursor: {
+      type: 'string',
+      description: 'Opaque, build-pinned continuation token from next_page_cursor. It rejects changed filters or a replaced chart build and requires a restart rather than replaying an unsafe offset.',
+    },
   },
   required_inputs: ['chart_id'],
   scope: 'per_chart',
@@ -322,8 +428,25 @@ export const getDashasCapability: CapabilityDescriptor = {
   async handler(args, _ctx) {
     try {
       const chartId = args.chart_id as string
-      const limit   = Math.min((args.limit as number) ?? 200, 1000)
-      const offset  = (args.offset as number) ?? 0
+      const limit = normalizePageLimit(args.limit)
+      const requestedOffset = normalizePageOffset(args.offset)
+      if (limit === null || requestedOffset === null) {
+        return paginationError(
+          chartId,
+          'invalid_pagination',
+          `get_dashas requires limit in [1, ${MAX_PAGE_LIMIT}] after normalization and offset in [0, ${MAX_PAGE_OFFSET}].`,
+        )
+      }
+      // A numeric offset has no build identity. Retain offset=0 for legacy first-page callers
+      // and retain next_offset in the response envelope, but do not permit an unpinned offset
+      // to become a continuation across a replacement rebuild.
+      if ((args.page_cursor === undefined || args.page_cursor === null) && requestedOffset > 0) {
+        return paginationError(
+          chartId,
+          'page_cursor_required',
+          'A nonzero offset is not a safe dasha continuation; restart from the first page and use next_page_cursor.',
+        )
+      }
 
       const requestedAyanamsha = args.ayanamsha_id
       if (
@@ -349,10 +472,13 @@ export const getDashasCapability: CapabilityDescriptor = {
         typeof requestedAyanamsha === 'string' && requestedAyanamsha !== ''
           ? requestedAyanamsha
           : DEFAULT_AYANAMSHA
-      const params: unknown[] = [chartId, limit, offset]
-      let sql = `SELECT * FROM chart_dashas WHERE chart_id = $1`
+      // Fetch one extra row to prove whether this page has a continuation.  `total` remains
+      // the page count for backwards compatibility; it is deliberately not presented as a
+      // whole-result count because no matching COUNT query is issued here.
+      const params: unknown[] = [chartId, limit + 1, requestedOffset]
+      let pageWhere = `d.chart_id = $1`
 
-      sql += ` AND ayanamsha_id = $${params.length + 1}`
+      pageWhere += ` AND d.ayanamsha_id = $${params.length + 1}`
       params.push(ayanamshaId)
 
       // ── system facet (default vimshottari; "all" or an unrecognized value disables the filter
@@ -370,7 +496,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       if (systemInput && systemInput.toLowerCase() !== 'all') {
         const normalized = normalizeSystem(systemInput)
         if (normalized) {
-          sql += ` AND system_id = $${params.length + 1}`
+          pageWhere += ` AND d.system_id = $${params.length + 1}`
           params.push(normalized)
           systemApplied = normalized
         } else {
@@ -379,7 +505,7 @@ export const getDashasCapability: CapabilityDescriptor = {
       } else if (!systemInput) {
         // Default facet value (design §18/E-5: dasha_query defaults to vimshottari, never
         // unwindowed-all-systems-by-default).
-        sql += ` AND system_id = $${params.length + 1}`
+        pageWhere += ` AND d.system_id = $${params.length + 1}`
         params.push('vimshottari')
         systemApplied = 'vimshottari'
       }
@@ -390,17 +516,17 @@ export const getDashasCapability: CapabilityDescriptor = {
       if (args.level !== undefined && args.level !== null && args.level !== '') {
         const levelN = normalizeLevel(args.level as string | number)
         if (levelN !== null) {
-          sql += ` AND level_n = $${params.length + 1}`
+          pageWhere += ` AND d.level_n = $${params.length + 1}`
           params.push(levelN)
           levelApplied = levelN
         }
       } else if (!args.all_levels) {
-        sql += ` AND level_n <= 3`
+        pageWhere += ` AND d.level_n <= 3`
         levelApplied = 'cap<=3'
       }
 
       if (args.lord_graha) {
-        sql += ` AND lord_graha = $${params.length + 1}`
+        pageWhere += ` AND d.lord_graha = $${params.length + 1}`
         params.push(args.lord_graha as string)
       }
 
@@ -423,14 +549,14 @@ export const getDashasCapability: CapabilityDescriptor = {
         dateFilterApplied.as_of_date = containsDate
       }
       if (containsDate) {
-        sql += ` AND start_date <= $${params.length + 1}::date AND end_date >= $${params.length + 2}::date`
+        pageWhere += ` AND d.start_date <= $${params.length + 1}::date AND d.end_date >= $${params.length + 2}::date`
         params.push(containsDate)
         params.push(containsDate)
       }
       if (args.date_from) {
         // Exclude dashas that ended before date_from. The dasha running AT
         // date_from is included even if it started before (end_date >= date_from).
-        sql += ` AND end_date >= $${params.length + 1}::date`
+        pageWhere += ` AND d.end_date >= $${params.length + 1}::date`
         params.push(args.date_from as string)
         dateFilterApplied.date_from = args.date_from as string
       }
@@ -439,11 +565,11 @@ export const getDashasCapability: CapabilityDescriptor = {
       const windowStart = args.window_start as string | undefined
       const windowEnd = args.window_end as string | undefined
       if (windowStart) {
-        sql += ` AND end_date >= $${params.length + 1}::date`
+        pageWhere += ` AND d.end_date >= $${params.length + 1}::date`
         params.push(windowStart)
       }
       if (windowEnd) {
-        sql += ` AND start_date <= $${params.length + 1}::date`
+        pageWhere += ` AND d.start_date <= $${params.length + 1}::date`
         params.push(windowEnd)
       }
       if (windowStart || windowEnd) {
@@ -463,17 +589,176 @@ export const getDashasCapability: CapabilityDescriptor = {
         end.setFullYear(end.getFullYear() + 5)
         const startIso = start.toISOString().slice(0, 10)
         const endIso = end.toISOString().slice(0, 10)
-        sql += ` AND end_date >= $${params.length + 1}::date AND start_date <= $${params.length + 2}::date`
+        pageWhere += ` AND d.end_date >= $${params.length + 1}::date AND d.start_date <= $${params.length + 2}::date`
         params.push(startIso)
         params.push(endIso)
         windowApplied = { start: startIso, end: endIso }
         dateFilterApplied.default_window_applied = true
       }
 
-      sql += ` ORDER BY system_id, ayanamsha_id, start_date LIMIT $2 OFFSET $3`
+      // A continuation is meaningful only for this exact normalized query and a freshly
+      // proven ga_dashas receipt. `dasha_row_id` is regenerated on rebuild, so a bare
+      // offset cannot safely cross the receipt-selected build boundary.
+      const queryFilterFingerprint = filterFingerprint({
+        chart_id: chartId,
+        ayanamsha_id: ayanamshaId,
+        system_id: systemApplied,
+        level: levelApplied,
+        lord_graha: args.lord_graha ?? null,
+        date_contains: containsDate ?? null,
+        date_from: args.date_from ?? null,
+        window_start: windowApplied?.start ?? null,
+        window_end: windowApplied?.end ?? null,
+        order: 'system_id:asc,ayanamsha_id:asc,start_date:asc,level_n:asc,start_iso:asc,dasha_row_id:asc',
+      })
+      let signingRing: InquiryLifecycleSigningKeyRing
+      try {
+        signingRing = loadInquiryLifecycleSigningKeyRing()
+      } catch {
+        return paginationError(chartId, 'page_cursor_signing_unavailable', 'Dasha continuation signing is unavailable; this response cannot safely establish a pagination snapshot.')
+      }
+      let offset = requestedOffset
+      let cursor: DashaPageCursor | null = null
+      if (args.page_cursor !== undefined && args.page_cursor !== null) {
+        cursor = decodePageCursor(args.page_cursor, signingRing)
+        if (!cursor) {
+          return paginationError(chartId, 'invalid_page_cursor', 'The supplied page_cursor is malformed, unsigned, or outside the supported pagination range.')
+        }
+        if (cursor.filter_fingerprint !== queryFilterFingerprint) {
+          return paginationError(chartId, 'page_cursor_filter_mismatch', 'The supplied page_cursor was minted for different normalized query filters; restart from the first page.')
+        }
+        offset = cursor.offset
+      }
+      params[2] = offset
+      params.push(GA_DASHAS_ASSET_ID, GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256)
+      const assetIdParam = params.length - 1
+      const specParam = params.length
 
-      const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      // This single statement gives the replacement fence, receipt/freshness proof, and page
+      // the same PostgreSQL statement snapshot. A completed build alone is not proof: only a
+      // chart-scoped ga_dashas receipt with this reviewed digest spec and matching fresh state
+      // may select the build. The fence covers an active replacement AND a terminal ga_dashas
+      // run whose mutation/terminal time is at-or-after the selected receipt but lacks its own
+      // fresh/proven receipt. A run can start before a later successful run and still mutate
+      // afterwards, so started_at is not a safe ordering boundary. The asset's ended_at is
+      // the producer-specific mutation boundary; fall back to the run's terminal time only
+      // when it is absent. NULL for both fences conservatively; a terminal asset known to
+      // have ended before the receipt does not block it.
+      let pageResult: { rows: Array<{
+        replacement_in_progress: boolean
+        eligible_build_id: string | null
+        rows: Record<string, unknown>[]
+      }> }
+      try {
+        pageResult = await query<{
+          replacement_in_progress: boolean
+          eligible_build_id: string | null
+          rows: Record<string, unknown>[]
+        }>(
+          `WITH eligible_receipt AS (
+           SELECT receipt.build_id::text AS build_id,
+                  receipt.observed_at AS observed_at
+             FROM asset_provenance_receipts receipt
+             JOIN asset_freshness freshness
+               ON freshness.asset_id = receipt.asset_id
+              AND freshness.scope_key = receipt.scope_key
+              AND freshness.partition_key = receipt.partition_key
+              AND freshness.receipt_version = receipt.receipt_version
+             JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+            WHERE receipt.asset_id = $${assetIdParam}::text
+              AND receipt.chart_id = $1::uuid
+              AND receipt.receipt_state = 'proven'
+              AND receipt.output_digest_spec_sha256 = $${specParam}::text
+              AND freshness.freshness_state = 'fresh'
+              AND receipt_run.chart_id = $1::uuid
+              AND receipt_run.state = 'completed'
+            ORDER BY receipt.observed_at DESC
+            LIMIT 1
+         ), replacement_fence AS (
+           SELECT EXISTS (
+             SELECT 1
+               FROM build_run_assets fenced_asset
+               JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
+              WHERE fenced_run.chart_id = $1::uuid
+                AND fenced_asset.asset_id = $${assetIdParam}::text
+                AND (
+                  fenced_run.state IN ('planned', 'running', 'paused')
+                  OR fenced_asset.state IN ('queued', 'building')
+                  OR (
+                    EXISTS (
+                      SELECT 1 FROM eligible_receipt eligible
+                       WHERE COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL
+                          OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at
+                    )
+                    AND NOT EXISTS (
+                      SELECT 1
+                        FROM asset_provenance_receipts proven_receipt
+                        JOIN asset_freshness proven_freshness
+                          ON proven_freshness.asset_id = proven_receipt.asset_id
+                         AND proven_freshness.scope_key = proven_receipt.scope_key
+                         AND proven_freshness.partition_key = proven_receipt.partition_key
+                         AND proven_freshness.receipt_version = proven_receipt.receipt_version
+                       WHERE proven_receipt.asset_id = fenced_asset.asset_id
+                         AND proven_receipt.chart_id = $1::uuid
+                         AND proven_receipt.build_id = fenced_run.id
+                         AND proven_receipt.receipt_state = 'proven'
+                         AND proven_receipt.output_digest_spec_sha256 = $${specParam}::text
+                         AND proven_freshness.freshness_state = 'fresh'
+                    )
+                  )
+                )
+           ) AS replacement_in_progress
+         ), page_rows AS (
+           SELECT to_jsonb(d) AS row,
+                  d.system_id AS order_system_id,
+                  d.ayanamsha_id AS order_ayanamsha_id,
+                  d.start_date AS order_start_date,
+                  d.level_n AS order_level_n,
+                  d.start_iso AS order_start_iso,
+                  d.dasha_row_id::text AS order_dasha_row_id
+             FROM chart_dashas d
+             JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
+            WHERE ${pageWhere}
+            ORDER BY d.system_id ASC, d.ayanamsha_id ASC, d.start_date ASC, d.level_n ASC, d.start_iso ASC, d.dasha_row_id ASC
+            LIMIT $2 OFFSET $3
+         )
+         SELECT fence.replacement_in_progress,
+                eligible.build_id AS eligible_build_id,
+                COALESCE(
+                  jsonb_agg(page_rows.row ORDER BY page_rows.order_system_id ASC, page_rows.order_ayanamsha_id ASC,
+                    page_rows.order_start_date ASC, page_rows.order_level_n ASC, page_rows.order_start_iso ASC,
+                    page_rows.order_dasha_row_id ASC) FILTER (WHERE page_rows.row IS NOT NULL),
+                  '[]'::jsonb
+                ) AS rows
+           FROM replacement_fence fence
+           LEFT JOIN eligible_receipt eligible ON true
+           LEFT JOIN page_rows ON true
+          GROUP BY fence.replacement_in_progress, eligible.build_id`,
+          params,
+        )
+      } catch {
+        return paginationError(chartId, 'ga_dashas_snapshot_unavailable', 'The ga_dashas receipt and page snapshot could not be read consistently; restart after provenance is available.')
+      }
+      const pageSnapshot = pageResult.rows[0]
+      if (!pageSnapshot) {
+        return paginationError(chartId, 'ga_dashas_receipt_unavailable', 'No consistent ga_dashas receipt snapshot was available; restart after provenance is complete.')
+      }
+      if (pageSnapshot.replacement_in_progress) {
+        return paginationError(chartId, 'ga_dashas_replacement_in_progress', 'A ga_dashas replacement is in progress; restart after the asset and its fresh provenance receipt are complete.')
+      }
+      const activeBuildId = pageSnapshot.eligible_build_id
+      if (!activeBuildId) {
+        return paginationError(chartId, 'ga_dashas_receipt_unavailable', 'No fresh, proven ga_dashas receipt with the reviewed digest specification is available for this chart.')
+      }
+      if (cursor && cursor.build_id !== activeBuildId) {
+        return paginationError(chartId, 'page_cursor_build_changed', 'The fresh proven ga_dashas receipt build changed after this page_cursor was minted; restart from the first page.', {
+          cursor_build_id: cursor.build_id,
+          active_build_id: activeBuildId,
+        })
+      }
+      const fetchedRows = Array.isArray(pageSnapshot.rows) ? pageSnapshot.rows : []
+      const moreAvailable = fetchedRows.length > limit
+      const rows = fetchedRows.slice(0, limit)
 
       // ── R-43 (WP-1.8): dasha-lord natal strength re-derivation, SERVE-side ──────────
       // The denormalized chart_dashas.lord_natal_dignity_d1 / lord_natal_shadbala_total
@@ -667,6 +952,8 @@ export const getDashasCapability: CapabilityDescriptor = {
         let lvlSql = `SELECT MAX(level_n)::int AS max_level FROM chart_dashas WHERE chart_id = $1`
         lvlSql += ` AND ayanamsha_id = $${lvlParams.length + 1}`
         lvlParams.push(ayanamshaId)
+        lvlSql += ` AND build_id = $${lvlParams.length + 1}::uuid`
+        lvlParams.push(activeBuildId)
         if (systemApplied) {
           lvlSql += ` AND system_id = $${lvlParams.length + 1}`
           lvlParams.push(systemApplied)
@@ -682,6 +969,7 @@ export const getDashasCapability: CapabilityDescriptor = {
         content: {
           chart_id: chartId,
           source_table: 'chart_dashas',
+          build_id: activeBuildId,
           levels_available: levelsAvailable,
           facets_applied: {
             system: systemApplied ?? 'all',
@@ -695,6 +983,16 @@ export const getDashasCapability: CapabilityDescriptor = {
           },
           rows: projectedRows,
           total: projectedRows.length,
+          more_available: moreAvailable,
+          // Legacy envelope compatibility only. A subsequent nonzero bare offset is rejected;
+          // callers must use the build-pinned opaque cursor above.
+          next_offset: moreAvailable ? offset + rows.length : null,
+          next_page_cursor: moreAvailable ? encodePageCursor({
+            version: 1,
+            build_id: activeBuildId,
+            offset: offset + rows.length,
+            filter_fingerprint: queryFilterFingerprint,
+          }, signingRing) : null,
           // R-43 (WP-1.8): dasha-lord natal dignity + shadbala are re-derived from chart_facts at
           // serve time (the denormalized chart_dashas columns are NULL/wrong; §N.5 — L1 is the
           // authority). Compact always-on provenance marker (envelope-budget safe); the exhaustive

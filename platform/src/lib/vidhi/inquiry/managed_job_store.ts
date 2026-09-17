@@ -5,6 +5,8 @@ export type ManagedPrashnaJobStatus = 'pending' | 'running' | 'complete' | 'fail
 export type ManagedPrashnaResponseFormat = 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
 
 export interface ManagedPrashnaJobRequest {
+  /** Generated once by the managed MCP edge and immutable in request_jsonb. */
+  readonly inquiry_id: string
   readonly question: string
   readonly response_format: ManagedPrashnaResponseFormat
   readonly scope_tuple?: unknown

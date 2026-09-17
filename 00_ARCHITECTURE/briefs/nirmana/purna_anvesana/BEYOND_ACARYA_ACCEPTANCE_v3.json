@@ -1,0 +1,75 @@
+{
+  "schema_version": "madhav-purna-anvesana/beyond-acarya-acceptance/v3",
+  "campaign_id": "madhav-purna-anvesana",
+  "packet_id": "F3-SOURCE-SUCCESSOR",
+  "predecessor": {
+    "artifact": "BEYOND_ACARYA_ACCEPTANCE_v2.json",
+    "acceptance_version": "beyond-acarya-source-acceptance-v2",
+    "capability_content_hash": "sha256:55e17219c3e537a442cf02777d501a28874dd27c2e67a55422c0af47424f85a7",
+    "report_hash": "sha256:df21accf7b9c1ee72ef08ee05b07db4c36ae559e2019d5a175bfa842a536d30f"
+  },
+  "preserves_historical_predecessor": true,
+  "acceptance_version": "beyond-acarya-source-acceptance-v2",
+  "corpus_version": "beyond-acarya-inquiry-corpus-v1",
+  "temporal_anchor_date": "2026-09-15",
+  "evaluated_source_revision": "25669184e53979f093b2a226e420981b30406427",
+  "generated_snapshot": {
+    "path": "platform/src/generated/capability_knowledge.snapshot.json",
+    "generated_at": "2026-09-17T02:27:39.000Z",
+    "snapshot_file_sha256": "sha256:88211f76a84278741216f0dfe4d6b77a12fb99e8f3ab181f17e3d030dd9a317d",
+    "capability_content_hash": "sha256:20c909f45c80c6fbc16a0900b951f60993fefd7241e06ee58bb1498a87bc1172",
+    "source_catalog_fingerprint": "sha256:7962497e516e938bec3224c01365747de302a071e6035b934454cfed7b81db7b",
+    "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
+    "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b"
+  },
+  "capability_content_hash": "sha256:20c909f45c80c6fbc16a0900b951f60993fefd7241e06ee58bb1498a87bc1172",
+  "report_hash": "sha256:9c86043abcdcd9859da602bab6323a67bd138eca6d9fbbb10b9eee15b7815b6f",
+  "evidence_kind": "synthetic_source_local",
+  "source_status": "SOURCE_ONLY_NOT_LIVE",
+  "verdict": "ACCEPTED_SOURCE_LOCAL",
+  "metrics": {
+    "novel_combination_suite": {
+      "passed": true,
+      "cases": 5,
+      "expected_novel_capabilities": 13,
+      "missing_novel_capabilities": 0
+    },
+    "omission_rate": {
+      "passed": true,
+      "omitted": 0,
+      "expected": 25,
+      "rate": 0
+    },
+    "route_coverage": {
+      "passed": true,
+      "covered": 34,
+      "expected": 34,
+      "rate": 1
+    },
+    "semantic_edge_coverage": {
+      "passed": true,
+      "covered": 9,
+      "expected": 9,
+      "rate": 1
+    },
+    "long_inquiry_closure": {
+      "passed": true,
+      "completed_cases": 1,
+      "total_cases": 1,
+      "minimum_iterations_observed": 11,
+      "pagination_continuations": 1,
+      "retained_earlier_evidence": true
+    },
+    "abstention_quality": {
+      "passed": true,
+      "passed_cases": 3,
+      "total_cases": 3
+    }
+  },
+  "claim_ceiling": "SOURCE_SCOPE_COMPLETE_WITH_AUTHORITY_BOUND_REMAINDER",
+  "expert_domain_review": "REQUIRED_BEFORE_EMPIRICAL_ACCEPTANCE",
+  "empirical_answer_quality": "NOT_RUN",
+  "production_validation": "NOT_RUN",
+  "deployed_route_validation": "NOT_RUN",
+  "candidate_validation": "NOT_RUN"
+}

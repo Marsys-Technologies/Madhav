@@ -7,6 +7,8 @@ export type ManagedPrashnaJobStatus = 'pending' | 'running' | 'complete' | 'fail
 export type ManagedPrashnaResponseFormat = 'digest' | 'summary' | 'standard' | 'narrative' | 'full'
 
 export interface ManagedPrashnaJobRequest {
+  /** Present on all newly-created jobs; absent legacy rows fail closed at resume. */
+  inquiry_id?: string
   question: string
   response_format: ManagedPrashnaResponseFormat
   scope_tuple?: PrashnaAskScopeTuple
@@ -32,7 +34,7 @@ export interface ManagedPrashnaJob {
 }
 
 export interface ManagedPrashnaJobStore {
-  create(principal: Principal, input: { job_id: string; chart_id: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob>
+  create(principal: Principal, input: { job_id: string; chart_id: string; inquiry_id?: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob>
   get(principal: Principal, jobId: string): Promise<ManagedPrashnaJob | null>
   claim(principal: Principal, jobId: string, workerId: string): Promise<{ disposition: 'acquired' | 'not_acquired'; job: ManagedPrashnaJob } | null>
   updateProgress(principal: Principal, jobId: string, workerId: string, progress: ManagedPrashnaJobProgress): Promise<ManagedPrashnaJob>
@@ -48,6 +50,7 @@ const JobSchema = z.object({
   attempt_count: z.number().int().min(0), created_at: z.string(), updated_at: z.string(),
   lease_expires_at: z.string().nullable(),
   request: z.object({
+    inquiry_id: z.string().uuid().optional(),
     question: z.string(),
     response_format: z.enum(['digest', 'summary', 'standard', 'narrative', 'full']),
     scope_tuple: z.unknown().optional(),
@@ -117,9 +120,10 @@ export class PlatformManagedPrashnaJobStore implements ManagedPrashnaJobStore {
     }
   }
 
-  async create(principal: Principal, input: { job_id: string; chart_id: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob> {
+  async create(principal: Principal, input: { job_id: string; chart_id: string; inquiry_id?: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob> {
     const payload = await this.call(principal, {
       action: 'create', job_id: input.job_id, chart_id: input.chart_id, question: input.request.question,
+      inquiry_id: input.inquiry_id ?? input.request.inquiry_id,
       response_format: input.request.response_format, scope_tuple: input.request.scope_tuple,
     }, true)
     return parseJob(payload?.job)
@@ -193,10 +197,11 @@ export class InMemoryManagedPrashnaJobStoreForTests implements ManagedPrashnaJob
     if (job) job.lease_expires_at = new Date(Date.now() - 1).toISOString()
   }
 
-  async create(principal: Principal, input: { job_id: string; chart_id: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob> {
+  async create(principal: Principal, input: { job_id: string; chart_id: string; inquiry_id?: string; request: ManagedPrashnaJobRequest }): Promise<ManagedPrashnaJob> {
+    const request = { ...input.request, ...(input.inquiry_id ? { inquiry_id: input.inquiry_id } : {}) }
     const existing = this.jobs.get(input.job_id)
     if (existing) {
-      const sameRequest = JSON.stringify(existing.request) === JSON.stringify(input.request)
+      const sameRequest = JSON.stringify(existing.request) === JSON.stringify(request)
       if (existing.owner_uid !== principal.user_uid || existing.owner_key_id !== principal.key_id
         || existing.chart_id !== input.chart_id || !sameRequest) {
         throw new Error('MANAGED_JOB_IDEMPOTENCY_CONFLICT')
@@ -208,7 +213,7 @@ export class InMemoryManagedPrashnaJobStoreForTests implements ManagedPrashnaJob
       job_id: input.job_id, chart_id: input.chart_id, status: 'pending',
       progress: null, result: null, error: null, attempt_count: 0,
       created_at: now, updated_at: now, lease_expires_at: null,
-      request: input.request, owner_uid: principal.user_uid, owner_key_id: principal.key_id,
+      request, owner_uid: principal.user_uid, owner_key_id: principal.key_id,
       lease_owner: null, terminal_worker_id: null,
     }
     this.jobs.set(job.job_id, job)

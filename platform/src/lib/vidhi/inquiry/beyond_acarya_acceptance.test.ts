@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import type { CapabilityKnowledgeSnapshot } from '../../retrieval/registry/knowledge/types'
 import committedSnapshot from '../../../generated/capability_knowledge.snapshot.json'
@@ -9,6 +10,15 @@ import {
 import { BEYOND_ACARYA_ACCEPTANCE_CASES } from './beyond_acarya_acceptance.corpus'
 
 const snapshot = committedSnapshot as CapabilityKnowledgeSnapshot
+const historicalV2 = {
+  capability_content_hash: 'sha256:55e17219c3e537a442cf02777d501a28874dd27c2e67a55422c0af47424f85a7',
+  report_hash: 'sha256:df21accf7b9c1ee72ef08ee05b07db4c36ae559e2019d5a175bfa842a536d30f',
+} as const
+const historicalV3 = {
+  capability_content_hash: 'sha256:20c909f45c80c6fbc16a0900b951f60993fefd7241e06ee58bb1498a87bc1172',
+  report_hash: 'sha256:9c86043abcdcd9859da602bab6323a67bd138eca6d9fbbb10b9eee15b7815b6f',
+  artifact_hash: 'sha256:9c12f15b88f3d4bb1f1766a9364d231801e8c1a82e3bb3ea0b1680ba9935bc1e',
+} as const
 
 function withoutScu(
   source: CapabilityKnowledgeSnapshot,
@@ -48,7 +58,7 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.metrics.long_inquiry_closure.pagination_continuations).toBeGreaterThanOrEqual(1)
     expect(report.metrics.abstention_quality).toMatchObject({ passed: true, passed_cases: 3, total_cases: 3 })
     expect(report.passed).toBe(true)
-    expect(report.report_hash).toBe('sha256:df21accf7b9c1ee72ef08ee05b07db4c36ae559e2019d5a175bfa842a536d30f')
+    expect(report.report_hash).toBe('sha256:e95bc84f1f5bef3ddc3da9d5d63c58d7381cb21ddeeb5587351c6390a716f7da')
   })
 
   it('detects an independently expected concept omitted from the snapshot', () => {
@@ -170,14 +180,56 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
     expect(report.production_validation).toBe('NOT_RUN')
   })
 
-  it('pins the governed evidence artifact to the executable report', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+  it('keeps the immutable v2 evidence artifact pinned to its historical snapshot and report', () => {
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v2.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`)
+      .toBe('sha256:33595346209c3f31b7123f5dbb002712e3ca5de52b06cfc1b7170a4ac70543e0')
+    expect(artifact).toMatchObject({
+      acceptance_version: 'beyond-acarya-source-acceptance-v2',
+      capability_content_hash: historicalV2.capability_content_hash,
+      report_hash: historicalV2.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('keeps the v3 source-successor artifact immutable while a later successor advances', () => {
+    const artifactBytes = readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v3.json',
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
+
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`).toBe(historicalV3.artifact_hash)
+    expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v3',
+      capability_content_hash: historicalV3.capability_content_hash,
+      report_hash: historicalV3.report_hash,
+      verdict: 'ACCEPTED_SOURCE_LOCAL',
+    })
+  })
+
+  it('pins the v4 source-successor artifact to the current executable report without claiming live acceptance', () => {
+    const artifact = JSON.parse(readFileSync(new URL(
+      '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v4.json',
       import.meta.url,
     ), 'utf8')) as Record<string, unknown>
     const report = evaluateBeyondAcaryaAcceptance(snapshot, BEYOND_ACARYA_ACCEPTANCE_CASES)
+    const snapshotBytes = readFileSync(new URL('../../../generated/capability_knowledge.snapshot.json', import.meta.url))
+    const snapshotFileSha256 = `sha256:${createHash('sha256').update(snapshotBytes).digest('hex')}`
 
     expect(artifact).toMatchObject({
+      schema_version: 'madhav-purna-anvesana/beyond-acarya-acceptance/v4',
+      predecessor: {
+        artifact: 'BEYOND_ACARYA_ACCEPTANCE_v3.json',
+        acceptance_version: 'beyond-acarya-source-acceptance-v2',
+        capability_content_hash: historicalV3.capability_content_hash,
+        report_hash: historicalV3.report_hash,
+      },
       acceptance_version: report.acceptance_version,
       corpus_version: report.corpus_version,
       capability_content_hash: report.capability_content_hash,
@@ -204,8 +256,22 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
         },
       },
       claim_ceiling: report.claim_ceiling,
+      expert_domain_review: report.expert_domain_review,
       empirical_answer_quality: report.empirical_answer_quality,
       production_validation: report.production_validation,
+      source_status: 'SOURCE_ONLY_NOT_LIVE',
+      candidate_validation: 'NOT_RUN',
+      deployed_route_validation: 'NOT_RUN',
+      generated_snapshot: {
+        path: 'platform/src/generated/capability_knowledge.snapshot.json',
+        generated_at: snapshot.generated_at,
+        capability_content_hash: snapshot.content_hash,
+        snapshot_file_sha256: snapshotFileSha256,
+        source_catalog_fingerprint: snapshot.source_catalog_fingerprint,
+        semantic_review_fingerprint: snapshot.semantic_review_fingerprint,
+        producer_contract_fingerprint: snapshot.producer_contract_fingerprint,
+      },
+      evaluated_source_revision: 'b02490223fdd60bef27a1652e15944496b9c53ea',
     })
   })
 })

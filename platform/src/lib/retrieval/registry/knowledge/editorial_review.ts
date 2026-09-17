@@ -4,7 +4,11 @@
  * Membership is deliberately exact and exhaustive: a descriptor is editorial only when its
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
-import type { SemanticCapabilityKind } from './types'
+import type {
+  ProducerOutputAvailabilityRequirement,
+  ProducerOutputClaim,
+  SemanticCapabilityKind,
+} from './types'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -15,6 +19,244 @@ export interface DescriptorEditorialFamily {
   readonly horizons: readonly string[]
   readonly kind?: SemanticCapabilityKind
   readonly evidence_use: string
+}
+
+/**
+ * First-slice availability decisions whose handlers are composite/source-backed
+ * but have no complete, exact reviewed receipt contract yet.  Do not replace a
+ * missing full contract with an adjacent producer digest: these entries keep
+ * the route deliberately dark until the actual handler inputs are coverable.
+ */
+export interface DescriptorAvailabilityReview {
+  readonly reason: string
+  /** Mandatory executable legs that currently lack a complete exact contract. */
+  readonly missing_binding_ids?: readonly string[]
+  readonly source_refs: readonly string[]
+}
+
+/**
+ * Exact receipt contracts for descriptor-derived bindings. These are separate
+ * from deliberate-dark reviews: a descriptor is promotable only when its
+ * handler's complete materialized output is represented by the reviewed spec.
+ */
+export interface DescriptorAvailabilityContractReview {
+  readonly producer_output_claims: readonly ProducerOutputClaim[]
+  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
+}
+
+const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
+  'registry:marsys://tool/L2/query_domain_reading',
+  'registry:marsys://tool/L3/query_temporal_activation',
+  'registry:marsys://tool/L2/query_contradictions',
+] as const
+
+const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview>> = {
+  assess_career: {
+    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
+    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
+    ],
+  },
+  assess_marriage: {
+    reason: 'The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.',
+    missing_binding_ids: ASSESS_DOMAIN_MANDATORY_BINDINGS,
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791',
+      'platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804',
+    ],
+  },
+  judgment_query: {
+    reason: 'The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
+    ],
+  },
+  query_classical_texts: {
+    reason: 'The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler\'s corpus query and ranking response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286',
+      'platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44',
+    ],
+  },
+  query_contradictions: {
+    reason: 'Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala\'s reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140',
+      'platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65',
+      'platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71',
+    ],
+  },
+  query_domain_reading: {
+    reason: 'The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778',
+      'platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010',
+    ],
+  },
+  query_dosha_catalog: {
+    reason: 'The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
+    ],
+  },
+  query_yoga_catalog: {
+    reason: 'The handler serves paged SELECT * rows from brahma_yoga_catalog, including created_at, then returns request-specific total and more_available metadata. The current bg_yogas digest covers the catalog relation but omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:66-72',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:7-22',
+      'platform/migrations/239_yoga_system.sql:35-39',
+      'platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673',
+    ],
+  },
+  query_compendium_index: {
+    reason: 'The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87',
+      'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
+    ],
+  },
+  get_ayurdaya: {
+    reason: 'The handler is chart-scoped, but the reviewed ga_ayurdaya digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93',
+      'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+    ],
+  },
+  get_sensitive_degrees: {
+    reason: 'The handler is chart-scoped, but the reviewed ga_sensitive_degree digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119',
+      'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+    ],
+  },
+  get_strength: {
+    reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
+      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+    ],
+  },
+}
+
+const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  query_formula_constants: {
+    producer_output_claims: [{
+      asset_id: 'bg_formula_constants',
+      component: 'formula_constants',
+      output_digest_spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_formula_constants',
+      spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    }],
+  },
+  query_dasha_systems: {
+    producer_output_claims: [{
+      asset_id: 'bg_dasha_systems',
+      component: 'dasha_system_catalog',
+      output_digest_spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_dasha_systems',
+      spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
+    }],
+  },
+  query_medical_mappings: {
+    producer_output_claims: [{
+      asset_id: 'bg_medical_mappings',
+      component: 'medical_mappings',
+      output_digest_spec_sha256: '914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_medical_mappings',
+      spec_sha256: '914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27',
+    }],
+  },
+  query_nakshatra_medical: {
+    producer_output_claims: [{
+      asset_id: 'bg_nakshatra_medical',
+      component: 'nakshatra_medical',
+      output_digest_spec_sha256: 'ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_nakshatra_medical',
+      spec_sha256: 'ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1',
+      scope: 'global',
+      source_ref: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33',
+    }],
+  },
+  query_sign_medical: {
+    producer_output_claims: [{
+      asset_id: 'bg_sign_medical',
+      component: 'sign_medical',
+      output_digest_spec_sha256: '44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_sign_medical',
+      spec_sha256: '44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7',
+      scope: 'global',
+      source_ref: 'platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25',
+    }],
+  },
+}
+
+export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {
+  return AVAILABILITY_REVIEWS[name]
+}
+
+export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
+  return AVAILABILITY_CONTRACT_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {

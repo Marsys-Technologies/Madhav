@@ -1,10 +1,10 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-16T05:16:34.000Z",
-  "content_hash": "sha256:55e17219c3e537a442cf02777d501a28874dd27c2e67a55422c0af47424f85a7",
-  "source_catalog_fingerprint": "sha256:56fd051c90bf6d84c46a9418d554e9b75ce5ecb2e370a685eb997f1c7c89dcd2",
-  "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
+  "generated_at": "2026-09-17T07:28:59.000Z",
+  "content_hash": "sha256:509f3eb0372c0d1095f5ca8d51c7cc28635b564b006cc958f647ced0536164ca",
+  "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
+  "semantic_review_fingerprint": "sha256:8110291398f3b61392117ea93a257ade130c43d20ee65d6e6ce5092b01c38325",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -46,6 +46,7 @@
         "limit?",
         "mechanism_class?",
         "offset?",
+        "page_cursor?",
         "valence?"
       ],
       "outputs": [
@@ -57,20 +58,21 @@
       ],
       "primary_binding_uri": "marsys://tool/L2/query_mechanisms",
       "primary_binding_details": {
-        "pagination": "offset",
-        "pagination_verified": null,
+        "pagination": "cursor",
         "pagination_contract": {
-          "request_position_path": "offset",
+          "request_position_path": "page_cursor",
           "request_limit_path": "limit",
           "effective_maximum": 50,
           "result_collection_path": "content.rows",
           "total_path": "content.total_matching",
           "more_available_path": "content.more_available",
+          "next_path": "content.next_page_cursor",
           "deterministic_order": [
             "chain_circuit_class DESC",
             "edge_strength_avg DESC",
             "member_node_count DESC",
-            "mechanism_name ASC"
+            "mechanism_name ASC",
+            "mechanism_id ASC"
           ]
         },
         "execution_channels": [
@@ -98,9 +100,7 @@
         }
       ],
       "known_gaps": [
-        "Mechanism graph is D1-only; cross-varga convergence must be assembled from separate evidence.",
-        "Offset paging exposes total/more_available, but its current ordering lacks a unique final tiebreak and is therefore not receipt-grade.",
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+        "Mechanism graph is D1-only; cross-varga convergence must be assembled from separate evidence."
       ],
       "producer_output_claims": [
         {
@@ -109,6 +109,20 @@
           "output_digest_spec_sha256": "b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e",
           "disposition": "reviewed_output",
           "evidence": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_mechanisms",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bo_yantra_mechanism",
+              "spec_sha256": "b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/1009_nirmana_l2_bo_yantra_mechanism_output_digest_spec.sql:114"
+            }
+          ]
         }
       ],
       "editorial": true,
@@ -125,27 +139,30 @@
             "limit": "number:optional",
             "mechanism_class": "string:optional",
             "offset": "number:optional",
+            "page_cursor": "string:optional",
             "valence": "string:optional"
           },
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "offset",
-          "pagination_verified": false,
+          "pagination": "cursor",
+          "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get",
           "pagination_contract": {
-            "request_position_path": "offset",
+            "request_position_path": "page_cursor",
             "request_limit_path": "limit",
             "effective_maximum": 50,
             "result_collection_path": "content.rows",
             "total_path": "content.total_matching",
             "more_available_path": "content.more_available",
+            "next_path": "content.next_page_cursor",
             "deterministic_order": [
               "chain_circuit_class DESC",
               "edge_strength_avg DESC",
               "member_node_count DESC",
-              "mechanism_name ASC"
+              "mechanism_name ASC",
+              "mechanism_id ASC"
             ]
           },
           "execution_channels": [
@@ -153,10 +170,10 @@
             "mcp_full"
           ],
           "public_tool_name": "bodha_mechanisms_get",
+          "result_collection_verified": true,
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_mechanisms",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_mechanisms"
           }
         }
       ],
@@ -201,18 +218,6 @@
           "gap": "Mechanism graph is D1-only; cross-varga convergence must be assembled from separate evidence.",
           "status": "accepted_boundary",
           "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_mechanisms"
-        },
-        {
-          "gap": "Offset paging exposes total/more_available, but its current ordering lacks a unique final tiebreak and is therefore not receipt-grade.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_mechanisms"
-        },
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_mechanisms"
         }
       ],
@@ -313,6 +318,24 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_career",
+          "status": "deliberately_dark",
+          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L2/query_domain_reading",
+            "registry:marsys://tool/L3/query_temporal_activation",
+            "registry:marsys://tool/L2/query_contradictions"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -693,6 +716,24 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_marriage",
+          "status": "deliberately_dark",
+          "reason": "The composite requires domain reading, temporal activation, and contradictions. Each mandatory executable leg lacks a complete exact availability contract, so the assembled assessment cannot be promoted from adjacent receipts.",
+          "missing_binding_ids": [
+            "registry:marsys://tool/L2/query_domain_reading",
+            "registry:marsys://tool/L3/query_temporal_activation",
+            "registry:marsys://tool/L2/query_contradictions"
+          ],
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts#runAssessDomain",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:679",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:791",
+            "platform/src/lib/retrieval/registry/layers/register_d8_assess_domain.ts:804"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -4654,6 +4695,17 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_ayurdaya",
+          "status": "deliberately_dark",
+          "reason": "The handler is chart-scoped, but the reviewed ga_ayurdaya digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93",
+            "platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -5435,10 +5487,10 @@
       }
     },
     {
-      "scu_id": "scu.catalog.get_dashas",
       "version": 1,
+      "scu_id": "scu.catalog.get_dashas",
       "label": "Get Dashas",
-      "description": "Retrieve dasha period data for a chart from the chart_dashas table. Covers the 7 dasha systems L1 actually builds: Vimshottari, Yogini, Ashtottari, Chara Karaka (Jaimini), Kalachakra, Mudda (annual/varshaphal), and Naisargika. Returns period boundaries (start/end dates), lord graha, level (Maha=1/Antar=2/Pratyantar=3/Sookshma=4/Prana=5), and the dasha system identifier. FACETED (R5 W1): system (default vimshottari — pass system=\"all\" for every system), level (default cap = 3, i.e. Maha/Antar/Pratyantar only — pass level for one exact level, or all_levels=true for every level), and window (default now±5y when no date filter is given at all — pass window_start/window_end, or as_of_date/date_contains/date_from to override). Use as_of_date to retrieve the dasha running on a specific date (e.g. today). Spans all systems and levels as a large, paginated result set — never served unwindowed; a bare chart_id call returns the default-faceted slice, not the dump. F-93: like system/level/window, ayanamsha_id now DOES default server-side — omitting it returns exactly one row (the project canonical ayanamsha, lahiri_chitrapaksha), not one row per ayanamsha. Pass ayanamsha_id explicitly only to request a non-canonical ayanamsha. Evidence use: establish dated sequence, activation, or timing evidence.",
+      "description": "Retrieve dated dasha period evidence from chart_dashas.",
       "kind": "temporal",
       "domains": [
         "timing"
@@ -5473,6 +5525,7 @@
         "limit",
         "lord_graha",
         "offset",
+        "page_cursor",
         "system",
         "system_id",
         "window_end",
@@ -5484,7 +5537,29 @@
         "timing_windows"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_dashas",
-      "edges": [],
+      "primary_binding_details": {
+        "pagination": "cursor",
+        "pagination_contract": {
+          "request_position_path": "page_cursor",
+          "request_limit_path": "limit",
+          "effective_maximum": 1000,
+          "result_collection_path": "content.rows",
+          "next_path": "content.next_page_cursor",
+          "more_available_path": "content.more_available",
+          "deterministic_order": [
+            "system_id ASC",
+            "ayanamsha_id ASC",
+            "start_date ASC",
+            "level_n ASC",
+            "start_iso ASC",
+            "dasha_row_id ASC"
+          ]
+        },
+        "execution_channels": [
+          "platform_internal"
+        ],
+        "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts"
+      },
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
@@ -5495,8 +5570,29 @@
       "safety_notes": [
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
-      "known_gaps": [
-        "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "ga_dashas",
+          "component": "chart_dashas dasha periods",
+          "output_digest_spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_dashas",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "ga_dashas",
+              "spec_sha256": "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql:56"
+            }
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -5518,6 +5614,7 @@
             "limit": "number:optional",
             "lord_graha": "string:optional",
             "offset": "number:optional",
+            "page_cursor": "string:optional",
             "system": "string:optional",
             "system_id": "string:optional",
             "window_end": "string:optional",
@@ -5526,58 +5623,47 @@
           "output_contract": {
             "content": "ToolResult.content"
           },
-          "pagination": "offset",
-          "pagination_verified": false,
+          "pagination": "cursor",
+          "pagination_verified": true,
           "executable": true,
-          "route_evidence": "CapabilityDescriptor:marsys://tool/L1/get_dashas | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
-          "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_dashas",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+          "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
+          "pagination_contract": {
+            "request_position_path": "page_cursor",
+            "request_limit_path": "limit",
+            "effective_maximum": 1000,
+            "result_collection_path": "content.rows",
+            "next_path": "content.next_page_cursor",
+            "more_available_path": "content.more_available",
+            "deterministic_order": [
+              "system_id ASC",
+              "ayanamsha_id ASC",
+              "start_date ASC",
+              "level_n ASC",
+              "start_iso ASC",
+              "dasha_row_id ASC"
+            ]
           },
           "execution_channels": [
             "platform_internal"
-          ]
+          ],
+          "result_collection_verified": true,
+          "pagination_review": {
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_dashas"
+          }
         }
       ],
       "source_descriptor_uris": [
         "marsys://tool/L1/get_dashas"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L1/get_dashas",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -5585,32 +5671,25 @@
         {
           "concept_id": "activation_timing",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "get_dashas",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "temporal_sequence",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         },
         {
           "concept_id": "timing_window",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
         }
       ],
-      "gap_dispositions": [
-        {
-          "gap": "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
-        }
-      ],
+      "gap_dispositions": [],
       "graph_disposition": {
         "status": "connected",
         "rationale": "At least one authored declaration or descriptor drill-child contract names this relationship.",
@@ -5631,7 +5710,8 @@
           "platform/src/generated/capability_estate_census.json#details.producer_output_contracts:ga_dashas",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.get_dashas:ga_dashas"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.get_database_schema",
@@ -6192,21 +6272,25 @@
       "outputs": [
         "divisional_placements",
         "house_from_varga_lagna",
+        "more_available",
+        "next_offset",
         "vargottama"
       ],
       "primary_binding_uri": "marsys://tool/L1/get_divisionals",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": null,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
           "effective_maximum": 2000,
           "result_collection_path": "content.rows",
+          "next_path": "content.next_offset",
           "deterministic_order": [
             "varga",
             "ayanamsha_id",
-            "graha"
+            "graha",
+            "fact_category",
+            "fact_key"
           ]
         },
         "execution_channels": [
@@ -6252,7 +6336,7 @@
         }
       ],
       "known_gaps": [
-        "Internal get_divisionals exposes no total/exhaustion proof; public MCP uses ganita_chart_facts_get with a required divisional_chart filter, not a same-name tool.",
+        "Public MCP uses ganita_chart_facts_get with a required divisional_chart filter, not a same-name tool.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "producer_output_claims": [
@@ -6262,6 +6346,20 @@
           "output_digest_spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51",
           "disposition": "reviewed_output",
           "evidence": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_divisionals",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "ga_vargas",
+              "spec_sha256": "5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/883_nirmana_l1_ga_vargas_output_digest_spec.sql:28"
+            }
+          ]
         }
       ],
       "editorial": true,
@@ -6306,7 +6404,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "offset",
-          "pagination_verified": false,
+          "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_not_exposed",
           "pagination_contract": {
@@ -6314,19 +6412,22 @@
             "request_limit_path": "limit",
             "effective_maximum": 2000,
             "result_collection_path": "content.rows",
+            "next_path": "content.next_offset",
             "deterministic_order": [
               "varga",
               "ayanamsha_id",
-              "graha"
+              "graha",
+              "fact_category",
+              "fact_key"
             ]
           },
           "execution_channels": [
             "platform_internal"
           ],
+          "result_collection_verified": true,
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_divisionals",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_divisionals"
           }
         }
       ],
@@ -6363,9 +6464,9 @@
       ],
       "gap_dispositions": [
         {
-          "gap": "Internal get_divisionals exposes no total/exhaustion proof; public MCP uses ganita_chart_facts_get with a required divisional_chart filter, not a same-name tool.",
-          "status": "deferred_contract",
-          "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
+          "gap": "Public MCP uses ganita_chart_facts_get with a required divisional_chart filter, not a same-name tool.",
+          "status": "accepted_boundary",
+          "rationale": "Retained as an explicit semantic or synthesis boundary; it is not silently treated as coverage.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L1/get_divisionals"
         },
         {
@@ -8176,6 +8277,17 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_sensitive_degrees",
+          "status": "deliberately_dark",
+          "reason": "The handler is chart-scoped, but the reviewed ga_sensitive_degree digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119",
+            "platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -8530,6 +8642,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_strength",
+          "status": "deliberately_dark",
+          "reason": "The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202",
+            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -10304,6 +10429,23 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L-JUDGMENT/judgment_query",
+          "status": "deliberately_dark",
+          "reason": "The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -13712,10 +13854,10 @@
       }
     },
     {
-      "scu_id": "scu.catalog.query_chart_gestalt",
       "version": 1,
+      "scu_id": "scu.catalog.query_chart_gestalt",
       "label": "Query Chart Gestalt",
-      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt — one row per ayanamsha. Fields: defining_threads, central_dynamics_ids, pivot_ids, center_of_gravity_node_ids, domain_verdict_map, headline (+confidence, +epistemic), watch_list, central_question, outliers, contested_areas, zoom_spine. This is the orientation entry-point for a whole-chart read. Filters: ayanamsha_id. Bounded with a disclosed total. Evidence use: frame and reconcile domain evidence before downstream interpretation.",
+      "description": "Retrieve the whole-chart gestalt digest from bodha_chart_gestalt.",
       "kind": "datum",
       "domains": [
         "cross_domain"
@@ -13746,7 +13888,6 @@
         "reconciled_evidence"
       ],
       "primary_binding_uri": "marsys://tool/L2/query_chart_gestalt",
-      "edges": [],
       "provenance_requirements": [
         "chart_id_when_chart_scoped",
         "build_id",
@@ -13758,6 +13899,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bo_chart_gestalt",
+          "component": "bodha_chart_gestalt rows",
+          "output_digest_spec_sha256": "2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_chart_gestalt",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bo_chart_gestalt",
+              "spec_sha256": "2fae5316fbc9a445377a279716f4b1ea5834954b21a54e77f79fe3c6a2b3721e",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/984_nirmana_l2_bo_chart_gestalt_output_digest_spec.sql:125"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -13789,41 +13953,14 @@
       "source_descriptor_uris": [
         "marsys://tool/L2/query_chart_gestalt"
       ],
-      "editorial_method": "descriptor_metadata_review",
+      "editorial_method": "authored_declaration",
       "editorial_sources": [
         {
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
           "source_fields": [
-            "family_id",
-            "domains",
-            "concepts",
-            "intents",
-            "outputs",
-            "horizons",
-            "kind",
-            "evidence_use",
-            "member_name"
-          ]
-        },
-        {
-          "source_ref": "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt",
-          "source_fields": [
-            "name",
+            "semantic_capabilities",
             "description",
-            "display",
-            "archetype",
-            "traversal_level",
-            "tool_role",
-            "scope",
-            "input_schema",
-            "required_inputs",
-            "output_schema",
-            "emits_references",
-            "projection_tags",
-            "drill_children",
-            "data_source",
-            "density_contract",
-            "mutation"
+            "primary_binding_uri"
           ]
         }
       ],
@@ -13831,22 +13968,22 @@
         {
           "concept_id": "domain_assessment",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "evidence_reconciliation",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "judgment_support",
           "concept_type": "domain_concept",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         },
         {
           "concept_id": "query_chart_gestalt",
           "concept_type": "capability",
-          "source_ref": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         }
       ],
       "gap_dispositions": [],
@@ -13854,8 +13991,7 @@
         "status": "isolated_dispositioned",
         "rationale": "No authored declaration or descriptor drill-child contract names a semantic relationship; shared labels alone are not treated as edge evidence.",
         "source_refs": [
-          "CapabilityDescriptor:marsys://tool/L2/query_chart_gestalt",
-          "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+          "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
         ]
       },
       "producer_semantic_disposition": {
@@ -13871,7 +14007,8 @@
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_chart_gestalt:bo_arudha",
           "platform/src/lib/retrieval/registry/knowledge/producer_editorial_review.ts#scu.catalog.query_chart_gestalt:bo_chart_gestalt"
         ]
-      }
+      },
+      "edges": []
     },
     {
       "scu_id": "scu.catalog.query_class_priors",
@@ -14088,6 +14225,21 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_classical_texts",
+          "status": "deliberately_dark",
+          "reason": "The hybrid and list paths serve content_summary and topics from classical_text_chunks, and hybrid ranking also reads content and embeddings. bg_texts is limited to a fixed text set and omits content_summary/topics; bg_text_index attests only chunk_id/topic_tag. No reviewed probe covers the handler's corpus query and ranking response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:186",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:190",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:250",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts:286",
+            "platform/supabase/migrations/609_nirmana_l0_digest_spec_revision.sql:27",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:44"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [
@@ -14590,6 +14742,19 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_compendium_index",
+          "status": "deliberately_dark",
+          "reason": "The handler returns index_id together with the filtered compendium rows and request-specific count metadata. bg_compendium_index reviews the content fields in chapter/topic-scoped components, but neither component attests the served index_id and no reviewed route-level probe attests the complete filtered response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:74-82",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts:90-102",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:74-87",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -14761,6 +14926,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_contradictions",
+          "status": "deliberately_dark",
+          "reason": "Every invocation reads bodha_contradictions; default requests also read bodha_discoveries and anomaly requests read bodha_anomalies. bo_karanajala's reviewed digest covers bodha_cgm_edges, not the required contradiction relation, while bo_anveshana only covers the optional discovery/anomaly relations.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:101",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:125",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts:140",
+            "platform/migrations/976_nirmana_l2_bo_karanajala_output_digest_spec.sql:65",
+            "platform/migrations/1020_nirmana_l2_bo_anveshana_output_digest_spec.sql:71"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -15447,6 +15626,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_dasha_systems",
+          "component": "dasha_system_catalog",
+          "output_digest_spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_dasha_systems",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_dasha_systems",
+              "spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -15795,6 +15997,20 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L2/query_domain_reading",
+          "status": "deliberately_dark",
+          "reason": "The handler composes bo_drishti question lenses, bo_sangati CDLM cells, bo_laksana signals, runtime L1 ranking context, and a live DEFECT-001 derivation. Individual producer receipts do not cover that composed response, and no route-specific reviewed service probe exists.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:193",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:201",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:739",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:778",
+            "platform/src/lib/retrieval/registry/layers/L2_bodha/query_domain_reading.ts:1010"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -16121,6 +16337,19 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_dosha_catalog",
+          "status": "deliberately_dark",
+          "reason": "The handler serves SELECT * rows from brahma_dosha_catalog, including created_at, then returns request-specific count and pagination metadata. bg_doshas reviews the same catalog relation but its digest omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:75",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts:84",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:52-66",
+            "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -16443,6 +16672,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_formula_constants",
+          "component": "formula_constants",
+          "output_digest_spec_sha256": "126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_formula_constants",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_formula_constants",
+              "spec_sha256": "126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -18618,6 +18870,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_medical_mappings",
+          "component": "medical_mappings",
+          "output_digest_spec_sha256": "914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_medical_mappings",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_medical_mappings",
+              "spec_sha256": "914a5a3a22053fdc15900cadd25242b777436ea8ef471006c376d8d5932c96da",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/600_nirmana_l0_wave0_output_digest_specs.sql:27"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -19620,6 +19895,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_nakshatra_medical",
+          "component": "nakshatra_medical",
+          "output_digest_spec_sha256": "ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_nakshatra_medical",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_nakshatra_medical",
+              "spec_sha256": "ae8016ab4ee18b5794d027c593dcf9662d5bfd05562f9df509985f176a1fd4b1",
+              "scope": "global",
+              "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:27-33"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -20463,6 +20761,22 @@
         "engine_version"
       ],
       "freshness_policy": "Current-state planning requires an explicit receipted date and all nine canonical component outcomes.",
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_planet_transit",
+          "requirements": [
+            {
+              "kind": "service_probe",
+              "asset_id": "bg_ephemeris_engine",
+              "probe_id": "ephemeris_engine",
+              "endpoint_identity": "nirmana-elevation:health-probe:bg_ephemeris_engine",
+              "probe_contract_sha256": "e94a594d245b97251bc731757b56dac406433e12c8daa4b1df1d478e8e9ae1c4",
+              "max_age_seconds": 900,
+              "source_ref": "platform/supabase/migrations/624_nirmana_l0_ephemeris_probe_contract.sql#bg_ephemeris_engine; platform/python-sidecar/routers/nirmana_probe.py#/internal/nirmana/probe"
+            }
+          ]
+        }
+      ],
       "entitlement": "native",
       "safety_notes": [
         "Read-only computed evidence. Partial aggregate results are failures and cannot close a transit obligation."
@@ -24870,6 +25184,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_sign_medical",
+          "component": "sign_medical",
+          "output_digest_spec_sha256": "44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7",
+          "disposition": "reviewed_output",
+          "evidence": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_sign_medical",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_sign_medical",
+              "spec_sha256": "44333a746758f9a71288524273a4941071391f60ec753062d5295fafba6dcad7",
+              "scope": "global",
+              "source_ref": "platform/migrations/1034_nirmana_purna_anvesana_wave1_output_digest_specs.sql:19-25"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -28573,6 +28910,20 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_yoga_catalog",
+          "status": "deliberately_dark",
+          "reason": "The handler serves paged SELECT * rows from brahma_yoga_catalog, including created_at, then returns request-specific total and more_available metadata. The current bg_yogas digest covers the catalog relation but omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:66-72",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:7-22",
+            "platform/migrations/239_yoga_system.sql:35-39",
+            "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673"
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -30484,6 +30835,27 @@
           "evidence": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44"
         }
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L-DOMAIN/assess_wealth",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bo_cdlm_summary",
+              "spec_sha256": "f6520a32a0791a64083daed074bb45592b7da430a7d1912da4a3e0f240800497",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/986_nirmana_l2_bo_cdlm_summary_output_digest_spec.sql:137"
+            },
+            {
+              "kind": "producer_output",
+              "asset_id": "bo_vargottama_dhana",
+              "spec_sha256": "8a94b6928bd78bde8434510517b7070c5d327149165afe10d269a62ad08cc1ec",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/907_nirmana_l2_bo_vargottama_dhana_output_digest_spec.sql:44"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -30523,9 +30895,8 @@
           "public_tool_name": "bodha_mechanisms_get",
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1488 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:bodha_mechanisms_get",
           "pagination_review": {
-            "disposition": "non_exhaustible",
-            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_mechanisms",
-            "blocker": "response collection and exhaustion paths are not source-reviewed"
+            "disposition": "exhaustible_reviewed",
+            "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L2/query_mechanisms"
           }
         },
         {
@@ -30543,7 +30914,7 @@
             "content": "ToolResult.content"
           },
           "pagination": "bounded_unverified",
-          "pagination_verified": null,
+          "pagination_verified": false,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/registry_bridge.ts:3504 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/registry_bridge.ts:assess_wealth",
           "execution_channels": [
@@ -30551,6 +30922,7 @@
             "mcp_full"
           ],
           "public_tool_name": "assess_wealth",
+          "result_collection_verified": false,
           "pagination_review": {
             "disposition": "not_paginated",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L-DOMAIN/assess_wealth"
@@ -30684,31 +31056,38 @@
       ],
       "inputs": [
         "as_of?",
+        "ayanamsha_id?",
         "chart_id",
         "date_from?",
         "date_to?",
         "domain?",
-        "signal_ids?"
+        "min_activation_strength?",
+        "signal_ids?",
+        "top_k?"
       ],
       "outputs": [
         "activation_windows",
         "drill_pointers",
+        "more_available",
         "predicates",
-        "signal_refs"
+        "signal_refs",
+        "temporal_closure",
+        "total_matching"
       ],
       "primary_binding_uri": "marsys://tool/L3/query_temporal_activation",
       "primary_binding_details": {
         "pagination": "bounded_unverified",
-        "pagination_verified": null,
         "pagination_contract": {
           "request_limit_path": "top_k",
           "effective_maximum": 500,
           "result_collection_path": "content.activations",
+          "total_path": "content.total_matching",
+          "more_available_path": "content.more_available",
           "deterministic_order": [
-            "dasha_activation_proximity_score DESC",
-            "orb_strength DESC",
-            "activation_start",
-            "id"
+            "dasha_activation_proximity_score DESC NULLS LAST",
+            "orb_strength DESC NULLS LAST",
+            "activation_start ASC",
+            "id ASC"
           ]
         },
         "execution_channels": [
@@ -30736,7 +31115,7 @@
         }
       ],
       "known_gaps": [
-        "The route is top_k bounded but exposes no total/next/exhaustion proof; a capped response remains materially incomplete.",
+        "The route is an intentionally non-exhaustible top_k temporal-window read. Its source-reviewed closure receipt reports the exact filtered total and bounded-window state; a trimmed required result remains materially incomplete because no reviewed continuation exists.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "producer_output_claims": [
@@ -30761,6 +31140,18 @@
           "output_digest_spec_sha256": "a66795f7fbf0a2713dbb860dd986128586b8b48830f3902f20bca0bcb12fccf2",
           "disposition": "reviewed_output",
           "evidence": "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+        }
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L3/query_temporal_activation",
+          "status": "deliberately_dark",
+          "reason": "The handler reads kala_activation, but ka_kalasutra has only route evidence and no reviewed digest component for that relation. The reviewed predicate and forward-window receipts cannot substitute for the missing activation output receipt.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
+            "platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80",
+            "platform/migrations/974_nirmana_l3_ka_bhavishya_lekha_output_digest_spec.sql:232"
+          ]
         }
       ],
       "editorial": true,
@@ -30792,11 +31183,13 @@
             "request_limit_path": "top_k",
             "effective_maximum": 500,
             "result_collection_path": "content.activations",
+            "total_path": "content.total_matching",
+            "more_available_path": "content.more_available",
             "deterministic_order": [
-              "dasha_activation_proximity_score DESC",
-              "orb_strength DESC",
-              "activation_start",
-              "id"
+              "dasha_activation_proximity_score DESC NULLS LAST",
+              "orb_strength DESC NULLS LAST",
+              "activation_start ASC",
+              "id ASC"
             ]
           },
           "execution_channels": [
@@ -30804,6 +31197,7 @@
             "mcp_full"
           ],
           "public_tool_name": "kala_windows_get",
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "non_exhaustible",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L3/query_temporal_activation",
@@ -30849,7 +31243,7 @@
       ],
       "gap_dispositions": [
         {
-          "gap": "The route is top_k bounded but exposes no total/next/exhaustion proof; a capped response remains materially incomplete.",
+          "gap": "The route is an intentionally non-exhaustible top_k temporal-window read. Its source-reviewed closure receipt reports the exact filtered total and bounded-window state; a trimmed required result remains materially incomplete because no reviewed continuation exists.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/query_temporal_activation"
@@ -30945,8 +31339,6 @@
       "primary_binding_uri": "marsys://tool/L1/get_yoga_firings",
       "primary_binding_details": {
         "pagination": "offset",
-        "pagination_verified": true,
-        "result_collection_verified": true,
         "pagination_contract": {
           "request_position_path": "offset",
           "request_limit_path": "limit",
@@ -31017,6 +31409,20 @@
           "evidence": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128"
         }
       ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_yoga_firings",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "ga_yoga",
+              "spec_sha256": "fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246",
+              "scope": "chart_build",
+              "source_ref": "platform/migrations/918_nirmana_l1_ga_yoga_output_digest_spec.sql:128"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -31070,7 +31476,6 @@
           "pagination_verified": true,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:970 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:ganita_yoga_firings_get",
-          "result_collection_verified": true,
           "pagination_contract": {
             "request_position_path": "offset",
             "request_limit_path": "limit",
@@ -31090,6 +31495,7 @@
             "mcp_full"
           ],
           "public_tool_name": "ganita_yoga_firings_get",
+          "result_collection_verified": true,
           "pagination_review": {
             "disposition": "exhaustible_reviewed",
             "source_ref": "platform/src/generated/capability_estate_census.json#details.descriptor_route_contracts:marsys://tool/L1/get_yoga_firings"
@@ -31611,10 +32017,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -32183,6 +32589,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32191,7 +32598,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -32267,6 +32673,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32275,7 +32682,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -32460,7 +32866,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas"
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas"
       ]
     },
     {
@@ -32741,6 +33147,7 @@
         "domain_concept"
       ],
       "source_refs": [
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_career",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_health",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:assess_marriage",
@@ -32749,7 +33156,6 @@
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:judgment_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:pact_query",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_cdlm_summary",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_contradictions",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_reading",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_domain_result",
@@ -33158,7 +33564,7 @@
         "capability"
       ],
       "source_refs": [
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#assessment:query_chart_gestalt"
+        "SemanticCapabilityDeclaration:marsys://tool/L2/query_chart_gestalt"
       ]
     },
     {
@@ -34197,10 +34603,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -34266,10 +34672,10 @@
       ],
       "source_refs": [
         "SemanticCapabilityDeclaration:marsys://tool/L0/query_planet_transit",
+        "SemanticCapabilityDeclaration:marsys://tool/L1/get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_dasha_eligibility",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_priority_ranking",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:call_transit_search",
-        "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_dashas",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_sade_sati",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:get_transit_anchors",
         "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts#timing:query_activation_waveform",
@@ -35806,16 +36212,16 @@
     "executable_bindings": 186,
     "unavailable_bindings": 0,
     "publicly_named_bindings": 72,
-    "reviewed_pagination_bindings": 1,
+    "reviewed_pagination_bindings": 4,
     "reviewed_pagination_dispositions": 186,
     "reviewed_paginated_descriptors": 96,
-    "exhaustible_reviewed_descriptors": 1,
-    "non_exhaustible_descriptors": 95,
+    "exhaustible_reviewed_descriptors": 4,
+    "non_exhaustible_descriptors": 92,
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 8,
-    "reviewed_output_claims": 7,
+    "producer_output_claims": 15,
+    "reviewed_output_claims": 14,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,

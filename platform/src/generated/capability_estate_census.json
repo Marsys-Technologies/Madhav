@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "358745d688bbfe5e864d5fb223225c2dfc6d0f6f6d3ae69b583d54a7b2c8570f",
+  "content_sha256": "02ad596cd274c5c91b8b0f2644ce151a344a7329e690837c74f2c006b92cf87e",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -15,9 +15,9 @@
       },
       "denominator": 186,
       "descriptor_content_untyped": 181,
-      "exhaustible_paginated": 1,
+      "exhaustible_paginated": 4,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 95
+      "non_exhaustible_paginated": 92
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -4258,6 +4258,10 @@
             "default": 0,
             "type": "number"
           },
+          "page_cursor": {
+            "description": "Opaque, build-pinned continuation token from next_page_cursor. It rejects changed filters or a replaced chart build and requires a restart rather than replaying an unsafe offset.",
+            "type": "string"
+          },
           "system": {
             "description": "Dasha system facet. One of: vimshottari | yogini | ashtottari | chara_karaka | kalachakra | mudda | naisargika (case-insensitive; \"chara\"/\"jaimini\" alias to chara_karaka). Pass \"all\" to disable the system filter (all 7 systems). Default: vimshottari.",
             "type": "string"
@@ -4277,6 +4281,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/graha_portrait.ts",
@@ -4288,9 +4293,8 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "offset",
-          "disposition": "non_exhaustible"
+          "declared": "cursor",
+          "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -4514,9 +4518,8 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
           "declared": "offset",
-          "disposition": "non_exhaustible"
+          "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -6266,6 +6269,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
           "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
           "platform/src/lib/retrieval/registry/tool_name_bridge.ts",
           "platform/src/lib/retrieval/synthesis/surface_gateway.ts"
@@ -6530,8 +6534,12 @@
             "type": "string"
           },
           "offset": {
-            "description": "Pagination offset (default 0).",
+            "description": "First-page offset only (default 0). A nonzero continuation must use page_cursor.",
             "type": "number"
+          },
+          "page_cursor": {
+            "description": "Opaque, signed continuation token from next_page_cursor. It pins the normalized filters and fresh/proven bo_yantra_mechanism build; changed/replacing builds require restart.",
+            "type": "string"
           },
           "valence": {
             "description": "Filter by valence (benefic|malefic|mixed|neutral). Omit for all.",
@@ -6547,9 +6555,8 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "offset",
-          "disposition": "non_exhaustible"
+          "declared": "cursor",
+          "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -20651,7 +20658,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-16T07:25:49.000Z",
+  "generated_at": "2026-09-17T07:27:29.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20668,12 +20675,12 @@
       {
         "id": "census_generator",
         "path": "platform/scripts/generate_capability_estate_census.ts",
-        "sha256": "48ba94ab7908dd7d4c4579a440731790e7b775aff31519c85b5ca2b79e69fd9b"
+        "sha256": "03b9dd57dd1f897d62119d3bdf2fec691c9ba4143be2b2b2766157e7f4d88948"
       },
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "3e285d2728d1482a5cdb1dcf8d58c638b55440e1fd12e2f49c519e9617e6c941"
+        "sha256": "da9670d0ce4db8cdf09d135e6b2a8dbd0925c070537c9ea48e82ff186d44a9df"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21162,7 +21169,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_p1_aliases.ts",
-            "sha256": "04dc04af29fe130ee243746abd9dc91552ba42e6968b5adc564bb1e769a009b0"
+            "sha256": "7f60d8562913db271b6318b15f128b6e59c09247fa7257894191fc09c1debb35"
           },
           {
             "path": "platform-mcp/src/tools/register_p1_ganita.ts",
@@ -21182,7 +21189,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_ask.ts",
-            "sha256": "6e6657cc5512163cca8234380b118d00179ee08dc0db7ab59f9d929816e994a1"
+            "sha256": "8b19df71374c6700524127b299d61d2ddec8c4ffbc89e136e96fab487d5cb0c6"
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_status.ts",
@@ -21230,7 +21237,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "6b979d252976bb57b402dfaa16a326fb2471725085120d7afd4b1fa51a0014a7"
+        "sha256": "f31a61033c7d7bf8532ec78ffd2bca446d14096ff3e6bbdf3079e7c16016be73"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21244,7 +21251,7 @@
       },
       {
         "id": "runtime_registry_source_set",
-        "member_count": 198,
+        "member_count": 199,
         "members": [
           {
             "path": "platform/src/lib/retrieval/registry/catalog.ts",
@@ -21276,15 +21283,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "72123aa892512ba2d28353491eb52e163af13c0e5f7b0eb330fe338fc81e1051"
+            "sha256": "d86639d23195c408e0d062007c8cd5ef2e99a3a53c0fcfc771842c8817f18a54"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "30c344fdc8f556711060120ef8cbf3efa7f424eb07928170ac40ab91a91d8ab5"
+            "sha256": "23bc43d6a20befbc5e8f73faefd390ffe9d855f09643dcc7fb2e612d19ff6d2e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "fd366e18a16fb6c9fc70d5655ace24a0be0781418019f04a63d4b0703c252f92"
+            "sha256": "13c81880aee951b2e60da398d26dcd6e3d8ee5a562e125f927ddcca856a6235e"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21292,11 +21299,15 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "b383a703558c151b6900a9f0c4c821c54d89b04fa9f9844e2501ded25694af6a"
+            "sha256": "387dcb44ee3e3bef6977667e16d2f71eaf89fb04fc025db5b0e7761ec9cf0d85"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
             "sha256": "035f8e6ee2d4843db2c0515acc86b60bb1637914ed0c7d4ebe02325709f4dcee"
+          },
+          {
+            "path": "platform/src/lib/retrieval/registry/knowledge/pagination_review.ts",
+            "sha256": "86120df3fdc2112a4c6da44eceb485694afed1dc8fe4765e601e04fcce6b4052"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/planner_projection.ts",
@@ -21320,7 +21331,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "f3f70b71d0f952c399d02789768a0632bf5dcc2aed61d81ba213f39fbccba515"
+            "sha256": "371402b161f5e5bd9c091942a7f7de9ba1fee0dd54472c50151095c6b77d4812"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21372,7 +21383,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
-            "sha256": "9e783bcf68dc055fe9c1b9a0931c95ecfad6e664f6f3baf784614df3098515d1"
+            "sha256": "04ab55968a2c9f7caae282733be4b21e215a78bcedb9364d35a1e2192597aba0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts",
@@ -21432,7 +21443,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "7679bdf8cdef247d78fc510d7d2c195325163d473aac7caaef965dd9a0c45707"
+            "sha256": "86f7284ed96fc4dc93dcc65352672add12c6ccd72b583a6fc87d6c8c6e16fec1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -21572,7 +21583,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_dashas.ts",
-            "sha256": "b0fb9b18a1a9158b3b84da8578b2d54f91f4624cf9cb3c8450b23dcfb3f46873"
+            "sha256": "bc26d995652bd14d9bd8ecc6c3f62cbaf596b13c57235ee97e6661b03f69a8d7"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_database_schema.ts",
@@ -21588,7 +21599,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_divisionals.ts",
-            "sha256": "492d84e8dcdddafd86425f43c952dd8087568f183176ffb31c122b9ffc348074"
+            "sha256": "a84b2dbe6fc652891f376a2f4a1209af9a987962b6675708d661ea613934fab6"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L1_ganita/get_eclipse_flags.ts",
@@ -21708,7 +21719,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_chart_gestalt.ts",
-            "sha256": "89edfa6e65b53597af0e1c4fbeec801acf636012793a5f5437cef0857cc5ae8d"
+            "sha256": "5928b0fae1f1e099a84b92323fd1cb92d8ab230cd4541916dd956bd9fa4afc3b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_contradictions.ts",
@@ -21724,7 +21735,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "61dc9a7abe38663842b96d5000d768e339a5498c585075ae0aeed7d1ddb4b758"
+            "sha256": "5109ae5f134dba5eacb4e42c775524d6fede4689279cbba493e1ac3dcbd93108"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -21840,7 +21851,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "sha256": "96737c070431a48d77b23e3f5faaba367ff05ad45654f4a1e25fbbfd794101a1"
+            "sha256": "ffa9081f31365444b2730273cbe88e3b064d700d1b349247cd9dc3f1cf57e342"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
@@ -22040,7 +22051,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "b760333b86203c6d8ebfa3e19a998e7e78c8a0da494e3d1994accfccaa1d2256"
+        "sha256": "8573c9f06114abe94dca632936a1f34cf543a7a95c35525fa49251fa68d00793"
       },
       {
         "id": "service_effect_contracts",
@@ -22065,5 +22076,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "f8f4140aa6cd509cea03c1bc5d4d63af4b9abd6b"
+  "source_revision": "30f75bd74bff47dff37df743c546b78847a3c1eb"
 }

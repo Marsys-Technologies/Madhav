@@ -14,7 +14,10 @@ import { __setManagedPrashnaJobStoreForTests, InMemoryManagedPrashnaJobStoreForT
 
 const principal = { user_uid: 'user-1', key_id: 'key-1', role: 'guest' as const }
 const testJobs = new InMemoryManagedPrashnaJobStoreForTests()
-const request = { question: 'status test', response_format: 'standard' }
+const request = {
+  inquiry_id: 'eeeeeeee-1111-4000-8000-000000000001',
+  question: 'status test', response_format: 'standard' as const,
+}
 
 function makeMockServer(): { server: PrashnaStatusRegisteringServer; getHandler: () => (args: unknown) => Promise<unknown> } {
   let handler: ((args: unknown) => Promise<unknown>) | null = null

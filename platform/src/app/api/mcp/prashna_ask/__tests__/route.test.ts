@@ -26,7 +26,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const { knowledgeState } = vi.hoisted(() => ({
-  knowledgeState: { snapshot: null as unknown, overlay: null as unknown },
+  knowledgeState: {
+    snapshot: null as unknown,
+    overlay: null as unknown,
+    overlaySequence: [] as unknown[],
+    overlayLoadCount: 0,
+  },
 }))
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
@@ -51,7 +56,10 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => {
   }
   return {
     assertPinnedCapabilityKnowledgeCurrent: () => knowledgeState.snapshot ?? snapshot,
-    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
+    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => {
+      const queued = knowledgeState.overlaySequence[knowledgeState.overlayLoadCount++]
+      return queued ?? knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] })
+    },
   }
 })
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
@@ -81,7 +89,12 @@ const { mockCallPipelinePlanner, mockGetToolByName } = vi.hoisted(() => ({
   mockCallPipelinePlanner: vi.fn(),
   mockGetToolByName: vi.fn(),
 }))
+const managedInquiry = vi.hoisted(() => ({ getJob: vi.fn(), open: vi.fn() }))
 vi.mock('@/lib/pipeline/pipeline_planner', () => ({ callPipelinePlanner: mockCallPipelinePlanner }))
+vi.mock('@/lib/vidhi/inquiry/managed_job_store', () => ({ getManagedPrashnaJob: managedInquiry.getJob }))
+vi.mock('@/lib/vidhi/inquiry/execution_session', () => ({
+  ManagedInquiryExecutionSession: { open: managedInquiry.open },
+}))
 
 vi.mock('@/lib/pipeline/compiled_floor_adapter', () => ({
   compileFloorForPlan: vi.fn(() => ({ toolCalls: [], mappedPrimitives: [], unmappedPrimitives: [], compilerIntent: 'general_synthesis', compileFailed: false, llm_extension_note: '' })),
@@ -134,6 +147,7 @@ import { getEffectiveModel } from '@/lib/models/runtime_config'
 import { configService } from '@/lib/config/index'
 import { __resetRpmCountersForTest } from '@/lib/mcp/rate_limiter_core'
 import { compileFloorForPlan } from '@/lib/pipeline/compiled_floor_adapter'
+import type { InquiryContract } from '@/lib/vidhi/inquiry'
 import { POST } from '../route'
 import {
   expectedW5DoorParityProjection,
@@ -151,6 +165,11 @@ const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
 // native's real chart), per the repo's test-data law. Auth/DB are fully mocked
 // in this file regardless, so this distinction is belt-and-suspenders.
 const SYNTH_CHART = '1c826d5a-41cb-4450-b4dc-59d440e5f75a'
+
+function requireInquiryContract(contract: InquiryContract | undefined): InquiryContract {
+  if (!contract) throw new Error('Managed-session fixture was read before open() supplied its contract')
+  return contract
+}
 
 function makeReq(body: object, headers: Record<string, string> = {}): Request {
   return new Request('http://localhost/api/mcp/prashna_ask', {
@@ -199,8 +218,11 @@ function planOutcome(toolNames: string[], scope_tuple?: Record<string, unknown>)
 
 beforeEach(() => {
   vi.clearAllMocks()
+  managedInquiry.getJob.mockResolvedValue(null)
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
+  knowledgeState.overlaySequence = []
+  knowledgeState.overlayLoadCount = 0
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -304,6 +326,247 @@ describe('POST /api/mcp/prashna_ask — durable persistence disclosure (P2-B-004
     expect(body.persistence.status).toBe('caller_required')
 
     safetyFlagState.on = false
+  })
+})
+
+describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
+  it('routes a non-exhausted page through the same managed reservation and evidence checkpoint before serving page two', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000011'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000011'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({
+      chart_id: CHART,
+      request_jsonb: { inquiry_id: inquiryId, question: 'managed page test', response_format: 'standard' },
+    })
+    let current: InquiryContract | undefined
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const nextPage = session.persistAcceptedObservation.mock.calls.length === 1
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? {
+                ...item,
+                state: nextPage ? 'ready' : 'observed',
+                args: nextPage ? { ...item.args, page_cursor: 'page-2' } : item.args,
+                observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null },
+              }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => contract),
+      finalizeWhenNoReady: vi.fn(async () => ({ ...requireInquiryContract(current), status: 'COMPLETE' as const })),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 3 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'managed page test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    expect(lines.at(-1)?.event).toBe('final')
+    expect(mockGetToolByName).toHaveBeenCalledWith('authorized_test')
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
+    expect(session.beginAction).toHaveBeenCalledTimes(2)
+    expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('terminalizes a capped ready continuation without a post-cap retrieval', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn().mockResolvedValue({
+      tool_bundle_id: 'page-one', tool_name: 'authorized_test', tool_version: '1.0', invocation_params: {},
+      results: [{ id: 'one' }], served_from_cache: false, latency_ms: 1, result_hash: 'sha256:one', schema_version: '1.0',
+    })
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: InquiryContract | undefined
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        const contract = requireInquiryContract(current)
+        current = {
+          ...contract,
+          iteration: 1,
+          plan_items: contract.plan_items.map((item) => item.item_id === plan_item_id
+            ? { ...item, state: 'ready', args: { ...item.args, page_cursor: 'page-2' }, observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
+      finalizeWhenNoReady: vi.fn(async () => requireInquiryContract(current)),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, max_iterations: 1 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'managed capped page test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    const body = lines.at(-1)
+    expect(retrieve).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).toHaveBeenCalledTimes(1)
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
+  })
+
+  it('replays a persisted terminal lifecycle without overlay-drift finalization', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000013'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000013'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    const overlay = (buildId: string, version: string) => ({
+      chart_id: CHART, overlay_version: version, capability_compatibility_version: 'planner-scu-v1',
+      catalog_content_hash: 'sha256:test', build_id: buildId, code_revision: null, writer_inventory_hash: null,
+      generated_at: '2026-09-13T00:00:00.000Z', availability: [{
+        scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: buildId,
+        freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [],
+      }],
+    })
+    knowledgeState.overlaySequence = [overlay('build-1', 'sha256:overlay-1'), overlay('build-2', 'sha256:overlay-2')]
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const session = {
+      recoveredEvidence: vi.fn().mockResolvedValue([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }]),
+      beginAction: vi.fn(), persistAcceptedObservation: vi.fn(), failClosedAmbiguity: vi.fn(), failClosed: vi.fn(),
+      finalizeWhenNoReady: vi.fn(), readyActionIds: [],
+      currentContract: null as InquiryContract | null,
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      session.currentContract = {
+        ...contract, status: 'COMPLETE',
+        plan_items: contract.plan_items.map((item) => ({
+          ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null },
+        })),
+      }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover terminal lifecycle', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(knowledgeState.overlayLoadCount).toBe(1)
+    expect(session.failClosed).not.toHaveBeenCalled()
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('COMPLETE')
+    expect(body?.results).toEqual([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }])
+  })
+
+  it('fails a recovered incomplete contract closed before any action when the current overlay is dark', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000014'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000014'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    knowledgeState.overlay = {
+      chart_id: CHART, overlay_version: 'sha256:overlay-dark', capability_compatibility_version: 'planner-scu-v1',
+      catalog_content_hash: 'sha256:test', build_id: 'build-dark', code_revision: null, writer_inventory_hash: null,
+      generated_at: '2026-09-13T00:00:00.000Z', availability: [{
+        scu_id: 'scu.test.wealth', state: 'dark', build_status: 'completed', build_id: 'build-dark', freshness: 'stale',
+        available_binding_ids: [], gaps: ['receipt_missing'], asset_receipts: [],
+      }],
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn()
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: InquiryContract | undefined
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = {
+        ...contract, status: 'INCOMPLETE',
+        capability_content_hash: 'sha256:persisted-old', capability_compatibility_version: 'planner-scu-old',
+        chart_availability_version: 'sha256:overlay-old', chart_build_id: 'build-old',
+      }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover changed availability', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect(retrieve).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
+  })
+
+  it.each([
+    ['catalog content hash', { capability_content_hash: 'sha256:persisted-catalog' }],
+    ['compatibility version', { capability_compatibility_version: 'planner-scu-persisted' }],
+    ['overlay version', { chart_availability_version: 'sha256:persisted-overlay' }],
+    ['chart build ID', { chart_build_id: 'persisted-build' }],
+  ])('fails closed before action for a recovered %s mismatch', async (_field, drift) => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000015'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000015'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn()
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: InquiryContract | undefined
+    const session = {
+      get currentContract() { return requireInquiryContract(current) },
+      get readyActionIds() { return requireInquiryContract(current).plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]), beginAction: vi.fn(), persistAcceptedObservation: vi.fn(),
+      failClosedAmbiguity: vi.fn(), finalizeWhenNoReady: vi.fn(),
+      failClosed: vi.fn(async (contract: InquiryContract) => { current = contract; return contract }),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: InquiryContract }) => {
+      current = { ...contract, status: 'INCOMPLETE', ...drift }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover one changed authority field', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect(retrieve).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
   })
 })
 

@@ -128,8 +128,8 @@ describe('capability estate census', () => {
     expect(census.details.descriptor_route_contracts).toHaveLength(186)
     expect(census.denominators.descriptor_route_contracts).toMatchObject({
       denominator: 186,
-      non_exhaustible_paginated: 95,
-      exhaustible_paginated: 1,
+      non_exhaustible_paginated: 92,
+      exhaustible_paginated: 4,
       descriptor_content_untyped: 181,
       full_profile_allowlist_enforced: true,
     })
@@ -143,6 +143,8 @@ describe('capability estate census', () => {
         public_route_disposition: 'reviewed_exposed',
         public_tool_names: ['ganita_yoga_firings_get'],
       })
+    expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'get_dashas')?.pagination)
+      .toMatchObject({ disposition: 'exhaustible_reviewed', declared: 'cursor' })
     expect(census.details.descriptor_route_contracts.find((contract) => contract.descriptor_name === 'list_entities')?.public_routes)
       .toEqual(expect.arrayContaining([
         { tool_name: 'list_entities', route_kind: 'parallel_same_name' },

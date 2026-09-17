@@ -4,6 +4,7 @@ import { getCatalog } from '../../retrieval/registry/catalog'
 import { compileCapabilityKnowledge } from '../../retrieval/registry/knowledge/compiler'
 import { resolveToolUri } from '../../retrieval/registry/tool_name_bridge'
 import { compileInquiryContract } from './compiler'
+import { isInquiryServerDispatchEligible } from './execution_policy'
 import { adoptInquiryPlanItems, managedPlanToAiInquiryProposal } from './managed_bridge'
 
 const scope = {
@@ -31,7 +32,10 @@ describe('managed Inquiry Contract bridge', () => {
     expect(raw.execution_plan_hash).not.toBe(platform.execution_plan_hash)
     expect(raw.plan_items.filter((item) => item.state === 'ready').every((item) => {
       const binding = snapshot.scus.find((scu) => scu.scu_id === item.scu_id)?.bindings.find((candidate) => candidate.binding_id === item.binding_id)
-      return binding?.execution_channels?.includes('mcp_full') === true
+      // A raw Inquiry lifecycle dispatches its reviewed registry handler
+      // server-side. Its external MCP envelope is therefore not limited to a
+      // separately registered public alias.
+      return binding ? isInquiryServerDispatchEligible(binding, 'raw_mcp') : false
     })).toBe(true)
   })
 

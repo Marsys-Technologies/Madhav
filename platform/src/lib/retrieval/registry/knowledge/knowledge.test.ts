@@ -28,7 +28,11 @@ describe('planner capability knowledge', () => {
     expect(Object.isFrozen(snapshot)).toBe(true)
     const report = inspectCapabilityKnowledge(catalog, snapshot)
     expect(report.passed).toBe(true)
-    expect(report.findings.every((finding) => finding.severity === 'warning')).toBe(true)
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      detail: expect.stringContaining('duplicated across SCUs'),
+    }))
     expect(report.findings.map((finding) => finding.code)).toContain('BAD_PAGINATION_CONTRACT')
   })
 
@@ -59,20 +63,60 @@ describe('planner capability knowledge', () => {
   it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
     const routes = estateCensus.details.descriptor_route_contracts
     expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(96)
-    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(1)
-    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(95)
+    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(4)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(92)
     expect(snapshot.census).toMatchObject({
       reviewed_pagination_dispositions: 186,
       reviewed_paginated_descriptors: 96,
-      exhaustible_reviewed_descriptors: 1,
-      non_exhaustible_descriptors: 95,
+      exhaustible_reviewed_descriptors: 4,
+      non_exhaustible_descriptors: 92,
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
     expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
     expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(96)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
+  })
+
+  it('derives reviewed pagination only from an evidence-bearing continuation contract', () => {
+    const bindingById = new Map(snapshot.scus.flatMap((scu) => scu.bindings).map((binding) => [binding.binding_id, binding]))
+    expect(bindingById.get('registry:marsys://tool/L2/query_mechanisms')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L1/get_divisionals')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L1/get_dashas')).toMatchObject({
+      pagination_verified: true,
+      result_collection_verified: true,
+    })
+    expect(bindingById.get('registry:marsys://tool/L3/query_temporal_activation')).toMatchObject({
+      pagination_verified: false,
+      result_collection_verified: true,
+    })
+
+    const changedCatalog = catalog.map((cap) => {
+      if (cap.uri !== 'marsys://tool/L1/get_dashas') return cap
+      const declaration = cap.semantic_capabilities?.[0]
+      const details = declaration?.primary_binding_details
+      if (!declaration || !details?.pagination_contract) throw new Error('DASHA_PAGINATION_FIXTURE_MISSING')
+      const { next_path: _discardedContinuation, ...incompleteContract } = details.pagination_contract!
+      return {
+        ...cap,
+        semantic_capabilities: [{
+          ...declaration,
+          primary_binding_details: { ...details, pagination_contract: incompleteContract },
+        }],
+      } as CapabilityDescriptor
+    })
+    const changed = compileCapabilityKnowledge(changedCatalog, '2026-09-13T00:00:00.000Z')
+    expect(changed.scus.find((scu) => scu.scu_id === 'scu.catalog.get_dashas')?.bindings[0]).toMatchObject({
+      pagination_verified: false,
+      result_collection_verified: true,
+    })
   })
 
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {
@@ -83,10 +127,42 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(7)
+    expect(snapshot.census.reviewed_output_claims).toBe(14)
     expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
+  })
+
+  it('binds each reviewed editorial route to its compiled primary binding and exact reviewed output claims', () => {
+    const expectedPrimaryBindingIds: Record<string, string> = {
+      'scu.bodha.mechanism.network': 'registry:marsys://tool/L2/query_mechanisms',
+      'scu.catalog.get_dashas': 'registry:marsys://tool/L1/get_dashas',
+      'scu.catalog.get_divisionals': 'registry:marsys://tool/L1/get_divisionals',
+      'scu.catalog.query_chart_gestalt': 'registry:marsys://tool/L2/query_chart_gestalt',
+      'scu.finance.prosperity_assessment': 'registry:marsys://tool/L-DOMAIN/assess_wealth',
+      'scu.yoga.firing_and_cancellation': 'registry:marsys://tool/L1/get_yoga_firings',
+    }
+
+    for (const [scuId, expectedBindingId] of Object.entries(expectedPrimaryBindingIds)) {
+      const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+      const primary = scu.bindings.find((binding) => binding.relation === 'primary')!
+      const reviewedClaims = scu.producer_output_claims!.filter((claim) => claim.disposition === 'reviewed_output')
+
+      expect(primary).toMatchObject({ binding_id: expectedBindingId, executable: true })
+      expect(scu.availability_contracts).toHaveLength(1)
+      expect(scu.availability_contracts![0]).toEqual({
+        binding_id: primary.binding_id,
+        requirements: reviewedClaims.map((claim) => ({
+          kind: 'producer_output',
+          asset_id: claim.asset_id,
+          spec_sha256: claim.output_digest_spec_sha256,
+          scope: 'chart_build',
+          source_ref: claim.evidence,
+        })),
+      })
+    }
+
+    expect(snapshot.scus.find((scu) => scu.scu_id === 'scu.kala.temporal_activation')?.availability_contracts).toBeUndefined()
   })
 
   it('replaces every descriptor-derived stub with a source-linked editorial unit', () => {
@@ -203,7 +279,7 @@ describe('planner capability knowledge', () => {
   it('materially editorializes descriptor metadata instead of relabeling derived stubs', () => {
     const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
     const reviewed = snapshot.scus.filter((scu) => scu.editorial_method === 'descriptor_metadata_review')
-    expect(reviewed).toHaveLength(176)
+    expect(reviewed).toHaveLength(174)
     for (const scu of reviewed) {
       const descriptor = descriptorByUri.get(scu.source_descriptor_uris[0]!)!
       expect(scu.description).not.toBe(descriptor.display?.one_line ?? descriptor.description)

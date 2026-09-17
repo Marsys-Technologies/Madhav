@@ -18,7 +18,7 @@
  * replaced with a mocked-constants-in / rendered-note-out assertion (a live read can never be
  * pinned by a literal-substring check the way a hardcoded string could).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const queryMock = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/db/client', () => ({ query: queryMock }))
@@ -26,6 +26,26 @@ vi.mock('@/lib/db/client', () => ({ query: queryMock }))
 import { queryMechanismsCapability } from '../query_mechanisms'
 
 const CHART = '482012f1-710e-4a25-994a-93821f5871aa'
+const signingEnvironment = {
+  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID: 'inquiry-v1',
+  INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT: Buffer.alloc(32, 4).toString('base64url'),
+}
+const originalSigningEnvironment = {
+  kid: process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID,
+  key: process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT,
+}
+
+function setSigningEnvironment() {
+  process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = signingEnvironment.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID
+  process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = signingEnvironment.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT
+}
+
+function restoreSigningEnvironment() {
+  if (originalSigningEnvironment.kid === undefined) delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID
+  else process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT_KID = originalSigningEnvironment.kid
+  if (originalSigningEnvironment.key === undefined) delete process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT
+  else process.env.INQUIRY_LIFECYCLE_SIGNING_KEY_CURRENT = originalSigningEnvironment.key
+}
 
 // F-164: the live operative_vargas constants row, mirroring migration
 // 435_ga_vichara.sql's seed exactly — used to mock getOperativeVargaConstants()'s
@@ -39,9 +59,8 @@ const OPERATIVE_VARGAS_FIXTURE = {
 }
 
 /**
- * Route each stubbed result by inspecting the SQL, not by call order — the handler issues a
- * rows SELECT, a COUNT, a facet rollup, and (F-164) a brahma_vichara_constants read, and an
- * order-coupled stub silently breaks the moment their order changes.
+ * Route each stubbed result by inspecting SQL, not by call order. The read now combines the
+ * receipt-selected page, full count, and facets into one consistent snapshot CTE.
  */
 function stubDb(rows: Record<string, unknown>[], facets: Record<string, unknown>[]) {
   queryMock.mockReset()
@@ -49,11 +68,17 @@ function stubDb(rows: Record<string, unknown>[], facets: Record<string, unknown>
     if (/brahma_vichara_constants/i.test(sql)) {
       return Promise.resolve({ rows: [{ value_jsonb: OPERATIVE_VARGAS_FIXTURE }] })
     }
-    if (/count\(\*\)/i.test(sql) && !/group by/i.test(sql)) {
-      return Promise.resolve({ rows: [{ n: String(rows.length) }] })
+    if (/eligible_receipt AS/i.test(sql)) {
+      return Promise.resolve({ rows: [{
+        replacement_in_progress: false,
+        eligible_build_id: 'build-a',
+        cursor_build_changed: false,
+        rows,
+        facets,
+        total_matching: String(rows.length),
+      }] })
     }
-    if (/group by/i.test(sql)) return Promise.resolve({ rows: facets })
-    return Promise.resolve({ rows })
+    throw new Error(`unexpected query: ${sql}`)
   })
 }
 
@@ -68,7 +93,11 @@ const D1_ROW = {
 }
 
 describe('F-107 — bodha_mechanisms_get varga-scope disclosure', () => {
-  beforeEach(() => queryMock.mockReset())
+  beforeEach(() => {
+    setSigningEnvironment()
+    queryMock.mockReset()
+  })
+  afterEach(restoreSigningEnvironment)
 
   it('states the D1-only scope on a POPULATED response (the actual F-107 reproducer shape)', async () => {
     stubDb([D1_ROW], [{ mechanism_class: 'convergent_dispositor_chain', valence: 'mixed', is_chain_circuit: true, n: 1 }])

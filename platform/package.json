@@ -9,6 +9,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "test": "vitest run",
+    "purna:acceptance": "tsx scripts/purna/acceptance.ts",
     "lint": "eslint",
     "etl:msr": "tsx src/scripts/etl/msr_etl.ts",
     "manifest:build": "tsx src/scripts/manifest/build.ts",

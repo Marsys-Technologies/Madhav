@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SemanticCapabilityBinding } from '../../retrieval/registry/knowledge/types'
 import { classifyInquiryResult, deriveInquiryPaginationReceipt, extractInquirySemanticFindings, semanticInquiryResultCount } from './pagination'
+import generatedCapabilityKnowledge from '../../../generated/capability_knowledge.snapshot.json'
 
 function binding(overrides: Partial<SemanticCapabilityBinding> = {}): SemanticCapabilityBinding {
   return {
@@ -15,6 +16,27 @@ describe('inquiry pagination receipts', () => {
   it('advances a verified offset from server-observed more_available', () => {
     expect(deriveInquiryPaginationReceipt(binding(), { results: [{ content: { rows: [1], more_available: true } }] }, { offset: 50, limit: 25 }))
       .toEqual({ semantics: 'offset', exhausted: false, next: 75 })
+  })
+
+  it('consumes the reviewed build-pinned dasha cursor rather than replaying a caller offset', () => {
+    const serverContinued = generatedCapabilityKnowledge.scus
+      .find((scu) => scu.scu_id === 'scu.catalog.get_dashas')!
+      .bindings.find((candidate) => candidate.binding_id === 'registry:marsys://tool/L1/get_dashas') as SemanticCapabilityBinding
+
+    expect(serverContinued.pagination_contract).toMatchObject({
+      request_position_path: 'page_cursor',
+      request_limit_path: 'limit',
+      result_collection_path: 'content.rows',
+      more_available_path: 'content.more_available',
+      next_path: 'content.next_page_cursor',
+      deterministic_order: expect.arrayContaining(['dasha_row_id ASC']),
+    })
+
+    expect(deriveInquiryPaginationReceipt(
+      serverContinued,
+      { content: { rows: [{ dasha_row_id: 'a' }], more_available: true, next_page_cursor: 'opaque-page-2' } },
+      { page_cursor: 'opaque-page-1', offset: -10, limit: Number.POSITIVE_INFINITY },
+    )).toEqual({ semantics: 'cursor', exhausted: false, next: 'opaque-page-2' })
   })
 
   it('reads a reviewed nested request position and limit path', () => {

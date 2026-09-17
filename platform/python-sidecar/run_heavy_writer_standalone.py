@@ -22,7 +22,8 @@ WHAT THIS SCRIPT DOES
    rows with legacy ayanamsha IDs (lahiri, kp, surya_siddhanta) are purged.
    replace_prior_chart_dashas scopes deletes to (chart_id, system_id, ayanamsha_id)
    pairs present in the NEW rows — it would never touch the old IDs.
-3. Calls _run_data_writer which drives _drive_substeps (per-substep SAVEPOINT +
+3. Creates and commits a durable `build_runs` + `build_run_assets` lifecycle
+   before any ga_dashas pre-clean delete, then calls _run_data_writer which drives _drive_substeps (per-substep SAVEPOINT +
    commit + heartbeat) then sets state='lit' + marks downstream stale.
 
 IDEMPOTENCY
@@ -37,8 +38,11 @@ Any future heavy writer whose substep computation exceeds the 15-min watchdog
 threshold must use this pattern:
   - Call _run_data_writer directly (skip run_asset / execute_run)
   - Never SET state='building' in asset_throughput during the standalone run
-  - A synthetic run_id (uuid4) is sufficient — no build_run record required
-  - The UPDATE build_run_assets inside _run_data_writer affects 0 rows harmlessly
+  - Load the asset's real registry provenance declaration, then create and
+    commit a running build_run plus building build_run_asset before the first
+    destructive write. Complete only after a fresh/proven exact-build receipt;
+    otherwise fail both terminal records so serving remains fenced.
+  - _run_data_writer's existing build_run_assets updates then target that real row
   - Downstream stale cascade runs automatically
 
 USAGE
@@ -49,6 +53,7 @@ USAGE
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import sys
@@ -63,6 +68,109 @@ logger = logging.getLogger(__name__)
 CHART_ID = "482012f1-710e-4a25-994a-93821f5871aa"
 
 VALID_ASSETS = {"ga_dashas", "ga_sensitive"}
+GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256 = "573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14"
+
+
+def _load_registry_provenance_inputs(cur, asset_id: str) -> tuple[list[str], str | None, bool]:
+    """Load the production provenance declaration before a standalone mutation."""
+    cur.execute(
+        """SELECT COALESCE(ar.depends_on, '{}') AS depends_on,
+                  ar.natural_key_partition,
+                  EXISTS (
+                    SELECT 1 FROM asset_registry peer
+                     WHERE peer.target_table IS NOT DISTINCT FROM ar.target_table
+                       AND ar.target_table IS NOT NULL
+                       AND peer.asset_id <> ar.asset_id
+                       AND peer.is_active = true
+                       AND peer.has_writer = true
+                  ) AS has_cowriters
+             FROM asset_registry ar
+            WHERE ar.asset_id = %s""",
+        (asset_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        raise RuntimeError(f"asset registry row missing for standalone provenance: {asset_id}")
+    return list(row.get("depends_on") or []), row.get("natural_key_partition"), bool(row.get("has_cowriters"))
+
+
+def _has_eligible_ga_dashas_receipt(cur, run_id: str) -> bool:
+    """Require the pager's fresh/proven receipt evidence before completing this run."""
+    cur.execute(
+        """SELECT EXISTS (
+             SELECT 1
+               FROM asset_provenance_receipts receipt
+               JOIN asset_freshness freshness
+                 ON freshness.asset_id = receipt.asset_id
+                AND freshness.scope_key = receipt.scope_key
+                AND freshness.partition_key = receipt.partition_key
+                AND freshness.receipt_version = receipt.receipt_version
+              WHERE receipt.asset_id = 'ga_dashas'
+                AND receipt.chart_id = %s::uuid
+                AND receipt.build_id = %s::uuid
+                AND receipt.receipt_state = 'proven'
+                AND receipt.output_digest_spec_sha256 = %s
+                AND freshness.freshness_state = 'fresh'
+           ) AS receipt_exists""",
+        (CHART_ID, run_id, GA_DASHAS_OUTPUT_DIGEST_SPEC_SHA256),
+    )
+    row = cur.fetchone() or {}
+    return bool(row.get("receipt_exists"))
+
+
+def _create_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str) -> None:
+    """Commit the durable fence before a standalone writer can replace output."""
+    plan = json.dumps({
+        "entrypoint": "run_heavy_writer_standalone",
+        "asset_ids": [asset_id],
+        "watchdog_safe_asset_throughput": True,
+    }, sort_keys=True)
+    cur.execute(
+        """INSERT INTO build_runs
+             (id, chart_id, scope, scope_target, action, plan, state, triggered_by,
+              started_at, current_asset_id)
+           VALUES (%s, %s, 'asset', %s, 'rebuild', %s::jsonb, 'running',
+                   'run_heavy_writer_standalone', NOW(), %s)""",
+        (run_id, CHART_ID, asset_id, plan, asset_id),
+    )
+    cur.execute(
+        """INSERT INTO build_run_assets (run_id, asset_id, position, state, started_at)
+           VALUES (%s, %s, 0, 'building', NOW())""",
+        (run_id, asset_id),
+    )
+    conn.commit()
+
+
+def _complete_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str) -> None:
+    """Terminalize the standalone lifecycle only after writer success."""
+    cur.execute(
+        """UPDATE build_run_assets SET state = 'complete', ended_at = NOW(), error = NULL
+           WHERE run_id = %s AND asset_id = %s AND state IN ('queued', 'building', 'complete')""",
+        (run_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_runs SET state = 'completed', ended_at = NOW(), last_error = NULL
+           WHERE id = %s AND state IN ('planned', 'running', 'paused')""",
+        (run_id,),
+    )
+    conn.commit()
+
+
+def _fail_standalone_run_lifecycle(conn, cur, run_id: str, asset_id: str, error: str) -> None:
+    """Fail the durable fence without overwriting a more specific writer error."""
+    cur.execute(
+        """UPDATE build_run_assets
+           SET state = 'error', ended_at = NOW(), error = COALESCE(NULLIF(error, ''), %s)
+           WHERE run_id = %s AND asset_id = %s""",
+        (error[:2000], run_id, asset_id),
+    )
+    cur.execute(
+        """UPDATE build_runs
+           SET state = 'failed', ended_at = NOW(), last_error = COALESCE(NULLIF(last_error, ''), %s)
+           WHERE id = %s AND state IN ('planned', 'running', 'paused')""",
+        (error[:2000], run_id),
+    )
+    conn.commit()
 
 
 def main() -> None:
@@ -90,9 +198,9 @@ def main() -> None:
 
     discover_all()
 
-    # Synthetic run_id — no build_run record required.
-    # _run_data_writer uses this only as build_id for rows + a harmless
-    # UPDATE build_run_assets that affects 0 rows (no matching run_id).
+    # The ID is durable: its build_runs/build_run_assets lifecycle is committed
+    # before ga_dashas can delete any old rows, so readers can fence the partial
+    # replacement without putting asset_throughput into watchdog-visible building.
     run_id = str(uuid.uuid4())
     logger.info("Starting standalone run: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
 
@@ -111,7 +219,23 @@ def main() -> None:
     conn.autocommit = False
     cur = conn.cursor()
 
+    lifecycle_created = False
     try:
+        writer_provenance_kwargs = {}
+        if asset_id == "ga_dashas":
+            declared_deps, natural_key_partition, has_cowriters = _load_registry_provenance_inputs(cur, asset_id)
+            writer_provenance_kwargs = {
+                "declared_deps": declared_deps,
+                "natural_key_partition": natural_key_partition,
+                "has_cowriters": has_cowriters,
+                # This writer has just deliberately pre-cleaned its full output;
+                # a delta skip would leave the new run without replacement rows.
+                "force": True,
+            }
+        _create_standalone_run_lifecycle(conn, cur, run_id, asset_id)
+        lifecycle_created = True
+        logger.info("Standalone lifecycle running: asset=%s chart=%s run_id=%s", asset_id, CHART_ID, run_id)
+
         # ── ga_dashas pre-cleanup ─────────────────────────────────────────────
         # replace_prior_chart_dashas scopes deletes to (chart_id, system_id,
         # ayanamsha_id) pairs present in the NEW rows — it NEVER deletes stale
@@ -136,20 +260,37 @@ def main() -> None:
         # _drive_substeps commits per-substep and updates last_built_at.
         # _run_data_writer sets state='lit' and marks downstream stale on success.
         logger.info("Calling _run_data_writer for %s — watchdog-safe (no 'building' transition)", asset_id)
-        success = _run_data_writer(conn, cur, run_id, CHART_ID, asset_id)
+        success = _run_data_writer(conn, cur, run_id, CHART_ID, asset_id, **writer_provenance_kwargs)
 
         if success:
+            if asset_id == "ga_dashas" and not _has_eligible_ga_dashas_receipt(cur, run_id):
+                logger.error("FAILURE: ga_dashas run %s has no fresh/proven exact-build receipt", run_id)
+                _fail_standalone_run_lifecycle(
+                    conn, cur, run_id, asset_id,
+                    "ga_dashas completed without a fresh/proven exact-build provenance receipt",
+                )
+                sys.exit(1)
+            _complete_standalone_run_lifecycle(conn, cur, run_id, asset_id)
             logger.info("SUCCESS: %s is now state='lit'", asset_id)
         else:
             logger.error("FAILURE: _run_data_writer returned False for %s — check logs above", asset_id)
+            _fail_standalone_run_lifecycle(
+                conn, cur, run_id, asset_id,
+                "_run_data_writer returned False; preserving any writer error recorded on build_run_assets",
+            )
             sys.exit(1)
 
-    except Exception:
+    except Exception as exc:
         logger.exception("Unexpected error during standalone run for %s", asset_id)
         try:
             conn.rollback()
         except Exception:
             pass
+        if lifecycle_created:
+            try:
+                _fail_standalone_run_lifecycle(conn, cur, run_id, asset_id, f"{type(exc).__name__}: {exc}")
+            except Exception:
+                logger.exception("Could not record standalone lifecycle failure for %s", asset_id)
         sys.exit(1)
     finally:
         try:

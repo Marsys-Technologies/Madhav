@@ -55,7 +55,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
     expect(sql).toMatch(
-      /ORDER BY\s+dasha_activation_proximity_score DESC NULLS LAST,\s*\n\s*orb_strength DESC NULLS LAST, activation_start, id/,
+      /ORDER BY\s+dasha_activation_proximity_score DESC NULLS LAST,\s*\n\s*orb_strength DESC NULLS LAST, activation_start ASC, id ASC/,
     )
   })
 
@@ -79,7 +79,7 @@ describe('F-KALA-1 — query_temporal_activation ORDER BY ranks on dasha_activat
       .mockResolvedValueOnce({ rows: [] })
     await queryTemporalActivationCapability.handler({ chart_id: CHART_ID }, undefined)
     const [sql] = queryMock.mock.calls[0] as [string, unknown[]]
-    expect(sql).toMatch(/orb_strength DESC NULLS LAST, activation_start, id\s*\n\s*LIMIT/)
+    expect(sql).toMatch(/orb_strength DESC NULLS LAST, activation_start ASC, id ASC\s*\n\s*LIMIT/)
   })
 
   it('unrelated WHERE/date-param behavior is unaffected by the ORDER BY change (sanity)', async () => {

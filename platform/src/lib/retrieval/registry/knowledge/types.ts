@@ -107,6 +107,90 @@ export interface PaginationReviewDisposition {
   readonly blocker?: string
 }
 
+/** Exact evidence a binding needs before it can be offered for execution. */
+export interface ProducerOutputAvailabilityRequirement {
+  readonly kind: 'producer_output'
+  readonly asset_id: string
+  readonly spec_sha256: string
+  readonly scope: 'chart_build' | 'global'
+  readonly source_ref: string
+}
+
+/**
+ * A successful, authenticated service-health probe for an executable binding.
+ *
+ * `endpoint_identity` is the persisted trusted-provenance identity, rather than
+ * an environment URL: the real runner URL contains deployment-specific host
+ * details and must never be copied into the knowledge snapshot.  The runtime
+ * evaluator requires that exact identity together with its server-reconstructed
+ * source kind, so a similarly named asset or an anonymous health result cannot
+ * satisfy this contract.
+ */
+export interface ServiceProbeAvailabilityRequirement {
+  readonly kind: 'service_probe'
+  readonly asset_id: string
+  readonly probe_id: string
+  readonly endpoint_identity: string
+  /** SHA-256 of the exact registry-owned health-probe configuration. */
+  readonly probe_contract_sha256: string
+  /** Evidence older than this cannot represent current service readiness. */
+  readonly max_age_seconds: number
+  readonly source_ref: string
+}
+
+export interface SourceQueryAvailabilityRequirement {
+  readonly kind: 'source_query'
+  readonly contract_id: string
+  readonly scope: 'chart' | 'global'
+  readonly source_ref: string
+}
+
+export interface DerivedAvailabilityRequirement {
+  readonly kind: 'derived'
+  /**
+   * The child bindings are evaluated in the same availability scope as the
+   * composite.  This prevents a chart-scoped composite from being promoted by
+   * a merely global or differently-scoped adjacent route.
+   */
+  readonly scope: 'chart' | 'global'
+  readonly required_binding_ids: readonly string[]
+  readonly source_ref: string
+}
+
+export type AvailabilityRequirement =
+  | ProducerOutputAvailabilityRequirement
+  | ServiceProbeAvailabilityRequirement
+  | SourceQueryAvailabilityRequirement
+  | DerivedAvailabilityRequirement
+
+/** Source-authored requirements for one known executable binding. */
+export interface BindingAvailabilityContract {
+  readonly binding_id: string
+  readonly requirements: readonly AvailabilityRequirement[]
+  readonly unavailable_reason?: string
+}
+
+/**
+ * A reviewed decision not to offer an otherwise executable binding yet.
+ *
+ * This is deliberately separate from an empty availability contract: an empty
+ * contract is malformed, whereas this records the concrete handler dependency
+ * that lacks a receipt contract and keeps the binding fail-closed.
+ */
+export interface BindingAvailabilityDisposition {
+  readonly binding_id: string
+  readonly status: 'deliberately_dark'
+  readonly reason: string
+  /**
+   * Exact mandatory executable legs that prevent a composite from becoming
+   * available.  This is structured rather than inferred from prose so callers
+   * can distinguish an intentionally dark route from a route with a complete
+   * derived availability contract.
+   */
+  readonly missing_binding_ids?: readonly string[]
+  readonly source_refs: readonly string[]
+}
+
 export interface SemanticCapabilityBinding {
   readonly binding_id: string
   readonly kind: ExecutionBindingKind
@@ -162,6 +246,10 @@ export interface SemanticCapabilityDeclaration {
   readonly known_gaps: readonly string[]
   /** Links to producer outputs without claiming unreviewed output contracts exist. */
   readonly producer_output_claims?: readonly ProducerOutputClaim[]
+  /** Binding-specific evidence. Snapshots without this use reviewed SCU claims as a legacy fallback. */
+  readonly availability_contracts?: readonly BindingAvailabilityContract[]
+  /** Reviewed fail-closed decisions for executable bindings without an evidence contract. */
+  readonly availability_dispositions?: readonly BindingAvailabilityDisposition[]
   /** false means the compiler conservatively derived this from a descriptor. */
   readonly editorial: boolean
 }
@@ -286,6 +374,9 @@ export interface KnowledgeIntegrityFinding {
     | 'NON_EXECUTABLE_BINDING'
     | 'BAD_PAGINATION_CONTRACT'
     | 'BAD_PRODUCER_OUTPUT_CLAIM'
+    | 'BAD_BINDING_AVAILABILITY_CONTRACT'
+    | 'BAD_BINDING_AVAILABILITY_DISPOSITION'
+    | 'UNSUPPORTED_BINDING_AVAILABILITY_REQUIREMENT'
     | 'ORPHAN_DESCRIPTOR'
     | 'UNBOUND_CONCEPT'
     | 'ISOLATED_SCU'
