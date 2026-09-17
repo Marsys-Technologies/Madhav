@@ -73,15 +73,21 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
     concepts: ['dasha', 'transit', 'activation', 'convergence_window'],
     intents: ['timing', 'forecast', 'deep_inquiry'],
     horizons: ['current', 'multi_year'],
-    inputs: ['chart_id', 'date_from?', 'date_to?', 'as_of?', 'signal_ids?', 'domain?'],
-    outputs: ['activation_windows', 'predicates', 'signal_refs', 'drill_pointers'],
+    inputs: ['chart_id', 'ayanamsha_id?', 'date_from?', 'date_to?', 'as_of?', 'signal_ids?', 'domain?', 'min_activation_strength?', 'top_k?'],
+    outputs: ['activation_windows', 'predicates', 'signal_refs', 'total_matching', 'more_available', 'temporal_closure', 'drill_pointers'],
     primary_binding_uri: 'marsys://tool/L3/query_temporal_activation',
     primary_binding_details: {
       pagination: 'bounded_unverified',
-      pagination_verified: null,
+      // The response now proves whether its exact filtered window was trimmed,
+      // but it intentionally offers no continuation. A required inquiry must
+      // therefore retain a frontier when that bounded window is incomplete.
+      pagination_verified: false,
+      result_collection_verified: true,
       pagination_contract: {
         request_limit_path: 'top_k', effective_maximum: 500,
         result_collection_path: 'content.activations',
+        total_path: 'content.total_matching',
+        more_available_path: 'content.more_available',
         deterministic_order: ['dasha_activation_proximity_score DESC', 'orb_strength DESC', 'activation_start', 'id'],
       },
       execution_channels: ['platform_internal', 'mcp_full'],
@@ -93,7 +99,7 @@ export const TEMPORAL_SCUS: readonly SemanticCapabilityDeclaration[] = [
       { relation: 'requires', target_scu_id: 'scu.catalog.query_planet_transit', rationale: 'Transit state completes current-time activation.' },
       { relation: 'enables', target_scu_id: 'scu.finance.prosperity_assessment', rationale: 'Times natal finance promise and inhibition.' },
     ],
-    known_gaps: ['The route is top_k bounded but exposes no total/next/exhaustion proof; a capped response remains materially incomplete.'],
+    known_gaps: ['The route is an intentionally non-exhaustible top_k temporal-window read. Its source-reviewed closure receipt reports the exact filtered total and bounded-window state; a trimmed required result remains materially incomplete because no reviewed continuation exists.'],
     producer_output_claims: [
       { asset_id: 'ka_kalasutra', component: 'kala_activation rows', output_digest_spec_sha256: null, disposition: 'route_evidence_only', evidence: 'query_temporal_activation handler reads kala_activation', gap_reason: 'No reviewed output-digest component hash is joined to this SCU yet.' },
       { asset_id: 'ka_yojaka', component: 'kala_activation_predicates rows', output_digest_spec_sha256: '9f6bbfd1011ebf82aec647c3b80da57365e11a2fffbaf00f3a4df5bc77d307a5', disposition: 'reviewed_output', evidence: 'platform/migrations/1024_nirmana_l3_ka_yojaka_output_digest_spec.sql:80' },

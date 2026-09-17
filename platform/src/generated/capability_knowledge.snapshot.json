@@ -1,9 +1,9 @@
 {
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
-  "generated_at": "2026-09-17T02:27:39.000Z",
-  "content_hash": "sha256:20c909f45c80c6fbc16a0900b951f60993fefd7241e06ee58bb1498a87bc1172",
-  "source_catalog_fingerprint": "sha256:7962497e516e938bec3224c01365747de302a071e6035b934454cfed7b81db7b",
+  "generated_at": "2026-09-17T03:09:00.000Z",
+  "content_hash": "sha256:d0c73a1383753852c5005b09c1c81bb3016da82895629862c76cc2e4a4182454",
+  "source_catalog_fingerprint": "sha256:f812c6f2488af29e7e837bccd926233727bbf7a9d65417cd92b3e3aadcbc4a17",
   "semantic_review_fingerprint": "sha256:c2e1c7473eaba8d57fb7d5a2ada1eefa5b8ce22db29699a30d5d8cfeb4951c9c",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
@@ -30775,26 +30775,35 @@
       ],
       "inputs": [
         "as_of?",
+        "ayanamsha_id?",
         "chart_id",
         "date_from?",
         "date_to?",
         "domain?",
-        "signal_ids?"
+        "min_activation_strength?",
+        "signal_ids?",
+        "top_k?"
       ],
       "outputs": [
         "activation_windows",
         "drill_pointers",
+        "more_available",
         "predicates",
-        "signal_refs"
+        "signal_refs",
+        "temporal_closure",
+        "total_matching"
       ],
       "primary_binding_uri": "marsys://tool/L3/query_temporal_activation",
       "primary_binding_details": {
         "pagination": "bounded_unverified",
-        "pagination_verified": null,
+        "pagination_verified": false,
+        "result_collection_verified": true,
         "pagination_contract": {
           "request_limit_path": "top_k",
           "effective_maximum": 500,
           "result_collection_path": "content.activations",
+          "total_path": "content.total_matching",
+          "more_available_path": "content.more_available",
           "deterministic_order": [
             "dasha_activation_proximity_score DESC",
             "orb_strength DESC",
@@ -30827,7 +30836,7 @@
         }
       ],
       "known_gaps": [
-        "The route is top_k bounded but exposes no total/next/exhaustion proof; a capped response remains materially incomplete.",
+        "The route is an intentionally non-exhaustible top_k temporal-window read. Its source-reviewed closure receipt reports the exact filtered total and bounded-window state; a trimmed required result remains materially incomplete because no reviewed continuation exists.",
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
       "producer_output_claims": [
@@ -30879,10 +30888,13 @@
           "pagination_verified": false,
           "executable": true,
           "route_evidence": "platform-mcp/src/tools/register_p1_aliases.ts:1076 | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get | platform-mcp/src/lib/mcp_full_route_authority.ts:reviewed_allowlist | platform-mcp/src/tools/register_p1_aliases.ts:kala_windows_get",
+          "result_collection_verified": true,
           "pagination_contract": {
             "request_limit_path": "top_k",
             "effective_maximum": 500,
             "result_collection_path": "content.activations",
+            "total_path": "content.total_matching",
+            "more_available_path": "content.more_available",
             "deterministic_order": [
               "dasha_activation_proximity_score DESC",
               "orb_strength DESC",
@@ -30940,7 +30952,7 @@
       ],
       "gap_dispositions": [
         {
-          "gap": "The route is top_k bounded but exposes no total/next/exhaustion proof; a capped response remains materially incomplete.",
+          "gap": "The route is an intentionally non-exhaustible top_k temporal-window read. Its source-reviewed closure receipt reports the exact filtered total and bounded-window state; a trimmed required result remains materially incomplete because no reviewed continuation exists.",
           "status": "deferred_contract",
           "rationale": "Retained as a named contract boundary until its evidence gate is separately closed.",
           "source_ref": "SemanticCapabilityDeclaration:marsys://tool/L3/query_temporal_activation"

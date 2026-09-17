@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "f2ec26de70985de3fa29c2fc1c5b59a3fc5fd439cd762f3cb9ffa98c6c74089b",
+  "content_sha256": "94eada97de492a25dab8edd94a6e6be27e3f0cb9a4d835db81aaabb89cc46882",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -20658,7 +20658,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-17T07:46:00.000Z",
+  "generated_at": "2026-09-17T03:09:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21283,7 +21283,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/compiler.ts",
-            "sha256": "638a19d77c3f3d43280eb3308e67b5cb601f65a8cec77c8414415fb7296e866c"
+            "sha256": "88f7da7840a6dfa1183c7ce6e21a7d1aed40a7b6c74922b5a063ca934f399be0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
@@ -21291,7 +21291,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "c81f557b112b6984bdee36ffffe9abaa1953223422c5aa8eaa61ae08873235df"
+            "sha256": "e270b9c40939a64686e1eb3dd0d8934d45b466eff1957d9da08c37210573fb28"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21299,7 +21299,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay_loader.ts",
-            "sha256": "f8fbd0a904650be9df793e0889307440abde97e4c409e75e792d7b2c4bea0f4d"
+            "sha256": "a182cbb2b6994354bfd5013fc54184ab8513ddc1f4bbd896a51663c174fbb51b"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/overlay.ts",
@@ -21327,7 +21327,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/types.ts",
-            "sha256": "507d0381527c0addadffbee02118242da38707c2461e7ae038422f66953a2949"
+            "sha256": "ff310eba487d361da95bc7a6b8793a45aabf4c478d912b8915b335dfc1cbfc67"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/dprofiles_registration.ts",
@@ -21439,7 +21439,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_planet_transit.ts",
-            "sha256": "7679bdf8cdef247d78fc510d7d2c195325163d473aac7caaef965dd9a0c45707"
+            "sha256": "86f7284ed96fc4dc93dcc65352672add12c6ccd72b583a6fc87d6c8c6e16fec1"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_prashna_fructification_rules.ts",
@@ -21847,7 +21847,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_activation.ts",
-            "sha256": "96737c070431a48d77b23e3f5faaba367ff05ad45654f4a1e25fbbfd794101a1"
+            "sha256": "616e34a53b8b4791bbe64b422e9caa2c73ce784e5966dbe05b2512772995f24f"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L3_kala/query_temporal_view.ts",
@@ -22047,7 +22047,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "7080bcca51e4fa146dde75f8a181a134814458f5662968acdac533759f0044bd"
+        "sha256": "38d9f4a8dfbea15d63f230c0f02d00b6a8296e107f2159f29dcdac4f6d818412"
       },
       {
         "id": "service_effect_contracts",
@@ -22072,5 +22072,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "11bcda4688d01211a40e63c441d9ba1f3ffb136c"
+  "source_revision": "d35697d9b8da26a545b621f866faaab809196e35"
 }
