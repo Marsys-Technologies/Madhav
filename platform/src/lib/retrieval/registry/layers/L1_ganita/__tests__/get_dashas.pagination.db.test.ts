@@ -74,7 +74,13 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
         start_date date NOT NULL, end_date date NOT NULL, start_iso timestamptz NOT NULL
       );
     `)
-    await scoped.query("INSERT INTO asset_registry(asset_id) VALUES ('ga_dashas')")
+    const digestSql = migration('supabase/migrations/598_nirmana_output_digest_specs.sql')
+      + migration('migrations/881_nirmana_l1_ga_dashas_output_digest_spec.sql')
+    const assetIds = [...digestSql.matchAll(/'([a-z0-9_]+)'\s*,\s*'[a-f0-9]{64}'/g)].map((match) => match[1]!)
+    await scoped.query(
+      'INSERT INTO asset_registry(asset_id) SELECT unnest($1::text[]) ON CONFLICT DO NOTHING',
+      [[...new Set(assetIds)]],
+    )
     await scoped.query(migration('supabase/migrations/171_build_runs.sql'))
     await scoped.query(migration('supabase/migrations/596_nirmana_provenance_receipts.sql'))
     await scoped.query(migration('supabase/migrations/598_nirmana_output_digest_specs.sql'))
