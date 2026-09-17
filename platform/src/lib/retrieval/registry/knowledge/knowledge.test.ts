@@ -100,8 +100,9 @@ describe('planner capability knowledge', () => {
 
     const changedCatalog = catalog.map((cap) => {
       if (cap.uri !== 'marsys://tool/L1/get_dashas') return cap
-      const declaration = cap.semantic_capabilities?.[0]!
-      const details = declaration.primary_binding_details!
+      const declaration = cap.semantic_capabilities?.[0]
+      const details = declaration?.primary_binding_details
+      if (!declaration || !details?.pagination_contract) throw new Error('DASHA_PAGINATION_FIXTURE_MISSING')
       const { next_path: _discardedContinuation, ...incompleteContract } = details.pagination_contract!
       return {
         ...cap,
