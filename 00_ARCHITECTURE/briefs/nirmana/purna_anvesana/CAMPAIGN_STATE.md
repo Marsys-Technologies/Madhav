@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0087
-last_updated: 2026-09-17T22:50:00+05:30
+last_event: PA-E0088
+last_updated: 2026-09-17T22:55:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -59,6 +59,14 @@ layer state, queue or authority.
   obligations, `partial` completeness, zero dispatched tools, and a present prose reading. This
   proves job persistence/polling for the served older revision, but not accountable product
   completion; its deployment mismatch remains disqualifying for successor acceptance.
+
+- Catalogue-contract census: the current generated knowledge snapshot contains 182 SCUs and 186
+  executable bindings, but only 12 SCUs have authored availability contracts and 13 have explicit
+  deliberately-dark dispositions. The remaining 157 executable SCUs have neither. The only
+  currently authored requirement kinds are 12 `producer_output` and one `service_probe`; this is
+  a source coverage deficit, not evidence that the 157 routes are unavailable or acceptable to
+  omit. Product completion remains blocked until every supported capability is given an executable,
+  evidence-backed contract or a governed scope disposition.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
