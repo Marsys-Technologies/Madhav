@@ -12,9 +12,14 @@ import type {
   ProducerOutputAvailabilityRequirement,
   ProducerOutputClaim,
   ServiceProbeAvailabilityRequirement,
+  SourceQueryAvailabilityRequirement,
   SemanticCapabilityBinding,
   SemanticCapabilityUnit,
 } from './types'
+import {
+  getSourceQueryAvailabilityContract,
+  sourceQueryAvailabilityContractMatches,
+} from './source_query_availability'
 
 interface ReceiptRow {
   asset_id: string
@@ -132,6 +137,16 @@ function serviceProbeRequirement(requirement: unknown): requirement is ServicePr
     && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
+function sourceQueryRequirement(requirement: unknown): requirement is SourceQueryAvailabilityRequirement {
+  return isRecord(requirement)
+    && requirement.kind === 'source_query'
+    && typeof requirement.contract_id === 'string' && requirement.contract_id.length > 0
+    && typeof requirement.capability_uri === 'string' && requirement.capability_uri.length > 0
+    && typeof requirement.contract_sha256 === 'string' && /^sha256:[a-f0-9]{64}$/.test(requirement.contract_sha256)
+    && (requirement.scope === 'chart' || requirement.scope === 'global')
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
+}
+
 function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
   return isRecord(requirement) && requirement.kind === 'derived'
 }
@@ -195,6 +210,14 @@ function bindingContractIntegrityGap(
         && claim.output_digest_spec_sha256 === requirement.spec_sha256)
       if (!reviewedClaim) {
         gap = 'Producer-output availability requirement has no same-SCU reviewed output claim with the exact asset and SHA-256.'
+        break
+      }
+      continue
+    }
+    if (sourceQueryRequirement(requirement)) {
+      if (scu.scope !== requirement.scope || binding.capability_uri !== requirement.capability_uri
+        || !sourceQueryAvailabilityContractMatches(requirement)) {
+        gap = 'Source-query availability requirement does not match its registry-owned reviewed query contract.'
         break
       }
       continue
@@ -365,6 +388,48 @@ interface BindingEvidence {
   readonly gaps: readonly string[]
 }
 
+type SourceQueryEvidence = ReadonlyMap<string, readonly string[]>
+
+function sourceQueryEvidenceKey(requirement: SourceQueryAvailabilityRequirement): string {
+  return `${requirement.contract_id}\u0000${requirement.contract_sha256}`
+}
+
+async function sourceQueryEvidenceForSnapshot(
+  snapshot: CapabilityKnowledgeSnapshot,
+  chartId: string,
+  activeBuildId: string | null,
+  query: OverlayQueryExecutor,
+): Promise<SourceQueryEvidence> {
+  const requirements = new Map<string, SourceQueryAvailabilityRequirement>()
+  for (const scu of snapshot.scus) for (const contract of scu.availability_contracts ?? []) {
+    for (const requirement of contract.requirements) if (sourceQueryRequirement(requirement)) {
+      requirements.set(sourceQueryEvidenceKey(requirement), requirement)
+    }
+  }
+  const evidence = new Map<string, readonly string[]>()
+  await Promise.all([...requirements.entries()].map(async ([key, requirement]) => {
+    const contract = getSourceQueryAvailabilityContract(requirement.contract_id)
+    if (!contract || !sourceQueryAvailabilityContractMatches(requirement)) {
+      evidence.set(key, ['Source-query availability requirement does not match its registry-owned reviewed query contract.'])
+      return
+    }
+    if (contract.parameter_binding === 'chart_and_active_build' && !activeBuildId) {
+      evidence.set(key, [`${contract.contract_id} cannot bind the selected chart to an active completed build.`])
+      return
+    }
+    try {
+      const params = contract.parameter_binding === 'chart_and_active_build' ? [chartId, activeBuildId] : []
+      // Query success is the availability signal. Zero rows are intentionally a
+      // healthy source: result emptiness belongs to the handler response.
+      await query(contract.sql, params)
+      evidence.set(key, [])
+    } catch {
+      evidence.set(key, [`${contract.contract_id} could not execute its authenticated source query.`])
+    }
+  }))
+  return evidence
+}
+
 function gapsForReceipts(receipts: readonly ChartAssetCapabilityReceipt[], rows: readonly ReceiptRow[]): string[] {
   return receipts.flatMap((receipt) => {
     if (receipt.state === 'passed') return []
@@ -445,6 +510,7 @@ function evidenceForBinding(
   rows: readonly ReceiptRow[],
   activeBuildId: string | null,
   probeRows: readonly ServiceProbeEvidenceRow[],
+  sourceQueryEvidence: SourceQueryEvidence,
   now: Date,
   bindingIndex: ReadonlyMap<string, BindingTarget | null>,
   visiting = new Set<string>(),
@@ -487,9 +553,10 @@ function evidenceForBinding(
   if (contract) {
     const producerRequirements = contract.requirements.filter(producerOutputRequirement)
     const serviceRequirements = contract.requirements.filter(serviceProbeRequirement)
+    const sourceQueryRequirements = contract.requirements.filter(sourceQueryRequirement)
     const derivedRequirements = contract.requirements.filter(usableDerivedRequirement)
     const unsupported = contract.requirements.filter((requirement) => !producerOutputRequirement(requirement)
-      && !serviceProbeRequirement(requirement) && !usableDerivedRequirement(requirement))
+      && !serviceProbeRequirement(requirement) && !sourceQueryRequirement(requirement) && !usableDerivedRequirement(requirement))
     const receipts = producerRequirements.map((requirement) => receiptForRequirement(requirement, rows, activeBuildId))
     const derivedEvidence = derivedRequirements.flatMap((requirement) => requirement.required_binding_ids.map((bindingId) => {
       const target = bindingIndex.get(bindingId)
@@ -500,7 +567,7 @@ function evidenceForBinding(
         gaps: [`Derived availability leg ${bindingId} has no scope-compatible executable binding.`],
       } satisfies BindingEvidence
       return evidenceForBinding(
-        target.scu, target.binding, rows, activeBuildId, probeRows, now, bindingIndex, nextVisiting, true,
+        target.scu, target.binding, rows, activeBuildId, probeRows, sourceQueryEvidence, now, bindingIndex, nextVisiting, true,
       )
     }))
     const derivedGaps = derivedEvidence.flatMap((evidence) => evidence.gaps.map((gap) =>
@@ -511,12 +578,15 @@ function evidenceForBinding(
       ...unsupported.map(() => 'Binding availability contract contains a malformed or unsupported requirement.'),
       ...gapsForReceipts(receipts, rows),
       ...serviceRequirements.flatMap((requirement) => serviceProbeGaps(requirement, probeRows, now)),
+      ...sourceQueryRequirements.flatMap((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))
+        ?? ['Source-query availability evidence was not evaluated.']),
       ...derivedGaps,
     ]
     return {
       binding_id: binding.binding_id,
       passed: contract.requirements.length > 0 && !unsupported.length && receipts.every((receipt) => receipt.state === 'passed')
         && serviceRequirements.every((requirement) => serviceProbeGaps(requirement, probeRows, now).length === 0)
+        && sourceQueryRequirements.every((requirement) => sourceQueryEvidence.get(sourceQueryEvidenceKey(requirement))?.length === 0)
         && derivedEvidence.every((evidence) => evidence.passed),
       receipts: [...receipts, ...derivedEvidence.flatMap((evidence) => evidence.receipts)],
       gaps,
@@ -557,6 +627,7 @@ function evidenceForSnapshot(
   rows: readonly ReceiptRow[],
   build: { build_id: string | null; status: string | null },
   probeRows: readonly ServiceProbeEvidenceRow[],
+  sourceQueryEvidence: SourceQueryEvidence,
   now: Date,
 ): ChartCapabilityEvidence[] {
   const bindingIndex = executableBindingIndex(snapshot)
@@ -574,7 +645,7 @@ function evidenceForSnapshot(
     }
     const executableBindings = scu.bindings.filter((binding) => binding.executable)
     const bindingEvidence = executableBindings.map((binding) => evidenceForBinding(
-      scu, binding, rows, build.build_id, probeRows, now, bindingIndex,
+      scu, binding, rows, build.build_id, probeRows, sourceQueryEvidence, now, bindingIndex,
     ))
     const availableBindingIds = bindingEvidence.filter((evidence) => evidence.passed).map((evidence) => evidence.binding_id)
     const assetReceipts = bindingEvidence.flatMap((evidence) => evidence.receipts)
@@ -652,10 +723,11 @@ export async function loadChartCapabilityOverlay(
       )
     build = { build_id: queryRows[0]?.active_build_id ?? null, status: queryRows[0]?.active_build_status ?? null }
     const rows = queryRows.filter((row): row is OverlayQueryRow & { asset_id: string } => typeof row.asset_id === 'string')
+    const sourceQueryEvidence = await sourceQueryEvidenceForSnapshot(snapshot, chartId, build.build_id, query)
     return compileChartCapabilityOverlay({
       snapshot, chart_id: chartId, build_id: build.build_id,
       code_revision: process.env['K_REVISION'] ?? process.env['GIT_SHA'] ?? null,
-      evidence: evidenceForSnapshot(snapshot, rows, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), now),
+      evidence: evidenceForSnapshot(snapshot, rows, build, serviceProbeRows(queryRows[0]?.service_probe_evidence), sourceQueryEvidence, now),
     })
   } catch (error) {
     console.error('[capability-overlay] availability evidence unavailable', error)
