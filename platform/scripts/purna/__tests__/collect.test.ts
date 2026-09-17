@@ -46,6 +46,12 @@ describe('Purna real three-door collector', () => {
     const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async () => ({ __purna_tool_error: true }) } })
     expect(row.diagnostic).toBe('MANAGED_MCP_TOOL_ERROR')
   })
+  it('retains the managed status response revision with its terminal result', async () => {
+    const row = await collectManagedCase({ ...base, maxPolls: 1, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask'
+      ? { job_id: 'job-1' }
+      : { status: 'complete', deployed_revision: 'candidate-a', result: { reading: 'complete response', receipt_refs: ['r-1'] } } } })
+    expect(row).toMatchObject({ observedRevision: 'candidate-a', terminal: 'complete', receiptRefs: ['r-1'] })
+  })
   it('rejects raw lifecycle pagination that does not advance', async () => {
     const row = await collectRawCase({ ...base, maxActions: 3, invoker: { call: async (name) => name === 'inquiry_start' ? { inquiry_id: 'i-1', lifecycle_token: 'same', next_action_ids: ['item-001'] } : { lifecycle_token: 'same', next_action_ids: ['item-001'] } } })
     expect(row.diagnostic).toBe('RAW_PAGINATION_DID_NOT_ADVANCE')

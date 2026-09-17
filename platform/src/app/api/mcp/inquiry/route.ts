@@ -89,7 +89,19 @@ function nextReady(contract: InquiryContract): string[] {
   return contract.plan_items.filter((item) => item.state === 'ready').map((item) => item.item_id)
 }
 
-function response(data: Record<string, unknown>, status = 200) { return NextResponse.json(data, { status }) }
+function response(data: Record<string, unknown>, status = 200) {
+  // Preserve the exact public error envelopes. Successful lifecycle evidence,
+  // unlike an error code, needs a revision binding for acceptance.
+  const payload = data.ok === true
+    ? {
+        ...data,
+        // Null is an explicit non-production/local state and cannot satisfy
+        // acceptance; clients must not infer a revision from a token.
+        deployed_revision: process.env.NIRMANA_DEPLOYED_SHA ?? null,
+      }
+    : data
+  return NextResponse.json(payload, { status })
+}
 
 const FORBIDDEN_PATH_SEGMENTS = new Set(['__proto__', 'prototype', 'constructor'])
 

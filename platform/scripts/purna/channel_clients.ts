@@ -69,7 +69,9 @@ export async function collectManagedCase(input: {
     const status = record(await input.invoker.call('prashna_status', { job_id: jobId }))
     calls += 1
     const state = String(status.status ?? '')
-    if (state === 'complete' || state === 'failed') return normalize(input, 'managed_mcp', status.result ?? status, calls, jobId)
+    if (state === 'complete' || state === 'failed') {
+      return normalize(input, 'managed_mcp', { ...status, ...record(status.result) }, calls, jobId)
+    }
     await input.wait()
   }
   return failed(input, 'managed_mcp', calls, 'MANAGED_JOB_POLL_DEADLINE')

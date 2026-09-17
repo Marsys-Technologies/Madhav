@@ -49,9 +49,16 @@ function dualOutput(data: Record<string, unknown>): {
   content: [{ type: 'text'; text: string }]
   structuredContent: Record<string, unknown>
 } {
+  const payload = {
+    ...data,
+    // The deployed commit is acceptance evidence, not client-supplied data.
+    // Keep an honest null in local/test environments where deployment identity
+    // is unavailable; clients must not infer a revision from a job handle.
+    deployed_revision: process.env.NIRMANA_DEPLOYED_SHA ?? null,
+  }
   return {
-    content: [{ type: 'text', text: JSON.stringify(data) }],
-    structuredContent: data,
+    content: [{ type: 'text', text: JSON.stringify(payload) }],
+    structuredContent: payload,
   }
 }
 
