@@ -461,7 +461,7 @@ export function assertEffectiveIsolation(
     }
     const serialized = JSON.stringify(surface.definition)
     const inventory = extractRunIdentityAndSecrets(surface.definition)
-    if (/data-plane-(?:migrator|admin|dba)|DATA_PLANE_MIGRATOR_DATABASE_URL|DATA_PLANE_ADMIN_DATABASE_URL/i.test(serialized)) {
+    if (/data-plane-(?:migrator|admin|dba|ownership-admin)|DATA_PLANE_(?:MIGRATOR|ADMIN|OWNERSHIP_ADMIN)_DATABASE_URL/i.test(serialized)) {
       throw new Error(`Deployment-only DBA/migrator credential is mounted on Cloud Run ${surface.kind}/${surface.name}.`)
     }
     const hasBuilderSecret = inventory.secrets.includes(BUILDER_SECRET)

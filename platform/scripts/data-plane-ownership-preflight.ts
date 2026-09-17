@@ -1,7 +1,10 @@
 /** DP-SD-018 one-shot administrator bootstrap for the L1/L2 protected boundary. */
 import { Pool, PoolClient } from 'pg'
 
-export const ADMIN_URL = 'DATA_PLANE_ADMIN_DATABASE_URL'
+// This is intentionally distinct from DATA_PLANE_ADMIN_DATABASE_URL.  The
+// latter is constrained to the isolated validation proxy; ownership transfer
+// must authenticate directly as postgres and must never borrow that route.
+export const ADMIN_URL = 'DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL'
 
 export const L1_ACTIVE_TABLES = [
   'chart_facts', 'chart_dashas', 'chart_divisionals', 'ga_condition_composite',

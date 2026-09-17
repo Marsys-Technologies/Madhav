@@ -11,17 +11,18 @@ function required(name: string): string {
 }
 
 export async function executeProtectedDataPlaneCutover(): Promise<void> {
-  const adminUrl = required('DATA_PLANE_ADMIN_DATABASE_URL')
+  const validationAdminUrl = required('DATA_PLANE_ADMIN_DATABASE_URL')
+  const ownershipAdminUrl = required('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')
   const migratorUrl = required('DATA_PLANE_MIGRATOR_DATABASE_URL')
   // Validate the protected administrator credential before consuming any
   // backup/restore evidence or attempting the native cutover. The actual
   // connection remains pinned to the authenticated validation proxy inside
   // withDataPlaneCutoverLease.
-  validationAdminProxyConfig(adminUrl, {
+  validationAdminProxyConfig(validationAdminUrl, {
     proxyPort: required('DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT'),
   })
   await withDataPlaneCutoverLease(async () => {
-    await runDataPlaneOwnershipPreflight(adminUrl)
+    await runDataPlaneOwnershipPreflight(ownershipAdminUrl)
     await attestDataPlaneMigrations(migratorUrl)
     if (await readDataPlaneOwnershipStatus(migratorUrl) !== 'marked') {
       throw new Error('Protected data-plane cutover did not earn semantic marked status.')

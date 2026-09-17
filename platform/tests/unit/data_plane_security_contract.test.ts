@@ -48,10 +48,13 @@ describe('DP-SD-018 protected migration routing', () => {
 describe('DP-SD-020 isolated validation bootstrap', () => {
   it('validates the administrator credential before entering the native cutover lease', () => {
     const cutover = readFileSync(resolve(__dirname, '../../scripts/data-plane-protected-cutover.ts'), 'utf8')
-    const credentialCheck = cutover.indexOf('validationAdminProxyConfig(adminUrl')
+    const credentialCheck = cutover.indexOf('validationAdminProxyConfig(validationAdminUrl')
+    const ownershipCredential = cutover.indexOf("required('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')")
     const lease = cutover.indexOf('await withDataPlaneCutoverLease')
     expect(credentialCheck).toBeGreaterThan(-1)
     expect(credentialCheck).toBeLessThan(lease)
+    expect(ownershipCredential).toBeGreaterThan(-1)
+    expect(ownershipCredential).toBeLessThan(lease)
   })
 
   it('pins the admin credential to the authenticated validation proxy', () => {
@@ -247,6 +250,11 @@ describe('DP-SD-018 GCP credential isolation', () => {
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: BUILDER_SERVICE_ACCOUNT } }]))
       .toThrow(/Builder identity is used outside/)
     expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: { serviceAccount: 'web@example', secretKeyRef: { name: 'data-plane-admin-db-url' } } }]))
+      .toThrow(/DBA\/migrator credential/)
+    expect(() => assertEffectiveIsolation([], policy, [{ kind: 'revision', name: 'web', definition: {
+      serviceAccount: 'web@example',
+      env: [{ name: 'DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL', valueFrom: { secretKeyRef: { name: 'data-plane-ownership-admin-db-url' } } }],
+    } }]))
       .toThrow(/DBA\/migrator credential/)
     expect(() => assertEffectiveIsolation([], policy, [
       { kind: 'revision', name: 'historical-web', definition: {
@@ -489,6 +497,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(Object.entries(workflowJobs).filter(([, job]) => job.environment === 'data-plane-production-cutover').map(([name]) => name))
       .toEqual(['privileged-bootstrap'])
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_ADMIN_DATABASE_URL')
+    expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
     expect(JSON.stringify(bootstrap)).toContain('NIRMANA_MIGRATOR_DATABASE_URL')
@@ -498,6 +507,7 @@ describe('DP-SD-018 deployment ordering', () => {
     expect(migrate.concurrency).toEqual({ group: 'data-plane-production-cutover', 'cancel-in-progress': false })
     expect(migrate.if).toContain('always()')
     expect(JSON.stringify(migrate)).not.toContain('DATA_PLANE_ADMIN_DATABASE_URL')
+    expect(JSON.stringify(migrate)).not.toContain('DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL')
     expect(JSON.stringify(migrate)).not.toContain('DATA_PLANE_MIGRATOR_DATABASE_URL')
     expect(JSON.stringify(migrate)).not.toContain('NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL')
     expect(JSON.stringify(migrate)).not.toContain('NIRMANA_MIGRATOR_DATABASE_URL')
@@ -539,6 +549,7 @@ describe('DP-SD-018 deployment ordering', () => {
 
     for (const secret of [
       'DATA_PLANE_ADMIN_DATABASE_URL',
+      'DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL',
       'DATA_PLANE_MIGRATOR_DATABASE_URL',
       'NIRMANA_EVIDENCE_LEGACY_OWNER_DATABASE_URL',
       'NIRMANA_MIGRATOR_DATABASE_URL',
