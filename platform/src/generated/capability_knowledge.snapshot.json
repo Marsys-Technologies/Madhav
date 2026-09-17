@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:172b41766795b5dccd32a405699114f5e6f989e49a2f797b8fd5c5c8545aae1c",
+  "content_hash": "sha256:55c2191bbdd1e8d5b63a1b650e41f2ebf1ef73c6dc324db34a8d724f08aa07e5",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:a94dc4e22a547b73f5f0b2e22013b057561e9f57bce81b601dcb23a12b08ed7a",
+  "semantic_review_fingerprint": "sha256:e6b9a340d1d69ef4f91d8e50ad201b8d856a90915300cc467b2d72bddec40751",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -15584,6 +15584,29 @@
         "Read-only evidence surface; planner must not interpret returned chart facts."
       ],
       "known_gaps": [],
+      "producer_output_claims": [
+        {
+          "asset_id": "bg_dasha_systems",
+          "component": "dasha_system_catalog",
+          "output_digest_spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
+          "disposition": "reviewed_output",
+          "evidence": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
+        }
+      ],
+      "availability_contracts": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_dasha_systems",
+          "requirements": [
+            {
+              "kind": "producer_output",
+              "asset_id": "bg_dasha_systems",
+              "spec_sha256": "b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593",
+              "scope": "global",
+              "source_ref": "platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39"
+            }
+          ]
+        }
+      ],
       "editorial": true,
       "bindings": [
         {
@@ -36062,8 +36085,8 @@
     "reviewed_route_descriptors": 186,
     "reviewed_public_descriptors": 71,
     "reviewed_nonpublic_descriptors": 115,
-    "producer_output_claims": 11,
-    "reviewed_output_claims": 10,
+    "producer_output_claims": 12,
+    "reviewed_output_claims": 11,
     "typed_concepts": 257,
     "unbound_concepts": 0,
     "isolated_scus": 156,

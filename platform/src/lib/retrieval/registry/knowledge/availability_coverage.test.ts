@@ -335,6 +335,45 @@ describe('first-slice availability coverage', () => {
     }
   })
 
+  it('activates query_dasha_systems only from a fresh, matching global dasha-system receipt', async () => {
+    const scu = findScu('scu.catalog.query_dasha_systems')
+    const bindingId = 'registry:marsys://tool/L0/query_dasha_systems'
+    const [requirement] = producerRequirements(scu.scu_id)
+
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.producer_output_claims).toEqual([{
+      asset_id: 'bg_dasha_systems',
+      component: 'dasha_system_catalog',
+      output_digest_spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
+    }])
+    expect(requirement).toEqual({
+      kind: 'producer_output',
+      asset_id: 'bg_dasha_systems',
+      spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
+    })
+
+    const available = await overlayFor([globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256)])
+    expect(available.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      available_binding_ids: [bindingId],
+    })
+
+    for (const [rows, state] of [
+      [[], 'dark'],
+      [[globalProducerReceipt(requirement!.asset_id, 'a'.repeat(64))], 'incompatible'],
+      [[globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256, { freshness_state: 'stale' })], 'dark'],
+    ] as const) {
+      const unavailable = await overlayFor(rows)
+      expect(unavailable.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+        state,
+        available_binding_ids: [],
+      })
+    }
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the

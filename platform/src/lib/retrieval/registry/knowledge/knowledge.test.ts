@@ -87,7 +87,7 @@ describe('planner capability knowledge', () => {
     expect(finance?.bindings.every((binding) => binding.executable)).toBe(true)
     expect(yoga?.bindings.find((binding) => binding.relation === 'primary')?.public_tool_name).toBe('ganita_yoga_firings_get')
     expect(snapshot.census.publicly_named_bindings).toBeGreaterThan(0)
-    expect(snapshot.census.reviewed_output_claims).toBe(10)
+    expect(snapshot.census.reviewed_output_claims).toBe(11)
     expect(snapshot.scus.flatMap((scu) => scu.producer_output_claims ?? [])
       .filter((claim) => claim.disposition === 'reviewed_output')
       .every((claim) => /^[a-f0-9]{64}$/.test(claim.output_digest_spec_sha256 ?? ''))).toBe(true)
