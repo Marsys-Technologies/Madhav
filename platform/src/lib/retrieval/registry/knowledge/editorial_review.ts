@@ -58,9 +58,14 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
     ],
   },
   judgment_query: {
-    reason: 'The checklist resolves chart facts and combines divisional, dasha, signal, and mechanism reads. No existing reviewed producer receipt covers that complete dynamic checklist.',
+    reason: 'The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.',
     source_refs: [
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961',
+      'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013',
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
       'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
     ],

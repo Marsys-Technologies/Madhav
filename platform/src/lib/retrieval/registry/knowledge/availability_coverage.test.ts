@@ -213,6 +213,38 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps judgment_query dark when direct-leg producer receipts cannot attest its assembled request response', async () => {
+    const scu = findScu('scu.catalog.judgment_query')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L-JUDGMENT/judgment_query',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('resolves chart facts for the requested bhava'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746',
+        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824',
+        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890',
+        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286',
+        'platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308',
+      ]),
+    })])
+
+    // These exact reviewed receipts cover direct divisional, fired-yoga,
+    // dasha, and signal legs. They do not attest the handler's request-specific
+    // chart-fact resolution, live mechanism reads, or assembled judgment result.
+    const overlay = await overlayFor([
+      adjacentProducerReceipt('ga_vargas', '5f332a4889cb465f317fe7f2315bd59a7aee9d53df58e283b436040403a9bb51'),
+      adjacentProducerReceipt('ga_yoga', 'fdd546e448c5b4ea4a8d2562e93b2883324ceac8e9c0644c9ec9aeaa2b4a3246'),
+      adjacentProducerReceipt('ga_dashas', '573e8aa1a0298d6626784b5ff540c004fd4d2298b6b47d2980a447acdc193d14'),
+      adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the

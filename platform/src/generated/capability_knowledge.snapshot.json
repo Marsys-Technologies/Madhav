@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:841263b6d61a2c14c39a3e7520dce57dddd0328728b49ef26a82af3970ef599b",
+  "content_hash": "sha256:e8ec469c9a7ac1ce33a3a441f725d00cd9071794d006c9b62122760461829fb8",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:1076dc4caa92cb1ca9e68667b23c63dd95e6f0b713baee0b80b1d99f86841fa9",
+  "semantic_review_fingerprint": "sha256:eac560ad76f1068c17ea192819d7deca1d3b6c4dfbc01f123642e82e946befcd",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -10404,9 +10404,14 @@
         {
           "binding_id": "registry:marsys://tool/L-JUDGMENT/judgment_query",
           "status": "deliberately_dark",
-          "reason": "The checklist resolves chart facts and combines divisional, dasha, signal, and mechanism reads. No existing reviewed producer receipt covers that complete dynamic checklist.",
+          "reason": "The handler resolves chart facts for the requested bhava, then composes divisional/ratification, yoga firing, signal, dasha/timing, and live MSR/mechanism reads. Reviewed ga_vargas, ga_yoga, ga_dashas, and bo_laksana receipts cover individual legs only; no route-level reviewed receipt or service probe attests the assembled request/domain/as-of response.",
           "source_refs": [
             "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts#judgmentQueryCapability.handler",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:746",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:824",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:890",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:961",
+            "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1013",
             "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1286",
             "platform/src/lib/retrieval/registry/layers/register_d9_judgment.ts:1308"
           ]
