@@ -361,7 +361,8 @@ export async function loadChartCapabilityOverlay(
                   'source_ref', service.source_ref,
                   'observed_at', service.observed_at,
                   'evidence_payload', service.evidence_payload
-                ) ORDER BY service.observed_at DESC)), '[]'::jsonb) AS service_probe_evidence
+                ) ORDER BY service.observed_at DESC)
+                  FROM service_probe_evidence service), '[]'::jsonb) AS service_probe_evidence
            FROM (SELECT 1) anchor
            LEFT JOIN latest_build ON true
            LEFT JOIN asset_provenance_receipts p

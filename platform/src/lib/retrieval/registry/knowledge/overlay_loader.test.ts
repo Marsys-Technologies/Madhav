@@ -262,6 +262,7 @@ describe('chart capability overlay loader', () => {
       available_binding_ids: ['registry:marsys://tool/L1/test'],
     })
     expect(mocks.query.mock.calls[0]?.[0]).toContain('nirmana_elevation_campaign_events')
+    expect(mocks.query.mock.calls[0]?.[0]).toContain('FROM service_probe_evidence service')
     expect(mocks.query.mock.calls[0]?.[1]).toEqual(expect.arrayContaining([[], 'chart-1', ['bg_ephemeris_engine']]))
   })
 
