@@ -169,6 +169,22 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  get_positions: {
+    producer_output_claims: [{
+      asset_id: 'ga_positions',
+      component: 'chart_facts graha positions, sign attributes, bhava cusps, and house-chalit facts',
+      output_digest_spec_sha256: '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'ga_positions',
+      spec_sha256: '474b77debe7776ee7f84a1d6b225b386d7846452cbeb2cc258a98706168e3c9f',
+      scope: 'chart_build',
+      source_ref: 'platform/migrations/875_nirmana_l1_ga_positions_output_digest_spec.sql:74-77',
+    }],
+  },
   query_formula_constants: {
     producer_output_claims: [{
       asset_id: 'bg_formula_constants',
