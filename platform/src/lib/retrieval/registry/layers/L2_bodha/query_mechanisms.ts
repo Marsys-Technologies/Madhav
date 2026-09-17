@@ -8,7 +8,7 @@
  * composition, edge-strength provenance (DR-7 `edge_strength_v1`) and a centrality
  * summary. Prior to this tool the table was reachable ONLY indirectly via
  * `traverse_chart_graph` subgraph traversal — never as first-class named mechanisms.
- * Read-only, bounded (LIMIT ≤50 + disclosed total + offset pagination).
+ * Read-only, bounded (LIMIT ≤50 + disclosed total + build-pinned cursor pagination).
  *
  * §N.6 Serving Density Principle: the CR-24 headline class is the chain/circuit family
  * (`convergent_dispositor_chain` / `dispositor_cycle` / `house_lordship_cycle`) — the
@@ -39,15 +39,27 @@
  * `empty_reason`, not an error.
  */
 import type { CapabilityDescriptor } from '../../types'
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { query } from '@/lib/db/client'
 // F-164 (PARIŚEṢA-V4, GA-5 follow-up on #1419): the wealth operative-varga set quoted in
 // this note used to be a hand-copied literal (`['D1','D2','D9','D11']`) — read live instead,
 // same discipline as reading_checklist.ts's DOMAIN_DIRECT_VARGAS.
 import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading_checklist'
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
+import { loadInquiryLifecycleSigningKeyRing, type InquiryLifecycleSigningKeyRing } from '@/lib/vidhi/inquiry/lifecycle_token'
 
 const MAX_LIMIT = 50
 const MAX_OFFSET = 1_000_000
+const BO_YANTRA_MECHANISM_ASSET_ID = 'bo_yantra_mechanism'
+const BO_YANTRA_MECHANISM_OUTPUT_DIGEST_SPEC_SHA256 = 'b867fc3bb5337bedb7e7c7fbf3f912b3ed888414c8cbb01f18776ba6294c2d0e'
+const PAGE_CURSOR_DOMAIN = 'madhav:query_mechanisms:page_cursor:v1'
+
+interface MechanismPageCursor {
+  readonly version: 1
+  readonly build_id: string
+  readonly offset: number
+  readonly filter_fingerprint: string
+}
 
 function normalizeLimit(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value)
@@ -60,6 +72,69 @@ function normalizeOffset(value: unknown): number {
   const parsed = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(parsed)) return 0
   return Math.min(Math.max(Math.floor(parsed), 0), MAX_OFFSET)
+}
+
+function filterFingerprint(filters: Record<string, unknown>): string {
+  return createHash('sha256').update(JSON.stringify(filters)).digest('hex')
+}
+
+function cursorMessage(kid: string, payload: string): string {
+  return `${PAGE_CURSOR_DOMAIN}:${kid}.${payload}`
+}
+
+function encodePageCursor(cursor: MechanismPageCursor, ring: InquiryLifecycleSigningKeyRing): string {
+  const kid = ring.current.kid
+  const payload = Buffer.from(JSON.stringify(cursor), 'utf8').toString('base64url')
+  const signature = createHmac('sha256', ring.current.material)
+    .update(cursorMessage(kid, payload)).digest('base64url')
+  return `${kid}.${payload}.${signature}`
+}
+
+function decodePageCursor(value: unknown, ring: InquiryLifecycleSigningKeyRing): MechanismPageCursor | null {
+  if (typeof value !== 'string' || value.length === 0) return null
+  try {
+    const parts = value.split('.')
+    if (parts.length !== 3) return null
+    const [kid, payload, providedSignature] = parts
+    if (!kid || !payload || !providedSignature || !/^[A-Za-z0-9_-]+$/.test(payload) || !/^[A-Za-z0-9_-]+$/.test(providedSignature)) return null
+    const signingKey = [ring.current, ...(ring.previous ?? [])].find((candidate) => candidate.kid === kid)
+    if (!signingKey) return null
+    const payloadBytes = Buffer.from(payload, 'base64url')
+    if (payloadBytes.toString('base64url') !== payload) return null
+    const expectedSignature = createHmac('sha256', signingKey.material)
+      .update(cursorMessage(kid, payload)).digest()
+    const actualSignature = Buffer.from(providedSignature, 'base64url')
+    if (actualSignature.toString('base64url') !== providedSignature
+      || actualSignature.length !== expectedSignature.length
+      || !timingSafeEqual(actualSignature, expectedSignature)) return null
+    const parsed = JSON.parse(payloadBytes.toString('utf8')) as Partial<MechanismPageCursor>
+    if (parsed.version !== 1 || typeof parsed.build_id !== 'string' || parsed.build_id.length === 0
+      || typeof parsed.filter_fingerprint !== 'string' || !/^[a-f0-9]{64}$/.test(parsed.filter_fingerprint)
+      || typeof parsed.offset !== 'number' || !Number.isSafeInteger(parsed.offset)
+      || parsed.offset < 0 || parsed.offset > MAX_OFFSET) return null
+    return parsed as MechanismPageCursor
+  } catch {
+    return null
+  }
+}
+
+function paginationError(chartId: string, code: string, error: string, extra: Record<string, unknown> = {}) {
+  return {
+    content: {
+      chart_id: chartId,
+      code,
+      error,
+      restart_required: true,
+      rows: [],
+      count: 0,
+      total_matching: 0,
+      more_available: false,
+      next_offset: null,
+      next_page_cursor: null,
+      ...extra,
+    },
+    is_error: true,
+  }
 }
 
 /**
@@ -183,7 +258,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     'grounding citation. The chain/circuit family (multi-node named mechanisms) is served',
     'FIRST and can be isolated via chain_circuit_only. Filters: ayanamsha_id, mechanism_class,',
     'valence, chain_circuit_only. Per-class and per-valence facet counts over the full match',
-    'set are always returned. Bounded (LIMIT ≤50) with a disclosed total, offset pagination,',
+    'set are always returned. Bounded (LIMIT ≤50) with a disclosed total and build-pinned cursor pagination,',
     'and an honest empty_reason when a chart carries no mechanisms.',
     'SCOPE (F-107): mechanisms are detected on the RĀŚI (D1) natal graph ONLY — bodha_mechanisms',
     'has no varga dimension. NO cross-varga (D2/D9/D10/D11/…) or special-lagna (Indu Lagna,',
@@ -200,7 +275,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     valence:           { type: 'string',  description: 'Filter by valence (benefic|malefic|mixed|neutral). Omit for all.' },
     chain_circuit_only:{ type: 'boolean', description: 'When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, dispositor_cycle, house_lordship_cycle). Default false.' },
     limit:             { type: 'number',  description: `Max rows (default ${MAX_LIMIT}, max ${MAX_LIMIT}).` },
-    offset:            { type: 'number',  description: 'Pagination offset (default 0).' },
+    offset:            { type: 'number',  description: 'First-page offset only (default 0). A nonzero continuation must use page_cursor.' },
+    page_cursor:       { type: 'string',  description: 'Opaque, signed continuation token from next_page_cursor. It pins the normalized filters and fresh/proven bo_yantra_mechanism build; changed/replacing builds require restart.' },
   },
 
   required_inputs: ['chart_id'],
@@ -231,25 +307,59 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     const valence = args['valence'] ? String(args['valence']) : null
     const chain_circuit_only = args['chain_circuit_only'] === true || args['chain_circuit_only'] === 'true'
     const limit = normalizeLimit(args['limit'])
-    const offset = normalizeOffset(args['offset'])
+    const requestedOffset = normalizeOffset(args['offset'])
+    if ((args['page_cursor'] === undefined || args['page_cursor'] === null) && requestedOffset > 0) {
+      return paginationError(chart_id, 'page_cursor_required', 'A nonzero offset is not a safe mechanism continuation; restart from the first page and use next_page_cursor.')
+    }
 
-    const filters: string[] = ['chart_id = $1']
+    let signingRing: InquiryLifecycleSigningKeyRing
+    try {
+      signingRing = loadInquiryLifecycleSigningKeyRing()
+    } catch {
+      return paginationError(chart_id, 'page_cursor_signing_unavailable', 'Mechanism continuation signing is unavailable; this response cannot safely establish a pagination snapshot.')
+    }
+
+    const queryFilterFingerprint = filterFingerprint({
+      chart_id,
+      ayanamsha_id,
+      mechanism_class,
+      valence,
+      chain_circuit_only,
+    })
+    let cursor: MechanismPageCursor | null = null
+    if (args['page_cursor'] !== undefined && args['page_cursor'] !== null) {
+      cursor = decodePageCursor(args['page_cursor'], signingRing)
+      if (!cursor) {
+        return paginationError(chart_id, 'invalid_page_cursor', 'The supplied page_cursor is malformed, unsigned, or outside the supported pagination range.')
+      }
+      if (cursor.filter_fingerprint !== queryFilterFingerprint) {
+        return paginationError(chart_id, 'page_cursor_filter_mismatch', 'The supplied page_cursor was minted for different normalized query filters; restart from the first page.')
+      }
+    }
+    const offset = cursor?.offset ?? requestedOffset
+
+    const filters: string[] = ['d.chart_id = $1::uuid']
     const params: unknown[] = [chart_id]
     let p = 2
-    if (ayanamsha_id)    { filters.push(`ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
-    if (mechanism_class) { filters.push(`mechanism_class = $${p++}`); params.push(mechanism_class) }
-    if (valence)         { filters.push(`valence = $${p++}`);         params.push(valence) }
+    if (ayanamsha_id)    { filters.push(`d.ayanamsha_id = $${p++}`);    params.push(ayanamsha_id) }
+    if (mechanism_class) { filters.push(`d.mechanism_class = $${p++}`); params.push(mechanism_class) }
+    if (valence)         { filters.push(`d.valence = $${p++}`);         params.push(valence) }
     if (chain_circuit_only) {
-      filters.push(`mechanism_class = ANY($${p++})`)
+      filters.push(`d.mechanism_class = ANY($${p++})`)
       params.push([...CHAIN_CIRCUIT_CLASSES])
     }
     const where = filters.join(' AND ')
-    // Snapshot BEFORE the class-priority param is appended: countSql's WHERE clause only ever
-    // references the filter placeholders above, so it must be bound with exactly those values —
-    // binding it against the full `params` (post class-priority push) sends more parameter
-    // values than the count query's placeholders, which postgres rejects with
-    // "bind message supplies N parameters, but prepared statement requires M" (EL-37 root cause).
-    const filterParams = [...params]
+
+    // The writer deletes every chart row before it inserts a replacement build. A bare offset
+    // could therefore join two generations or mistake a partial deletion for exhaustion. Select
+    // only a fresh/proven receipt with the reviewed output spec, page that exact build in the
+    // same SQL statement, and compare every continuation cursor to the currently selected build.
+    const assetIdParam = p++
+    params.push(BO_YANTRA_MECHANISM_ASSET_ID)
+    const specParam = p++
+    params.push(BO_YANTRA_MECHANISM_OUTPUT_DIGEST_SPEC_SHA256)
+    const cursorBuildParam = p++
+    params.push(cursor?.build_id ?? null)
 
     // §N.6: chain/circuit family sorts FIRST (priority 0), everything else after (priority 1),
     // then by edge-strength and structural size. The class-priority list is passed as a param
@@ -257,37 +367,132 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     const classPriorityParam = `$${p++}`
     params.push([...CHAIN_CIRCUIT_CLASSES])
 
-    const rowsSql = `
-      SELECT mechanism_id, ayanamsha_id, snapshot_type, mechanism_name, mechanism_class, valence,
-             member_node_ids_array, member_edge_ids_array, domains_affected_array,
-             edge_strength_avg, edge_strength_min, edge_strength_max, edge_strength_formula_version,
-             constituent_ga_vichara_ids_array, centrality_summary_jsonb, source_motif_id,
-             verification_pass_status, citation_ref, citation_human,
-             (mechanism_class = ANY(${classPriorityParam})) AS is_chain_circuit
-      FROM bodha_mechanisms
-      WHERE ${where}
-      ORDER BY (mechanism_class = ANY(${classPriorityParam})) DESC,
-               edge_strength_avg DESC NULLS LAST,
-               COALESCE(array_length(member_node_ids_array, 1), 0) DESC,
-               mechanism_name ASC,
-               mechanism_id ASC
-      LIMIT $${p} OFFSET $${p + 1}`
-
-    // Facet rollups computed over the FULL matching set (not the page) — §N.6 density signal.
-    const facetSql = `
-      SELECT mechanism_class, valence,
-             (mechanism_class = ANY(${classPriorityParam})) AS is_chain_circuit,
-             COUNT(*)::text AS n
-      FROM bodha_mechanisms
-      WHERE ${where}
-      GROUP BY mechanism_class, valence, is_chain_circuit`
-
     try {
-      const [rowsRes, facetRes, countRes] = await Promise.all([
-        query(rowsSql, [...params, limit + 1, offset]),
-        query<{ mechanism_class: string; valence: string; is_chain_circuit: boolean; n: string }>(facetSql, params),
-        query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_mechanisms WHERE ${where}`, filterParams),
-      ])
+      const pageResult = await query<{
+        replacement_in_progress: boolean
+        eligible_build_id: string | null
+        cursor_build_changed: boolean
+        rows: Record<string, unknown>[]
+        facets: Array<{ mechanism_class: string; valence: string; is_chain_circuit: boolean; n: string }>
+        total_matching: string
+      }>(
+        `WITH eligible_receipt AS (
+           SELECT receipt.build_id::text AS build_id,
+                  receipt.observed_at AS observed_at
+             FROM asset_provenance_receipts receipt
+             JOIN asset_freshness freshness
+               ON freshness.asset_id = receipt.asset_id
+              AND freshness.scope_key = receipt.scope_key
+              AND freshness.partition_key = receipt.partition_key
+              AND freshness.receipt_version = receipt.receipt_version
+             JOIN build_runs receipt_run ON receipt_run.id = receipt.build_id
+            WHERE receipt.asset_id = $${assetIdParam}::text
+              AND receipt.chart_id = $1::uuid
+              AND receipt.receipt_state = 'proven'
+              AND receipt.output_digest_spec_sha256 = $${specParam}::text
+              AND freshness.freshness_state = 'fresh'
+              AND receipt_run.chart_id = $1::uuid
+              AND receipt_run.state = 'completed'
+            ORDER BY receipt.observed_at DESC, receipt.build_id DESC
+            LIMIT 1
+         ), replacement_fence AS (
+           SELECT EXISTS (
+             SELECT 1
+               FROM build_run_assets fenced_asset
+               JOIN build_runs fenced_run ON fenced_run.id = fenced_asset.run_id
+              WHERE fenced_run.chart_id = $1::uuid
+                AND fenced_asset.asset_id = $${assetIdParam}::text
+                AND (
+                  fenced_run.state IN ('planned', 'running', 'paused')
+                  OR fenced_asset.state IN ('queued', 'building')
+                  OR (
+                    EXISTS (
+                      SELECT 1 FROM eligible_receipt eligible
+                       WHERE COALESCE(fenced_asset.ended_at, fenced_run.ended_at) IS NULL
+                          OR COALESCE(fenced_asset.ended_at, fenced_run.ended_at) >= eligible.observed_at
+                    )
+                    AND NOT EXISTS (
+                      SELECT 1
+                        FROM asset_provenance_receipts proven_receipt
+                        JOIN asset_freshness proven_freshness
+                          ON proven_freshness.asset_id = proven_receipt.asset_id
+                         AND proven_freshness.scope_key = proven_receipt.scope_key
+                         AND proven_freshness.partition_key = proven_receipt.partition_key
+                         AND proven_freshness.receipt_version = proven_receipt.receipt_version
+                       WHERE proven_receipt.asset_id = fenced_asset.asset_id
+                         AND proven_receipt.chart_id = $1::uuid
+                         AND proven_receipt.build_id = fenced_run.id
+                         AND proven_receipt.receipt_state = 'proven'
+                         AND proven_receipt.output_digest_spec_sha256 = $${specParam}::text
+                         AND proven_freshness.freshness_state = 'fresh'
+                    )
+                  )
+                )
+           ) AS replacement_in_progress
+         ), page_rows AS (
+           SELECT to_jsonb(d) AS row,
+                  d.mechanism_class AS order_mechanism_class,
+                  d.edge_strength_avg AS order_edge_strength_avg,
+                  COALESCE(array_length(d.member_node_ids_array, 1), 0) AS order_member_node_count,
+                  d.mechanism_name AS order_mechanism_name,
+                  d.mechanism_id::text AS order_mechanism_id
+             FROM bodha_mechanisms d
+             JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
+            WHERE ${where}
+            ORDER BY (d.mechanism_class = ANY(${classPriorityParam})) DESC,
+                     d.edge_strength_avg DESC NULLS LAST,
+                     COALESCE(array_length(d.member_node_ids_array, 1), 0) DESC,
+                     d.mechanism_name ASC,
+                     d.mechanism_id ASC
+            LIMIT $${p} OFFSET $${p + 1}
+         ), facet_rows AS (
+           SELECT d.mechanism_class, d.valence,
+                  (d.mechanism_class = ANY(${classPriorityParam})) AS is_chain_circuit
+             FROM bodha_mechanisms d
+             JOIN eligible_receipt eligible ON d.build_id = eligible.build_id::uuid
+            WHERE ${where}
+         ), facet_counts AS (
+           SELECT mechanism_class, valence, is_chain_circuit, COUNT(*)::text AS n
+             FROM facet_rows
+            GROUP BY mechanism_class, valence, is_chain_circuit
+         )
+         SELECT fence.replacement_in_progress,
+                eligible.build_id AS eligible_build_id,
+                (eligible.build_id IS NOT NULL AND $${cursorBuildParam}::text IS NOT NULL
+                  AND eligible.build_id <> $${cursorBuildParam}::text) AS cursor_build_changed,
+                COALESCE((
+                  SELECT jsonb_agg(page_rows.row ORDER BY
+                    (page_rows.order_mechanism_class = ANY(${classPriorityParam})) DESC,
+                    page_rows.order_edge_strength_avg DESC NULLS LAST,
+                    page_rows.order_member_node_count DESC,
+                    page_rows.order_mechanism_name ASC,
+                    page_rows.order_mechanism_id ASC)
+                    FROM page_rows
+                ), '[]'::jsonb) AS rows,
+                COALESCE((SELECT jsonb_agg(to_jsonb(facet_counts) ORDER BY mechanism_class ASC, valence ASC)
+                  FROM facet_counts), '[]'::jsonb) AS facets,
+                (SELECT COUNT(*)::text FROM facet_rows) AS total_matching
+           FROM replacement_fence fence
+           LEFT JOIN eligible_receipt eligible ON true`,
+        [...params, limit + 1, offset],
+      )
+      const pageSnapshot = pageResult.rows[0]
+      if (!pageSnapshot) {
+        return paginationError(chart_id, 'bo_yantra_mechanism_receipt_unavailable', 'No consistent bo_yantra_mechanism receipt snapshot was available; restart after provenance is complete.')
+      }
+      if (pageSnapshot.replacement_in_progress) {
+        return paginationError(chart_id, 'bo_yantra_mechanism_replacement_in_progress', 'A bo_yantra_mechanism replacement is in progress; restart after the asset and its fresh provenance receipt are complete.')
+      }
+      const activeBuildId = pageSnapshot.eligible_build_id
+      if (!activeBuildId) {
+        return paginationError(chart_id, 'bo_yantra_mechanism_receipt_unavailable', 'No fresh, proven bo_yantra_mechanism receipt with the reviewed digest specification is available for this chart.')
+      }
+      if (pageSnapshot.cursor_build_changed) {
+        return paginationError(chart_id, 'page_cursor_build_changed', 'The fresh proven bo_yantra_mechanism receipt build changed after this page_cursor was minted; restart from the first page.', {
+          cursor_build_id: cursor?.build_id ?? null,
+          active_build_id: activeBuildId,
+        })
+      }
 
       // F-164: this is an ORIENTATION disclosure, not a scoring input — a genuine failure to
       // reach brahma_vichara_constants degrades the note to an honest "(unavailable)" rather
@@ -304,8 +509,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       }
       const varga_scope = buildVargaScopeDisclosure(wealthEntry)
 
-      const total_matching = Number(countRes.rows[0]?.total ?? 0)
-      const fetchedRows = rowsRes.rows
+      const total_matching = Number(pageSnapshot.total_matching ?? 0)
+      const fetchedRows = Array.isArray(pageSnapshot.rows) ? pageSnapshot.rows : []
       const rows = fetchedRows.slice(0, limit)
       // The L+1 probe is the page-local continuation proof; total_matching and
       // facets remain full-filter aggregates for density reporting.
@@ -314,7 +519,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       const by_mechanism_class: Record<string, number> = {}
       const by_valence: Record<string, number> = {}
       let chain_circuit_count = 0
-      for (const f of facetRes.rows) {
+      const snapshotFacets = Array.isArray(pageSnapshot.facets) ? pageSnapshot.facets : []
+      for (const f of snapshotFacets) {
         const n = Number(f.n)
         by_mechanism_class[f.mechanism_class] = (by_mechanism_class[f.mechanism_class] ?? 0) + n
         by_valence[f.valence] = (by_valence[f.valence] ?? 0) + n
@@ -335,6 +541,10 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
           total_matching,
           more_available,
           next_offset: more_available ? offset + rows.length : null,
+          next_page_cursor: more_available
+            ? encodePageCursor({ version: 1, build_id: activeBuildId, offset: offset + rows.length, filter_fingerprint: queryFilterFingerprint }, signingRing)
+            : null,
+          build_id: activeBuildId,
           chain_circuit_count,
           facets: {
             by_mechanism_class,
@@ -347,9 +557,10 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
           scope_flags: ['d1_rasi_only', 'cross_varga_mechanisms_not_computed'],
           filters: { ayanamsha_id, mechanism_class, valence, chain_circuit_only, limit, offset },
           provenance: {
-            tables: ['bodha_mechanisms'],
+            tables: ['bodha_mechanisms', 'asset_provenance_receipts', 'asset_freshness', 'build_runs', 'build_run_assets'],
             source: 'L2 Bodha mechanisms (bo_yantra_mechanism / migration 445); served chart-scoped, ' +
               'chain/circuit family first, budgeted. Edge-strength provenance: DR-7 edge_strength_v1. ' +
+              'Pagination is pinned to the fresh/proven bo_yantra_mechanism build_id; a changed or replacing build requires restart. ' +
               'SCOPE: rāśi (D1) natal graph ONLY — no varga dimension exists in this table (F-107); ' +
               'see `varga_scope` for the disclosure and the drill pointers to per-varga surfaces.',
           },

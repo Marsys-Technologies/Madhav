@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "1804f761ed26cb80c83ab3587633835ea69369ce8b56a7ffd4f2d9961786ea09",
+  "content_sha256": "04efe413aca6cc2e6d23b67f3ad8caa04af6ec451e0dada5402b7c4aa9d2dd58",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -15,9 +15,9 @@
       },
       "denominator": 186,
       "descriptor_content_untyped": 181,
-      "exhaustible_paginated": 3,
+      "exhaustible_paginated": 4,
       "full_profile_allowlist_enforced": true,
-      "non_exhaustible_paginated": 93
+      "non_exhaustible_paginated": 92
     },
     "planner_addressable_descriptors": {
       "excluded": 3,
@@ -6534,8 +6534,12 @@
             "type": "string"
           },
           "offset": {
-            "description": "Pagination offset (default 0).",
+            "description": "First-page offset only (default 0). A nonzero continuation must use page_cursor.",
             "type": "number"
+          },
+          "page_cursor": {
+            "description": "Opaque, signed continuation token from next_page_cursor. It pins the normalized filters and fresh/proven bo_yantra_mechanism build; changed/replacing builds require restart.",
+            "type": "string"
           },
           "valence": {
             "description": "Filter by valence (benefic|malefic|mixed|neutral). Omit for all.",
@@ -6551,9 +6555,8 @@
         "output_contract": null,
         "output_contract_state": "descriptor_content_untyped",
         "pagination": {
-          "blocker": "response collection and exhaustion paths are not source-reviewed",
-          "declared": "offset",
-          "disposition": "non_exhaustible"
+          "declared": "cursor",
+          "disposition": "exhaustible_reviewed"
         },
         "planner_disposition": "addressable",
         "planner_reason": null,
@@ -20655,7 +20658,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-17T05:44:00.000Z",
+  "generated_at": "2026-09-17T07:37:00.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -20677,7 +20680,7 @@
       {
         "id": "live_runtime_catalog_projection",
         "path": "platform/src/lib/retrieval/registry/catalog.ts",
-        "sha256": "2b6a872c6b5ea4ead47ada6ff9a45506f6f4a65bf2dcd2ceff39570a44992135"
+        "sha256": "da9670d0ce4db8cdf09d135e6b2a8dbd0925c070537c9ea48e82ff186d44a9df"
       },
       {
         "id": "output_digest_migration_source_set",
@@ -21186,7 +21189,7 @@
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_ask.ts",
-            "sha256": "6e6657cc5512163cca8234380b118d00179ee08dc0db7ab59f9d929816e994a1"
+            "sha256": "8b19df71374c6700524127b299d61d2ddec8c4ffbc89e136e96fab487d5cb0c6"
           },
           {
             "path": "platform-mcp/src/tools/register_prashna_status.ts",
@@ -21234,7 +21237,7 @@
           }
         ],
         "path": "platform-mcp/src/tools/**/*.ts (excluding tests)",
-        "sha256": "6b979d252976bb57b402dfaa16a326fb2471725085120d7afd4b1fa51a0014a7"
+        "sha256": "a440fc808fc74a53538c704a399b6ff77d132ffad5177bcd58ea1c07807e1fdc"
       },
       {
         "id": "registrar_bridge_extractor",
@@ -21288,7 +21291,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
-            "sha256": "bd18a376d13c8c33028070fa9aca605c6950b1a04fb4cf8bf08f617abb3cb1dc"
+            "sha256": "c81f557b112b6984bdee36ffffe9abaa1953223422c5aa8eaa61ae08873235df"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/index.ts",
@@ -21376,7 +21379,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_classical_texts.ts",
-            "sha256": "9e783bcf68dc055fe9c1b9a0931c95ecfad6e664f6f3baf784614df3098515d1"
+            "sha256": "04ab55968a2c9f7caae282733be4b21e215a78bcedb9364d35a1e2192597aba0"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_combustion_orbs.ts",
@@ -21728,7 +21731,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_mechanisms.ts",
-            "sha256": "61dc9a7abe38663842b96d5000d768e339a5498c585075ae0aeed7d1ddb4b758"
+            "sha256": "5109ae5f134dba5eacb4e42c775524d6fede4689279cbba493e1ac3dcbd93108"
           },
           {
             "path": "platform/src/lib/retrieval/registry/layers/L2_bodha/query_pratijna.ts",
@@ -22044,7 +22047,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "6e8289e5f675d2212e5c2d0d279af98b69bb44264938f14b406caec80f8f910f"
+        "sha256": "7080bcca51e4fa146dde75f8a181a134814458f5662968acdac533759f0044bd"
       },
       {
         "id": "service_effect_contracts",
@@ -22069,5 +22072,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "880a32fd53907b06b55777a5d53a6708211ec185"
+  "source_revision": "a20b7d43d9c4ec59b36597113263639a7eb49a62"
 }

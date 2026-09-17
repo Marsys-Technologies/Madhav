@@ -59,20 +59,20 @@ describe('planner capability knowledge', () => {
   it('carries the full reviewed pagination denominator without inventing exhaustion', () => {
     const routes = estateCensus.details.descriptor_route_contracts
     expect(routes.filter((route) => route.pagination.disposition !== 'not_paginated')).toHaveLength(96)
-    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(3)
-    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(93)
+    expect(routes.filter((route) => route.pagination.disposition === 'exhaustible_reviewed')).toHaveLength(4)
+    expect(routes.filter((route) => route.pagination.disposition === 'non_exhaustible')).toHaveLength(92)
     expect(snapshot.census).toMatchObject({
       reviewed_pagination_dispositions: 186,
       reviewed_paginated_descriptors: 96,
-      exhaustible_reviewed_descriptors: 3,
-      non_exhaustible_descriptors: 93,
+      exhaustible_reviewed_descriptors: 4,
+      non_exhaustible_descriptors: 92,
     })
     const registryBindings = snapshot.scus.flatMap((scu) => scu.bindings).filter((binding) => binding.kind === 'registry_capability')
     expect(registryBindings.every((binding) => binding.pagination_review?.source_ref.includes(binding.capability_uri))).toBe(true)
     expect(registryBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(96)
     const allBindings = snapshot.scus.flatMap((scu) => scu.bindings)
     expect(allBindings.filter((binding) => binding.pagination !== 'none')).toHaveLength(97)
-    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(94)
+    expect(allBindings.filter((binding) => binding.pagination !== 'none' && binding.pagination_verified !== true)).toHaveLength(93)
   })
 
   it('keeps SCUs distinct from tools with many-to-many executable bindings', () => {
