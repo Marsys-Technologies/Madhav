@@ -6,7 +6,7 @@
     "A reviewed output-digest specification establishes deterministic output hashing, not semantic value, population, planner reachability, or empirical validity.",
     "The full MCP profile is registration-gated by the reviewed route authority; its real registration set is exact-set tested independently."
   ],
-  "content_sha256": "90d36212bc9bd506daa8f45296bd05d7cf83335ce6a89ead475fc2c62bce4ebe",
+  "content_sha256": "bb1ec05a6b00481842b2894279e0b9453af67b2ade4679fc7c07621738e89bcc",
   "denominators": {
     "descriptor_route_contracts": {
       "by_public_route_disposition": {
@@ -1553,6 +1553,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_compendium_index.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts"
         ],
@@ -1719,6 +1720,7 @@
         },
         "internal_route": "handler",
         "internal_route_evidence": [
+          "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
           "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_dosha_catalog.ts",
           "platform/src/lib/retrieval/registry/layers/L1_ganita/coverage_matrix.ts",
           "platform/src/lib/retrieval/registry/mcp_capability_bridge.ts"
@@ -20661,7 +20663,7 @@
       ]
     }
   },
-  "generated_at": "2026-09-17T23:26:29.000Z",
+  "generated_at": "2026-09-18T00:07:30.000Z",
   "provenance": {
     "method": "DB-free source census with recursively key-sorted canonical JSON and SHA-256 fingerprints",
     "sources": [
@@ -21290,7 +21292,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial_review.ts",
-            "sha256": "ccae2bec6c5b065531fa6ef874cdf179dd6f477f6b2ca4b2012f17b59c9865f9"
+            "sha256": "fce3396e99b6aae9e4bfc9c16c6bae343f1d2e221a6b5aac7081ede500f0a6ec"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/editorial.ts",
@@ -21330,7 +21332,7 @@
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/source_query_availability.ts",
-            "sha256": "39525dd8aea01a40646eaf071e91344b985aaa3c80feeac30e6d3665782bffa0"
+            "sha256": "c74337749aa6c5187a2d7809541be52c20a42abc50d3aa76d9db384deb88b399"
           },
           {
             "path": "platform/src/lib/retrieval/registry/knowledge/stable.ts",
@@ -22058,7 +22060,7 @@
           }
         ],
         "path": "platform/src/lib/retrieval/{registry,synthesis}/**/*.ts (excluding tests)",
-        "sha256": "011466570783d85f687127ebdbfa9506e9389489c936e62db97dc138e89c8950"
+        "sha256": "f5bfa27e1ee997449184c6670de008cca29336bb95d896732502ae9c329bf3c7"
       },
       {
         "id": "service_effect_contracts",
@@ -22083,5 +22085,5 @@
     ]
   },
   "schema_version": "capability-estate-census/v1.2",
-  "source_revision": "e68ec195f930dacafd174b1295e5737502f0eabc"
+  "source_revision": "eb7506f3dadbefabaf4242b3728d5791544c2c25"
 }
