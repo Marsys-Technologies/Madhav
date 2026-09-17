@@ -14,12 +14,13 @@ import {
 } from '../acceptance_cases'
 import { parseCliArgs, writeAcceptanceRun } from '../acceptance'
 import { scoreAnswers } from '../score_answers'
+import { FROZEN_PRODUCT_CASES } from '../product_cases'
 
 let protocol: ProductAcceptanceProtocol
 
 const scoreInput: AcceptanceCaseInput = {
   case_id: 'deterministic_product_case', kind: 'product', question: null, scope_tuple: null,
-  deterministic_gates: ['receipt_gate'],
+  deterministic_gates: ['receipt_gate'], required_dimensions: [], expected: null,
 }
 
 const candidateConfig = {
@@ -205,6 +206,14 @@ describe('Purna product acceptance harness', () => {
 
   it('pins the versioned protocol manifest to the immutable Beyond-Acarya denominator and case content', () => {
     expect(validateProtocol(protocol)).toMatchObject({ protocol_version: PRODUCT_ACCEPTANCE_PROTOCOL_VERSION })
+    expect(casesForSuite(protocol, 'product')).toHaveLength(30)
+    expect(FROZEN_PRODUCT_CASES).toHaveLength(30)
+    expect(casesForSuite(protocol, 'product').map((item) => item.case_id)).toEqual(FROZEN_PRODUCT_CASES.map((item) => item.case_id))
+    expect(casesForSuite(protocol, 'product')[0]).toMatchObject({
+      question: FROZEN_PRODUCT_CASES[0]!.question,
+      required_dimensions: FROZEN_PRODUCT_CASES[0]!.required_dimensions,
+      expected: 'supported_complete',
+    })
   })
 
   it('rejects empty or malformed product scenario/gate declarations and a stale corpus fingerprint', () => {
@@ -488,10 +497,10 @@ describe('Purna product acceptance harness', () => {
         schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION, run_id: 'run-test', environment: 'candidate',
         revision: 'candidate-revision-123', verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
       })
-      expect(persisted.case_inputs).toHaveLength(4)
+      expect(persisted.case_inputs).toHaveLength(30)
       expect(persisted.answers).toHaveLength(1)
-      expect(persisted.evidence).toHaveLength(3)
-      expect(persisted.case_verdicts).toHaveLength(4)
+      expect(persisted.evidence).toHaveLength(4)
+      expect(persisted.case_verdicts).toHaveLength(30)
       expect(persisted.failures).toEqual(expect.arrayContaining([
         expect.objectContaining({ case_id: firstCase.case_id, kind: 'deterministic' }),
         expect.objectContaining({ kind: 'deterministic', detail: 'answer_missing' }),

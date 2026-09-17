@@ -2,6 +2,7 @@ import { BEYOND_ACARYA_ACCEPTANCE_CASES, BEYOND_ACARYA_CORPUS_VERSION, type Beyo
 import type { InquiryResponseAccountability } from '../../src/lib/vidhi/inquiry/types'
 import { stableFingerprint } from '../../src/lib/retrieval/registry/knowledge/stable'
 import { createHash } from 'node:crypto'
+import { FROZEN_PRODUCT_CASES } from './product_cases'
 
 export const PRODUCT_ACCEPTANCE_PROTOCOL_VERSION = 'purna-product-acceptance-v2' as const
 export const PRODUCT_ACCEPTANCE_PROTOCOL_SCHEMA_VERSION = 'madhav-purna-anvesana/product-acceptance-protocol/v2' as const
@@ -10,28 +11,11 @@ export const PRODUCT_ACCEPTANCE_RUN_VERSION = 'madhav-purna-anvesana/product-acc
 export type AcceptanceSuite = 'beyond_acarya' | 'product'
 export type AcceptanceEnvironment = 'candidate' | 'live'
 
-const EXPECTED_PRODUCT_SCENARIOS = [
-  {
-    scenario_id: 'three_door_semantic_equivalence',
-    description: 'Portal, managed MCP, and raw MCP answers have matching normalized inquiry closure and accountability receipts.',
-    deterministic_gates: ['inquiry_closure_receipt', 'response_accountability', 'door_parity_projection'],
-  },
-  {
-    scenario_id: 'pagination_truthfulness',
-    description: 'First, middle, final, and empty pages retain a truthful exhaustion proof and continuation receipt.',
-    deterministic_gates: ['pagination_receipt', 'no_false_total', 'continuation_exhaustion'],
-  },
-  {
-    scenario_id: 'managed_recovery_safety',
-    description: 'A recovered managed inquiry returns stored accepted evidence or an explicit blocked state without protected-action replay.',
-    deterministic_gates: ['reservation_receipt', 'recovery_state', 'no_replay'],
-  },
-  {
-    scenario_id: 'availability_fail_closed',
-    description: 'Dark or changed availability cannot be represented as a complete answer.',
-    deterministic_gates: ['capability_overlay', 'availability_contract', 'incomplete_or_blocked'],
-  },
-] as const satisfies readonly ProductAcceptanceScenario[]
+const EXPECTED_PRODUCT_SCENARIOS = FROZEN_PRODUCT_CASES.map((item) => ({
+  scenario_id: item.case_id,
+  description: item.description,
+  deterministic_gates: item.deterministic_gates,
+})) satisfies readonly ProductAcceptanceScenario[]
 
 const EXPECTED_HARD_GATES = [
   'explicit_suite_and_environment',
@@ -75,6 +59,9 @@ export interface AcceptanceCaseInput {
   readonly question: string | null
   readonly scope_tuple: BeyondAcaryaAcceptanceCase['scope_tuple'] | null
   readonly deterministic_gates: readonly string[]
+  /** Frozen semantic denominator for independent answer assessment. */
+  readonly required_dimensions: readonly string[]
+  readonly expected: 'supported_complete' | 'honest_insufficient' | null
 }
 
 export interface DeterministicEvidence {
@@ -439,14 +426,18 @@ export function casesForSuite(protocol: ProductAcceptanceProtocol, suite: Accept
       question: item.question,
       scope_tuple: item.scope_tuple,
       deterministic_gates: ['immutable_case_input', 'source_acceptance_denominator'],
+      required_dimensions: item.expected_required_scu_ids,
+      expected: 'supported_complete',
     }))
   }
-  return protocol.product_scenarios.map((scenario) => ({
-    case_id: scenario.scenario_id,
+  return FROZEN_PRODUCT_CASES.map((scenario) => ({
+    case_id: scenario.case_id,
     kind: 'product' as const,
-    question: null,
-    scope_tuple: null,
+    question: scenario.question,
+    scope_tuple: scenario.scope_tuple,
     deterministic_gates: scenario.deterministic_gates,
+    required_dimensions: scenario.required_dimensions,
+    expected: scenario.expected,
   }))
 }
 

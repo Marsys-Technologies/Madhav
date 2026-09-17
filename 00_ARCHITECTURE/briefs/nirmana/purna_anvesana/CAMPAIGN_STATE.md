@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0089
-last_updated: 2026-09-17T23:00:00+05:30
+last_event: PA-E0090
+last_updated: 2026-09-17T23:10:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -34,6 +34,14 @@ layer state, queue or authority.
   is idle, but a protected environment owner must replace the structurally unusable
   `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
   data-plane cutover; no secret was accessed, changed or reconstructed here.
+
+- Product acceptance denominator: the protocol now freezes the full 30-case six-family matrix
+  from approved-plan §13 (wealth, career, marriage, family, health, and life events; each with
+  focused, deep, contradiction, time-bounded, and deliberately-insufficient modes). Every emitted
+  product input retains its question, scope tuple, required evidence dimensions, deterministic
+  gates, and expected completion class. The collector accepts the product suite and preserves those
+  fields; focused source checks pass 23/23. This closes a source-denominator defect only: no
+  candidate or live product case has been collected or accepted for the successor revision.
 
 - Product evidence M1: the new real three-door collector has passed focused source checks
   (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
