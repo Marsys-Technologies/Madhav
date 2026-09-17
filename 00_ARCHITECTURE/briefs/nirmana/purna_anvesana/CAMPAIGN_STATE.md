@@ -7,8 +7,8 @@ campaign_id: madhav-purna-anvesana
 definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/CAMPAIGN_DEFINITION.json
 recovery_definition: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/RECOVERY_DEFINITION_v1.json
 events: 00_ARCHITECTURE/briefs/nirmana/purna_anvesana/EVENTS.jsonl
-last_event: PA-E0084
-last_updated: 2026-09-17T20:36:00+05:30
+last_event: PA-E0085
+last_updated: 2026-09-17T20:56:00+05:30
 ---
 
 # MADHAV PŪRṆA ANVEṢAṆA — Campaign State
@@ -34,6 +34,17 @@ layer state, queue or authority.
   is idle, but a protected environment owner must replace the structurally unusable
   `DATA_PLANE_ADMIN_DATABASE_URL` with a valid password-bearing administrator URL before a later
   data-plane cutover; no secret was accessed, changed or reconstructed here.
+
+- Product evidence M1: the new real three-door collector has passed focused source checks
+  (19 tests and TypeScript) and has recorded a live synthetic wealth-case measurement without
+  manufacturing a pass. Portal reached terminal `ok` but supplied no observed source revision
+  and no consumed facts; managed MCP initially rejected the corpus's compiler-family intent,
+  which the collector now translates narrowly to the managed classifier vocabulary and has
+  re-proven dispatches a durable pending job; raw MCP starts and finalizes but its contract is
+  `INCOMPLETE`, with 33/33 plan items blocked and eight required obligations dark. The measured
+  raw blockers are availability/evidence and binding conditions, not a lifecycle transport error.
+  The core source knowledge suite remains green (107 tests) and both capability generators are
+  current at 182 SCUs. No product acceptance gate is earned.
 
 - Live wrap-up: implementation head `80b1fa3f881933863f1688ff47ce50c716243608` supersedes the
   independently refuted initial PR #2606 head. It closes the exact-web-revision ordering defect,
