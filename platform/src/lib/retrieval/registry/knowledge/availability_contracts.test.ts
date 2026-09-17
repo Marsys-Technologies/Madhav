@@ -63,6 +63,27 @@ describe('binding availability contracts', () => {
     }))
   })
 
+  it.each([
+    ['scu.catalog.get_ayurdaya', 'source-query:get-ayurdaya:v1'],
+    ['scu.catalog.get_sensitive_degrees', 'source-query:get-sensitive-degrees:v1'],
+  ])('binds %s to its exact chart-and-active-build source-query contract', (scuId, contractId) => {
+    const scu = snapshot.scus.find((candidate) => candidate.scu_id === scuId)!
+    const requirement = scu.availability_contracts![0]!.requirements[0]!
+
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: contractId,
+      scope: 'chart',
+      contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+      source_ref: expect.stringContaining('platform/supabase/migrations/204_chart_facts.sql:10-29'),
+    })
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${scu.scu_id}:${scu.availability_contracts![0]!.binding_id}`,
+    }))
+  })
+
   it('reports a non-array availability contract without throwing', () => {
     const inspect = () => inspectCapabilityKnowledge(catalog, withContracts({ binding_id: knownBindingId }))
 

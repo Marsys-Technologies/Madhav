@@ -133,20 +133,6 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
     ],
   },
-  get_ayurdaya: {
-    reason: 'The handler is chart-scoped, but the reviewed ga_ayurdaya digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93',
-      'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
-    ],
-  },
-  get_sensitive_degrees: {
-    reason: 'The handler is chart-scoped, but the reviewed ga_sensitive_degree digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
-    source_refs: [
-      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119',
-      'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
-    ],
-  },
   get_strength: {
     reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
     source_refs: [
