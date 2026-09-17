@@ -178,6 +178,38 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
     }],
   },
+  get_ayurdaya: {
+    producer_output_claims: [{
+      asset_id: 'ga_ayurdaya',
+      component: 'chart_facts',
+      output_digest_spec_sha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'ga_ayurdaya',
+      spec_sha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
+      scope: 'chart_build',
+      source_ref: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+    }],
+  },
+  get_sensitive_degrees: {
+    producer_output_claims: [{
+      asset_id: 'ga_sensitive_degree',
+      component: 'chart_facts',
+      output_digest_spec_sha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
+      disposition: 'reviewed_output',
+      evidence: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'ga_sensitive_degree',
+      spec_sha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
+      scope: 'chart_build',
+      source_ref: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+    }],
+  },
 }
 
 export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {

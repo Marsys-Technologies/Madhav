@@ -452,6 +452,63 @@ describe('first-slice availability coverage', () => {
     }
   })
 
+  it.each([
+    {
+      scuId: 'scu.catalog.get_ayurdaya',
+      bindingId: 'registry:marsys://tool/L1/get_ayurdaya',
+      assetId: 'ga_ayurdaya',
+      component: 'chart_facts',
+      specSha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
+      sourceRef: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+    },
+    {
+      scuId: 'scu.catalog.get_sensitive_degrees',
+      bindingId: 'registry:marsys://tool/L1/get_sensitive_degrees',
+      assetId: 'ga_sensitive_degree',
+      component: 'chart_facts',
+      specSha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
+      sourceRef: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+    },
+  ])('activates $scuId only from its own fresh, matching chart-build receipt', async ({
+    scuId, bindingId, assetId, component, specSha256, sourceRef,
+  }) => {
+    const scu = findScu(scuId)
+    const [requirement] = producerRequirements(scuId)
+
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.producer_output_claims).toEqual([{
+      asset_id: assetId,
+      component,
+      output_digest_spec_sha256: specSha256,
+      disposition: 'reviewed_output',
+      evidence: sourceRef,
+    }])
+    expect(requirement).toEqual({
+      kind: 'producer_output',
+      asset_id: assetId,
+      spec_sha256: specSha256,
+      scope: 'chart_build',
+      source_ref: sourceRef,
+    })
+
+    const available = await overlayFor([receipt(requirement!)])
+    expect(available.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+      available_binding_ids: [bindingId],
+    })
+
+    for (const [rows, state] of [
+      [[], 'dark'],
+      [[{ ...receipt(requirement!), output_digest_spec_sha256: 'f'.repeat(64) }], 'incompatible'],
+      [[{ ...receipt(requirement!), freshness_state: 'stale' as const }], 'dark'],
+    ] as const) {
+      const unavailable = await overlayFor(rows)
+      expect(unavailable.availability.find((entry) => entry.scu_id === scuId)).toMatchObject({
+        state,
+        available_binding_ids: [],
+      })
+    }
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
