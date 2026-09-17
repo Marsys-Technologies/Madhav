@@ -382,6 +382,11 @@ export async function POST(request: Request) {
     return response({
       ok: true,
       inquiry_id: row.inquiry_id,
+      // A governed raw-MCP client owns its synthesis. It still needs the exact
+      // terminal contract that the server committed in order to build and
+      // validate an accountable external answer; a closure summary alone is
+      // not an auditable fact-register denominator.
+      contract: final,
       closure: buildInquiryClosureReceipt(final),
       inquiry_door_parity: buildInquiryDoorParityProjection(final),
     })

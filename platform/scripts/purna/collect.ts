@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process'
 import { McpClient } from '../audit/doctrine_harness/lib/mcp_client'
 import { mintFreshProbeSessionCookie } from '../probe/session_auth'
 import { collectManagedCase, collectPortalCase, collectRawCase } from './channel_clients'
+import { synthesizeRawLifecycleEvidence } from './raw_external_synthesis'
 import { assertLiveEvidence, type AcceptanceCase, type CollectedCase } from './collection_types'
 import { BEYOND_ACARYA_ACCEPTANCE_CASES } from '../../src/lib/vidhi/inquiry/beyond_acarya_acceptance.corpus'
 import { FROZEN_PRODUCT_CASES } from './product_cases'
@@ -32,7 +33,7 @@ export async function collect(config: Config, cases: readonly AcceptanceCase[]):
   for (const test of cases) {
     rows.push(await collectPortalCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, endpoint: config.portal_url, sessionCookie }))
     rows.push(await collectManagedCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxPolls: config.max_polls ?? 30, wait: () => new Promise((done) => setTimeout(done, 1000)) }))
-    rows.push(await collectRawCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64 }))
+    rows.push(await collectRawCase({ test, expectedRevision: config.expected_revision, source: config.environment, chartId: config.chart_id, invoker, maxActions: config.max_actions ?? 64, synthesize: synthesizeRawLifecycleEvidence }))
   }
   return rows
 }

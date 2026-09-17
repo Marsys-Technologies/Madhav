@@ -721,6 +721,7 @@ describe('raw MCP inquiry route', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       ok: true,
+      contract: blocked,
       closure: { status: 'BLOCKED', status_reasons: ['required_obligation_failed'] },
       inquiry_door_parity: {
         parity_version: 'inquiry-door-parity-v1',

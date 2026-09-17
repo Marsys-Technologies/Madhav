@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { assertLiveEvidence, type AcceptanceCase } from '../collection_types'
 import { collectManagedCase, collectPortalCase, collectRawCase, parsePortalSse } from '../channel_clients'
 
@@ -68,5 +68,22 @@ describe('Purna real three-door collector', () => {
       ? { inquiry_id: 'i-1', lifecycle_token: 'token-1', next_action_ids: [] }
       : { closure: { status: 'INCOMPLETE', receipt_hash: 'r-1', chart_build_id: 'build-1' } } } })
     expect(row).toMatchObject({ terminal: 'incomplete', chartBuildId: 'build-1', receiptRefs: ['r-1'] })
+  })
+  it('collects a raw answer only from an explicit external synthesis bound to the terminal contract and raw payload', async () => {
+    const terminalContract = { contract_id: 'contract-1', status: 'COMPLETE' }
+    const envelope = { accountability_version: 'inquiry-response-accountability-v1' }
+    const synthesize = vi.fn(async (input: { inquiryId: string; contract: unknown; evidencePayloads: readonly unknown[] }) => {
+      expect(input).toMatchObject({ inquiryId: 'i-1', contract: terminalContract, evidencePayloads: [{ results: [{ fact: 'one' }] }] })
+      return { answer: 'Grounded external answer.', responseAccountability: envelope as never }
+    })
+    const row = await collectRawCase({ ...base, maxActions: 1, synthesize, invoker: { call: async (name) => name === 'inquiry_start'
+      ? { inquiry_id: 'i-1', lifecycle_token: 'token-1', next_action_ids: ['item-001'] }
+      : name === 'inquiry_execute_next'
+        ? { lifecycle_token: 'token-2', next_action_ids: [], raw_result: { results: [{ fact: 'one' }] } }
+        : { deployed_revision: 'candidate-a', contract: terminalContract, closure: { status: 'COMPLETE', receipt_hash: 'r-1' } } } })
+    expect(row).toMatchObject({ answer: 'Grounded external answer.', responseAccountability: envelope, terminal: 'complete', networkCallCount: 4 })
+  })
+  it('accepts a revision-bound honest insufficiency as live transport evidence for later protocol assessment', () => {
+    expect(() => assertLiveEvidence({ caseId: test.id, door: 'raw_mcp', inquiryId: 'test', expectedRevision: 'candidate-a', observedRevision: 'candidate-a', snapshotHash: null, chartBuildId: null, answer: 'Evidence is insufficient.', responseAccountability: {}, receiptRefs: ['r-1'], materialFactIds: [], deliveredFactIds: [], unresolvedObligationIds: ['obl-1'], networkCallCount: 3, source: 'live', terminal: 'blocked', diagnostic: null })).not.toThrow()
   })
 })
