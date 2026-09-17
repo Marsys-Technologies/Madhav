@@ -67,6 +67,7 @@ run('get_dashas disposable PostgreSQL overlapping terminal replacement fence', (
         integrity_check_sql text, target_floor integer, asset_kind text, asset_type text, scope text,
         has_writer boolean, is_active boolean, target_table text
       );
+      CREATE TABLE asset_throughput (asset_id text PRIMARY KEY);
       CREATE TABLE chart_dashas (
         dasha_row_id uuid PRIMARY KEY, chart_id uuid NOT NULL, build_id uuid NOT NULL,
         system_id text NOT NULL, ayanamsha_id text NOT NULL, level_n integer NOT NULL,
