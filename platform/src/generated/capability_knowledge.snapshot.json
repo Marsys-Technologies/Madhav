@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:dbe00d1d552b137386dfd93af8053c24bdc7a6a6043480e07729c405195b9467",
+  "content_hash": "sha256:c70e6ea91298c830910ca0fdcdfe1b0d35f4a182b712c3216f4c87e8f9b4c242",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:7f84931bd4496ea1347421cb31b0fa21d592d51703ad20c3fd3e0c0b362c8a7b",
+  "semantic_review_fingerprint": "sha256:d028d8ad82a4649167cabc4155d92c36f5408037fda3e565eb8e3e5c8dc2334e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -28798,6 +28798,20 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L0/query_yoga_catalog",
+          "status": "deliberately_dark",
+          "reason": "The handler serves paged SELECT * rows from brahma_yoga_catalog, including created_at, then returns request-specific total and more_available metadata. The current bg_yogas digest covers the catalog relation but omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
+            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:66-72",
+            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:7-22",
+            "platform/migrations/239_yoga_system.sql:35-39",
+            "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

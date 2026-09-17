@@ -124,6 +124,16 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:40',
     ],
   },
+  query_yoga_catalog: {
+    reason: 'The handler serves paged SELECT * rows from brahma_yoga_catalog, including created_at, then returns request-specific total and more_available metadata. The current bg_yogas digest covers the catalog relation but omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57',
+      'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:66-72',
+      'platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:7-22',
+      'platform/migrations/239_yoga_system.sql:35-39',
+      'platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673',
+    ],
+  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
