@@ -33,6 +33,36 @@ function withBindings(bindings: unknown): CapabilityKnowledgeSnapshot {
 }
 
 describe('binding availability contracts', () => {
+  it('accepts the exact registry-owned source-query contract and rejects a fingerprint change', () => {
+    const yoga = snapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
+    const requirement = yoga.availability_contracts![0]!.requirements[0]!
+    expect(requirement).toMatchObject({
+      kind: 'source_query',
+      contract_id: 'source-query:query-yoga-catalog:v1',
+      scope: 'global',
+    })
+    expect(inspectCapabilityKnowledge(catalog, snapshot).findings).not.toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${yoga.scu_id}:${yoga.availability_contracts![0]!.binding_id}`,
+    }))
+
+    const tampered = {
+      ...snapshot,
+      scus: snapshot.scus.map((scu) => scu.scu_id === yoga.scu_id ? {
+        ...scu,
+        availability_contracts: [{
+          ...yoga.availability_contracts![0]!,
+          requirements: [{ ...requirement, contract_sha256: `sha256:${'0'.repeat(64)}` }],
+        }],
+      } : scu),
+    } as CapabilityKnowledgeSnapshot
+    expect(inspectCapabilityKnowledge(catalog, tampered).findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: `${yoga.scu_id}:${yoga.availability_contracts![0]!.binding_id}`,
+      detail: expect.stringContaining('source-query'),
+    }))
+  })
+
   it('reports a non-array availability contract without throwing', () => {
     const inspect = () => inspectCapabilityKnowledge(catalog, withContracts({ binding_id: knownBindingId }))
 

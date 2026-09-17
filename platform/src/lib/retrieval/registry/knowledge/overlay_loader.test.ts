@@ -463,6 +463,40 @@ beforeEach(() => {
 })
 
 describe('chart capability overlay loader', () => {
+  it('treats a successful reviewed source query with zero rows as available', async () => {
+    const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
+    const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
+    mocks.query
+      .mockResolvedValueOnce({ rows: [serviceProbeAnchor([])] })
+      .mockResolvedValueOnce({ rows: [] })
+
+    const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+      .find((item) => item.scu_id === yogaCatalog.scu_id)
+
+    expect(availability).toMatchObject({
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L0/query_yoga_catalog'],
+      asset_receipts: [],
+      gaps: [],
+    })
+    expect(mocks.query.mock.calls[1]?.[0]).toContain('FROM brahma_yoga_catalog')
+    expect(mocks.query.mock.calls[1]?.[1]).toEqual([])
+  })
+
+  it('keeps a reviewed source-query binding dark when its authenticated query fails', async () => {
+    const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
+    const yogaCatalog = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.query_yoga_catalog')!
+    mocks.query
+      .mockResolvedValueOnce({ rows: [serviceProbeAnchor([])] })
+      .mockRejectedValueOnce(new Error('permission denied'))
+
+    const availability = (await loadChartCapabilityOverlay(sourceSnapshot, 'chart-1')).availability
+      .find((item) => item.scu_id === yogaCatalog.scu_id)
+
+    expect(availability).toMatchObject({ state: 'dark', available_binding_ids: [] })
+    expect(availability?.gaps).toContain('source-query:query-yoga-catalog:v1 could not execute its authenticated source query.')
+  })
+
   it('enables only the reviewed dasha and gestalt primary bindings from their exact receipts', async () => {
     const sourceSnapshot = generatedCapabilityKnowledge as CapabilityKnowledgeSnapshot
     const dashas = sourceSnapshot.scus.find((scu) => scu.scu_id === 'scu.catalog.get_dashas')!

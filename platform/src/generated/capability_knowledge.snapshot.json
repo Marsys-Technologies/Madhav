@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T22:59:00.000Z",
-  "content_hash": "sha256:ace22df6f2a906d160464d5b2dbbec8b831e98d01ac7031d30eae9de800a8ec4",
+  "content_hash": "sha256:123a7b504c0a1068af774f1de85ee1be1d5104eaf23e5debd70fb51736e05c57",
   "source_catalog_fingerprint": "sha256:6798cdef0889a6fa92513e781bec986a82efa626d31baccfa167cb3a8857d84f",
-  "semantic_review_fingerprint": "sha256:717546e495b940e2c04a49d69a70a24394f018ea3b7ba67a62d13d8d6a89d624",
+  "semantic_review_fingerprint": "sha256:c2e53dd550371ef5946f6119d3b70462c34af7a8ea7e25603357ee06ad59e55e",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -28933,17 +28933,18 @@
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
       ],
-      "availability_dispositions": [
+      "availability_contracts": [
         {
           "binding_id": "registry:marsys://tool/L0/query_yoga_catalog",
-          "status": "deliberately_dark",
-          "reason": "The handler serves paged SELECT * rows from brahma_yoga_catalog, including created_at, then returns request-specific total and more_available metadata. The current bg_yogas digest covers the catalog relation but omits created_at, and no reviewed route-level probe attests the complete served row and pagination response.",
-          "source_refs": [
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57",
-            "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:66-72",
-            "platform/supabase/migrations/176_l0_phase_alpha_new_content_tables.sql:7-22",
-            "platform/migrations/239_yoga_system.sql:35-39",
-            "platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673"
+          "requirements": [
+            {
+              "kind": "source_query",
+              "contract_id": "source-query:query-yoga-catalog:v1",
+              "capability_uri": "marsys://tool/L0/query_yoga_catalog",
+              "contract_sha256": "sha256:cfbadbf65a7cbc091dbd9cda06c1a9f33b5e7084ede1a400d462e2be9d41f752",
+              "scope": "global",
+              "source_ref": "platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:52-62 | platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:63-75"
+            }
           ]
         }
       ],

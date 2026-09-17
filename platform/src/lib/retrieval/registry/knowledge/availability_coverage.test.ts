@@ -338,29 +338,27 @@ describe('first-slice availability coverage', () => {
     })
   })
 
-  it('keeps query_yoga_catalog dark when its related digest omits a served catalog field', async () => {
+  it('uses the reviewed yoga-catalog source query instead of an incomplete adjacent digest', async () => {
     const scu = findScu('scu.catalog.query_yoga_catalog')
-    expect(scu.availability_contracts ?? []).toEqual([])
-    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+    expect(scu.availability_contracts).toEqual([expect.objectContaining({
       binding_id: 'registry:marsys://tool/L0/query_yoga_catalog',
-      status: 'deliberately_dark',
-      reason: expect.stringContaining('SELECT * rows from brahma_yoga_catalog, including created_at'),
-      source_refs: expect.arrayContaining([
-        'platform/src/lib/retrieval/registry/layers/L0_brahmagyan/query_yoga_catalog.ts:57',
-        'platform/supabase/migrations/630_nirmana_l0_wave1_correctness_contract.sql:669-673',
-      ]),
+      requirements: [expect.objectContaining({
+        kind: 'source_query',
+        contract_id: 'source-query:query-yoga-catalog:v1',
+        contract_sha256: expect.stringMatching(/^sha256:[a-f0-9]{64}$/),
+        scope: 'global',
+      })],
     })])
+    expect(scu.availability_dispositions ?? []).toEqual([])
 
-    // bg_yogas is the reviewed producer linked to this catalog, but its active
-    // digest omits created_at even though the handler's SELECT * serves it.
-    // A plausible fresh matching receipt cannot fill that route gap.
-    const overlay = await overlayFor([
-      globalProducerReceipt('bg_yogas', '6d5ecdfe2f6b7e094d48c9d4863e783018f4a3ffb2121a0b69006ad5cb01ae7c'),
-    ])
+    // The authenticated source query succeeding with zero rows proves source
+    // availability. It does not invent a non-empty handler result.
+    const overlay = await overlayFor([])
     expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
-      state: 'dark',
-      available_binding_ids: [],
-      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+      state: 'available',
+      available_binding_ids: ['registry:marsys://tool/L0/query_yoga_catalog'],
+      asset_receipts: [],
+      gaps: [],
     })
   })
 

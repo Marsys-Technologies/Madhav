@@ -141,6 +141,10 @@ export interface ServiceProbeAvailabilityRequirement {
 export interface SourceQueryAvailabilityRequirement {
   readonly kind: 'source_query'
   readonly contract_id: string
+  /** Exact registry capability whose handler query this contract reviews. */
+  readonly capability_uri: string
+  /** Fingerprint of the exact registry-owned query, scope binding, and empty semantics. */
+  readonly contract_sha256: string
   readonly scope: 'chart' | 'global'
   readonly source_ref: string
 }
