@@ -492,6 +492,20 @@ def _require_reachable_commit(commit: str, label: str) -> None:
         raise SystemExit(f"{label} commit {commit} must be an ancestor of HEAD")
 
 
+def _direct_parent(commit: str, label: str) -> str:
+    _require_reachable_commit(commit, label)
+    parents = subprocess.run(
+        ["git", "rev-list", "--parents", "-n", "1", commit],
+        cwd=REPO_ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip().split()[1:]
+    if len(parents) != 1 or not re.fullmatch(r"[a-f0-9]{40}", parents[0]):
+        raise SystemExit(f"{label} commit {commit} must have exactly one direct parent")
+    return parents[0]
+
+
 def _blob_at_commit(commit: str, path: str) -> bytes:
     _require_reachable_commit(commit, "artifact")
     try:
@@ -764,6 +778,12 @@ def validate_post_integration_source_acceptance_bindings() -> None:
         if binding["reviewed_source_commit"] != source_commit:
             raise SystemExit(f"post-integration source acceptance {source_commit} has the wrong reviewed tip")
         _require_reachable_commit(source_commit, "post-integration reviewed source")
+        common_base = binding["common_base_commit"]
+        _require_reachable_commit(common_base, "post-integration common base")
+        if _direct_parent(source_commit, "post-integration reviewed source") != common_base:
+            raise SystemExit(
+                f"post-integration source acceptance {source_commit} common base is not its direct parent"
+            )
         _, derived_digest = _source_surface_mapping(
             binding["reviewed_surface"], binding["integrated_equivalent_commit"]
         )

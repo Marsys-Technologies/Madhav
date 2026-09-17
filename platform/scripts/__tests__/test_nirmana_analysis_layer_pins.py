@@ -655,6 +655,21 @@ def test_post_integration_source_acceptance_rederives_route_repair() -> None:
     pins_module.validate_post_integration_source_acceptance_bindings()
 
 
+@pytest.mark.parametrize("mutation", ["missing", "invalid", "non_parent"])
+def test_post_integration_source_acceptance_rejects_bad_common_base(monkeypatch, mutation: str) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    binding = copy.deepcopy(pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source])
+    if mutation == "missing":
+        binding.pop("common_base_commit")
+    elif mutation == "invalid":
+        binding["common_base_commit"] = "0" * 40
+    else:
+        binding["common_base_commit"] = "a40215cae89af33aa7d7516629c79b33d0c0f3c7"
+    monkeypatch.setitem(pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS, source, binding)
+    with pytest.raises(SystemExit):
+        pins_module.validate_post_integration_source_acceptance_bindings()
+
+
 def test_dp019_source_surface_binding_rederives_exact_equivalence() -> None:
     binding = pins_module.SOURCE_ACCEPTANCE_BINDINGS[DP019_SOURCE]
     paths, digest = pins_module._source_surface_mapping(
