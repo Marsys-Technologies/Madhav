@@ -61,6 +61,23 @@ function receipt(requirement: ProducerOutputAvailabilityRequirement): OverlayQue
   }
 }
 
+function adjacentProducerReceipt(assetId: string, specSha256: string): OverlayQueryRow {
+  return {
+    active_build_id: BUILD_ID,
+    active_build_status: 'completed',
+    asset_id: assetId,
+    chart_id: CHART_ID,
+    build_id: BUILD_ID,
+    receipt_version: 'first-slice-adjacent-producer-fixture',
+    receipt_state: 'proven',
+    output_digest_spec_sha256: specSha256,
+    observed_at: '2026-09-17T00:00:00.000Z',
+    freshness_state: 'fresh',
+    unknown_reasons: [],
+    freshness_reasons: [],
+  }
+}
+
 function transitProbeAnchor(): OverlayQueryRow {
   return {
     active_build_id: BUILD_ID,
@@ -153,7 +170,14 @@ describe('first-slice availability coverage', () => {
       ]),
     })])
 
-    const overlay = await overlayFor([])
+    // These are exact reviewed output-spec hashes for the three producers the
+    // handler reads. They are deliberately insufficient to prove the composed
+    // route, which also reads runtime L1 context and derives DEFECT-001 live.
+    const overlay = await overlayFor([
+      adjacentProducerReceipt('bo_drishti', 'fd76f79e2f1b6a6659ef5d7bad4f5a422515fee85ab9245ac0e52fc58f9b81d2'),
+      adjacentProducerReceipt('bo_sangati', 'f3918c9144df32fbc392120b9ad05a678dc4e06f7beb53cb8e62fe3ca70963dc'),
+      adjacentProducerReceipt('bo_laksana', '39827b99bf58466909220fdc1e9d58e84031aae51cf2dc8e1ec0ad5d78258d47'),
+    ])
     expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
       state: 'dark',
       available_binding_ids: [],
