@@ -452,6 +452,9 @@ def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) 
         two_successors,
         second_inventory,
         protected_baseline_commit=protected_baseline,
+        delivery_topology=(
+            os.environ.get("NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY") == "1"
+        ),
     ) == []
 
     two_successors["history"]["L2"][1]["pin"]["convergence_commit"] = "0" * 40
@@ -459,6 +462,9 @@ def test_full_two_successor_chain_is_valid_and_rewrite_is_detected(monkeypatch) 
         two_successors,
         second_inventory,
         protected_baseline_commit=protected_baseline,
+        delivery_topology=(
+            os.environ.get("NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY") == "1"
+        ),
     )
     assert any("protected baseline" in failure for failure in failures)
 
@@ -652,7 +658,86 @@ def test_post_integration_source_acceptance_rederives_route_repair() -> None:
         "platform/tests/unit/data_plane_security_contract.test.ts",
     ]
     assert digest == "89fdc9c7ef43031faffcf7e9d633114bed4892e7b401703d7d9bb951bcb2dde1"
-    pins_module.validate_post_integration_source_acceptance_bindings()
+    pins_module.validate_post_integration_source_acceptance_bindings(
+        delivery_topology=(
+            os.environ.get("NIRMANA_ANALYSIS_PIN_DELIVERY_TOPOLOGY") == "1"
+        )
+    )
+
+
+def test_post_integration_source_requires_artifact_to_descend_from_reviewed_tip(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    monkeypatch.setattr(pins_module, "validate_artifact_binding", lambda *_: None)
+    real_is_ancestor = pins_module._commit_is_ancestor_of_commit
+    artifact_commit = pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source][
+        "record_artifact"
+    ]["commit"]
+
+    def unrelated_lineage(ancestor: str, descendant: str) -> bool:
+        if ancestor == source and descendant == artifact_commit:
+            return False
+        return real_is_ancestor(ancestor, descendant)
+
+    monkeypatch.setattr(
+        pins_module, "_commit_is_ancestor_of_commit", unrelated_lineage
+    )
+    with pytest.raises(SystemExit, match="does not descend"):
+        pins_module.validate_post_integration_source_acceptance_bindings()
+
+
+def test_post_integration_delivery_accepts_squashed_exact_artifact(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    artifact_commit = pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source][
+        "record_artifact"
+    ]["commit"]
+    real_is_ancestor = pins_module._commit_is_ancestor_of_head
+
+    monkeypatch.setattr(
+        pins_module,
+        "_commit_is_ancestor_of_head",
+        lambda commit: False if commit == artifact_commit else real_is_ancestor(commit),
+    )
+
+    pins_module.validate_post_integration_source_acceptance_bindings(
+        delivery_topology=True
+    )
+    with pytest.raises(SystemExit, match="must be an ancestor of HEAD"):
+        pins_module.validate_post_integration_source_acceptance_bindings()
+
+
+def test_post_integration_delivery_rejects_unrelated_packaged_artifact(
+    monkeypatch,
+) -> None:
+    source = "ea9b27bfeba607c5332c51e10b037e100e97b717"
+    binding = copy.deepcopy(
+        pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS[source]
+    )
+    unrelated = b"status: SECURITY_CLEAR_SOURCE_ACCEPTED\nunrelated source record\n"
+    binding["record_artifact"]["sha256"] = pins_module.hashlib.sha256(
+        unrelated
+    ).hexdigest()
+    artifact_path = binding["record_artifact"]["path"]
+    real_blob_at_revision = pins_module._blob_at_revision
+
+    def unrelated_head_artifact(revision: str, path: str, label: str) -> bytes:
+        if revision == "HEAD" and path == artifact_path:
+            return unrelated
+        return real_blob_at_revision(revision, path, label)
+
+    monkeypatch.setitem(
+        pins_module.POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS, source, binding
+    )
+    monkeypatch.setattr(
+        pins_module, "_blob_at_revision", unrelated_head_artifact
+    )
+    with pytest.raises(SystemExit, match="reviewed_branch_tip"):
+        pins_module.validate_post_integration_source_acceptance_bindings(
+            delivery_topology=True
+        )
 
 
 @pytest.mark.parametrize("mutation", ["missing", "invalid", "non_parent"])

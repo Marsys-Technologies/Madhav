@@ -486,6 +486,18 @@ def _commit_is_ancestor_of_head(commit: str) -> bool:
     ).returncode == 0
 
 
+def _commit_is_ancestor_of_commit(ancestor: str, descendant: str) -> bool:
+    if not re.fullmatch(r"[a-f0-9]{40}", ancestor) or not re.fullmatch(
+        r"[a-f0-9]{40}", descendant
+    ):
+        return False
+    return subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=REPO_ROOT,
+        capture_output=True,
+    ).returncode == 0
+
+
 def _require_reachable_commit(commit: str, label: str) -> None:
     _validate_sha(commit, label)
     if not _commit_is_ancestor_of_head(commit):
@@ -508,15 +520,19 @@ def _direct_parent(commit: str, label: str) -> str:
 
 def _blob_at_commit(commit: str, path: str) -> bytes:
     _require_reachable_commit(commit, "artifact")
+    return _blob_at_revision(commit, path, "commit")
+
+
+def _blob_at_revision(revision: str, path: str, label: str) -> bytes:
     try:
         return subprocess.run(
-            ["git", "show", f"{commit}:{path}"],
+            ["git", "show", f"{revision}:{path}"],
             cwd=REPO_ROOT,
             check=True,
             capture_output=True,
         ).stdout
     except subprocess.CalledProcessError as exc:
-        raise SystemExit(f"commit {commit} does not carry {path}") from exc
+        raise SystemExit(f"{label} {revision} does not carry {path}") from exc
 
 
 def _blob_oid_at_commit(commit: str, path: str) -> str:
@@ -654,7 +670,9 @@ def build_definition_bindings(snapshot_commit: str) -> dict[str, Any]:
     return bindings
 
 
-def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
+def _artifact_metadata(
+    artifact: dict[str, Any], label: str
+) -> tuple[str, str, str, str]:
     try:
         commit = artifact["commit"]
         path = artifact["path"]
@@ -665,11 +683,47 @@ def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
     _validate_sha(commit, f"{label} commit")
     if not path or not decision_binding or not re.fullmatch(r"[a-f0-9]{64}", digest):
         raise SystemExit(f"{label} metadata is invalid")
-    content = _blob_at_commit(commit, path)
+    return commit, path, digest, decision_binding
+
+
+def _validate_artifact_content(
+    artifact: dict[str, Any], label: str, content: bytes
+) -> None:
+    commit, path, digest, decision_binding = _artifact_metadata(artifact, label)
     if hashlib.sha256(content).hexdigest() != digest:
         raise SystemExit(f"{label} content digest does not match {commit}:{path}")
     if decision_binding.encode("utf-8") not in content:
         raise SystemExit(f"{label} does not contain its expected decision binding")
+
+
+def validate_artifact_binding(artifact: dict[str, Any], label: str) -> None:
+    commit, path, _, _ = _artifact_metadata(artifact, label)
+    content = _blob_at_commit(commit, path)
+    _validate_artifact_content(artifact, label, content)
+
+
+def validate_delivered_artifact_binding(
+    artifact: dict[str, Any],
+    label: str,
+    *,
+    required_content_bindings: tuple[str, ...] = (),
+) -> None:
+    """Validate exact evidence packaged by a squash-style delivery commit.
+
+    GitHub's merge queue carries the source PR tree in a synthetic single-parent
+    commit, so source-only commits are not ancestors of delivery HEAD. The
+    source-topology check must still dereference those commits. Delivery instead
+    re-hashes the exact path packaged at HEAD and binds it to the reviewed source
+    identities recorded inside the artifact.
+    """
+    _, path, _, _ = _artifact_metadata(artifact, label)
+    content = _blob_at_revision("HEAD", path, "delivery")
+    _validate_artifact_content(artifact, label, content)
+    for binding in required_content_bindings:
+        if binding.encode("utf-8") not in content:
+            raise SystemExit(
+                f"{label} delivered content does not contain {binding!r}"
+            )
 
 
 def validate_authority_binding(decision: str, commit: str) -> None:
@@ -766,7 +820,9 @@ def validate_source_acceptance(
         )
 
 
-def validate_post_integration_source_acceptance_bindings() -> None:
+def validate_post_integration_source_acceptance_bindings(
+    *, delivery_topology: bool = False
+) -> None:
     """Re-derive privileged no-writer-delta acceptance records offline."""
     for source_commit, binding in POST_INTEGRATION_SOURCE_ACCEPTANCE_BINDINGS.items():
         expected_keys = {
@@ -791,9 +847,26 @@ def validate_post_integration_source_acceptance_bindings() -> None:
             raise SystemExit(
                 f"post-integration source acceptance {source_commit} has the wrong source-surface digest"
             )
-        validate_artifact_binding(
-            binding["record_artifact"], f"post-integration source acceptance {source_commit}"
-        )
+        artifact = binding["record_artifact"]
+        artifact_label = f"post-integration source acceptance {source_commit}"
+        if delivery_topology:
+            validate_delivered_artifact_binding(
+                artifact,
+                artifact_label,
+                required_content_bindings=(
+                    f"reviewed_branch_tip: {source_commit}",
+                    "integrated_equivalent_tip: "
+                    f"{binding['integrated_equivalent_commit']}",
+                ),
+            )
+        else:
+            validate_artifact_binding(artifact, artifact_label)
+            if not _commit_is_ancestor_of_commit(
+                source_commit, artifact["commit"]
+            ):
+                raise SystemExit(
+                    f"{artifact_label} record does not descend from its reviewed source"
+                )
 
 
 def validate_review_artifacts(
@@ -1026,7 +1099,9 @@ def check(
     """
     failures: list[str] = []
     try:
-        validate_post_integration_source_acceptance_bindings()
+        validate_post_integration_source_acceptance_bindings(
+            delivery_topology=delivery_topology
+        )
     except SystemExit as exc:
         failures.append(str(exc))
     baseline_pins: dict[str, Any] | None = None
