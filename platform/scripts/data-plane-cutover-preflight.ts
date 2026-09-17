@@ -185,7 +185,12 @@ export function assertValidationConnectorBinding(
     'path','port','server','servername','service','servicename','socket','socketpath',
     'unixsocket','unixsocketpath',
   ])
-  const benignSocketCarrierMetadata = new Set(['sslmode', 'applicationname'])
+  // A verifier URL is a credential carrier, not a routing instruction.  A few
+  // standard libpq spellings add a localhost authority or a port while retaining
+  // the Unix-socket `host` parameter.  Those values are discarded below when we
+  // construct the authenticated local-proxy PoolConfig; accepting them therefore
+  // cannot redirect the connection.  Other routing aliases remain forbidden.
+  const benignSocketCarrierMetadata = new Set(['sslmode', 'applicationname', 'port'])
   const parts = binding.connectionName.split(':')
   const expectedSocket = `/cloudsql/${binding.connectionName}`
   // The verifier secret predates the isolated restore and therefore names the
@@ -208,7 +213,9 @@ export function assertValidationConnectorBinding(
     const queryParts = query?.split('&') ?? []
     let socketHost: string | undefined
     try {
-      if (!/^postgres(?:ql)?:\/\/[^/?#]+@\/[^?#]+$/i.test(prefix)) {
+      const emptyAuthorityCarrier = /^postgres(?:ql)?:\/\/[^/?#]+@\/[^?#]+$/i.test(prefix)
+      const localAuthorityCarrier = /^postgres(?:ql)?:\/\/[^/?#]+@(?:localhost|127\.0\.0\.1)(?::\d+)?\/[^?#]+$/i.test(prefix)
+      if (!emptyAuthorityCarrier && !localAuthorityCarrier) {
         throw new Error('invalid socket carrier')
       }
       const hostValues: string[] = []
@@ -232,7 +239,7 @@ export function assertValidationConnectorBinding(
       throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
     }
     if (![expectedSocket, sourceSocket].includes(socketHost ?? '')
-        || parsed.host !== socketHost || parsed.port) {
+        || parsed.host !== socketHost) {
       throw new Error('Validation database URL is not bound to the authenticated isolated Cloud SQL proxy identity.')
     }
     route = 'socket-carrier'

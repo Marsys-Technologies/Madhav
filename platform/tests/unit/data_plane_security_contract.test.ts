@@ -621,6 +621,20 @@ describe('DP-SD-018 deployment ordering', () => {
       instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
       proxyPort: '5433', project: 'madhav-astrology',
     })).toMatchObject({ host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored' })
+    // Existing verifier secrets may carry the Unix-socket route through a
+    // conventional localhost authority and port.  The returned configuration
+    // must still use only the authenticated local proxy.
+    const sourceSocketCarrierWithLocalAuthority = 'postgresql://validator:secret@localhost:5432/restored?host=/cloudsql/madhav-astrology:asia-south1:amjis-postgres&sslmode=disable'
+    expect(assertValidationConnectorBinding(sourceSocketCarrierWithLocalAuthority, {
+      instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+      proxyPort: '5433', project: 'madhav-astrology',
+    })).toMatchObject({ host: '127.0.0.1', port: 5433, user: 'validator', database: 'restored' })
+    expect(() => assertValidationConnectorBinding(
+      sourceSocketCarrierWithLocalAuthority.replace('localhost:5432', 'rogue.internal:5432'), {
+        instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
+        proxyPort: '5433', project: 'madhav-astrology',
+      },
+    )).toThrow(/authenticated isolated Cloud SQL proxy identity/)
     expect(() => assertValidationConnectorBinding(`${sourceSocketCarrier}&host=/cloudsql/madhav-astrology:asia-south1:rogue-instance`, {
       instance, validationInstance: receipt.validationInstance, connectionName: instance.connectionName,
       proxyPort: '5433', project: 'madhav-astrology',
