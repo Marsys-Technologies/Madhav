@@ -176,11 +176,14 @@ describe('Purna Anvesana Wave 7 Beyond-Acarya source acceptance', () => {
   })
 
   it('keeps the immutable v2 evidence artifact pinned to its historical snapshot and report', () => {
-    const artifact = JSON.parse(readFileSync(new URL(
+    const artifactBytes = readFileSync(new URL(
       '../../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/BEYOND_ACARYA_ACCEPTANCE_v2.json',
-    import.meta.url,
-    ), 'utf8')) as Record<string, unknown>
+      import.meta.url,
+    ))
+    const artifact = JSON.parse(artifactBytes.toString('utf8')) as Record<string, unknown>
 
+    expect(`sha256:${createHash('sha256').update(artifactBytes).digest('hex')}`)
+      .toBe('sha256:33595346209c3f31b7123f5dbb002712e3ca5de52b06cfc1b7170a4ac70543e0')
     expect(artifact).toMatchObject({
       acceptance_version: 'beyond-acarya-source-acceptance-v2',
       capability_content_hash: historicalV2.capability_content_hash,
