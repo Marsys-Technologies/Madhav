@@ -313,10 +313,13 @@ async function grantValidationVerifierBootstrapReadAccess(
   try {
     // This is intentionally limited to the restored validation copy. The same
     // terminal ACLs are installed atomically on production by the subsequent
-    // locked ownership preflight; the grant merely lets the verifier attest the
-    // unmarked restored state before that transition.
-    await pool.query('GRANT USAGE ON SCHEMA public TO data_plane_verifier')
-    await pool.query('GRANT SELECT ON TABLE public._migrations_applied TO data_plane_verifier')
+    // locked ownership preflight; the grants merely let the two existing
+    // read-only reader identities attest the unmarked restored state before
+    // that transition.  The validation secret predates the dedicated verifier
+    // login and is currently carried by amjis_app, so omitting it makes the
+    // restored-copy inspection fail before the production transaction begins.
+    await pool.query('GRANT USAGE ON SCHEMA public TO data_plane_verifier, amjis_app')
+    await pool.query('GRANT SELECT ON TABLE public._migrations_applied TO data_plane_verifier, amjis_app')
   } finally {
     await pool.end()
   }
