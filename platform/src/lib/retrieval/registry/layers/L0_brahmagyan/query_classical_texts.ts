@@ -39,6 +39,9 @@ import { embedText } from '@/lib/embeddings/embedText'
 
 const DEFAULT_INTERPRETATION_TOP_K = 5
 const MAX_TOP_K = 50
+const DEFAULT_LIST_LIMIT = 20
+const MAX_LIST_LIMIT = 200
+const MAX_OFFSET = 1_000_000
 
 // Hybrid weighting: vector similarity carries more signal for free-text/
 // interpretation queries than raw trigram overlap on long verse translations
@@ -79,6 +82,19 @@ interface HybridRow {
 // promised graceful degradation to trigram-only ranking. EMBED_TIMEOUT_MS bounds the
 // wait so a slow embedding call degrades exactly the way the comment always claimed.
 const EMBED_TIMEOUT_MS = 4_000
+
+function normalizeLimit(value: unknown, fallback: number, maximum: number): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return fallback
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? Math.min(normalized, maximum) : fallback
+}
+
+function normalizeOffset(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.min(Math.max(Math.floor(parsed), 0), MAX_OFFSET)
+}
 
 /** Best-effort query embedding — never throws and never hangs past
  * EMBED_TIMEOUT_MS; null on any failure OR timeout so the caller degrades to
@@ -136,6 +152,7 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
     bulk_context: { pre_fetch_priority: 55, always_include: false },
   },
   async handler(args, _ctx) {
+    void _ctx
     try {
       const freeText =
         (args.query_text as string | undefined) ??
@@ -145,10 +162,8 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
 
       // ── Hybrid vector + keyword path (free-text / interpretation intent) ──
       if (freeText && freeText.trim().length > 0) {
-        const topK = Math.min(
-          Math.max(Number(args.top_k ?? args.limit ?? DEFAULT_INTERPRETATION_TOP_K), 1),
-          MAX_TOP_K,
-        )
+        const topK = normalizeLimit(args.top_k ?? args.limit, DEFAULT_INTERPRETATION_TOP_K, MAX_TOP_K)
+        const offset = normalizeOffset(args.offset)
         const textSource = args.text_source as string | undefined
 
         const embedding = await tryEmbedQuery(freeText)
@@ -181,10 +196,15 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
           SELECT * FROM (${innerSql}) sub
           ORDER BY (
             ${VECTOR_WEIGHT} * COALESCE(vector_score, 0) + ${KEYWORD_WEIGHT} * COALESCE(keyword_score, 0)
-          ) DESC
-          LIMIT $${params.length + 1}
+          ) DESC,
+          text_id ASC,
+          chapter ASC NULLS LAST,
+          verse_ref ASC NULLS LAST,
+          chunk_id ASC,
+          id ASC
+          LIMIT $${params.length + 1} OFFSET $${params.length + 2}
         `
-        params.push(topK)
+        params.push(topK + 1, offset)
 
         let rows: HybridRow[]
         try {
@@ -197,14 +217,16 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
         } catch {
           // pg_trgm similarity() unavailable — degrade to plain ILIKE substring
           // rather than erroring the whole call.
-          const fallback = await query<Record<string, unknown>>(
-            `SELECT id, text_id, chunk_id, verse_ref, chapter, content_en, content_sa,
+          const fallbackParams: unknown[] = [`%${freeText}%`]
+          let fallbackSql = `SELECT id, text_id, chunk_id, verse_ref, chapter, content_en, content_sa,
                     content_summary, source_citation, tradition_school, topics
              FROM classical_text_chunks
-             WHERE content_en ILIKE $1 ${textSource ? 'AND text_id = $2' : ''}
-             LIMIT $${textSource ? 3 : 2}`,
-            textSource ? [`%${freeText}%`, textSource, topK] : [`%${freeText}%`, topK],
-          )
+             WHERE content_en ILIKE $1`
+          if (textSource) { fallbackParams.push(textSource); fallbackSql += ` AND text_id = $2` }
+          fallbackSql += ` ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_ref ASC NULLS LAST, chunk_id ASC, id ASC
+             LIMIT $${fallbackParams.length + 1} OFFSET $${fallbackParams.length + 2}`
+          fallbackParams.push(topK + 1, offset)
+          const fallback = await query<Record<string, unknown>>(fallbackSql, fallbackParams)
           rows = fallback.rows.map(r => ({
             ...(r as unknown as Omit<HybridRow, 'vector_score' | 'keyword_score' | 'combined_score'>),
             vector_score: null,
@@ -216,7 +238,8 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
         // Verse text IN HAND: every citation carries the actual verse content,
         // not merely a citation_ref id (P7/E-4 fix per the design doc's
         // "citation arrives WITH verse text" gate).
-        const citations = rows.map(r => ({
+        const moreAvailable = rows.length > topK
+        const citations = rows.slice(0, topK).map(r => ({
           citation_ref: `${r.text_id}:${r.verse_ref ?? r.chunk_id}`,
           chunk_id: r.chunk_id,
           text_id: r.text_id,
@@ -239,15 +262,20 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
             query_used: freeText,
             citations,
             rows: citations, // back-compat alias — earlier callers read `rows`
+            // Backwards-compatible page count, explicitly not a corpus-wide total.
             total: citations.length,
+            total_scope: 'page',
+            more_available: moreAvailable,
+            next_offset: moreAvailable ? offset + citations.length : null,
+            pagination: { limit: topK, offset, more_available: moreAvailable },
           },
           is_error: false,
         }
       }
 
       // ── Legacy exact-phrase / list path (unchanged behaviour) ────────────
-      const limit  = Math.min((args.limit as number) ?? 20, 200)
-      const offset = (args.offset as number) ?? 0
+      const limit = normalizeLimit(args.limit, DEFAULT_LIST_LIMIT, MAX_LIST_LIMIT)
+      const offset = normalizeOffset(args.offset)
       const params: unknown[] = [limit, offset]
       // R6 3b-budgets (R-26): `SELECT *` was leaking the 768-dim `embedding` vector column
       // (~8KB/row of served bytes for zero consumer value — no caller reads a raw embedding
@@ -262,9 +290,12 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
       if (args.keyword)     { sql += ` AND content_en ILIKE $${params.length + 1}`; params.push(`%${args.keyword as string}%`) }
       if (args.text_source) { sql += ` AND text_id = $${params.length + 1}`; params.push(args.text_source as string) }
       if (args.topic)       { sql += ` AND $${params.length + 1} = ANY(topics)`; params.push(args.topic as string) }
-      sql += ` ORDER BY text_id, chapter, verse_start LIMIT $1 OFFSET $2`
+      sql += ` ORDER BY text_id ASC, chapter ASC NULLS LAST, verse_start ASC NULLS LAST, chunk_id ASC, id ASC LIMIT $1 OFFSET $2`
+      params[0] = limit + 1
       const result = await query<Record<string, unknown>>(sql, params)
-      const rows = result.rows ?? []
+      const fetchedRows = result.rows ?? []
+      const rows = fetchedRows.slice(0, limit)
+      const moreAvailable = fetchedRows.length > limit
 
       // E-3 empty-with-reason (R5 W0a punch-list, P8): a bare {rows: [], total: 0}
       // is indistinguishable from "the corpus has nothing on this term" (false) vs.
@@ -297,6 +328,10 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
           content: {
             rows: [],
             total: 0,
+            total_scope: 'page',
+            more_available: false,
+            next_offset: null,
+            pagination: { limit, offset, more_available: false },
             empty_reason: `No classical_text_chunks rows matched keyword "${keyword}" — this exact ` +
               `spelling/phrase is not indexed in the corpus (this does NOT mean the corpus is silent ` +
               `on the underlying concept — try a topic filter or an alternate spelling).`,
@@ -306,7 +341,17 @@ export const queryClassicalTextsCapability: CapabilityDescriptor = {
         }
       }
 
-      return { content: { rows, total: rows.length }, is_error: false }
+      return {
+        content: {
+          rows,
+          total: rows.length,
+          total_scope: 'page',
+          more_available: moreAvailable,
+          next_offset: moreAvailable ? offset + rows.length : null,
+          pagination: { limit, offset, more_available: moreAvailable },
+        },
+        is_error: false,
+      }
     } catch (err) {
       return { content: String(err), is_error: true }
     }

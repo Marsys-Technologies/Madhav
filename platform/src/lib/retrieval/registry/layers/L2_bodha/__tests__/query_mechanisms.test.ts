@@ -106,7 +106,10 @@ describe('query_mechanisms — handler contract', () => {
 
   it('builds facet rollups over the full match set (not just the page)', async () => {
     vi.mocked(mockQuery)
-      .mockResolvedValueOnce({ rows: [{ mechanism_class: 'convergent_dispositor_chain', mechanism_name: 'x' }] } as never) // page
+      .mockResolvedValueOnce({ rows: [
+        { mechanism_id: 'm1', mechanism_class: 'convergent_dispositor_chain', mechanism_name: 'x' },
+        { mechanism_id: 'm2', mechanism_class: 'mutual_aspect_triangle', mechanism_name: 'y' },
+      ] } as never) // L+1 page probe
       .mockResolvedValueOnce({ rows: [
         { mechanism_class: 'convergent_dispositor_chain', valence: 'mixed', is_chain_circuit: true, n: '1' },
         { mechanism_class: 'mutual_aspect_triangle', valence: 'mixed', is_chain_circuit: false, n: '60' },
@@ -120,6 +123,42 @@ describe('query_mechanisms — handler contract', () => {
     expect(facets['by_mechanism_class']['mutual_aspect_triangle']).toBe(60)
     expect(facets['by_mechanism_class']['convergent_dispositor_chain']).toBe(1)
     expect(content['more_available']).toBe(true)
+    expect(content['next_offset']).toBe(1)
+  })
+
+  it.each([
+    { label: 'first', offset: 0, rows: ['m1', 'm2'], expected: ['m1'], more: true, next: 1 },
+    { label: 'middle', offset: 1, rows: ['m2', 'm3'], expected: ['m2'], more: true, next: 2 },
+    { label: 'final', offset: 2, rows: ['m3'], expected: ['m3'], more: false, next: null },
+    { label: 'empty', offset: 3, rows: [], expected: [], more: false, next: null },
+  ])('uses the L+1 continuation proof for the $label page', async ({ offset, rows, expected, more, next }) => {
+    vi.mocked(mockQuery)
+      .mockResolvedValueOnce({ rows: rows.map((mechanism_id) => ({ mechanism_id })) } as never)
+      .mockResolvedValueOnce({ rows: [] } as never)
+      .mockResolvedValueOnce({ rows: [{ total: '3' }] } as never)
+    const result = await queryMechanismsCapability.handler({ chart_id: CHART_A, limit: 1, offset }, undefined)
+    const content = result.content as Record<string, unknown>
+    expect((content['rows'] as Array<{ mechanism_id: string }>).map((row) => row.mechanism_id)).toEqual(expected)
+    expect(content['more_available']).toBe(more)
+    expect(content['next_offset']).toBe(next)
+  })
+
+  it('normalizes fractional, invalid, and nonfinite pagination before SQL', async () => {
+    await queryMechanismsCapability.handler({ chart_id: CHART_A, limit: 0.5, offset: 1.9 }, undefined)
+    let pageParams = vi.mocked(mockQuery).mock.calls[0]?.[1] as unknown[]
+    expect(pageParams.slice(-2)).toEqual([51, 1])
+
+    vi.mocked(mockQuery).mockReset()
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+    await queryMechanismsCapability.handler({ chart_id: CHART_A, limit: Number.POSITIVE_INFINITY, offset: Number.POSITIVE_INFINITY }, undefined)
+    pageParams = vi.mocked(mockQuery).mock.calls[0]?.[1] as unknown[]
+    expect(pageParams.slice(-2)).toEqual([51, 0])
+
+    vi.mocked(mockQuery).mockReset()
+    vi.mocked(mockQuery).mockResolvedValue({ rows: [] } as never)
+    await queryMechanismsCapability.handler({ chart_id: CHART_A, limit: 'invalid', offset: 'invalid' }, undefined)
+    pageParams = vi.mocked(mockQuery).mock.calls[0]?.[1] as unknown[]
+    expect(pageParams.slice(-2)).toEqual([51, 0])
   })
 
   it('native chart UUID never appears in any query param', async () => {

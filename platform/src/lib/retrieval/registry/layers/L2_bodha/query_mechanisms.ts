@@ -47,6 +47,20 @@ import { getOperativeVargaConstants, type OperativeVargaEntry } from '../reading
 import { MECHANISM_SCUS } from '../../knowledge/editorial'
 
 const MAX_LIMIT = 50
+const MAX_OFFSET = 1_000_000
+
+function normalizeLimit(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return MAX_LIMIT
+  const normalized = Math.floor(parsed)
+  return normalized >= 1 ? Math.min(normalized, MAX_LIMIT) : MAX_LIMIT
+}
+
+function normalizeOffset(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed)) return 0
+  return Math.min(Math.max(Math.floor(parsed), 0), MAX_OFFSET)
+}
 
 /**
  * The CR-24 chain/circuit mechanism family — multi-node named structures (a convergent
@@ -216,8 +230,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
     const mechanism_class = args['mechanism_class'] ? String(args['mechanism_class']) : null
     const valence = args['valence'] ? String(args['valence']) : null
     const chain_circuit_only = args['chain_circuit_only'] === true || args['chain_circuit_only'] === 'true'
-    const limit = Math.min(Math.max(Number(args['limit'] ?? MAX_LIMIT), 1), MAX_LIMIT)
-    const offset = Math.max(Number(args['offset'] ?? 0), 0)
+    const limit = normalizeLimit(args['limit'])
+    const offset = normalizeOffset(args['offset'])
 
     const filters: string[] = ['chart_id = $1']
     const params: unknown[] = [chart_id]
@@ -255,7 +269,8 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       ORDER BY (mechanism_class = ANY(${classPriorityParam})) DESC,
                edge_strength_avg DESC NULLS LAST,
                COALESCE(array_length(member_node_ids_array, 1), 0) DESC,
-               mechanism_name ASC
+               mechanism_name ASC,
+               mechanism_id ASC
       LIMIT $${p} OFFSET $${p + 1}`
 
     // Facet rollups computed over the FULL matching set (not the page) — §N.6 density signal.
@@ -269,7 +284,7 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
 
     try {
       const [rowsRes, facetRes, countRes] = await Promise.all([
-        query(rowsSql, [...params, limit, offset]),
+        query(rowsSql, [...params, limit + 1, offset]),
         query<{ mechanism_class: string; valence: string; is_chain_circuit: boolean; n: string }>(facetSql, params),
         query<{ total: string }>(`SELECT COUNT(*)::text AS total FROM bodha_mechanisms WHERE ${where}`, filterParams),
       ])
@@ -290,6 +305,11 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       const varga_scope = buildVargaScopeDisclosure(wealthEntry)
 
       const total_matching = Number(countRes.rows[0]?.total ?? 0)
+      const fetchedRows = rowsRes.rows
+      const rows = fetchedRows.slice(0, limit)
+      // The L+1 probe is the page-local continuation proof; total_matching and
+      // facets remain full-filter aggregates for density reporting.
+      const more_available = fetchedRows.length > limit
 
       const by_mechanism_class: Record<string, number> = {}
       const by_valence: Record<string, number> = {}
@@ -310,10 +330,11 @@ export const queryMechanismsCapability: CapabilityDescriptor = {
       return {
         content: {
           chart_id,
-          rows: rowsRes.rows,
-          count: rowsRes.rows.length,
+          rows,
+          count: rows.length,
           total_matching,
-          more_available: offset + rowsRes.rows.length < total_matching,
+          more_available,
+          next_offset: more_available ? offset + rows.length : null,
           chain_circuit_count,
           facets: {
             by_mechanism_class,
