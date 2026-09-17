@@ -157,6 +157,15 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
     ],
   },
+  get_strength: {
+    reason: 'The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202',
+      'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+    ],
+  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {

@@ -2,9 +2,9 @@
   "schema_version": "2.3.0",
   "compatibility_version": "planner-scu-v2",
   "generated_at": "2026-09-17T00:00:00.000Z",
-  "content_hash": "sha256:0772d4b7e03716a44167f808bc13946e80e0c974ece66b86d2155dff197ff41b",
+  "content_hash": "sha256:8e4c167ee5d8f72d45331e5ef932c022adf93bc14a8a7247c1e39dff306fc5f9",
   "source_catalog_fingerprint": "sha256:396542385671c5a03d8f81107cae12960aa5ffba678477609b614b2f9e6f84ee",
-  "semantic_review_fingerprint": "sha256:e1f811fe56ea672d2222fe0f7127b504f943f76fd2219e66ecb4f782d61112ca",
+  "semantic_review_fingerprint": "sha256:6739fb216ea2200a89d971f3ae327ab52790b00e599ffeeeb60773637de8bc76",
   "producer_contract_fingerprint": "sha256:41a7efdd86938bea421b3fa932e9e32f669aa619064ab976e42333c89ba8b40b",
   "scus": [
     {
@@ -8648,6 +8648,19 @@
       ],
       "known_gaps": [
         "Pagination or bounded retrieval lacks a complete, source-reviewed exhaustion contract; the planner must retain a material frontier."
+      ],
+      "availability_dispositions": [
+        {
+          "binding_id": "registry:marsys://tool/L1/get_strength",
+          "status": "deliberately_dark",
+          "reason": "The handler defaults to all 21 selectable strength fact categories and, for frame-aware results, also reads graha_position facts. ga_strength attests only canonical-chart graha_shadbala_total rows, so even a fresh exact receipt covers one category rather than the full handler data and cannot promote this route.",
+          "source_refs": [
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:35-40",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145",
+            "platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:176-202",
+            "platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18"
+          ]
+        }
       ],
       "editorial": true,
       "bindings": [

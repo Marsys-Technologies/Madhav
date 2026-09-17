@@ -496,6 +496,32 @@ describe('first-slice availability coverage', () => {
     })
   })
 
+  it('keeps get_strength dark when a fresh ga_strength receipt covers only one selectable category', async () => {
+    const scu = findScu('scu.catalog.get_strength')
+    expect(scu.availability_contracts ?? []).toEqual([])
+    expect(scu.availability_dispositions).toEqual([expect.objectContaining({
+      binding_id: 'registry:marsys://tool/L1/get_strength',
+      status: 'deliberately_dark',
+      reason: expect.stringContaining('all 21 selectable strength fact categories'),
+      source_refs: expect.arrayContaining([
+        'platform/src/lib/retrieval/registry/layers/L1_ganita/get_strength.ts:128-145',
+        'platform/migrations/891_nirmana_l1_ga_strength_output_digest_spec.sql:3-18',
+      ]),
+    })])
+
+    // This receipt is fresh and pins the exact reviewed ga_strength SHA, but
+    // the digest covers only graha_shadbala_total, not the route's selectable
+    // 21-category surface or its frame-context position lookup.
+    const overlay = await overlayFor([
+      adjacentProducerReceipt('ga_strength', '7251b1192714e6e1b09720fff165f78f6089bc74dca862dfaab0f7537ee677c3'),
+    ])
+    expect(overlay.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      state: 'dark',
+      available_binding_ids: [],
+      gaps: [expect.stringContaining('Binding is deliberately dark:')],
+    })
+  })
+
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {
     const requirements = FIRST_SLICE.concrete.flatMap(producerRequirements)
     // The real SQL aggregates probe evidence onto every result row; put the
