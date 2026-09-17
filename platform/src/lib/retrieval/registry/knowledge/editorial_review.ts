@@ -143,6 +143,20 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
       'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:37',
     ],
   },
+  get_ayurdaya: {
+    reason: 'The handler is chart-scoped, but the reviewed ga_ayurdaya digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_ayurdaya.ts:71-93',
+      'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
+    ],
+  },
+  get_sensitive_degrees: {
+    reason: 'The handler is chart-scoped, but the reviewed ga_sensitive_degree digest pins chart_facts to one canonical chart_id. The receipt loader can otherwise attach a fresh matching SHA receipt to an arbitrary selected chart/build, so that digest cannot attest this handler for every chart until the receipt architecture binds the digest scope to the selected chart.',
+    source_refs: [
+      'platform/src/lib/retrieval/registry/layers/L1_ganita/get_sensitive_degrees.ts:97-119',
+      'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
+    ],
+  },
 }
 
 const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
@@ -176,38 +190,6 @@ const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabil
       spec_sha256: 'b0e0e96b0c681dcc0929074eee3733875c0c4181270913cad98fbbcace0a8593',
       scope: 'global',
       source_ref: 'platform/supabase/migrations/601_nirmana_l0_wave1_wave2_output_digest_specs.sql:39',
-    }],
-  },
-  get_ayurdaya: {
-    producer_output_claims: [{
-      asset_id: 'ga_ayurdaya',
-      component: 'chart_facts',
-      output_digest_spec_sha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
-      disposition: 'reviewed_output',
-      evidence: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
-    }],
-    requirements: [{
-      kind: 'producer_output',
-      asset_id: 'ga_ayurdaya',
-      spec_sha256: '0060fe5fd1d53cacfc00a8789321e247997e65ea8f836f6ff6b9e567761daf7a',
-      scope: 'chart_build',
-      source_ref: 'platform/migrations/892_nirmana_l1_ga_ayurdaya_output_digest_spec.sql:9-14',
-    }],
-  },
-  get_sensitive_degrees: {
-    producer_output_claims: [{
-      asset_id: 'ga_sensitive_degree',
-      component: 'chart_facts',
-      output_digest_spec_sha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
-      disposition: 'reviewed_output',
-      evidence: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
-    }],
-    requirements: [{
-      kind: 'producer_output',
-      asset_id: 'ga_sensitive_degree',
-      spec_sha256: 'd68139f3e8aac442641d1702a8369810b9741d1a8907f8cc57d8d0b603deef6b',
-      scope: 'chart_build',
-      source_ref: 'platform/migrations/893_nirmana_l1_ga_sensitive_degree_output_digest_spec.sql:10-15',
     }],
   },
 }
