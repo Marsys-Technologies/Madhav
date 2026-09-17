@@ -263,10 +263,18 @@ describe('raw MCP inquiry route', () => {
     }
     const finalized = await POST(request({ action: 'finalize', lifecycle_token: body.lifecycle_token }))
     expect(finalized.status).toBe(200)
-    // This shared fixture intentionally retains its existing bounded-route
-    // incompleteness; the assertion is the authorized lifecycle transition,
-    // not an unsupported completion claim.
-    expect(await finalized.json()).toMatchObject({ closure: { status: 'INCOMPLETE' } })
+    // The fixture deliberately keeps required paginated evidence open. A
+    // truthful lifecycle must expose the cap as BLOCKED, never relabel it as
+    // resumable incompleteness or completion.
+    const finalizedBody = await finalized.json()
+    expect(finalizedBody).toMatchObject({ closure: { status: 'BLOCKED' } })
+    expect(finalizedBody.closure.status_reasons).toEqual(expect.arrayContaining([
+      expect.stringContaining('material frontier items open'),
+      expect.stringContaining('iteration cap reached before material frontier closure'),
+    ]))
+    expect(finalizedBody.closure.residual_frontier).toEqual(expect.arrayContaining([
+      expect.objectContaining({ materiality: 'required', disposition: 'open' }),
+    ]))
     expect(mocks.retrieve).toHaveBeenCalled()
   })
 
@@ -347,14 +355,17 @@ describe('raw MCP inquiry route', () => {
     expect(mocks.create).not.toHaveBeenCalled()
   })
 
-  it('binds token verification to both user and API-key identity', async () => {
+  it.each([
+    ['a different API key', { 'x-mcp-key-id': 'key-2' }],
+    ['a different principal', { 'x-mcp-user': 'user-2' }],
+  ])('binds token verification to both user and API-key identity: rejects %s', async (_label, headers) => {
     mocks.verify.mockImplementation((_token, _key, subject) => {
       if (subject !== 'user-1:key-1') throw new Error('INQUIRY_TOKEN_WRONG_SUBJECT')
       return {}
     })
     const response = await POST(request(
       { action: 'finalize', lifecycle_token: 'current-token' },
-      { 'x-mcp-key-id': 'key-2' },
+      headers,
     ))
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ ok: false, error: 'INQUIRY_TOKEN_WRONG_SUBJECT' })

@@ -157,4 +157,38 @@ describe('Wave 5 three-door semantic parity', () => {
     ))
     expect(questionMissing.parity_hash).not.toBe(queryMissing.parity_hash)
   })
+
+  it('does not hide scope, date, omission, or completion differences behind a transport projection', () => {
+    const initial = compileDoors().portal
+    const baseline = buildInquiryDoorParityProjection(initial)
+    const firstItem = initial.plan_items[0]!
+    const changedScope: InquiryContract = {
+      ...initial,
+      scope_tuple: { ...initial.scope_tuple, horizon: 'multi_year' },
+    }
+    const changedDate: InquiryContract = {
+      ...initial,
+      plan_items: initial.plan_items.map((item, index) => index === 0 ? {
+        ...item,
+        authorization_args: { ...(item.authorization_args ?? item.args), as_of_date: '2030-01-01' },
+      } : item),
+    }
+    const changedOmission: InquiryContract = {
+      ...initial,
+      omission_findings: [{
+        rule_id: 'PARITY-OMISSION', severity: 'material', missing_scu_id: firstItem.scu_id,
+        rationale: 'Synthetic parity regression.', source: 'rule', relation: null, source_ref: 'test:parity',
+      }],
+    }
+    const changedCompletion: InquiryContract = {
+      ...initial,
+      iteration: initial.iteration + 1,
+      status_reasons: ['different completion state'],
+    }
+
+    expect(buildInquiryDoorParityProjection(changedScope).parity_hash).not.toBe(baseline.parity_hash)
+    expect(buildInquiryDoorParityProjection(changedDate).parity_hash).not.toBe(baseline.parity_hash)
+    expect(buildInquiryDoorParityProjection(changedOmission).parity_hash).not.toBe(baseline.parity_hash)
+    expect(buildInquiryDoorParityProjection(changedCompletion).parity_hash).not.toBe(baseline.parity_hash)
+  })
 })

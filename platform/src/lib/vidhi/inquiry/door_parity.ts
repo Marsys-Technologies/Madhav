@@ -43,6 +43,38 @@ function canonicalEvidenceIdentity(reference: string): string {
   return digest?.toLowerCase() ?? `unparsed:${stableFingerprint(reference)}`
 }
 
+function canonicalDateConstraints(args: Readonly<Record<string, unknown>>): Readonly<Record<string, string | null>> {
+  const entries: Array<[string, string | null]> = []
+  for (const [key, value] of Object.entries(args)) {
+    if (/(?:^|_)(?:date|start|end|window)(?:_|$)/i.test(key)
+      && (typeof value === 'string' || value === null)) entries.push([key, value])
+  }
+  return Object.fromEntries(entries.sort(([left], [right]) => left.localeCompare(right)))
+}
+
+function canonicalRetrievalPlan(contract: InquiryContract) {
+  return contract.plan_items.map((item) => {
+    const authorizationArgs = item.authorization_args ?? item.args
+    return {
+      scu_id: item.scu_id,
+      binding_id: item.binding_id,
+      state: item.state,
+      authorization_args_hash: stableFingerprint(authorizationArgs),
+      date_constraints: canonicalDateConstraints(authorizationArgs),
+      argument_resolution: item.argument_resolution ? {
+        status: item.argument_resolution.status,
+        temporal_anchor_date: item.argument_resolution.temporal_anchor_date,
+        component_argument_hashes: item.argument_resolution.component_arguments
+          .map((component) => component.args_hash)
+          .sort(),
+        unresolved_required_args: [...item.argument_resolution.unresolved_required_args].sort(),
+        resolution_hash: item.argument_resolution.resolution_hash,
+      } : null,
+      blocked_reason: item.blocked_reason,
+    }
+  }).sort((left, right) => `${left.scu_id}:${left.binding_id ?? ''}`.localeCompare(`${right.scu_id}:${right.binding_id ?? ''}`))
+}
+
 /**
  * Channel-neutral closure projection for Portal, managed MCP and raw MCP.
  *
@@ -60,8 +92,13 @@ export function buildInquiryDoorParityProjection(contract: InquiryContract) {
     chart_build_id: contract.chart_build_id,
     normalized_scope_hash: contract.scope_normalization?.normalized_scope_hash
       ?? stableFingerprint(contract.scope_tuple),
+    // The complete normalized tuple is intentionally retained. Its hash tells
+    // us that something drifted; the tuple makes a differing horizon/domain
+    // (or other material scope) auditable rather than opaque.
+    normalized_scope: contract.scope_tuple,
     status: contract.status,
     status_reasons: [...contract.status_reasons].sort(),
+    canonical_retrieval_plan: canonicalRetrievalPlan(contract),
     obligation_coverage: contract.obligations.map((obligation) => ({
       obligation_id: obligation.obligation_id,
       materiality: obligation.materiality,
@@ -70,6 +107,14 @@ export function buildInquiryDoorParityProjection(contract: InquiryContract) {
       evidence_hashes: [...new Set(obligation.evidence_refs.map(canonicalEvidenceIdentity))].sort(),
       gap_classes: semanticGapClasses(obligation.disposition, obligation.gap_reason),
     })).sort((a, b) => a.obligation_id.localeCompare(b.obligation_id)),
+    omission_findings: contract.omission_findings.map((finding) => ({
+      rule_id: finding.rule_id,
+      severity: finding.severity,
+      missing_scu_id: finding.missing_scu_id,
+      source: finding.source,
+      relation: finding.relation,
+      source_ref: finding.source_ref,
+    })).sort((left, right) => `${left.rule_id}:${left.missing_scu_id}`.localeCompare(`${right.rule_id}:${right.missing_scu_id}`)),
     residual_frontier: contract.material_frontier
       .filter((item) => item.disposition === 'open' || item.disposition === 'capped')
       .map((item) => ({
@@ -79,6 +124,13 @@ export function buildInquiryDoorParityProjection(contract: InquiryContract) {
         disposition: item.disposition,
       }))
       .sort((a, b) => `${a.scu_id}:${a.reason}`.localeCompare(`${b.scu_id}:${b.reason}`)),
+    completion: {
+      iteration: contract.iteration,
+      max_iterations: contract.max_iterations,
+      ready_item_count: contract.plan_items.filter((item) => item.state === 'ready').length,
+      blocked_item_count: contract.plan_items.filter((item) => item.state === 'blocked').length,
+      observed_item_count: contract.plan_items.filter((item) => item.state === 'observed').length,
+    },
   }
   return { ...normalized, parity_hash: stableFingerprint(normalized) }
 }
