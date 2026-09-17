@@ -156,6 +156,26 @@ export interface InquiryPlanningBudgetReceipt extends InquiryPlanningBudget {
   readonly budget_hash: string
 }
 
+/** Immutable lineage for a fresh contract compiled from server-observed gaps. */
+export interface InquirySuccessorReceipt {
+  readonly successor_version: 'inquiry-successor-v1'
+  readonly parent_inquiry_id: string
+  readonly parent_contract_hash: string
+  readonly parent_execution_plan_hash: string
+  readonly parent_contract_state_hash: string
+  /** Exact terminal parent snapshot, retained for durable lineage verification. */
+  readonly parent_contract: InquiryContract
+  readonly admitted_frontier: readonly {
+    readonly frontier_id: string
+    readonly scu_id: string
+    readonly discovered_from: string
+    readonly reason: string
+    readonly source_ref?: string
+    readonly evidence_refs: readonly string[]
+  }[]
+  readonly successor_hash: string
+}
+
 /** AI is allowed to decompose/associate; deterministic validation owns authority. */
 export interface AiInquiryProposal {
   readonly question_facets: readonly { label: string; terms: readonly string[]; materiality: 'required' | 'supporting' }[]
@@ -190,6 +210,8 @@ export interface InquiryContract {
   readonly graph_traversal?: GraphTraversalReceipt
   readonly omission_challenge?: OmissionChallengeReceipt
   readonly planning_budget?: InquiryPlanningBudgetReceipt
+  /** Present only on a fresh, evidence-admitted continuation contract. */
+  readonly successor?: InquirySuccessorReceipt
 }
 
 export interface InquiryObservation {

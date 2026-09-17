@@ -18,7 +18,9 @@ import {
   buildInquiryClosureReceipt,
   buildInquiryDoorParityProjection,
   classifyInquiryResult,
+  closeInquiryForEvidenceSuccessor,
   compileInquiryContract,
+  compileInquirySuccessorContract,
   deriveInquiryPaginationReceipt,
   finalizeInquiryContract,
   failInquiryForAmbiguousDispatch,
@@ -35,6 +37,7 @@ import {
   commitInquiryFinalization,
   commitInquiryObservation,
   createInquiryLifecycle,
+  createInquirySuccessorLifecycle,
   failCloseAmbiguousInquiryAction,
   getInquiryLifecycle,
   markInquiryActionDispatched,
@@ -69,6 +72,7 @@ const BodySchema = z.discriminatedUnion('action', [
     action_id: z.string().regex(/^item-[0-9]{3}$/),
   }).strict(),
   z.object({ action: z.literal('finalize'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
+  z.object({ action: z.literal('continue'), lifecycle_token: z.string().min(1).max(16384) }).strict(),
 ])
 type Body = z.infer<typeof BodySchema>
 
@@ -215,7 +219,7 @@ export async function POST(request: Request) {
     if (row.chart_id !== claims.chart_id || row.semantic_contract_hash !== claims.contract_hash ||
       row.execution_plan_hash !== claims.execution_plan_hash || row.capability_content_hash !== claims.catalog_hash ||
       row.capability_compatibility_version !== claims.compatibility_version || row.revision !== claims.revision ||
-      (body.action === 'finalize' && row.current_jti_hash !== hashJti(claims.jti)) ||
+      ((body.action === 'finalize' || body.action === 'continue') && row.current_jti_hash !== hashJti(claims.jti)) ||
       row.chart_overlay_version !== claims.overlay_version ||
       row.chart_build_id !== claims.chart_build_id ||
       stableFingerprint(row.contract_jsonb) !== claims.contract_state_hash ||
@@ -340,6 +344,39 @@ export async function POST(request: Request) {
     }
 
     if (claims.allowed_transition !== 'finalize') return response({ ok: false, error: 'INQUIRY_FINALIZE_NOT_AUTHORIZED' }, 409)
+    if (body.action === 'continue') {
+      let parentFinal: InquiryContract
+      let successor: InquiryContract
+      try {
+        parentFinal = closeInquiryForEvidenceSuccessor(row.contract_jsonb)
+        successor = compileInquirySuccessorContract({
+          snapshot, overlay: currentOverlay, parent_inquiry_id: row.inquiry_id, parent: parentFinal,
+        })
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (message === 'INQUIRY_SUCCESSOR_PARENT_NOT_TERMINAL' || message === 'INQUIRY_SUCCESSOR_NO_EVIDENCE_ADMITTED_FRONTIER') {
+          return response({ ok: false, error: 'INQUIRY_SUCCESSOR_NOT_AUTHORIZED' }, 409)
+        }
+        throw error
+      }
+      const inquiryId = randomUUID()
+      const ready = nextReady(successor)
+      const issued = issueInquiryLifecycleToken({
+        sub: principalSubject, inquiry_id: inquiryId, chart_id: row.chart_id,
+        contract_hash: successor.semantic_contract_hash, execution_plan_hash: successor.execution_plan_hash,
+        contract_state_hash: stableFingerprint(successor),
+        catalog_hash: successor.capability_content_hash, compatibility_version: successor.capability_compatibility_version,
+        overlay_version: successor.chart_availability_version, chart_build_id: successor.chart_build_id, revision: 0,
+        allowed_transition: ready.length ? 'execute' : 'finalize', next_action_ids: ready,
+      }, key)
+      await createInquirySuccessorLifecycle({
+        parent: row, expected_parent_jti_hash: hashJti(claims.jti), parent_final_contract: parentFinal,
+        inquiry_id: inquiryId, contract: successor, jti_hash: hashJti(issued.claims.jti),
+        expires_at: new Date(issued.claims.exp * 1000).toISOString(),
+      })
+      return response({ ok: true, inquiry_id: inquiryId, parent_inquiry_id: row.inquiry_id,
+        contract: successor, lifecycle_token: issued.token, next_action_ids: issued.claims.next_action_ids })
+    }
     const final = finalizeInquiryContract(row.contract_jsonb)
     await commitInquiryFinalization({ row, expected_jti_hash: hashJti(claims.jti), contract: final })
     return response({

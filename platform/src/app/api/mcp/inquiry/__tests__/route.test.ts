@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   issue: vi.fn(),
   verify: vi.fn(),
   create: vi.fn(),
+  createSuccessor: vi.fn(),
   get: vi.fn(),
   commitObservation: vi.fn(),
   commitFinalization: vi.fn(),
@@ -56,6 +57,7 @@ vi.mock('@/lib/vidhi/inquiry', async (importOriginal) => {
 })
 vi.mock('@/lib/vidhi/inquiry/lifecycle_store', () => ({
   createInquiryLifecycle: mocks.create,
+  createInquirySuccessorLifecycle: mocks.createSuccessor,
   getInquiryLifecycle: mocks.get,
   commitInquiryObservation: mocks.commitObservation,
   commitInquiryFinalization: mocks.commitFinalization,
@@ -380,6 +382,14 @@ describe('raw MCP inquiry route', () => {
     expect(response.status).toBe(200)
     expect(mocks.issue).toHaveBeenCalledWith(expect.objectContaining({ allowed_transition: 'execute', next_action_ids: ['item-001'] }), expect.objectContaining({ current: expect.objectContaining({ kid: 'inquiry-v1' }) }))
     expect(await response.json()).toMatchObject({ next_action_ids: ['item-001'], pagination: { next: 50 } })
+  })
+
+  it('rejects successor creation without a terminal evidence-admitted frontier', async () => {
+    primeStoredLifecycle({ allowed_transition: 'finalize', next_action_ids: [] })
+    const result = await POST(request({ action: 'continue', lifecycle_token: 'current-token' }))
+    expect(result.status).toBe(409)
+    expect(await result.json()).toEqual({ ok: false, error: 'INQUIRY_SUCCESSOR_NOT_AUTHORIZED' })
+    expect(mocks.createSuccessor).not.toHaveBeenCalled()
   })
 
   it.each([
