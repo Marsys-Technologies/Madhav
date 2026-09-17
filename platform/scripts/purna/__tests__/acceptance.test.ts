@@ -1,30 +1,23 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { BEYOND_ACARYA_ACCEPTANCE_CASES, BEYOND_ACARYA_CORPUS_VERSION } from '../../../src/lib/vidhi/inquiry/beyond_acarya_acceptance.corpus'
+import { beforeAll, describe, expect, it } from 'vitest'
 import {
   PRODUCT_ACCEPTANCE_PROTOCOL_VERSION,
   PRODUCT_ACCEPTANCE_RUN_VERSION,
   casesForSuite,
+  type AcceptanceCaseInput,
   type ProductAcceptanceProtocol,
   validateProtocol,
 } from '../acceptance_cases'
 import { parseCliArgs, writeAcceptanceRun } from '../acceptance'
 import { scoreAnswers } from '../score_answers'
 
-const protocol: ProductAcceptanceProtocol = {
-  schema_version: 'madhav-purna-anvesana/product-acceptance-protocol/v2',
-  protocol_version: PRODUCT_ACCEPTANCE_PROTOCOL_VERSION,
-  immutable_beyond_acarya: {
-    corpus_version: BEYOND_ACARYA_CORPUS_VERSION,
-    case_ids: BEYOND_ACARYA_ACCEPTANCE_CASES.map((item) => item.case_id),
-  },
-  product_scenarios: [{
-    scenario_id: 'deterministic_product_case', description: 'test-only scenario', deterministic_gates: ['receipt_gate'],
-  }],
-  hard_gates: ['explicit_suite_and_environment'],
-  run_record: { schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION, required_fields: ['answers'] },
+let protocol: ProductAcceptanceProtocol
+
+const scoreInput: AcceptanceCaseInput = {
+  case_id: 'deterministic_product_case', kind: 'product', question: null, scope_tuple: null,
+  deterministic_gates: ['receipt_gate'],
 }
 
 const candidateConfig = {
@@ -37,12 +30,29 @@ const candidateConfig = {
 }
 
 describe('Purna product acceptance harness', () => {
-  it('pins the versioned protocol manifest to the immutable Beyond-Acarya denominator', async () => {
-    const manifest = JSON.parse(await readFile(new URL(
+  beforeAll(async () => {
+    protocol = JSON.parse(await readFile(new URL(
       '../../../../00_ARCHITECTURE/briefs/nirmana/purna_anvesana/PRODUCT_ACCEPTANCE_PROTOCOL_v2.json',
       import.meta.url,
-    ), 'utf8'))
-    expect(validateProtocol(manifest)).toMatchObject({ protocol_version: PRODUCT_ACCEPTANCE_PROTOCOL_VERSION })
+    ), 'utf8')) as ProductAcceptanceProtocol
+  })
+
+  it('pins the versioned protocol manifest to the immutable Beyond-Acarya denominator and case content', () => {
+    expect(validateProtocol(protocol)).toMatchObject({ protocol_version: PRODUCT_ACCEPTANCE_PROTOCOL_VERSION })
+  })
+
+  it('rejects empty or malformed product scenario/gate declarations and a stale corpus fingerprint', () => {
+    const emptyScenarios = structuredClone(protocol) as { product_scenarios: unknown[] }
+    emptyScenarios.product_scenarios = []
+    expect(() => validateProtocol(emptyScenarios)).toThrow('PRODUCT_ACCEPTANCE_PROTOCOL_CONTENT_MISMATCH')
+
+    const malformedGates = structuredClone(protocol) as { product_scenarios: Array<{ deterministic_gates: unknown }> }
+    malformedGates.product_scenarios[0].deterministic_gates = []
+    expect(() => validateProtocol(malformedGates)).toThrow('PRODUCT_ACCEPTANCE_PROTOCOL_CONTENT_MISMATCH')
+
+    const staleFingerprint = structuredClone(protocol) as { immutable_beyond_acarya: { case_content_fingerprint: { value: string } } }
+    staleFingerprint.immutable_beyond_acarya.case_content_fingerprint.value = '0'.repeat(64)
+    expect(() => validateProtocol(staleFingerprint)).toThrow('PRODUCT_ACCEPTANCE_IMMUTABLE_CORPUS_MISMATCH')
   })
 
   it('requires explicit suite, environment, and non-secret configuration paths', () => {
@@ -54,13 +64,60 @@ describe('Purna product acceptance harness', () => {
   })
 
   it('makes failed deterministic evidence override a perfect qualitative score', () => {
-    const inputs = casesForSuite(protocol, 'product')
-    const score = scoreAnswers(inputs, [{
+    const score = scoreAnswers([scoreInput], [{
       case_id: 'deterministic_product_case', answer: 'unsupported', qualitative_score: 1,
       evidence: [{ gate_id: 'receipt_gate', passed: false, receipt_ref: null }],
     }])
     expect(score.verdict).toBe('FAIL_DETERMINISTIC_EVIDENCE')
     expect(score.cases[0]).toMatchObject({ qualitative_score: 1, verdict: 'FAIL_DETERMINISTIC_EVIDENCE' })
+  })
+
+  it('records qualitative and incomplete per-case failures structurally', () => {
+    const inputs: AcceptanceCaseInput[] = [
+      { ...scoreInput, case_id: 'qualitative_case' },
+      { ...scoreInput, case_id: 'incomplete_case' },
+    ]
+    const score = scoreAnswers(inputs, [
+      { case_id: 'qualitative_case', answer: 'low quality', qualitative_score: 0.2, evidence: [{ gate_id: 'receipt_gate', passed: true, receipt_ref: 'r1' }] },
+      { case_id: 'incomplete_case', answer: 'unscored', evidence: [{ gate_id: 'receipt_gate', passed: true, receipt_ref: 'r2' }] },
+    ])
+    expect(score.failures).toEqual([
+      expect.objectContaining({ case_id: 'qualitative_case', kind: 'qualitative', gate_id: null, qualitative_score: 0.2 }),
+      expect.objectContaining({ case_id: 'incomplete_case', kind: 'incomplete', gate_id: null, qualitative_score: null }),
+    ])
+  })
+
+  it('rejects coercive JSON and duplicate or unknown answer and gate IDs before persistence', async () => {
+    const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
+    const firstCase = casesForSuite(protocol, 'product')[0]
+    const answer = {
+      case_id: firstCase.case_id, answer: 'answer', qualitative_score: 1,
+      evidence: [{ gate_id: firstCase.deterministic_gates[0], passed: true, receipt_ref: 'r1' }],
+    }
+    try {
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: [{ ...answer, qualitative_score: '1' }] }, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_INPUT_INVALID')
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: [answer, answer] }, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_ANSWER_ID')
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: [{ ...answer, case_id: 'unknown_case' }] }, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_ANSWER_ID')
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: [{ ...answer, evidence: [...answer.evidence, { gate_id: 'unknown_gate', passed: true, receipt_ref: 'r2' }] }] }, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_UNKNOWN_GATE_ID')
+      await expect(writeAcceptanceRun({
+        protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
+        input: { answers: [{ ...answer, evidence: [...answer.evidence, answer.evidence[0]] }] }, artifactDir,
+      })).rejects.toThrow('PRODUCT_ACCEPTANCE_DUPLICATE_GATE_ID')
+    } finally {
+      await rm(artifactDir, { recursive: true, force: true })
+    }
   })
 
   it('rejects fixture evidence as live evidence and rejects secret-bearing configuration', async () => {
@@ -81,14 +138,18 @@ describe('Purna product acceptance harness', () => {
     }
   })
 
-  it('persists a versioned run record with inputs, answers, evidence, and deterministic failures without network activity', async () => {
+  it('persists per-case verdicts and structured deterministic failures without network activity', async () => {
     const artifactDir = await mkdtemp(join(tmpdir(), 'purna-acceptance-'))
+    const firstCase = casesForSuite(protocol, 'product')[0]
     try {
       const written = await writeAcceptanceRun({
         protocol, suite: 'product', environment: 'candidate', environmentConfig: candidateConfig,
         input: { answers: [{
-          case_id: 'deterministic_product_case', answer: 'answer retained despite failed evidence', qualitative_score: 1,
-          evidence: [{ gate_id: 'receipt_gate', passed: false, receipt_ref: null, detail: 'receipt unavailable' }],
+          case_id: firstCase.case_id, answer: 'answer retained despite failed evidence', qualitative_score: 1,
+          evidence: firstCase.deterministic_gates.map((gate_id, index) => ({
+            gate_id, passed: index !== 0, receipt_ref: index === 0 ? null : `receipt-${gate_id}`,
+            ...(index === 0 ? { detail: 'receipt unavailable' } : {}),
+          })),
         }] },
         artifactDir, now: new Date('2026-09-17T00:00:00.000Z'), runId: 'run-test',
       })
@@ -97,10 +158,14 @@ describe('Purna product acceptance harness', () => {
         schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION, run_id: 'run-test', environment: 'candidate',
         revision: 'candidate-revision-123', verdict: 'FAIL_DETERMINISTIC_EVIDENCE', network_calls_made: 0,
       })
-      expect(persisted.case_inputs).toHaveLength(1)
+      expect(persisted.case_inputs).toHaveLength(4)
       expect(persisted.answers).toHaveLength(1)
-      expect(persisted.evidence).toHaveLength(1)
-      expect(persisted.failures).toHaveLength(1)
+      expect(persisted.evidence).toHaveLength(3)
+      expect(persisted.case_verdicts).toHaveLength(4)
+      expect(persisted.failures).toEqual(expect.arrayContaining([
+        expect.objectContaining({ case_id: firstCase.case_id, kind: 'deterministic' }),
+        expect.objectContaining({ kind: 'deterministic', detail: 'answer_missing' }),
+      ]))
     } finally {
       await rm(artifactDir, { recursive: true, force: true })
     }

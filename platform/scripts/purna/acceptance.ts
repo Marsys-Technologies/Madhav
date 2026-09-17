@@ -8,10 +8,11 @@ import {
   type AcceptanceEnvironment,
   type AcceptanceSuite,
   type ApprovedEnvironmentConfig,
+  validateAcceptanceAnswers,
   validateEnvironmentConfig,
   validateProtocol,
 } from './acceptance_cases'
-import { scoreAnswers } from './score_answers'
+import { scoreAnswers, type AcceptanceFailure, type CaseScore } from './score_answers'
 
 export interface AcceptanceInputFile {
   readonly answers: readonly AcceptanceAnswer[]
@@ -29,7 +30,8 @@ export interface AcceptanceRunRecord {
   readonly case_inputs: readonly unknown[]
   readonly evidence: readonly unknown[]
   readonly answers: readonly AcceptanceAnswer[]
-  readonly failures: readonly unknown[]
+  readonly case_verdicts: readonly CaseScore[]
+  readonly failures: readonly AcceptanceFailure[]
   readonly verdict: string
   readonly evidence_kind: 'candidate_or_live' | 'fixture'
   readonly network_calls_made: 0
@@ -106,12 +108,9 @@ export async function writeAcceptanceRun(args: {
   const config = validateEnvironmentConfig(args.environmentConfig, args.environment)
   if (!object(args.input) || !Array.isArray(args.input.answers)) throw new Error('PRODUCT_ACCEPTANCE_INPUT_INVALID')
   const inputs = casesForSuite(protocol, args.suite)
-  const answers = args.input.answers as AcceptanceAnswer[]
+  const answers = validateAcceptanceAnswers(args.input.answers, inputs)
   const score = scoreAnswers(inputs, answers)
   const fixture = config.evidence_mode === 'fixture'
-  const deterministicFailures = score.cases.flatMap((item) => item.deterministic_failures.map((failure) => ({
-    case_id: item.case_id, ...failure,
-  })))
   const createdAt = (args.now ?? new Date()).toISOString()
   const record: AcceptanceRunRecord = {
     schema_version: PRODUCT_ACCEPTANCE_RUN_VERSION,
@@ -125,7 +124,8 @@ export async function writeAcceptanceRun(args: {
     case_inputs: inputs,
     evidence: answers.flatMap((answer) => answer.evidence.map((evidence) => ({ case_id: answer.case_id, ...evidence }))),
     answers,
-    failures: deterministicFailures,
+    case_verdicts: score.cases,
+    failures: score.failures,
     // Fixture evidence may exercise the runner but is never accepted as a
     // candidate/live product result, regardless of qualitative score.
     verdict: fixture ? 'NOT_LIVE_EVIDENCE' : score.verdict,

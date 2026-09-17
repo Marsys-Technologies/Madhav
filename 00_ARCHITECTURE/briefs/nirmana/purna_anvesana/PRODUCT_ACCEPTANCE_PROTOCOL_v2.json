@@ -14,6 +14,10 @@
       "house_yoga_later_hop",
       "long_divisional_continuation"
     ],
+    "case_content_fingerprint": {
+      "algorithm": "sha256",
+      "value": "240e78a554b562b481aaebb907eeb93856a58f1d21676cfb498e8f9b09547111"
+    },
     "retention_rule": "These source-local cases are immutable denominator inputs. Product scenarios may add gates but may not replace, delete, or reclassify them."
   },
   "product_scenarios": [
@@ -48,7 +52,7 @@
   ],
   "run_record": {
     "schema_version": "madhav-purna-anvesana/product-acceptance-run/v1",
-    "required_fields": ["protocol_version", "suite", "environment", "revision", "case_inputs", "evidence", "answers", "failures", "verdict"],
+    "required_fields": ["protocol_version", "suite", "environment", "revision", "case_inputs", "evidence", "answers", "case_verdicts", "failures", "verdict"],
     "artifact_rule": "A caller supplies a non-secret artifact directory. The runner writes a new versioned JSON record and does not overwrite prior records."
   },
   "external_acceptance": {
