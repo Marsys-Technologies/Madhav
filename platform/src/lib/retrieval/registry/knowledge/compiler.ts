@@ -626,6 +626,8 @@ export function inspectCapabilityKnowledge(
   const descriptorByUri = new Map(catalog.map((cap) => [cap.uri, cap]))
   const executableBindingById = new Map<string, { scu: SemanticCapabilityUnit; binding: SemanticCapabilityBinding } | null>()
   const duplicateExecutableBindingIdsWithinScu = new Set<string>()
+  const duplicateExecutableBindingIdsAcrossScus = new Set<string>()
+  const firstExecutableBindingScuIdById = new Map<string, string>()
   for (const candidateScu of snapshot.scus) {
     const executableBindingIdsWithinScu = new Set<string>()
     for (const candidateBinding of candidateScu.bindings) {
@@ -634,6 +636,11 @@ export function inspectCapabilityKnowledge(
         duplicateExecutableBindingIdsWithinScu.add(candidateBinding.binding_id)
       }
       executableBindingIdsWithinScu.add(candidateBinding.binding_id)
+      const firstScuId = firstExecutableBindingScuIdById.get(candidateBinding.binding_id)
+      if (firstScuId !== undefined && firstScuId !== candidateScu.scu_id) {
+        duplicateExecutableBindingIdsAcrossScus.add(candidateBinding.binding_id)
+      }
+      if (firstScuId === undefined) firstExecutableBindingScuIdById.set(candidateBinding.binding_id, candidateScu.scu_id)
       if (executableBindingById.has(candidateBinding.binding_id)) {
         executableBindingById.set(candidateBinding.binding_id, null)
       } else {
@@ -643,6 +650,9 @@ export function inspectCapabilityKnowledge(
   }
   for (const bindingId of [...duplicateExecutableBindingIdsWithinScu].sort()) {
     findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'error', subject: bindingId, detail: 'Executable binding ID is duplicated within one SCU and therefore ambiguous for availability resolution.' })
+  }
+  for (const bindingId of [...duplicateExecutableBindingIdsAcrossScus].sort()) {
+    findings.push({ code: 'BAD_BINDING_AVAILABILITY_CONTRACT', severity: 'warning', subject: bindingId, detail: 'Executable binding ID is duplicated across SCUs and therefore ambiguous for availability resolution.' })
   }
   const explicitContractForBinding = (bindingId: string): BindingAvailabilityContract | null => {
     const target = executableBindingById.get(bindingId)

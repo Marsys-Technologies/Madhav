@@ -111,12 +111,25 @@ function receiptForRequirement(
   }
 }
 
-function producerOutputRequirement(requirement: AvailabilityRequirement): requirement is ProducerOutputAvailabilityRequirement {
-  return requirement.kind === 'producer_output'
+function producerOutputRequirement(requirement: unknown): requirement is ProducerOutputAvailabilityRequirement {
+  return isRecord(requirement)
+    && requirement.kind === 'producer_output'
+    && typeof requirement.asset_id === 'string' && requirement.asset_id.length > 0
+    && typeof requirement.spec_sha256 === 'string' && /^[a-f0-9]{64}$/.test(requirement.spec_sha256)
+    && (requirement.scope === 'chart_build' || requirement.scope === 'global')
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
-function serviceProbeRequirement(requirement: AvailabilityRequirement): requirement is ServiceProbeAvailabilityRequirement {
-  return requirement.kind === 'service_probe'
+function serviceProbeRequirement(requirement: unknown): requirement is ServiceProbeAvailabilityRequirement {
+  return isRecord(requirement)
+    && requirement.kind === 'service_probe'
+    && typeof requirement.asset_id === 'string' && requirement.asset_id.length > 0
+    && typeof requirement.probe_id === 'string' && /^[a-z][a-z0-9_]{1,127}$/.test(requirement.probe_id)
+    && typeof requirement.endpoint_identity === 'string' && /^nirmana-elevation:health-probe:[a-z][a-z0-9_]{1,255}$/.test(requirement.endpoint_identity)
+    && typeof requirement.probe_contract_sha256 === 'string' && /^[a-f0-9]{64}$/.test(requirement.probe_contract_sha256)
+    && typeof requirement.max_age_seconds === 'number' && Number.isSafeInteger(requirement.max_age_seconds)
+    && requirement.max_age_seconds > 0 && requirement.max_age_seconds <= 86_400
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
 function derivedRequirement(requirement: unknown): requirement is DerivedAvailabilityRequirement {
@@ -129,13 +142,21 @@ function usableDerivedRequirement(requirement: unknown): requirement is DerivedA
     && Array.isArray(requirement.required_binding_ids)
     && requirement.required_binding_ids.length > 0
     && requirement.required_binding_ids.every((bindingId) => typeof bindingId === 'string' && bindingId.length > 0)
+    && new Set(requirement.required_binding_ids).size === requirement.required_binding_ids.length
+    && typeof requirement.source_ref === 'string' && requirement.source_ref.length > 0
 }
 
 function contractForBinding(
   scu: SemanticCapabilityUnit,
   binding: SemanticCapabilityBinding,
 ): BindingAvailabilityContract | null | undefined {
-  const matches = scu.availability_contracts?.filter((contract) => contract.binding_id === binding.binding_id) ?? []
+  const contracts = scu.availability_contracts
+  if (contracts === undefined) return undefined
+  if (!Array.isArray(contracts)
+    || contracts.some((contract) => !isRecord(contract)
+      || typeof contract.binding_id !== 'string'
+      || !Array.isArray(contract.requirements))) return null
+  const matches = contracts.filter((contract) => contract.binding_id === binding.binding_id)
   return matches.length === 1 ? matches[0] : matches.length > 1 ? null : undefined
 }
 
@@ -172,8 +193,7 @@ function explicitRequirementsForBinding(
 ): readonly AvailabilityRequirement[] {
   const target = index.get(bindingId)
   if (!target) return []
-  const matches = target.scu.availability_contracts?.filter((contract) => contract.binding_id === bindingId) ?? []
-  return matches.length === 1 && Array.isArray(matches[0]?.requirements) ? matches[0]!.requirements : []
+  return contractForBinding(target.scu, target.binding)?.requirements ?? []
 }
 
 function requirementsForBindingTree(
@@ -356,7 +376,7 @@ function evidenceForBinding(
     ))
     const gaps = [
       ...(contract.requirements.length === 0 ? ['Binding availability contract has no requirements.'] : []),
-      ...unsupported.map((requirement) => `${requirement.kind} availability requirements are not implemented.`),
+      ...unsupported.map(() => 'Binding availability contract contains a malformed or unsupported requirement.'),
       ...gapsForReceipts(receipts, rows),
       ...serviceRequirements.flatMap((requirement) => serviceProbeGaps(requirement, probeRows, now)),
       ...derivedGaps,

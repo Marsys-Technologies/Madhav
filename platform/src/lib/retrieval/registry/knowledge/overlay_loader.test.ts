@@ -95,6 +95,46 @@ const duplicateExecutableBindingSnapshot = () => ({
   }],
 } as CapabilityKnowledgeSnapshot)
 
+const crossScuDuplicateExecutableBindingSnapshot = () => ({
+  ...snapshot,
+  scus: [
+    snapshot.scus[0]!,
+    { ...snapshot.scus[0]!, scu_id: 'scu.test.duplicate' },
+  ],
+} as CapabilityKnowledgeSnapshot)
+
+const malformedRuntimeContractSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    availability_contracts: [null, {
+      binding_id: 'registry:marsys://tool/L1/test',
+      requirements: [null, {
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: ['registry:marsys://tool/L1/test', 'registry:marsys://tool/L1/test'],
+        source_ref: '',
+      }],
+    }],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
+const malformedRuntimeRequirementSnapshot = () => ({
+  ...snapshot,
+  scus: [{
+    ...snapshot.scus[0]!,
+    availability_contracts: [{
+      binding_id: 'registry:marsys://tool/L1/test',
+      requirements: [null, {
+        kind: 'derived',
+        scope: 'chart',
+        required_binding_ids: ['registry:marsys://tool/L1/test', 'registry:marsys://tool/L1/test'],
+        source_ref: '',
+      }],
+    }],
+  }],
+} as CapabilityKnowledgeSnapshot)
+
 const serviceProbeContractSnapshot = () => ({
   ...snapshot,
   scus: [{
@@ -334,6 +374,33 @@ describe('chart capability overlay loader', () => {
     const availability = (await loadChartCapabilityOverlay(duplicateExecutableBindingSnapshot(), 'chart-1')).availability[0]!
     expect(availability).toMatchObject({ state: 'dark', available_binding_ids: [] })
     expect(availability.gaps).toContain('Duplicate executable binding ID prevents a safe availability selection.')
+  })
+
+  it('treats an executable binding ID duplicated across SCUs as ambiguous and dark', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test')] })
+
+    const availability = (await loadChartCapabilityOverlay(crossScuDuplicateExecutableBindingSnapshot(), 'chart-1')).availability
+    expect(availability).toHaveLength(2)
+    expect(availability).toEqual(expect.arrayContaining([
+      expect.objectContaining({ state: 'dark', available_binding_ids: [], gaps: expect.arrayContaining([
+        'Duplicate executable binding ID prevents a safe availability selection.',
+      ]) }),
+    ]))
+  })
+
+  it('fails malformed runtime contracts and requirements closed without throwing', async () => {
+    mocks.query.mockResolvedValue({ rows: [receipt('ga_test')] })
+
+    await expect(loadChartCapabilityOverlay(malformedRuntimeContractSnapshot(), 'chart-1')).resolves.toMatchObject({
+      availability: [expect.objectContaining({ state: 'dark', available_binding_ids: [] })],
+    })
+    await expect(loadChartCapabilityOverlay(malformedRuntimeRequirementSnapshot(), 'chart-1')).resolves.toMatchObject({
+      availability: [expect.objectContaining({
+        state: 'dark',
+        available_binding_ids: [],
+        gaps: expect.arrayContaining(['Binding availability contract contains a malformed or unsupported requirement.']),
+      })],
+    })
   })
 
   it('enables a derived composite only when every mandatory handler leg has fresh exact evidence', async () => {

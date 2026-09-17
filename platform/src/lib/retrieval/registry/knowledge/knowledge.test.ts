@@ -28,7 +28,11 @@ describe('planner capability knowledge', () => {
     expect(Object.isFrozen(snapshot)).toBe(true)
     const report = inspectCapabilityKnowledge(catalog, snapshot)
     expect(report.passed).toBe(true)
-    expect(report.findings.every((finding) => finding.severity === 'warning')).toBe(true)
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      subject: 'registry:marsys://tool/L0/query_current_transit_snapshot',
+      detail: expect.stringContaining('duplicated across SCUs'),
+    }))
     expect(report.findings.map((finding) => finding.code)).toContain('BAD_PAGINATION_CONTRACT')
   })
 

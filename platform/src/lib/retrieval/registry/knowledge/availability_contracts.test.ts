@@ -96,6 +96,23 @@ describe('binding availability contracts', () => {
     }))
   })
 
+  it('reports executable binding IDs duplicated across SCUs', () => {
+    const duplicateScu = {
+      ...source,
+      scu_id: `${source.scu_id}.duplicate`,
+      bindings: source.bindings.map((binding) => ({ ...binding })),
+    }
+    const crossScuSnapshot = { ...snapshot, scus: [...snapshot.scus, duplicateScu] } as CapabilityKnowledgeSnapshot
+
+    const report = inspectCapabilityKnowledge(catalog, crossScuSnapshot)
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: 'BAD_BINDING_AVAILABILITY_CONTRACT',
+      severity: 'warning',
+      subject: knownBindingId,
+      detail: expect.stringContaining('across SCUs'),
+    }))
+  })
+
   it('validates service-probe readiness requirements instead of treating them as unsupported', () => {
     const valid = {
       kind: 'service_probe' as const,
