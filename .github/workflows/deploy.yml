@@ -823,10 +823,10 @@ jobs:
           DATA_PLANE_CUTOVER_AUTHORIZATION: ${{ secrets.DATA_PLANE_CUTOVER_AUTHORIZATION }}
           DATA_PLANE_RESTORE_VALIDATION_INSTANCE: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_INSTANCE }}
           DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_CONNECTION_NAME }}
-          # The verifier credential is a Cloud SQL Unix-socket URL. The protected
-          # preflight admits it only as an exact restored-instance credential carrier,
-          # then routes the actual connection through the authenticated local proxy.
-          DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL: ${{ secrets.DATA_PLANE_VERIFIER_DATABASE_URL }}
+          # The dedicated validation credential is bound to the authenticated
+          # local proxy by the protected preflight.  Do not substitute the
+          # generic verifier credential: it is a different connector contract.
+          DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL: ${{ secrets.DATA_PLANE_RESTORE_VALIDATION_DATABASE_URL }}
           DATA_PLANE_RESTORE_VALIDATION_PROXY_PORT: '5433'
           DATA_PLANE_CUTOVER_LEASE: ${{ secrets.DATA_PLANE_CUTOVER_LEASE }}
           DATA_PLANE_CUTOVER_ENVIRONMENT: data-plane-production-cutover
