@@ -18,7 +18,12 @@ import {
   type ProducerSemanticBinding,
 } from './types'
 import { canonicalize, deepFreeze, stableFingerprint } from './stable'
-import { getDescriptorAvailabilityReview, getDescriptorEditorialReview, getReviewedDescriptorNames } from './editorial_review'
+import {
+  getDescriptorAvailabilityContractReview,
+  getDescriptorAvailabilityReview,
+  getDescriptorEditorialReview,
+  getReviewedDescriptorNames,
+} from './editorial_review'
 import { getProducerSemanticReview } from './producer_editorial_review'
 import estateCensus from '../../../../generated/capability_estate_census.json'
 
@@ -158,6 +163,7 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
   const review = getDescriptorEditorialReview(cap.name)
   if (!review) throw new Error(`UNREVIEWED_DESCRIPTOR_SEMANTICS:${cap.name}`)
   const kind = cap.tool_role === 'synthesizer' ? 'synthesis_support' : review.kind ?? kindFor(cap)
+  const availabilityContractReview = getDescriptorAvailabilityContractReview(cap.name)
   const availabilityReview = getDescriptorAvailabilityReview(cap.name)
   const sourceDescription = cap.description.trim().replace(/[.。]+$/, '')
   return {
@@ -194,6 +200,13 @@ function deriveDeclaration(cap: CapabilityDescriptor): SemanticCapabilityDeclara
       ? ['Mutation-capable: execution requires explicit authorization and audit receipt.']
       : ['Read-only evidence surface; planner must not interpret returned chart facts.'],
     known_gaps: cap.calibration_context_only ? ['Calibration-context-only; excluded from planner addressability.'] : [],
+    ...(availabilityContractReview ? {
+      producer_output_claims: availabilityContractReview.producer_output_claims,
+      availability_contracts: [{
+        binding_id: `registry:${cap.uri}`,
+        requirements: availabilityContractReview.requirements,
+      }],
+    } : {}),
     ...(availabilityReview ? {
       availability_dispositions: [{
         binding_id: `registry:${cap.uri}`,
@@ -553,6 +566,7 @@ export function compileCapabilityKnowledge(
     descriptor_editorial_review: getReviewedDescriptorNames().map((name) => ({
       name,
       review: getDescriptorEditorialReview(name),
+      availability_contract_review: getDescriptorAvailabilityContractReview(name),
       availability_review: getDescriptorAvailabilityReview(name),
     })),
     producer_editorial_review: getProducerSemanticReview(),

@@ -78,6 +78,28 @@ function adjacentProducerReceipt(assetId: string, specSha256: string): OverlayQu
   }
 }
 
+function globalProducerReceipt(
+  assetId: string,
+  specSha256: string,
+  overrides: Partial<OverlayQueryRow> = {},
+): OverlayQueryRow {
+  return {
+    active_build_id: BUILD_ID,
+    active_build_status: 'completed',
+    asset_id: assetId,
+    chart_id: null,
+    build_id: null,
+    receipt_version: 'first-slice-global-producer-fixture',
+    receipt_state: 'proven',
+    output_digest_spec_sha256: specSha256,
+    observed_at: '2026-09-17T00:00:00.000Z',
+    freshness_state: 'fresh',
+    unknown_reasons: [],
+    freshness_reasons: [],
+    ...overrides,
+  }
+}
+
 function transitProbeAnchor(): OverlayQueryRow {
   return {
     active_build_id: BUILD_ID,
@@ -272,6 +294,45 @@ describe('first-slice availability coverage', () => {
       available_binding_ids: [],
       gaps: [expect.stringContaining('Binding is deliberately dark:')],
     })
+  })
+
+  it('activates query_formula_constants only from a fresh, matching global formula-constants receipt', async () => {
+    const scu = findScu('scu.catalog.query_formula_constants')
+    const bindingId = 'registry:marsys://tool/L0/query_formula_constants'
+    const [requirement] = producerRequirements(scu.scu_id)
+
+    expect(scu.availability_dispositions ?? []).toEqual([])
+    expect(scu.producer_output_claims).toEqual([{
+      asset_id: 'bg_formula_constants',
+      component: 'formula_constants',
+      output_digest_spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    }])
+    expect(requirement).toEqual({
+      kind: 'producer_output',
+      asset_id: 'bg_formula_constants',
+      spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    })
+
+    const available = await overlayFor([globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256)])
+    expect(available.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+      available_binding_ids: [bindingId],
+    })
+
+    for (const [rows, state] of [
+      [[], 'dark'],
+      [[globalProducerReceipt(requirement!.asset_id, 'b'.repeat(64))], 'incompatible'],
+      [[globalProducerReceipt(requirement!.asset_id, requirement!.spec_sha256, { freshness_state: 'stale' })], 'dark'],
+    ] as const) {
+      const unavailable = await overlayFor(rows)
+      expect(unavailable.availability.find((entry) => entry.scu_id === scu.scu_id)).toMatchObject({
+        state,
+        available_binding_ids: [],
+      })
+    }
   })
 
   it('activates each concrete primary binding only from its own exact evidence and keeps the remaining slice dark', async () => {

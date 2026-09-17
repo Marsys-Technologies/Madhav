@@ -4,7 +4,11 @@
  * Membership is deliberately exact and exhaustive: a descriptor is editorial only when its
  * capability name appears once in one reviewed family below. The compiler has no catch-all.
  */
-import type { SemanticCapabilityKind } from './types'
+import type {
+  ProducerOutputAvailabilityRequirement,
+  ProducerOutputClaim,
+  SemanticCapabilityKind,
+} from './types'
 
 export interface DescriptorEditorialFamily {
   readonly family_id: string
@@ -28,6 +32,16 @@ export interface DescriptorAvailabilityReview {
   /** Mandatory executable legs that currently lack a complete exact contract. */
   readonly missing_binding_ids?: readonly string[]
   readonly source_refs: readonly string[]
+}
+
+/**
+ * Exact receipt contracts for descriptor-derived bindings. These are separate
+ * from deliberate-dark reviews: a descriptor is promotable only when its
+ * handler's complete materialized output is represented by the reviewed spec.
+ */
+export interface DescriptorAvailabilityContractReview {
+  readonly producer_output_claims: readonly ProducerOutputClaim[]
+  readonly requirements: readonly ProducerOutputAvailabilityRequirement[]
 }
 
 const ASSESS_DOMAIN_MANDATORY_BINDINGS = [
@@ -103,8 +117,31 @@ const AVAILABILITY_REVIEWS: Readonly<Record<string, DescriptorAvailabilityReview
   },
 }
 
+const AVAILABILITY_CONTRACT_REVIEWS: Readonly<Record<string, DescriptorAvailabilityContractReview>> = {
+  query_formula_constants: {
+    producer_output_claims: [{
+      asset_id: 'bg_formula_constants',
+      component: 'formula_constants',
+      output_digest_spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      disposition: 'reviewed_output',
+      evidence: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    }],
+    requirements: [{
+      kind: 'producer_output',
+      asset_id: 'bg_formula_constants',
+      spec_sha256: '126465c083e5a3ca77c545a8ef6954a5d79b9df3104d79efe371960a2c55738b',
+      scope: 'global',
+      source_ref: 'platform/supabase/migrations/598_nirmana_output_digest_specs.sql:41-43',
+    }],
+  },
+}
+
 export function getDescriptorAvailabilityReview(name: string): DescriptorAvailabilityReview | undefined {
   return AVAILABILITY_REVIEWS[name]
+}
+
+export function getDescriptorAvailabilityContractReview(name: string): DescriptorAvailabilityContractReview | undefined {
+  return AVAILABILITY_CONTRACT_REVIEWS[name]
 }
 
 const FAMILIES: Readonly<Record<string, DescriptorEditorialFamily>> = {
