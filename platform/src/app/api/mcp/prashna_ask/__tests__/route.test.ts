@@ -26,7 +26,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
 const { knowledgeState } = vi.hoisted(() => ({
-  knowledgeState: { snapshot: null as unknown, overlay: null as unknown },
+  knowledgeState: {
+    snapshot: null as unknown,
+    overlay: null as unknown,
+    overlaySequence: [] as unknown[],
+    overlayLoadCount: 0,
+  },
 }))
 
 vi.mock('@/lib/retrieval/registry/catalog', () => ({ getCatalog: () => [] }))
@@ -51,7 +56,10 @@ vi.mock('@/lib/retrieval/registry/knowledge', () => {
   }
   return {
     assertPinnedCapabilityKnowledgeCurrent: () => knowledgeState.snapshot ?? snapshot,
-    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] }),
+    loadChartCapabilityOverlay: async (_snapshot: unknown, chart_id: string) => {
+      const queued = knowledgeState.overlaySequence[knowledgeState.overlayLoadCount++]
+      return queued ?? knowledgeState.overlay ?? ({ chart_id, overlay_version: 'sha256:overlay', capability_compatibility_version: 'planner-scu-v1', catalog_content_hash: 'sha256:test', build_id: 'build-1', code_revision: null, writer_inventory_hash: null, generated_at: '2026-09-13T00:00:00.000Z', availability: [{ scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: 'build-1', freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [] }] })
+    },
   }
 })
 vi.mock('@/lib/db/client', () => ({ query: vi.fn() }))
@@ -207,6 +215,8 @@ beforeEach(() => {
   managedInquiry.getJob.mockResolvedValue(null)
   knowledgeState.snapshot = null
   knowledgeState.overlay = null
+  knowledgeState.overlaySequence = []
+  knowledgeState.overlayLoadCount = 0
   process.env.MCP_INTERNAL_TOKEN = 'test-token'
   process.env.MCP_CALLER_OIDC_DISABLED_FOR_LOCAL_DEV = 'true'
   ;(authorizeChartAccess as ReturnType<typeof vi.fn>).mockResolvedValue('all')
@@ -365,6 +375,103 @@ describe('POST /api/mcp/prashna_ask — managed inquiry continuation', () => {
     expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(2)
     expect(session.beginAction).toHaveBeenCalledTimes(2)
     expect(session.finalizeWhenNoReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('terminalizes a capped ready continuation without a post-cap retrieval', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000012'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000012'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const retrieve = vi.fn().mockResolvedValue({
+      tool_bundle_id: 'page-one', tool_name: 'authorized_test', tool_version: '1.0', invocation_params: {},
+      results: [{ id: 'one' }], served_from_cache: false, latency_ms: 1, result_hash: 'sha256:one', schema_version: '1.0',
+    })
+    mockGetToolByName.mockReturnValue({ name: 'authorized_test', version: '1.0', retrieve })
+    let current: any
+    const session = {
+      get currentContract() { return current },
+      get readyActionIds() { return current.plan_items.filter((item: any) => item.state === 'ready').map((item: any) => item.item_id) },
+      recoveredEvidence: vi.fn().mockResolvedValue([]),
+      beginAction: vi.fn().mockResolvedValue('acquired'),
+      persistAcceptedObservation: vi.fn().mockImplementation(async ({ plan_item_id }: { plan_item_id: string }) => {
+        current = {
+          ...current,
+          iteration: 1,
+          plan_items: current.plan_items.map((item: any) => item.item_id === plan_item_id
+            ? { ...item, state: 'ready', args: { ...item.args, page_cursor: 'page-2' }, observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null } }
+            : item),
+        }
+      }),
+      failClosedAmbiguity: vi.fn(),
+      failClosed: vi.fn(async (contract: any) => { current = contract; return contract }),
+      finalizeWhenNoReady: vi.fn(async () => current),
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+      current = { ...(contract as any), max_iterations: 1 }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'managed capped page test', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const lines = await readNdjson(res)
+    const body = lines.at(-1)
+    expect(retrieve).toHaveBeenCalledTimes(1)
+    expect(session.beginAction).toHaveBeenCalledTimes(1)
+    expect(session.persistAcceptedObservation).toHaveBeenCalledTimes(1)
+    expect(session.failClosed).toHaveBeenCalledTimes(1)
+    expect((body?.inquiry_contract as { status: string }).status).toBe('BLOCKED')
+  })
+
+  it('replays a persisted terminal lifecycle without overlay-drift finalization', async () => {
+    const jobId = 'aaaaaaaa-1111-4000-8000-000000000013'
+    const inquiryId = 'bbbbbbbb-1111-4000-8000-000000000013'
+    const scope = {
+      intent: 'domain_assessment', domains: ['wealth'], width: 'standard', depth: 'standard',
+      horizon: 'near', intervention: 'none', entitlement: 'native',
+    }
+    const overlay = (buildId: string, version: string) => ({
+      chart_id: CHART, overlay_version: version, capability_compatibility_version: 'planner-scu-v1',
+      catalog_content_hash: 'sha256:test', build_id: buildId, code_revision: null, writer_inventory_hash: null,
+      generated_at: '2026-09-13T00:00:00.000Z', availability: [{
+        scu_id: 'scu.test.wealth', state: 'available', build_status: 'completed', build_id: buildId,
+        freshness: 'fresh', available_binding_ids: ['registry:marsys://tool/L1/test'], gaps: [], asset_receipts: [],
+      }],
+    })
+    knowledgeState.overlaySequence = [overlay('build-1', 'sha256:overlay-1'), overlay('build-2', 'sha256:overlay-2')]
+    mockCallPipelinePlanner.mockResolvedValue(planOutcome(['authorized_test'], scope))
+    managedInquiry.getJob.mockResolvedValue({ chart_id: CHART, request_jsonb: { inquiry_id: inquiryId } })
+    const session = {
+      recoveredEvidence: vi.fn().mockResolvedValue([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }]),
+      beginAction: vi.fn(), persistAcceptedObservation: vi.fn(), failClosedAmbiguity: vi.fn(), failClosed: vi.fn(),
+      finalizeWhenNoReady: vi.fn(), readyActionIds: [],
+      currentContract: null as any,
+    }
+    managedInquiry.open.mockImplementation(async ({ contract }: { contract: unknown }) => {
+      session.currentContract = {
+        ...(contract as any), status: 'COMPLETE',
+        plan_items: (contract as any).plan_items.map((item: any) => ({
+          ...item, state: 'observed', observation: { disposition: 'served', evidence_refs: ['managed:receipt'], gap_reason: null },
+        })),
+      }
+      return session
+    })
+
+    const res = await POST(makeReq({
+      chart_id: CHART, question: 'recover terminal lifecycle', response_format: 'standard', scope_tuple: scope,
+      managed_job_id: jobId, managed_inquiry_id: inquiryId,
+    }))
+    const body = (await readNdjson(res)).at(-1)
+    expect(knowledgeState.overlayLoadCount).toBe(1)
+    expect(session.failClosed).not.toHaveBeenCalled()
+    expect(session.beginAction).not.toHaveBeenCalled()
+    expect((body?.inquiry_contract as { status: string }).status).toBe('COMPLETE')
+    expect(body?.results).toEqual([{ tool_name: 'authorized_test', bundle: { results: [{ id: 'persisted' }] } }])
   })
 })
 

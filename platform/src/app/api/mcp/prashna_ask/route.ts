@@ -588,7 +588,24 @@ export async function POST(request: Request) {
       expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     initialInquiryContract = managedInquirySession.currentContract
-    const adopted = adoptInquiryPlanItems(plan, initialInquiryContract)
+    // A recovered capped lifecycle must become terminal before this fresh HTTP
+    // request adopts any ready action. Otherwise recovery would reinterpret a
+    // ready continuation as authorization to dispatch beyond max_iterations.
+    if (initialInquiryContract.status === 'INCOMPLETE'
+      && initialInquiryContract.iteration >= initialInquiryContract.max_iterations
+      && managedInquirySession.readyActionIds.length > 0) {
+      const finalized = finalizeInquiryContract(initialInquiryContract)
+      initialInquiryContract = await managedInquirySession.failClosed({
+        ...finalized,
+        status: 'BLOCKED',
+        status_reasons: [...new Set([...finalized.status_reasons, 'iteration cap reached with ready actions remaining'])],
+      })
+    }
+    // A terminal recovered lifecycle already owns its result. Do not adopt
+    // stale ready entries from its stored plan into this request's dispatch.
+    const adopted = initialInquiryContract.status === 'INCOMPLETE'
+      ? adoptInquiryPlanItems(plan, initialInquiryContract)
+      : []
     toolsAuthorized.splice(0, toolsAuthorized.length, ...adopted)
   }
 
@@ -793,7 +810,24 @@ export async function POST(request: Request) {
         )
       }
 
+      const terminalizeManagedIterationCap = async (): Promise<boolean> => {
+        if (!managedInquirySession) return false
+        const current = managedInquirySession.currentContract
+        if (current.status !== 'INCOMPLETE'
+          || current.iteration < current.max_iterations
+          || managedInquirySession.readyActionIds.length === 0) return false
+        const finalized = finalizeInquiryContract(current)
+        await managedInquirySession.failClosed({
+          ...finalized,
+          status: 'BLOCKED',
+          status_reasons: [...new Set([...finalized.status_reasons, 'iteration cap reached with ready actions remaining'])],
+        })
+        judgmentFlags.push('managed_inquiry_iteration_cap_blocked')
+        return true
+      }
+
       for (let i = 0; i < dispatchableTools.length; i++) {
+        if (await terminalizeManagedIterationCap()) break
         const toolName = dispatchableTools[i]
 
         // Resolve BEFORE checking the cap — an unresolved tool name is not a real
@@ -964,7 +998,10 @@ export async function POST(request: Request) {
           }
           emitProgress(toolName)
         }
-        if (managedInquirySession.readyActionIds.length > 0 && managedInquirySession.currentContract.status === 'INCOMPLETE') {
+        if (await terminalizeManagedIterationCap()) {
+          // The lifecycle is now durably BLOCKED; it is safe for the outer job
+          // to persist this terminal result rather than retry it as resumable.
+        } else if (managedInquirySession.readyActionIds.length > 0 && managedInquirySession.currentContract.status === 'INCOMPLETE') {
           judgmentFlags.push('managed_inquiry_continuation_incomplete')
         }
       }
@@ -1076,7 +1113,7 @@ export async function POST(request: Request) {
           inquiryContract = finalizeInquiryContract(inquiryContract)
         }
       }
-      if (managedInquirySession && inquiryContract && inquirySnapshot) {
+      if (managedInquirySession && inquiryContract && inquirySnapshot && inquiryContract.status === 'INCOMPLETE') {
         const currentOverlay = await loadChartCapabilityOverlay(inquirySnapshot, inquiryContract.chart_id)
         if (currentOverlay.overlay_version !== inquiryContract.chart_availability_version
           || currentOverlay.build_id !== inquiryContract.chart_build_id) {
