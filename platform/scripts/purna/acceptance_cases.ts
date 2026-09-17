@@ -1,5 +1,6 @@
 import { BEYOND_ACARYA_ACCEPTANCE_CASES, BEYOND_ACARYA_CORPUS_VERSION, type BeyondAcaryaAcceptanceCase } from '../../src/lib/vidhi/inquiry/beyond_acarya_acceptance.corpus'
 import type { InquiryResponseAccountability } from '../../src/lib/vidhi/inquiry/types'
+import { stableFingerprint } from '../../src/lib/retrieval/registry/knowledge/stable'
 import { createHash } from 'node:crypto'
 
 export const PRODUCT_ACCEPTANCE_PROTOCOL_VERSION = 'purna-product-acceptance-v2' as const
@@ -112,6 +113,147 @@ function immutableCaseContentFingerprint(): string {
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function isStringArray(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every(isString)
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  return Object.keys(value).every((key) => keys.includes(key))
+}
+
+const obligationDispositions = new Set(['pending', 'served', 'empty', 'dark', 'failed', 'not_applicable'])
+const factDispositions = new Set([...obligationDispositions, 'open', 'absorbed', 'capped'])
+const deliveryKinds = new Set([
+  'prose', 'structured_findings', 'finding_interpretation', 'conjoint_interpretation', 'permitted_exclusion',
+])
+
+function isRegisteredFact(value: unknown): boolean {
+  if (!isObject(value) || !isString(value.fact_id)
+    || !hasOnlyKeys(value, ['fact_id', 'kind', 'obligation_ids', 'obligation_id', 'frontier_id', 'materiality', 'meaning', 'evidence_refs', 'normalized_content'])
+    || !['obligation', 'frontier', 'finding'].includes(value.kind as string)
+    || !isStringArray(value.obligation_ids)
+    || (value.obligation_id !== null && !isString(value.obligation_id))
+    || (value.frontier_id !== null && !isString(value.frontier_id))
+    || !['required', 'supporting'].includes(value.materiality as string)
+    || !isObject(value.meaning)
+    || !hasOnlyKeys(value.meaning, ['label', 'rationale', 'scu_ids', 'disposition'])
+    || !isString(value.meaning.label)
+    || !isString(value.meaning.rationale)
+    || !isStringArray(value.meaning.scu_ids)
+    || !factDispositions.has(value.meaning.disposition as string)
+    || !isStringArray(value.evidence_refs)
+    || (value.normalized_content !== null && typeof value.normalized_content !== 'string')) return false
+  return true
+}
+
+function isDeliveryPart(value: unknown): boolean {
+  return isObject(value)
+    && hasOnlyKeys(value, ['part_id', 'kind', 'content_hash', 'content', 'fact_ids', 'evidence_payload_hashes', 'exclusion_reason'])
+    && isString(value.part_id)
+    && deliveryKinds.has(value.kind as string)
+    && isString(value.content_hash)
+    && (value.content === null || typeof value.content === 'string')
+    && isStringArray(value.fact_ids)
+    && isStringArray(value.evidence_payload_hashes)
+    && (value.exclusion_reason === null || typeof value.exclusion_reason === 'string')
+}
+
+/** Verifies a supplied envelope's complete typed structure and internal receipt projections. */
+export function validateResponseAccountability(value: unknown): InquiryResponseAccountability {
+  if (!isObject(value)
+    || !hasOnlyKeys(value, ['accountability_version', 'fact_register', 'delivery_parts', 'response_coverage_receipt'])
+    || value.accountability_version !== 'inquiry-response-accountability-v1'
+    || !isObject(value.fact_register)
+    || !Array.isArray(value.delivery_parts)
+    || !isObject(value.response_coverage_receipt)) {
+    throw new Error('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+  }
+  const register = value.fact_register
+  const coverage = value.response_coverage_receipt
+  if (!hasOnlyKeys(register, ['register_version', 'contract_id', 'semantic_contract_hash', 'facts', 'required_fact_ids', 'validation_errors', 'register_hash'])
+    || register.register_version !== 'inquiry-fact-register-v1'
+    || !isString(register.contract_id)
+    || !isString(register.semantic_contract_hash)
+    || !Array.isArray(register.facts) || !register.facts.every(isRegisteredFact)
+    || !isStringArray(register.required_fact_ids)
+    || !isStringArray(register.validation_errors)
+    || !isString(register.register_hash)
+    || value.delivery_parts.length === 0
+    || !value.delivery_parts.every(isDeliveryPart)
+    || coverage.receipt_version !== 'inquiry-response-coverage-v1'
+    || coverage.contract_id !== register.contract_id
+    || coverage.semantic_contract_hash !== register.semantic_contract_hash
+    || coverage.fact_register_hash !== register.register_hash
+    || !hasOnlyKeys(coverage, [
+      'receipt_version', 'contract_id', 'semantic_contract_hash', 'fact_register_hash', 'status', 'coverage',
+      'delivered_fact_ids', 'permitted_exclusion_fact_ids', 'missing_fact_ids', 'missing_required_fact_ids',
+      'interpretation_unmapped_fact_ids', 'delivery_part_ids', 'invalid_delivery_claims', 'continuation',
+      'resume_required', 'receipt_hash',
+    ])
+    || !['COMPLETE', 'INCOMPLETE_RESUMABLE', 'BLOCKED'].includes(coverage.status as string)
+    || !isObject(coverage.coverage)
+    || !hasOnlyKeys(coverage.coverage, [
+      'synthesis_present', 'all_total', 'all_delivered', 'all_permitted_exclusions', 'required_total',
+      'required_delivered', 'interpretation_mapped',
+    ])
+    || typeof coverage.coverage.synthesis_present !== 'boolean'
+    || !['all_total', 'all_delivered', 'all_permitted_exclusions', 'required_total', 'required_delivered', 'interpretation_mapped']
+      .every((key) => isNonNegativeInteger(coverage.coverage[key]))
+    || !isStringArray(coverage.delivered_fact_ids)
+    || !isStringArray(coverage.permitted_exclusion_fact_ids)
+    || !isStringArray(coverage.missing_fact_ids)
+    || !isStringArray(coverage.missing_required_fact_ids)
+    || !isStringArray(coverage.interpretation_unmapped_fact_ids)
+    || !isStringArray(coverage.delivery_part_ids)
+    || !isStringArray(coverage.invalid_delivery_claims)
+    || !isObject(coverage.continuation)
+    || !hasOnlyKeys(coverage.continuation, [
+      'iteration', 'max_iterations', 'exhausted', 'next_action_ids', 'blocked_item_ids',
+      'unresolved_obligation_ids', 'frontier_ids',
+    ])
+    || !isNonNegativeInteger(coverage.continuation.iteration)
+    || !isNonNegativeInteger(coverage.continuation.max_iterations)
+    || typeof coverage.continuation.exhausted !== 'boolean'
+    || !isStringArray(coverage.continuation.next_action_ids)
+    || !isStringArray(coverage.continuation.blocked_item_ids)
+    || !isStringArray(coverage.continuation.unresolved_obligation_ids)
+    || !isStringArray(coverage.continuation.frontier_ids)
+    || typeof coverage.resume_required !== 'boolean'
+    || !isString(coverage.receipt_hash)) {
+    throw new Error('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+  }
+  const factIds = new Set(register.facts.map((fact) => fact.fact_id as string))
+  const partIds = new Set(value.delivery_parts.map((part) => part.part_id as string))
+  const { register_hash: registerHash, ...registerProjection } = register
+  const { receipt_hash: receiptHash, ...coverageProjection } = coverage
+  const coverageFactIds = [
+    ...coverage.delivered_fact_ids,
+    ...coverage.permitted_exclusion_fact_ids,
+    ...coverage.missing_fact_ids,
+    ...coverage.missing_required_fact_ids,
+    ...coverage.interpretation_unmapped_fact_ids,
+  ]
+  if (factIds.size !== register.facts.length
+    || partIds.size !== value.delivery_parts.length
+    || !register.required_fact_ids.every((factId) => factIds.has(factId))
+    || value.delivery_parts.some((part) => !part.fact_ids.every((factId: string) => factIds.has(factId)))
+    || coverageFactIds.some((factId) => !factIds.has(factId))
+    || coverage.delivery_part_ids.some((partId) => !partIds.has(partId))
+    || registerHash !== stableFingerprint(registerProjection)
+    || receiptHash !== stableFingerprint(coverageProjection)) {
+    throw new Error('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+  }
+  return value as unknown as InquiryResponseAccountability
 }
 
 export function validateProtocol(value: unknown): ProductAcceptanceProtocol {
@@ -229,14 +371,17 @@ export function validateAcceptanceAnswers(
         ...(item.detail === undefined ? {} : { detail: item.detail }),
       }
     })
+    const responseAccountability = candidate.response_accountability === undefined || candidate.response_accountability === null
+      ? candidate.response_accountability
+      : validateResponseAccountability(candidate.response_accountability)
     return {
       case_id: candidate.case_id,
       answer: candidate.answer as string | null,
       evidence,
       ...(candidate.qualitative_score === undefined ? {} : { qualitative_score: candidate.qualitative_score as number | null }),
-      ...(candidate.response_accountability === undefined
+      ...(responseAccountability === undefined
         ? {}
-        : { response_accountability: candidate.response_accountability as InquiryResponseAccountability | null }),
+        : { response_accountability: responseAccountability }),
     }
   })
 }
