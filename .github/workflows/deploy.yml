@@ -839,6 +839,10 @@ jobs:
           DATA_PLANE_CUTOVER_ENVIRONMENT: data-plane-production-cutover
           GH_TOKEN: ${{ github.token }}
           DATA_PLANE_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_ADMIN_DATABASE_URL }}
+          # Direct postgres authentication is a separately provisioned,
+          # one-shot ownership route.  It must not be replaced by the
+          # validation-proxy administrator credential above.
+          DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL: ${{ secrets.DATA_PLANE_OWNERSHIP_ADMIN_DATABASE_URL }}
           DATA_PLANE_MIGRATOR_DATABASE_URL: ${{ secrets.DATA_PLANE_MIGRATOR_DATABASE_URL }}
         run: |
           ./cloud-sql-proxy --address 127.0.0.1 --port 5433 \
