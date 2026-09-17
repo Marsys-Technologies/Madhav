@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { assertLiveEvidence, type AcceptanceCase } from '../collection_types'
-import { collectManagedCase, collectRawCase, parsePortalSse } from '../channel_clients'
+import { collectManagedCase, collectPortalCase, collectRawCase, parsePortalSse } from '../channel_clients'
 
 const test: AcceptanceCase = { id: 'wealth_mechanism_timing_contradiction', question: 'Explain wealth with supporting evidence.', scope_tuple: { intent: 'wealth_deepdive', domains: ['wealth'], width: 'broad', depth: 'deep', horizon: 'near', intervention: 'none', entitlement: 'reference' }, requiredDimensions: ['wealth'], expected: 'supported_complete' }
 const base = { test, expectedRevision: 'candidate-a', source: 'candidate' as const, chartId: '11111111-1111-4111-8111-111111111111' }
@@ -19,6 +19,14 @@ describe('Purna real three-door collector', () => {
       controller.close()
     } })
     await expect(parsePortalSse(stream)).resolves.toMatchObject({ truncated: false, payload: { receipt: { receipt_hash: 'r-1' } } })
+  })
+  it('records the Portal response revision as acceptance evidence', async () => {
+    const stream = new ReadableStream<Uint8Array>({ start(controller) {
+      controller.enqueue(new TextEncoder().encode('data: {"type":"turn.close","status":"ok"}\n\n'))
+      controller.close()
+    } })
+    const row = await collectPortalCase({ ...base, endpoint: 'https://example.test', sessionCookie: 'session', fetchImpl: async () => new Response(stream, { headers: { 'x-madhav-source-revision': 'candidate-a' } }) })
+    expect(row.observedRevision).toBe('candidate-a')
   })
   it('enforces a managed polling deadline', async () => {
     const row = await collectManagedCase({ ...base, maxPolls: 2, wait: async () => {}, invoker: { call: async (name) => name === 'prashna_ask' ? { job_id: 'job-1' } : { status: 'running' } } })

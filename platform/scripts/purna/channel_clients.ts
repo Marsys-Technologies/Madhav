@@ -128,7 +128,12 @@ export async function collectPortalCase(input: {
     if (!response.ok || !response.body) return failed(input, 'portal', 1, `PORTAL_HTTP_${response.status}`)
     const parsed = await parsePortalSse(response.body)
     if (parsed.truncated) return failed(input, 'portal', 1, 'PORTAL_SSE_TRUNCATED', parsed.inquiryId)
-    return normalize(input, 'portal', parsed.payload, 1, parsed.inquiryId, parsed.answer)
+    return normalize(input, 'portal', {
+      ...parsed.payload,
+      ...(response.headers.get('x-madhav-source-revision')
+        ? { deployed_revision: response.headers.get('x-madhav-source-revision') }
+        : {}),
+    }, 1, parsed.inquiryId, parsed.answer)
   } catch (error) { return failed(input, 'portal', 1, `PORTAL_TRANSPORT:${error instanceof Error ? error.message : 'UNKNOWN'}`) }
 }
 

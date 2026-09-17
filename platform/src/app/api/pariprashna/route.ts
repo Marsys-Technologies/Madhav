@@ -367,6 +367,12 @@ export async function POST(request: Request): Promise<Response> {
       'cache-control': 'no-cache, no-transform',
       connection: 'keep-alive',
       'x-accel-buffering': 'no',
+      // Acceptance evidence must identify the exact served source revision.
+      // The deploy workflow supplies this immutable SHA; omit rather than
+      // fabricate a value in local development.
+      ...(process.env.NIRMANA_DEPLOYED_SHA
+        ? { 'x-madhav-source-revision': process.env.NIRMANA_DEPLOYED_SHA }
+        : {}),
     },
   })
 }
