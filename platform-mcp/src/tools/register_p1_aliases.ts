@@ -1497,8 +1497,9 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
     'centrality_summary, and a grounding citation. Filters: ayanamsha_id, mechanism_class, valence, ' +
     'chain_circuit_only (isolates the convergent_dispositor_chain/dispositor_cycle/house_lordship_cycle ' +
     'family, served first). Per-class and per-valence facet counts over the full match set are always ' +
-    'returned. Bounded (LIMIT <=50) with a disclosed total, offset pagination, and an honest ' +
-    'empty_reason when a chart carries no mechanisms.',
+    'returned. Bounded (LIMIT <=50) with a disclosed total and build-pinned cursor continuation: ' +
+    'begin at offset 0, then pass next_page_cursor unchanged as page_cursor. A changed/replacing ' +
+    'mechanism build requires restart. An honest empty_reason is returned when a chart carries no mechanisms.',
     {
       ...ChartBase,
       mechanism_class:    z.string().optional().describe('Filter by a single mechanism_class. Omit for all.'),
@@ -1506,9 +1507,11 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
       chain_circuit_only: z.boolean().optional().describe(
         'When true, return only the CR-24 chain/circuit family (convergent_dispositor_chain, ' +
         'dispositor_cycle, house_lordship_cycle). Default false.'),
+      page_cursor: z.string().optional().describe(
+        'Opaque continuation token returned as next_page_cursor. Forward unchanged for the next page; it pins the mechanism build and filters.'),
     },
     async (params) => {
-      const { chart_id, ayanamsha_id, limit, offset, mechanism_class, valence, chain_circuit_only } =
+      const { chart_id, ayanamsha_id, limit, offset, mechanism_class, valence, chain_circuit_only, page_cursor } =
         params as Record<string, unknown>
       if (!chart_id) return errOut('bodha_mechanisms_get', 'chart_id is required')
       try {
@@ -1519,6 +1522,7 @@ export function registerP1AliasTools(server: McpServer, principal: Principal): v
           ...(chain_circuit_only != null ? { chain_circuit_only } : {}),
           ...(limit != null ? { limit } : {}),
           ...(offset != null ? { offset } : {}),
+          ...(page_cursor != null ? { page_cursor } : {}),
         }, principal)
         return dualOutput(data, 'bodha_mechanisms_get')
       } catch (err) { return errOut('bodha_mechanisms_get', String(err), { chart_id }) }
