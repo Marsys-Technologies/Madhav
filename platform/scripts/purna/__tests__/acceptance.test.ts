@@ -9,6 +9,7 @@ import {
   casesForSuite,
   type AcceptanceCaseInput,
   type ProductAcceptanceProtocol,
+  validateResponseAccountability,
   validateProtocol,
 } from '../acceptance_cases'
 import { parseCliArgs, writeAcceptanceRun } from '../acceptance'
@@ -33,7 +34,7 @@ const candidateConfig = {
 const validFactRegister = {
   register_version: 'inquiry-fact-register-v1',
   contract_id: 'contract-1',
-  semantic_contract_hash: 'sha256:semantic',
+  semantic_contract_hash: `sha256:${'a'.repeat(64)}`,
   facts: [],
   required_fact_ids: [],
   validation_errors: [],
@@ -43,7 +44,7 @@ const validFactRegisterHash = stableFingerprint(validFactRegister)
 const validCoverage = {
   receipt_version: 'inquiry-response-coverage-v1',
   contract_id: 'contract-1',
-  semantic_contract_hash: 'sha256:semantic',
+  semantic_contract_hash: validFactRegister.semantic_contract_hash,
   fact_register_hash: validFactRegisterHash,
   status: 'INCOMPLETE_RESUMABLE',
   coverage: {
@@ -83,13 +84,94 @@ const validResponseAccountability = {
   delivery_parts: [{
     part_id: 'structured-findings:1',
     kind: 'structured_findings',
-    content_hash: 'sha256:part',
+    content_hash: stableFingerprint({
+      kind: 'structured_findings', facts: [], evidence_payload_hashes: [], content: null, exclusion_reason: null,
+    }),
     content: null,
     fact_ids: [],
     evidence_payload_hashes: [],
     exclusion_reason: null,
   }],
   response_coverage_receipt: { ...validCoverage, receipt_hash: stableFingerprint(validCoverage) },
+}
+
+function withCoverageReceipt<T extends Record<string, unknown>>(coverage: T): T & { receipt_hash: string } {
+  const projection: Record<string, unknown> = { ...coverage }
+  delete projection.receipt_hash
+  return { ...projection, receipt_hash: stableFingerprint(projection) } as T & { receipt_hash: string }
+}
+
+function accountabilityWithDeliveredFact() {
+  const fact = {
+    fact_id: 'fact:one',
+    kind: 'frontier',
+    obligation_ids: [],
+    obligation_id: null,
+    frontier_id: 'frontier:one',
+    materiality: 'required',
+    meaning: { label: 'fact', rationale: 'test', scu_ids: ['scu.test'], disposition: 'absorbed' },
+    evidence_refs: [],
+    normalized_content: null,
+  }
+  const registerProjection = {
+    register_version: 'inquiry-fact-register-v1',
+    contract_id: 'contract-2',
+    semantic_contract_hash: `sha256:${'b'.repeat(64)}`,
+    facts: [fact],
+    required_fact_ids: ['fact:one'],
+    validation_errors: [],
+  }
+  const registerHash = stableFingerprint(registerProjection)
+  const part = {
+    part_id: 'structured-findings:fact-one',
+    kind: 'structured_findings',
+    content_hash: stableFingerprint({
+      kind: 'structured_findings', facts: [fact], evidence_payload_hashes: [], content: null, exclusion_reason: null,
+    }),
+    content: null,
+    fact_ids: ['fact:one'],
+    evidence_payload_hashes: [],
+    exclusion_reason: null,
+  }
+  const coverage = {
+    receipt_version: 'inquiry-response-coverage-v1',
+    contract_id: 'contract-2',
+    semantic_contract_hash: registerProjection.semantic_contract_hash,
+    fact_register_hash: registerHash,
+    status: 'INCOMPLETE_RESUMABLE',
+    coverage: {
+      synthesis_present: false,
+      all_total: 1,
+      all_delivered: 1,
+      all_permitted_exclusions: 0,
+      required_total: 1,
+      required_delivered: 1,
+      interpretation_mapped: 0,
+    },
+    delivered_fact_ids: ['fact:one'],
+    permitted_exclusion_fact_ids: [],
+    missing_fact_ids: [],
+    missing_required_fact_ids: [],
+    interpretation_unmapped_fact_ids: [],
+    delivery_part_ids: [part.part_id],
+    invalid_delivery_claims: [],
+    continuation: {
+      iteration: 0,
+      max_iterations: 4,
+      exhausted: false,
+      next_action_ids: [],
+      blocked_item_ids: [],
+      unresolved_obligation_ids: [],
+      frontier_ids: [],
+    },
+    resume_required: true,
+  }
+  return {
+    accountability_version: 'inquiry-response-accountability-v1',
+    fact_register: { ...registerProjection, register_hash: registerHash },
+    delivery_parts: [part],
+    response_coverage_receipt: withCoverageReceipt(coverage),
+  }
 }
 
 describe('Purna product acceptance harness', () => {
@@ -228,6 +310,65 @@ describe('Purna product acceptance harness', () => {
     } finally {
       await rm(artifactDir, { recursive: true, force: true })
     }
+  })
+
+  it('rejects forged-but-rehashed accountability coverage and delivery projections', () => {
+    const base = accountabilityWithDeliveredFact()
+    expect(validateResponseAccountability(base, 'answer')).toMatchObject({
+      response_coverage_receipt: { status: 'INCOMPLETE_RESUMABLE' },
+    })
+
+    const arbitraryComplete = {
+      ...base,
+      response_coverage_receipt: withCoverageReceipt({
+        ...base.response_coverage_receipt,
+        status: 'COMPLETE',
+        coverage: { ...base.response_coverage_receipt.coverage, all_total: 99, synthesis_present: true },
+        resume_required: false,
+      }),
+    }
+    expect(() => validateResponseAccountability(arbitraryComplete, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+
+    const overlap = {
+      ...base,
+      response_coverage_receipt: withCoverageReceipt({
+        ...base.response_coverage_receipt,
+        permitted_exclusion_fact_ids: ['fact:one'],
+        coverage: { ...base.response_coverage_receipt.coverage, all_permitted_exclusions: 1 },
+      }),
+    }
+    expect(() => validateResponseAccountability(overlap, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+
+    const omittedRequiredProjection = {
+      ...base,
+      fact_register: {
+        ...base.fact_register,
+        required_fact_ids: [],
+      },
+    }
+    const requiredProjection: Record<string, unknown> = { ...omittedRequiredProjection.fact_register }
+    delete requiredProjection.register_hash
+    const rehashedRegister = { ...requiredProjection, register_hash: stableFingerprint(requiredProjection) }
+    const requiredCoverageProjection: Record<string, unknown> = { ...base.response_coverage_receipt }
+    delete requiredCoverageProjection.receipt_hash
+    const rehashedCoverage = withCoverageReceipt({
+      ...requiredCoverageProjection,
+      fact_register_hash: rehashedRegister.register_hash,
+    })
+    expect(() => validateResponseAccountability({
+      ...omittedRequiredProjection,
+      fact_register: rehashedRegister,
+      response_coverage_receipt: rehashedCoverage,
+    }, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
+
+    const arbitraryPartHash = {
+      ...base,
+      delivery_parts: [{ ...base.delivery_parts[0], content_hash: `sha256:${'c'.repeat(64)}` }],
+    }
+    expect(() => validateResponseAccountability({
+      ...arbitraryPartHash,
+      response_coverage_receipt: withCoverageReceipt(base.response_coverage_receipt),
+    }, 'answer')).toThrow('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
   })
 
   it('rejects fixture evidence as live evidence and rejects secret-bearing configuration', async () => {

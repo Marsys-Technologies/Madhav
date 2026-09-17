@@ -136,6 +136,38 @@ const factDispositions = new Set([...obligationDispositions, 'open', 'absorbed',
 const deliveryKinds = new Set([
   'prose', 'structured_findings', 'finding_interpretation', 'conjoint_interpretation', 'permitted_exclusion',
 ])
+const SHA256_FINGERPRINT = /^sha256:[a-f0-9]{64}$/
+
+function uniqueSorted(values: readonly string[]): string[] {
+  return [...new Set(values)].sort()
+}
+
+function isCanonicalStringSet(value: readonly string[]): boolean {
+  return JSON.stringify(value) === JSON.stringify(uniqueSorted(value))
+}
+
+function sameStrings(actual: readonly string[], expected: readonly string[]): boolean {
+  return JSON.stringify(actual) === JSON.stringify(expected)
+}
+
+function evidenceHashFromRef(ref: string): string | null {
+  const match = ref.match(/sha256:[a-f0-9]{64}$/)
+  return match?.[0] ?? null
+}
+
+function deliveryContentHash(
+  factsById: ReadonlyMap<string, Record<string, unknown>>,
+  part: Record<string, unknown>,
+): string {
+  const factIds = part.fact_ids as readonly string[]
+  return stableFingerprint({
+    kind: part.kind,
+    facts: uniqueSorted(factIds).map((factId) => factsById.get(factId) ?? { fact_id: factId, unresolved: true }),
+    evidence_payload_hashes: uniqueSorted(part.evidence_payload_hashes as readonly string[]),
+    content: part.content,
+    exclusion_reason: part.exclusion_reason,
+  })
+}
 
 function isRegisteredFact(value: unknown): boolean {
   if (!isObject(value) || !isString(value.fact_id)
@@ -169,7 +201,7 @@ function isDeliveryPart(value: unknown): boolean {
 }
 
 /** Verifies a supplied envelope's complete typed structure and internal receipt projections. */
-export function validateResponseAccountability(value: unknown): InquiryResponseAccountability {
+export function validateResponseAccountability(value: unknown, answer: string | null): InquiryResponseAccountability {
   if (!isObject(value)
     || !hasOnlyKeys(value, ['accountability_version', 'fact_register', 'delivery_parts', 'response_coverage_receipt'])
     || value.accountability_version !== 'inquiry-response-accountability-v1'
@@ -232,23 +264,128 @@ export function validateResponseAccountability(value: unknown): InquiryResponseA
     || !isString(coverage.receipt_hash)) {
     throw new Error('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
   }
-  const factIds = new Set(register.facts.map((fact) => fact.fact_id as string))
-  const partIds = new Set(value.delivery_parts.map((part) => part.part_id as string))
+  const facts = register.facts as Record<string, unknown>[]
+  const parts = value.delivery_parts as Record<string, unknown>[]
+  const factIds = new Set(facts.map((fact) => fact.fact_id as string))
+  const factsById = new Map(facts.map((fact) => [fact.fact_id as string, fact]))
+  const partIds = new Set(parts.map((part) => part.part_id as string))
   const { register_hash: registerHash, ...registerProjection } = register
   const { receipt_hash: receiptHash, ...coverageProjection } = coverage
-  const coverageFactIds = [
-    ...coverage.delivered_fact_ids,
-    ...coverage.permitted_exclusion_fact_ids,
-    ...coverage.missing_fact_ids,
-    ...coverage.missing_required_fact_ids,
-    ...coverage.interpretation_unmapped_fact_ids,
-  ]
+  const delivered = new Set<string>()
+  const excluded = new Set<string>()
+  const interpretationMapped = new Set<string>()
+  let synthesisPresent = false
+  let invalidDelivery = coverage.invalid_delivery_claims.length > 0
+  for (const part of parts) {
+    const partFactIds = part.fact_ids as readonly string[]
+    const evidenceHashes = part.evidence_payload_hashes as readonly string[]
+    if (!isCanonicalStringSet(partFactIds) || !isCanonicalStringSet(evidenceHashes)
+      || !SHA256_FINGERPRINT.test(part.content_hash as string)
+      || evidenceHashes.some((hash) => !SHA256_FINGERPRINT.test(hash))) {
+      invalidDelivery = true
+      continue
+    }
+    const kind = part.kind as string
+    if (kind === 'prose') {
+      if (!answer?.trim()
+        || part.content !== null
+        || partFactIds.length > 0
+        || evidenceHashes.length > 0
+        || part.exclusion_reason !== null
+        || part.content_hash !== stableFingerprint(answer)) invalidDelivery = true
+      else synthesisPresent = true
+      continue
+    }
+    if (part.content_hash !== deliveryContentHash(factsById, part)) {
+      invalidDelivery = true
+      continue
+    }
+    for (const factId of partFactIds) {
+      const fact = factsById.get(factId)
+      if (!fact) {
+        invalidDelivery = true
+        continue
+      }
+      if (kind === 'permitted_exclusion') {
+        if (fact.materiality !== 'supporting' || !isString(part.exclusion_reason) || delivered.has(factId)) invalidDelivery = true
+        else excluded.add(factId)
+        continue
+      }
+      if (kind === 'finding_interpretation' || kind === 'conjoint_interpretation') {
+        if (fact.kind !== 'finding'
+          || !isString(fact.normalized_content)
+          || !isString(part.content)
+          || !answer?.includes(part.content)
+          || !part.content.includes(fact.normalized_content)
+          || (kind === 'finding_interpretation' && partFactIds.length !== 1)
+          || (kind === 'conjoint_interpretation' && partFactIds.length < 2)) invalidDelivery = true
+        else interpretationMapped.add(factId)
+        continue
+      }
+      const expectedEvidenceHashes = (fact.evidence_refs as readonly string[])
+        .map(evidenceHashFromRef)
+        .filter((hash): hash is string => hash !== null)
+      const disposition = (fact.meaning as Record<string, unknown>).disposition as string
+      if (delivered.has(factId)
+        || excluded.has(factId)
+        || (fact.kind === 'obligation'
+          && ['served', 'empty'].includes(disposition)
+          && ((fact.evidence_refs as readonly string[]).length !== expectedEvidenceHashes.length
+            || expectedEvidenceHashes.some((hash) => !evidenceHashes.includes(hash))))) {
+        invalidDelivery = true
+      } else delivered.add(factId)
+    }
+  }
+  const allFactIds = facts.map((fact) => fact.fact_id as string)
+  const requiredFactIds = facts.filter((fact) => fact.materiality === 'required').map((fact) => fact.fact_id as string)
+  const missingFactIds = allFactIds.filter((factId) => !delivered.has(factId) && !excluded.has(factId))
+  const missingRequiredFactIds = requiredFactIds.filter((factId) => !delivered.has(factId))
+  const interpretationUnmappedFactIds = facts
+    .filter((fact) => fact.kind === 'finding' && delivered.has(fact.fact_id as string) && !interpretationMapped.has(fact.fact_id as string))
+    .map((fact) => fact.fact_id as string)
+  const canComplete = synthesisPresent
+    && !invalidDelivery
+    && missingFactIds.length === 0
+    && missingRequiredFactIds.length === 0
+    && interpretationUnmappedFactIds.length === 0
+    && coverage.continuation.exhausted === false
+    && coverage.continuation.next_action_ids.length === 0
+    && coverage.continuation.blocked_item_ids.length === 0
+    && coverage.continuation.unresolved_obligation_ids.length === 0
+    && coverage.continuation.frontier_ids.length === 0
+  const expectedStatus = canComplete ? 'COMPLETE'
+    : coverage.continuation.exhausted ? 'BLOCKED'
+      : 'INCOMPLETE_RESUMABLE'
   if (factIds.size !== register.facts.length
     || partIds.size !== value.delivery_parts.length
-    || !register.required_fact_ids.every((factId) => factIds.has(factId))
-    || value.delivery_parts.some((part) => !part.fact_ids.every((factId: string) => factIds.has(factId)))
-    || coverageFactIds.some((factId) => !factIds.has(factId))
-    || coverage.delivery_part_ids.some((partId) => !partIds.has(partId))
+    || !sameStrings(register.required_fact_ids, requiredFactIds)
+    || !isCanonicalStringSet(register.required_fact_ids)
+    || !sameStrings(coverage.delivered_fact_ids, uniqueSorted([...delivered]))
+    || !sameStrings(coverage.permitted_exclusion_fact_ids, uniqueSorted([...excluded]))
+    || !sameStrings(coverage.missing_fact_ids, missingFactIds)
+    || !sameStrings(coverage.missing_required_fact_ids, missingRequiredFactIds)
+    || !sameStrings(coverage.interpretation_unmapped_fact_ids, uniqueSorted(interpretationUnmappedFactIds))
+    || !sameStrings(coverage.delivery_part_ids, uniqueSorted([...partIds]))
+    || coverage.coverage.synthesis_present !== synthesisPresent
+    || coverage.coverage.all_total !== allFactIds.length
+    || coverage.coverage.all_delivered !== delivered.size
+    || coverage.coverage.all_permitted_exclusions !== excluded.size
+    || coverage.coverage.required_total !== requiredFactIds.length
+    || coverage.coverage.required_delivered !== requiredFactIds.filter((factId) => delivered.has(factId)).length
+    || coverage.coverage.interpretation_mapped !== interpretationMapped.size
+    || coverage.status !== expectedStatus
+    || coverage.resume_required !== !canComplete
+    || coverage.continuation.iteration > coverage.continuation.max_iterations
+    || ![
+      coverage.continuation.next_action_ids,
+      coverage.continuation.blocked_item_ids,
+      coverage.continuation.unresolved_obligation_ids,
+      coverage.continuation.frontier_ids,
+    ].every(isCanonicalStringSet)
+    || invalidDelivery
+    || !SHA256_FINGERPRINT.test(register.semantic_contract_hash as string)
+    || !SHA256_FINGERPRINT.test(registerHash as string)
+    || !SHA256_FINGERPRINT.test(receiptHash as string)
     || registerHash !== stableFingerprint(registerProjection)
     || receiptHash !== stableFingerprint(coverageProjection)) {
     throw new Error('PRODUCT_ACCEPTANCE_RESPONSE_ACCOUNTABILITY_INVALID')
